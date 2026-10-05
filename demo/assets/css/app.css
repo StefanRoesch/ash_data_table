@@ -5,6 +5,10 @@
 @source "../css";
 @source "../js";
 @source "../../lib/demo_web";
+/* The classes ash_table's markup uses. In this repository the library is the
+   parent directory; in an app that has it as a Hex dependency this line is
+   @source "../../deps/ash_table"; */
+@source "../../../lib";
 
 /* A Tailwind plugin that makes "hero-#{ICON}" classes available.
    The heroicons installation itself is managed by your mix.exs */

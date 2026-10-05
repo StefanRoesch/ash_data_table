@@ -31,6 +31,11 @@ defmodule AshTable.Router do
       and names its URL parameters (`?task[sort]=title`). Defaults to the last
       part of the resource's module name, underscored: `"task"` for
       `MyApp.Tracker.Task`. It must be unique among the tables of a page.
+
+    * `:layout` - the layout the page is rendered in: `{module, function}`
+      naming a function component, such as `{MyAppWeb.Layouts, :app}`, or
+      `false` for none. Defaults to `config :ash_table, layout: …`, and to
+      none when that is not set. See `AshTable.Live.Page`.
   """
   defmacro ash_table(path, resource, opts \\ []) do
     # As Phoenix does for the modules named in routes: expanding the alias as
@@ -55,7 +60,7 @@ defmodule AshTable.Router do
             "ash_table expects a resource module as its second argument, got: #{inspect(resource)}"
     end
 
-    case Keyword.keys(opts) -- [:id] do
+    case Keyword.keys(opts) -- [:id, :layout] do
       [] -> :ok
       unknown -> raise ArgumentError, "unknown options for ash_table: #{inspect(unknown)}"
     end
@@ -68,10 +73,21 @@ defmodule AshTable.Router do
               "that starts with a letter, got: #{inspect(id)}"
     end
 
+    # `:default` leaves the choice to the application's configuration, which
+    # is read when the page is rendered.
+    layout = Keyword.get(opts, :layout, :default)
+
+    if not match?({module, function} when is_atom(module) and is_atom(function), layout) and
+         layout not in [false, :default] do
+      raise ArgumentError,
+            "the :layout of ash_table must be {module, function} naming a function component, " <>
+              "or false, got: #{inspect(layout)}"
+    end
+
     [
       # only used by hosts that still generate route helpers
       as: String.to_atom("ash_table_" <> String.replace(id, "-", "_")),
-      metadata: %{ash_table: %{resource: resource, id: id}}
+      metadata: %{ash_table: %{resource: resource, id: id, layout: layout}}
     ]
   end
 

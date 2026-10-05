@@ -15,7 +15,8 @@ defmodule AshTable.Text do
     range: "%{from}–%{to}",
     range_of_total: "%{from}–%{to} of %{total}",
     yes: "Yes",
-    no: "No"
+    no: "No",
+    not_available: "Not available"
   }
 
   @type key ::
@@ -31,6 +32,7 @@ defmodule AshTable.Text do
           | :range_of_total
           | :yes
           | :no
+          | :not_available
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()

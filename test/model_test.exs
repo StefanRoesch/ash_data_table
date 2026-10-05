@@ -93,9 +93,14 @@ defmodule AshTable.ModelTest do
                %Pagination{strategy: :offset, page_size: 10, countable?: true}
     end
 
-    test "is keyset when the action supports only keyset, sized by its maximum page size" do
+    test "is keyset when the action supports only keyset, with 25 rows when it has no default limit" do
       assert Model.build(AshTable.Test.Reading.KeysetOnly).pagination ==
-               %Pagination{strategy: :keyset, page_size: 40, countable?: false}
+               %Pagination{strategy: :keyset, page_size: 25, countable?: false}
+    end
+
+    test "never has a page size above the action's maximum page size" do
+      assert %Pagination{strategy: :offset, page_size: 10} =
+               Model.build(AshTable.Test.Reading.SmallMaximum).pagination
     end
 
     test "prefers offset when the action supports both, and the default limit over the maximum" do

@@ -202,8 +202,11 @@ defmodule AshTable.Live.TableComponent do
           class={
             [
               "table aria-busy:opacity-60",
-              # the focus ring of the cells, set once here to keep each cell's markup small
-              "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary"
+              # what every cell looks like is set once here, to keep each cell's markup small:
+              # the focus ring
+              "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary",
+              # one line per row: long text is cut off, not wrapped
+              "[&_td]:max-w-80 [&_td]:truncate"
             ]
           }
           phx-update="stream"
@@ -468,6 +471,11 @@ defmodule AshTable.Live.TableComponent do
   defp sort_mark({name, :desc}, %{name: name}), do: " ▼"
   defp sort_mark(_sort, _column), do: ""
 
+  # A field the actor may not see on this row looks empty and is announced.
+  defp cell(_column, %Ash.ForbiddenField{}) do
+    {:safe, [~s(<span class="sr-only">), escape(Text.t(:not_available)), "</span>"]}
+  end
+
   # A boolean is a check indicator with its accessible text beside it;
   # everything else is plain text.
   defp cell(%{cell_type: :boolean} = column, value) when is_boolean(value) do
@@ -478,15 +486,14 @@ defmodule AshTable.Live.TableComponent do
        ~s(<span aria-hidden="true">),
        mark,
        ~s(</span><span class="sr-only">),
-       column
-       |> Format.format(value)
-       |> Phoenix.HTML.html_escape()
-       |> Phoenix.HTML.safe_to_string(),
+       escape(Format.format(column, value)),
        "</span>"
      ]}
   end
 
   defp cell(column, value), do: Format.format(column, value)
+
+  defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
   defp range_text(%{offset: offset, total: total}, row_count, _state)
        when is_integer(offset) and row_count > 0 do

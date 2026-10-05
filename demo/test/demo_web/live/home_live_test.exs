@@ -29,6 +29,19 @@ defmodule DemoWeb.HomeLiveTest do
     assert view |> element("#resource-demo-tracker-task [data-role=visible]") |> render() =~ ">0<"
   end
 
+  test "the page and the header link to every mounted table", %{conn: conn, world: world} do
+    {:ok, view, _html} = conn |> log_in(world.member) |> live(~p"/")
+
+    for path <- ~w(/tasks /projects /comments /labels /specimens) do
+      assert has_element?(view, "#resources a[href='#{path}']")
+    end
+
+    assert has_element?(view, "#resources a[href='/bare/labels']")
+
+    {:ok, _view, html} = live(conn, "/tasks")
+    assert html =~ ~s(<a href="/projects">Projects</a>)
+  end
+
   test "the actor switcher stores the chosen actor in the session", %{conn: conn, world: world} do
     conn = post(conn, ~p"/actor", %{"actor" => world.viewer.id, "return_to" => "/"})
 

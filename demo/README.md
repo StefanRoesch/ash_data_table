@@ -48,6 +48,24 @@ from `.env`; the app reads the same names from the environment
 | Demo | http://localhost:4478 |
 | Postgres | `localhost:5477`, user and password `ash_table`, databases `demo_dev` and `demo_test` |
 
+## The tables
+
+Every table is one `ash_table` line in `DemoWeb.Router`, rendered in the
+demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
+
+| URL | Resource | Shows |
+| --- | --- | --- |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, a column with `sortable? false`, an aggregate, two calculations; offset pages of 25 |
+| http://localhost:4478/projects | `Project` | no block: the public attributes; refused outright for nobody |
+| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only |
+| http://localhost:4478/labels | `Label` | no pagination: every record |
+| http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false` |
+| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes |
+| http://localhost:4478/specimens | `Specimen` | no block: how every built-in type is shown |
+
+The table tests are in `test/demo_web/tables/`: LiveView tests that open
+these pages and click through them as each of the actors.
+
 ## Who you are: the five actors
 
 There is no login. The switcher at the top right of every page posts to

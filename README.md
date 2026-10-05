@@ -47,7 +47,32 @@ installer yet; the steps are manual.
    import_deps: [:ash, :ash_table, …]
    ```
 
+5. Name the layout the mounted tables are rendered in, in `config/config.exs`.
+   A LiveView mounted from the router gets the root layout only; since
+   Phoenix 1.8 the app layout is a function component each page calls itself,
+   so the table's page has to be told which one:
+
+   ```elixir
+   config :ash_table, layout: {MyAppWeb.Layouts, :app}
+   ```
+
+   The component is called with the table as its inner block and the assigns
+   `flash`, `current_scope` (nil when the socket has none) and, when the
+   socket has it, `current_user`. Without this setting the tables are
+   rendered bare in the root layout. One table can differ:
+   `ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
+   `layout: {Module, :function}`.
+
 The table uses the Tailwind and daisyUI classes of a default new Phoenix app.
+
+Notes on the steps:
+
+- The hook is written into the host's build directory when the dependency is
+  compiled, so `mix compile` has to run before the assets are built. The
+  `assets.build` alias of a new Phoenix app already does that.
+- The `@source` path is the dependency's directory relative to
+  `assets/css`. For a path dependency (`{:ash_table, path: "../ash_table"}`)
+  point it at that checkout's `lib` instead.
 
 ## A first table
 
@@ -109,7 +134,9 @@ end
   the resource's decision; under keyset pagination, calculations and
   aggregates cannot.
 
-Mistakes in the block are reported when the resource is compiled.
+Mistakes in the block are reported when the resource is compiled. As with
+every Ash extension's verifiers, they surface as compile warnings; they fail
+the build under `mix compile --warnings-as-errors`.
 
 ### Page size and default sort live on the read action
 
@@ -122,10 +149,9 @@ read :open do
 end
 ```
 
-The page size is the action's `default_limit`, else its `max_page_size`. A
-read action without pagination loads every record. Note that `defaults [:read]`
-gives an action with no `default_limit` and a `max_page_size` of 250, so give
-a table's read action a `default_limit`.
+The page size is the action's `default_limit`, or 25 when it has none, and
+never above the action's `max_page_size`. A read action without pagination
+loads every record.
 
 ### Who is reading
 

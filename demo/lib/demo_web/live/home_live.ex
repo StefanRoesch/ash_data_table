@@ -1,21 +1,31 @@
 defmodule DemoWeb.HomeLive do
   @moduledoc """
   The demo's front page: who you are, and the resources of the demo with what
-  you, as that actor, can see of them. The tables themselves are mounted in
-  the router by `ash_table`.
+  you, as that actor, can see of them, and links to the tables that
+  `ash_table` mounts in the router.
   """
   use DemoWeb, :live_view
 
+  # {resource, note, the paths its table is mounted at with what each shows}
   @resources [
     {Demo.Tracker.Task,
-     "The main specimen: every kind of field, action, policy and field policy."},
-    {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody."},
-    {Demo.Tracker.Comment, "Keyset pagination only."},
-    {Demo.Tracker.Label, "No pagination."},
-    {Demo.Tracker.User, "Not multitenant; filtered to your organization by policy."},
-    {Demo.Tracker.Organization, "The tenant."},
-    {Demo.Tracker.TaskLabel, "The join between tasks and labels."},
-    {Demo.KitchenSink.Specimen, "One attribute per built-in Ash type. No tenant, open to anyone."}
+     "The main specimen: every kind of field, action, policy and field policy.",
+     [{"/tasks", "declared columns, offset pages, sortable aggregate and calculation"}]},
+    {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
+     [{"/projects", "no table block: the default columns"}]},
+    {Demo.Tracker.Comment, "Keyset pagination only.",
+     [{"/comments", "keyset pages: next and previous"}]},
+    {Demo.Tracker.Label, "No pagination.",
+     [
+       {"/labels", "no pagination: every record"},
+       {"/bare/labels", "the same, mounted without the app layout"}
+     ]},
+    {Demo.Tracker.User, "Not multitenant; filtered to your organization by policy.", []},
+    {Demo.Tracker.Organization, "The tenant.", []},
+    {Demo.Tracker.TaskLabel, "The join between tasks and labels.",
+     [{"/task_labels", "a key of two attributes"}]},
+    {Demo.KitchenSink.Specimen, "One attribute per built-in Ash type. No tenant, open to anyone.",
+     [{"/specimens", "no table block: how every type is shown"}]}
   ]
 
   @impl true
@@ -23,11 +33,12 @@ defmodule DemoWeb.HomeLive do
     %{current_user: actor, current_tenant: tenant} = socket.assigns
 
     resources =
-      for {resource, note} <- @resources do
+      for {resource, note, tables} <- @resources do
         %{
           id: resource |> Module.split() |> Enum.join("-") |> String.downcase(),
           name: inspect(resource),
           note: note,
+          tables: tables,
           visible: visible(resource, actor, tenant),
           reads: read_actions(resource),
           fields: length(Ash.Resource.Info.public_attributes(resource))
@@ -60,6 +71,7 @@ defmodule DemoWeb.HomeLive do
           <thead>
             <tr>
               <th>Resource</th>
+              <th>Table</th>
               <th>Records you can see</th>
               <th>Public attributes</th>
               <th>Read actions</th>
@@ -70,6 +82,12 @@ defmodule DemoWeb.HomeLive do
               <td>
                 <div class="font-mono text-sm">{resource.name}</div>
                 <div class="text-xs text-base-content/70">{resource.note}</div>
+              </td>
+              <td>
+                <div :for={{path, shows} <- resource.tables} class="text-sm">
+                  <.link navigate={path} class="link font-mono">{path}</.link>
+                  <div class="text-xs text-base-content/70">{shows}</div>
+                </div>
               </td>
               <td data-role="visible">{resource.visible}</td>
               <td>{resource.fields}</td>

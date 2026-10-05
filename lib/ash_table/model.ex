@@ -37,7 +37,7 @@ defmodule AshTable.Model do
           columns: [Column.t()]
         }
 
-  @fallback_page_size 25
+  @default_page_size 25
 
   @doc """
   Builds the table model of a resource.
@@ -109,7 +109,7 @@ defmodule AshTable.Model do
 
         %Pagination{
           strategy: strategy,
-          page_size: default_limit || max_page_size || @fallback_page_size,
+          page_size: min(default_limit || @default_page_size, max_page_size),
           countable?: countable in [true, :by_default]
         }
 

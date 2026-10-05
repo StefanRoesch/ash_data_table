@@ -18,6 +18,21 @@ defmodule AshTable.Live.Page do
 
   Reads are always authorized.
 
+  ## Layout
+
+  A LiveView mounted by the router is rendered in the root layout only. Since
+  Phoenix 1.8 the app layout is a function component that each page calls
+  itself, so this page has to be told which one to call:
+
+      config :ash_table, layout: {MyAppWeb.Layouts, :app}
+
+  The component is called with the table as its inner block and with the
+  assigns `flash`, `current_scope` (nil when the socket has none) and, when
+  the socket has it, `current_user`. A single table can be given another
+  layout, or none, in the router: `ash_table "/tasks", Task, layout: false`.
+  The configuration is read when the page is rendered. With neither set the
+  page is rendered bare.
+
   ## URL
 
   Sort and page are kept in the URL, under the table's id:
@@ -39,11 +54,35 @@ defmodule AshTable.Live.Page do
 
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, :layout, layout(assigns.table))
+
     ~H"""
-    <div id={"#{@table.id}-page"}>
-      <h1 class="mb-4 text-lg font-semibold">{@page_title}</h1>
-      <AshTable.table id={@table.id} resource={@table.resource} url={@url} {reader(assigns)} />
-    </div>
+    <.in_layout layout={@layout} {layout_assigns(assigns)}>
+      <div id={"#{@table.id}-page"}>
+        <h1 class="mb-4 text-lg font-semibold">{@page_title}</h1>
+        <AshTable.table id={@table.id} resource={@table.resource} url={@url} {reader(assigns)} />
+      </div>
+    </.in_layout>
+    """
+  end
+
+  # The route's own choice, else the application's, else none.
+  defp layout(%{layout: :default}), do: Application.get_env(:ash_table, :layout, false)
+  defp layout(%{layout: layout}), do: layout
+
+  defp layout_assigns(assigns) do
+    assigns
+    |> Map.take([:flash, :current_user])
+    |> Map.put(:current_scope, assigns[:current_scope])
+  end
+
+  defp in_layout(%{layout: {module, function}} = assigns) do
+    apply(module, function, [Map.delete(assigns, :layout)])
+  end
+
+  defp in_layout(assigns) do
+    ~H"""
+    {render_slot(@inner_block)}
     """
   end
 
@@ -60,7 +99,7 @@ defmodule AshTable.Live.Page do
     uri = URI.parse(url)
 
     case Phoenix.Router.route_info(socket.router, "GET", uri.path || "/", uri.host || "") do
-      %{ash_table: %{resource: _, id: _} = table} ->
+      %{ash_table: %{resource: _, id: _, layout: _} = table} ->
         table
 
       _other ->

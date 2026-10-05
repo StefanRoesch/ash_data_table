@@ -4,7 +4,9 @@ defmodule Demo.Tracker.TaskLabel do
     otp_app: :demo,
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
-    authorizers: [Ash.Policy.Authorizer]
+    authorizers: [Ash.Policy.Authorizer],
+    # No `table` block: the table shows the public attributes.
+    extensions: [AshTable.Resource]
 
   postgres do
     table "task_labels"
@@ -15,6 +17,10 @@ defmodule Demo.Tracker.TaskLabel do
       reference :task, on_delete: :delete
       reference :label, on_delete: :delete
     end
+  end
+
+  resource do
+    plural_name :task_labels
   end
 
   actions do

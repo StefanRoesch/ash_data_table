@@ -15,7 +15,8 @@ defmodule AshTable.Format do
   """
   @spec format(Column.t(), term) :: String.t()
   def format(_column, nil), do: ""
-  # Slice 4 gives fields the actor may not see a placeholder of their own.
+  # A field the actor may not see has a placeholder, which is markup and
+  # belongs to the component.
   def format(_column, %Ash.ForbiddenField{}), do: ""
   def format(_column, %Ash.NotLoaded{}), do: ""
 
@@ -49,7 +50,16 @@ defmodule AshTable.Format do
     if String.valid?(value), do: value, else: inspect(value)
   end
 
-  defp other(value) when is_atom(value) or is_number(value), do: to_string(value)
+  defp other(value) when is_number(value), do: to_string(value)
+
+  # A module is shown as it is written, without the `Elixir.` of its atom.
+  defp other(value) when is_atom(value) do
+    case Atom.to_string(value) do
+      "Elixir." <> _ -> inspect(value)
+      text -> text
+    end
+  end
+
   defp other(value) when is_list(value), do: Enum.map_join(value, ", ", &other/1)
 
   defp other(%_{} = value) do

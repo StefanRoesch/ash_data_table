@@ -11,6 +11,8 @@ defmodule Demo.KitchenSink.Specimen do
     domain: Demo.KitchenSink,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
+    # No `table` block: the table shows the public attributes.
+    extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 
@@ -67,6 +69,10 @@ defmodule Demo.KitchenSink.Specimen do
     :opt_utc_datetime,
     :opt_shade
   ]
+
+  resource do
+    plural_name :specimens
+  end
 
   actions do
     defaults [:destroy]

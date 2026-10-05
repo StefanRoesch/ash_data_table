@@ -121,3 +121,15 @@ defmodule AshTable.Test.Reading.BothWithKeysetChosen do
     column :comment_count
   end
 end
+
+defmodule AshTable.Test.Reading.SmallMaximum do
+  @moduledoc false
+  use AshTable.Test.Reading
+
+  actions do
+    read :read do
+      primary? true
+      pagination offset?: true, max_page_size: 10
+    end
+  end
+end

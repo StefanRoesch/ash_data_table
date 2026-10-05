@@ -8,6 +8,7 @@ defmodule Demo.Tracker.Task do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 
@@ -33,6 +34,10 @@ defmodule Demo.Tracker.Task do
     end
   end
 
+  resource do
+    plural_name :tasks
+  end
+
   field_policies do
     field_policy :external_ref do
       description "Actor only: admins."
@@ -49,6 +54,39 @@ defmodule Demo.Tracker.Task do
       description "Everything else is visible to whoever can read the record."
       authorize_if always()
     end
+  end
+
+  # The table at /tasks: chosen columns in a chosen order. Its page size and
+  # default sort are those of the primary read action.
+  table do
+    column :title
+
+    column :status do
+      label "State"
+    end
+
+    column :priority
+    column :progress
+    column :estimate_hours
+    column :billable?
+    column :due_on
+    # an expression calculation: sortable
+    column :overdue?
+
+    # an aggregate
+    column :comment_count do
+      label "Comments"
+    end
+
+    # a calculation computed in Elixir: the resource cannot sort by it
+    column :headline
+    column :external_ref
+
+    column :description do
+      sortable? false
+    end
+
+    column :inserted_at
   end
 
   actions do

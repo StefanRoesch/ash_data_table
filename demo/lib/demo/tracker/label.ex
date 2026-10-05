@@ -5,6 +5,8 @@ defmodule Demo.Tracker.Label do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
+    # No `table` block: the table shows the public attributes.
+    extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 
@@ -15,6 +17,10 @@ defmodule Demo.Tracker.Label do
     references do
       reference :organization, on_delete: :delete
     end
+  end
+
+  resource do
+    plural_name :labels
   end
 
   actions do

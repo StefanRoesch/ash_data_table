@@ -4,8 +4,9 @@ defmodule AshTable.Model.Pagination do
 
     * `strategy` is `:offset`, `:keyset`, or `:none` for a read action without
       pagination, which loads everything.
-    * `page_size` is the read action's `default_limit`, else its
-      `max_page_size`, else 25. It is `nil` when the strategy is `:none`.
+    * `page_size` is the read action's `default_limit`, or 25 when it has
+      none, and never above the action's `max_page_size`. It is `nil` when the
+      strategy is `:none`.
     * `countable?` says whether the action can report the total.
   """
 

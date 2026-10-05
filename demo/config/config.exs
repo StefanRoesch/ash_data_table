@@ -61,6 +61,9 @@ config :demo,
 
 config :demo, Demo.Repo, types: Demo.PostgrexTypes
 
+# The layout the tables mounted by `ash_table` in the router are rendered in.
+config :ash_table, layout: {DemoWeb.Layouts, :app}
+
 # Configure the endpoint
 config :demo, DemoWeb.Endpoint,
   url: [host: "localhost"],
