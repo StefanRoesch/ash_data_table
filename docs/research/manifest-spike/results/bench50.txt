@@ -1,0 +1,51 @@
+Compiling 10 files (.ex)
+Generated spike app
+mix compile with SYNTH=50: 7.993846177 s
+synthetic resources: 50; domains: 3; resources: 58
+COLD app (first call in a fresh VM): 189.91 ms
+second call app: 14.91 ms
+WARM app: %{n: 30, median_ms: 14.91, min_ms: 12.96, max_ms: 18.74}
+WARM scoped: %{n: 30, median_ms: 3.36, min_ms: 3.03, max_ms: 6.4}
+WARM capabilities_only: %{n: 30, median_ms: 2.99, min_ms: 2.34, max_ms: 3.5}
+WARM builders: %{n: 30, median_ms: 3.18, min_ms: 2.73, max_ms: 3.85}
+WARM manifest_poc: %{n: 30, median_ms: 4.16, min_ms: 3.79, max_ms: 10.0}
+WARM info: %{n: 30, median_ms: 0.21, min_ms: 0.2, max_ms: 0.29}
+app manifest: 58 resources, 5 types, 341 entrypoints, 2.8 MB flat, 1.49 MB shared, 2.28 MB term_to_binary
+scoped manifest: 6 resources, 5 types, 2 entrypoints, 0.18 MB flat, 0.11 MB shared, 0.15 MB term_to_binary
+persistent_term: first put 2.44 ms, replace 2.54 ms, get median 0.0 ms
+WARM scoped to one resource of a fully connected ring (50 resources reachable): %{n: 10, median_ms: 12.37, min_ms: 11.18, max_ms: 12.99}
+WARM FromInfo on that resource: %{n: 30, median_ms: 0.12, min_ms: 0.11, max_ms: 0.19}
+WARM FromInfo on all 50 ring resources: %{n: 10, median_ms: 6.42, min_ms: 6.02, max_ms: 6.5}
+---
+synthetic resources: 50; domains: 3; resources: 58
+COLD scoped (first call in a fresh VM): 91.5 ms
+second call scoped: 4.59 ms
+WARM app: %{n: 30, median_ms: 13.67, min_ms: 13.04, max_ms: 92.0}
+WARM scoped: %{n: 30, median_ms: 3.15, min_ms: 3.02, max_ms: 4.16}
+WARM capabilities_only: %{n: 30, median_ms: 2.32, min_ms: 2.25, max_ms: 2.91}
+WARM builders: %{n: 30, median_ms: 2.57, min_ms: 2.5, max_ms: 3.66}
+WARM manifest_poc: %{n: 30, median_ms: 3.8, min_ms: 3.42, max_ms: 9.15}
+WARM info: %{n: 30, median_ms: 0.18, min_ms: 0.18, max_ms: 0.55}
+app manifest: 58 resources, 5 types, 341 entrypoints, 2.8 MB flat, 1.49 MB shared, 2.28 MB term_to_binary
+scoped manifest: 6 resources, 5 types, 2 entrypoints, 0.18 MB flat, 0.11 MB shared, 0.15 MB term_to_binary
+persistent_term: first put 2.16 ms, replace 2.14 ms, get median 0.0 ms
+WARM scoped to one resource of a fully connected ring (50 resources reachable): %{n: 10, median_ms: 12.41, min_ms: 11.21, max_ms: 13.39}
+WARM FromInfo on that resource: %{n: 30, median_ms: 0.12, min_ms: 0.11, max_ms: 0.23}
+WARM FromInfo on all 50 ring resources: %{n: 10, median_ms: 6.4, min_ms: 6.07, max_ms: 6.84}
+---
+synthetic resources: 50; domains: 3; resources: 58
+COLD info (first call in a fresh VM): 104.45 ms
+second call info: 0.39 ms
+WARM app: %{n: 30, median_ms: 13.76, min_ms: 12.59, max_ms: 115.64}
+WARM scoped: %{n: 30, median_ms: 3.23, min_ms: 3.06, max_ms: 5.99}
+WARM capabilities_only: %{n: 30, median_ms: 2.3, min_ms: 2.22, max_ms: 3.74}
+WARM builders: %{n: 30, median_ms: 2.55, min_ms: 2.47, max_ms: 3.0}
+WARM manifest_poc: %{n: 30, median_ms: 3.31, min_ms: 3.15, max_ms: 4.83}
+WARM info: %{n: 30, median_ms: 0.18, min_ms: 0.17, max_ms: 0.27}
+app manifest: 58 resources, 5 types, 341 entrypoints, 2.8 MB flat, 1.49 MB shared, 2.28 MB term_to_binary
+scoped manifest: 6 resources, 5 types, 2 entrypoints, 0.18 MB flat, 0.11 MB shared, 0.15 MB term_to_binary
+persistent_term: first put 2.21 ms, replace 2.48 ms, get median 0.0 ms
+WARM scoped to one resource of a fully connected ring (50 resources reachable): %{n: 10, median_ms: 12.14, min_ms: 11.36, max_ms: 15.21}
+WARM FromInfo on that resource: %{n: 30, median_ms: 0.12, min_ms: 0.11, max_ms: 0.21}
+WARM FromInfo on all 50 ring resources: %{n: 10, median_ms: 6.14, min_ms: 6.04, max_ms: 6.43}
+---

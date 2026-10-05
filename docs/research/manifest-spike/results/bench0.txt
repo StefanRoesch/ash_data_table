@@ -1,0 +1,42 @@
+Compiling 10 files (.ex)
+Generated spike app
+mix compile with SYNTH=0: 2.110192483 s
+synthetic resources: 0; domains: 2; resources: 8
+COLD app (first call in a fresh VM): 102.92 ms
+second call app: 3.99 ms
+WARM app: %{n: 30, median_ms: 3.39, min_ms: 3.1, max_ms: 4.7}
+WARM scoped: %{n: 30, median_ms: 3.83, min_ms: 3.04, max_ms: 6.46}
+WARM capabilities_only: %{n: 30, median_ms: 2.44, min_ms: 2.39, max_ms: 2.55}
+WARM builders: %{n: 30, median_ms: 2.56, min_ms: 2.49, max_ms: 2.8}
+WARM manifest_poc: %{n: 30, median_ms: 3.36, min_ms: 3.21, max_ms: 8.81}
+WARM info: %{n: 30, median_ms: 0.17, min_ms: 0.17, max_ms: 0.24}
+app manifest: 8 resources, 5 types, 41 entrypoints, 0.24 MB flat, 0.13 MB shared, 0.2 MB term_to_binary
+scoped manifest: 6 resources, 5 types, 2 entrypoints, 0.18 MB flat, 0.11 MB shared, 0.15 MB term_to_binary
+persistent_term: first put 0.22 ms, replace 0.21 ms, get median 0.0 ms
+---
+synthetic resources: 0; domains: 2; resources: 8
+COLD scoped (first call in a fresh VM): 95.96 ms
+second call scoped: 3.7 ms
+WARM app: %{n: 30, median_ms: 3.37, min_ms: 3.01, max_ms: 5.86}
+WARM scoped: %{n: 30, median_ms: 3.38, min_ms: 3.21, max_ms: 6.02}
+WARM capabilities_only: %{n: 30, median_ms: 2.31, min_ms: 2.23, max_ms: 3.34}
+WARM builders: %{n: 30, median_ms: 2.8, min_ms: 2.5, max_ms: 3.61}
+WARM manifest_poc: %{n: 30, median_ms: 3.31, min_ms: 3.14, max_ms: 12.56}
+WARM info: %{n: 30, median_ms: 0.2, min_ms: 0.17, max_ms: 0.25}
+app manifest: 8 resources, 5 types, 41 entrypoints, 0.24 MB flat, 0.13 MB shared, 0.2 MB term_to_binary
+scoped manifest: 6 resources, 5 types, 2 entrypoints, 0.18 MB flat, 0.11 MB shared, 0.15 MB term_to_binary
+persistent_term: first put 0.24 ms, replace 0.21 ms, get median 0.0 ms
+---
+synthetic resources: 0; domains: 2; resources: 8
+COLD info (first call in a fresh VM): 72.5 ms
+second call info: 0.35 ms
+WARM app: %{n: 30, median_ms: 3.27, min_ms: 3.02, max_ms: 22.75}
+WARM scoped: %{n: 30, median_ms: 3.15, min_ms: 3.01, max_ms: 3.7}
+WARM capabilities_only: %{n: 30, median_ms: 2.3, min_ms: 2.24, max_ms: 3.02}
+WARM builders: %{n: 30, median_ms: 2.55, min_ms: 2.47, max_ms: 3.72}
+WARM manifest_poc: %{n: 30, median_ms: 3.31, min_ms: 3.13, max_ms: 5.59}
+WARM info: %{n: 30, median_ms: 0.2, min_ms: 0.17, max_ms: 0.35}
+app manifest: 8 resources, 5 types, 41 entrypoints, 0.24 MB flat, 0.13 MB shared, 0.2 MB term_to_binary
+scoped manifest: 6 resources, 5 types, 2 entrypoints, 0.18 MB flat, 0.11 MB shared, 0.15 MB term_to_binary
+persistent_term: first put 0.23 ms, replace 0.22 ms, get median 0.0 ms
+---
