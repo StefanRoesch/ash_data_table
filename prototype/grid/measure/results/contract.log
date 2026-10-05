@@ -1,0 +1,208 @@
+  ok   keyed      one tabindex=0 in the grid after mount  -> ["g-1-x"]
+  ok   keyed      Tab enters the grid on one cell, the next Tab is outside the table  -> g-1-x then BUTTON Next
+  ok   keyed      arrow keys move one cell  -> g-2-1
+  ok   keyed      arrow keys send no frames  -> sent 0 received 0
+  ok   keyed      Home/End go to the row ends and arrows do not wrap  -> g-2-9 g-2-9 g-2-x g-2-x
+  ok   keyed      Ctrl+End / Ctrl+Home go to the corners  -> g-25-9 g-1-x
+  ok   keyed      PageDown / PageUp move several rows  -> g-25-x g-h-x
+  ok   keyed      Space does nothing (reserved)
+  ok   keyed      Enter opens an editor holding the cell's value  -> INPUT "Audit the queue 1"
+  ok   keyed      an unchanged value calls nothing  -> sent 0
+  ok   keyed      F2 edits, Escape cancels and restores, nothing sent
+  ok   keyed      a printable key starts editing with that character  -> "Zed is"
+  ok   keyed      Enter saves: one event, row replaced, focus stays on the cell  -> sent 1 text "Zed is" focus g-1-1 busy null
+  ok   keyed      still one tabindex=0 after the save patch  -> ["g-1-1"]
+  ok   keyed      leaving the cell (click elsewhere) saves and focus follows the click  -> sent 1 focus g-4-8
+  ok   keyed      failed save: focus is not pulled back  -> g-4-8
+  ok   keyed      failed save: cell keeps the typed value, aria-invalid, error shown in a role=alert  -> text "ab" invalid true error "length must be greater than or equal to 3"
+  ok   keyed      going back: the editor reopens with the rejected value, Escape restores the saved one  -> reopened "ab" now "Saved by leaving" invalid null
+  ok   keyed      failed save by Enter, then Escape on the cell (no editor) restores  -> "Saved by leaving"
+  ok   keyed      number: out of range is the action's error  -> "must be less than or equal to 100"
+  ok   keyed      number: a valid value saves and clears the error  -> 55
+  ok   keyed      checkbox: Enter toggles and saves at once  -> sent 1 checked true
+  ok   keyed      checkbox: a click toggles, saves, focus ends on the cell  -> focus g-1-5
+  ok   keyed      select: choosing saves at once (per-column action :set_status)  -> SELECT "review"
+  ok   keyed      an error about ANOTHER field is shown on the edited cell  -> "progress: must be 100 before the task can be done"
+  ok   keyed      date editor saves  -> 2027-01-02
+  ok   keyed      datetime-local editor saves  -> "2027-01-02 10:30" 
+  ok   keyed      decimal through :reprice: the action's validation message  -> "a price cannot be negative"
+  ok   keyed      an error with NO field is shown on the edited cell  -> "repricing above 100000 needs approval"
+  ok   keyed      decimal: a valid value saves  -> 12.5
+  ok   keyed      a read-only cell does not open
+  ok   keyed      a patch of the focused cell's row keeps focus and tabindex  -> focus g-2-1 stops ["g-2-1"]
+  ok   keyed      an open editor's typed value survives a patch of another row  -> INPUT "still typing"
+  ok   keyed      an open editor's typed value survives a patch of its own row  -> INPUT "still typing"
+  ok   keyed      ...and then saves normally  -> "still typing"
+  ok   keyed      slow save shows aria-busy until it returns  -> during true after null
+  ok   keyed      a save returning while typing in another cell of the same row keeps that editor, its value and focus  -> INPUT "typed during" title "Slow save"
+  ok   keyed      ...and that second edit then saves  -> "typed during"
+  ok   keyed      a FAILED save returning while typing in the same row: error shown, editor and focus untouched  -> INPUT "second" invalid true
+  ok   keyed      ...the second edit saves and the first cell's error survives that row refresh  -> assignee "second" title invalid true
+  ok   keyed      Escape on it restores the saved value  -> Slow save
+  ok   keyed      Enter on a header cycles ascending, descending, none  -> ascending,descending,none
+  ok   keyed      focus stays on the header after the sort patch  -> g-h-1 ["g-h-1"]
+  ok   keyed      click on a header sorts  -> 0 <= 1
+  ok   keyed      Right Arrow on the expander opens the nested table, focus stays  -> {"id":"g-1-n","rows":25} focus g-1-x
+  ok   keyed      still exactly one tabindex=0 with a nested grid open  -> ["g-1-x"]
+  ok   keyed      Right Arrow on an open expander moves to the next cell
+  ok   keyed      Down reaches the detail cell, Enter moves into the nested grid  -> g-1-dc -> g-1-n-101-0
+  ok   keyed      arrows inside the nested grid stay inside and send nothing  -> g-1-n-102-2
+  ok   keyed      one tabindex=0 in the whole tree while focus is nested  -> ["g-1-n-102-2"]
+  ok   keyed      editing inside the nested grid saves and keeps focus  -> sent 1 g-1-n-102-2 "Nested edit"
+  ok   keyed      Tab from inside a nested grid leaves the whole grid  -> BUTTON "Next"
+  ok   keyed      Shift+Tab comes back to the nested cell  -> g-1-n-102-2
+  ok   keyed      Escape in the nested grid returns to the parent's detail cell  -> g-1-dc
+  ok   keyed      Left Arrow on the expander closes the nested table, focus stays  -> g-1-x
+  ok   keyed      page change: new rows, still one tabindex=0  -> first id 26 stops ["g-28-1"]
+  ok   keyed      no console or page errors
+  ok   streams    one tabindex=0 in the grid after mount  -> ["g-1-x"]
+  ok   streams    Tab enters the grid on one cell, the next Tab is outside the table  -> g-1-x then BUTTON Next
+  ok   streams    arrow keys move one cell  -> g-2-1
+  ok   streams    arrow keys send no frames  -> sent 0 received 0
+  ok   streams    Home/End go to the row ends and arrows do not wrap  -> g-2-9 g-2-9 g-2-x g-2-x
+  ok   streams    Ctrl+End / Ctrl+Home go to the corners  -> g-25-9 g-1-x
+  ok   streams    PageDown / PageUp move several rows  -> g-25-x g-h-x
+  ok   streams    Space does nothing (reserved)
+  ok   streams    Enter opens an editor holding the cell's value  -> INPUT "Audit the queue 1"
+  ok   streams    an unchanged value calls nothing  -> sent 0
+  ok   streams    F2 edits, Escape cancels and restores, nothing sent
+  ok   streams    a printable key starts editing with that character  -> "Zed is"
+  ok   streams    Enter saves: one event, row replaced, focus stays on the cell  -> sent 1 text "Zed is" focus g-1-1 busy null
+  ok   streams    still one tabindex=0 after the save patch  -> ["g-1-1"]
+  ok   streams    leaving the cell (click elsewhere) saves and focus follows the click  -> sent 1 focus g-4-8
+  ok   streams    failed save: focus is not pulled back  -> g-4-8
+  ok   streams    failed save: cell keeps the typed value, aria-invalid, error shown in a role=alert  -> text "ab" invalid true error "length must be greater than or equal to 3"
+  ok   streams    going back: the editor reopens with the rejected value, Escape restores the saved one  -> reopened "ab" now "Saved by leaving" invalid null
+  ok   streams    failed save by Enter, then Escape on the cell (no editor) restores  -> "Saved by leaving"
+  ok   streams    number: out of range is the action's error  -> "must be less than or equal to 100"
+  ok   streams    number: a valid value saves and clears the error  -> 55
+  ok   streams    checkbox: Enter toggles and saves at once  -> sent 1 checked true
+  ok   streams    checkbox: a click toggles, saves, focus ends on the cell  -> focus g-1-5
+  ok   streams    select: choosing saves at once (per-column action :set_status)  -> SELECT "review"
+  ok   streams    an error about ANOTHER field is shown on the edited cell  -> "progress: must be 100 before the task can be done"
+  ok   streams    date editor saves  -> 2027-01-02
+  ok   streams    datetime-local editor saves  -> "2027-01-02 10:30" 
+  ok   streams    decimal through :reprice: the action's validation message  -> "a price cannot be negative"
+  ok   streams    an error with NO field is shown on the edited cell  -> "repricing above 100000 needs approval"
+  ok   streams    decimal: a valid value saves  -> 12.5
+  ok   streams    a read-only cell does not open
+  ok   streams    a patch of the focused cell's row keeps focus and tabindex  -> focus g-2-1 stops ["g-2-1"]
+  ok   streams    an open editor's typed value survives a patch of another row  -> INPUT "still typing"
+  ok   streams    an open editor's typed value survives a patch of its own row  -> INPUT "still typing"
+  ok   streams    ...and then saves normally  -> "still typing"
+  ok   streams    slow save shows aria-busy until it returns  -> during true after null
+  ok   streams    a save returning while typing in another cell of the same row keeps that editor, its value and focus  -> INPUT "typed during" title "Slow save"
+  ok   streams    ...and that second edit then saves  -> "typed during"
+  ok   streams    a FAILED save returning while typing in the same row: error shown, editor and focus untouched  -> INPUT "second" invalid true
+  ok   streams    ...the second edit saves and the first cell's error survives that row refresh  -> assignee "second" title invalid true
+  ok   streams    Escape on it restores the saved value  -> Slow save
+  ok   streams    Enter on a header cycles ascending, descending, none  -> ascending,descending,none
+  ok   streams    focus stays on the header after the sort patch  -> g-h-1 ["g-h-1"]
+  ok   streams    click on a header sorts  -> 0 <= 1
+  ok   streams    Right Arrow on the expander opens the nested table, focus stays  -> {"id":"g-1-n","rows":25} focus g-1-x
+  ok   streams    still exactly one tabindex=0 with a nested grid open  -> ["g-1-x"]
+  ok   streams    Right Arrow on an open expander moves to the next cell
+  ok   streams    Down reaches the detail cell, Enter moves into the nested grid  -> g-1-dc -> g-1-n-101-0
+  ok   streams    arrows inside the nested grid stay inside and send nothing  -> g-1-n-102-2
+  ok   streams    one tabindex=0 in the whole tree while focus is nested  -> ["g-1-n-102-2"]
+  ok   streams    editing inside the nested grid saves and keeps focus  -> sent 1 g-1-n-102-2 "Nested edit"
+  ok   streams    Tab from inside a nested grid leaves the whole grid  -> BUTTON "Next"
+  ok   streams    Shift+Tab comes back to the nested cell  -> g-1-n-102-2
+  ok   streams    Escape in the nested grid returns to the parent's detail cell  -> g-1-dc
+  ok   streams    Left Arrow on the expander closes the nested table, focus stays  -> g-1-x
+  ok   streams    page change: new rows, still one tabindex=0  -> first id 26 stops ["g-28-1"]
+  ok   streams    no console or page errors
+  ok   components one tabindex=0 in the grid after mount  -> ["g-1-x"]
+  ok   components Tab enters the grid on one cell, the next Tab is outside the table  -> g-1-x then BUTTON Next
+  ok   components arrow keys move one cell  -> g-2-1
+  ok   components arrow keys send no frames  -> sent 0 received 0
+  ok   components Home/End go to the row ends and arrows do not wrap  -> g-2-9 g-2-9 g-2-x g-2-x
+  ok   components Ctrl+End / Ctrl+Home go to the corners  -> g-25-9 g-1-x
+  ok   components PageDown / PageUp move several rows  -> g-25-x g-h-x
+  ok   components Space does nothing (reserved)
+  ok   components Enter opens an editor holding the cell's value  -> INPUT "Audit the queue 1"
+  ok   components an unchanged value calls nothing  -> sent 0
+  ok   components F2 edits, Escape cancels and restores, nothing sent
+  ok   components a printable key starts editing with that character  -> "Zed is"
+  ok   components Enter saves: one event, row replaced, focus stays on the cell  -> sent 1 text "Zed is" focus g-1-1 busy null
+  ok   components still one tabindex=0 after the save patch  -> ["g-1-1"]
+  ok   components leaving the cell (click elsewhere) saves and focus follows the click  -> sent 1 focus g-4-8
+  ok   components failed save: focus is not pulled back  -> g-4-8
+  ok   components failed save: cell keeps the typed value, aria-invalid, error shown in a role=alert  -> text "ab" invalid true error "length must be greater than or equal to 3"
+  ok   components going back: the editor reopens with the rejected value, Escape restores the saved one  -> reopened "ab" now "Saved by leaving" invalid null
+  ok   components failed save by Enter, then Escape on the cell (no editor) restores  -> "Saved by leaving"
+  ok   components number: out of range is the action's error  -> "must be less than or equal to 100"
+  ok   components number: a valid value saves and clears the error  -> 55
+  ok   components checkbox: Enter toggles and saves at once  -> sent 1 checked true
+  ok   components checkbox: a click toggles, saves, focus ends on the cell  -> focus g-1-5
+  ok   components select: choosing saves at once (per-column action :set_status)  -> SELECT "review"
+  ok   components an error about ANOTHER field is shown on the edited cell  -> "progress: must be 100 before the task can be done"
+  ok   components date editor saves  -> 2027-01-02
+  ok   components datetime-local editor saves  -> "2027-01-02 10:30" 
+  ok   components decimal through :reprice: the action's validation message  -> "a price cannot be negative"
+  ok   components an error with NO field is shown on the edited cell  -> "repricing above 100000 needs approval"
+  ok   components decimal: a valid value saves  -> 12.5
+  ok   components a read-only cell does not open
+  ok   components a patch of the focused cell's row keeps focus and tabindex  -> focus g-2-1 stops ["g-2-1"]
+  ok   components an open editor's typed value survives a patch of another row  -> INPUT "still typing"
+  ok   components an open editor's typed value survives a patch of its own row  -> INPUT "still typing"
+  ok   components ...and then saves normally  -> "still typing"
+  ok   components slow save shows aria-busy until it returns  -> during true after null
+  ok   components a save returning while typing in another cell of the same row keeps that editor, its value and focus  -> INPUT "typed during" title "Slow save"
+  ok   components ...and that second edit then saves  -> "typed during"
+  ok   components a FAILED save returning while typing in the same row: error shown, editor and focus untouched  -> INPUT "second" invalid true
+  ok   components ...the second edit saves and the first cell's error survives that row refresh  -> assignee "second" title invalid true
+  ok   components Escape on it restores the saved value  -> Slow save
+  ok   components Enter on a header cycles ascending, descending, none  -> ascending,descending,none
+  ok   components focus stays on the header after the sort patch  -> g-h-1 ["g-h-1"]
+  ok   components click on a header sorts  -> 0 <= 1
+  ok   components Right Arrow on the expander opens the nested table, focus stays  -> {"id":"g-1-n","rows":25} focus g-1-x
+  ok   components still exactly one tabindex=0 with a nested grid open  -> ["g-1-x"]
+  ok   components Right Arrow on an open expander moves to the next cell
+  ok   components Down reaches the detail cell, Enter moves into the nested grid  -> g-1-dc -> g-1-n-101-0
+  ok   components arrows inside the nested grid stay inside and send nothing  -> g-1-n-102-2
+  ok   components one tabindex=0 in the whole tree while focus is nested  -> ["g-1-n-102-2"]
+  ok   components editing inside the nested grid saves and keeps focus  -> sent 1 g-1-n-102-2 "Nested edit"
+  ok   components Tab from inside a nested grid leaves the whole grid  -> BUTTON "Next"
+  ok   components Shift+Tab comes back to the nested cell  -> g-1-n-102-2
+  ok   components Escape in the nested grid returns to the parent's detail cell  -> g-1-dc
+  ok   components Left Arrow on the expander closes the nested table, focus stays  -> g-1-x
+  ok   components page change: new rows, still one tabindex=0  -> first id 26 stops ["g-28-1"]
+  ok   components no console or page errors
+
+SUMMARY (observer on)
+{
+  "keyed": {
+    "edit_reply_bytes": 226,
+    "nested_edit_reply_bytes": 233,
+    "hook": {
+      "updated": 36,
+      "observed": 129,
+      "restored": 0
+    },
+    "focus_restored_after": [],
+    "failed": []
+  },
+  "streams": {
+    "edit_reply_bytes": 1880,
+    "nested_edit_reply_bytes": 1429,
+    "hook": {
+      "updated": 36,
+      "observed": 129,
+      "restored": 0
+    },
+    "focus_restored_after": [],
+    "failed": []
+  },
+  "components": {
+    "edit_reply_bytes": 166,
+    "nested_edit_reply_bytes": 172,
+    "hook": {
+      "updated": 7,
+      "observed": 152,
+      "restored": 0
+    },
+    "focus_restored_after": [],
+    "failed": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "name": "ash-table-proto-measure",
+  "private": true,
+  "type": "module",
+  "description": "THROWAWAY PROTOTYPE (#11): Playwright measurement scripts. Node is used here only, never by the host app.",
+  "dependencies": {
+    "@axe-core/playwright": "^4.13.0",
+    "playwright": "^1.63.0"
+  }
+}

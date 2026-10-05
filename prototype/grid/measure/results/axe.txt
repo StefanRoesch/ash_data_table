@@ -1,0 +1,24 @@
+keyed: plain grid                            violations: 0  passes: 24  incomplete: color-contrast
+keyed: text editor open                      violations: 0  passes: 24  incomplete: color-contrast
+keyed: failed save showing                   violations: 1  passes: 24  incomplete: color-contrast
+    color-contrast [serious] x1: Elements must meet minimum color contrast ratio thresholds (e.g. .block)
+keyed: select editor open                    violations: 0  passes: 25  incomplete: color-contrast
+keyed: 10 nested tables open                 violations: 0  passes: 24  incomplete: color-contrast
+keyed: whole page, nested open               violations: 1  passes: 32  incomplete: color-contrast
+    region [moderate] x1: All page content should be contained by landmarks (e.g. #proto-debug)
+streams: plain grid                          violations: 0  passes: 24  incomplete: color-contrast
+streams: text editor open                    violations: 0  passes: 24  incomplete: color-contrast
+streams: failed save showing                 violations: 1  passes: 24  incomplete: color-contrast
+    color-contrast [serious] x1: Elements must meet minimum color contrast ratio thresholds (e.g. .block)
+streams: select editor open                  violations: 0  passes: 25  incomplete: color-contrast
+streams: 10 nested tables open               violations: 0  passes: 24  incomplete: color-contrast
+streams: whole page, nested open             violations: 1  passes: 32  incomplete: color-contrast
+    region [moderate] x1: All page content should be contained by landmarks (e.g. #proto-debug)
+components: plain grid                       violations: 0  passes: 24  incomplete: color-contrast
+components: text editor open                 violations: 0  passes: 24  incomplete: color-contrast
+components: failed save showing              violations: 1  passes: 24  incomplete: color-contrast
+    color-contrast [serious] x1: Elements must meet minimum color contrast ratio thresholds (e.g. .block)
+components: select editor open               violations: 0  passes: 25  incomplete: color-contrast
+components: 10 nested tables open            violations: 0  passes: 24  incomplete: color-contrast
+components: whole page, nested open          violations: 1  passes: 32  incomplete: color-contrast
+    region [moderate] x1: All page content should be contained by landmarks (e.g. #proto-debug)
