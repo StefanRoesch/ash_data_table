@@ -1,0 +1,7 @@
+.git
+.claude
+.env
+**/_build
+**/deps
+**/node_modules
+demo/priv/static/assets

@@ -1,0 +1,93 @@
+defmodule Demo.Tracker.User do
+  @moduledoc """
+  A person, and the actor of the demo. Not multitenant itself: it is looked up
+  by id before the tenant is known, and its `organization_id` becomes the tenant.
+  """
+  use Ash.Resource,
+    otp_app: :demo,
+    domain: Demo.Tracker,
+    data_layer: AshPostgres.DataLayer,
+    authorizers: [Ash.Policy.Authorizer],
+    # The default sort of a table lives on its read action, on purpose.
+    primary_read_warning?: false
+
+  postgres do
+    table "users"
+    repo Demo.Repo
+
+    references do
+      reference :organization, on_delete: :delete
+    end
+  end
+
+  actions do
+    defaults [
+      :destroy,
+      create: [:name, :email, :role, :organization_id],
+      update: [:name, :email, :role]
+    ]
+
+    read :read do
+      primary? true
+      pagination offset?: true, countable: true, default_limit: 25, required?: false
+      prepare build(sort: [name: :asc, id: :asc])
+    end
+  end
+
+  policies do
+    policy action_type(:read) do
+      description "Users see the people of their own organization."
+      authorize_if expr(organization_id == ^actor(:organization_id))
+    end
+
+    policy action_type([:create, :update, :destroy]) do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+
+    attribute :name, :string do
+      allow_nil? false
+      public? true
+      constraints max_length: 80
+    end
+
+    attribute :email, :ci_string do
+      allow_nil? false
+      public? true
+    end
+
+    attribute :role, Demo.Tracker.Role do
+      allow_nil? false
+      default :member
+      public? true
+    end
+
+    create_timestamp :inserted_at
+    update_timestamp :updated_at
+  end
+
+  relationships do
+    belongs_to :organization, Demo.Tracker.Organization do
+      allow_nil? false
+      public? true
+      attribute_public? true
+    end
+
+    has_many :assigned_tasks, Demo.Tracker.Task do
+      destination_attribute :assignee_id
+      public? true
+    end
+
+    has_many :reported_tasks, Demo.Tracker.Task do
+      destination_attribute :reporter_id
+      public? true
+    end
+  end
+
+  identities do
+    identity :unique_email, [:email]
+  end
+end

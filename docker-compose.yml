@@ -1,0 +1,50 @@
+# Local stack for ash_table's demo app: Postgres 18.6, plus the optional demo.
+#   docker compose up -d                  # Postgres only
+#   docker compose --profile demo up      # Postgres and the seeded demo on :4478
+# Bind only loopback. Defaults match .env.example; override via `.env`.
+#
+# Postgres: the official image's PGDATA is /var/lib/postgresql/18/docker, so
+# mount the parent /var/lib/postgresql. The host port is 5477, not 5432, to
+# stay clear of other local projects.
+
+services:
+  postgres:
+    image: postgres:18.6-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ash_table}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ash_table}
+      POSTGRES_DB: ${POSTGRES_DB:-demo_dev}
+    ports:
+      - "127.0.0.1:${POSTGRES_PORT:-5477}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ash_table} -d ${POSTGRES_DB:-demo_dev}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Optional: the demo app in dev mode with the standard seed. It uses its own
+  # database (demo_docker) so it never disturbs the host's demo_dev.
+  app:
+    profiles: ["demo"]
+    build:
+      context: .
+      dockerfile: demo/Dockerfile
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: "5432"
+      POSTGRES_USER: ${POSTGRES_USER:-ash_table}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ash_table}
+      POSTGRES_DB: ${DEMO_APP_DB:-demo_docker}
+      PHX_BIND: 0.0.0.0
+      PORT: "4478"
+      SEED: ${SEED:-standard}
+    ports:
+      - "127.0.0.1:${DEMO_PORT:-4478}:4478"
+
+volumes:
+  postgres_data:
