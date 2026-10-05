@@ -31,6 +31,10 @@ _Avoid_: Lookup, link cell, foreign-key cell
 An action of the resource, declared for a table, that a person runs on one record from that record's row.
 _Avoid_: Button, command, operation
 
+**Action panel**:
+The panel in which a person supplies the inputs of a row action, or of a create, before running it.
+_Avoid_: Modal, drawer, form dialog
+
 **Manifest**:
 Ash's own static description of an application's resources, fields, relationships and actions. A table is not built from it; it serves as a checklist of what a table must account for.
 _Avoid_: Introspection data, schema
