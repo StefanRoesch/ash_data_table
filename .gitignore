@@ -1,1 +1,11 @@
 .claude/worktrees/
+/_build/
+/deps/
+/doc/
+/cover/
+erl_crash.dump
+*.ez
+ash_table-*.tar
+
+# Local overrides for docker compose and the demo
+.env
