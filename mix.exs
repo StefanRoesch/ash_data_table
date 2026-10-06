@@ -43,13 +43,30 @@ defmodule AshTable.MixProject do
     [
       main: "readme",
       source_ref: "main",
+      # The tutorial and the topic guides are in reading order. Their code
+      # blocks are checked against the repository by
+      # `test/documentation_test.exs`.
       extras: [
         "README.md",
+        "documentation/tutorials/get-started-with-ash-table.md",
+        "documentation/topics/columns-and-defaults.md",
+        "documentation/topics/reading-sorting-and-pagination.md",
+        "documentation/topics/filtering.md",
+        "documentation/topics/state-in-the-url.md",
+        "documentation/topics/inline-editing.md",
+        "documentation/topics/confirm.md",
+        "documentation/topics/authorization.md",
+        "documentation/topics/keyboard-and-accessibility.md",
+        "documentation/topics/messages-and-translations.md",
+        "documentation/topics/layout-and-embedding.md",
+        "documentation/topics/mistakes-at-compile-time.md",
         "documentation/dsls/DSL-AshTable.Resource.md",
         "documentation/dsls/DSL-AshTable.Domain.md",
         "CHANGELOG.md"
       ],
       groups_for_extras: [
+        Tutorials: ~r"documentation/tutorials",
+        Topics: ~r"documentation/topics",
         "DSL reference": ~r"documentation/dsls",
         "About ash_table": ["CHANGELOG.md"]
       ],
