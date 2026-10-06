@@ -16,6 +16,7 @@ defmodule AshTable.Resource do
           column :status do
             label "State"
             sortable? false
+            filterable? false
           end
         end
       end
@@ -28,6 +29,10 @@ defmodule AshTable.Resource do
   the order `Ash.Resource.Info.public_attributes/1` returns them. Once one
   `column` is declared, the table is exactly the declared columns in the
   declared order. Calculations and aggregates appear only when named.
+
+  Every column the resource allows to be filtered has a filter of its type in
+  the filter row under the header. `filterable? false` leaves a column
+  without one; nothing switches a filter on that the resource does not allow.
 
   Page size and default sort are not part of the block. They live on the read
   action (`pagination default_limit: …` and `prepare build(sort: …)`).

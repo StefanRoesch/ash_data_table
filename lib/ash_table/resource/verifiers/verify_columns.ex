@@ -2,6 +2,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   @moduledoc false
   use Spark.Dsl.Verifier
 
+  alias AshTable.Model.Operator
   alias AshTable.Resource.Reading
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
@@ -42,7 +43,8 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
         ]
 
       field ->
-        required_argument_errors(column, field, module) ++ sortable_errors(column, module)
+        required_argument_errors(column, field, module) ++
+          sortable_errors(column, module) ++ filterable_errors(column, field, module)
     end
   end
 
@@ -67,6 +69,24 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   end
 
   defp sortable_errors(_column, _module), do: []
+
+  defp filterable_errors(%{filterable?: true} = column, field, module) do
+    if Operator.available(module, field) == [] do
+      [
+        DslError.exception(
+          module: module,
+          path: [:table, :column, column.name, :filterable?],
+          message:
+            "`#{column.name}` cannot be filtered, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`.",
+          location: Spark.Dsl.Entity.property_anno(column, :filterable?)
+        )
+      ]
+    else
+      []
+    end
+  end
+
+  defp filterable_errors(_column, _field, _module), do: []
 
   defp strategy_note(:keyset), do: " with keyset pagination"
   defp strategy_note(_strategy), do: ""

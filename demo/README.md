@@ -55,16 +55,29 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, a column with `sortable? false`, an aggregate, two calculations; offset pages of 25 |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations; offset pages of 25. Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
 | http://localhost:4478/projects | `Project` | no block: the public attributes; refused outright for nobody |
-| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only |
+| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count |
 | http://localhost:4478/labels | `Label` | no pagination: every record |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false` |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes |
-| http://localhost:4478/specimens | `Specimen` | no block: how every built-in type is shown |
+| http://localhost:4478/specimens | `Specimen` | no block: how every built-in type is shown, and the filter each gets by default. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 
 The table tests are in `test/demo_web/tables/`: LiveView tests that open
-these pages and click through them as each of the actors.
+these pages and click through them as each of the actors. Filtering is in
+`task_filter_test.exs` and `specimen_filter_test.exs`.
+
+Some filters to try, as the admin:
+
+- http://localhost:4478/tasks?task[f][title]=session — text. `Session` with a
+  capital finds nothing, because `title` is a `:string`
+- http://localhost:4478/tasks?task[f][progress][at_least]=50&task[f][billable%3F]=yes&task[sort]=progress
+  — two filters and a sort
+- http://localhost:4478/tasks?task[f][due_on][is_empty]= — tasks without a due date
+- http://localhost:4478/tasks?task[f][overdue%3F]=yes&task[f][comment_count][greater_than]=2
+  — a calculation and an aggregate
+- http://localhost:4478/specimens?specimen[f][a_ci_string]=ALPHA — a
+  `:ci_string` finds `Alpha`, `alpha` and `ALPHA`
 
 ## Who you are: the five actors
 

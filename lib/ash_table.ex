@@ -10,9 +10,9 @@ defmodule AshTable do
       `AshTable.Router.ash_table/3`;
     * placed in an existing LiveView with `table/1`.
 
-  The table offers only what the resource offers. Sorting and pagination run
-  on the server through the read action; page size and default sort live on
-  that action.
+  The table offers only what the resource offers. Sorting, filtering and
+  pagination run on the server through the read action; page size and default
+  sort live on that action.
   """
   use Phoenix.Component
 
@@ -24,12 +24,13 @@ defmodule AshTable do
   The table reads through the resource's read action with authorization on.
   Pass who is reading as `scope` (an `Ash.Scope`), or as `actor` and `tenant`.
 
-  The table keeps its sort and page itself. To keep them in the page's URL
-  instead, so that reload, the back button and shared links work, pass the
-  current URL as `url` (the second argument of `c:Phoenix.LiveView.handle_params/3`,
-  assigned by the LiveView). The table then patches the URL, with its
-  parameters under its `id`: `?tasks[sort]=-title&tasks[page]=2`. Other
-  parameters of the page are left as they are.
+  The table keeps its sort, filters and page itself. To keep them in the
+  page's URL instead, so that reload, the back button and shared links work,
+  pass the current URL as `url` (the second argument of
+  `c:Phoenix.LiveView.handle_params/3`, assigned by the LiveView). The table
+  then patches the URL, with its parameters under its `id`:
+  `?tasks[sort]=-title&tasks[f][title]=report&tasks[page]=2`. Other parameters
+  of the page are left as they are.
   """
   attr :id, :string,
     required: true,
@@ -46,7 +47,7 @@ defmodule AshTable do
 
   attr :url, :string,
     default: nil,
-    doc: "The current URL of the page. When given, sort and page are kept in it."
+    doc: "The current URL of the page. When given, sort, filters and page are kept in it."
 
   attr :label, :string,
     default: nil,

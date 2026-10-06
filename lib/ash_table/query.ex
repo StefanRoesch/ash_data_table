@@ -1,10 +1,12 @@
 defmodule AshTable.Query do
   @moduledoc false
-  # Reads one page of a table through its read action. Sorting and pagination
-  # always run on the server; the sort a person chose is applied with
-  # `Ash.Query.sort_input/2`, the function for outside input.
+  # Reads one page of a table through its read action. Sorting, filtering and
+  # pagination always run on the server; the sort and the filters a person
+  # chose are applied with `Ash.Query.sort_input/2` and
+  # `Ash.Query.filter_input/2`, the functions for outside input.
 
   alias AshTable.Model
+  alias AshTable.Model.Operator
   alias AshTable.State
 
   defmodule Page do
@@ -59,6 +61,7 @@ defmodule AshTable.Query do
       (opts[:query] || model.resource)
       |> Ash.Query.new()
       |> sort(state.sort)
+      |> filter(state.filters)
       |> Ash.Query.load(loads(model))
       |> Ash.Query.for_read(model.read_action, %{}, read_opts)
 
@@ -82,6 +85,20 @@ defmodule AshTable.Query do
 
   defp sort(query, nil), do: query
   defp sort(query, {name, direction}), do: Ash.Query.sort_input(query, [{name, direction}])
+
+  # One filter with a predicate per column, which Ash combines with AND. The
+  # values go in as they were typed: casting them, and what they match, is
+  # the resource's.
+  defp filter(query, filters) when filters == %{}, do: query
+
+  defp filter(query, filters) do
+    Ash.Query.filter_input(
+      query,
+      Map.new(filters, fn {name, {operator, value}} ->
+        {name, Map.new([Operator.to_ash(operator, value)])}
+      end)
+    )
+  end
 
   defp loads(model) do
     for %{kind: kind, name: name} <- model.columns, kind in [:calculation, :aggregate], do: name

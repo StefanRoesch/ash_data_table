@@ -36,6 +36,7 @@ defmodule AshTable.TableBlockTest do
             column :estimate do
               label "Effort"
               sortable? false
+              filterable? false
             end
           end
         end
@@ -47,8 +48,18 @@ defmodule AshTable.TableBlockTest do
       assert AshTable.Resource.Info.table_paginate_with(Valid) == {:ok, :keyset}
 
       assert [
-               %AshTable.Resource.Column{name: :title, label: nil, sortable?: nil},
-               %AshTable.Resource.Column{name: :estimate, label: "Effort", sortable?: false}
+               %AshTable.Resource.Column{
+                 name: :title,
+                 label: nil,
+                 sortable?: nil,
+                 filterable?: nil
+               },
+               %AshTable.Resource.Column{
+                 name: :estimate,
+                 label: "Effort",
+                 sortable?: false,
+                 filterable?: false
+               }
              ] = AshTable.Resource.Info.table(Valid)
     end
   end
@@ -227,6 +238,35 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message =~ "`notes` cannot be sorted"
+    end
+
+    test "`filterable? true` on a field the resource does not allow to be filtered is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :notes, :filterable?]} do
+          defmodule Elixir.AshTable.TableBlockTest.FilterableSwitchedOn do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :notes, :string, public?: true, filterable?: false
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :notes do
+                filterable? true
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "`notes` cannot be filtered"
     end
 
     test "`sortable? true` on an aggregate is an error under keyset pagination" do

@@ -6,6 +6,23 @@ defmodule DemoWeb.TablePage do
   `id` is the table's id, the last part of its resource's name: `"task"`.
   """
 
+  import Phoenix.LiveViewTest, only: [form: 3, render_change: 1, render_async: 1]
+
+  @doc """
+  Sets a column's filter and leaves it, as a person does who types a value or
+  picks from a menu: `v:` is the value, `o:` the operator. Returns the page
+  once the rows have been read again.
+
+      filter(view, "task", "title", v: "report")
+      filter(view, "task", "progress", o: "at_least", v: "50")
+  """
+  def filter(view, id, field, entry) do
+    entry = Map.new(entry, fn {key, value} -> {Atom.to_string(key), value} end)
+
+    view |> form("##{id}-filters", %{"filter" => %{field => entry}}) |> render_change()
+    render_async(view)
+  end
+
   @doc "The header labels, left to right, without the sort marks."
   def headers(html, id) do
     html
@@ -30,6 +47,28 @@ defmodule DemoWeb.TablePage do
       [element | _] -> element |> LazyHTML.text() |> String.trim()
     end
   end
+
+  @doc """
+  What a column's filter cell offers a person: the operators of its menu, the
+  type of its input, and the options of its choice, each nil when there is
+  none.
+  """
+  def filter_controls(html, id, field) do
+    cell = "[id='#{id}-filter-#{field}']"
+
+    options = fn selector ->
+      html |> query(selector) |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+    end
+
+    %{
+      operators: none_as_nil(options.("#{cell} select[id$='-operator'] option")),
+      input: List.first(attribute(html, "#{cell} input", "type")),
+      choices: none_as_nil(options.("#{cell} select[id$='-value'] option"))
+    }
+  end
+
+  defp none_as_nil([]), do: nil
+  defp none_as_nil(list), do: list
 
   defp query(html, selector) do
     html |> LazyHTML.from_fragment() |> LazyHTML.query(selector)

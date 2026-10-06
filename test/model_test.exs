@@ -253,6 +253,99 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "a column's filter operators" do
+    defp operators(resource, names) do
+      columns = Model.build(resource).columns
+      for name <- names, do: {name, Enum.find(columns, &(&1.name == name)).operators}
+    end
+
+    test "for text are contains, equals, starts with, and is empty when the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:name, :nickname, :email, :slug]) == [
+               name: [:contains, :equals, :starts_with],
+               nickname: [:contains, :equals, :starts_with, :is_empty],
+               email: [:contains, :equals, :starts_with],
+               slug: [:contains, :equals, :starts_with, :is_empty]
+             ]
+    end
+
+    test "for a number are equals, the four comparisons, and is empty when the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:visits, :weight, :balance, :percentage]) == [
+               visits: [:equals, :greater_than, :less_than, :at_least, :at_most],
+               weight: [:equals, :greater_than, :less_than, :at_least, :at_most, :is_empty],
+               balance: [:equals, :greater_than, :less_than, :at_least, :at_most, :is_empty],
+               percentage: [:equals, :greater_than, :less_than, :at_least, :at_most]
+             ]
+    end
+
+    test "for a date are on, before, after, and is empty when the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:born_on, :left_on]) == [
+               born_on: [:on, :before, :after],
+               left_on: [:on, :before, :after, :is_empty]
+             ]
+    end
+
+    test "for a datetime are before, after, and is empty when the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:seen_at, :archived_at]) == [
+               seen_at: [:before, :after],
+               archived_at: [:before, :after, :is_empty]
+             ]
+    end
+
+    test "for a boolean are yes and no, whether or not the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:active, :verified]) == [
+               active: [:yes, :no],
+               verified: [:yes, :no]
+             ]
+    end
+
+    test "for an enum is `is`, whether or not the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:status, :size]) == [status: [:is], size: [:is]]
+    end
+
+    test "are none for a column shown as read-only text" do
+      assert operators(AshTable.Test.Filtering, [:id, :tags, :settings]) == [
+               id: [],
+               tags: [],
+               settings: []
+             ]
+    end
+
+    test "are none for a column the block declares `filterable? false`" do
+      assert operators(AshTable.Test.Filtering, [:remark]) == [remark: []]
+    end
+
+    test "are none for a field the resource declares `filterable?: false`" do
+      assert operators(AshTable.Test.Filtering, [:secret, :whisper, :hidden_count]) == [
+               secret: [],
+               whisper: [],
+               hidden_count: []
+             ]
+    end
+
+    test "are only equals for a field the resource declares `filterable?: :simple_equality`" do
+      assert operators(AshTable.Test.Filtering.SimpleEquality, [:code]) == [code: [:equals]]
+    end
+
+    test "of a calculation follow its type when it is an expression" do
+      assert operators(AshTable.Test.Filtering, [:greeting, :adult?]) == [
+               greeting: [:contains, :equals, :starts_with, :is_empty],
+               adult?: [:yes, :no]
+             ]
+    end
+
+    test "are none for a calculation computed in Elixir, which no data layer can filter by" do
+      assert operators(AshTable.Test.Filtering, [:shout]) == [shout: []]
+    end
+
+    test "of an aggregate follow its type, with is empty only for a kind that can be nil" do
+      assert operators(AshTable.Test.Filtering, [:note_count, :last_note_at, :first_note]) == [
+               note_count: [:equals, :greater_than, :less_than, :at_least, :at_most],
+               last_note_at: [:before, :after, :is_empty],
+               first_note: [:contains, :equals, :starts_with, :is_empty]
+             ]
+    end
+  end
+
   # ADR 0001: Ash's type rules are restated in our code and can drift. The
   # manifest is generated here, in the test only, as the reference.
   describe "cell types compared with Ash.Info.Manifest" do
@@ -308,6 +401,59 @@ defmodule AshTable.ModelTest do
 
           if expected == :enum do
             assert Enum.map(column.values, &elem(&1, 0)) == manifest_type.values
+          end
+        end
+      end
+    end
+  end
+
+  # The manifest is the reference for what Ash supports for a field. A table
+  # offers a short list of its own, which must stay within it.
+  describe "filter operators compared with Ash.Info.Manifest" do
+    alias Ash.Info.Manifest
+
+    @name_in_manifest %{
+      contains: :contains,
+      starts_with: :string_starts_with,
+      equals: :==,
+      on: :==,
+      is: :==,
+      yes: :==,
+      no: :==,
+      greater_than: :>,
+      after: :>,
+      less_than: :<,
+      before: :<,
+      at_least: :>=,
+      at_most: :<=,
+      is_empty: :is_nil
+    }
+
+    defp manifest_fields(resource, read_action) do
+      {:ok, manifest} =
+        Manifest.generate(otp_app: :ash_table, action_entrypoints: [{resource, read_action}])
+
+      Manifest.get_resource!(Manifest.resource_lookup(manifest), resource).fields
+    end
+
+    for resource <- [AshTable.Test.Filtering, AshTable.Test.KitchenSink, AshTable.Test.Issue] do
+      test "every operator offered for a column of #{inspect(resource)} is one the manifest reports" do
+        model = Model.build(unquote(resource))
+        fields = manifest_fields(unquote(resource), model.read_action)
+
+        assert Enum.count(model.columns, &(&1.operators != [])) > 2
+
+        for column <- model.columns, column.operators != [] do
+          field = Map.fetch!(fields, column.name)
+          reported = Enum.map(field.filter_operators ++ field.filter_functions, & &1.name)
+          offered = Enum.map(column.operators, &Map.fetch!(@name_in_manifest, &1))
+
+          assert Enum.reject(offered, &(&1 in reported)) == [],
+                 "#{column.name}: offers #{inspect(column.operators)}, " <>
+                   "but the manifest reports only #{inspect(reported)}"
+
+          if :is_empty in column.operators do
+            assert field.allow_nil?, "#{column.name}: offers is empty, but cannot be nil"
           end
         end
       end

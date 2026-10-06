@@ -108,4 +108,17 @@ defmodule DemoWeb.Tables.CommentTableTest do
 
     assert text(html, "#comment-error") == "The records could not be loaded."
   end
+
+  test "a filter narrows the rows and, as this action cannot count, says only that they changed",
+       %{conn: conn} do
+    {:ok, view, html} = live(conn, "/comments")
+
+    assert text(html, "#comment-status") == ""
+
+    html = filter(view, "comment", "body", v: "Comment 3")
+
+    assert column(html, "comment", "body") == bodies(39..30//-1)
+    assert text(html, "#comment-status") == "Results updated"
+    assert attribute(html, "#comment-table", "aria-rowcount") == ["-1"]
+  end
 end

@@ -17,7 +17,8 @@ defmodule DemoWeb.Tables.LabelTableTest do
     assert headers(html, "label") == ["ID", "Name", "Colour"]
     assert column(html, "label", "name") == world.labels |> Enum.map(& &1.name) |> Enum.sort()
     assert length(column(html, "label", "name")) == 30
-    assert attribute(html, "#label-table", "aria-rowcount") == ["31"]
+    # 30 labels and the two header rows
+    assert attribute(html, "#label-table", "aria-rowcount") == ["32"]
     assert attribute(html, "#label-pagination", "id") == []
   end
 end

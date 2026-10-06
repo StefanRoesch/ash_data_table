@@ -57,33 +57,43 @@ defmodule Demo.Tracker.Task do
   end
 
   # The table at /tasks: chosen columns in a chosen order. Its page size and
-  # default sort are those of the primary read action.
+  # default sort are those of the primary read action. Every column the
+  # resource allows to be filtered has a filter, unless switched off here.
   table do
+    # text
     column :title
 
+    # enums
     column :status do
       label "State"
     end
 
     column :priority
+    # numbers: one that is always there and one that can be empty
     column :progress
     column :estimate_hours
+    # a boolean
     column :billable?
+    # a date and a datetime, both of which can be empty
     column :due_on
-    # an expression calculation: sortable
+    column :completed_at
+    # an expression calculation: sortable and filterable
     column :overdue?
 
-    # an aggregate
+    # an aggregate: sortable and filterable
     column :comment_count do
       label "Comments"
     end
 
-    # a calculation computed in Elixir: the resource cannot sort by it
+    # a calculation computed in Elixir: the resource can neither sort nor
+    # filter by it
     column :headline
     column :external_ref
 
+    # long text, with sorting and filtering switched off
     column :description do
       sortable? false
+      filterable? false
     end
 
     column :inserted_at

@@ -44,6 +44,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
                "Estimate hours",
                "Billable?",
                "Due on",
+               "Completed at",
                "Overdue?",
                "Comments",
                "Headline",
@@ -176,23 +177,26 @@ defmodule DemoWeb.Tables.TaskTableTest do
 
       assert column(html, "task", "title") == titles(60..36//-1)
       assert text(html, "#task-range") == "1–25 of 60"
-      assert attribute(html, "#task-table", "aria-rowcount") == ["61"]
+      # 60 tasks and the two header rows
+      assert attribute(html, "#task-table", "aria-rowcount") == ["62"]
       assert attribute(html, "#task-previous", "disabled") == [""]
       assert attribute(html, "#task-next", "disabled") == []
       assert attribute(html, "#task-pagination [aria-current=page]", "id") == ["task-page-1"]
     end
 
-    test "rows are numbered through all pages, the header being row 1", %{conn: conn} do
+    test "rows are numbered through all pages, the header being row 1 and the filter row 2",
+         %{conn: conn} do
       {:ok, view, html} = live(conn, "/tasks")
 
       assert attribute(html, "#task-head-row", "aria-rowindex") == ["1"]
-      assert attribute(html, "#task-table tbody tr", "aria-rowindex") == Enum.map(2..26, &"#{&1}")
+      assert attribute(html, "#task-filter-row", "aria-rowindex") == ["2"]
+      assert attribute(html, "#task-table tbody tr", "aria-rowindex") == Enum.map(3..27, &"#{&1}")
 
       view |> element("#task-next") |> render_click()
       html = render_async(view)
 
       assert attribute(html, "#task-table tbody tr", "aria-rowindex") ==
-               Enum.map(27..51, &"#{&1}")
+               Enum.map(28..52, &"#{&1}")
     end
 
     test "next, a page number and previous move through the pages", %{conn: conn} do

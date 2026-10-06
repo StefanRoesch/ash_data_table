@@ -8,7 +8,7 @@ Add the extension to a resource, optionally describe the table in a
 `table do … end` block, and mount it with one line in the router. You write
 no HEEx.
 
-> **This is a walking skeleton.** It reads, sorts and pages. Filtering, inline
+> **This is an early version.** It reads, sorts, filters and pages. Inline
 > editing, the authorization states, nested tables and row actions are not
 > built yet, and the package is not on Hex.
 
@@ -103,8 +103,8 @@ end
 ```
 
 `/tasks` now shows the resource's public attributes as a table, read through
-its primary read action. Headers sort on click or Enter; the arrow keys move
-through the cells.
+its primary read action. Headers sort on click or Enter, the row under them
+filters, and the arrow keys move through the cells.
 
 ### Describing the table
 
@@ -118,6 +118,7 @@ table do
   column :status do
     label "State"
     sortable? false
+    filterable? false
   end
 
   column :comment_count    # an aggregate
@@ -133,6 +134,8 @@ end
 - `sortable?` can only switch sorting off. Whether a column can be sorted is
   the resource's decision; under keyset pagination, calculations and
   aggregates cannot.
+- `filterable?` can only switch a column's filter off. Whether a column can
+  be filtered is the resource's decision too (see [Filtering](#filtering)).
 
 Mistakes in the block are reported when the resource is compiled. As with
 every Ash extension's verifiers, they surface as compile warnings; they fail
@@ -153,6 +156,52 @@ The page size is the action's `default_limit`, or 25 when it has none, and
 never above the action's `max_page_size`. A read action without pagination
 loads every record.
 
+### Filtering
+
+Under the header is a filter row with one filter per column. A filter applies
+on Enter or when its input is left; a choice applies when it is picked.
+Filters combine with AND, and with the sort. Every filter runs on the server,
+through the read action, as `Ash.Query.filter_input/2`; nothing is filtered in
+the browser.
+
+| Column type | Filter | Operators (the first applies when a value is simply typed) |
+| --- | --- | --- |
+| `:string`, `:ci_string` | text input | contains, equals, starts with, is empty |
+| `:integer`, `:float`, `:decimal` | number input | equals, greater than, less than, at least, at most, is empty |
+| `:date` | date input | on, before, after, is empty |
+| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input | before, after, is empty |
+| `:boolean` | choice | any, yes, no |
+| an `Ash.Type.Enum`, an `:atom` with `one_of` | choice | any, or one of the values |
+
+A NewType filters as the type it is made of. "Is empty" is offered only for a
+field that can be nil.
+
+A column has no filter when
+
+- its type is shown as read-only text (arrays, maps, embedded resources,
+  uuids, times and so on);
+- the resource declares the field `filterable?: false`; with
+  `filterable?: :simple_equality` only "equals" is offered;
+- it is a calculation computed in Elixir, without an expression: the data
+  layer cannot filter by it;
+- the block says `filterable? false`.
+
+**What a text filter matches is the resource's decision, not the table's.**
+The table passes on what was typed, unchanged. So a filter on a `:string`
+attribute is case-sensitive: "report" does not find "Report". A filter on a
+`:ci_string` attribute is not. If people should find text whatever its case,
+make the attribute a `:ci_string`.
+
+A datetime is filtered in the same terms as it is shown: UTC, to the second.
+
+A value that is not one of the column's type (a number with decimals in an
+integer column, say) is not applied; its filter is marked as invalid and says
+so. The native inputs keep most such values from being typed at all.
+
+After each filter change the result is announced to screen readers: the
+number of records when the read action is `countable`, otherwise only that the
+results have changed.
+
 ### Who is reading
 
 The mounted page reads with authorization on. It takes actor and tenant from
@@ -162,12 +211,21 @@ assigned (it must implement `Ash.Scope.ToOpts`), otherwise `current_user` and
 
 ### The URL
 
-Sort and page are kept in the URL, under the table's id, so reload, the back
-button and shared links work:
+Sort, filters and page are kept in the URL, under the table's id, so reload,
+the back button and shared links work:
 
 ```
 /tasks?task[sort]=-title&task[page]=2
+/tasks?task[f][title]=report&task[f][progress][at_least]=50&task[f][due_on][is_empty]=&task[f][billable%3F]=yes
 ```
+
+Filters are under `f`, by column. A filter with its column's first operator
+is the value alone (`task[f][title]=report`); another operator is named
+(`task[f][progress][at_least]=50`), with nothing after it when it takes no
+value (`task[f][due_on][is_empty]=`); a yes-or-no choice is `yes` or `no`.
+The operators are named `contains`, `equals`, `starts_with`, `is_empty`,
+`greater_than`, `less_than`, `at_least`, `at_most`, `on`, `before` and
+`after`. Parameters that mean nothing to the table are ignored.
 
 The id defaults to the last part of the resource's module name, underscored;
 `ash_table "/tasks", MyApp.Tracker.Task, id: "tasks"` sets another.
@@ -178,8 +236,19 @@ The id defaults to the last part of the resource's module name, underscored;
 <AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 ```
 
-It accepts `scope`, or `actor` and `tenant`. An embedded table keeps its sort
-and page itself; pass the page's current URL as `url` to keep them in the URL.
+It accepts `scope`, or `actor` and `tenant`. An embedded table keeps its
+sort, filters and page itself; pass the page's current URL as `url` to keep
+them in the URL.
+
+### The keyboard
+
+The grid is one tab stop: Tab enters and leaves it, the arrow keys move
+within it. Up Arrow from the first row of records reaches the filter row and
+then the header. On a header, Enter sorts. On a filter cell, Enter or F2 goes
+into the filter; there the arrow keys belong to the input, Enter applies what
+was typed and stays, Escape gives up what was typed and not applied and
+returns to the cell, and Tab moves through the filter's controls and from the
+last one out of the grid.
 
 ## Licence
 

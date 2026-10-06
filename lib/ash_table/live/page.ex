@@ -35,8 +35,8 @@ defmodule AshTable.Live.Page do
 
   ## URL
 
-  Sort and page are kept in the URL, under the table's id:
-  `/tasks?task[sort]=-title&task[page]=2`.
+  Sort, filters and page are kept in the URL, under the table's id:
+  `/tasks?task[sort]=-title&task[f][title]=report&task[page]=2`.
   """
   use Phoenix.LiveView
 

@@ -2,17 +2,21 @@ defmodule AshTable.Live.TableComponent do
   @moduledoc false
   # The table itself: a grid whose rows live in a LiveView stream.
   #
-  # The server keeps the table model, the state (sort and position) and what
-  # the last read said about the pages; it does not keep the records. A change
-  # of sort or page reads again and resets the stream.
+  # The server keeps the table model, the state (sort, filters and position)
+  # and what the last read said about the pages; it does not keep the records.
+  # A change of sort, filter or page reads again and resets the stream.
   #
   # Markup contract (spec sections 7.2 and 13):
   #
   #   * the `<table role="grid">` is the stream container; the header is a
   #     child with its own id and every row is one `<tbody>`;
+  #   * the header has two rows, the column headers and the filter row, which
+  #     are not part of the stream. The controls of the filter row belong to
+  #     the form `ID-filters`, which sits outside the table;
   #   * ids are stable and built from names, never from positions:
-  #     `ID-head-FIELD` for a header cell, `ID-row-KEY` for a row's `<tbody>`
-  #     and `ID-row-KEY-c-FIELD` for a cell;
+  #     `ID-head-FIELD` for a header cell, `ID-filter-FIELD` for a filter cell
+  #     (its controls end in `-operator`, `-value` and `-clear`), `ID-row-KEY`
+  #     for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
   #   * `aria-colindex` is computed through `colindex/1`, which is where a
   #     leading expander column will be counted in; an actions column goes
   #     after the last data column. Neither position holds a cell yet.
@@ -22,19 +26,30 @@ defmodule AshTable.Live.TableComponent do
 
   alias AshTable.Format
   alias AshTable.Model
+  alias AshTable.Model.Operator
   alias AshTable.Query
   alias AshTable.State
   alias AshTable.Text
+  alias Phoenix.LiveView.JS
 
   # Columns before the first data column: none until rows can be expanded.
   @leading_columns 0
+
+  # The rows above the data rows: the header and the filter row.
+  @header_rows 2
 
   @impl true
   def mount(socket) do
     {:ok,
      socket
      |> stream_configure(:rows, dom_id: & &1.dom_id)
-     |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)}
+     |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)
+     # What the live region says, and how often it has spoken. `announce?` is
+     # set by a filter change and answered by the read that follows it.
+     |> assign(announce?: false, announcement: nil, announcements: 0)
+     # What a person typed into a filter that is not a value of its column:
+     # shown in the filter, marked, and not applied.
+     |> assign(rejected: %{})}
   end
 
   @impl true
@@ -101,21 +116,42 @@ defmodule AshTable.Live.TableComponent do
         %{
           dom_id: "#{id}-row-#{row_key(model, record, index)}",
           record: record,
-          # 1-based, the header row counted
-          rowindex: (page.offset || 0) + index + 2
+          # 1-based, the header rows counted
+          rowindex: (page.offset || 0) + index + @header_rows + 1
         }
       end)
 
     socket
     |> assign(page: %{page | records: []}, row_count: length(rows), error: nil)
+    |> announce(page)
     |> stream(:rows, rows, reset: true)
   end
 
+  # The error is an alert of its own.
   defp show(socket, {:error, error}) do
     socket
-    |> assign(page: nil, row_count: 0, error: error_text(error))
+    |> assign(page: nil, row_count: 0, error: error_text(error), announce?: false)
     |> stream(:rows, [], reset: true)
   end
+
+  # After a filter change, the result is put into the live region: the count
+  # when the read action counts, else only that the rows have changed.
+  defp announce(%{assigns: %{announce?: true}} = socket, page) do
+    text =
+      case page.total do
+        nil -> Text.t(:results_updated)
+        1 -> Text.t(:one_result)
+        total -> Text.t(:results, count: total)
+      end
+
+    assign(socket,
+      announce?: false,
+      announcement: text,
+      announcements: socket.assigns.announcements + 1
+    )
+  end
+
+  defp announce(socket, _page), do: socket
 
   defp error_text(%Ash.Error.Forbidden{}), do: Text.t(:not_allowed)
   defp error_text(_error), do: Text.t(:read_failed)
@@ -140,6 +176,25 @@ defmodule AshTable.Live.TableComponent do
     {:noreply, go(socket, State.cycle_sort(state, model, name))}
   end
 
+  # Sent by the form of the filter row when a filter is left or a choice is
+  # made, with every filter of the row.
+  def handle_event("filter", params, socket) do
+    %{state: state, model: model} = socket.assigns
+    {state, rejected} = State.filter(state, model, Map.get(params, "filter", %{}))
+
+    {:noreply, socket |> assign(rejected: rejected) |> refilter(state)}
+  end
+
+  def handle_event("clear_filter", %{"column" => name}, socket) do
+    {:noreply, refilter(socket, State.clear_filter(socket.assigns.state, name))}
+  end
+
+  def handle_event("clear_filters", _params, socket) do
+    state = State.clear_filters(socket.assigns.state)
+
+    {:noreply, socket |> assign(rejected: %{}) |> refilter(state)}
+  end
+
   def handle_event("page", %{"to" => to}, socket) do
     {:noreply, go(socket, target(socket.assigns, to))}
   end
@@ -159,13 +214,17 @@ defmodule AshTable.Live.TableComponent do
 
   defp target(%{state: state}, _to), do: state
 
+  # A change of the filters is announced once its rows have been read.
+  defp refilter(%{assigns: %{state: state}} = socket, state), do: socket
+  defp refilter(socket, state), do: socket |> assign(announce?: true) |> go(state)
+
   # With the state in the URL the change is a patch, and the new state comes
   # back through `update/2`. Otherwise the component holds it.
   defp go(%{assigns: %{state: state}} = socket, state), do: socket
 
   defp go(%{assigns: %{url: url, id: id}} = socket, state) when is_binary(url) do
     params =
-      case State.to_params(state) do
+      case State.to_params(state, socket.assigns.model) do
         empty when empty == %{} -> Map.delete(query_params(url), id)
         params -> Map.put(query_params(url), id, params)
       end
@@ -191,6 +250,34 @@ defmodule AshTable.Live.TableComponent do
   def render(assigns) do
     ~H"""
     <div id={@id} class="ash-table">
+      <%!-- The form of the filter row. A form cannot sit inside a table around
+      its cells, so the controls name it instead. --%>
+      <form
+        id={"#{@id}-filters"}
+        phx-change="filter"
+        phx-submit="filter"
+        phx-target={@myself}
+      >
+      </form>
+      <%!-- as high as its button, so that the table does not move when it appears --%>
+      <div class="mb-2 flex min-h-8 items-center justify-end">
+        <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
+        <button
+          :if={@state.filters != %{}}
+          type="button"
+          id={"#{@id}-clear-filters"}
+          class="btn btn-sm"
+          phx-click={
+            JS.push("clear_filters", target: @myself)
+            |> JS.focus(to: "##{@id}-table [tabindex='0']")
+          }
+        >
+          {Text.t(:clear_filters)}
+        </button>
+      </div>
+      <%!-- Read out after each filter change. A live region is only read when its
+      content changes, so every other announcement ends in a no-break space. --%>
+      <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{@announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
       <div id={"#{@id}-grid"} phx-hook=".Grid" class="overflow-x-auto">
         <table
           id={"#{@id}-table"}
@@ -206,7 +293,7 @@ defmodule AshTable.Live.TableComponent do
               # the focus ring
               "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary",
               # one line per row: long text is cut off, not wrapped
-              "[&_td]:max-w-80 [&_td]:truncate"
+              "[&_tbody_td]:max-w-80 [&_tbody_td]:truncate"
             ]
           }
           phx-update="stream"
@@ -228,6 +315,26 @@ defmodule AshTable.Live.TableComponent do
                 class={["whitespace-nowrap", column.sortable? && "cursor-pointer select-none"]}
                 phx-no-format
               >{column.label}<span :if={column.sortable?} aria-hidden="true">{sort_mark(@state.sort, column)}</span></th>
+            </tr>
+            <tr id={"#{@id}-filter-row"} role="row" aria-rowindex="2">
+              <td
+                :for={{column, index} <- Enum.with_index(@model.columns)}
+                id={"#{@id}-filter-#{column.name}"}
+                role="gridcell"
+                aria-colindex={colindex(index)}
+                tabindex="-1"
+                data-filter={column.operators != []}
+              >
+                <.filter
+                  :if={column.operators != []}
+                  id={"#{@id}-filter-#{column.name}"}
+                  form={"#{@id}-filters"}
+                  column={column}
+                  filter={@rejected[column.name] || @state.filters[column.name]}
+                  rejected?={is_map_key(@rejected, column.name)}
+                  target={@myself}
+                />
+              </td>
             </tr>
           </thead>
           <%!-- Written without whitespace on purpose: every byte of a row is sent again
@@ -304,12 +411,13 @@ defmodule AshTable.Live.TableComponent do
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
         // Keyboard and focus for one grid: a single tab stop with a roving
         // tabindex, moved by the arrow keys. Nothing here talks to the server;
-        // Enter on a sortable header clicks it, and the click is the server's.
+        // Enter on a sortable header clicks it, Enter in a filter submits the
+        // filter row's form, and both are the server's from there.
         export default {
           mounted() {
             // the cell arrow keys start from: the first cell of the first data
-            // row, or of the header while there are no rows
-            this.pos = {r: 1, c: 0}
+            // row, or of the last header row while there are no rows
+            this.pos = {r: this.headRows(), c: 0}
             this.col = 0
             this.activeId = null
             this.hadFocus = false
@@ -334,10 +442,22 @@ defmodule AshTable.Live.TableComponent do
           destroyed() { this.observer && this.observer.disconnect() },
 
           rows() {
-            // HTMLTableElement.rows lists the header row first, wherever the
+            // HTMLTableElement.rows lists the header rows first, wherever the
             // header sits among the stream's rows in the DOM.
             const table = this.el.querySelector("table")
             return table ? table.rows : []
+          },
+
+          // The rows above the data rows: the header and the filter row.
+          headRows() {
+            const table = this.el.querySelector("table")
+            return table && table.tHead ? table.tHead.rows.length : 1
+          },
+
+          // The input, menu or button of a filter that a node is or is in.
+          controlOf(node) {
+            const control = node && node.closest ? node.closest("input,select,button") : null
+            return control && this.el.contains(control) ? control : null
           },
 
           cellOf(node) {
@@ -404,13 +524,65 @@ defmodule AshTable.Live.TableComponent do
             const cell = this.cellOf(e.target)
             if (!cell) return
             this.col = cell.cellIndex
+            // a click on a filter's control leaves focus in the control
+            if (this.controlOf(e.target)) return
             if (document.activeElement !== cell) cell.focus()
+          },
+
+          // Into a filter cell: to where its value is typed or chosen, or to
+          // its menu when the operator needs no value.
+          enter(cell) {
+            const control = cell.querySelector("[id$='-value']") || cell.querySelector("select,button")
+            if (!control) return
+            control.focus()
+            if (control.select) control.select()
+          },
+
+          // Inside a filter the keys belong to its controls, the arrow keys
+          // among them. The grid keeps three.
+          onControlKeydown(e, control) {
+            const cell = this.cellOf(control)
+            const input = control.tagName === "INPUT"
+            switch (e.key) {
+              // back to the cell, giving up what was typed and not applied
+              case "Escape":
+                if (input) control.value = control.defaultValue
+                cell.focus()
+                e.preventDefault()
+                break
+              // applies the filter now; focus stays where the person is typing.
+              // A patch leaves the value attribute of a focused input alone,
+              // so what Escape restores is noted here.
+              case "Enter":
+                if (input && control.form) {
+                  e.preventDefault()
+                  if (control.form.reportValidity()) {
+                    control.defaultValue = control.value
+                    control.form.requestSubmit()
+                  }
+                }
+                break
+              // through the controls of this filter; from its last one Tab
+              // leaves the grid, as it does from a cell
+              case "Tab": {
+                const controls = Array.from(cell.querySelectorAll("input,select,button"))
+                const next = controls[controls.indexOf(control) + (e.shiftKey ? -1 : 1)]
+                if (next) {
+                  next.focus()
+                  e.preventDefault()
+                }
+                break
+              }
+            }
           },
 
           onKeydown(e) {
             const cell = this.cellOf(e.target)
             if (!cell || e.altKey) return
+            const control = this.controlOf(e.target)
+            if (control) return this.onControlKeydown(e, control)
             const rows = this.rows()
+            const head = this.headRows()
             const r = cell.parentElement.rowIndex
             const c = cell.cellIndex
             const lastC = cell.parentElement.cells.length - 1
@@ -421,14 +593,14 @@ defmodule AshTable.Live.TableComponent do
               case "ArrowRight": this.col = Math.min(c + 1, lastC); this.move(r, this.col); break
               case "ArrowLeft": this.col = Math.max(c - 1, 0); this.move(r, this.col); break
               case "ArrowDown": this.move(r + 1, this.col); break
-              // from the first data row this reaches the header
+              // from the first data row this reaches the filter row, then the header
               case "ArrowUp": this.move(r - 1, this.col); break
               case "PageDown": this.move(Math.min(r + this.pageRows(cell), lastR), this.col); break
-              // stays in the data rows; the header is one Arrow Up further
-              case "PageUp": this.move(r === 0 ? 0 : Math.max(r - this.pageRows(cell), 1), this.col); break
+              // stays in the data rows; the header rows are an Arrow Up further
+              case "PageUp": this.move(r < head ? r : Math.max(r - this.pageRows(cell), head), this.col); break
               case "Home":
                 this.col = 0
-                this.move(ctrl ? Math.min(1, lastR) : r, 0)
+                this.move(ctrl ? Math.min(head, lastR) : r, 0)
                 break
               case "End": {
                 const row = ctrl ? rows[lastR] : cell.parentElement
@@ -438,6 +610,11 @@ defmodule AshTable.Live.TableComponent do
               }
               case "Enter":
                 if (cell.tagName === "TH" && cell.dataset.sort !== undefined) cell.click()
+                else if (cell.dataset.filter !== undefined) this.enter(cell)
+                else handled = false
+                break
+              case "F2":
+                if (cell.dataset.filter !== undefined) this.enter(cell)
                 else handled = false
                 break
               // reserved for row selection; swallowed so the page does not scroll
@@ -456,11 +633,118 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # The controls of one column's filter, showing the filter that applies.
+  # They are out of the tab order: the grid is one tab stop, and the hook
+  # moves focus into a filter cell.
+  defp filter(assigns) do
+    {operator, value} = assigns.filter || {nil, nil}
+    assigns = assign(assigns, operator: operator, value: value)
+
+    ~H"""
+    <div class="flex items-center gap-1">
+      <select
+        :if={@column.cell_type == :boolean}
+        id={"#{@id}-value"}
+        name={"filter[#{@column.name}][o]"}
+        form={@form}
+        tabindex="-1"
+        aria-label={Text.t(:filter, column: @column.label)}
+        class="select select-xs w-auto"
+      >
+        <option value="">{Text.t(:any)}</option>
+        <option :for={choice <- @column.operators} value={choice} selected={choice == @operator}>
+          {Text.t(choice)}
+        </option>
+      </select>
+      <select
+        :if={@column.cell_type != :boolean and match?([_, _ | _], @column.operators)}
+        id={"#{@id}-operator"}
+        name={"filter[#{@column.name}][o]"}
+        form={@form}
+        tabindex="-1"
+        aria-label={Text.t(:filter_operator, column: @column.label)}
+        class="select select-xs w-auto"
+      >
+        <option :for={choice <- @column.operators} value={choice} selected={choice == @operator}>
+          {operator_text(choice)}
+        </option>
+      </select>
+      <select
+        :if={@column.cell_type == :enum}
+        id={"#{@id}-value"}
+        name={"filter[#{@column.name}][v]"}
+        form={@form}
+        tabindex="-1"
+        aria-label={Text.t(:filter, column: @column.label)}
+        class="select select-xs w-auto"
+      >
+        <option value="">{Text.t(:any)}</option>
+        <option
+          :for={{choice, label} <- @column.values}
+          value={choice}
+          selected={to_string(choice) == @value}
+        >
+          {label}
+        </option>
+      </select>
+      <%!-- an operator such as "is empty" is complete without a value --%>
+      <input
+        :if={
+          @column.cell_type not in [:boolean, :enum] and
+            (is_nil(@operator) or Operator.takes_value?(@operator))
+        }
+        type={input_type(@column.cell_type)}
+        step={input_step(@column.cell_type)}
+        id={"#{@id}-value"}
+        name={"filter[#{@column.name}][v]"}
+        form={@form}
+        value={@value}
+        phx-debounce="blur"
+        tabindex="-1"
+        aria-label={Text.t(:filter, column: @column.label)}
+        aria-invalid={@rejected? && "true"}
+        aria-describedby={@rejected? && "#{@id}-error"}
+        class={["input input-xs w-32", @rejected? && "input-error"]}
+      />
+      <button
+        :if={@filter && not @rejected?}
+        type="button"
+        id={"#{@id}-clear"}
+        tabindex="-1"
+        aria-label={Text.t(:clear_filter, column: @column.label)}
+        class="btn btn-ghost btn-xs"
+        phx-click="clear_filter"
+        phx-value-column={@column.name}
+        phx-target={@target}
+      >
+        <span aria-hidden="true">✕</span>
+      </button>
+    </div>
+    <%!-- in the text colour: the error colour is too faint for small text --%>
+    <p :if={@rejected?} id={"#{@id}-error"} class="mt-1 text-xs">
+      {Text.t(:invalid_filter)}
+    </p>
+    """
+  end
+
+  defp operator_text(operator), do: Text.t(String.to_existing_atom("operator_#{operator}"))
+
+  # The native input of each cell type that is filtered by a typed value.
+  defp input_type(:text), do: "text"
+  defp input_type(:number), do: "number"
+  defp input_type(:date), do: "date"
+  defp input_type(:datetime), do: "datetime-local"
+
+  # Any number, not only whole ones; and a datetime to the second, as it is shown.
+  defp input_step(:number), do: "any"
+  defp input_step(:datetime), do: "1"
+  defp input_step(_cell_type), do: nil
+
   # 1-based position of a data column among all columns of the grid.
   defp colindex(index), do: @leading_columns + index + 1
 
-  # The header row is counted. -1 says the total is not known.
-  defp aria_rowcount(%{total: total}) when is_integer(total), do: total + 1
+  # The header rows are counted. -1 says the total is not known.
+  defp aria_rowcount(%{total: total}) when is_integer(total), do: total + @header_rows
   defp aria_rowcount(_page), do: -1
 
   defp aria_sort({name, :asc}, %{name: name}), do: "ascending"

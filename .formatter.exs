@@ -1,6 +1,7 @@
 spark_locals_without_parens = [
   column: 1,
   column: 2,
+  filterable?: 1,
   label: 1,
   paginate_with: 1,
   read_action: 1,

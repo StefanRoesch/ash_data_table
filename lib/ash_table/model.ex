@@ -22,6 +22,7 @@ defmodule AshTable.Model do
   alias Ash.Resource.Info
   alias AshTable.Model.CellType
   alias AshTable.Model.Column
+  alias AshTable.Model.Operator
   alias AshTable.Model.Pagination
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Reading
@@ -132,36 +133,32 @@ defmodule AshTable.Model do
   # `declared` is the column as written in the block, or nil for a column of
   # the default set.
   defp column(resource, field, declared, pagination) do
-    {type, constraints} = type(resource, field)
+    {type, constraints} = CellType.type(resource, field)
     {cell_type, values} = CellType.classify(type, constraints)
 
     %Column{
       name: field.name,
       kind: kind(field),
       label: (declared && declared.label) || humanize(field.name),
+      type: {type, constraints},
       cell_type: cell_type,
       values: values,
       # the block can only switch sorting off
       sortable?:
         Reading.sortable?(resource, field.name, pagination.strategy) and
-          not match?(%{sortable?: false}, declared)
+          not match?(%{sortable?: false}, declared),
+      # and filtering likewise
+      operators:
+        if(match?(%{filterable?: false}, declared),
+          do: [],
+          else: Operator.available(resource, field)
+        )
     }
   end
 
   defp kind(%Ash.Resource.Attribute{}), do: :attribute
   defp kind(%Ash.Resource.Calculation{}), do: :calculation
   defp kind(%Ash.Resource.Aggregate{}), do: :aggregate
-
-  # An aggregate has no type of its own: it follows from its kind and the
-  # field it aggregates.
-  defp type(resource, %Ash.Resource.Aggregate{} = aggregate) do
-    case Info.aggregate_type(resource, aggregate) do
-      {:ok, type} -> {type, []}
-      {:error, _reason} -> {nil, []}
-    end
-  end
-
-  defp type(_resource, field), do: {field.type, field.constraints || []}
 
   defp humanize(name) do
     name

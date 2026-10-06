@@ -23,6 +23,26 @@ defmodule AshTable.Model.CellType do
     Ash.Type.NaiveDatetime => :datetime
   }
 
+  @doc "The cell type of a field of a resource: an attribute, calculation or aggregate."
+  @spec of(Ash.Resource.t(), struct) :: {t, values | nil}
+  def of(resource, field) do
+    {type, constraints} = type(resource, field)
+    classify(type, constraints)
+  end
+
+  @doc "The Ash type of a field with its constraints."
+  @spec type(Ash.Resource.t(), struct) :: {Ash.Type.t() | nil, keyword}
+  # An aggregate has no type of its own: it follows from its kind and the
+  # field it aggregates.
+  def type(resource, %Ash.Resource.Aggregate{} = aggregate) do
+    case Ash.Resource.Info.aggregate_type(resource, aggregate) do
+      {:ok, type} -> {type, []}
+      {:error, _reason} -> {nil, []}
+    end
+  end
+
+  def type(_resource, field), do: {field.type, field.constraints || []}
+
   @doc """
   Classifies an Ash type with its constraints.
 

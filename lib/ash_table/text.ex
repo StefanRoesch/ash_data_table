@@ -16,7 +16,28 @@ defmodule AshTable.Text do
     range_of_total: "%{from}–%{to} of %{total}",
     yes: "Yes",
     no: "No",
-    not_available: "Not available"
+    not_available: "Not available",
+    operator_contains: "contains",
+    operator_equals: "equals",
+    operator_starts_with: "starts with",
+    operator_is_empty: "is empty",
+    operator_greater_than: "greater than",
+    operator_less_than: "less than",
+    operator_at_least: "at least",
+    operator_at_most: "at most",
+    operator_on: "on",
+    operator_before: "before",
+    operator_after: "after",
+    operator_is: "is",
+    any: "Any",
+    filter: "Filter %{column}",
+    filter_operator: "How to filter %{column}",
+    invalid_filter: "Not a valid value",
+    clear_filter: "Clear the %{column} filter",
+    clear_filters: "Clear filters",
+    one_result: "1 result",
+    results: "%{count} results",
+    results_updated: "Results updated"
   }
 
   @type key ::
@@ -33,6 +54,27 @@ defmodule AshTable.Text do
           | :yes
           | :no
           | :not_available
+          | :operator_contains
+          | :operator_equals
+          | :operator_starts_with
+          | :operator_is_empty
+          | :operator_greater_than
+          | :operator_less_than
+          | :operator_at_least
+          | :operator_at_most
+          | :operator_on
+          | :operator_before
+          | :operator_after
+          | :operator_is
+          | :any
+          | :filter
+          | :filter_operator
+          | :invalid_filter
+          | :clear_filter
+          | :clear_filters
+          | :one_result
+          | :results
+          | :results_updated
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
