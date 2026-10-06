@@ -10,6 +10,7 @@ defmodule AshTable.Resource do
         table do
           read_action :open
           paginate_with :offset
+          update_action :update
 
           column :title
 
@@ -17,6 +18,15 @@ defmodule AshTable.Resource do
             label "State"
             sortable? false
             filterable? false
+          end
+
+          column :price do
+            update_action :reprice
+            confirm "Change the price?"
+          end
+
+          column :slug do
+            update_action false
           end
         end
       end
@@ -34,6 +44,14 @@ defmodule AshTable.Resource do
   the filter row under the header. `filterable? false` leaves a column
   without one; nothing switches a filter on that the resource does not allow.
 
+  Nothing can be edited until the block names an `update_action`. The one of
+  the table makes every column editable whose attribute that action accepts;
+  a column can name its own, or `false` to stay read-only. An edit of a cell
+  runs the column's action with the cell's attribute as its only input, so an
+  action that needs more (a required argument without a default) cannot be
+  behind a column. `confirm` asks a question before a cell of the column is
+  saved.
+
   Page size and default sort are not part of the block. They live on the read
   action (`pagination default_limit: …` and `prepare build(sort: …)`).
   """
@@ -47,6 +65,12 @@ defmodule AshTable.Resource do
       column :status do
         label "State"
         sortable? false
+      end
+      """,
+      """
+      column :price do
+        update_action :reprice
+        confirm "Change the price?"
       end
       """
     ],
@@ -79,6 +103,11 @@ defmodule AshTable.Resource do
         type: {:one_of, [:offset, :keyset]},
         doc:
           "The pagination strategy. Defaults to `:offset` if the read action supports it, else `:keyset`."
+      ],
+      update_action: [
+        type: :atom,
+        doc:
+          "The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only."
       ]
     ],
     entities: [@column]
@@ -88,6 +117,7 @@ defmodule AshTable.Resource do
     sections: [@table],
     verifiers: [
       AshTable.Resource.Verifiers.VerifyReadAction,
+      AshTable.Resource.Verifiers.VerifyUpdateAction,
       AshTable.Resource.Verifiers.VerifyColumns
     ]
 end

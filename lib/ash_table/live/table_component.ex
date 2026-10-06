@@ -2,9 +2,15 @@ defmodule AshTable.Live.TableComponent do
   @moduledoc false
   # The table itself: a grid whose rows live in a LiveView stream.
   #
-  # The server keeps the table model, the state (sort, filters and position)
-  # and what the last read said about the pages; it does not keep the records.
-  # A change of sort, filter or page reads again and resets the stream.
+  # The server keeps the table model, the state (sort, filters and position),
+  # what the last read said about the pages, the primary keys of the rows of
+  # the page and the edits that failed; it does not keep the records. A change
+  # of sort, filter or page reads again and resets the stream.
+  #
+  # Editing a cell is the hook's until the value is saved: it opens the
+  # column's editor in the cell and sends one `save` event with the row, the
+  # column and the value as typed. The server reads the record again, runs the
+  # column's update action and puts the row back into the stream.
   #
   # Markup contract (spec sections 7.2 and 13):
   #
@@ -24,6 +30,7 @@ defmodule AshTable.Live.TableComponent do
   # Use it through `AshTable.table/1`.
   use Phoenix.LiveComponent
 
+  alias AshTable.Edit
   alias AshTable.Format
   alias AshTable.Model
   alias AshTable.Model.Operator
@@ -44,6 +51,13 @@ defmodule AshTable.Live.TableComponent do
      socket
      |> stream_configure(:rows, dom_id: & &1.dom_id)
      |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)
+     # The rows of the page by the key in their DOM id: each one's primary key
+     # and row index. What an edit event names is looked up here.
+     |> assign(rows: %{})
+     # The edits that failed, by row key: what was typed into each cell with
+     # the action's message, and the record, as a failed row is rendered more
+     # than once. A new read forgets them.
+     |> assign(failed: %{})
      # What the live region says, and how often it has spoken. `announce?` is
      # set by a filter change and answered by the read that follows it.
      |> assign(announce?: false, announcement: nil, announcements: 0)
@@ -63,7 +77,10 @@ defmodule AshTable.Live.TableComponent do
     model = Model.build(socket.assigns.resource)
     state = current_state(socket.assigns, model)
 
-    {:ok, socket |> assign(model: model, state: state) |> read()}
+    {:ok,
+     socket
+     |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     |> read()}
   end
 
   # A table whose state lives in the URL takes it from there on every update;
@@ -80,7 +97,7 @@ defmodule AshTable.Live.TableComponent do
   # marked busy.
   defp read(socket) do
     %{model: model, state: state} = socket.assigns
-    opts = Map.to_list(Map.take(socket.assigns, [:scope, :actor, :tenant, :authorize?]))
+    opts = reader(socket.assigns)
     read = {model, state, opts}
 
     cond do
@@ -96,6 +113,9 @@ defmodule AshTable.Live.TableComponent do
         |> start_async(:read, fn -> Query.read(model, state, opts) end)
     end
   end
+
+  # Who is reading and saving.
+  defp reader(assigns), do: Map.to_list(Map.take(assigns, [:scope, :actor, :tenant, :authorize?]))
 
   @impl true
   def handle_async(:read, {:ok, result}, socket) do
@@ -114,7 +134,7 @@ defmodule AshTable.Live.TableComponent do
       |> Enum.with_index()
       |> Enum.map(fn {record, index} ->
         %{
-          dom_id: "#{id}-row-#{row_key(model, record, index)}",
+          key: row_key(model, record, index),
           record: record,
           # 1-based, the header rows counted
           rowindex: (page.offset || 0) + index + @header_rows + 1
@@ -123,16 +143,53 @@ defmodule AshTable.Live.TableComponent do
 
     socket
     |> assign(page: %{page | records: []}, row_count: length(rows), error: nil)
+    |> assign(
+      rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
+      failed: %{}
+    )
     |> announce(page)
-    |> stream(:rows, rows, reset: true)
+    |> stream(:rows, Enum.map(rows, &item(id, &1.key, &1.record, &1.rowindex, %{})), reset: true)
   end
 
   # The error is an alert of its own.
   defp show(socket, {:error, error}) do
     socket
-    |> assign(page: nil, row_count: 0, error: error_text(error), announce?: false)
+    |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false)
+    |> assign(error: error_text(error))
     |> stream(:rows, [], reset: true)
   end
+
+  # A row as the stream holds it. `failed` holds, by column name, what was
+  # typed into a cell whose save failed and the action's message.
+  defp item(id, key, record, rowindex, failed) do
+    %{dom_id: "#{id}-row-#{key}", record: record, rowindex: rowindex, failed: failed}
+  end
+
+  # Puts a row of the page into the stream again, in its place: with the
+  # record as an action returned it or as it was read again, and with the
+  # edits of the row that have failed.
+  defp put_row(socket, key, record) do
+    %{id: id, rows: rows, failed: failed} = socket.assigns
+    cells = get_in(failed, [key, :cells]) || %{}
+
+    stream_insert(socket, :rows, item(id, key, record, rows[key].rowindex, cells))
+  end
+
+  # Notes that the save of a cell has failed, or with `nil` that it no longer
+  # has. The record is kept with the failures of its row, and only then.
+  defp put_failure(socket, key, record, name, failure) do
+    cells = get_in(socket.assigns.failed, [key, :cells]) || %{}
+    cells = if failure, do: Map.put(cells, name, failure), else: Map.delete(cells, name)
+
+    failed =
+      if cells == %{},
+        do: Map.delete(socket.assigns.failed, key),
+        else: Map.put(socket.assigns.failed, key, %{record: record, cells: cells})
+
+    assign(socket, failed: failed)
+  end
+
+  defp primary_key(%{primary_key: primary_key}, record), do: Map.take(record, primary_key)
 
   # After a filter change, the result is put into the live region: the count
   # when the read action counts, else only that the rows have changed.
@@ -144,14 +201,15 @@ defmodule AshTable.Live.TableComponent do
         total -> Text.t(:results, count: total)
       end
 
-    assign(socket,
-      announce?: false,
-      announcement: text,
-      announcements: socket.assigns.announcements + 1
-    )
+    socket |> assign(announce?: false) |> say(text)
   end
 
   defp announce(socket, _page), do: socket
+
+  # Puts a text into the live region, to be read out.
+  defp say(socket, text) do
+    assign(socket, announcement: text, announcements: socket.assigns.announcements + 1)
+  end
 
   defp error_text(%Ash.Error.Forbidden{}), do: Text.t(:not_allowed)
   defp error_text(_error), do: Text.t(:read_failed)
@@ -198,6 +256,67 @@ defmodule AshTable.Live.TableComponent do
   def handle_event("page", %{"to" => to}, socket) do
     {:noreply, go(socket, target(socket.assigns, to))}
   end
+
+  # Sent by the hook when a person has changed a cell's value and pressed
+  # Enter or left the cell: the row by the key in its DOM id, the column, and
+  # the value as it was typed.
+  def handle_event("save", %{"row" => key, "column" => name, "value" => typed}, socket)
+      when is_binary(typed) do
+    %{model: model, rows: rows} = socket.assigns
+
+    with %{editable?: true} = column <- column(model, name),
+         %{} = row <- rows[key] do
+      save(socket, key, row, column, typed)
+    else
+      # not a cell this table lets anyone edit: nothing a person can send
+      # through the table, so nothing is shown for it either
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("save", _params, socket), do: {:reply, %{ok: false}, socket}
+
+  # Sent by the hook when a person presses Escape on a cell whose save has
+  # failed: the edit is given up, and the cell shows its record's value again.
+  def handle_event("discard", %{"row" => key, "column" => name}, socket) do
+    with %{} = column <- column(socket.assigns.model, name),
+         %{record: record, cells: %{}} <- socket.assigns.failed[key] do
+      {:noreply, socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  # Either way the row is put back with what is true now: the action's
+  # result, or the record as it is and the cell marked with what was typed.
+  defp save(socket, key, row, column, typed) do
+    case Edit.save(socket.assigns.model, column, row.pk, typed, reader(socket.assigns)) do
+      {:ok, record} ->
+        {:reply, %{ok: true},
+         socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
+
+      {:error, %_{} = record, message} ->
+        {:reply, %{ok: false},
+         socket
+         |> put_failure(key, record, column.name, {typed, message})
+         |> put_row(key, record)
+         |> say(Text.t(:not_saved, column: column.label, message: message))}
+
+      # The record is gone, or no longer this person's to read: there is
+      # nothing to show the row from, so it stays as it is, and the hook
+      # marks the cell with the message.
+      {:error, nil, message} ->
+        {:reply, %{ok: false, error: message},
+         say(socket, Text.t(:not_saved, column: column.label, message: message))}
+    end
+  end
+
+  # Looked up by its name as text, so that text from the outside is never
+  # turned into an atom.
+  defp column(model, name) when is_binary(name),
+    do: Enum.find(model.columns, &(Atom.to_string(&1.name) == name))
+
+  defp column(_model, _name), do: nil
 
   defp target(%{page: %{previous: %State{} = state}}, "previous"), do: state
   defp target(%{page: %{next: %State{} = state}}, "next"), do: state
@@ -275,10 +394,11 @@ defmodule AshTable.Live.TableComponent do
           {Text.t(:clear_filters)}
         </button>
       </div>
-      <%!-- Read out after each filter change. A live region is only read when its
-      content changes, so every other announcement ends in a no-break space. --%>
+      <%!-- Read out after each filter change, and when a save fails. A live region
+      is only read when its content changes, so every other announcement ends in a
+      no-break space. --%>
       <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{@announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
-      <div id={"#{@id}-grid"} phx-hook=".Grid" class="overflow-x-auto">
+      <div id={"#{@id}-grid"} phx-hook=".Grid" phx-target={@myself} class="overflow-x-auto">
         <table
           id={"#{@id}-table"}
           role="grid"
@@ -290,8 +410,11 @@ defmodule AshTable.Live.TableComponent do
             [
               "table aria-busy:opacity-60",
               # what every cell looks like is set once here, to keep each cell's markup small:
-              # the focus ring
+              # the focus ring, which a cell keeps while its editor has the focus
               "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary",
+              "[&_tbody_td:focus-within]:outline-2 [&_tbody_td:focus-within]:-outline-offset-2 [&_tbody_td:focus-within]:outline-primary",
+              # a cell whose save failed, and one whose save is on its way
+              "[&_td[aria-invalid]]:inset-ring-2 [&_td[aria-invalid]]:inset-ring-error [&_td[aria-busy]]:opacity-60",
               # one line per row: long text is cut off, not wrapped
               "[&_tbody_td]:max-w-80 [&_tbody_td]:truncate"
             ]
@@ -349,8 +472,44 @@ defmodule AshTable.Live.TableComponent do
             role="gridcell"
             aria-colindex={colindex(index)}
             tabindex="-1"
-          >{cell(column, Map.get(row.record, column.name))}</td></tr></tbody>
+            {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row)}
+          >{cell_content("#{dom_id}-c-#{column.name}", column, row)}</td></tr></tbody>
         </table>
+        <%!-- One editor per editable column. The hook opens a copy of it in the
+        cell being edited; which cell that is, the server never knows. --%>
+        <template
+          :for={column <- @model.columns}
+          :if={column.editable?}
+          id={"#{@id}-editor-#{column.name}"}
+          data-editor={column.editor}
+          data-confirm={column.confirm}
+        >
+          <.editor column={column} allow_nil?={allow_nil?(@model.resource, column)} />
+        </template>
+        <%!-- The message of a cell whose save failed, for the one case in which
+        the hook has to mark the cell itself: the record is gone, so there is
+        no row to send. --%>
+        <template :if={@editing?} id={"#{@id}-failure"}>{failure_message(nil, "")}</template>
+      </div>
+      <%!-- The one dialog of the table: it asks the question of a column with
+      `confirm` before the cell is saved. The hook opens it and puts the question
+      in, so patches leave it alone. --%>
+      <div :if={Enum.any?(@model.columns, & &1.confirm)} id={"#{@id}-dialogs"} phx-update="ignore">
+        <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
+        a dialog that is not visible yet when it opens cannot take the focus. --%>
+        <dialog
+          id={"#{@id}-dialog"}
+          aria-labelledby={"#{@id}-dialog-question"}
+          class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40"
+        >
+          <form method="dialog">
+            <p id={"#{@id}-dialog-question"}></p>
+            <div class="mt-6 flex justify-end gap-2">
+              <button value="cancel" class="btn">{Text.t(:cancel)}</button>
+              <button value="confirm" class="btn btn-primary">{Text.t(:confirm)}</button>
+            </div>
+          </form>
+        </dialog>
       </div>
       <p :if={@error} id={"#{@id}-error"} role="alert" class="py-8 text-center text-sm text-error">
         {@error}
@@ -409,22 +568,52 @@ defmodule AshTable.Live.TableComponent do
         </div>
       </nav>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
-        // Keyboard and focus for one grid: a single tab stop with a roving
-        // tabindex, moved by the arrow keys. Nothing here talks to the server;
-        // Enter on a sortable header clicks it, Enter in a filter submits the
-        // filter row's form, and both are the server's from there.
+        // Keyboard, focus and editing for one grid: a single tab stop with a
+        // roving tabindex, moved by the arrow keys.
+        //
+        // Moving about never talks to the server. Enter on a sortable header
+        // clicks it and Enter in a filter submits the filter row's form; both
+        // are the server's from there.
+        //
+        // Which cell is being edited is known here alone. The server renders
+        // one editor per editable column in a <template>; a copy of it is put
+        // into the cell, and when the person is done, one "save" event goes
+        // out with the row, the column and the value as typed. The answer is
+        // the row itself, patched in: with the new value, or with the cell
+        // marked as failed.
+
+        // a key that types a character
+        const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
+
+        // keys that move through the options of a closed select
+        const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]
+
         export default {
           mounted() {
+            // the table's id, which every id in it starts with
+            this.id = this.el.id.replace(/-grid$/, "")
             // the cell arrow keys start from: the first cell of the first data
             // row, or of the last header row while there are no rows
             this.pos = {r: this.headRows(), c: 0}
             this.col = 0
             this.activeId = null
             this.hadFocus = false
+            // the edit in progress: {cell, input, type, saved, old, confirm}
+            this.editing = null
+            // cells this hook has marked as failed itself, with what they showed before
+            this.marked = new WeakMap()
+            // the cell under the pointer, and the message that is showing
+            this.pointed = null
+            this.message = null
             this.el.addEventListener("keydown", e => this.onKeydown(e))
             this.el.addEventListener("focusin", e => this.onFocusin(e))
             this.el.addEventListener("focusout", e => this.onFocusout(e))
             this.el.addEventListener("click", e => this.onClick(e))
+            this.el.addEventListener("dblclick", e => this.onDblclick(e))
+            this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
+            this.el.addEventListener("mouseleave", () => this.onPointer(null))
+            this.onScroll = () => this.showMessage()
+            window.addEventListener("scroll", this.onScroll, true)
             // updated() only runs when this element itself is patched; a
             // stream insert or reset touches the rows alone.
             this.observer = new MutationObserver(() => this.sync())
@@ -439,7 +628,10 @@ defmodule AshTable.Live.TableComponent do
 
           updated() { this.sync() },
 
-          destroyed() { this.observer && this.observer.disconnect() },
+          destroyed() {
+            this.observer && this.observer.disconnect()
+            window.removeEventListener("scroll", this.onScroll, true)
+          },
 
           rows() {
             // HTMLTableElement.rows lists the header rows first, wherever the
@@ -454,9 +646,10 @@ defmodule AshTable.Live.TableComponent do
             return table && table.tHead ? table.tHead.rows.length : 1
           },
 
-          // The input, menu or button of a filter that a node is or is in.
+          // The input, menu or button of a filter, or the editor of a cell,
+          // that a node is or is in.
           controlOf(node) {
-            const control = node && node.closest ? node.closest("input,select,button") : null
+            const control = node && node.closest ? node.closest("input,select,textarea,button") : null
             return control && this.el.contains(control) ? control : null
           },
 
@@ -477,7 +670,10 @@ defmodule AshTable.Live.TableComponent do
             if (previous && previous !== cell && previous.tabIndex !== -1) previous.tabIndex = -1
             this.activeId = cell.id
             this.pos = {r: cell.parentElement.rowIndex, c: cell.cellIndex}
-            if (cell.tabIndex !== 0) cell.tabIndex = 0
+            // while a cell is edited its editor is the tab stop, so that
+            // Shift+Tab from the editor leaves the grid as Tab does
+            const tabIndex = this.editing && this.editing.cell === cell ? -1 : 0
+            if (cell.tabIndex !== tabIndex) cell.tabIndex = tabIndex
           },
 
           // After every patch: the server renders each cell with tabindex -1,
@@ -489,9 +685,13 @@ defmodule AshTable.Live.TableComponent do
             if (!cell) cell = this.cellAt(this.pos.r, this.pos.c)
             if (!cell) return
             this.setActive(cell)
+            // while the dialog asks, focus is in the dialog and stays there
+            if (this.editing && this.editing.asking) return
             if (this.hadFocus && !this.el.contains(document.activeElement)) {
               cell.focus({preventScroll: true})
             }
+            // a patch may have brought, replaced or taken away a message
+            this.showMessage()
           },
 
           move(r, c) {
@@ -505,6 +705,7 @@ defmodule AshTable.Live.TableComponent do
             this.hadFocus = true
             this.col = cell.cellIndex
             this.setActive(cell)
+            this.showMessage()
           },
 
           onFocusout(e) {
@@ -518,15 +719,22 @@ defmodule AshTable.Live.TableComponent do
                 if (target.isConnected && !this.el.contains(document.activeElement)) this.hadFocus = false
               }, 0)
             }
+            setTimeout(() => this.showMessage(), 0)
           },
 
           onClick(e) {
             const cell = this.cellOf(e.target)
             if (!cell) return
             this.col = cell.cellIndex
-            // a click on a filter's control leaves focus in the control
+            // a click on a filter's control or in an editor leaves focus there
             if (this.controlOf(e.target)) return
+            if (this.editing && this.editing.cell === cell) return
             if (document.activeElement !== cell) cell.focus()
+          },
+
+          onDblclick(e) {
+            const cell = this.cellOf(e.target)
+            if (cell && !this.controlOf(e.target) && this.canEdit(cell)) this.startEdit(cell, null)
           },
 
           // Into a filter cell: to where its value is typed or chosen, or to
@@ -579,6 +787,7 @@ defmodule AshTable.Live.TableComponent do
           onKeydown(e) {
             const cell = this.cellOf(e.target)
             if (!cell || e.altKey) return
+            if (this.editing && e.target === this.editing.input) return this.onEditorKeydown(e)
             const control = this.controlOf(e.target)
             if (control) return this.onControlKeydown(e, control)
             const rows = this.rows()
@@ -611,21 +820,337 @@ defmodule AshTable.Live.TableComponent do
               case "Enter":
                 if (cell.tagName === "TH" && cell.dataset.sort !== undefined) cell.click()
                 else if (cell.dataset.filter !== undefined) this.enter(cell)
+                else if (this.canEdit(cell)) this.startEdit(cell, null)
                 else handled = false
                 break
               case "F2":
                 if (cell.dataset.filter !== undefined) this.enter(cell)
+                else if (this.canEdit(cell)) this.startEdit(cell, null)
+                else handled = false
+                break
+              // gives up the edit of a cell whose save failed
+              case "Escape":
+                if (cell.hasAttribute("aria-invalid")) this.discard(cell)
                 else handled = false
                 break
               // reserved for row selection; swallowed so the page does not scroll
               case " ": break
-              default: handled = false
+              default:
+                // typing starts the edit with what is typed
+                handled = PRINTABLE(e) && this.canEdit(cell) && this.startEdit(cell, e.key)
             }
             if (handled) e.preventDefault()
           },
 
           pageRows(cell) {
             return Math.max(1, Math.floor(window.innerHeight / (cell.offsetHeight || 24)) - 2)
+          },
+
+          // ---- editing ---------------------------------------------------
+
+          // A cell's ids hold what an event names: `ID-row-KEY` on the row's
+          // <tbody>, and `ID-row-KEY-c-COLUMN` on the cell.
+          rowKey(cell) { return cell.closest("tbody").id.slice(this.id.length + 5) },
+          columnOf(cell) { return cell.id.slice(cell.closest("tbody").id.length + 3) },
+
+          editorOf(cell) { return document.getElementById(`${this.id}-editor-${this.columnOf(cell)}`) },
+
+          // A data cell of an editable column that the server has not marked
+          // as read-only for this person, and whose last save has been answered.
+          canEdit(cell) {
+            return cell.tagName === "TD" && cell.parentElement.parentElement.tagName === "TBODY" &&
+              cell.getAttribute("aria-readonly") !== "true" && !cell.hasAttribute("aria-busy") &&
+              !!this.editorOf(cell)
+          },
+
+          // What a cell's editor starts with: the text the cell shows, unless
+          // the server says otherwise (a choice, a boolean, a failed cell).
+          valueOf(cell) {
+            return cell.dataset.value !== undefined ? cell.dataset.value : cell.textContent
+          },
+
+          // Opens the column's editor in the cell. `key` is the character
+          // that was typed on the cell, or null for Enter, F2 and a double
+          // click. Returns whether the key has been dealt with here; if not,
+          // the browser goes on to type it into the editor, which has the
+          // focus by then.
+          startEdit(cell, key) {
+            const template = this.editorOf(cell)
+            const type = template.dataset.editor
+            // a boolean has no edit mode: Enter and F2 toggle it, typing does nothing
+            if (type === "boolean") {
+              if (key === null) this.toggle(cell, template)
+              return key === null
+            }
+            const input = template.content.firstElementChild.cloneNode(true)
+            const current = this.valueOf(cell)
+            const saved = Array.from(cell.childNodes)
+            // LiveView leaves an element marked like this alone, so a patch of
+            // the row, after another cell's save, does not take the editor away.
+            cell.setAttribute("phx-update", "ignore")
+            cell.replaceChildren(input)
+            // What "unchanged" means: the value the record has, as this
+            // editor writes it. A failed cell shows what was typed instead.
+            input.value = cell.dataset.saved !== undefined ? cell.dataset.saved : current
+            const old = input.value
+            input.value = current
+            const ed = {cell, input, type, saved, old, confirm: template.dataset.confirm, lastKey: null}
+            this.editing = ed
+            cell.tabIndex = -1
+            input.addEventListener("blur", () => this.onEditorBlur(ed))
+            let handled = true
+            if (type === "enum") {
+              input.addEventListener("change", () => this.onEditorChange(ed))
+              input.addEventListener("pointerdown", () => { ed.lastKey = null })
+              // a typed character goes to the first choice that starts with
+              // it, as it would in the menu; nothing is saved by that alone
+              if (key !== null) {
+                const letter = key.toLowerCase()
+                const option = Array.from(input.options).find(o => o.textContent.trim().toLowerCase().startsWith(letter))
+                if (option) input.value = option.value
+                ed.lastKey = "ArrowDown"
+              }
+              input.focus()
+              try { input.showPicker() } catch (_error) { /* the closed menu works too */ }
+            } else if (type === "text") {
+              input.addEventListener("input", () => this.fit(input))
+              // typing replaces the text; the character itself is typed by the browser
+              if (key !== null) { input.value = ""; handled = false }
+              this.fit(input)
+              input.focus()
+              if (key === null) input.select()
+            } else if (type === "number") {
+              input.focus()
+              if (key === null) input.select()
+              else {
+                // Typing replaces the number, if the input takes the character.
+                // One it does not take changes nothing: the number stays.
+                input.value = ""
+                handled = false
+                setTimeout(() => {
+                  if (this.editing === ed && input.value === "" && !input.validity.badInput) {
+                    input.value = current
+                    input.select()
+                  }
+                }, 0)
+              }
+            } else {
+              // A date or a datetime keeps its value: a digit typed on the
+              // cell goes into the first part of the input, any other
+              // character the input ignores.
+              input.focus()
+              handled = key === null
+            }
+            return handled
+          },
+
+          // A textarea as high as its text, up to eight lines or so.
+          fit(input) {
+            input.style.height = "auto"
+            input.style.height = `${Math.min(input.scrollHeight, 160)}px`
+          },
+
+          // While a cell is edited the keys belong to its editor, the arrow
+          // keys among them. The grid keeps two; Tab leaves the grid, which
+          // saves.
+          onEditorKeydown(e) {
+            const ed = this.editing
+            ed.lastKey = PRINTABLE(e) ? "ArrowDown" : e.key
+            switch (e.key) {
+              case "Escape":
+                e.preventDefault()
+                this.finish(ed, false, true)
+                break
+              case "Enter":
+                // a new line in text
+                if (ed.type === "text" && e.shiftKey) return
+                if (ed.type === "enum") {
+                  // an open menu takes Enter as the choice, which saves; a
+                  // closed one has its value already
+                  setTimeout(() => this.finish(ed, true, true), 0)
+                  return
+                }
+                e.preventDefault()
+                this.finish(ed, true, true)
+                break
+            }
+          },
+
+          // A choice saves when it is made: picked from the open menu, or
+          // with the pointer. Moving through a closed menu with the keys
+          // changes the value at every step, which is not yet a choice;
+          // Enter or leaving the cell makes it one.
+          onEditorChange(ed) {
+            if (SELECT_KEYS.includes(ed.lastKey)) return
+            this.finish(ed, true, true)
+          },
+
+          onEditorBlur(ed) {
+            // Leaving the window is not leaving the cell.
+            if (!document.hasFocus()) return
+            // Focus is on its way to somewhere else: nothing pulls it back.
+            // The editor is taken out of the cell once focus has arrived,
+            // as Tab goes on from where the editor stands.
+            setTimeout(() => this.finish(ed, true, false), 0)
+          },
+
+          // Ends an edit: saves the value if it has changed, after asking
+          // when the column has a question, or gives it up. `refocus` puts
+          // focus on the cell, for Enter and Escape; after a blur it is left
+          // where the person has put it.
+          finish(ed, save, refocus) {
+            if (this.editing !== ed || ed.asking) return
+            if (!ed.cell.isConnected) { this.editing = null; return }
+            if (save && ed.input.value !== ed.old && ed.confirm) {
+              ed.asking = true
+              this.ask(ed.confirm).then(confirmed => {
+                ed.asking = false
+                if (this.editing !== ed) return
+                // Cancel: back in the editor, with what was typed
+                if (confirmed) this.close(ed, true, refocus)
+                else ed.input.focus()
+              })
+            } else {
+              this.close(ed, save, refocus)
+            }
+          },
+
+          close(ed, save, refocus) {
+            const {cell, input, saved} = ed
+            const value = input.value
+            const failed = cell.hasAttribute("aria-invalid")
+            const restore = () => cell.replaceChildren(...saved)
+            this.editing = null
+            cell.removeAttribute("phx-update")
+            if (save && value !== ed.old) {
+              // shows what was typed until the server has answered
+              const option = ed.type === "enum" && input.selectedOptions[0]
+              cell.replaceChildren(document.createTextNode(option ? option.textContent : value))
+              this.save(cell, value, ed.old, restore)
+            } else {
+              // given up, or back at the value the record has: nothing is
+              // saved, and a failed edit of the cell is given up with it
+              restore()
+              if (failed) this.discard(cell)
+            }
+            // the cell is the grid's tab stop again, unless focus has gone to another cell
+            if (this.activeId === cell.id) cell.tabIndex = 0
+            if (refocus) cell.focus()
+          },
+
+          // A boolean: toggled and saved at once.
+          toggle(cell, template) {
+            const value = this.valueOf(cell) === "true" ? "false" : "true"
+            const old = cell.dataset.saved !== undefined ? cell.dataset.saved : this.valueOf(cell)
+            const commit = () => {
+              // back at the value the record has: the failed edit is given up
+              if (cell.hasAttribute("aria-invalid") && value === old) return this.discard(cell)
+              const saved = Array.from(cell.childNodes)
+              const box = template.content.firstElementChild.cloneNode(true)
+              box.checked = value === "true"
+              cell.replaceChildren(box)
+              this.save(cell, value, old, () => cell.replaceChildren(...saved))
+            }
+            if (!template.dataset.confirm) return commit()
+            this.ask(template.dataset.confirm).then(confirmed => {
+              if (confirmed) commit()
+              cell.focus()
+            })
+          },
+
+          // Sends the value. The answer is a patch of the row, which takes
+          // `aria-busy` away with everything else this hook put into the
+          // cell. Where no patch came, the cell is put back as it was: the
+          // server refused the event, or the record is gone, and then the
+          // cell is marked here.
+          save(cell, value, old, restore) {
+            cell.setAttribute("aria-busy", "true")
+            const payload = {row: this.rowKey(cell), column: this.columnOf(cell), value}
+            this.pushEventTo(this.el, "save", payload, reply => {
+              if (!cell.isConnected || !cell.hasAttribute("aria-busy")) return
+              cell.removeAttribute("aria-busy")
+              if (reply && reply.error) this.mark(cell, value, old, reply.error, restore)
+              else restore()
+            })
+          },
+
+          // Marks a cell as failed the way the server does, for a record
+          // that is gone.
+          mark(cell, value, old, message, restore) {
+            const template = document.getElementById(`${this.id}-failure`)
+            const error = template.content.firstElementChild.cloneNode(true)
+            error.id = `${cell.id}-error`
+            error.textContent = message
+            if (!this.marked.has(cell)) this.marked.set(cell, restore)
+            const stale = document.getElementById(error.id)
+            if (stale) stale.remove()
+            cell.append(error)
+            cell.setAttribute("aria-invalid", "true")
+            cell.setAttribute("aria-describedby", error.id)
+            cell.dataset.value = value
+            cell.dataset.saved = old
+            this.showMessage()
+          },
+
+          // Gives up the edit of a failed cell: the server puts the row back
+          // with the value the record has.
+          discard(cell) {
+            const restore = this.marked.get(cell)
+            if (restore) {
+              this.marked.delete(cell)
+              cell.removeAttribute("aria-invalid")
+              cell.removeAttribute("aria-describedby")
+              delete cell.dataset.value
+              delete cell.dataset.saved
+              restore()
+              this.showMessage()
+            } else {
+              this.pushEventTo(this.el, "discard", {row: this.rowKey(cell), column: this.columnOf(cell)})
+            }
+          },
+
+          // ---- the dialog --------------------------------------------------
+
+          // Asks a question in the table's dialog and resolves to whether it
+          // was confirmed. Escape closes the dialog as Cancel does. When it
+          // closes, the browser puts focus back where it was.
+          ask(question) {
+            const dialog = document.getElementById(`${this.id}-dialog`)
+            if (!dialog || !dialog.showModal) return Promise.resolve(true)
+            document.getElementById(`${this.id}-dialog-question`).textContent = question
+            dialog.returnValue = ""
+            return new Promise(resolve => {
+              dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), {once: true})
+              // focus goes to the dialog's first control: Cancel, the safe answer
+              dialog.showModal()
+            })
+          },
+
+          // ---- the message of a failed cell ----------------------------------
+
+          onPointer(cell) {
+            if (cell === this.pointed) return
+            this.pointed = cell
+            this.showMessage()
+          },
+
+          // The message of a failed cell is a popover: shown under the cell
+          // while the cell has the pointer or focus, without making the row
+          // higher. The pointer wins, as it says where the person is looking.
+          showMessage() {
+            const failed = cell => cell && cell.isConnected && cell.hasAttribute("aria-invalid") ? cell : null
+            const cell = failed(this.pointed) || failed(this.cellOf(document.activeElement))
+            const message = cell && document.getElementById(cell.getAttribute("aria-describedby"))
+            if (this.message && this.message !== message) {
+              if (this.message.isConnected && this.message.matches(":popover-open")) this.message.hidePopover()
+              this.message = null
+            }
+            if (!message || !message.showPopover) return
+            if (!message.matches(":popover-open")) message.showPopover()
+            const box = cell.getBoundingClientRect()
+            message.style.top = `${box.bottom + 2}px`
+            message.style.left = `${Math.max(0, box.left)}px`
+            this.message = message
           }
         }
       </script>
@@ -727,6 +1252,64 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # What a cell of an editable column is edited with: the native control of
+  # its cell type, without a name or a form, as the hook reads its value and
+  # sends it. It takes the place of the cell's text, so it has the text's
+  # size and no border of its own; the cell shows the focus.
+  attr :column, :map, required: true
+  attr :allow_nil?, :boolean, required: true
+
+  # Text is edited in a textarea, so that text of several lines keeps its
+  # lines. It is one line high until the text needs more.
+  defp editor(%{column: %{editor: :text}} = assigns) do
+    ~H"""
+    <textarea
+      rows="1"
+      aria-label={@column.label}
+      class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none"
+    ></textarea>
+    """
+  end
+
+  defp editor(%{column: %{editor: :boolean}} = assigns) do
+    ~H"""
+    <input
+      type="checkbox"
+      tabindex="-1"
+      aria-label={@column.label}
+      class="checkbox checkbox-xs pointer-events-none"
+    />
+    """
+  end
+
+  defp editor(%{column: %{editor: :enum}} = assigns) do
+    ~H"""
+    <select
+      aria-label={@column.label}
+      class="block h-5 w-full bg-transparent p-0 text-sm outline-none"
+    >
+      <option :if={@allow_nil?} value=""></option>
+      <option :for={{choice, label} <- @column.values} value={choice}>{label}</option>
+    </select>
+    """
+  end
+
+  defp editor(assigns) do
+    ~H"""
+    <input
+      type={input_type(@column.editor)}
+      step={input_step(@column.editor)}
+      aria-label={@column.label}
+      class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"
+    />
+    """
+  end
+
+  # A choice that can be empty offers the empty choice.
+  defp allow_nil?(resource, column) do
+    Ash.Resource.Info.attribute(resource, column.name).allow_nil?
+  end
+
   defp operator_text(operator), do: Text.t(String.to_existing_atom("operator_#{operator}"))
 
   # The native input of each cell type that is filtered by a typed value.
@@ -754,6 +1337,86 @@ defmodule AshTable.Live.TableComponent do
   defp sort_mark({name, :asc}, %{name: name}), do: " ▲"
   defp sort_mark({name, :desc}, %{name: name}), do: " ▼"
   defp sort_mark(_sort, _column), do: ""
+
+  # What a cell says about editing, for people and for the hook:
+  #
+  #   * `aria-readonly` on a cell that cannot be edited, when the table
+  #     offers editing at all;
+  #   * `data-value` where the editor's value is not the text the cell shows:
+  #     a choice and a boolean, and a cell whose save failed, which shows
+  #     what was typed;
+  #   * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
+  #     naming the action's message, and `data-saved`, the value the record
+  #     still has, which the hook compares with what is typed next.
+  defp cell_attributes(false, _id, _column, _row), do: []
+
+  defp cell_attributes(true, id, column, row) do
+    value = Map.get(row.record, column.name)
+
+    case {editable?(column, value), row.failed[column.name]} do
+      {false, _failure} ->
+        [{"aria-readonly", "true"}]
+
+      {true, {typed, _message}} ->
+        [
+          {"aria-invalid", "true"},
+          {"aria-describedby", "#{id}-error"},
+          {"data-value", typed},
+          {"data-saved", Format.input(column, value)}
+        ]
+
+      {true, nil} when column.editor in [:boolean, :enum] ->
+        [{"data-value", Format.input(column, value)}]
+
+      {true, nil} ->
+        []
+    end
+  end
+
+  # A cell whose save failed shows what was typed, as the cell would show it
+  # had it been saved, and holds the action's message. The message is a
+  # popover the hook opens while the cell has focus or the pointer, so that
+  # the row keeps its height; it is in the text colour on the page's
+  # background, as the error colour is too faint for small text.
+  defp cell_content(id, column, row) do
+    value = Map.get(row.record, column.name)
+
+    case editable?(column, value) && row.failed[column.name] do
+      {typed, message} ->
+        {:safe, shown} = typed |> typed(column) |> Phoenix.HTML.html_escape()
+        {:safe, message} = failure_message("#{id}-error", message)
+        {:safe, [shown, message]}
+
+      _none ->
+        cell(column, value)
+    end
+  end
+
+  defp failure_message(id, message) do
+    {:safe,
+     [
+       "<span",
+       if(id, do: [~s( id="), escape(id), ~s(")], else: []),
+       ~s( popover="manual" class="inset-auto m-0 max-w-xs rounded border border-error bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">),
+       escape(message),
+       "</span>"
+     ]}
+  end
+
+  # What was typed into an editor, as its cell shows it.
+  defp typed("true", %{editor: :boolean} = column), do: cell(column, true)
+  defp typed("false", %{editor: :boolean} = column), do: cell(column, false)
+
+  defp typed(typed, %{editor: :enum, values: values}) do
+    Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
+  end
+
+  defp typed(typed, _column), do: typed
+
+  # Whether a person can edit this cell: its column is editable, and the
+  # field is not hidden from them on this row.
+  defp editable?(_column, %Ash.ForbiddenField{}), do: false
+  defp editable?(column, _value), do: column.editable?
 
   # A field the actor may not see on this row looks empty and is announced.
   defp cell(_column, %Ash.ForbiddenField{}) do

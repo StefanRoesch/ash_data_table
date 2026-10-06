@@ -6,17 +6,28 @@ defmodule AshTable.Resource.Column do
   defaults filled in, is an `AshTable.Model.Column`.
   """
 
-  defstruct [:name, :label, :sortable?, :filterable?, :__identifier__, :__spark_metadata__]
+  defstruct [
+    :name,
+    :label,
+    :sortable?,
+    :filterable?,
+    :update_action,
+    :confirm,
+    :__identifier__,
+    :__spark_metadata__
+  ]
 
   @type t :: %__MODULE__{
           name: atom,
           label: String.t() | nil,
           sortable?: boolean | nil,
-          filterable?: boolean | nil
+          filterable?: boolean | nil,
+          update_action: atom | false | nil,
+          confirm: String.t() | nil
         }
 
-  # Later slices add their options here (`update_action`, `confirm`,
-  # `component`); each needs a struct field above and a key below.
+  # Later slices add their options here (`component`); each needs a struct
+  # field above and a key below.
   @schema [
     name: [
       type: :atom,
@@ -36,6 +47,15 @@ defmodule AshTable.Resource.Column do
       type: :boolean,
       doc:
         "Set to `false` to leave this column without a filter. Defaults to what the resource allows; it cannot switch filtering on."
+    ],
+    update_action: [
+      type: {:or, [{:literal, false}, :atom]},
+      doc:
+        "The update action an inline edit of this column runs, with the column's attribute as its only input. `false` makes the column read-only. Defaults to the table's `update_action`."
+    ],
+    confirm: [
+      type: :string,
+      doc: "A question asked before an inline edit of this column is saved."
     ]
   ]
 

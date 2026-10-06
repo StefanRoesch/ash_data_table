@@ -37,7 +37,14 @@ defmodule AshTable.Text do
     clear_filters: "Clear filters",
     one_result: "1 result",
     results: "%{count} results",
-    results_updated: "Results updated"
+    results_updated: "Results updated",
+    record_gone: "This record is no longer available.",
+    error_on_field: "%{field}: %{message}",
+    edit_not_allowed: "You are not allowed to change this.",
+    save_failed: "This could not be saved.",
+    not_saved: "%{column} was not saved: %{message}",
+    cancel: "Cancel",
+    confirm: "Confirm"
   }
 
   @type key ::
@@ -75,6 +82,13 @@ defmodule AshTable.Text do
           | :one_result
           | :results
           | :results_updated
+          | :record_gone
+          | :error_on_field
+          | :edit_not_allowed
+          | :save_failed
+          | :not_saved
+          | :cancel
+          | :confirm
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()

@@ -19,10 +19,35 @@ defmodule AshTable.Model.Column do
       It is empty for a column without a filter: one the resource does not
       allow to be filtered, one of cell type `:other`, or one the block
       switched off. See `AshTable.Model.Operator`.
+    * `editable?` says whether a person can edit the cells of this column in
+      principle: the column is an attribute, the attribute is writable, an
+      update action accepts it and its cell type has an editor. Whether one
+      cell can be edited also depends on the record and on who is asking.
+    * `update_action` is the update action an edit of this column runs, with
+      the column's attribute as its only input: the column's own, else the
+      table's. `nil` for a column that is not editable.
+    * `editor` is what a cell of this column is edited with: `:text`,
+      `:number`, `:boolean`, `:date`, `:datetime` or `:enum`. `nil` for a
+      column that is not editable.
+    * `confirm` is the question asked before an edit of this column is saved,
+      or `nil` when none is.
   """
 
   @enforce_keys [:name, :kind, :label, :cell_type, :sortable?, :operators]
-  defstruct [:name, :kind, :label, :type, :cell_type, :values, :sortable?, :operators]
+  defstruct [
+    :name,
+    :kind,
+    :label,
+    :type,
+    :cell_type,
+    :values,
+    :sortable?,
+    :operators,
+    :update_action,
+    :editor,
+    :confirm,
+    editable?: false
+  ]
 
   @type t :: %__MODULE__{
           name: atom,
@@ -32,6 +57,10 @@ defmodule AshTable.Model.Column do
           cell_type: :text | :number | :boolean | :date | :datetime | :enum | :other,
           values: [{atom | String.t(), String.t()}] | nil,
           sortable?: boolean,
-          operators: [AshTable.Model.Operator.t()]
+          operators: [AshTable.Model.Operator.t()],
+          editable?: boolean,
+          update_action: atom | nil,
+          editor: :text | :number | :boolean | :date | :datetime | :enum | nil,
+          confirm: String.t() | nil
         }
 end

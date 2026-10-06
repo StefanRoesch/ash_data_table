@@ -60,27 +60,40 @@ defmodule Demo.Tracker.Task do
   # default sort are those of the primary read action. Every column the
   # resource allows to be filtered has a filter, unless switched off here.
   table do
+    # Inline editing: every column whose attribute `update` accepts can be
+    # edited in place, unless the column says otherwise.
+    update_action :update
+
     # text
     column :title
 
-    # enums
+    # enums. A change of state asks first.
     column :status do
       label "State"
+      confirm "Change the state of this task?"
     end
 
-    column :priority
-    # numbers: one that is always there and one that can be empty
-    column :progress
+    # edited through an action of its own
+    column :priority do
+      update_action :reprioritise
+    end
+
+    # numbers: one that is always there and one that can be empty. Progress
+    # has its own action, which also starts a task that is still to do.
+    column :progress do
+      update_action :set_progress
+    end
+
     column :estimate_hours
     # a boolean
     column :billable?
     # a date and a datetime, both of which can be empty
     column :due_on
     column :completed_at
-    # an expression calculation: sortable and filterable
+    # an expression calculation: sortable and filterable, never editable
     column :overdue?
 
-    # an aggregate: sortable and filterable
+    # an aggregate: sortable and filterable, never editable
     column :comment_count do
       label "Comments"
     end
@@ -88,7 +101,11 @@ defmodule Demo.Tracker.Task do
     # a calculation computed in Elixir: the resource can neither sort nor
     # filter by it
     column :headline
-    column :external_ref
+
+    # `update` accepts it, the table does not offer it
+    column :external_ref do
+      update_action false
+    end
 
     # long text, with sorting and filtering switched off
     column :description do
@@ -96,6 +113,7 @@ defmodule Demo.Tracker.Task do
       filterable? false
     end
 
+    # no update action accepts it
     column :inserted_at
   end
 
@@ -181,12 +199,19 @@ defmodule Demo.Tracker.Task do
       ]
     end
 
+    # Leaves a trace of its own, so that it can be told apart from `update`.
     update :reprioritise do
       accept [:priority]
+      change set_attribute(:internal_note, "Reprioritised")
     end
 
+    # Reporting progress on a task that is still to do starts it.
     update :set_progress do
       accept [:progress]
+
+      change set_attribute(:status, :in_progress) do
+        where attribute_equals(:status, :todo)
+      end
     end
 
     # An action with a required argument: it cannot serve inline editing.

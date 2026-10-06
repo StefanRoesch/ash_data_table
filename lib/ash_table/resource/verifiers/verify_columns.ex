@@ -3,6 +3,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   use Spark.Dsl.Verifier
 
   alias AshTable.Model.Operator
+  alias AshTable.Resource.Editing
   alias AshTable.Resource.Reading
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
@@ -44,7 +45,89 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
 
       field ->
         required_argument_errors(column, field, module) ++
-          sortable_errors(column, module) ++ filterable_errors(column, field, module)
+          sortable_errors(column, module) ++
+          filterable_errors(column, field, module) ++
+          update_action_errors(column, field, module) ++
+          confirm_errors(column, field, module)
+    end
+  end
+
+  defp confirm_errors(%{confirm: confirm} = column, field, module) when is_binary(confirm) do
+    case Editing.update_action(module, field, column) do
+      {:ok, _action} ->
+        []
+
+      :none ->
+        [
+          option_error(
+            column,
+            module,
+            :confirm,
+            "`#{column.name}` can never be edited, so `confirm` has no effect. A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
+          )
+        ]
+    end
+  end
+
+  defp confirm_errors(_column, _field, _module), do: []
+
+  # A column's own update action has to be able to save an edit of it. The
+  # table-level action is not held to that: what it cannot save is read-only.
+  defp update_action_errors(%{update_action: name}, _field, _module) when name in [nil, false],
+    do: []
+
+  defp update_action_errors(column, %Ash.Resource.Calculation{}, module) do
+    [
+      option_error(
+        column,
+        module,
+        :update_action,
+        "`#{column.name}` is a calculation. Only an attribute can be edited, so a calculation column cannot have an `update_action`."
+      )
+    ]
+  end
+
+  defp update_action_errors(column, %Ash.Resource.Aggregate{}, module) do
+    [
+      option_error(
+        column,
+        module,
+        :update_action,
+        "`#{column.name}` is an aggregate. Only an attribute can be edited, so an aggregate column cannot have an `update_action`."
+      )
+    ]
+  end
+
+  defp update_action_errors(%{update_action: name} = column, field, module) do
+    case Editing.action(module, name) do
+      {:error, reason} ->
+        [option_error(column, module, :update_action, Editing.message(reason))]
+
+      {:ok, action} ->
+        accept_errors(column, field, action, module) ++
+          for argument <- Editing.required_arguments(action) do
+            option_error(
+              column,
+              module,
+              :update_action,
+              "The update action `#{name}` requires the argument `#{argument}`. An inline edit supplies only the cell's value, so the action behind a column must not need anything else."
+            )
+          end
+    end
+  end
+
+  defp accept_errors(column, field, action, module) do
+    if Editing.accepts?(action, field) do
+      []
+    else
+      [
+        option_error(
+          column,
+          module,
+          :update_action,
+          "The update action `#{action.name}` does not accept `#{column.name}`, so it cannot save an edit of this column."
+        )
+      ]
     end
   end
 
@@ -107,6 +190,15 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
     Ash.Resource.Info.attribute(dsl, name) ||
       Ash.Resource.Info.calculation(dsl, name) ||
       Ash.Resource.Info.aggregate(dsl, name)
+  end
+
+  defp option_error(column, module, option, message) do
+    DslError.exception(
+      module: module,
+      path: [:table, :column, column.name, option],
+      message: message,
+      location: Spark.Dsl.Entity.property_anno(column, option)
+    )
   end
 
   defp error(column, module, message) do

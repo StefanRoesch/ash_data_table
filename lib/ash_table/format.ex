@@ -2,7 +2,9 @@ defmodule AshTable.Format do
   @moduledoc false
   # How a cell's value is shown: one clause of `format/2` per cell type.
   # Text, numbers, dates and datetimes are shown in the format of the matching
-  # native HTML input. Parsing joins this module with inline editing.
+  # native HTML input, so what a cell shows is what its editor holds
+  # (`input/2`). Nothing is parsed here: what a person types goes to the
+  # resource's action as typed.
 
   alias AshTable.Model.Column
   alias AshTable.Text
@@ -44,6 +46,21 @@ defmodule AshTable.Format do
   end
 
   def format(%Column{}, value), do: other(value)
+
+  @doc """
+  The text the editor of a cell holds for `value`: what the cell shows, the
+  value itself for a choice, and `"true"` or `"false"` for a boolean. Nil is
+  empty.
+  """
+  @spec input(Column.t(), term) :: String.t()
+  def input(%Column{cell_type: :boolean}, value) when is_boolean(value), do: to_string(value)
+
+  def input(%Column{cell_type: :enum}, value) when is_atom(value) and not is_nil(value),
+    do: Atom.to_string(value)
+
+  def input(%Column{cell_type: :enum}, value) when is_binary(value), do: value
+  def input(%Column{cell_type: cell_type}, _value) when cell_type in [:boolean, :enum], do: ""
+  def input(%Column{} = column, value), do: format(column, value)
 
   # Read-only text for everything without a cell type of its own.
   defp other(value) when is_binary(value) do

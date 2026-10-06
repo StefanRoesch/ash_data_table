@@ -32,6 +32,7 @@ defmodule AshTable.MixProject do
   defp deps do
     [
       {:ash, "~> 3.34"},
+      {:ash_phoenix, "~> 2.3"},
       {:spark, "~> 2.7"},
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.2"}

@@ -17,6 +17,15 @@ defmodule AshTable.Model do
   them. Once one `column` is declared, the columns are exactly the declared
   ones in the declared order. Calculations and aggregates appear only when
   named.
+
+  ## Editing
+
+  A column is editable in principle when it is an attribute, the attribute is
+  writable, its cell type has an editor, and an update action can save it:
+  the column's own `update_action`, else the table's, which accepts the
+  attribute and has no required argument without a default. The column then
+  carries that action, its editor and the question of its `confirm`. With no
+  `update_action` at either level nothing is editable.
   """
 
   alias Ash.Resource.Info
@@ -24,6 +33,7 @@ defmodule AshTable.Model do
   alias AshTable.Model.Column
   alias AshTable.Model.Operator
   alias AshTable.Model.Pagination
+  alias AshTable.Resource.Editing
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Reading
 
@@ -73,6 +83,27 @@ defmodule AshTable.Model do
       pagination: pagination,
       columns: columns
     }
+  end
+
+  @doc """
+  The fields of the table's columns that are not on a record unless asked
+  for: its calculations and aggregates.
+  """
+  @spec loads(t) :: [atom]
+  def loads(%__MODULE__{columns: columns}) do
+    for %{kind: kind, name: name} <- columns, kind in [:calculation, :aggregate], do: name
+  end
+
+  @doc """
+  What a field of the resource is called in this table: the label of its
+  column, or its humanised name when the table has no column for it.
+  """
+  @spec field_label(t, atom) :: String.t()
+  def field_label(%__MODULE__{columns: columns}, name) when is_atom(name) do
+    case Enum.find(columns, &(&1.name == name)) do
+      nil -> humanize(name)
+      column -> column.label
+    end
   end
 
   defp ensure_table!(resource) do
@@ -136,7 +167,17 @@ defmodule AshTable.Model do
     {type, constraints} = CellType.type(resource, field)
     {cell_type, values} = CellType.classify(type, constraints)
 
+    update_action =
+      case Editing.update_action(resource, field, declared) do
+        {:ok, name} -> name
+        :none -> nil
+      end
+
     %Column{
+      editable?: not is_nil(update_action),
+      update_action: update_action,
+      editor: update_action && cell_type,
+      confirm: update_action && declared && declared.confirm,
       name: field.name,
       kind: kind(field),
       label: (declared && declared.label) || humanize(field.name),

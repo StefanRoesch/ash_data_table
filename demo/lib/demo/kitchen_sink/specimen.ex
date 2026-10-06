@@ -11,7 +11,6 @@ defmodule Demo.KitchenSink.Specimen do
     domain: Demo.KitchenSink,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    # No `table` block: the table shows the public attributes.
     extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
@@ -72,6 +71,13 @@ defmodule Demo.KitchenSink.Specimen do
 
   resource do
     plural_name :specimens
+  end
+
+  # No `column`: the table shows the public attributes. Every one of them
+  # that `update` accepts and whose type has an editor can be edited in
+  # place; the others are read-only beside them.
+  table do
+    update_action :update
   end
 
   actions do

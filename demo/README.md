@@ -55,17 +55,18 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations; offset pages of 25. Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations; offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
 | http://localhost:4478/projects | `Project` | no block: the public attributes; refused outright for nobody |
 | http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count |
 | http://localhost:4478/labels | `Label` | no pagination: every record |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false` |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes |
-| http://localhost:4478/specimens | `Specimen` | no block: how every built-in type is shown, and the filter each gets by default. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
+| http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 
 The table tests are in `test/demo_web/tables/`: LiveView tests that open
 these pages and click through them as each of the actors. Filtering is in
-`task_filter_test.exs` and `specimen_filter_test.exs`.
+`task_filter_test.exs` and `specimen_filter_test.exs`, inline editing in
+`task_edit_test.exs` and `specimen_edit_test.exs`.
 
 Some filters to try, as the admin:
 
@@ -78,6 +79,43 @@ Some filters to try, as the admin:
   — a calculation and an aggregate
 - http://localhost:4478/specimens?specimen[f][a_ci_string]=ALPHA — a
   `:ci_string` finds `Alpha`, `alpha` and `ALPHA`
+
+### Editing on `/tasks`
+
+Enter or F2 on a cell starts editing, as does typing or a double click;
+Enter or leaving the cell saves, Escape gives up.
+
+| Column | Edited as | Through |
+| --- | --- | --- |
+| `title`, `description` | text; Shift+Enter makes a new line | the table's `update_action :update` |
+| `status` ("State") | a choice | `update`, after the question of its `confirm`: "Change the state of this task?" |
+| `priority` | a choice | its own action, `reprioritise` |
+| `progress` | a number | its own action, `set_progress`, which also starts a task that is still to do: its state changes in the same row |
+| `estimate_hours` | a number | `update`. Empty it to see nil saved |
+| `billable?` | a boolean: Enter toggles and saves | `update` |
+| `due_on`, `completed_at` | a date, a datetime | `update` |
+| `external_ref` | read-only | `update` accepts it, the column says `update_action false` |
+| `overdue?`, `comment_count`, `headline`, `inserted_at` | read-only | a calculation, an aggregate, and an attribute no action accepts |
+
+`reassign`, the action with a required argument, cannot be behind a column:
+naming it as a column's `update_action` is reported when the resource is
+compiled.
+
+Saves that fail, to try:
+
+- as anyone: a `title` shorter than 3 characters, or a `progress` above 100:
+  the action's message on the cell, which keeps what was typed. Escape on the
+  cell restores the saved value
+- set the state of a task with progress below 100 to "Done": refused because
+  of another field, shown on the state cell as "Progress: must be 100 when
+  the task is done"
+- as the viewer: any edit is refused, "You are not allowed to change this."
+- as the member: the same on a task they neither reported nor are assigned
+  to; their own tasks they can change. On rows where `estimate_hours` is
+  hidden from them, its cell cannot be edited
+
+After a save the row is shown from the action's result: `headline` follows a
+new title, `overdue?` a new due date, without the page being read again.
 
 ## Who you are: the five actors
 
@@ -167,8 +205,10 @@ decide (nobody sees nothing).
 - calculations: `overdue?` (an expression), `headline` (a module, computed in
   Elixir), `due_within?` (needs the argument `days`)
 - update actions accepting different fields: `update` (most), `reprioritise`
-  (priority), `set_progress` (progress), `reassign` (assignee, and a required
-  argument `reason`), `archive` (nothing); plus `create` and `destroy`
+  (priority; it also leaves "Reprioritised" in the private `internal_note`),
+  `set_progress` (progress; it also moves a task from "To do" to "In
+  progress"), `reassign` (assignee, and a required argument `reason`),
+  `archive` (nothing); plus `create` and `destroy`
 - a validation that fails on another field: a task can only be `done` with
   progress 100
 
@@ -180,7 +220,7 @@ url_encoded_binary, map, map with fields, keyword, tuple, struct, term, module,
 a date range, arrays of strings, integers and an enum, an embedded resource and
 an array of it, a union, a NewType and an `Ash.Type.Enum`, plus `opt_*`
 nil-able variants. It has no tenant, is open to anyone, and paginates by
-offset (20). Left out: `function`, `file` and `vector`, which have no sensible
+offset (20). Its table is edited through `update`, which accepts all of them. Left out: `function`, `file` and `vector`, which have no sensible
 column here (the last needs the pgvector extension).
 
 ## What is private or restricted, and why

@@ -16,7 +16,7 @@ defmodule AshTable.Live.Page do
       the scope (it must implement `Ash.Scope.ToOpts`);
     * otherwise `current_user` is the actor and `current_tenant` the tenant.
 
-  Reads are always authorized.
+  Reads and saves are always authorized.
 
   ## Layout
 

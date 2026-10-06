@@ -53,7 +53,7 @@ defmodule AshTable.Query do
   """
   @spec read(Model.t(), State.t(), [option]) :: {:ok, Page.t()} | {:error, Ash.Error.t()}
   def read(%Model{} = model, %State{} = state, opts \\ []) do
-    read_opts = read_opts(opts)
+    read_opts = reader_opts(opts)
 
     # The sort a person chose goes in before the action's preparations run,
     # so that a sort of the action itself comes second, as a tie-breaker.
@@ -62,7 +62,7 @@ defmodule AshTable.Query do
       |> Ash.Query.new()
       |> sort(state.sort)
       |> filter(state.filters)
-      |> Ash.Query.load(loads(model))
+      |> Ash.Query.load(Model.loads(model))
       |> Ash.Query.for_read(model.read_action, %{}, read_opts)
 
     case Ash.read(query, [page: page_opts(model, state)] ++ read_opts) do
@@ -71,7 +71,9 @@ defmodule AshTable.Query do
     end
   end
 
-  defp read_opts(opts) do
+  @doc "Who is asking, as the options of an Ash call: scope, or actor and tenant, and `authorize?`."
+  @spec reader_opts([option]) :: keyword
+  def reader_opts(opts) do
     context =
       case opts[:scope] do
         nil -> Keyword.take(opts, [:actor, :tenant])
@@ -98,10 +100,6 @@ defmodule AshTable.Query do
         {name, Map.new([Operator.to_ash(operator, value)])}
       end)
     )
-  end
-
-  defp loads(model) do
-    for %{kind: kind, name: name} <- model.columns, kind in [:calculation, :aggregate], do: name
   end
 
   defp page_opts(%{pagination: %{strategy: :none}}, _state), do: false

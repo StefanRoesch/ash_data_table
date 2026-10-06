@@ -12,7 +12,9 @@ defmodule AshTable do
 
   The table offers only what the resource offers. Sorting, filtering and
   pagination run on the server through the read action; page size and default
-  sort live on that action.
+  sort live on that action. A cell is edited in place through the update
+  action its column names, with the cell's value as the only input, and the
+  table shows what the action returns.
   """
   use Phoenix.Component
 
@@ -21,8 +23,9 @@ defmodule AshTable do
 
       <AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 
-  The table reads through the resource's read action with authorization on.
-  Pass who is reading as `scope` (an `Ash.Scope`), or as `actor` and `tenant`.
+  The table reads through the resource's read action, and saves through its
+  update actions, with authorization on. Pass who is reading as `scope` (an
+  `Ash.Scope`), or as `actor` and `tenant`.
 
   The table keeps its sort, filters and page itself. To keep them in the
   page's URL instead, so that reload, the back button and shared links work,
@@ -43,7 +46,7 @@ defmodule AshTable do
   attr :scope, :any, default: nil, doc: "An `Ash.Scope` carrying actor and tenant."
   attr :actor, :any, default: nil, doc: "The actor, used when no `scope` is given."
   attr :tenant, :any, default: nil, doc: "The tenant, used when no `scope` is given."
-  attr :authorize?, :boolean, default: true, doc: "Whether reads are authorized."
+  attr :authorize?, :boolean, default: true, doc: "Whether reads and saves are authorized."
 
   attr :url, :string,
     default: nil,

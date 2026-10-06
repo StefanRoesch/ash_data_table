@@ -459,4 +459,98 @@ defmodule AshTable.ModelTest do
       end
     end
   end
+
+  describe "inline editing" do
+    defp edited_through(resource) do
+      for column <- Model.build(resource).columns,
+          column.editable?,
+          do: {column.name, column.update_action}
+    end
+
+    test "nothing is editable without an `update_action`" do
+      assert edited_through(AshTable.Test.Issue) == []
+      assert Enum.all?(Model.build(AshTable.Test.Issue).columns, &is_nil(&1.update_action))
+    end
+
+    test "a table-level `update_action` makes the attributes it accepts editable through it" do
+      edited = edited_through(AshTable.Test.Editing)
+
+      for name <- [:title, :email, :visits, :weight, :active, :due_on, :seen_at, :status, :size] do
+        assert edited[name] == :update
+      end
+    end
+
+    test "a table-level `update_action` applies to the default set of columns too" do
+      assert edited_through(AshTable.Test.Editing.Defaults) == [title: :update]
+    end
+
+    test "a column-level `update_action` wins over the table's" do
+      assert edited_through(AshTable.Test.Editing)[:price] == :reprice
+    end
+
+    test "`update_action false` makes a column read-only" do
+      refute Keyword.has_key?(edited_through(AshTable.Test.Editing), :slug)
+    end
+
+    test "an attribute the table's action does not accept is read-only" do
+      refute Keyword.has_key?(edited_through(AshTable.Test.Editing), :notes)
+      refute Keyword.has_key?(edited_through(AshTable.Test.Editing), :id)
+    end
+
+    test "an attribute that is not writable, a calculation and an aggregate are read-only" do
+      edited = edited_through(AshTable.Test.Editing)
+
+      refute Keyword.has_key?(edited, :locked)
+      refute Keyword.has_key?(edited, :shouted_title)
+      refute Keyword.has_key?(edited, :comment_count)
+    end
+
+    test "an accepted attribute of a type without an editor is read-only" do
+      edited = edited_through(AshTable.Test.Editing)
+
+      refute Keyword.has_key?(edited, :tags)
+      refute Keyword.has_key?(edited, :settings)
+    end
+
+    test "a table-level action with a required argument makes no column editable" do
+      assert edited_through(AshTable.Test.Editing.NeedsArgument) == []
+    end
+
+    test "an editable column's editor follows its cell type" do
+      editors =
+        for column <- Model.build(AshTable.Test.Editing).columns,
+            column.editable?,
+            do: {column.name, column.editor}
+
+      assert editors == [
+               title: :text,
+               email: :text,
+               visits: :number,
+               weight: :number,
+               price: :number,
+               active: :boolean,
+               due_on: :date,
+               seen_at: :datetime,
+               status: :enum,
+               size: :enum
+             ]
+    end
+
+    test "a column that is not editable has no editor" do
+      for column <- Model.build(AshTable.Test.Editing).columns, not column.editable? do
+        assert is_nil(column.editor)
+      end
+
+      assert Enum.all?(Model.build(AshTable.Test.Issue).columns, &is_nil(&1.editor))
+    end
+
+    test "a column carries the question its block asks before saving" do
+      confirms =
+        for column <- Model.build(AshTable.Test.Editing).columns,
+            column.confirm,
+            do: {column.name, column.confirm}
+
+      assert confirms == [price: "Change the price?"]
+    end
+  end
 end

@@ -8,14 +8,15 @@ Add the extension to a resource, optionally describe the table in a
 `table do … end` block, and mount it with one line in the router. You write
 no HEEx.
 
-> **This is an early version.** It reads, sorts, filters and pages. Inline
-> editing, the authorization states, nested tables and row actions are not
-> built yet, and the package is not on Hex.
+> **This is an early version.** It reads, sorts, filters, pages and edits
+> cells in place. The authorization states (columns and cells that adapt to
+> who is looking), nested tables and row actions are not built yet, and the
+> package is not on Hex.
 
 ## Install
 
-Requires Elixir 1.17, Ash 3.34, Phoenix 1.8 and LiveView 1.2. There is no
-installer yet; the steps are manual.
+Requires Elixir 1.17, Ash 3.34, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView
+1.2. There is no installer yet; the steps are manual.
 
 1. Add the dependency in `mix.exs`:
 
@@ -104,7 +105,8 @@ end
 
 `/tasks` now shows the resource's public attributes as a table, read through
 its primary read action. Headers sort on click or Enter, the row under them
-filters, and the arrow keys move through the cells.
+filters, and the arrow keys move through the cells. Nothing can be edited
+until the block says so (see [Inline editing](#inline-editing)).
 
 ### Describing the table
 
@@ -112,6 +114,7 @@ filters, and the arrow keys move through the cells.
 table do
   read_action :open        # default: the primary read action
   paginate_with :keyset    # default: offset if the action supports it, else keyset
+  update_action :update    # default: none, and the table is read-only
 
   column :title
 
@@ -128,8 +131,8 @@ end
 - With no `column`, the table shows the resource's public attributes. Once one
   `column` is declared, the table is exactly the declared columns in the
   declared order.
-- Calculations and aggregates appear only when named. A calculation with a
-  required argument cannot be a column.
+- Calculations and aggregates appear only when named, and are read-only. A
+  calculation with a required argument cannot be a column.
 - Only `public?` fields and actions can appear.
 - `sortable?` can only switch sorting off. Whether a column can be sorted is
   the resource's decision; under keyset pagination, calculations and
@@ -204,10 +207,10 @@ results have changed.
 
 ### Who is reading
 
-The mounted page reads with authorization on. It takes actor and tenant from
-the socket assigns your `on_mount` hooks set: `current_scope` if it is
-assigned (it must implement `Ash.Scope.ToOpts`), otherwise `current_user` and
-`current_tenant`.
+The mounted page reads and saves with authorization on. It takes actor and
+tenant from the socket assigns your `on_mount` hooks set: `current_scope` if
+it is assigned (it must implement `Ash.Scope.ToOpts`), otherwise
+`current_user` and `current_tenant`.
 
 ### The URL
 
@@ -240,6 +243,106 @@ It accepts `scope`, or `actor` and `tenant`. An embedded table keeps its
 sort, filters and page itself; pass the page's current URL as `url` to keep
 them in the URL.
 
+### Inline editing
+
+A person changes a cell's value in place, and it is saved for that cell
+alone: the table runs one of the resource's update actions with exactly one
+input, the cell's field, and shows what the action returns. It adds no logic
+of its own: no validation, no conversion of values, no undo.
+
+```elixir
+table do
+  update_action :update            # every column this action accepts becomes editable
+
+  column :title
+
+  column :price do
+    update_action :reprice         # this column's own action
+    confirm "Change the price?"    # asked before the cell is saved
+  end
+
+  column :slug do
+    update_action false            # read-only
+  end
+end
+```
+
+Editing is opt-in: with no `update_action`, at the table or at a column, the
+table is read-only.
+
+**A cell can be edited when all of this holds:**
+
+- its column is an attribute, and the attribute is writable. Calculations and
+  aggregates are never editable;
+- an update action accepts the attribute: the column's own `update_action`,
+  else the table's. The action is `public?` and needs nothing but the cell's
+  value: an action with a required argument without a default cannot save a
+  cell, since the argument is not on the record. (Attributes the action
+  requires are no obstacle; the record has them.);
+- its type has an editor:
+
+  | Column type | Editor |
+  | --- | --- |
+  | `:string`, `:ci_string` | text, in a field that grows with its lines |
+  | `:integer`, `:float`, `:decimal` | number input |
+  | `:boolean` | toggled in place |
+  | `:date` | date input |
+  | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input, UTC, to the second |
+  | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice of the values, and of none when the attribute can be nil |
+
+  Everything else (arrays, maps, embedded resources, uuids, times and so on)
+  is read-only. A NewType is edited as the type it is made of;
+- the field is not hidden from the person on that row by a field policy.
+
+Under a table-level `update_action`, the columns it cannot save are simply
+read-only. A column's own `update_action` that cannot save its column is a
+mistake, reported when the resource is compiled, as is `confirm` on a column
+that can never be edited. When the table offers editing, the cells that
+cannot be edited are marked `aria-readonly`.
+
+**Saving.** Enter saves and keeps focus on the cell; leaving the cell (a
+click elsewhere, Tab) saves too; Escape gives the edit up. A boolean is
+saved when it is toggled, a choice when it is made. A value that is the one
+the cell already shows runs nothing. Empty input is sent as it is: Ash's type
+casting decides what it becomes, usually nil, and the action whether nil is
+allowed.
+
+On the server the record is read again by its primary key, as the person
+saving, so policies and field policies apply as they did when the page was
+read. Then the column's action runs through `AshPhoenix.Form`. The row is
+shown from what the action returns, with the table's calculations and
+aggregates loaded on it; the table's read action is not run again. The row
+stays where it is even if it no longer matches the filters or the sort, until
+the next change of page, sort or filter. While a save is on its way its cell
+is dimmed and `aria-busy`.
+
+A table with editable columns and calculation or aggregate columns needs a
+primary read action, which is what Ash loads them through.
+
+**When a save fails,** nothing is saved and the table shows what the action
+returned:
+
+- the cell keeps what was typed and is marked (`aria-invalid`, a ring in the
+  error colour);
+- the action's message is the cell's description (`aria-describedby`). It
+  appears under the cell while the cell has focus or the pointer, so the row
+  keeps its height, and it is announced to screen readers when it arrives;
+- focus is not pulled back to the cell;
+- an error that is not about the edited field is shown on the same cell: a
+  validation on another field with that field's name in front, a refusal by
+  a policy as "You are not allowed to change this.", a record that has been
+  deleted or can no longer be read as "This record is no longer available.";
+- going back to the cell and pressing Escape restores the saved value and
+  clears the mark. So does saving a value the action accepts.
+
+The table makes no column read-only for a person who may not run its action
+yet (that comes with the authorization states): the cell looks editable, and
+the refusal appears when it is saved.
+
+**Confirm.** A column with `confirm` asks its question in a dialog at the
+moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
+returns to the cell, still in edit mode with what was typed.
+
 ### The keyboard
 
 The grid is one tab stop: Tab enters and leaves it, the arrow keys move
@@ -249,6 +352,23 @@ into the filter; there the arrow keys belong to the input, Enter applies what
 was typed and stays, Escape gives up what was typed and not applied and
 returns to the cell, and Tab moves through the filter's controls and from the
 last one out of the grid.
+
+On a cell that can be edited:
+
+| Key | Effect |
+| --- | --- |
+| Enter, F2 | Start editing; on a boolean, toggle it and save |
+| A character | Start editing with it: text and numbers are replaced by what is typed; a date keeps its value and takes a digit into its first part; a choice opens at the first value starting with the character |
+| Escape | While editing, give the edit up; on a cell whose save failed, restore the saved value |
+| Enter, while editing | Save; focus stays on the cell. In text, Shift+Enter makes a new line |
+| Tab, Shift+Tab, while editing | Save and leave the grid, forwards or backwards |
+| Arrow keys, Home, End, while editing | Belong to the editor |
+| Space | Nothing; reserved for row selection |
+
+A double click starts editing too. In a choice, the menu opens at once;
+Enter or a click chooses and saves, and Escape closes the menu before it
+gives the edit up. A character the editor of a number does not take (a
+letter, say) starts editing without replacing the number.
 
 ## Licence
 
