@@ -75,7 +75,7 @@ defmodule AshTable.MixProject do
       {:ash_phoenix, "~> 2.3"},
       {:spark, "~> 2.7"},
       {:phoenix, "~> 1.8"},
-      {:phoenix_live_view, "~> 1.2"},
+      {:phoenix_live_view, "~> 1.2 and >= 1.2.10"},
       # Every text of the table goes through Gettext (`AshTable.Text`).
       {:gettext, "~> 0.26 or ~> 1.0"},
       # Only `mix ash_table.install` needs it; without it the task is a stub.
