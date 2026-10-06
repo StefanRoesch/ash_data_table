@@ -26,9 +26,16 @@ defmodule AshTable.Model do
   attribute and has no required argument without a default. The column then
   carries that action, its editor and the question of its `confirm`. With no
   `update_action` at either level nothing is editable.
+
+  ## Per person
+
+  All of the above is what the resource and its block say, the same for
+  everybody. What one person can never see or edit is taken out by
+  `for_actor/2`, which asks Ash.
   """
 
   alias Ash.Resource.Info
+  alias AshTable.Model.Access
   alias AshTable.Model.CellType
   alias AshTable.Model.Column
   alias AshTable.Model.Operator
@@ -54,8 +61,8 @@ defmodule AshTable.Model do
   Builds the table model of a resource.
 
   The resource must list the extension `AshTable.Resource`. There are no
-  options yet; the argument is reserved for what later slices need (the actor,
-  for the columns a person may see).
+  options yet. The model is the same whoever asks; `for_actor/2` gives the
+  one a person meets.
 
   Raises `ArgumentError` for a resource without the extension, and for a
   `table` block with a mistake the compile-time checks report.
@@ -84,6 +91,67 @@ defmodule AshTable.Model do
       columns: columns
     }
   end
+
+  @doc """
+  The table model as one person meets it: `model` without what Ash says that
+  person can never see.
+
+  `model` is the model `build/2` gives, which is the same for everybody.
+  `opts` say who is asking, as the options of an Ash call do:
+
+    * `:scope` - an `Ash.Scope`, carrying actor and tenant;
+    * `:actor` and `:tenant` - used when no scope is given. Without an actor
+      nobody is asking: a person who is not logged in;
+    * `:authorize?` - defaults to `true`. With `false` nothing is asked and
+      the model comes back as it is.
+
+  The table adds no rule of its own. It asks Ash, once per call and without
+  reading a record or running a query:
+
+    * A column whose field the person can **never** see through the table's
+      read action is left out (`Ash.can_see_fields/4`). A field that is
+      hidden on some records only keeps its column: whether a cell of it can
+      be seen is known once its record is read, where Ash puts an
+      `Ash.ForbiddenField` in the hidden ones.
+
+    * A column whose update action the person can **never** run is not
+      editable for them: it has no action, no editor and no question
+      (`Ash.can/3`, once per distinct action). An action the person may run
+      on some records only leaves its columns editable: whether one record
+      can be changed is the action's to say when a cell is saved.
+
+  A question Ash cannot answer is taken as "never".
+  """
+  @spec for_actor(t, keyword) :: t
+  def for_actor(%__MODULE__{} = model, opts) do
+    if Keyword.get(opts, :authorize?, true) do
+      hidden =
+        Access.hidden_fields(
+          model.resource,
+          model.read_action,
+          Enum.map(model.columns, & &1.name),
+          opts
+        )
+
+      columns = Enum.reject(model.columns, &(&1.name in hidden))
+
+      forbidden =
+        Access.forbidden_actions(
+          model.resource,
+          columns |> Enum.map(& &1.update_action) |> Enum.reject(&is_nil/1) |> Enum.uniq(),
+          opts
+        )
+
+      %{model | columns: Enum.map(columns, &read_only_if(&1, &1.update_action in forbidden))}
+    else
+      model
+    end
+  end
+
+  defp read_only_if(column, false), do: column
+
+  defp read_only_if(column, true),
+    do: %{column | editable?: false, update_action: nil, editor: nil, confirm: nil}
 
   @doc """
   The fields of the table's columns that are not on a record unless asked

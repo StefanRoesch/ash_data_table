@@ -1297,4 +1297,83 @@ defmodule AshTable.TableBlockTest do
                "The read action `read` does not support offset pagination. It has no pagination."
     end
   end
+
+  describe "on_forbidden" do
+    test "is `:not_found` unless the block says otherwise" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.OnForbiddenDefault do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            defaults [:read]
+          end
+        end
+      end
+
+      assert AshTable.Resource.Info.table_on_forbidden!(
+               AshTable.TableBlockTest.OnForbiddenDefault
+             ) == :not_found
+    end
+
+    test "accepts `:not_found` and `:message`" do
+      for {value, name} <- [not_found: OnForbiddenNotFound, message: OnForbiddenMessage] do
+        module = Module.concat(AshTable.TableBlockTest, name)
+
+        refute_dsl_errors do
+          defmodule module do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              on_forbidden value
+            end
+          end
+        end
+
+        assert AshTable.Resource.Info.table_on_forbidden!(module) == value
+      end
+    end
+
+    test "rejects any other value" do
+      error =
+        assert_raise Spark.Error.DslError, fn ->
+          defmodule Elixir.AshTable.TableBlockTest.OnForbiddenRedirect do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              on_forbidden :redirect
+            end
+          end
+        end
+
+      assert error.path == [:table]
+      assert Exception.message(error) =~ "invalid value for :on_forbidden option"
+      assert Exception.message(error) =~ "expected one of [:not_found, :message]"
+    end
+  end
 end

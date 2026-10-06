@@ -56,8 +56,8 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | URL | Resource | Shows |
 | --- | --- | --- |
 | http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations; offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
-| http://localhost:4478/projects | `Project` | no block: the public attributes; refused outright for nobody |
-| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count |
+| http://localhost:4478/projects | `Project` | no block: the public attributes. Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
+| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false` |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes |
@@ -66,7 +66,12 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 The table tests are in `test/demo_web/tables/`: LiveView tests that open
 these pages and click through them as each of the actors. Filtering is in
 `task_filter_test.exs` and `specimen_filter_test.exs`, inline editing in
-`task_edit_test.exs` and `specimen_edit_test.exs`.
+`task_edit_test.exs` and `specimen_edit_test.exs`, what each actor sees and
+may edit in `task_authorization_test.exs` and `nobody_test.exs`.
+`domain_settings_test.exs` covers the `table` block of a domain; the demo's
+own domains keep the defaults, so it uses two small domains of its own
+(`test/support/guarded_tables.ex`), mounted under `/support` in the test
+environment only.
 
 Some filters to try, as the admin:
 
@@ -109,13 +114,33 @@ Saves that fail, to try:
 - set the state of a task with progress below 100 to "Done": refused because
   of another field, shown on the state cell as "Progress: must be 100 when
   the task is done"
-- as the viewer: any edit is refused, "You are not allowed to change this."
-- as the member: the same on a task they neither reported nor are assigned
-  to; their own tasks they can change. On rows where `estimate_hours` is
-  hidden from them, its cell cannot be edited
+- as the member: an edit of a task they neither reported nor are assigned
+  to is refused on the cell, "You are not allowed to change this."; their own
+  tasks they can change. On rows where `estimate_hours` is hidden from them,
+  its cell cannot be edited
+- as the viewer there is nothing to try: the table offers them no editing
 
 After a save the row is shown from the action's result: `headline` follows a
 new title, `overdue?` a new due date, without the page being read again.
+
+### `/tasks`, actor by actor
+
+Switch the actor at the top right and the same page changes:
+
+| Actor | Rows | Columns | Editing |
+| --- | --- | --- | --- |
+| admin | Acme's 320 tasks | all 14, `External ref` among them | every editable column, on every task |
+| member | Acme's 320 tasks | 13: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved |
+| viewer | Acme's 320 tasks | 13, as the member | none: no cell opens, nothing is marked read-only, there are no editors in the page |
+| outsider | Globex's 80 tasks | 13, as the member | as the member, on Globex's tasks |
+| nobody | none: "No records" | 12: no `External ref` and no `Estimate hours`, which nobody can ever see | none |
+
+A column the actor can never see is left out of the page altogether, and
+http://localhost:4478/tasks?task[sort]=external_ref or
+http://localhost:4478/tasks?task[f][external_ref]=EXT shows them the plain
+page. As the member, filter `Estimate hours` by "greater than 10": only their
+own tasks are found; by "is empty": every task whose estimate is hidden from
+them comes back too, whatever it holds.
 
 ## Who you are: the five actors
 
@@ -123,7 +148,8 @@ There is no login. The switcher at the top right of every page posts to
 `POST /actor`, which stores the chosen user's id in the session under
 `"actor_id"`; choosing "Nobody" removes it. `DemoWeb.Actor` (a plug and an
 `on_mount` hook) turns the session into two assigns, on the conn and on the
-socket, which are the names `ash_table` reads by default:
+socket. They are the names `ash_table` reads by default, and `Demo.Tracker`
+writes them out in its `table` block (the extension `AshTable.Domain`):
 
 - `current_user`: the `Demo.Tracker.User`, or `nil`
 - `current_tenant`: that user's `organization_id`, or `nil`
@@ -249,13 +275,18 @@ and `sensitive?`: sensitivity is not an exposure rule, so it is a column.
 **Field policies on `Task`**
 
 - `external_ref`: admins only (actor only). For everyone else the field is
-  never visible.
+  never visible, and the table leaves its column out.
 - `estimate_hours`: admins, or the task's own assignee (record-dependent). A
-  member sees it on some rows and not on others.
+  member sees it on some rows and not on others; the column stays, with
+  "Not available" in the hidden cells. Nobody is no task's assignee, so for
+  nobody the column is left out as well.
 
 **Elsewhere**
 
 - `Project`'s read is *refused outright* for nobody (a strict policy), where
-  the other resources return nothing. Only admins create or destroy projects.
-- `Comment`: its author or an admin may change it.
+  most resources return nothing. Its table answers 404. Only admins create or
+  destroy projects.
+- `Comment`'s read is refused outright for nobody as well, and its table is
+  declared with `on_forbidden :message`. Its author or an admin may change a
+  comment.
 - `Label`, `User`, `Organization`: only admins write.

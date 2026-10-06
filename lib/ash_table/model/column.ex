@@ -21,8 +21,10 @@ defmodule AshTable.Model.Column do
       switched off. See `AshTable.Model.Operator`.
     * `editable?` says whether a person can edit the cells of this column in
       principle: the column is an attribute, the attribute is writable, an
-      update action accepts it and its cell type has an editor. Whether one
-      cell can be edited also depends on the record and on who is asking.
+      update action accepts it and its cell type has an editor. In a model
+      from `AshTable.Model.for_actor/2` it is also `false` when the person can
+      never run that action. Whether one cell can be edited depends on the
+      record besides.
     * `update_action` is the update action an edit of this column runs, with
       the column's attribute as its only input: the column's own, else the
       table's. `nil` for a column that is not editable.

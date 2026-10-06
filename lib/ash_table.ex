@@ -24,8 +24,20 @@ defmodule AshTable do
       <AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 
   The table reads through the resource's read action, and saves through its
-  update actions, with authorization on. Pass who is reading as `scope` (an
-  `Ash.Scope`), or as `actor` and `tenant`.
+  update actions. Pass who is reading as `scope` (an `Ash.Scope`), or as
+  `actor` and `tenant`; with none of them nobody is logged in. The assign
+  names of `AshTable.Domain` are for mounted tables and play no part here.
+
+  Authorization is on, unless the resource's domain says `authorize? false`
+  (see `AshTable.Domain`) or the table is given `authorize?` itself, which
+  wins over the domain either way.
+
+  What the person may not see or do is left out as on a mounted table (see
+  `AshTable.Live.Page`), with one difference: a table in a page of the host's
+  cannot make that page answer "not found". When the read is refused
+  outright, it renders nothing at all, unless the resource's `table` block
+  says `on_forbidden :message`. What a person can never see or do is asked of
+  Ash when the table is first rendered and whenever its attributes change.
 
   The table keeps its sort, filters and page itself. To keep them in the
   page's URL instead, so that reload, the back button and shared links work,
@@ -46,7 +58,11 @@ defmodule AshTable do
   attr :scope, :any, default: nil, doc: "An `Ash.Scope` carrying actor and tenant."
   attr :actor, :any, default: nil, doc: "The actor, used when no `scope` is given."
   attr :tenant, :any, default: nil, doc: "The tenant, used when no `scope` is given."
-  attr :authorize?, :boolean, default: true, doc: "Whether reads and saves are authorized."
+
+  attr :authorize?, :boolean,
+    default: nil,
+    doc:
+      "Whether reads and saves are authorized. Defaults to the `authorize?` of the resource's domain (see `AshTable.Domain`), which is `true` unless the domain says otherwise."
 
   attr :url, :string,
     default: nil,
@@ -70,6 +86,7 @@ defmodule AshTable do
       authorize?={@authorize?}
       url={@url}
       label={@grid_label}
+      mounted?={false}
     />
     """
   end

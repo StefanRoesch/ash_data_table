@@ -10,11 +10,18 @@ defmodule DemoWeb.HomeLive do
   @resources [
     {Demo.Tracker.Task,
      "The main specimen: every kind of field, action, policy and field policy.",
-     [{"/tasks", "declared columns, offset pages, sortable aggregate and calculation"}]},
+     [
+       {"/tasks",
+        "declared columns, offset pages, sortable aggregate and calculation; " <>
+          "columns and editing differ by who you are"}
+     ]},
     {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
-     [{"/projects", "no table block: the default columns"}]},
-    {Demo.Tracker.Comment, "Keyset pagination only.",
-     [{"/comments", "keyset pages: next and previous"}]},
+     [
+       {"/projects",
+        "no table block: the default columns; for nobody, a page that does not exist"}
+     ]},
+    {Demo.Tracker.Comment, "Keyset pagination only. Its read is refused outright for nobody.",
+     [{"/comments", "keyset pages: next and previous; for nobody, a message (on_forbidden)"}]},
     {Demo.Tracker.Label, "No pagination.",
      [
        {"/labels", "no pagination: every record"},

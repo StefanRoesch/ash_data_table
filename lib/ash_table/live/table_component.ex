@@ -35,6 +35,7 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Model
   alias AshTable.Model.Operator
   alias AshTable.Query
+  alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.State
   alias AshTable.Text
   alias Phoenix.LiveView.JS
@@ -51,6 +52,10 @@ defmodule AshTable.Live.TableComponent do
      socket
      |> stream_configure(:rows, dom_id: & &1.dom_id)
      |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)
+     # Whether the table is a page of its own, which a refused read can turn
+     # into "not found", and whether a refused read has left it with nothing
+     # to show at all.
+     |> assign(mounted?: false, gone?: false)
      # The rows of the page by the key in their DOM id: each one's primary key
      # and row index. What an edit event names is looked up here.
      |> assign(rows: %{})
@@ -71,10 +76,31 @@ defmodule AshTable.Live.TableComponent do
     socket =
       assign(
         socket,
-        Map.take(assigns, [:id, :resource, :scope, :actor, :tenant, :authorize?, :url, :label])
+        Map.take(
+          assigns,
+          [:id, :resource, :scope, :actor, :tenant, :authorize?, :url, :label, :mounted?]
+        )
       )
 
-    model = Model.build(socket.assigns.resource)
+    # Unless the table is told, it authorizes as its resource's domain says.
+    socket =
+      assign(socket,
+        authorize?:
+          case socket.assigns[:authorize?] do
+            nil -> AshTable.Domain.Info.authorize?(socket.assigns.resource)
+            authorize? -> authorize?
+          end
+      )
+
+    # The table as the person asking meets it: without the columns they can
+    # never see, and with the columns they can never edit read-only. Ash is
+    # asked again on every update, which for a table with its state in the
+    # URL is every sort, filter and page change; it costs no query.
+    model =
+      socket.assigns.resource
+      |> Model.build()
+      |> Model.for_actor(reader(socket.assigns))
+
     state = current_state(socket.assigns, model)
 
     {:ok,
@@ -105,7 +131,7 @@ defmodule AshTable.Live.TableComponent do
         socket
 
       is_nil(socket.assigns.read) ->
-        socket |> assign(read: read) |> show(Query.read(model, state, opts))
+        socket |> assign(read: read) |> show(Query.read(model, state, opts), :first)
 
       true ->
         socket
@@ -119,14 +145,16 @@ defmodule AshTable.Live.TableComponent do
 
   @impl true
   def handle_async(:read, {:ok, result}, socket) do
-    {:noreply, socket |> assign(busy?: false) |> show(result)}
+    {:noreply, socket |> assign(busy?: false) |> show(result, :later)}
   end
 
   def handle_async(:read, {:exit, reason}, socket) do
-    {:noreply, socket |> assign(busy?: false) |> show({:error, reason})}
+    {:noreply, socket |> assign(busy?: false) |> show({:error, reason}, :later)}
   end
 
-  defp show(socket, {:ok, %Query.Page{} = page}) do
+  # Shows what a read gave. `read` says which one it was: the `:first` of
+  # this table, done while it is mounted, or a `:later` one.
+  defp show(socket, {:ok, %Query.Page{} = page}, _read) do
     %{id: id, model: model} = socket.assigns
 
     rows =
@@ -142,7 +170,7 @@ defmodule AshTable.Live.TableComponent do
       end)
 
     socket
-    |> assign(page: %{page | records: []}, row_count: length(rows), error: nil)
+    |> assign(page: %{page | records: []}, row_count: length(rows), error: nil, gone?: false)
     |> assign(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
       failed: %{}
@@ -151,12 +179,41 @@ defmodule AshTable.Live.TableComponent do
     |> stream(:rows, Enum.map(rows, &item(id, &1.key, &1.record, &1.rowindex, %{})), reset: true)
   end
 
+  # A read the resource refuses outright. Unless the table is declared with
+  # `on_forbidden :message`, the person is not told that there is a table:
+  # nothing of it is rendered, and a table that is a page of its own answers
+  # as a page that does not exist.
+  defp show(socket, {:error, %Ash.Error.Forbidden{} = error}, read) do
+    case TableInfo.table_on_forbidden!(socket.assigns.resource) do
+      :message -> show_error(socket, error)
+      :not_found -> socket |> show_error(error) |> assign(gone?: true) |> not_found(read)
+    end
+  end
+
+  defp show(socket, {:error, error}, _read), do: show_error(socket, error)
+
   # The error is an alert of its own.
-  defp show(socket, {:error, error}) do
+  defp show_error(socket, error) do
     socket
-    |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false)
+    |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     |> assign(error: error_text(error))
     |> stream(:rows, [], reset: true)
+  end
+
+  # A table placed in a page of the host's cannot make that page disappear:
+  # it renders nothing.
+  defp not_found(%{assigns: %{mounted?: false}} = socket, _read), do: socket
+
+  # While the page is mounted, an exception is how a LiveView says "not
+  # found": Phoenix answers the request with 404, and over a live connection
+  # the browser is told to ask for the page afresh, which gets that answer.
+  defp not_found(_socket, :first), do: raise(AshTable.NotFoundError)
+
+  # Later, the page is on screen. The browser is sent to ask for it afresh,
+  # which raises the exception above; nothing crashes for it.
+  defp not_found(%{assigns: %{url: url}} = socket, :later) do
+    uri = URI.parse(url)
+    redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())
   end
 
   # A row as the stream holds it. `failed` holds, by column name, what was
@@ -366,6 +423,12 @@ defmodule AshTable.Live.TableComponent do
   end
 
   @impl true
+  def render(%{gone?: true} = assigns) do
+    ~H"""
+    <div id={@id} hidden></div>
+    """
+  end
+
   def render(assigns) do
     ~H"""
     <div id={@id} class="ash-table">
@@ -511,7 +574,8 @@ defmodule AshTable.Live.TableComponent do
           </form>
         </dialog>
       </div>
-      <p :if={@error} id={"#{@id}-error"} role="alert" class="py-8 text-center text-sm text-error">
+      <%!-- in the text colour: the error colour is too faint for small text --%>
+      <p :if={@error} id={"#{@id}-error"} role="alert" class="py-8 text-center text-sm font-medium">
         {@error}
       </p>
       <p

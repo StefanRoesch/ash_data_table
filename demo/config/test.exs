@@ -22,6 +22,9 @@ config :demo, DemoWeb.Endpoint,
   secret_key_base: "q1nya0V9UdKcF22JIZnjryNC5yrzNi0WECq9V511Vfmottg1axQjdI5DoU0Tssj+",
   server: false
 
+# Mounts the tables of the resources in test/support (see the router).
+config :demo, test_routes: true
+
 # Print only warnings and errors during test
 config :logger, level: :warning
 

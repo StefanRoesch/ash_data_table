@@ -398,13 +398,14 @@ defmodule DemoWeb.Tables.TaskTableTest do
       assert column(html, "task", "estimate_hours") == ["9.25", "7.5"]
     end
 
-    test "a member is shown a field hidden from them as not available",
-         %{conn: conn, world: world} do
+    # What a person can never see has no column for them: see
+    # `DemoWeb.Tables.TaskAuthorizationTest`.
+    test "a member is not shown a field they can never see", %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       assert column(html, "task", "title") == ["Not mine", "Mine"]
       refute html =~ "EXT-SECRET-1"
-      assert column(html, "task", "external_ref") == ["Not available", "Not available"]
+      assert column(html, "task", "external_ref") == []
     end
 
     test "a member sees a field hidden per record only on their own task",
@@ -419,8 +420,8 @@ defmodule DemoWeb.Tables.TaskTableTest do
          %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
-      assert attribute(html, "#task-table td[id$='-c-external_ref'] > span", "class") ==
-               ["sr-only", "sr-only"]
+      assert attribute(html, "#task-table td[id$='-c-estimate_hours'] > span", "class") ==
+               ["sr-only"]
     end
   end
 end

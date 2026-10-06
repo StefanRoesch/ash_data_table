@@ -52,6 +52,11 @@ defmodule AshTable.Resource do
   behind a column. `confirm` asks a question before a cell of the column is
   saved.
 
+  A person whose read the resource refuses outright is answered as if the
+  table's page did not exist; `on_forbidden :message` tells them that they are
+  not allowed instead. See `AshTable.Live.Page` for everything a table does
+  about what a person may not see or do.
+
   Page size and default sort are not part of the block. They live on the read
   action (`pagination default_limit: …` and `prepare build(sort: …)`).
   """
@@ -108,6 +113,12 @@ defmodule AshTable.Resource do
         type: :atom,
         doc:
           "The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only."
+      ],
+      on_forbidden: [
+        type: {:one_of, [:not_found, :message]},
+        default: :not_found,
+        doc:
+          "What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a \"not allowed\" message in place of the rows."
       ]
     ],
     entities: [@column]

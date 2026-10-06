@@ -553,4 +553,176 @@ defmodule AshTable.ModelTest do
       assert confirms == [price: "Change the price?"]
     end
   end
+
+  describe "for_actor/2: the columns a person sees" do
+    @admin %{id: 1, role: :admin}
+    @member %{id: 2, role: :member}
+    @viewer %{id: 3, role: :viewer}
+
+    setup do
+      %{model: Model.build(AshTable.Test.Guarded)}
+    end
+
+    test "are all of the table's for a person who may see every field", %{model: model} do
+      assert column_names(Model.for_actor(model, actor: @admin)) ==
+               [:title, :secret, :salary, :rating, :flagged, :secret_shouted]
+    end
+
+    test "leave out a field the person can never see, attribute or calculation",
+         %{model: model} do
+      for actor <- [@member, @viewer] do
+        assert column_names(Model.for_actor(model, actor: actor)) ==
+                 [:title, :salary, :rating, :flagged]
+      end
+    end
+
+    test "keep a field the person sees on some records only", %{model: model} do
+      assert :salary in column_names(Model.for_actor(model, actor: @member))
+    end
+
+    test "leave out, for nobody, a field that is only ever seen on a person's own records",
+         %{model: model} do
+      assert column_names(Model.for_actor(model, actor: nil)) == [:title, :rating, :flagged]
+      assert column_names(Model.for_actor(model, [])) == [:title, :rating, :flagged]
+    end
+
+    test "are the same whether the person comes as an actor or in a scope", %{model: model} do
+      scope = %AshTable.Test.Scope{user: @member, tenant: nil}
+
+      assert Model.for_actor(model, scope: scope) == Model.for_actor(model, actor: @member)
+    end
+
+    test "are the same with a tenant, which the checks are given", %{model: model} do
+      assert Model.for_actor(model, actor: @member, tenant: "acme") ==
+               Model.for_actor(model, actor: @member)
+
+      scope = %AshTable.Test.Scope{user: @member, tenant: "acme"}
+      assert Model.for_actor(model, scope: scope) == Model.for_actor(model, actor: @member)
+    end
+
+    test "are all of the table's without authorization", %{model: model} do
+      assert Model.for_actor(model, actor: @viewer, authorize?: false) == model
+      assert Model.for_actor(model, authorize?: false) == model
+    end
+
+    test "are all of the table's for a resource without policies" do
+      model = Model.build(AshTable.Test.Editing)
+
+      assert Model.for_actor(model, actor: nil) == model
+    end
+
+    test "leave the model built from the resource as it was", %{model: model} do
+      Model.for_actor(model, actor: @viewer)
+
+      assert column_names(model) == [:title, :secret, :salary, :rating, :flagged, :secret_shouted]
+      assert model == Model.build(AshTable.Test.Guarded)
+    end
+
+    test "do not ask for a calculation the person cannot see", %{model: model} do
+      assert Model.loads(model) == [:secret_shouted]
+      assert Model.loads(Model.for_actor(model, actor: @member)) == []
+    end
+  end
+
+  describe "for_actor/2: the columns a person can edit" do
+    @admin %{id: 1, role: :admin}
+    @member %{id: 2, role: :member}
+    @viewer %{id: 3, role: :viewer}
+
+    setup do
+      %{model: Model.build(AshTable.Test.Guarded)}
+    end
+
+    defp editable(model), do: for(%{editable?: true} = column <- model.columns, do: column.name)
+
+    test "are all the table lets anyone edit for a person who may always run their actions",
+         %{model: model} do
+      assert editable(model) == [:title, :secret, :salary, :rating, :flagged]
+      assert editable(Model.for_actor(model, actor: @admin)) == editable(model)
+    end
+
+    test "include the columns of an action the person may run on some records only",
+         %{model: model} do
+      # `update` depends on the record for a member; `rate` is never theirs
+      assert editable(Model.for_actor(model, actor: @member)) == [:title, :salary, :flagged]
+    end
+
+    test "leave out the columns of an action the person can never run", %{model: model} do
+      # neither `update` nor `rate` is ever a viewer's; `flag` is anyone's
+      assert editable(Model.for_actor(model, actor: @viewer)) == [:flagged]
+    end
+
+    test "are those of the actions anyone may run when nobody is logged in", %{model: model} do
+      assert editable(Model.for_actor(model, actor: nil)) == [:flagged]
+    end
+
+    test "a column the person cannot edit has no action, no editor and no question",
+         %{model: model} do
+      salary = Enum.find(Model.for_actor(model, actor: @viewer).columns, &(&1.name == :salary))
+
+      assert %{editable?: false, update_action: nil, editor: nil, confirm: nil} = salary
+      # everything else about it is as it was
+      assert %{label: "Salary", cell_type: :number, sortable?: true} = salary
+    end
+
+    test "a column the person can edit keeps its action, its editor and its question",
+         %{model: model} do
+      salary = Enum.find(Model.for_actor(model, actor: @member).columns, &(&1.name == :salary))
+
+      assert %{
+               editable?: true,
+               update_action: :update,
+               editor: :number,
+               confirm: "Change the salary?"
+             } = salary
+    end
+
+    test "are the same whether the person comes as an actor or in a scope", %{model: model} do
+      scope = %AshTable.Test.Scope{user: @viewer, tenant: nil}
+
+      assert editable(Model.for_actor(model, scope: scope)) == [:flagged]
+    end
+
+    test "are all the table lets anyone edit without authorization", %{model: model} do
+      assert editable(Model.for_actor(model, actor: @viewer, authorize?: false)) ==
+               [:title, :secret, :salary, :rating, :flagged]
+    end
+
+    test "are none in a table that lets nobody edit" do
+      model = Model.build(AshTable.Test.Task)
+
+      assert editable(Model.for_actor(model, actor: @admin)) == []
+    end
+  end
+
+  describe "for_actor/2 in a system that has run no policy yet" do
+    # Outside a release, modules are loaded when first used, and Ash asks an
+    # authorizer about fields only if its module is loaded already. A table
+    # opened first thing must not show every column for that. This needs a
+    # system of its own: here, the other tests have long loaded everything.
+    @tag timeout: 120_000
+    test "leaves out the columns a person can never see, the first time it is asked" do
+      code = """
+      model = AshTable.Model.build(AshTable.Test.Guarded)
+      IO.puts("authorizer loaded: \#{:code.is_loaded(Ash.Policy.Authorizer) != false}")
+
+      model
+      |> AshTable.Model.for_actor(actor: %{id: 2, role: :member})
+      |> Map.fetch!(:columns)
+      |> Enum.map(& &1.name)
+      |> inspect()
+      |> IO.puts()
+      """
+
+      {output, 0} =
+        System.cmd("mix", ["run", "--no-compile", "--no-deps-check", "--no-start", "-e", code],
+          env: [{"MIX_ENV", "test"}],
+          stderr_to_stdout: true
+        )
+
+      # the premise: nothing had loaded the authorizer before the table asked
+      assert output =~ "authorizer loaded: false"
+      assert output =~ "[:title, :salary, :rating, :flagged]"
+    end
+  end
 end

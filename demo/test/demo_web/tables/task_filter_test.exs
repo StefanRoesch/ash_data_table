@@ -783,15 +783,15 @@ defmodule DemoWeb.Tables.TaskFilterTest do
       assert text(html, "#task-empty") == "No records"
     end
 
-    test "a field hidden from the reader cannot be searched through its filter",
+    test "a field the reader can never see has no filter to search it through",
          %{conn: conn, world: world} do
       {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
       assert titles(filter(view, "task", "external_ref", v: "SECRET")) == ["Acme plan"]
 
-      {:ok, view, _html} = conn |> log_in(world.member) |> live("/tasks")
-      html = filter(view, "task", "external_ref", v: "SECRET")
+      {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
-      assert titles(html) == []
+      assert attribute(html, "#task-filter-external_ref", "id") == []
+      assert attribute(html, "[name^='filter[external_ref]']", "name") == []
       refute html =~ "EXT-SECRET"
     end
   end

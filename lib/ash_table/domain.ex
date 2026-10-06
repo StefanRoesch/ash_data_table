@@ -1,0 +1,89 @@
+defmodule AshTable.Domain do
+  @moduledoc """
+  The Ash extension that says how the tables of a domain's resources
+  authorize, and where a mounted table finds who is asking.
+
+      defmodule MyApp.Tracker do
+        use Ash.Domain, extensions: [AshTable.Domain]
+
+        table do
+          scope_assign :scope
+          actor_assign :current_account
+          tenant_assign :current_organization
+        end
+      end
+
+  The extension is optional. A domain that does not list it behaves as one
+  that lists it without a block: its tables authorize, and a mounted table
+  (`AshTable.Router.ash_table/3`) reads who is asking from the socket assigns
+  `current_scope`, or `current_user` and `current_tenant`.
+
+  ## Who is asking
+
+  The mounted page of a resource looks at the socket assigns its domain names:
+
+    * the one named by `scope_assign`, when it is assigned and not nil, is
+      passed to Ash as the scope (it must implement `Ash.Scope.ToOpts`);
+    * otherwise the one named by `actor_assign` is the actor and the one named
+      by `tenant_assign` the tenant. An assign that is not there counts as
+      nil: nobody is logged in, there is no tenant.
+
+  The host's `on_mount` hooks set these assigns. A table placed in a page with
+  `AshTable.table/1` is given `scope`, or `actor` and `tenant`, as attributes
+  and does not look at the assign names.
+
+  ## Switching authorization off
+
+  > #### `authorize? false` removes every check {: .warning}
+  >
+  > With `authorize? false` the tables of the domain's resources read and save
+  > without authorization: no policy and no field policy is applied, whoever
+  > is asking and even when nobody is logged in. Every record of every tenant
+  > the read reaches is shown, every declared column is editable, and every
+  > field is visible. Use it only for a domain whose tables sit behind a gate
+  > of the host's own, such as an admin area.
+
+  A table placed with `AshTable.table/1` follows this setting unless it is
+  given `authorize?` itself.
+  """
+
+  @table %Spark.Dsl.Section{
+    name: :table,
+    describe: "How the tables of this domain's resources authorize and find who is asking.",
+    examples: [
+      """
+      table do
+        scope_assign :scope
+        actor_assign :current_account
+        tenant_assign :current_organization
+      end
+      """
+    ],
+    schema: [
+      authorize?: [
+        type: :boolean,
+        default: true,
+        doc:
+          "Whether the tables of this domain's resources authorize. `false` makes them read and save without any policy applied, whoever is asking."
+      ],
+      scope_assign: [
+        type: :atom,
+        default: :current_scope,
+        doc:
+          "The socket assign holding an `Ash.Scope`. When it is assigned and not nil, a mounted table passes it to Ash as the scope."
+      ],
+      actor_assign: [
+        type: :atom,
+        default: :current_user,
+        doc: "The socket assign holding the actor, used when there is no scope."
+      ],
+      tenant_assign: [
+        type: :atom,
+        default: :current_tenant,
+        doc: "The socket assign holding the tenant, used when there is no scope."
+      ]
+    ]
+  }
+
+  use Spark.Dsl.Extension, sections: [@table]
+end

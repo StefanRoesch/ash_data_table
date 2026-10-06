@@ -121,4 +121,35 @@ defmodule DemoWeb.Tables.CommentTableTest do
     assert text(html, "#comment-status") == "Results updated"
     assert attribute(html, "#comment-table", "aria-rowcount") == ["-1"]
   end
+
+  describe "for nobody, whose read the resource refuses outright" do
+    # The table of comments is declared with `on_forbidden :message`.
+    test "the page says that it is not allowed, in place of the rows", %{world: world} do
+      conn = log_in(build_conn(), world.nobody)
+
+      assert html_response(get(conn, "/comments"), 200) =~
+               "You are not allowed to see these records."
+
+      {:ok, _view, html} = live(conn, "/comments")
+
+      assert text(html, "#comment-error") == "You are not allowed to see these records."
+      assert attribute(html, "#comment-error", "role") == ["alert"]
+      assert column(html, "comment", "body") == []
+    end
+
+    test "that is not \"no records\", and offers no way through the pages",
+         %{world: world} do
+      {:ok, _view, html} = build_conn() |> log_in(world.nobody) |> live("/comments")
+
+      assert text(html, "#comment-empty") == nil
+      refute html =~ "No records"
+      assert attribute(html, "#comment-pagination", "id") == []
+    end
+
+    test "the headers are still those anyone would see", %{world: world} do
+      {:ok, _view, html} = build_conn() |> log_in(world.nobody) |> live("/comments")
+
+      assert headers(html, "comment") == ["ID", "Body", "Inserted at", "Task ID", "Author ID"]
+    end
+  end
 end

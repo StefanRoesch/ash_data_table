@@ -319,19 +319,9 @@ defmodule DemoWeb.Tables.TaskEditTest do
       assert stored(task).status == :in_progress
     end
 
-    test "because the person may run no update action shows that on the cell",
-         %{conn: conn, world: world, task: task} do
-      {:ok, view, _html} = conn |> log_in(world.viewer) |> live("/tasks")
-
-      html = save(view, task.id, "title", "The viewer was here")
-
-      assert failure(html, task.id, "title") == %{
-               shown: "The viewer was here",
-               message: "You are not allowed to change this."
-             }
-
-      assert stored(task).title == "Write the report"
-    end
+    # A person who may run no update action is offered no editing, and an
+    # event sent all the same is not run: see
+    # `DemoWeb.Tables.TaskAuthorizationTest`.
 
     test "because the person may not change this record shows that on the cell",
          %{conn: conn, world: world, task: task} do

@@ -10,13 +10,42 @@ defmodule AshTable.Live.Page do
   ## Who is reading
 
   Actor and tenant come from the socket assigns the host's `on_mount` hooks
-  set, by convention:
+  set. Which assigns is said by the resource's domain (`AshTable.Domain`);
+  with nothing said there:
 
     * `current_scope`, when it is assigned and not nil, is passed to Ash as
       the scope (it must implement `Ash.Scope.ToOpts`);
     * otherwise `current_user` is the actor and `current_tenant` the tenant.
+      Neither assigned means nobody is logged in.
 
-  Reads and saves are always authorized.
+  Reads and saves are authorized, unless the domain says `authorize? false`.
+  The table follows the person who mounted the page: a host that changes who
+  is logged in mounts the page again, as a login or logout does.
+
+  ## What a person may not see or do
+
+  The table has no rules of its own; it asks Ash and shows the answer.
+
+    * **Records** the person may not see are not there: Ash filters them out.
+    * **A field the person can never see** has no column for them, and a URL
+      that sorts or filters by it is ignored.
+    * **A field hidden on some records only** keeps its column. Its hidden
+      cells are empty, announced as "Not available", and cannot be edited.
+    * **An update action the person can never run** leaves its columns
+      read-only for them; if that is every one, the table offers no editing.
+      An action that depends on the record leaves cells looking editable, and
+      a refusal is shown on the cell when it is saved.
+    * **A read refused outright** makes the page answer as if it did not
+      exist: `AshTable.NotFoundError` is raised, which Phoenix renders as 404.
+      That holds for a request, for a live navigation to the page (LiveView
+      tells the browser to ask for the page afresh) and for a read that is
+      refused while the page is open (the browser is redirected to the same
+      URL). With `on_forbidden :message` in the resource's `table` block the
+      page stays and says "You are not allowed to see these records."
+
+  Ash is asked what a person can never see or do each time the table reads:
+  when the page is opened and at every change of sort, filter or page. It
+  costs no query.
 
   ## Layout
 
@@ -60,7 +89,16 @@ defmodule AshTable.Live.Page do
     <.in_layout layout={@layout} {layout_assigns(assigns)}>
       <div id={"#{@table.id}-page"}>
         <h1 class="mb-4 text-lg font-semibold">{@page_title}</h1>
-        <AshTable.table id={@table.id} resource={@table.resource} url={@url} {reader(assigns)} />
+        <.live_component
+          module={AshTable.Live.TableComponent}
+          id={@table.id}
+          resource={@table.resource}
+          url={@url}
+          label={@page_title}
+          authorize?={nil}
+          mounted?={true}
+          {reader(@table.resource, assigns)}
+        />
       </div>
     </.in_layout>
     """
@@ -86,10 +124,11 @@ defmodule AshTable.Live.Page do
     """
   end
 
-  defp reader(assigns) do
-    case assigns[:current_scope] do
-      nil -> %{actor: assigns[:current_user], tenant: assigns[:current_tenant]}
-      scope -> %{scope: scope}
+  # Who is asking, from the assigns the resource's domain names.
+  defp reader(resource, assigns) do
+    case AshTable.Domain.Info.reader(resource, assigns) do
+      %{scope: scope} -> %{scope: scope, actor: nil, tenant: nil}
+      %{actor: actor, tenant: tenant} -> %{scope: nil, actor: actor, tenant: tenant}
     end
   end
 

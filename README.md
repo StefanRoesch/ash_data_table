@@ -9,9 +9,9 @@ Add the extension to a resource, optionally describe the table in a
 no HEEx.
 
 > **This is an early version.** It reads, sorts, filters, pages and edits
-> cells in place. The authorization states (columns and cells that adapt to
-> who is looking), nested tables and row actions are not built yet, and the
-> package is not on Hex.
+> cells in place, and adapts its columns and its editing to who is looking.
+> Nested tables and row actions are not built yet, and the package is not on
+> Hex.
 
 ## Install
 
@@ -205,12 +205,87 @@ After each filter change the result is announced to screen readers: the
 number of records when the read action is `countable`, otherwise only that the
 results have changed.
 
-### Who is reading
+### Who is reading, and what they may see and do
 
-The mounted page reads and saves with authorization on. It takes actor and
-tenant from the socket assigns your `on_mount` hooks set: `current_scope` if
-it is assigned (it must implement `Ash.Scope.ToOpts`), otherwise
-`current_user` and `current_tenant`.
+The table has no authorization rules of its own. It passes actor and tenant
+into ordinary Ash calls, asks Ash what the person may see and do, and shows
+the answer. Authorization is on by default.
+
+**Where actor and tenant come from.** The mounted page takes them from the
+socket assigns your `on_mount` hooks set: `current_scope` if it is assigned
+and not nil (it must implement `Ash.Scope.ToOpts`), otherwise `current_user`
+and `current_tenant`. With none of them assigned nobody is logged in, which
+is fine: the table shows what the resource leaves to an anonymous visitor.
+Who may open the page at all is your router's and live session's business.
+
+The names can be changed per domain, with the extension `AshTable.Domain`:
+
+```elixir
+defmodule MyApp.Tracker do
+  use Ash.Domain, extensions: [AshTable.Domain]
+
+  table do
+    scope_assign :scope                    # default :current_scope
+    actor_assign :current_account          # default :current_user
+    tenant_assign :current_organization    # default :current_tenant
+    authorize? true                        # the default
+  end
+end
+```
+
+A domain without the extension behaves as one with these defaults. Add
+`import_deps: [:ash_table]` to `.formatter.exs` for the options.
+
+> **`authorize? false` removes every check.** The tables of that domain's
+> resources then read and save with no policy and no field policy applied,
+> whoever is asking and even when nobody is logged in: every record the read
+> reaches, every column, every declared edit. Use it only for a domain whose
+> tables sit behind a gate of your own, such as an admin area.
+
+**What each restriction looks like.**
+
+| The resource says | The table shows |
+| --- | --- |
+| The person may not see some **records** (a policy that filters) | Those rows are not there, and are not counted. Nothing indicates them. |
+| The read is **refused outright** (a `Forbidden` error, as from an `access_type :strict` policy) | The page answers as if it did not exist: status 404 and your "not found" page. With `on_forbidden :message`, the page stays and says "You are not allowed to see these records." |
+| The person can **never see a field** (a field policy that depends on the actor only) | The column is left out for that person: no header, no filter, no cells. A URL that sorts or filters by it is ignored. |
+| The person sees a field on **some records only** (a field policy with a check on the record) | The column stays. Hidden cells are empty, announced as "Not available", and cannot be edited. |
+| The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. |
+| The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. |
+
+"No records" is only ever shown for a read that succeeded and found nothing.
+
+```elixir
+table do
+  on_forbidden :message     # default :not_found
+end
+```
+
+The 404 is the exception `AshTable.NotFoundError`, which Phoenix renders as
+it renders a missing route. On a live navigation to the page LiveView makes
+the browser ask for the page afresh, and a read that comes to be refused
+while the page is open redirects to the page's own URL; both end at the 404.
+
+Whether a person can never see a field, or never run an action, is asked of
+Ash each time the table reads: when the page is opened, and at every sort,
+filter and page change. Neither question reads a record or runs a query
+(`Ash.can_see_fields/4` and `Ash.can/3`, once per update action). When who is
+logged in changes, mount the page again, as a login or logout does.
+
+**Filtering and sorting by a field that is hidden on some records** stays
+possible, and gives nothing away: Ash treats a hidden value as empty in
+filters and sorts. A filter by a value finds only records whose value the
+person sees; "is empty" also finds every record whose value is hidden; a sort
+puts the hidden ones together with the empty ones.
+
+> **The table refusing to edit a hidden field protects the table only.** A
+> field policy is about reading. When a person is not shown a field on a
+> record, the table does not let them change it there either, but the update
+> action itself would: the same action called through `ash_json_api`,
+> `ash_graphql` or your own code accepts the field from anyone its *policy*
+> allows. If a field must not be changed by people who cannot see it, say so
+> in the resource: an action that does not accept the field, or a policy or
+> validation on the one that does.
 
 ### The URL
 
@@ -239,9 +314,15 @@ The id defaults to the last part of the resource's module name, underscored;
 <AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 ```
 
-It accepts `scope`, or `actor` and `tenant`. An embedded table keeps its
-sort, filters and page itself; pass the page's current URL as `url` to keep
-them in the URL.
+It accepts `scope`, or `actor` and `tenant`; the assign names of the domain
+are for mounted tables only. An embedded table keeps its sort, filters and
+page itself; pass the page's current URL as `url` to keep them in the URL.
+
+It authorizes as its resource's domain says (`authorize?` in `AshTable.Domain`,
+`true` by default); `authorize?={false}` or `authorize?={true}` on the table
+itself wins. Everything in the table above holds for it, with one difference:
+it cannot turn your page into a 404. A read refused outright makes it render
+nothing at all, unless the resource says `on_forbidden :message`.
 
 ### Inline editing
 
@@ -292,7 +373,9 @@ table is read-only.
 
   Everything else (arrays, maps, embedded resources, uuids, times and so on)
   is read-only. A NewType is edited as the type it is made of;
-- the field is not hidden from the person on that row by a field policy.
+- the field is not hidden from the person on that row by a field policy;
+- the person is not someone who can never run the action (see "Who is
+  reading, and what they may see and do").
 
 Under a table-level `update_action`, the columns it cannot save are simply
 read-only. A column's own `update_action` that cannot save its column is a
@@ -335,9 +418,9 @@ returned:
 - going back to the cell and pressing Escape restores the saved value and
   clears the mark. So does saving a value the action accepts.
 
-The table makes no column read-only for a person who may not run its action
-yet (that comes with the authorization states): the cell looks editable, and
-the refusal appears when it is saved.
+A person who can never run a column's action does not get this far: the
+column is read-only for them, and a `save` event sent all the same is not
+run. The refusal on the cell is for an action that depends on the record.
 
 **Confirm.** A column with `confirm` asks its question in a dialog at the
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,

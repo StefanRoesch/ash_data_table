@@ -1,11 +1,16 @@
 defmodule Demo.Tracker.Comment do
-  @moduledoc "A comment on a task. Its primary read is keyset-only."
+  @moduledoc """
+  A comment on a task. Its primary read is keyset-only.
+
+  As with `Demo.Tracker.Project`, its read is refused outright for an
+  anonymous visitor. Its table says so (`on_forbidden :message`), where the
+  one of projects answers as a page that does not exist.
+  """
   use Ash.Resource,
     otp_app: :demo,
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    # No `table` block: the table shows the public attributes.
     extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
@@ -27,6 +32,12 @@ defmodule Demo.Tracker.Comment do
 
   resource do
     plural_name :comments
+  end
+
+  # No `column`: the table shows the public attributes. A person whose read is
+  # refused is told so, in place of the rows.
+  table do
+    on_forbidden :message
   end
 
   actions do
@@ -51,6 +62,12 @@ defmodule Demo.Tracker.Comment do
   end
 
   policies do
+    policy action_type(:read) do
+      description "Refused outright, not filtered, when nobody is logged in."
+      access_type :strict
+      authorize_if actor_present()
+    end
+
     policy action_type(:read) do
       authorize_if expr(organization_id == ^actor(:organization_id))
     end

@@ -36,4 +36,17 @@ defmodule DemoWeb.Router do
       ash_table "/bare/labels", Demo.Tracker.Label, layout: false
     end
   end
+
+  # Tables of resources that exist for the tests only (`test/support`): a
+  # domain that names its own assigns, and one that does not authorize.
+  if Application.compile_env(:demo, :test_routes, false) do
+    scope "/support" do
+      pipe_through :browser
+
+      live_session :support, on_mount: [DemoWeb.Support.Assigns] do
+        ash_table "/guarded-notes", Demo.Support.Guarded.Note, layout: false
+        ash_table "/unguarded-notes", Demo.Support.Unguarded.Note, layout: false
+      end
+    end
+  end
 end

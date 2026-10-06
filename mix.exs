@@ -35,7 +35,10 @@ defmodule AshTable.MixProject do
       {:ash_phoenix, "~> 2.3"},
       {:spark, "~> 2.7"},
       {:phoenix, "~> 1.8"},
-      {:phoenix_live_view, "~> 1.2"}
+      {:phoenix_live_view, "~> 1.2"},
+      # The solver Ash's policies need. Only the test resources have policies;
+      # a host application brings its own.
+      {:simple_sat, "~> 0.1", only: :test}
     ]
   end
 

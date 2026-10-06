@@ -1,0 +1,93 @@
+defmodule AshTable.Model.Access do
+  @moduledoc false
+  # What Ash says a person may see and do, asked before any record is read.
+  # The table adds no rule of its own: both questions go to Ash's own checks,
+  # the ones a host application asks to shape a page (`Ash.can_see_fields/4`
+  # and `Ash.can/3`). Neither reads a record or runs a query.
+
+  @typedoc "Who is asking: the options of `AshTable.Query.read/3` that say so."
+  @type reader :: keyword
+
+  @doc """
+  The fields among `fields` that the person can never see through the read
+  action: on no record, whatever it holds.
+
+  A field whose visibility depends on the record is not among them: the
+  person may see it on some records, and Ash hides it on the others when they
+  are read.
+
+  A question Ash cannot answer counts as "never": the field is left out
+  rather than shown by mistake.
+  """
+  @spec hidden_fields(Ash.Resource.t(), atom, [atom], reader) :: [atom]
+  def hidden_fields(_resource, _read_action, [], _reader), do: []
+
+  def hidden_fields(resource, read_action, fields, reader) do
+    ensure_authorizers_loaded(resource)
+    {actor, opts} = actor_and_opts(reader)
+
+    # `filter_is: true`, the default, is what tells the two kinds of hidden
+    # field apart: a field behind a check on the record counts as visible.
+    case Ash.can_see_fields({resource, read_action}, actor, fields, opts) do
+      {:ok, visible} -> Enum.reject(fields, &Map.get(visible, &1, false))
+      {:error, _error} -> fields
+    end
+  end
+
+  @doc """
+  The update actions among `actions` that the person can never run: on no
+  record, whatever it holds.
+
+  An action the person may run on some records only is not among them:
+  whether it runs on one record is the action's to say when it is run.
+
+  A question Ash cannot answer counts as "never".
+  """
+  @spec forbidden_actions(Ash.Resource.t(), [atom], reader) :: [atom]
+  def forbidden_actions(resource, actions, reader) do
+    ensure_authorizers_loaded(resource)
+    {actor, opts} = actor_and_opts(reader)
+
+    Enum.filter(actions, fn action ->
+      # Asked about the action as such, with no record to look at
+      # (`pre_flight?: false`): a check on the record then has no answer and
+      # Ash says `:maybe`, where a pre-flight check would try it on an empty
+      # record and say no. `run_queries?: false` keeps it to what is known
+      # without the database.
+      case Ash.can(
+             {resource, action},
+             actor,
+             [pre_flight?: false, run_queries?: false, maybe_is: :maybe] ++ opts
+           ) do
+        {:ok, true} -> false
+        {:ok, :maybe} -> false
+        _never_or_unknown -> true
+      end
+    end)
+  end
+
+  # `Ash.can_see_fields/4` asks each authorizer of the resource only if its
+  # module is already loaded (ash 3.34.4: `Ash.Authorizer` tests
+  # `function_exported?/3` without loading it), and takes a module that is not
+  # as "every field is visible". Outside a release modules are loaded on first
+  # use, so a table opened before anything else has run a policy would show
+  # every column.
+  defp ensure_authorizers_loaded(resource) do
+    resource |> Ash.Resource.Info.authorizers() |> Enum.each(&Code.ensure_loaded/1)
+  end
+
+  # Ash's checks take the actor as an argument of its own, and the tenant
+  # among the options. With a scope the actor is the scope's; the scope goes
+  # along for its tenant and context.
+  defp actor_and_opts(reader) do
+    case reader[:scope] do
+      nil ->
+        {reader[:actor], reader |> Keyword.take([:tenant]) |> reject_nil()}
+
+      scope ->
+        {Keyword.get(Ash.Scope.to_opts(scope), :actor), [scope: scope]}
+    end
+  end
+
+  defp reject_nil(opts), do: Enum.reject(opts, fn {_key, value} -> is_nil(value) end)
+end
