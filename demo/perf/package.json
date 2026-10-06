@@ -1,0 +1,15 @@
+{
+  "name": "ash-table-demo-perf",
+  "private": true,
+  "description": "Performance scripts of the ash_table demo: the prototype's measurements, repeated on Postgres. A development tool only.",
+  "type": "module",
+  "scripts": {
+    "setup": "./setup.sh",
+    "measure": "node measure.mjs && node report.mjs",
+    "report": "node report.mjs",
+    "browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.63.0"
+  }
+}

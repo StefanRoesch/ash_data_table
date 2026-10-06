@@ -34,6 +34,9 @@ defmodule Demo.MixProject do
 
   # Specifies which paths to compile per environment.
   defp elixirc_paths(:test), do: ["lib", "test/support"]
+  # What the browser tests and the performance scripts need of the server.
+  defp elixirc_paths(:e2e), do: ["lib", "e2e/server"]
+  defp elixirc_paths(:perf), do: ["lib", "perf/server"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.
