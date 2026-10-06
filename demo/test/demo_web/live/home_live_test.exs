@@ -37,6 +37,8 @@ defmodule DemoWeb.HomeLiveTest do
     end
 
     assert has_element?(view, "#resources a[href='/bare/labels']")
+    # and to the page with tables placed in a LiveView of the demo's own
+    assert has_element?(view, "#embedded a[href='/dashboard']")
 
     {:ok, _view, html} = live(conn, "/tasks")
     assert html =~ ~s(<a href="/projects">Projects</a>)

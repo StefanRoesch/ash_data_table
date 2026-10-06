@@ -1,0 +1,212 @@
+## The German texts of ash_table's own strings, and of the wording of the
+## demo's resources that its tables show. The messages are those of the
+## library's template, deps/ash_table/priv/gettext/ash_table.pot (in this
+## repository: ../priv/gettext/ash_table.pot).
+msgid ""
+msgstr ""
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+msgid "%{column} was not saved: %{message}"
+msgstr "%{column} wurde nicht gespeichert: %{message}"
+
+msgid "%{field}: %{message}"
+msgstr "%{field}: %{message}"
+
+msgid "%{from}–%{to}"
+msgstr "%{from}–%{to}"
+
+msgid "%{from}–%{to} of %{total}"
+msgstr "%{from}–%{to} von %{total}"
+
+msgid "1 result"
+msgid_plural "%{count} results"
+msgstr[0] "1 Ergebnis"
+msgstr[1] "%{count} Ergebnisse"
+
+msgid "Any"
+msgstr "Alle"
+
+msgid "Cancel"
+msgstr "Abbrechen"
+
+msgid "Clear filters"
+msgstr "Filter zurücksetzen"
+
+msgid "Clear the %{column} filter"
+msgstr "Filter %{column} zurücksetzen"
+
+msgid "Confirm"
+msgstr "Bestätigen"
+
+msgid "Filter %{column}"
+msgstr "%{column} filtern"
+
+msgid "Go to page %{page}"
+msgstr "Zu Seite %{page}"
+
+msgid "How to filter %{column}"
+msgstr "Wie %{column} gefiltert wird"
+
+msgid "Next"
+msgstr "Weiter"
+
+msgid "No"
+msgstr "Nein"
+
+msgid "No records"
+msgstr "Keine Einträge"
+
+msgid "Not a valid value"
+msgstr "Kein gültiger Wert"
+
+msgid "Not available"
+msgstr "Nicht verfügbar"
+
+msgid "Page %{page}"
+msgstr "Seite %{page}"
+
+msgid "Pagination: %{table}"
+msgstr "Seiten: %{table}"
+
+msgid "Previous"
+msgstr "Zurück"
+
+msgid "Results updated"
+msgstr "Ergebnisse aktualisiert"
+
+msgid "The records could not be loaded."
+msgstr "Die Einträge konnten nicht geladen werden."
+
+msgid "This could not be saved."
+msgstr "Das konnte nicht gespeichert werden."
+
+msgid "This record is no longer available."
+msgstr "Dieser Eintrag ist nicht mehr verfügbar."
+
+msgid "Yes"
+msgstr "Ja"
+
+msgid "You are not allowed to change this."
+msgstr "Sie dürfen das nicht ändern."
+
+msgid "You are not allowed to see these records."
+msgstr "Sie dürfen diese Einträge nicht sehen."
+
+msgid "after"
+msgstr "nach"
+
+msgid "at least"
+msgstr "mindestens"
+
+msgid "at most"
+msgstr "höchstens"
+
+msgid "before"
+msgstr "vor"
+
+msgid "contains"
+msgstr "enthält"
+
+msgid "equals"
+msgstr "ist gleich"
+
+msgid "greater than"
+msgstr "größer als"
+
+msgid "is"
+msgstr "ist"
+
+msgid "is empty"
+msgstr "ist leer"
+
+msgid "less than"
+msgstr "kleiner als"
+
+msgid "on"
+msgstr "am"
+
+msgid "starts with"
+msgstr "beginnt mit"
+
+## The resources' own wording on /tasks: the table's name, column labels,
+## enum labels and the question of a `confirm`. The table looks each of them
+## up here and shows it as it is when there is no entry.
+
+msgid "Tasks"
+msgstr "Aufgaben"
+
+msgid "Title"
+msgstr "Titel"
+
+msgid "State"
+msgstr "Status"
+
+msgid "Priority"
+msgstr "Priorität"
+
+msgid "Progress"
+msgstr "Fortschritt"
+
+msgid "Estimate hours"
+msgstr "Geschätzte Stunden"
+
+msgid "Billable?"
+msgstr "Abrechenbar?"
+
+msgid "Due on"
+msgstr "Fällig am"
+
+msgid "Completed at"
+msgstr "Erledigt am"
+
+msgid "Overdue?"
+msgstr "Überfällig?"
+
+msgid "Comments"
+msgstr "Kommentare"
+
+msgid "Headline"
+msgstr "Überschrift"
+
+msgid "External ref"
+msgstr "Externe Referenz"
+
+msgid "Description"
+msgstr "Beschreibung"
+
+msgid "Inserted at"
+msgstr "Angelegt am"
+
+msgid "Change the state of this task?"
+msgstr "Den Status dieser Aufgabe ändern?"
+
+msgid "Backlog"
+msgstr "Rückstand"
+
+msgid "To do"
+msgstr "Zu erledigen"
+
+msgid "In progress"
+msgstr "In Arbeit"
+
+msgid "In review"
+msgstr "In Prüfung"
+
+msgid "Done"
+msgstr "Erledigt"
+
+msgid "Archived"
+msgstr "Archiviert"
+
+msgid "Low"
+msgstr "Niedrig"
+
+msgid "Medium"
+msgstr "Mittel"
+
+msgid "High"
+msgstr "Hoch"
+
+msgid "Urgent"
+msgstr "Dringend"

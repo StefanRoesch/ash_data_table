@@ -15,6 +15,30 @@ defmodule AshTable do
   sort live on that action. A cell is edited in place through the update
   action its column names, with the cell's value as the only input, and the
   table shows what the action returns.
+
+  ## Configuration
+
+  All of it is optional, and read while the application runs:
+
+      config :ash_table,
+        layout: {MyAppWeb.Layouts, :app},
+        gettext_backend: MyAppWeb.Gettext,
+        translate_error: {MyAppWeb.CoreComponents, :translate_error}
+
+    * `:layout` - the function component a mounted table is rendered in:
+      see `AshTable.Live.Page`. Without it, mounted tables are rendered bare.
+    * `:gettext_backend` - the Gettext backend that translates the table's
+      own texts and the labels of the resource: see `AshTable.Gettext`.
+      Without it, they are in English.
+    * `:translate_error` - `{module, function}` naming a function that takes
+      `{message, variables}` and returns the text to show, as the
+      `translate_error/1` of a Phoenix application's core components does.
+      The messages of the resource's actions are given to it: those of a
+      failed save, and those of a read that failed with an error the action
+      returned. Without it, a message is shown as the resource wrote it, with
+      its variables filled in.
+
+  `mix ash_table.install` sets all three for a new Phoenix application.
   """
   use Phoenix.Component
 
@@ -93,7 +117,8 @@ defmodule AshTable do
 
   @doc """
   The name of a resource's table for people: its `plural_name` when the
-  resource has one, else its short name, humanised.
+  resource has one, else its short name, humanised. It is translated like a
+  column label (see `AshTable.Gettext`).
   """
   @spec label(Ash.Resource.t()) :: String.t()
   def label(resource) do
@@ -101,5 +126,6 @@ defmodule AshTable do
     |> to_string()
     |> String.replace("_", " ")
     |> String.capitalize()
+    |> AshTable.Text.label()
   end
 end

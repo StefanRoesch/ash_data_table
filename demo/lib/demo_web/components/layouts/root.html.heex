@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang={DemoWeb.Locale.current()}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -44,12 +44,14 @@
           <a href={~p"/comments"}>Comments</a>
           <a href={~p"/labels"}>Labels</a>
           <a href={~p"/specimens"}>Specimens</a>
+          <a href={~p"/dashboard"}>Dashboard</a>
         </nav>
       </div>
       <Layouts.actor_switcher
         current_user={assigns[:current_user]}
         return_to={assigns[:conn] && @conn.request_path}
       />
+      <Layouts.locale_switcher return_to={assigns[:conn] && @conn.request_path} />
       <Layouts.theme_toggle />
     </header>
     {@inner_content}

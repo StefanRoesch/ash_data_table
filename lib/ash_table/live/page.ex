@@ -47,6 +47,13 @@ defmodule AshTable.Live.Page do
   when the page is opened and at every change of sort, filter or page. It
   costs no query.
 
+  ## When a read fails
+
+  A read that fails without being refused shows a message in place of the
+  rows: the message of an error the read action returned on purpose (Ash's
+  "invalid" class), or "The records could not be loaded." for anything else,
+  which is logged. A field is named only when the person has a column for it.
+
   ## Layout
 
   A LiveView mounted by the router is rendered in the root layout only. Since

@@ -12,6 +12,8 @@ defmodule DemoWeb.Router do
     plug :put_secure_browser_headers
     # Assigns current_user and current_tenant from the actor switcher's session.
     plug DemoWeb.Actor
+    # Puts the language switcher's locale into the process.
+    plug DemoWeb.Locale
   end
 
   scope "/", DemoWeb do
@@ -19,10 +21,14 @@ defmodule DemoWeb.Router do
 
     # The actor switcher in the page header posts here.
     post "/actor", ActorController, :update
+    # And the language switcher beside it.
+    post "/locale", LocaleController, :update
 
     # The same actor and tenant on the socket. The table routes go in here.
-    live_session :default, on_mount: [DemoWeb.Actor] do
+    live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale] do
       live "/", HomeLive
+      # Two tables placed in a LiveView of the demo's own.
+      live "/dashboard", DashboardLive
 
       ash_table "/tasks", Demo.Tracker.Task
       ash_table "/projects", Demo.Tracker.Project
@@ -38,14 +44,18 @@ defmodule DemoWeb.Router do
   end
 
   # Tables of resources that exist for the tests only (`test/support`): a
-  # domain that names its own assigns, and one that does not authorize.
+  # domain that names its own assigns, one that does not authorize, and one
+  # without the domain extension (`plain_tables.ex`).
   if Application.compile_env(:demo, :test_routes, false) do
     scope "/support" do
       pipe_through :browser
 
-      live_session :support, on_mount: [DemoWeb.Support.Assigns] do
+      live_session :support, on_mount: [DemoWeb.Support.Assigns, DemoWeb.Locale] do
         ash_table "/guarded-notes", Demo.Support.Guarded.Note, layout: false
         ash_table "/unguarded-notes", Demo.Support.Unguarded.Note, layout: false
+        ash_table "/memos", Demo.Support.Plain.Memo, layout: false
+        ash_table "/reports", Demo.Support.Plain.Report, layout: false
+        live "/embedded", DemoWeb.Support.EmbeddedLive
       end
     end
   end

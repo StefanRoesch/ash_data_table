@@ -5,8 +5,9 @@ defmodule Demo.Tracker.TaskLabel do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    # No `table` block: the table shows the public attributes.
-    extensions: [AshTable.Resource]
+    extensions: [AshTable.Resource],
+    # the default sort is a preparation of the primary read action, on purpose
+    primary_read_warning?: false
 
   postgres do
     table "task_labels"
@@ -23,8 +24,20 @@ defmodule Demo.Tracker.TaskLabel do
     plural_name :task_labels
   end
 
+  # No columns declared: the two parts of the key, and the note. Every row is
+  # found, shown again and saved by both parts of its key together.
+  table do
+    update_action :update
+  end
+
   actions do
-    defaults [:read, :destroy, create: [:task_id, :label_id]]
+    defaults [:destroy, create: [:task_id, :label_id, :note], update: [:note]]
+
+    read :read do
+      primary? true
+      pagination offset?: true, default_limit: 25, countable: true
+      prepare build(sort: [task_id: :asc, label_id: :asc])
+    end
   end
 
   policies do
@@ -32,7 +45,7 @@ defmodule Demo.Tracker.TaskLabel do
       authorize_if expr(organization_id == ^actor(:organization_id))
     end
 
-    policy action_type([:create, :destroy]) do
+    policy action_type([:create, :update, :destroy]) do
       authorize_if actor_attribute_equals(:role, :admin)
       authorize_if actor_attribute_equals(:role, :member)
     end
@@ -42,6 +55,11 @@ defmodule Demo.Tracker.TaskLabel do
     strategy :attribute
     attribute :organization_id
     global? true
+  end
+
+  attributes do
+    # Why the task has the label; the one thing of a row that can be edited.
+    attribute :note, :string, public?: true
   end
 
   relationships do

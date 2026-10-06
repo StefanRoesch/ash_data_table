@@ -94,6 +94,47 @@ defmodule DemoWeb.Layouts do
   end
 
   @doc """
+  The language switcher: a form that posts the chosen locale to
+  `DemoWeb.LocaleController`, which stores it in the session. Only the tables
+  are translated.
+  """
+  attr :return_to, :string, default: nil
+
+  def locale_switcher(assigns) do
+    assigns =
+      assign(assigns, locales: DemoWeb.Locale.locales(), current: DemoWeb.Locale.current())
+
+    ~H"""
+    <form
+      id="locale-switcher"
+      action={~p"/locale"}
+      method="post"
+      class="flex items-center gap-2"
+      onsubmit="this.return_to.value = location.pathname + location.search"
+    >
+      <input type="hidden" name="_csrf_token" value={get_csrf_token()} />
+      <input type="hidden" name="return_to" value={@return_to || "/"} />
+      <label for="locale-switcher-select" class="text-sm">Language</label>
+      <select
+        id="locale-switcher-select"
+        name="locale"
+        class="select select-sm w-auto"
+        onchange="this.form.requestSubmit()"
+      >
+        <option
+          :for={{locale, name} <- @locales}
+          value={locale}
+          lang={locale}
+          selected={locale == @current}
+        >
+          {name}
+        </option>
+      </select>
+    </form>
+    """
+  end
+
+  @doc """
   Shows the flash group with standard titles and content.
 
   ## Examples

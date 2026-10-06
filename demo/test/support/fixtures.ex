@@ -43,6 +43,17 @@ defmodule Demo.Fixtures do
     |> DemoWeb.Actor.put_actor(actor)
   end
 
+  @doc """
+  Makes `conn` ask in `locale`, as the language switcher does: the tables of
+  the pages it opens speak that language. `log_in/2` comes first, as it
+  starts the session.
+  """
+  def in_locale(conn, locale) do
+    conn
+    |> Phoenix.ConnTest.init_test_session(%{})
+    |> DemoWeb.Locale.put_locale(locale)
+  end
+
   @doc "The options that make an Ash call run as `actor` in their organization."
   def as(actor), do: [actor: actor, tenant: Demo.Actors.tenant(actor)]
 end

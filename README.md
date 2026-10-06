@@ -8,15 +8,53 @@ Add the extension to a resource, optionally describe the table in a
 `table do … end` block, and mount it with one line in the router. You write
 no HEEx.
 
-> **This is an early version.** It reads, sorts, filters, pages and edits
-> cells in place, and adapts its columns and its editing to who is looking.
-> Nested tables and row actions are not built yet, and the package is not on
-> Hex.
+> **This is the first version, 0.1.0, and it is not on Hex yet.** It reads,
+> sorts, filters, pages and edits cells in place, adapts its columns and its
+> editing to who is looking, and speaks the host's language. Nested tables
+> and row actions are later slices.
+
+- [Install](#install)
+- [A first table](#a-first-table)
+- [Describing the table](#describing-the-table): columns and defaults
+- [Reading](#reading): page size and sort, [filtering](#filtering), [the URL](#the-url), [when a read fails](#when-a-read-fails)
+- [Inline editing](#inline-editing)
+- [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
+- [The keyboard](#the-keyboard)
+- [Translations](#translations)
+- [The layout](#the-layout)
+- [Inside an existing LiveView](#inside-an-existing-liveview)
+- [Things people trip over](#things-people-trip-over)
+
+The options of the two extensions are listed in the DSL reference,
+[`AshTable.Resource`](documentation/dsls/DSL-AshTable.Resource.md) and
+[`AshTable.Domain`](documentation/dsls/DSL-AshTable.Domain.md).
 
 ## Install
 
 Requires Elixir 1.17, Ash 3.34, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView
-1.2. There is no installer yet; the steps are manual.
+1.2. The table uses the Tailwind 4 and daisyUI classes of a default new
+Phoenix app, and Gettext.
+
+> A new Phoenix 1.8 app asks for `{:phoenix_live_view, "~> 1.1.0"}`. Change
+> that to `"~> 1.2"` in its `mix.exs` first, or the dependencies do not
+> resolve.
+
+### With the installer
+
+```sh
+mix igniter.install ash_table
+```
+
+(Until the package is on Hex: `mix igniter.install ash_table@github:StefanRoesch/ash_table`,
+or `ash_table@path:../ash_table` for a checkout.) With the dependency
+already in `mix.exs` and [Igniter](https://hexdocs.pm/igniter) among your
+dependencies, `mix ash_table.install` does the same. It takes the five steps
+below, each only if it has not been taken, and tells you what is left: the
+extension on a resource and a line in the router. A file that does not look
+like the one of a new Phoenix 1.8 app is left as it is, and the step is
+printed for you to take by hand.
+
+### By hand
 
 1. Add the dependency in `mix.exs`:
 
@@ -39,41 +77,37 @@ Requires Elixir 1.17, Ash 3.34, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView
 3. Let Tailwind see the classes the table uses, in `assets/css/app.css`:
 
    ```css
-   @source "../../deps/ash_table";
+   @source "../../deps/ash_table/lib";
    ```
+
+   The path is the dependency's `lib` directory, seen from `assets/css`.
+   For a path dependency that is the checkout, not `deps`: with
+   `{:ash_table, path: "../ash_table"}` it is
+   `@source "../../../ash_table/lib";`. The installer writes the path of the
+   dependency as it finds it.
 
 4. Add the DSL to the formatter in `.formatter.exs`:
 
    ```elixir
-   import_deps: [:ash, :ash_table, …]
+   import_deps: [:ash_table, :ash, :phoenix]
    ```
 
-5. Name the layout the mounted tables are rendered in, in `config/config.exs`.
-   A LiveView mounted from the router gets the root layout only; since
-   Phoenix 1.8 the app layout is a function component each page calls itself,
-   so the table's page has to be told which one:
+5. Tell the table about your app, in `config/config.exs`:
 
    ```elixir
-   config :ash_table, layout: {MyAppWeb.Layouts, :app}
+   config :ash_table,
+     layout: {MyAppWeb.Layouts, :app},
+     gettext_backend: MyAppWeb.Gettext,
+     translate_error: {MyAppWeb.CoreComponents, :translate_error}
    ```
 
-   The component is called with the table as its inner block and the assigns
-   `flash`, `current_scope` (nil when the socket has none) and, when the
-   socket has it, `current_user`. Without this setting the tables are
-   rendered bare in the root layout. One table can differ:
-   `ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
-   `layout: {Module, :function}`.
+   All three are optional: see [The layout](#the-layout) and
+   [Translations](#translations). They are read while the app runs, so
+   changing them needs no recompilation of the dependency.
 
-The table uses the Tailwind and daisyUI classes of a default new Phoenix app.
-
-Notes on the steps:
-
-- The hook is written into the host's build directory when the dependency is
-  compiled, so `mix compile` has to run before the assets are built. The
-  `assets.build` alias of a new Phoenix app already does that.
-- The `@source` path is the dependency's directory relative to
-  `assets/css`. For a path dependency (`{:ash_table, path: "../ash_table"}`)
-  point it at that checkout's `lib` instead.
+The hook is written into the host's build directory when the dependency is
+compiled, so `mix compile` has to run before the assets are built. The
+`assets.build` alias of a new Phoenix app already does that.
 
 ## A first table
 
@@ -108,7 +142,7 @@ its primary read action. Headers sort on click or Enter, the row under them
 filters, and the arrow keys move through the cells. Nothing can be edited
 until the block says so (see [Inline editing](#inline-editing)).
 
-### Describing the table
+## Describing the table
 
 ```elixir
 table do
@@ -144,6 +178,16 @@ Mistakes in the block are reported when the resource is compiled. As with
 every Ash extension's verifiers, they surface as compile warnings; they fail
 the build under `mix compile --warnings-as-errors`.
 
+## Reading
+
+Sorting, filtering and pagination always run on the server, through the
+table's read action; nothing is sorted or filtered in the browser. While a
+read runs the grid is marked `aria-busy` and dimmed, with the previous rows
+left in view. A read that finds nothing shows "No records".
+
+Headers sort on a click or Enter: ascending, descending, then back to the
+read action's own sort. One column at a time.
+
 ### Page size and default sort live on the read action
 
 They are not part of the `table` block:
@@ -157,7 +201,11 @@ end
 
 The page size is the action's `default_limit`, or 25 when it has none, and
 never above the action's `max_page_size`. A read action without pagination
-loads every record.
+loads every record. Offset pagination shows page numbers, and the total when
+the action is `countable`; keyset pagination shows previous and next only. A
+table that needs its own page size or sort gets its own read action, named
+in `read_action`. Pages of more than a hundred rows or so are slow in the
+browser; there is no virtual scrolling yet.
 
 ### Filtering
 
@@ -205,7 +253,161 @@ After each filter change the result is announced to screen readers: the
 number of records when the read action is `countable`, otherwise only that the
 results have changed.
 
-### Who is reading, and what they may see and do
+### The URL
+
+Sort, filters and page are kept in the URL, under the table's id, so reload,
+the back button and shared links work:
+
+```
+/tasks?task[sort]=-title&task[page]=2
+/tasks?task[f][title]=report&task[f][progress][at_least]=50&task[f][due_on][is_empty]=&task[f][billable%3F]=yes
+```
+
+Filters are under `f`, by column. A filter with its column's first operator
+is the value alone (`task[f][title]=report`); another operator is named
+(`task[f][progress][at_least]=50`), with nothing after it when it takes no
+value (`task[f][due_on][is_empty]=`); a yes-or-no choice is `yes` or `no`.
+The operators are named `contains`, `equals`, `starts_with`, `is_empty`,
+`greater_than`, `less_than`, `at_least`, `at_most`, `on`, `before` and
+`after`. Parameters that mean nothing to the table are ignored.
+
+The id defaults to the last part of the resource's module name, underscored;
+`ash_table "/tasks", MyApp.Tracker.Task, id: "tasks"` sets another.
+
+### When a read fails
+
+A read that is refused is a matter of authorization: see
+[what each restriction looks like](#who-is-reading-and-what-they-may-see-and-do).
+Any other failure takes the rows away and puts a message in their place:
+
+- **An error the read action returned on purpose** is shown as it is: an
+  error of Ash's "invalid" class, such as an argument or a filter the action
+  does not accept, or one a preparation added. It names its field only if
+  the person has a column for it, and it is translated like the message of a
+  failed save (see [Translations](#translations)).
+- **Anything else** (a database error, an exception in a preparation: Ash's
+  "unknown" and "framework" classes) says only "The records could not be
+  loaded." The error goes to the log, not to the person.
+
+An exception raised by the very first read, while the page is being
+mounted, is not caught: the page fails as any LiveView does that crashes in
+`mount`. A keyset cursor that somebody altered in the URL shows "The
+records could not be loaded."; a page number beyond the last shows "No
+records".
+
+## Inline editing
+
+A person changes a cell's value in place, and it is saved for that cell
+alone: the table runs one of the resource's update actions with exactly one
+input, the cell's field, and shows what the action returns. It adds no logic
+of its own: no validation, no conversion of values, no undo.
+
+```elixir
+table do
+  update_action :update            # every column this action accepts becomes editable
+
+  column :title
+
+  column :price do
+    update_action :reprice         # this column's own action
+    confirm "Change the price?"    # asked before the cell is saved
+  end
+
+  column :slug do
+    update_action false            # read-only
+  end
+end
+```
+
+Editing is opt-in: with no `update_action`, at the table or at a column, the
+table is read-only.
+
+**A cell can be edited when all of this holds:**
+
+- its column is an attribute, and the attribute is writable. Calculations and
+  aggregates are never editable;
+- an update action accepts the attribute: the column's own `update_action`,
+  else the table's. The action is `public?` and needs nothing but the cell's
+  value: an action with a required argument without a default cannot save a
+  cell, since the argument is not on the record. (Attributes the action
+  requires are no obstacle; the record has them.);
+- its type has an editor:
+
+  | Column type | Editor |
+  | --- | --- |
+  | `:string`, `:ci_string` | text, in a field that grows with its lines |
+  | `:integer`, `:float`, `:decimal` | number input |
+  | `:boolean` | toggled in place |
+  | `:date` | date input |
+  | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input, UTC, to the second |
+  | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice of the values, and of none when the attribute can be nil |
+
+  Everything else (arrays, maps, embedded resources, uuids, times and so on)
+  is read-only. A NewType is edited as the type it is made of;
+- the field is not hidden from the person on that row by a field policy;
+- the person is not someone who can never run the action (see "Who is
+  reading, and what they may see and do").
+
+Under a table-level `update_action`, the columns it cannot save are simply
+read-only. A column's own `update_action` that cannot save its column is a
+mistake, reported when the resource is compiled, as is `confirm` on a column
+that can never be edited. When the table offers editing, the cells that
+cannot be edited are marked `aria-readonly`.
+
+**Saving.** Enter saves and keeps focus on the cell; leaving the cell (a
+click elsewhere, Tab) saves too; Escape gives the edit up. A boolean is
+saved when it is toggled, a choice when it is made. A value that is the one
+the cell already shows runs nothing. Empty input is sent as it is: Ash's type
+casting decides what it becomes, usually nil, and the action whether nil is
+allowed.
+
+On the server the record is read again by its primary key, as the person
+saving, so policies and field policies apply as they did when the page was
+read. Then the column's action runs through `AshPhoenix.Form`. The row is
+shown from what the action returns, with the table's calculations and
+aggregates loaded on it; the table's read action is not run again. The row
+stays where it is even if it no longer matches the filters or the sort, until
+the next change of page, sort or filter. While a save is on its way its cell
+is dimmed and `aria-busy`. A cell that is being edited is left alone when
+another cell's save puts its row back, so what is typed survives; if that
+edit is then given up, the cell shows what the server sent last (this needs
+LiveView 1.2.10; before it, the cell shows what it showed when the editor
+opened, until the row is next sent).
+
+A table with editable columns and calculation or aggregate columns needs a
+primary read action, which is what Ash loads them through.
+
+**When a save fails,** nothing is saved and the table shows what the action
+returned:
+
+- the cell keeps what was typed and is marked (`aria-invalid`, a ring in the
+  error colour);
+- the action's message is the cell's description (`aria-describedby`). It
+  appears under the cell while the cell has focus or the pointer, so the row
+  keeps its height, and it is announced to screen readers when it arrives;
+- focus is not pulled back to the cell;
+- an error that is not about the edited field is shown on the same cell: a
+  validation on another field with that field's column label in front, a
+  refusal by a policy as "You are not allowed to change this.", a record
+  that has been deleted or can no longer be read as "This record is no
+  longer available.";
+- a field is only named if the person has a column for it. An error about a
+  field whose column is left out for them, or which is no column of the
+  table, is shown without the field's name;
+- only what the action returned on purpose is shown (Ash's "invalid"
+  class). A failure underneath says "This could not be saved.";
+- going back to the cell and pressing Escape restores the saved value and
+  clears the mark. So does saving a value the action accepts.
+
+A person who can never run a column's action does not get this far: the
+column is read-only for them, and a `save` event sent all the same is not
+run. The refusal on the cell is for an action that depends on the record.
+
+**Confirm.** A column with `confirm` asks its question in a dialog at the
+moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
+returns to the cell, still in edit mode with what was typed.
+
+## Who is reading, and what they may see and do
 
 The table has no authorization rules of its own. It passes actor and tenant
 into ordinary Ash calls, asks Ash what the person may see and do, and shows
@@ -287,154 +489,29 @@ puts the hidden ones together with the empty ones.
 > in the resource: an action that does not accept the field, or a policy or
 > validation on the one that does.
 
-### The URL
-
-Sort, filters and page are kept in the URL, under the table's id, so reload,
-the back button and shared links work:
-
-```
-/tasks?task[sort]=-title&task[page]=2
-/tasks?task[f][title]=report&task[f][progress][at_least]=50&task[f][due_on][is_empty]=&task[f][billable%3F]=yes
-```
-
-Filters are under `f`, by column. A filter with its column's first operator
-is the value alone (`task[f][title]=report`); another operator is named
-(`task[f][progress][at_least]=50`), with nothing after it when it takes no
-value (`task[f][due_on][is_empty]=`); a yes-or-no choice is `yes` or `no`.
-The operators are named `contains`, `equals`, `starts_with`, `is_empty`,
-`greater_than`, `less_than`, `at_least`, `at_most`, `on`, `before` and
-`after`. Parameters that mean nothing to the table are ignored.
-
-The id defaults to the last part of the resource's module name, underscored;
-`ash_table "/tasks", MyApp.Tracker.Task, id: "tasks"` sets another.
-
-### Inside an existing LiveView
-
-```heex
-<AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
-```
-
-It accepts `scope`, or `actor` and `tenant`; the assign names of the domain
-are for mounted tables only. An embedded table keeps its sort, filters and
-page itself; pass the page's current URL as `url` to keep them in the URL.
-
-It authorizes as its resource's domain says (`authorize?` in `AshTable.Domain`,
-`true` by default); `authorize?={false}` or `authorize?={true}` on the table
-itself wins. Everything in the table above holds for it, with one difference:
-it cannot turn your page into a 404. A read refused outright makes it render
-nothing at all, unless the resource says `on_forbidden :message`.
-
-### Inline editing
-
-A person changes a cell's value in place, and it is saved for that cell
-alone: the table runs one of the resource's update actions with exactly one
-input, the cell's field, and shows what the action returns. It adds no logic
-of its own: no validation, no conversion of values, no undo.
-
-```elixir
-table do
-  update_action :update            # every column this action accepts becomes editable
-
-  column :title
-
-  column :price do
-    update_action :reprice         # this column's own action
-    confirm "Change the price?"    # asked before the cell is saved
-  end
-
-  column :slug do
-    update_action false            # read-only
-  end
-end
-```
-
-Editing is opt-in: with no `update_action`, at the table or at a column, the
-table is read-only.
-
-**A cell can be edited when all of this holds:**
-
-- its column is an attribute, and the attribute is writable. Calculations and
-  aggregates are never editable;
-- an update action accepts the attribute: the column's own `update_action`,
-  else the table's. The action is `public?` and needs nothing but the cell's
-  value: an action with a required argument without a default cannot save a
-  cell, since the argument is not on the record. (Attributes the action
-  requires are no obstacle; the record has them.);
-- its type has an editor:
-
-  | Column type | Editor |
-  | --- | --- |
-  | `:string`, `:ci_string` | text, in a field that grows with its lines |
-  | `:integer`, `:float`, `:decimal` | number input |
-  | `:boolean` | toggled in place |
-  | `:date` | date input |
-  | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input, UTC, to the second |
-  | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice of the values, and of none when the attribute can be nil |
-
-  Everything else (arrays, maps, embedded resources, uuids, times and so on)
-  is read-only. A NewType is edited as the type it is made of;
-- the field is not hidden from the person on that row by a field policy;
-- the person is not someone who can never run the action (see "Who is
-  reading, and what they may see and do").
-
-Under a table-level `update_action`, the columns it cannot save are simply
-read-only. A column's own `update_action` that cannot save its column is a
-mistake, reported when the resource is compiled, as is `confirm` on a column
-that can never be edited. When the table offers editing, the cells that
-cannot be edited are marked `aria-readonly`.
-
-**Saving.** Enter saves and keeps focus on the cell; leaving the cell (a
-click elsewhere, Tab) saves too; Escape gives the edit up. A boolean is
-saved when it is toggled, a choice when it is made. A value that is the one
-the cell already shows runs nothing. Empty input is sent as it is: Ash's type
-casting decides what it becomes, usually nil, and the action whether nil is
-allowed.
-
-On the server the record is read again by its primary key, as the person
-saving, so policies and field policies apply as they did when the page was
-read. Then the column's action runs through `AshPhoenix.Form`. The row is
-shown from what the action returns, with the table's calculations and
-aggregates loaded on it; the table's read action is not run again. The row
-stays where it is even if it no longer matches the filters or the sort, until
-the next change of page, sort or filter. While a save is on its way its cell
-is dimmed and `aria-busy`.
-
-A table with editable columns and calculation or aggregate columns needs a
-primary read action, which is what Ash loads them through.
-
-**When a save fails,** nothing is saved and the table shows what the action
-returned:
-
-- the cell keeps what was typed and is marked (`aria-invalid`, a ring in the
-  error colour);
-- the action's message is the cell's description (`aria-describedby`). It
-  appears under the cell while the cell has focus or the pointer, so the row
-  keeps its height, and it is announced to screen readers when it arrives;
-- focus is not pulled back to the cell;
-- an error that is not about the edited field is shown on the same cell: a
-  validation on another field with that field's name in front, a refusal by
-  a policy as "You are not allowed to change this.", a record that has been
-  deleted or can no longer be read as "This record is no longer available.";
-- going back to the cell and pressing Escape restores the saved value and
-  clears the mark. So does saving a value the action accepts.
-
-A person who can never run a column's action does not get this far: the
-column is read-only for them, and a `save` event sent all the same is not
-run. The refusal on the cell is for an action that depends on the record.
-
-**Confirm.** A column with `confirm` asks its question in a dialog at the
-moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
-returns to the cell, still in edit mode with what was typed.
-
-### The keyboard
+## The keyboard
 
 The grid is one tab stop: Tab enters and leaves it, the arrow keys move
 within it. Up Arrow from the first row of records reaches the filter row and
-then the header. On a header, Enter sorts. On a filter cell, Enter or F2 goes
-into the filter; there the arrow keys belong to the input, Enter applies what
-was typed and stays, Escape gives up what was typed and not applied and
-returns to the cell, and Tab moves through the filter's controls and from the
-last one out of the grid.
+then the header. Nothing of this talks to the server.
+
+| Key | Effect |
+| --- | --- |
+| Arrow keys | Move one cell; they do not wrap |
+| Home, End | First and last cell of the row |
+| Ctrl+Home, Ctrl+End | First cell of the first row of records, last cell of the last row |
+| Page Up, Page Down | Move by a screenful of rows |
+| Tab, Shift+Tab | Leave the grid |
+| Enter, on a header | Sort by the column |
+| Space | Nothing; reserved for row selection |
+
+On a filter cell, Enter or F2 goes into the filter, and so does a character,
+which is typed there: over the text or number the filter holds, into the
+first part of a date, or to the first choice that starts with it, which
+applies at once as any choice does. In the filter the arrow keys belong to
+the input, Enter applies what was typed and stays, Escape gives up what was
+typed and not applied and returns to the cell, and Tab moves through the
+filter's controls and from the last one out of the grid.
 
 On a cell that can be edited:
 
@@ -452,6 +529,155 @@ A double click starts editing too. In a choice, the menu opens at once;
 Enter or a click chooses and saves, and Escape closes the menu before it
 gives the edit up. A character the editor of a number does not take (a
 letter, say) starts editing without replacing the number.
+
+## Translations
+
+Two settings, for two kinds of text:
+
+```elixir
+config :ash_table,
+  gettext_backend: MyAppWeb.Gettext,
+  translate_error: {MyAppWeb.CoreComponents, :translate_error}
+```
+
+The table translates in the locale of the process it runs in: what your
+plug and your `on_mount` hook put there with `Gettext.put_locale/1`. Dates
+and numbers are not localized yet; they are shown as the native inputs
+write them.
+
+**The table's own texts** ("No records", "Clear filters", "1 result", the
+operators of the filters, "You are not allowed to change this." and so on)
+are messages of the Gettext domain `ash_table`, written in English. With
+`gettext_backend` they are looked up in your backend. Copy the template
+that ships with the package to one file per locale and fill in each
+`msgstr`:
+
+```sh
+mkdir -p priv/gettext/de/LC_MESSAGES
+cp deps/ash_table/priv/gettext/ash_table.pot priv/gettext/de/LC_MESSAGES/ash_table.po
+```
+
+A message without a translation is shown in English, as everything is
+without `gettext_backend`. (Copy the template as a `.po` file, not as a
+template of your own: `mix gettext.extract` removes from your templates the
+messages it does not find in your code.)
+
+**Your resources' wording that the table shows** goes through the same
+domain: the labels of columns (declared with `label`, or the humanised field
+names), the labels of the values of an `Ash.Type.Enum`, the questions of
+`confirm`, and the names of the tables. Each is looked up as a message and
+shown as it is when there is no entry. To translate a column, add its label
+to the same file:
+
+```po
+msgid "Due on"
+msgstr "Fällig am"
+```
+
+**The messages of your actions** are yours, not the table's: "length must
+be greater than or equal to %{min}", "is required", or the `message` of a
+validation of your own. They are given to the function named by
+`translate_error` as `{message, variables}`, which is exactly what the
+`translate_error/1` of a Phoenix app's core components takes: it looks the
+message up in your `errors` domain and fills in the variables. So a table
+shows an action's message in the same words as your forms do:
+
+```po
+# priv/gettext/de/LC_MESSAGES/errors.po
+msgid "length must be greater than or equal to %{min}"
+msgstr "muss mindestens %{min} Zeichen lang sein"
+```
+
+A message is only translated if that domain has an entry for it; that holds
+for a custom `message:` of a validation as for Ash's own. Without
+`translate_error` the message is shown as the resource wrote it, with its
+variables filled in. The words the table puts around a message ("Progress:
+…" for an error about another field, "Title was not saved: …" in the
+announcement) are the table's own and belong to the first kind.
+
+## The layout
+
+A LiveView mounted from the router gets the root layout only; since Phoenix
+1.8 the app layout is a function component each page calls itself, so the
+table's page has to be told which one:
+
+```elixir
+config :ash_table, layout: {MyAppWeb.Layouts, :app}
+```
+
+The component is called with the table as its inner block and the assigns
+`flash`, `current_scope` (nil when the socket has none) and, when the socket
+has it, `current_user`. Without this setting the tables are rendered bare in
+the root layout. One table can differ:
+`ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
+`layout: {Module, :function}`.
+
+## Inside an existing LiveView
+
+```heex
+<AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
+```
+
+It accepts `scope`, or `actor` and `tenant`; the assign names of the domain
+are for mounted tables only. An embedded table keeps its sort, filters and
+page itself; pass the page's current URL as `url` to keep them in the URL.
+Several tables can share a page, each with an `id` of its own: they sort,
+filter, page and save independently.
+
+```heex
+<AshTable.table
+  id="open-tasks"
+  resource={MyApp.Tracker.Task}
+  actor={@current_user}
+  tenant={@current_tenant}
+  label="Open tasks"
+/>
+```
+
+`label` is the accessible name of the grid; it defaults to the resource's
+name.
+
+It authorizes as its resource's domain says (`authorize?` in `AshTable.Domain`,
+`true` by default); `authorize?={false}` or `authorize?={true}` on the table
+itself wins. Everything in the table above holds for it, with one difference:
+it cannot turn your page into a 404. A read refused outright makes it render
+nothing at all, unless the resource says `on_forbidden :message`.
+
+## Things people trip over
+
+- **Text filters are case-sensitive for `:string`**, and not for
+  `:ci_string`. The table passes on what was typed; what it matches is the
+  resource's decision. See [Filtering](#filtering).
+- **Page size and default sort live on the read action**, not in the `table`
+  block: `pagination default_limit: 25` and `prepare build(sort: …)`.
+- **Mistakes in the `table` block are compile warnings.** As with every Ash
+  extension's verifiers, they do not stop a plain `mix compile`; they fail
+  the build under `mix compile --warnings-as-errors`, which is worth having
+  in CI. A table of a resource compiled despite one raises when it is
+  rendered.
+- **A hidden field cannot be edited through the table, but the table is not
+  what protects it.** A field policy is about reading. The same update
+  action called through `ash_json_api`, `ash_graphql` or your own code
+  accepts the field from anyone its policy allows. See the note under
+  [Who is reading](#who-is-reading-and-what-they-may-see-and-do).
+- **Restart the server after changing a path dependency.** The Phoenix code
+  reloader does not recompile `{:ash_table, path: "…"}`; neither does it
+  rebuild the hook. Stop the server, `mix assets.build`, start it again.
+- **`mix compile` before the assets.** The hook is generated when the
+  dependency is compiled; an `esbuild` that runs first does not find
+  `phoenix-colocated/ash_table`.
+- **A new Phoenix app pins LiveView 1.1.** `ash_table` needs 1.2 (see
+  [Install](#install)).
+- **Nothing is editable until the block says so**, and then only what the
+  action accepts: see [Inline editing](#inline-editing).
+- **A table in German with English messages** has `gettext_backend` but no
+  `translate_error`, or no entry for that message in the `errors` domain.
+
+## The demo
+
+`demo/` is a Phoenix and Ash app on Postgres that shows all of this: an
+issue tracker with one of everything a table has to cope with, five actors
+to switch between, and German beside English. See `demo/README.md`.
 
 ## Licence
 

@@ -60,14 +60,45 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false` |
-| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes |
+| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25 |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
+
+http://localhost:4478/dashboard is a LiveView of the demo's own
+(`DemoWeb.DashboardLive`) with two tables placed in it with
+`<AshTable.table … />`: the projects and the tasks, each given the actor and
+the tenant as attributes. Each sorts, filters, pages and saves by itself, and
+nothing of it is in the URL. As nobody, the projects' read is refused, and
+that table renders nothing at all.
+
+### In German
+
+The language switcher beside the actor switcher posts to `POST /locale`,
+which stores `"en"` or `"de"` in the session under `"locale"`;
+`DemoWeb.Locale` (a plug and an `on_mount` hook) puts it into the process
+with `Gettext.put_locale/1`. The demo's own pages stay in English; the
+tables follow:
+
+- `config :ash_table, gettext_backend: DemoWeb.Gettext` and
+  `priv/gettext/de/LC_MESSAGES/ash_table.po`: the table's own texts, and the
+  wording of `/tasks` (its name, column labels, enum labels, the question
+  before a change of state). The other tables' labels are not translated,
+  and show as they are.
+- `config :ash_table, translate_error: {DemoWeb.CoreComponents, :translate_error}`
+  and `priv/gettext/de/LC_MESSAGES/errors.po`: the messages of the tasks'
+  actions. Try a title of two characters, a progress of 150, or the state
+  "Erledigt" on a task below 100.
 
 The table tests are in `test/demo_web/tables/`: LiveView tests that open
 these pages and click through them as each of the actors. Filtering is in
 `task_filter_test.exs` and `specimen_filter_test.exs`, inline editing in
 `task_edit_test.exs` and `specimen_edit_test.exs`, what each actor sees and
 may edit in `task_authorization_test.exs` and `nobody_test.exs`.
+Languages are in `translation_test.exs` and `translation_settings_test.exs`,
+tables placed in a LiveView in `embedded_table_test.exs`, the key of two
+attributes in `task_label_table_test.exs`, a read that fails in
+`failed_read_test.exs` and what a failed save says about other fields in
+`save_error_fields_test.exs`; the last two use resources of
+`test/support/plain_tables.ex`.
 `domain_settings_test.exs` covers the `table` block of a domain; the demo's
 own domains keep the defaults, so it uses two small domains of its own
 (`test/support/guarded_tables.ex`), mounted under `/support` in the test
@@ -213,7 +244,7 @@ tasks. In tests the ids are fresh ones, not the fixed ones above.
 | `Task` | yes | `read`: offset and keyset, countable, 25, at most 100 · `offset_only` · `keyset_only` · `unpaginated` · `open`: offset and keyset, countable, 10, its own filter and sort |
 | `Comment` | yes | `read`: keyset only, 20 |
 | `Label` | yes | `read`: none |
-| `TaskLabel` | yes | `read`: none |
+| `TaskLabel` | yes | `read`: offset, countable, 25 |
 
 Every primary read action carries its default sort (`prepare build(sort: …)`).
 

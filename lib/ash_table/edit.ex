@@ -8,6 +8,7 @@ defmodule AshTable.Edit do
   # first, by primary key and as the person saving: the same policies and
   # field policies apply as when the page was read.
 
+  alias AshTable.Errors
   alias AshTable.Format
   alias AshTable.Model
   alias AshTable.Model.Column
@@ -120,21 +121,19 @@ defmodule AshTable.Edit do
     end
   end
 
-  # What the action returned, as the text shown on the cell. An error about
-  # another field than the cell's names that field. The form holds the errors
-  # that are about a field; a refusal and other errors without one are among
-  # its raw errors.
+  # What the action returned, as the text shown on the cell. The form holds
+  # the errors that are about a field, each with its message and variables
+  # apart for translation; a refusal and other errors without a field are
+  # among its raw errors. See `AshTable.Errors` for what is shown of them.
   defp message(form, column, model) do
     at_fields =
-      for {field, message} <- AshPhoenix.Form.errors(form) do
-        if field == column.name,
-          do: message,
-          else: Text.t(:error_on_field, field: Model.field_label(model, field), message: message)
-      end
+      for {field, {message, vars}} <- AshPhoenix.Form.errors(form, format: :raw),
+          is_binary(message),
+          do: Errors.at_field(model, column.name, field, {message, vars})
 
     without_field =
       for error <- AshPhoenix.Form.raw_errors(form),
-          not about_field?(error),
+          not Errors.about_field?(error),
           message = text(error),
           do: message
 
@@ -144,26 +143,8 @@ defmodule AshTable.Edit do
     end
   end
 
-  defp about_field?(%{field: field}) when not is_nil(field), do: true
-  defp about_field?(%{fields: [_ | _]}), do: true
-  defp about_field?(_error), do: false
-
   # A refusal says nothing a person should read: Ash's message for it is
   # "forbidden", or the breakdown of the policies.
   defp text(%{class: :forbidden}), do: Text.t(:edit_not_allowed)
-
-  defp text(%{message: message} = error) when is_binary(message) do
-    error
-    |> Map.get(:vars, [])
-    |> List.wrap()
-    |> Enum.reduce(message, fn
-      {name, value}, message -> String.replace(message, "%{#{name}}", var(value))
-      _other, message -> message
-    end)
-  end
-
-  defp text(_error), do: nil
-
-  defp var(value),
-    do: if(String.Chars.impl_for(value), do: to_string(value), else: inspect(value))
+  defp text(error), do: Errors.without_field(error)
 end

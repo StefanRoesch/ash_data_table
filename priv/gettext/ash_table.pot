@@ -1,0 +1,174 @@
+## This file is a PO Template file.
+##
+## "msgid"s here are often extracted from source code.
+## Add new messages manually only if they're dynamic
+## messages that can't be statically extracted.
+##
+## Run "mix gettext.extract" to bring this file up to
+## date. Leave "msgstr"s empty as changing them here has no
+## effect: edit them in PO (.po) files instead.
+#
+msgid ""
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{column} was not saved: %{message}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{field}: %{message}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{from}–%{to}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{from}–%{to} of %{total}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "1 result"
+msgid_plural "%{count} results"
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "Any"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Cancel"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Clear filters"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Clear the %{column} filter"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Confirm"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Filter %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Go to page %{page}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "How to filter %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Next"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "No"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "No records"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Not a valid value"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Not available"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Page %{page}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Previous"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Results updated"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The records could not be loaded."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "This could not be saved."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "This record is no longer available."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Yes"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "You are not allowed to change this."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "You are not allowed to see these records."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "after"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "at least"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "at most"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "before"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "contains"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "equals"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "greater than"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "is"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "is empty"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "less than"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "on"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "starts with"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Pagination: %{table}"
+msgstr ""

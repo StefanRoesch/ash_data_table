@@ -62,7 +62,14 @@ config :demo,
 config :demo, Demo.Repo, types: Demo.PostgrexTypes
 
 # The layout the tables mounted by `ash_table` in the router are rendered in.
-config :ash_table, layout: {DemoWeb.Layouts, :app}
+# The tables' own texts are translated by the demo's Gettext backend (the
+# domain `ash_table`, in `priv/gettext/*/LC_MESSAGES/ash_table.po`), and the
+# messages of the resources' actions by the function that translates the
+# errors of the demo's own forms (the domain `errors`).
+config :ash_table,
+  layout: {DemoWeb.Layouts, :app},
+  gettext_backend: DemoWeb.Gettext,
+  translate_error: {DemoWeb.CoreComponents, :translate_error}
 
 # Configure the endpoint
 config :demo, DemoWeb.Endpoint,

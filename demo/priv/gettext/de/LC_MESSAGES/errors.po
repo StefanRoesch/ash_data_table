@@ -1,0 +1,34 @@
+## The German texts of the messages the demo's actions return. They reach
+## the tables through `DemoWeb.CoreComponents.translate_error/1`, which
+## `config :ash_table, translate_error: …` names.
+msgid ""
+msgstr ""
+"Language: de\n"
+"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+
+## Ash: a string shorter than its `min_length`
+msgid "length must be greater than or equal to %{min}"
+msgstr "muss mindestens %{min} Zeichen lang sein"
+
+## Ash: a string longer than its `max_length`
+msgid "length must be less than or equal to %{max}"
+msgstr "darf höchstens %{max} Zeichen lang sein"
+
+## Ash: a number above its `max`, below its `min`
+msgid "must be less than or equal to %{max}"
+msgstr "darf höchstens %{max} sein"
+
+msgid "must be greater than or equal to %{min}"
+msgstr "muss mindestens %{min} sein"
+
+## Ash: a required attribute left empty
+msgid "is required"
+msgstr "muss ausgefüllt werden"
+
+## Ash: a value that is not one of the attribute's type
+msgid "is invalid"
+msgstr "ist ungültig"
+
+## Demo.Tracker.Task: the validation of `status` against `progress`
+msgid "must be 100 when the task is done"
+msgstr "muss 100 sein, wenn die Aufgabe erledigt ist"

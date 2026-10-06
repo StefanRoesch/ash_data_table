@@ -71,6 +71,11 @@ defmodule DemoWeb.HomeLive do
           </span>
           Change it with the switcher at the top right.
         </p>
+        <p id="embedded" class="text-base-content/70">
+          Every table below is a page of its own. The
+          <.link navigate={~p"/dashboard"} class="link">dashboard</.link>
+          shows two tables placed in a LiveView of the demo's own.
+        </p>
       </div>
 
       <div class="overflow-x-auto">

@@ -2,8 +2,9 @@ defmodule AshTable.Resource.Column do
   @moduledoc """
   A `column` declared in a resource's `table` block.
 
-  This is the declaration as written. What a table actually shows, with
-  defaults filled in, is an `AshTable.Model.Column`.
+  This is the declaration as written, as `AshTable.Resource.Info.table/1`
+  returns it: an option that was not given is `nil`. The defaults are filled
+  in when the table is rendered.
   """
 
   defstruct [

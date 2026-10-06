@@ -103,6 +103,7 @@ defmodule DemoWeb.Tables.CommentTableTest do
     assert column(render_async(view), "comment", "body") == bodies(21..40)
   end
 
+  @tag :capture_log
   test "a cursor that is not one shows that the records could not be loaded", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/comments?comment[after]=nonsense")
 

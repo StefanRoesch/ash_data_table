@@ -30,7 +30,10 @@ defmodule AshTable.Live.TableComponent do
   # Use it through `AshTable.table/1`.
   use Phoenix.LiveComponent
 
+  require Logger
+
   alias AshTable.Edit
+  alias AshTable.Errors
   alias AshTable.Format
   alias AshTable.Model
   alias AshTable.Model.Operator
@@ -100,6 +103,7 @@ defmodule AshTable.Live.TableComponent do
       socket.assigns.resource
       |> Model.build()
       |> Model.for_actor(reader(socket.assigns))
+      |> in_words()
 
     state = current_state(socket.assigns, model)
 
@@ -107,6 +111,27 @@ defmodule AshTable.Live.TableComponent do
      socket
      |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
      |> read()}
+  end
+
+  # The resource's own wording, as the person reads it: the labels of the
+  # columns and of their values, and the questions, in the host's
+  # translation where it has one. Done here, once per update and in the
+  # process whose locale the host has set, so that everything rendered from
+  # the model, and every message that names a column, uses the same words.
+  defp in_words(model) do
+    columns =
+      for column <- model.columns do
+        %{
+          column
+          | label: Text.label(column.label),
+            confirm: column.confirm && Text.label(column.confirm),
+            values:
+              column.values &&
+                Enum.map(column.values, fn {value, label} -> {value, Text.label(label)} end)
+        }
+      end
+
+    %{model | columns: columns}
   end
 
   # A table whose state lives in the URL takes it from there on every update;
@@ -196,7 +221,7 @@ defmodule AshTable.Live.TableComponent do
   defp show_error(socket, error) do
     socket
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
-    |> assign(error: error_text(error))
+    |> assign(error: error_text(error, socket.assigns.model))
     |> stream(:rows, [], reset: true)
   end
 
@@ -254,8 +279,7 @@ defmodule AshTable.Live.TableComponent do
     text =
       case page.total do
         nil -> Text.t(:results_updated)
-        1 -> Text.t(:one_result)
-        total -> Text.t(:results, count: total)
+        total -> Text.n(:results, total)
       end
 
     socket |> assign(announce?: false) |> say(text)
@@ -268,8 +292,35 @@ defmodule AshTable.Live.TableComponent do
     assign(socket, announcement: text, announcements: socket.assigns.announcements + 1)
   end
 
-  defp error_text(%Ash.Error.Forbidden{}), do: Text.t(:not_allowed)
-  defp error_text(_error), do: Text.t(:read_failed)
+  defp error_text(%Ash.Error.Forbidden{}, _model), do: Text.t(:not_allowed)
+
+  # What the read action returned on purpose is shown as it is: an argument
+  # or a filter it does not accept, a validation of its own. Anything else is
+  # a failure a person can do nothing about and should not be shown the
+  # inside of: it goes to the log, and the table says only that it failed.
+  defp error_text(error, model) do
+    case Errors.of_read(error, model) do
+      [] ->
+        log_failed_read(error, model)
+        Text.t(:read_failed)
+
+      messages ->
+        Enum.join(messages, "; ")
+    end
+  end
+
+  # A failure underneath is an error for whoever runs the application. An
+  # error of the invalid class that has no message for a person (a keyset
+  # cursor that somebody altered in the URL, say) is not.
+  defp log_failed_read(error, model) do
+    text = if is_exception(error), do: Exception.message(error), else: inspect(error)
+    message = "ash_table: the read `#{model.read_action}` of #{inspect(model.resource)} failed: "
+
+    case error do
+      %Ash.Error.Invalid{} -> Logger.warning(message <> text)
+      _other -> Logger.error(message <> text)
+    end
+  end
 
   # The primary key as a DOM id. A resource without one falls back to the
   # position in the page.
@@ -588,7 +639,7 @@ defmodule AshTable.Live.TableComponent do
       <nav
         :if={@page && @model.pagination.strategy != :none}
         id={"#{@id}-pagination"}
-        aria-label={Text.t(:pagination)}
+        aria-label={Text.t(:pagination, table: @label)}
         class="mt-4 flex flex-wrap items-center justify-between gap-4"
       >
         <p id={"#{@id}-range"} class="text-sm">{range_text(@page, @row_count, @state)}</p>
@@ -649,6 +700,10 @@ defmodule AshTable.Live.TableComponent do
         // a key that types a character
         const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
 
+        // What a cell says about itself besides its content, which a patch
+        // does not bring to a cell that is being edited.
+        const KEPT = ["aria-readonly", "aria-invalid", "aria-describedby", "data-value", "data-saved"]
+
         // keys that move through the options of a closed select
         const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]
 
@@ -662,7 +717,8 @@ defmodule AshTable.Live.TableComponent do
             this.col = 0
             this.activeId = null
             this.hadFocus = false
-            // the edit in progress: {cell, input, type, saved, old, confirm}
+            // the edit in progress: {cell, input, type, saved, old, confirm},
+            // and `attributes` once a patch has brought the cell's row again
             this.editing = null
             // cells this hook has marked as failed itself, with what they showed before
             this.marked = new WeakMap()
@@ -688,6 +744,19 @@ defmodule AshTable.Live.TableComponent do
               attributeFilter: ["tabindex"]
             })
             this.sync()
+          },
+
+          // A cell that is being edited is left alone by patches, so that
+          // what is typed survives when another cell's save puts the row
+          // back. The row the server sent holds what the cell shows now,
+          // though; it is kept aside here, for when the edit is given up.
+          beforeUpdate(toEl) {
+            const ed = this.editing
+            if (!ed || !toEl || !toEl.querySelector) return
+            const fresh = toEl.querySelector(`[id="${CSS.escape(ed.cell.id)}"]`)
+            if (!fresh) return
+            ed.saved = Array.from(fresh.childNodes).map(node => node.cloneNode(true))
+            ed.attributes = KEPT.map(name => [name, fresh.getAttribute(name)])
           },
 
           updated() { this.sync() },
@@ -802,12 +871,13 @@ defmodule AshTable.Live.TableComponent do
           },
 
           // Into a filter cell: to where its value is typed or chosen, or to
-          // its menu when the operator needs no value.
+          // its menu when the operator needs no value. Returns the control.
           enter(cell) {
             const control = cell.querySelector("[id$='-value']") || cell.querySelector("select,button")
-            if (!control) return
+            if (!control) return null
             control.focus()
             if (control.select) control.select()
+            return control
           },
 
           // Inside a filter the keys belong to its controls, the arrow keys
@@ -900,8 +970,29 @@ defmodule AshTable.Live.TableComponent do
               // reserved for row selection; swallowed so the page does not scroll
               case " ": break
               default:
-                // typing starts the edit with what is typed
-                handled = PRINTABLE(e) && this.canEdit(cell) && this.startEdit(cell, e.key)
+                if (PRINTABLE(e) && cell.dataset.filter !== undefined) {
+                  // Typing on a filter cell goes into the filter as Enter
+                  // does, and the browser goes on to type the character
+                  // there: over the text or number, which is selected; into
+                  // the first part of a date; to the first choice that
+                  // starts with it.
+                  const control = this.enter(cell)
+                  handled = false
+                  // A character a number does not take (a letter, say)
+                  // would empty it: the number stays, as in a data cell.
+                  if (control && control.type === "number") {
+                    const current = control.value
+                    setTimeout(() => {
+                      if (document.activeElement === control && control.value === "" && !control.validity.badInput) {
+                        control.value = current
+                        control.select()
+                      }
+                    }, 0)
+                  }
+                } else {
+                  // typing starts the edit with what is typed
+                  handled = PRINTABLE(e) && this.canEdit(cell) && this.startEdit(cell, e.key)
+                }
             }
             if (handled) e.preventDefault()
           },
@@ -1080,10 +1171,16 @@ defmodule AshTable.Live.TableComponent do
           },
 
           close(ed, save, refocus) {
-            const {cell, input, saved} = ed
+            const {cell, input} = ed
             const value = input.value
+            // The cell as the server last sent it: as it was when the
+            // editor opened, or as a patch of its row has brought it since.
+            const restore = () => cell.replaceChildren(...ed.saved)
+            for (const [name, value] of ed.attributes || []) {
+              if (value === null) cell.removeAttribute(name)
+              else cell.setAttribute(name, value)
+            }
             const failed = cell.hasAttribute("aria-invalid")
-            const restore = () => cell.replaceChildren(...saved)
             this.editing = null
             cell.removeAttribute("phx-update")
             if (save && value !== ed.old) {

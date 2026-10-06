@@ -1,38 +1,37 @@
 defmodule AshTable.Model do
-  @moduledoc """
-  The table model: everything a table is rendered from.
-
-  It is built at runtime from `Ash.Resource.Info` and the resource's `table`
-  block (see ADR 0001). Building is cheap and the result is not cached.
-
-    * `resource` and its `primary_key`;
-    * `read_action`, the name of the read action behind the table;
-    * `pagination`, an `AshTable.Model.Pagination`;
-    * `columns`, the ordered list of `AshTable.Model.Column`.
-
-  ## Columns
-
-  With no `column` in the block, the columns are the resource's public
-  attributes in the order `Ash.Resource.Info.public_attributes/1` returns
-  them. Once one `column` is declared, the columns are exactly the declared
-  ones in the declared order. Calculations and aggregates appear only when
-  named.
-
-  ## Editing
-
-  A column is editable in principle when it is an attribute, the attribute is
-  writable, its cell type has an editor, and an update action can save it:
-  the column's own `update_action`, else the table's, which accepts the
-  attribute and has no required argument without a default. The column then
-  carries that action, its editor and the question of its `confirm`. With no
-  `update_action` at either level nothing is editable.
-
-  ## Per person
-
-  All of the above is what the resource and its block say, the same for
-  everybody. What one person can never see or edit is taken out by
-  `for_actor/2`, which asks Ash.
-  """
+  @moduledoc false
+  # The table model: everything a table is rendered from.
+  #
+  # It is built at runtime from `Ash.Resource.Info` and the resource's `table`
+  # block (see ADR 0001). Building is cheap and the result is not cached.
+  #
+  #   * `resource` and its `primary_key`;
+  #   * `read_action`, the name of the read action behind the table;
+  #   * `pagination`, an `AshTable.Model.Pagination`;
+  #   * `columns`, the ordered list of `AshTable.Model.Column`.
+  #
+  # ## Columns
+  #
+  # With no `column` in the block, the columns are the resource's public
+  # attributes in the order `Ash.Resource.Info.public_attributes/1` returns
+  # them. Once one `column` is declared, the columns are exactly the declared
+  # ones in the declared order. Calculations and aggregates appear only when
+  # named.
+  #
+  # ## Editing
+  #
+  # A column is editable in principle when it is an attribute, the attribute is
+  # writable, its cell type has an editor, and an update action can save it:
+  # the column's own `update_action`, else the table's, which accepts the
+  # attribute and has no required argument without a default. The column then
+  # carries that action, its editor and the question of its `confirm`. With no
+  # `update_action` at either level nothing is editable.
+  #
+  # ## Per person
+  #
+  # All of the above is what the resource and its block say, the same for
+  # everybody. What one person can never see or edit is taken out by
+  # `for_actor/2`, which asks Ash.
 
   alias Ash.Resource.Info
   alias AshTable.Model.Access
