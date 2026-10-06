@@ -261,6 +261,25 @@ test.describe("offset pages: /tasks", () => {
     await expect(tasks.range).toHaveText("301–320 of 320")
   })
 
+  test("from a page beyond the last, Previous leads to the last page there is", async ({
+    tasks,
+  }) => {
+    await tasks.open("/tasks?task[page]=99")
+    await expect(tasks.pagination.getByRole("button")).toHaveText([
+      "Previous",
+      "1",
+      "13",
+      "99",
+      "Next",
+    ])
+
+    await tasks.previous.focus()
+    await tasks.reads(() => tasks.press("Enter"))
+    await expect(tasks.range).toHaveText("301–320 of 320")
+    await expect(tasks.pageButton(13)).toHaveAttribute("aria-current", "page")
+    await expect(tasks.previous).toBeFocused()
+  })
+
   test("a page the URL asks for that is no page number shows the first page", async ({ tasks }) => {
     const first = await tasks.rowKeys()
     await tasks.open("/tasks?task[page]=abc")
@@ -291,16 +310,25 @@ test.describe("keyset pages: /comments", () => {
     await comments.open()
   })
 
-  test("next and previous only: no numbers, no total", async () => {
+  test("next and previous only: no numbers, and the total without a range", async () => {
     await expect(comments.rows).toHaveCount(20)
     await expect(comments.pagination.getByRole("button")).toHaveText(["Previous", "Next"])
     await expect(comments.previous).toBeDisabled()
     await expect(comments.next).toBeEnabled()
-    await expect(comments.range).toHaveText("")
-    await expect(comments.grid, "the number of rows is not known").toHaveAttribute(
+    await expect(comments.range).toHaveText(`${SEED.comments.acme} records`)
+    await expect(comments.grid, "the records and the two header rows").toHaveAttribute(
       "aria-rowcount",
-      "-1",
+      String(SEED.comments.acme + 2),
     )
+  })
+
+  test("the rows of a later page are numbered from the top of that page", async () => {
+    await expect(comments.rows.first().getByRole("row")).toHaveAttribute("aria-rowindex", "3")
+
+    await comments.reads(() => comments.next.click())
+    await expect(comments.rows.first().getByRole("row")).toHaveAttribute("aria-rowindex", "3")
+    await expect(comments.range).toHaveText(`${SEED.comments.acme} records`)
+    await expect(comments.grid).toHaveAttribute("aria-rowcount", String(SEED.comments.acme + 2))
   })
 
   test("Next and Previous move through the records; the cursor is in the URL", async ({ page }) => {

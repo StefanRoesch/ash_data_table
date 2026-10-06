@@ -28,18 +28,32 @@ defmodule AshTable.Domain.Info do
   """
   @spec reader(Ash.Resource.t(), map) :: %{scope: term} | %{actor: term, tenant: term}
   def reader(resource, assigns) do
-    {scope, actor, tenant} =
-      case Ash.Resource.Info.domain(resource) do
-        nil ->
-          {:current_scope, :current_user, :current_tenant}
-
-        domain ->
-          {table_scope_assign!(domain), table_actor_assign!(domain), table_tenant_assign!(domain)}
-      end
+    %{scope: scope, actor: actor, tenant: tenant} = assign_names(resource)
 
     case assigns[scope] do
       nil -> %{actor: assigns[actor], tenant: assigns[tenant]}
       scope -> %{scope: scope}
+    end
+  end
+
+  @doc """
+  The names of the socket assigns in which a mounted table of `resource`
+  finds who is asking: those its domain names as `scope_assign`,
+  `actor_assign` and `tenant_assign`, and the defaults for a resource
+  without a domain.
+  """
+  @spec assign_names(Ash.Resource.t()) :: %{scope: atom, actor: atom, tenant: atom}
+  def assign_names(resource) do
+    case Ash.Resource.Info.domain(resource) do
+      nil ->
+        %{scope: :current_scope, actor: :current_user, tenant: :current_tenant}
+
+      domain ->
+        %{
+          scope: table_scope_assign!(domain),
+          actor: table_actor_assign!(domain),
+          tenant: table_tenant_assign!(domain)
+        }
     end
   end
 end

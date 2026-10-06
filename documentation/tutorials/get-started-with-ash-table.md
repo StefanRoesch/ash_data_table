@@ -56,7 +56,7 @@ each step only if that step has not been taken.
 | --- | --- |
 | `mix.exs` | Adds the dependency (this part is `igniter.install` itself). |
 | `.formatter.exs` | Adds `:ash_table` to `import_deps`, so that `mix format` leaves the `table` block without parentheses. |
-| `assets/js/app.js` | Imports the table's hook and spreads it into the `hooks` of your `LiveSocket`. |
+| `assets/js/app.js` | Imports the table's hooks and spreads them into the `hooks` of your `LiveSocket`. |
 | `assets/css/app.css` | Adds an `@source` line, so that Tailwind sees the classes the table uses. |
 | `config/config.exs` | Sets `layout`, `gettext_backend` and `translate_error` under `config :ash_table`. |
 
@@ -67,7 +67,7 @@ file that does not look like the one of a new Phoenix 1.8 app is left as it
 is, and the step is printed for you to take by hand. The
 [README](../../README.md#by-hand) lists the manual steps.
 
-This is what the result looks like in the demo. The hook, in
+This is what the result looks like in the demo. The hooks, in
 [`demo/assets/js/app.js`](https://github.com/StefanRoesch/ash_table/blob/main/demo/assets/js/app.js):
 
 <!-- source: demo/assets/js/app.js -->
@@ -82,8 +82,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
-The hook ships with the library as a colocated hook. There is nothing to
-install from npm.
+The table has two hooks, one for the grid and one for the pagination. Both
+ship with the library as colocated hooks behind the one import. There is
+nothing to install from npm.
 
 The configuration, in
 [`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs):
@@ -111,7 +112,7 @@ demo):
 @source "../../deps/ash_table/lib";
 ```
 
-The hook is generated when the dependency is compiled, so `mix compile` has
+The hooks are generated when the dependency is compiled, so `mix compile` has
 to run before the assets are built. The `assets.build` alias of a new Phoenix
 app already does that. Run `mix assets.build` now.
 
@@ -327,10 +328,10 @@ The options of the two extensions are listed in the DSL reference:
   dependency is compiled does not find `phoenix-colocated/ash_table`.
 - **Restart the server after changing a path dependency.** The Phoenix code
   reloader does not recompile `{:ash_table, path: "…"}` and does not rebuild
-  the hook. Stop the server, run `mix assets.build`, start it again.
+  the hooks. Stop the server, run `mix assets.build`, start it again.
 - **The table looks unstyled.** The `@source` line is missing or points at
   the wrong directory, so Tailwind never saw the table's classes.
-- **The arrow keys do nothing.** The hook is imported but not spread into
+- **The arrow keys do nothing.** The hooks are imported but not spread into
   `hooks`, or the assets were built before the dependency was compiled.
 - **Nobody is logged in.** A table mounted outside the `live_session` that
   assigns the user reads as nobody. With a policy that filters, that is an

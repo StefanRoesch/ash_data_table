@@ -28,9 +28,10 @@ defmodule AshTable.Domain do
       by `tenant_assign` the tenant. An assign that is not there counts as
       nil: nobody is logged in, there is no tenant.
 
-  The host's `on_mount` hooks set these assigns. A table placed in a page with
-  `AshTable.table/1` is given `scope`, or `actor` and `tenant`, as attributes
-  and does not look at the assign names.
+  The host's `on_mount` hooks set these assigns. The layout of a mounted
+  table is given them under the same names (see `AshTable.Live.Page`). A
+  table placed in a page with `AshTable.table/1` is given `scope`, or `actor`
+  and `tenant`, as attributes and does not look at the assign names.
 
   ## Switching authorization off
 

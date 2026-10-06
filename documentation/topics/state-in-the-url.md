@@ -151,44 +151,55 @@ The demo's dashboard has two tables of this kind
 address stays `/dashboard`, and neither table moves when the other does.
 
 To keep an embedded table's state in the URL, pass the page's current URL as
-`url`. The demo does not do this, so the following is a sketch and not demo
-code. The LiveView assigns the URL that `handle_params/3` receives:
+`url`. The demo's own pages do not do this, so the example is from a LiveView
+that exists for the demo's tests
+([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/plain_tables.ex)).
+The LiveView assigns the URL that `handle_params/3` receives:
 
-<!-- sketch -->
+<!-- source: demo/test/support/plain_tables.ex -->
 ```elixir
+@impl true
 def handle_params(_params, url, socket) do
   {:noreply, assign(socket, :url, url)}
 end
 ```
 
-and hands it to the table:
+and hands it to its tables:
 
-<!-- sketch -->
+<!-- source: demo/test/support/plain_tables.ex -->
 ```heex
-<AshTable.table
-  id="dashboard-tasks"
-  resource={Demo.Tracker.Task}
-  actor={@current_user}
-  tenant={@current_tenant}
-  url={@url}
-/>
+<AshTable.table id="entries" resource={Plain.Entry} url={@url} />
+<AshTable.table id="tickets" resource={Plain.Ticket} url={@url} />
 ```
 
-The table then patches the page's URL, with its parameters under its id
-(`?dashboard-tasks[sort]=title`), and reads its state from the URL on every
-update. This is the mechanism the mounted page uses.
+Each table then patches the page's URL, with its parameters under its id
+(`?entries[sort]=title`), and reads its state from the URL on every update.
+This is the mechanism the mounted page uses, and everything above holds for
+it: the format, what is ignored, reload, the back button and shared links.
+The tests of this page
+([`demo/test/demo_web/tables/embedded_url_table_test.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/demo_web/tables/embedded_url_table_test.exs))
+sort, filter and page both tables and open the addresses they arrive at.
+
+`handle_params/3` is called for a LiveView that is mounted in the router. A
+LiveView rendered inside another one has no URL of its own to hand down.
 
 ## Several tables on one page
 
 Each table needs an `id` that is unique on the page. Because the parameters
 are nested under the id, several tables with `url` share one address without
 touching each other's state, and each leaves the other's parameters and the
-page's own in place when it patches.
+page's own in place when it patches. On the page above, paging the tickets
+and then the entries gives:
+
+<!-- sketch -->
+```text
+/support/url?entries[page]=2&tickets[after]=…
+```
 
 ## Edge cases
 
 - **A page number beyond the last page** is a valid page number. The table
-  shows "No records"; see
+  shows "No records" and a way to the last page; see
   [Reading, sorting and pagination](reading-sorting-and-pagination.md).
 - **A cursor that was altered** is not dropped, because the table cannot tell
   a valid cursor from an invalid one without reading. The read fails and the

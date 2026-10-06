@@ -64,7 +64,12 @@ defmodule AshTable.Model do
   one a person meets.
 
   Raises `ArgumentError` for a resource without the extension, and for a
-  `table` block with a mistake the compile-time checks report.
+  `table` block with a mistake of the compile-time checks that leaves the
+  table nothing sound to do: no usable read action or pagination, a column
+  that is no public field or a calculation that needs an argument, an
+  `update_action` that names no public update action, and editing beside
+  calculations or aggregates without a primary read action. The other
+  findings leave a column read-only or an option without effect.
   """
   @spec build(Ash.Resource.t(), keyword) :: t
   def build(resource, _opts \\ []) do
@@ -73,14 +78,20 @@ defmodule AshTable.Model do
     read_action = read_action!(resource)
     pagination = pagination(resource, read_action)
 
-    columns =
-      case TableInfo.table(resource) do
-        [] ->
-          Enum.map(Info.public_attributes(resource), &column(resource, &1, nil, pagination))
+    update_actions!(resource)
 
-        declared ->
-          Enum.map(declared, &column(resource, field!(resource, &1.name), &1, pagination))
+    # each field with its column as written in the block, or nil for a
+    # column of the default set
+    fields =
+      case TableInfo.table(resource) do
+        [] -> Enum.map(Info.public_attributes(resource), &{&1, nil})
+        declared -> Enum.map(declared, &{field!(resource, &1.name), &1})
       end
+
+    row_refresh!(resource, fields)
+
+    columns =
+      Enum.map(fields, fn {field, declared} -> column(resource, field, declared, pagination) end)
 
     %__MODULE__{
       resource: resource,
@@ -220,12 +231,57 @@ defmodule AshTable.Model do
   end
 
   defp field!(resource, name) do
-    Info.public_attribute(resource, name) ||
-      Info.public_calculation(resource, name) ||
-      Info.public_aggregate(resource, name) ||
+    field =
+      Info.public_attribute(resource, name) ||
+        Info.public_calculation(resource, name) ||
+        Info.public_aggregate(resource, name) ||
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: it declares the column `#{name}`, " <>
+                "but the resource has no public attribute, calculation or aggregate of that name"
+
+    case Reading.required_arguments(field) do
+      [] ->
+        field
+
+      [argument | _] ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: its column `#{name}` is a calculation " <>
+                "that requires the argument `#{argument}`, and a table cannot supply arguments."
+    end
+  end
+
+  # An `update_action` that names no public update action of the resource,
+  # at the table or at a column. What such an action cannot save is another
+  # matter: those columns are read-only (see `AshTable.Resource.Editing`).
+  defp update_actions!(resource) do
+    with {:error, reason} <- Editing.table_action(resource) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: it declares the column `#{name}`, " <>
-              "but the resource has no public attribute, calculation or aggregate of that name"
+            "cannot build the table of #{inspect(resource)}: its `update_action` cannot be used. " <>
+              Editing.message(reason)
+    end
+
+    for %{name: column, update_action: name} when name not in [nil, false] <-
+          TableInfo.table(resource),
+        {:error, reason} <- [Editing.action(resource, name)] do
+      raise ArgumentError,
+            "cannot build the table of #{inspect(resource)}: the `update_action` of its column " <>
+              "`#{column}` cannot be used. " <> Editing.message(reason)
+    end
+
+    :ok
+  end
+
+  defp row_refresh!(resource, fields) do
+    case Editing.unloadable_after_save(resource, fields) do
+      [] ->
+        :ok
+
+      loaded ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: it has editable columns and shows " <>
+                "calculations or aggregates (#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the " <>
+                "resource has no primary read action, which Ash loads those fields through after a save."
+    end
   end
 
   # `declared` is the column as written in the block, or nil for a column of

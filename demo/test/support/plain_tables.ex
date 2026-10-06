@@ -19,6 +19,8 @@ defmodule Demo.Support.Plain do
   resources do
     resource Demo.Support.Plain.Memo
     resource Demo.Support.Plain.Report
+    resource Demo.Support.Plain.Entry
+    resource Demo.Support.Plain.Ticket
   end
 end
 
@@ -186,6 +188,99 @@ defmodule Demo.Support.Plain.Report do
     uuid_primary_key :id
     attribute :title, :string, public?: true
     attribute :secret, :string, public?: true
+  end
+end
+
+defmodule Demo.Support.Plain.Entry do
+  @moduledoc """
+  An entry with a rank: read five to a page by offset, in the order of the
+  ranks, and counted.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Plain,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource],
+    primary_read_warning?: false
+
+  table do
+    column :title
+    column :rank
+  end
+
+  actions do
+    defaults create: [:title, :rank]
+
+    read :read do
+      primary? true
+      pagination offset?: true, default_limit: 5, countable: true
+      prepare build(sort: [rank: :asc])
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :title, :string, public?: true
+    attribute :rank, :integer, public?: true
+  end
+end
+
+defmodule Demo.Support.Plain.Ticket do
+  @moduledoc """
+  A ticket: read five to a page by keyset, by an action that does not count.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Plain,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource],
+    primary_read_warning?: false
+
+  table do
+    column :title
+  end
+
+  actions do
+    defaults create: [:title]
+
+    read :read do
+      primary? true
+      pagination keyset?: true, default_limit: 5, countable: false
+      prepare build(sort: [title: :asc])
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :title, :string, public?: true
+  end
+end
+
+defmodule DemoWeb.Support.UrlLive do
+  @moduledoc """
+  A LiveView of a host's own whose tables keep their sort, filters and page
+  in the page's URL: it assigns the URL that `handle_params/3` receives and
+  hands it to each table.
+  """
+  use Phoenix.LiveView
+
+  alias Demo.Support.Plain
+
+  @impl true
+  def mount(_params, _session, socket), do: {:ok, socket}
+
+  @impl true
+  def handle_params(_params, url, socket) do
+    {:noreply, assign(socket, :url, url)}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <main>
+      <h1>A page of the host's, with its tables in its URL</h1>
+      <AshTable.table id="entries" resource={Plain.Entry} url={@url} />
+      <AshTable.table id="tickets" resource={Plain.Ticket} url={@url} />
+    </main>
+    """
   end
 end
 

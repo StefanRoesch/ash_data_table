@@ -80,8 +80,10 @@ printed for you to take by hand.
    {:ash_table, "~> 0.1"}
    ```
 
-2. Register the table's JavaScript hook in `assets/js/app.js`. The hook ships
-   with the library as a colocated hook; there is nothing to install from npm.
+2. Register the table's JavaScript hooks in `assets/js/app.js`. There are two,
+   one for the grid and one for the pagination, and both ship with the
+   library as colocated hooks behind this one import; there is nothing to
+   install from npm.
 
    ```js
    import {hooks as ashTableHooks} from "phoenix-colocated/ash_table"
@@ -123,7 +125,7 @@ printed for you to take by hand.
    [Translations](#translations). They are read while the app runs, so
    changing them needs no recompilation of the dependency.
 
-The hook is written into the host's build directory when the dependency is
+The hooks are written into the host's build directory when the dependency is
 compiled, so `mix compile` has to run before the assets are built. The
 `assets.build` alias of a new Phoenix app already does that.
 
@@ -193,8 +195,10 @@ end
   be filtered is the resource's decision too (see [Filtering](#filtering)).
 
 Mistakes in the block are reported when the resource is compiled. As with
-every Ash extension's verifiers, they surface as compile warnings; they fail
-the build under `mix compile --warnings-as-errors`.
+every Ash extension's verifiers, they surface as compile warnings. They fail
+a build under `mix compile --warnings-as-errors` only when the resource is
+compiled in that run, so make it `mix compile --force --warnings-as-errors`
+in CI (see [Things people trip over](#things-people-trip-over)).
 
 ## Reading
 
@@ -219,8 +223,11 @@ end
 
 The page size is the action's `default_limit`, or 25 when it has none, and
 never above the action's `max_page_size`. A read action without pagination
-loads every record. Offset pagination shows page numbers, and the total when
-the action is `countable`; keyset pagination shows previous and next only. A
+loads every record. Offset pagination shows page numbers, and where the page
+lies in the total when the action is `countable` ("26–50 of 320"). Keyset
+pagination shows previous and next only, and the total alone when the action
+is `countable` ("320 records"): a keyset page does not know where it lies
+among the others. A
 table that needs its own page size or sort gets its own read action, named
 in `read_action`. Pages of more than a hundred rows or so are slow in the
 browser; there is no virtual scrolling yet.
@@ -243,7 +250,7 @@ the browser.
 | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice | any, or one of the values |
 
 A NewType filters as the type it is made of. "Is empty" is offered only for a
-field that can be nil.
+field that can be nil, and never for a boolean or an enum column.
 
 A column has no filter when
 
@@ -268,8 +275,8 @@ integer column, say) is not applied; its filter is marked as invalid and says
 so. The native inputs keep most such values from being typed at all.
 
 After each filter change the result is announced to screen readers: the
-number of records when the read action is `countable`, otherwise only that the
-results have changed.
+number of records when the read action is `countable`, under offset and
+under keyset pagination, otherwise only that the results have changed.
 
 ### The URL
 
@@ -311,7 +318,8 @@ An exception raised by the very first read, while the page is being
 mounted, is not caught: the page fails as any LiveView does that crashes in
 `mount`. A keyset cursor that somebody altered in the URL shows "The
 records could not be loaded."; a page number beyond the last shows "No
-records".
+records", with the page numbers there are and a Previous that leads to the
+last of them.
 
 ## Inline editing
 
@@ -368,8 +376,10 @@ table is read-only.
 
 Under a table-level `update_action`, the columns it cannot save are simply
 read-only. A column's own `update_action` that cannot save its column is a
-mistake, reported when the resource is compiled, as is `confirm` on a column
-that can never be edited. When the table offers editing, the cells that
+mistake, reported when the resource is compiled: an action that does not
+exist or does not accept the attribute, and equally a column that no action
+could make editable, because its type has no editor or its attribute is not
+writable. So is `confirm` on a column that can never be edited. When the table offers editing, the cells that
 cannot be edited are marked `aria-readonly`.
 
 **Saving.** Enter saves and keeps focus on the cell; leaving the cell (a
@@ -391,7 +401,8 @@ another cell's save puts its row back, so what is typed survives; if that
 edit is then given up, the cell shows what the server sent last.
 
 A table with editable columns and calculation or aggregate columns needs a
-primary read action, which is what Ash loads them through.
+primary read action, which is what Ash loads them through. Without one the
+resource is reported when it is compiled, and its table refuses to render.
 
 **When a save fails,** nothing is saved and the table shows what the action
 returned:
@@ -623,8 +634,11 @@ config :ash_table, layout: {MyAppWeb.Layouts, :app}
 
 The component is called with the table as its inner block and the assigns
 `flash`, `current_scope` (nil when the socket has none) and, when the socket
-has it, `current_user`. Without this setting the tables are rendered bare in
-the root layout. One table can differ:
+has them, `current_user` and `current_tenant`. A domain that names its own
+assigns (`scope_assign`, `actor_assign`, `tenant_assign`) has its layout
+given those too, under the names the domain gives them, each only when the
+socket has it. Without this setting the tables are rendered bare in the root
+layout. One table can differ:
 `ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
 `layout: {Module, :function}`.
 
@@ -675,10 +689,22 @@ nothing at all, unless the resource says `on_forbidden :message`.
 - **Page size and default sort live on the read action**, not in the `table`
   block: `pagination default_limit: 25` and `prepare build(sort: …)`.
 - **Mistakes in the `table` block are compile warnings.** As with every Ash
-  extension's verifiers, they do not stop a plain `mix compile`; they fail
-  the build under `mix compile --warnings-as-errors`, which is worth having
-  in CI. A table of a resource compiled despite one raises when it is
-  rendered.
+  extension's verifiers, they do not stop a plain `mix compile`. They fail
+  the build under `mix compile --warnings-as-errors`, but only in a run that
+  compiles the resource: unlike an ordinary compiler warning, a verifier's
+  finding is not remembered, so a later build that has nothing to recompile
+  passes. Use `mix compile --force --warnings-as-errors` in CI, or build
+  from clean there.
+- **What a table does when a finding was ignored depends on the finding.**
+  It refuses to render (`ArgumentError`, "cannot build the table of …") for
+  a wrong `read_action`, a missing primary read action, an unsupported
+  `paginate_with`, a column that is no public field or is a calculation that
+  needs an argument, an `update_action` that names no public update action,
+  and editing beside calculation or aggregate columns without a primary read
+  action. A column's own `update_action` that exists but cannot save the
+  column leaves the column read-only, and `sortable? true`,
+  `filterable? true` and `confirm` without effect do nothing. See
+  [Mistakes at compile time](documentation/topics/mistakes-at-compile-time.md#if-a-finding-is-ignored).
 - **A hidden field cannot be edited through the table, but the table is not
   what protects it.** A field policy is about reading. The same update
   action called through `ash_json_api`, `ash_graphql` or your own code
@@ -686,8 +712,8 @@ nothing at all, unless the resource says `on_forbidden :message`.
   [Who is reading](#who-is-reading-and-what-they-may-see-and-do).
 - **Restart the server after changing a path dependency.** The Phoenix code
   reloader does not recompile `{:ash_table, path: "…"}`; neither does it
-  rebuild the hook. Stop the server, `mix assets.build`, start it again.
-- **`mix compile` before the assets.** The hook is generated when the
+  rebuild the hooks. Stop the server, `mix assets.build`, start it again.
+- **`mix compile` before the assets.** The hooks are generated when the
   dependency is compiled; an `esbuild` that runs first does not find
   `phoenix-colocated/ash_table`.
 - **An older Phoenix 1.8 app pins LiveView 1.1.** `ash_table` needs 1.2.10

@@ -14,9 +14,10 @@ defmodule AshTable.Query do
     # One page of records and where a person can go from it.
     #
     #   * `total` is the number of records in all pages, when the action
-    #     counts; `pages` follows from it.
+    #     counts; under offset pagination `pages` follows from it.
     #   * `offset` is the number of records before this page (offset
-    #     pagination), nil when unknown.
+    #     pagination), nil when unknown: under keyset pagination a page does
+    #     not know where it lies among the others, even when it has a total.
     #   * `previous` and `next` are the states of the neighbouring pages, nil
     #     where there is none.
 
@@ -120,7 +121,9 @@ defmodule AshTable.Query do
         true -> []
       end
 
-    [limit: pagination.page_size] ++ position
+    # Ash counts for a keyset page as it does for an offset one, when the
+    # action is countable.
+    [limit: pagination.page_size, count: pagination.countable?] ++ position
   end
 
   defp page(records, _model, _state) when is_list(records) do
@@ -128,12 +131,18 @@ defmodule AshTable.Query do
   end
 
   defp page(%Ash.Page.Offset{} = result, model, state) do
+    pages = result.count && max(1, ceil(result.count / model.pagination.page_size))
+
+    # From a page beyond the last, back is the last page there is, when the
+    # action counts; the pages in between are as empty as this one.
+    previous = if pages, do: min(state.page - 1, pages), else: state.page - 1
+
     %Page{
       records: result.results,
       total: result.count,
-      pages: result.count && max(1, ceil(result.count / model.pagination.page_size)),
+      pages: pages,
       offset: result.offset,
-      previous: if(state.page > 1, do: State.to_page(state, state.page - 1)),
+      previous: if(state.page > 1, do: State.to_page(state, previous)),
       next: if(result.more?, do: State.to_page(state, state.page + 1))
     }
   end
@@ -159,7 +168,7 @@ defmodule AshTable.Query do
           {nil, more(result, start, :after, last)}
       end
 
-    %Page{records: records, previous: previous, next: next}
+    %Page{records: records, total: result.count, previous: previous, next: next}
   end
 
   defp more(%{more?: true}, start, direction, cursor) when is_binary(cursor),

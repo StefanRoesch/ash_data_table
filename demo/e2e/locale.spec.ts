@@ -243,14 +243,18 @@ test.describe("in German", () => {
     await expect(tasks.status).toHaveText("320 Ergebnisse")
   })
 
-  test("a keyset table, which cannot count, says that the results have changed", async ({ page }) => {
+  test("a keyset table says how many records there are, and how many a filter found", async ({
+    page,
+  }) => {
     const comments = new Table(page, "comment", "/comments")
     await comments.open()
     await expect(comments.pagination).toHaveAccessibleName("Seiten: Kommentare")
     await expect(comments.pagination.getByRole("button")).toHaveText(["Zurück", "Weiter"])
+    await expect(comments.range).toHaveText(`${SEED.comments.acme} Einträge`)
     await comments.filterValue("body").fill("sprint")
     await comments.reads(() => comments.filterValue("body").press("Enter"))
-    await expect(comments.status).toHaveText("Ergebnisse aktualisiert")
+    await expect(comments.status).toHaveText(`${SEED.comments.nextSprint} Ergebnisse`)
+    await expect(comments.range).toHaveText(`${SEED.comments.nextSprint} Einträge`)
   })
 
   test.describe("a save that fails", () => {

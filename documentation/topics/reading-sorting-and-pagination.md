@@ -154,7 +154,7 @@ What a person gets differs by strategy:
 | --- | --- | --- | --- |
 | Previous and Next | yes | yes | no controls |
 | Page numbers | the first, the last and two either side of the current one, when the action is `countable`; else the current one only | no | |
-| Position | "26–50 of 320" when the action is `countable`, else "26–50" | none | |
+| Position | "26–50 of 320" when the action is `countable`, else "26–50" | "320 records" when the action is `countable`, else nothing | |
 | In the URL | the page number | a cursor | nothing |
 | Sorting by a calculation or aggregate | yes | no | yes |
 | Demo page | `/tasks`, `/projects`, `/specimens` | `/comments` | `/labels` |
@@ -162,10 +162,18 @@ What a person gets differs by strategy:
 The controls are a navigation landmark under the table. They are ordinary
 buttons, and tab stops of their own after the table's.
 
-A keyset table never shows a total, even if its action is `countable`: the
-table does not ask a keyset read for the count.
+Under either strategy the table asks the read for the count when the action
+is `countable`, and only then. An offset table uses it for the range, the
+last page number and the announcement after a filter change. A keyset table
+has the total and nothing else: a cursor says where a page starts, not how
+many records lie before it. So it shows the total alone, "320 records", and
+announces it after a filter change. Counting is a query of its own on every
+read; `pagination countable: false` on the action switches it off, and the
+table then shows no total and announces "Results updated".
 
-The comments in the demo are read by keyset only, twenty to a page:
+The comments in the demo are read by keyset only, twenty to a page. The
+action does not say `countable`, and in Ash an action counts unless it says
+`countable: false`:
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
 ```elixir
@@ -258,7 +266,10 @@ resource for it
 ## Edge cases
 
 - **A page beyond the last** (`/tasks?task[page]=99`) shows "No records" and
-  "Page 99". The page numbers lead back.
+  "Page 99". When the action is `countable`, the page numbers are the pages
+  there are and the one the person is at (1, 13 and 99), and Previous leads
+  to the last page, not to page 98. Without a count the table does not know
+  where the last page is: Previous goes back one page at a time.
 - **A keyset cursor that somebody altered in the URL** shows "The records
   could not be loaded."
 - **An exception raised by the very first read** is not caught: the page
@@ -268,6 +279,9 @@ resource for it
   table supplies none. The person reads the action's message, "is required".
 - **An offset action that is not `countable`** has no total and no last page
   number. Next is offered as long as Ash reports more records.
+- **A keyset table does not say where its page lies.** Its rows are numbered
+  from the top of each page for assistive technology, also when the total is
+  known; see [Keyboard and accessibility](keyboard-and-accessibility.md#what-assistive-technology-is-told).
 - **Under keyset pagination a new sort starts at the first page.** A cursor
   belongs to the order it was made in.
 - **A resource without a primary read action** needs `read_action`. With

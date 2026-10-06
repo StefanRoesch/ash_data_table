@@ -74,11 +74,16 @@ defmodule AshTable.Text do
   end
 
   @doc "The text for `key` in the plural form of `count`, which is bound as `%{count}`."
-  @spec n(:results, non_neg_integer) :: String.t()
-  def n(:results, count) do
-    {singular, plural} = dngettext_noop("ash_table", "1 result", "%{count} results")
+  @spec n(:results | :records, non_neg_integer) :: String.t()
+  def n(key, count) do
+    {singular, plural} = msgids(key)
     Gettext.dngettext(backend(), @domain, singular, plural, count)
   end
+
+  # what a filter change found, for the live region
+  defp msgids(:results), do: dngettext_noop("ash_table", "1 result", "%{count} results")
+  # the total of a table that does not know where its page lies in it
+  defp msgids(:records), do: dngettext_noop("ash_table", "1 record", "%{count} records")
 
   @doc """
   A text of the resource's as the table shows it: translated when the

@@ -151,6 +151,67 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
     end
   end
 
+  describe "the layout around a mounted table" do
+    test "is given who is asking under the names the domain gives them", %{conn: conn} do
+      {:ok, _view, html} =
+        conn
+        |> with_assigns(reader: @ada, reader_organization: "acme")
+        |> live("/support/framed/guarded-notes")
+
+      assert text(html, "#frame-reader") == "ada"
+      assert text(html, "#frame-organization") == "acme"
+      # the table is inside it
+      assert attribute(html, "#frame #note-table", "id") == ["note-table"]
+    end
+
+    test "is given the scope under the name the domain gives it", %{conn: conn} do
+      {:ok, _view, html} =
+        conn
+        |> with_assigns(viewer_scope: %Scope{user: @bob, organization: "acme"})
+        |> live("/support/framed/guarded-notes")
+
+      assert text(html, "#frame-scope") == "bob"
+    end
+
+    test "is not given an assign the socket does not have", %{conn: conn} do
+      {:ok, _view, html} =
+        conn |> with_assigns(reader: @ada) |> live("/support/framed/guarded-notes")
+
+      # `current_scope` is always there, nil when the socket has none
+      assert attribute(html, "#frame", "data-assigns") == ["current_scope flash reader"]
+    end
+
+    test "is given the conventional assigns too, when the socket has them", %{conn: conn} do
+      {:ok, _view, html} =
+        conn
+        |> with_assigns(reader: @ada, current_user: %{id: "carol", name: "carol", role: :member})
+        |> live("/support/framed/guarded-notes")
+
+      assert attribute(html, "#frame", "data-assigns") == [
+               "current_scope current_user flash reader"
+             ]
+    end
+
+    test "of a domain with the default names is given scope, user and tenant under those",
+         %{conn: conn} do
+      {:ok, _view, html} =
+        conn
+        |> with_assigns(
+          current_user: %{id: "carol", name: "carol", role: :member},
+          current_tenant: "acme"
+        )
+        |> live("/support/framed/memos")
+
+      assert attribute(html, "#frame", "data-assigns") == [
+               "current_scope current_tenant current_user flash"
+             ]
+
+      {:ok, _view, html} = conn |> with_assigns(%{}) |> live("/support/framed/memos")
+
+      assert attribute(html, "#frame", "data-assigns") == ["current_scope flash"]
+    end
+  end
+
   describe "a read that is refused while the page is open" do
     setup %{conn: conn} do
       note("Ada at Acme", "ada", "acme")

@@ -315,6 +315,32 @@ defmodule DemoWeb.Tables.TaskTableTest do
       assert text(html, "#task-empty") == "No records"
     end
 
+    test "a page beyond the last offers the pages there are, and Previous leads to the last",
+         %{conn: conn} do
+      {:ok, view, html} = live(conn, "/tasks?task[page]=9")
+
+      assert text(html, "#task-range") == "Page 9"
+
+      # the two pages of the 30 tasks and the one the person is at, not 7 and 8
+      assert attribute(html, "#task-pagination button", "id") == [
+               "task-previous",
+               "task-page-1",
+               "task-page-2",
+               "task-page-9",
+               "task-next"
+             ]
+
+      assert attribute(html, "#task-pagination [aria-current=page]", "id") == ["task-page-9"]
+      assert attribute(html, "#task-next", "disabled") == [""]
+
+      view |> element("#task-previous") |> render_click()
+      assert_patch(view, "/tasks?task[page]=2")
+      html = render_async(view)
+
+      assert column(html, "task", "title") == titles(5..1//-1)
+      assert text(html, "#task-range") == "26–30 of 30"
+    end
+
     test "parameters of the page that are not the table's are kept", %{conn: conn} do
       {:ok, view, html} = live(conn, "/tasks?utm=mail&other[a]=1&task[page]=2")
 

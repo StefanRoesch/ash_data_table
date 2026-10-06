@@ -44,8 +44,11 @@ export async function deleteTask(request: APIRequestContext, id: string): Promis
 /** What the standard seed holds, as far as the tests count on it. */
 export const SEED = {
   tasks: { total: 400, acme: 320, globex: 80 },
-  /** Comments of Acme that say "Moved to the next sprint.": two keyset pages of 20. */
-  comments: { nextSprint: 27 },
+  /**
+   * Comments of Acme: all of them, those whose body has an "a", and those
+   * that say "Moved to the next sprint.", which are two keyset pages of 20.
+   */
+  comments: { acme: 384, withAnA: 311, nextSprint: 27 },
   projects: { acme: 6 },
   labels: { acme: 8 },
   taskLabels: { acme: 396 },

@@ -53,10 +53,38 @@ assigns:
 | --- | --- |
 | `flash` | The socket's flash. |
 | `current_scope` | The socket's `current_scope`, or nil when it has none. |
-| `current_user` | The socket's `current_user`, only when the socket has that assign. |
+| `current_user`, `current_tenant` | The socket's, each only when the socket has that assign. |
+| The assigns the resource's domain names as `scope_assign`, `actor_assign` and `tenant_assign` | The socket's, under those names, each only when the socket has that assign. |
 
-This fits the `app/1` that Phoenix 1.8 generates. A layout that needs other
-assigns gets a small wrapper component of yours that supplies them.
+This fits the `app/1` that Phoenix 1.8 generates. With the default names the
+last row adds nothing to the two above it. A domain that names its own
+assigns has a layout that expects them under those names, and gets them. The
+demo's domains keep the defaults, so this example is from the demo's tests
+([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/guarded_tables.ex)).
+The domain:
+
+<!-- source: demo/test/support/guarded_tables.ex -->
+```elixir
+table do
+  scope_assign :viewer_scope
+  actor_assign :reader
+  tenant_assign :reader_organization
+end
+```
+
+and a layout that is called with `reader`, `reader_organization` and
+`viewer_scope`, as far as the socket has them:
+
+<!-- source: demo/test/support/guarded_tables.ex -->
+```heex
+<p :if={assigns[:reader]} id="frame-reader">{@reader.name}</p>
+<p :if={assigns[:reader_organization]} id="frame-organization">{@reader_organization}</p>
+<p :if={assigns[:viewer_scope]} id="frame-scope">{@viewer_scope.user.name}</p>
+{render_slot(@inner_block)}
+```
+
+A layout that needs anything else gets a small wrapper component of yours
+that supplies it.
 
 The setting is read when the page is rendered, so it can be changed without
 recompiling the dependency. `mix ash_table.install` sets it when your app has
@@ -135,7 +163,7 @@ dashboard places two of them under its own headings, in its own layout:
 | `scope` | | An `Ash.Scope` carrying actor and tenant. |
 | `actor`, `tenant` | | Used when no `scope` is given. |
 | `authorize?` | | Overrides the domain's `authorize?` for this table, either way. |
-| `url` | | The page's current URL. When given, the table keeps its state in it. |
+| `url` | | The page's current URL. When given, the table keeps its state in it. See [State in the URL](state-in-the-url.md#a-table-inside-your-own-liveview). |
 | `label` | | The accessible name of the table. Defaults to the table's name. |
 
 The table is a LiveComponent, so the page has to be a LiveView. It renders no
@@ -211,8 +239,14 @@ table show the message in place of the rows.
   element** with the table's id. Your surrounding heading stays, so consider
   what the page should show a person who gets no table.
 - **A domain that names its own assigns** changes where the mounted table
-  finds the actor. It does not change what the layout is given: the layout
-  still receives `current_scope` and `current_user`.
+  finds the actor, and adds those assigns to what the layout is given. The
+  layout still receives `current_scope`, and `current_user` and
+  `current_tenant` when the socket has them: a host's `on_mount` hooks may
+  set them for its own layout whatever the domain says.
+- **An assign the socket does not have is not passed**, so a layout declares
+  a default for what may be missing (`attr :reader, :map, default: nil`) or
+  asks with `assigns[:reader]`. `current_scope` is the exception: it is
+  always passed, as nil when the socket has none.
 - **`layout:` on the router line is checked when the router is compiled**: it
   has to be `{module, function}` or `false`. That the function exists is
   found out when the page is rendered.

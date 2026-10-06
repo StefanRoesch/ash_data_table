@@ -172,3 +172,9 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Pagination: %{table}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "1 record"
+msgid_plural "%{count} records"
+msgstr[0] ""
+msgstr[1] ""

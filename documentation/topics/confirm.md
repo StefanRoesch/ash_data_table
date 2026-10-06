@@ -97,7 +97,8 @@ same file. See [Messages and translations](messages-and-translations.md).
 
 - **`confirm` on a column that can never be edited** has no effect, and the
   compiler reports it: a column without an update action, one switched off
-  with `update_action false`, one the table's action does not accept. See
+  with `update_action false`, one the table's action does not accept, one
+  whose type has no editor or whose attribute is not writable. See
   [Mistakes at compile time](mistakes-at-compile-time.md).
 - **Expecting a question when nothing changed.** An unchanged value is not
   saved, so it is not asked about.

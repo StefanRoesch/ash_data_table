@@ -130,16 +130,26 @@ A cell that is being edited is protected from these changes, so what is typed
 survives a save of another cell in the same row.
 
 The pagination buttons keep focus in the same way. After a page change, focus
-is on the button that was used. If that button can no longer take it (Next on
-the last page is disabled), focus goes to the button of the page now shown,
-or to the other of the two buttons in a table without page numbers.
+is on the button that was used: Previous, Next or a page number. When that
+button can no longer take it, because Next has reached the last page or
+Previous the first and is disabled now, focus goes
+
+- on an offset table, to the button of the page now shown (the one marked
+  `aria-current="page"`);
+- on a keyset table, which has no page numbers, to the other of Previous and
+  Next.
+
+When the pagination itself goes away, with a read that failed, focus goes to
+the grid's tab stop. Focus is kept as well when the page that is left had no
+records, as a page beyond the last has: Previous there leads to the last
+page and keeps the focus.
 
 ## What assistive technology is told
 
 | What | How |
 | --- | --- |
 | The grid and its name | `role="grid"` with `aria-label`: the table's name, such as "Tasks". |
-| Size and position | `aria-rowcount` (the total when the table knows it, counting the two header rows; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages. |
+| Size and position | `aria-rowcount` (the total when the table knows it, counting the two header rows; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
 | Sort | `aria-sort` on every sortable heading: `ascending`, `descending` or `none`. |
 | A read in progress | `aria-busy` on the grid. The previous rows stay. |
 | A filter's controls | An accessible name each: "Filter Title", "How to filter Title", "Clear the Title filter". |
@@ -155,6 +165,23 @@ or to the other of the two buttons in a table without page numbers.
 
 A successful save, a new sort and a new page are not announced in the live
 region. Their result is in the grid itself.
+
+### Row numbers under keyset pagination
+
+The table knows the total (`aria-rowcount`) whenever the read action is
+`countable`. It knows a row's place in that total (`aria-rowindex`) only
+under offset pagination, where the page number says how many records come
+before. A keyset page starts at a cursor and has no such number.
+
+ARIA has no value for "position unknown": `aria-rowindex` has to be a whole
+number from 1 up that grows from row to row and does not exceed the row
+count, and where it is left out, the browser counts the rows that are in the
+page, which comes to the same. So on a keyset table the rows of every page
+are numbered from the top of that page: 3 for the first row of records,
+after the two header rows. On the first page that is the row's true place.
+On a later page it is not: what a screen reader may announce there as the
+third row of the table is the third row of the page. The total is true on
+every page.
 
 ## What has been tested, and what has not
 
@@ -208,7 +235,7 @@ technology, a report of what you find is welcome in the
 
 ## Things people trip over
 
-- **The arrow keys do nothing.** The hook is not registered, or the assets
+- **The arrow keys do nothing.** The hooks are not registered, or the assets
   were built before the dependency was compiled. See the
   [tutorial](../tutorials/get-started-with-ash-table.md#1-install).
 - **Expecting Tab to move to the next cell.** Tab leaves the grid; this is

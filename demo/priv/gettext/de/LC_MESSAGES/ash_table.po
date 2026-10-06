@@ -19,6 +19,11 @@ msgstr "%{from}–%{to}"
 msgid "%{from}–%{to} of %{total}"
 msgstr "%{from}–%{to} von %{total}"
 
+msgid "1 record"
+msgid_plural "%{count} records"
+msgstr[0] "1 Eintrag"
+msgstr[1] "%{count} Einträge"
+
 msgid "1 result"
 msgid_plural "%{count} results"
 msgstr[0] "1 Ergebnis"

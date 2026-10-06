@@ -15,14 +15,20 @@ declared in the resource and mounted with one line in the router.
   `paginate_with`, `update_action`, `on_forbidden`, and `column` entities with
   `label`, `sortable?`, `filterable?`, `update_action` and `confirm`. With no
   block the table shows the public attributes, read-only. Mistakes in the
-  block are reported by verifiers when the resource is compiled.
+  block are reported by verifiers when the resource is compiled, as
+  warnings: among them a column's own `update_action` on a column that no
+  action could make editable. A table of a resource compiled despite a
+  finding that leaves it nothing sound to do (no usable read action,
+  pagination, column or update action) refuses to render with an
+  `ArgumentError`.
 - `AshTable.Router.ash_table/3` mounts a table as a page, with `id:` and
   `layout:`; `<AshTable.table … />` places one in a LiveView of the host's,
   several to a page if wanted.
 - `AshTable.Domain`, the extension with the domain's `table` section:
   `authorize?` and the socket assigns that hold scope, actor and tenant.
 - `config :ash_table, layout: {MyAppWeb.Layouts, :app}` for the layout of
-  mounted tables.
+  mounted tables. The layout is given the flash and who is asking, under the
+  conventional assign names and under those the domain names.
 
 ### Reading
 
@@ -30,10 +36,15 @@ declared in the resource and mounted with one line in the router.
   with `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. Page size and
   default sort are the read action's.
 - Offset pagination with page numbers and a total, keyset pagination with
-  previous and next, or every record for an action without pagination.
+  previous and next, or every record for an action without pagination. A
+  countable action is asked for its count under either strategy: a keyset
+  table shows the total alone ("320 records").
+- A page beyond the last offers the pages there are, and Previous leads to
+  the last of them.
 - A filter row with one filter per column and a short list of operators per
   type: text, number, date, datetime, boolean and enum.
-- Sort, filters and page in the URL of a mounted table.
+- Sort, filters and page in the URL of a mounted table, and of a table
+  placed in a LiveView that hands it the page's `url`.
 - Loading, empty and failed states. An error the read action returned on
   purpose is shown; any other failure is logged and shown as "The records
   could not be loaded."
@@ -59,7 +70,8 @@ declared in the resource and mounted with one line in the router.
 - An ARIA grid with one tab stop, moved by the arrow keys, Home, End, Page Up
   and Page Down without a round trip; colocated hooks, no npm package.
 - Enter, F2 or a character starts editing a cell or goes into a filter;
-  Escape gives up. Results of filters and failed saves are announced.
+  Escape gives up. Results of filters and failed saves are announced, the
+  former with their count whenever the read action counts.
 - The pagination is ordinary buttons outside the grid. Focus stays on the
   one that was used; when it is disabled by the page it led to, focus goes to
   the button of that page, or to the other of Previous and Next in a table

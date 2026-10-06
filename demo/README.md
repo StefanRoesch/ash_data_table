@@ -57,7 +57,7 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | --- | --- | --- |
 | http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations; offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
 | http://localhost:4478/projects | `Project` | no block: the public attributes. Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
-| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
+| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25 |
@@ -99,10 +99,14 @@ attributes in `task_label_table_test.exs`, a read that fails in
 `failed_read_test.exs` and what a failed save says about other fields in
 `save_error_fields_test.exs`; the last two use resources of
 `test/support/plain_tables.ex`.
-`domain_settings_test.exs` covers the `table` block of a domain; the demo's
-own domains keep the defaults, so it uses two small domains of its own
+`domain_settings_test.exs` covers the `table` block of a domain, and what a
+layout is told about who is asking; the demo's own domains keep the
+defaults, so it uses two small domains of its own
 (`test/support/guarded_tables.ex`), mounted under `/support` in the test
-environment only.
+environment only. A keyset table whose action does not count is in
+`uncounted_table_test.exs`, and tables placed in a LiveView with their state
+in its URL in `embedded_url_table_test.exs`; both use resources of
+`test/support/plain_tables.ex` too.
 
 Some filters to try, as the admin:
 

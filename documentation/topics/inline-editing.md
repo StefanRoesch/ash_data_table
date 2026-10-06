@@ -119,7 +119,8 @@ The two levels are held to different standards. A table-level action is a
 blanket statement, so the columns it cannot save are quietly read-only: on
 `/tasks`, "Inserted at" is, because no action accepts it. A column's own
 action is a specific statement, so the compiler reports one that does not
-exist, does not accept the column's attribute, or needs an argument. See
+exist, does not accept the column's attribute, or needs an argument, and one
+on a column that points 1, 2 or 4 keep from ever being edited. See
 [Mistakes at compile time](mistakes-at-compile-time.md).
 
 When a table offers a person any editing, the cells they cannot edit are
@@ -220,7 +221,8 @@ of page, sort or filter reads the page afresh.
 Loading calculations and aggregates on an action's result goes through the
 resource's primary read action, as it always does in Ash. A table that has
 both editable columns and calculation or aggregate columns therefore needs a
-primary read action; the compiler reports it otherwise.
+primary read action. The compiler reports it otherwise, and the table of a
+resource compiled all the same refuses to render.
 
 ## When a save fails
 

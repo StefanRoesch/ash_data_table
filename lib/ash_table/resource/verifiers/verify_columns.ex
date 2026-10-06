@@ -63,7 +63,8 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
             column,
             module,
             :confirm,
-            "`#{column.name}` can never be edited, so `confirm` has no effect. A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
+            "`#{column.name}` can never be edited, so `confirm` has no effect. " <>
+              never_edited(Editing.obstacle(module, field))
           )
         ]
     end
@@ -99,11 +100,21 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   end
 
   defp update_action_errors(%{update_action: name} = column, field, module) do
-    case Editing.action(module, name) do
-      {:error, reason} ->
-        [option_error(column, module, :update_action, Editing.message(reason))]
+    action = Editing.action(module, name)
 
-      {:ok, action} ->
+    named =
+      case action do
+        {:error, reason} ->
+          [option_error(column, module, :update_action, Editing.message(reason))]
+
+        {:ok, _action} ->
+          []
+      end
+
+    # What no action can do for the column is reported once, in place of what
+    # this one would have to do besides.
+    case {Editing.obstacle(module, field), action} do
+      {nil, {:ok, action}} ->
         accept_errors(column, field, action, module) ++
           for argument <- Editing.required_arguments(action) do
             option_error(
@@ -113,8 +124,35 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
               "The update action `#{name}` requires the argument `#{argument}`. An inline edit supplies only the cell's value, so the action behind a column must not need anything else."
             )
           end
+
+      {nil, _error} ->
+        named
+
+      {obstacle, _action} ->
+        named ++ [option_error(column, module, :update_action, read_only(column, obstacle))]
     end
   end
+
+  # A column's own `update_action` on a column that is read-only whatever
+  # the action. The calculation and the aggregate have clauses of their own
+  # above.
+  defp read_only(column, :not_writable) do
+    "`#{column.name}` is declared `writable?: false`, so no action can save an edit of it: the column is read-only and its `update_action` has no effect. Remove `update_action` from this column, or make the attribute writable."
+  end
+
+  defp read_only(column, {:no_editor, type}) do
+    "`#{column.name}` has the type `#{inspect(type)}`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums. Remove `update_action` from this column."
+  end
+
+  # Why `confirm` has nothing to ask about.
+  defp never_edited(:not_writable), do: "Its attribute is declared `writable?: false`."
+
+  defp never_edited({:no_editor, type}),
+    do: "It has the type `#{inspect(type)}`, which a table has no editor for."
+
+  defp never_edited(_other),
+    do:
+      "A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
 
   defp accept_errors(column, field, action, module) do
     if Editing.accepts?(action, field) do
@@ -174,8 +212,8 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp strategy_note(:keyset), do: " with keyset pagination"
   defp strategy_note(_strategy), do: ""
 
-  defp required_argument_errors(column, %Ash.Resource.Calculation{arguments: arguments}, module) do
-    for %{allow_nil?: false, default: nil, name: name} <- arguments do
+  defp required_argument_errors(column, field, module) do
+    for name <- Reading.required_arguments(field) do
       error(
         column,
         module,
@@ -183,8 +221,6 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
       )
     end
   end
-
-  defp required_argument_errors(_column, _field, _module), do: []
 
   defp field(dsl, name) do
     Ash.Resource.Info.attribute(dsl, name) ||

@@ -166,3 +166,34 @@ defmodule DemoWeb.Support.Assigns do
     {:cont, Phoenix.Component.assign(socket, Map.get(session, "assigns", %{}))}
   end
 end
+
+defmodule DemoWeb.Support.Layouts do
+  @moduledoc """
+  A layout of a host whose assigns have names of its own: it shows who it was
+  told is asking, and lists the assigns it was called with.
+  """
+  use Phoenix.Component
+
+  slot :inner_block, required: true
+
+  def frame(assigns) do
+    ~H"""
+    <div id="frame" data-assigns={given(assigns)}>
+      <p :if={assigns[:reader]} id="frame-reader">{@reader.name}</p>
+      <p :if={assigns[:reader_organization]} id="frame-organization">{@reader_organization}</p>
+      <p :if={assigns[:viewer_scope]} id="frame-scope">{@viewer_scope.user.name}</p>
+      {render_slot(@inner_block)}
+    </div>
+    """
+  end
+
+  # the names of the assigns the layout was called with, besides its slot
+  # and what Phoenix adds
+  defp given(assigns) do
+    assigns
+    |> Map.keys()
+    |> Enum.reject(&(&1 == :inner_block or String.starts_with?(Atom.to_string(&1), "__")))
+    |> Enum.sort()
+    |> Enum.join(" ")
+  end
+end

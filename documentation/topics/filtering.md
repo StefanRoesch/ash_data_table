@@ -81,8 +81,8 @@ value picked to the minute means the start of that minute.
 
 After each change the result is put into a live region for screen readers:
 "12 results" when the table knows the total, otherwise "Results updated". The
-table knows the total under offset pagination with a `countable` action, and
-when the action has no pagination.
+table knows the total when the read action is `countable`, under offset and
+under keyset pagination, and when the action has no pagination.
 
 ## Clearing
 
@@ -195,8 +195,9 @@ values.
   the URL is ignored.
 - **An invalid value in the URL is dropped without a mark.** Only a value
   typed into the row is shown as rejected.
-- **A keyset table and an offset table that is not `countable` announce
-  "Results updated".** They have no total to report.
+- **A table whose read action is not `countable` announces "Results
+  updated".** It has no total to report. That holds under offset and under
+  keyset pagination alike; the demo's keyset table, `/comments`, counts.
 - **The row stays after an edit.** A row whose new value no longer matches
   the filter stays on the page until the next read. See
   [Inline editing](inline-editing.md).

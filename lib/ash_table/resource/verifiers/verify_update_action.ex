@@ -33,35 +33,27 @@ defmodule AshTable.Resource.Verifiers.VerifyUpdateAction do
   # calculations and aggregates loaded onto it. Ash loads those through the
   # primary read action.
   defp verify_row_refresh(dsl, module) do
-    fields =
+    columns =
       for column <- Verifier.get_entities(dsl, [:table]),
           field = field(module, column.name),
-          do: {column, field}
+          do: {field, column}
 
-    loaded =
-      for {column, %struct{}} <- fields,
-          struct in [Ash.Resource.Calculation, Ash.Resource.Aggregate],
-          do: column.name
+    case Editing.unloadable_after_save(module, columns) do
+      [] ->
+        :ok
 
-    editable? =
-      Enum.any?(fields, fn {column, field} ->
-        Editing.update_action(module, field, column) != :none
-      end)
-
-    if editable? and loaded != [] and is_nil(Info.primary_action(module, :read)) do
-      {:error,
-       DslError.exception(
-         module: module,
-         path: [:table],
-         message:
-           "The table has editable columns and shows calculations or aggregates " <>
-             "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the resource has no primary read action. " <>
-             "After a save the row is refreshed with those fields, which Ash loads through the primary read action. " <>
-             "Mark a read action `primary? true`.",
-         location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
-       )}
-    else
-      :ok
+      loaded ->
+        {:error,
+         DslError.exception(
+           module: module,
+           path: [:table],
+           message:
+             "The table has editable columns and shows calculations or aggregates " <>
+               "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the resource has no primary read action. " <>
+               "After a save the row is refreshed with those fields, which Ash loads through the primary read action. " <>
+               "Mark a read action `primary? true`.",
+           location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
+         )}
     end
   end
 

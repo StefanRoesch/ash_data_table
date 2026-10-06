@@ -189,7 +189,9 @@ defmodule AshTable.Live.TableComponent do
         %{
           key: row_key(model, record, index),
           record: record,
-          # 1-based, the header rows counted
+          # 1-based, the header rows counted. Under offset pagination it
+          # runs through all pages; a keyset page does not know how many
+          # records lie before it, and counts from its own top.
           rowindex: (page.offset || 0) + index + @header_rows + 1
         }
       end)
@@ -274,7 +276,8 @@ defmodule AshTable.Live.TableComponent do
   defp primary_key(%{primary_key: primary_key}, record), do: Map.take(record, primary_key)
 
   # After a filter change, the result is put into the live region: the count
-  # when the read action counts, else only that the rows have changed.
+  # when the read action counts, under either pagination strategy, else
+  # only that the rows have changed.
   defp announce(%{assigns: %{announce?: true}} = socket, page) do
     text =
       case page.total do
@@ -711,7 +714,9 @@ defmodule AshTable.Live.TableComponent do
             this.gridId = this.el.id.replace(/-pagination$/, "-table")
             this.used = null
             this.hasFocus = false
-            this.el.addEventListener("focusin", () => { this.hasFocus = true })
+            // the control that had focus last
+            this.last = null
+            this.el.addEventListener("focusin", e => { this.hasFocus = true; this.last = e.target.id })
             // noted a moment later: a control that is taken out of the page
             // loses the focus as one that is left does, and `destroyed` has
             // to know that it had it
@@ -720,9 +725,13 @@ defmodule AshTable.Live.TableComponent do
             })
           },
 
+          // A patch that takes away what stands above the pagination ("No
+          // records", when the rows are back) moves the pagination itself,
+          // and by the time this is called the browser has dropped the focus
+          // of what was moved. The control is then the one that had it last.
           beforeUpdate() {
             const active = document.activeElement
-            this.used = this.el.contains(active) ? active.id : null
+            this.used = this.el.contains(active) ? active.id : (this.hasFocus ? this.last : null)
           },
 
           updated() {
@@ -1681,13 +1690,20 @@ defmodule AshTable.Live.TableComponent do
   defp range_text(%{offset: offset}, _row_count, state) when is_integer(offset),
     do: Text.t(:page, page: state.page)
 
+  # Keyset pagination: the page does not know its place among the others, so
+  # the total is all there is to say, when the action counts.
+  defp range_text(%{total: total}, _row_count, _state) when is_integer(total),
+    do: Text.n(:records, total)
+
   defp range_text(_page, _row_count, _state), do: nil
 
   # The page numbers offered: the first, the last and those around the
-  # current one. Without a total only the current page is known.
+  # current one, of the pages there are; and the current one, also when the
+  # URL asked for a page beyond the last. Without a total only the current
+  # page is known.
   defp page_numbers(%{pages: pages}, %{page: current}) when is_integer(pages) do
     [1, pages | Enum.to_list((current - 2)..(current + 2)//1)]
-    |> Enum.filter(&(&1 >= 1 and &1 <= max(pages, current)))
+    |> Enum.filter(&((&1 >= 1 and &1 <= pages) or &1 == current))
     |> Enum.uniq()
     |> Enum.sort()
   end

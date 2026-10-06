@@ -1,7 +1,7 @@
 defmodule DemoWeb.Tables.CommentTableTest do
   @moduledoc """
   The mounted table of `Demo.Tracker.Comment` at `/comments`: a read action
-  that paginates by keyset only, 20 at a time, newest first.
+  that paginates by keyset only, 20 at a time, newest first, and counts.
   """
   use DemoWeb.ConnCase, async: true
 
@@ -32,7 +32,8 @@ defmodule DemoWeb.Tables.CommentTableTest do
   defp body(n), do: "Comment " <> String.pad_leading("#{n}", 2, "0")
   defp bodies(range), do: Enum.map(range, &body/1)
 
-  test "shows the first 20, with next and previous only", %{conn: conn} do
+  test "shows the first 20, with next and previous only, and how many there are",
+       %{conn: conn} do
     {:ok, _view, html} = live(conn, "/comments")
 
     assert headers(html, "comment") == ["ID", "Body", "Inserted at", "Task ID", "Author ID"]
@@ -45,13 +46,32 @@ defmodule DemoWeb.Tables.CommentTableTest do
              "comment-next"
            ]
 
-    assert text(html, "#comment-range") == ""
+    # the total alone: where a page lies among the others is not known
+    assert text(html, "#comment-range") == "45 records"
   end
 
-  test "does not claim to know how many rows there are", %{conn: conn} do
+  test "tells assistive technology how many rows there are, the two header rows counted",
+       %{conn: conn} do
     {:ok, _view, html} = live(conn, "/comments")
 
-    assert attribute(html, "#comment-table", "aria-rowcount") == ["-1"]
+    assert attribute(html, "#comment-table", "aria-rowcount") == ["47"]
+  end
+
+  test "numbers the rows of every page from the top of that page", %{conn: conn} do
+    {:ok, view, html} = live(conn, "/comments")
+
+    assert attribute(html, "#comment-table tbody tr", "aria-rowindex") ==
+             Enum.map(3..22, &"#{&1}")
+
+    view |> element("#comment-next") |> render_click()
+    assert_patch(view)
+    html = render_async(view)
+
+    # which rows of the 45 these are is not known under keyset pagination
+    assert attribute(html, "#comment-table tbody tr", "aria-rowindex") ==
+             Enum.map(3..22, &"#{&1}")
+
+    assert text(html, "#comment-range") == "45 records"
   end
 
   test "next and previous move through the pages", %{conn: conn} do
@@ -110,8 +130,7 @@ defmodule DemoWeb.Tables.CommentTableTest do
     assert text(html, "#comment-error") == "The records could not be loaded."
   end
 
-  test "a filter narrows the rows and, as this action cannot count, says only that they changed",
-       %{conn: conn} do
+  test "a filter narrows the rows and says how many there are now", %{conn: conn} do
     {:ok, view, html} = live(conn, "/comments")
 
     assert text(html, "#comment-status") == ""
@@ -119,8 +138,21 @@ defmodule DemoWeb.Tables.CommentTableTest do
     html = filter(view, "comment", "body", v: "Comment 3")
 
     assert column(html, "comment", "body") == bodies(39..30//-1)
-    assert text(html, "#comment-status") == "Results updated"
-    assert attribute(html, "#comment-table", "aria-rowcount") == ["-1"]
+    assert text(html, "#comment-status") == "10 results"
+    assert text(html, "#comment-range") == "10 records"
+    assert attribute(html, "#comment-table", "aria-rowcount") == ["12"]
+
+    html = filter(view, "comment", "body", v: "Comment 45")
+
+    assert text(html, "#comment-status") == "1 result"
+    assert text(html, "#comment-range") == "1 record"
+  end
+
+  test "says how many there are in the language of the person", %{conn: conn} do
+    {:ok, view, html} = conn |> in_locale("de") |> live("/comments")
+
+    assert text(html, "#comment-range") == "45 Einträge"
+    assert text(filter(view, "comment", "body", v: "Comment 45"), "#comment-range") == "1 Eintrag"
   end
 
   describe "for nobody, whose read the resource refuses outright" do

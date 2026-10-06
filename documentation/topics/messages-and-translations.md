@@ -109,7 +109,7 @@ These are all the messages of the template
 | Where | Messages |
 | --- | --- |
 | States | "No records", "The records could not be loaded.", "You are not allowed to see these records." |
-| Pagination | "Pagination: %{table}", "Previous", "Next", "Page %{page}", "Go to page %{page}", "%{from}–%{to}", "%{from}–%{to} of %{total}" |
+| Pagination | "Pagination: %{table}", "Previous", "Next", "Page %{page}", "Go to page %{page}", "%{from}–%{to}", "%{from}–%{to} of %{total}", "1 record" with the plural "%{count} records" |
 | Cells | "Yes", "No", "Not available" |
 | Filter operators | "contains", "equals", "starts with", "is empty", "greater than", "less than", "at least", "at most", "on", "before", "after", "is" |
 | Filter row | "Any", "Filter %{column}", "How to filter %{column}", "Not a valid value", "Clear the %{column} filter", "Clear filters" |

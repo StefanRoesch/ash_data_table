@@ -106,10 +106,25 @@ Make the build fail on warnings where it counts:
 
 <!-- sketch -->
 ```sh
-mix compile --warnings-as-errors
+mix compile --force --warnings-as-errors
 ```
 
 Run this in CI. With it, every message in the tables below fails the build.
+
+`--force` is part of it. A verifier's finding is printed, and counted as a
+warning, only in the run that compiles the resource. Mix remembers an
+ordinary compiler warning, such as an unused variable, and fails every later
+`mix compile --warnings-as-errors` on it; it does not remember a verifier's
+finding. This is what happens without `--force` (Elixir 1.19, Spark 2.7):
+
+| Run | Result |
+| --- | --- |
+| `mix compile --warnings-as-errors` on a clean build, or after the resource's file changed | The finding is printed and the build fails. |
+| The same command again, with nothing changed | Nothing is printed and the build passes. |
+| `mix compile`, then `mix compile --warnings-as-errors` | The first prints the finding and passes. The second prints nothing and passes. |
+
+So a CI job that builds from clean is safe with or without `--force`, and
+one that restores `_build` from a cache is safe only with it.
 
 ### What is an error all the same
 
@@ -147,6 +162,16 @@ The path is `table -> update_action`, or `table` for the last one.
 | The update action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | The action is declared `public? false`. | Make it public, or name another. |
 | The table has editable columns and shows calculations or aggregates (\`NAME\`), but the resource has no primary read action. After a save the row is refreshed with those fields, which Ash loads through the primary read action. Mark a read action \`primary? true\`. | The table reads through a non-primary action named with `read_action`, at least one column can be edited, and at least one column is a calculation or an aggregate. | Mark a read action `primary? true`. |
 
+The last one is about Ash and not about the table: `Ash.load/3`, and the
+load of an update action's result, go through the primary read action, also
+when another action is named. Without one, what a save did depended on the
+data layer and on the field: with the in-memory data layer, a table with an
+aggregate column saved nothing and said "This could not be saved.", and a
+table with only an expression calculation saved, but answered a save that
+changed nothing with "This record is no longer available." So the table does
+not try: a resource compiled despite this finding has no table (see
+[If a finding is ignored](#if-a-finding-is-ignored)).
+
 ## Columns
 
 The path is `table -> column -> NAME`, followed by the option when the
@@ -163,10 +188,19 @@ finding is about one.
 | The resource has no action named \`ACTION\`. | The column's `update_action` names an action the resource does not have. The "not an update action" and "not public" messages of the table's action apply to a column's as well. | Correct the name. |
 | The update action \`ACTION\` does not accept \`NAME\`, so it cannot save an edit of this column. | The column's action does not have the column's attribute in its `accept`. | Add the attribute to the action's `accept`, or name an action that has it. |
 | The update action \`ACTION\` requires the argument \`ARG\`. An inline edit supplies only the cell's value, so the action behind a column must not need anything else. | The column's action has an argument with `allow_nil? false` and no default. | Use an action without such an argument for the cell. |
-| \`NAME\` can never be edited, so \`confirm\` has no effect. A column is edited through an \`update_action\`, its own or the table's, that accepts its attribute. | `confirm` on a column that has no working update action: none at either level, `update_action false`, or a table action that does not accept the attribute. | Remove `confirm`, or make the column editable. |
+| \`NAME\` has the type \`TYPE\`, which a table has no editor for, so the column is read-only and its \`update_action\` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums. Remove \`update_action\` from this column. | The column has its own `update_action`, and its type is one a table shows as read-only text: a UUID, an array, a map, a time and so on. `TYPE` is the Ash type, such as `Ash.Type.UUID` or `{:array, Ash.Type.String}`. | Remove the option. |
+| \`NAME\` is declared \`writable?: false\`, so no action can save an edit of it: the column is read-only and its \`update_action\` has no effect. Remove \`update_action\` from this column, or make the attribute writable. | The column has its own `update_action`, and its attribute is `writable?: false`. | Remove the option, or make the attribute writable. |
+| \`NAME\` can never be edited, so \`confirm\` has no effect. A column is edited through an \`update_action\`, its own or the table's, that accepts its attribute. | `confirm` on a column that has no working update action: none at either level, `update_action false`, or an action that does not accept the attribute or needs an argument. | Remove `confirm`, or make the column editable. |
+| \`NAME\` can never be edited, so \`confirm\` has no effect. It has the type \`TYPE\`, which a table has no editor for. | `confirm` on a column whose type has no editor, whichever action is behind it. For an attribute that is not writable the second sentence is "Its attribute is declared \`writable?: false\`." | Remove `confirm`. |
 
-Each finding is a warning of its own, so a block with three mistakes prints
-three.
+A column whose type has no editor or whose attribute is not writable gets
+one of the two messages about that, and not the ones about what its action
+accepts or needs: no action could save it.
+
+A resource with one finding prints it as in the example at the top, with the
+line of the block. A resource with several prints them as one warning: the
+line "Multiple Errors Occurred", then each finding with its own path, a line
+of dashes between them, and no excerpt of the block.
 
 ## What is not a mistake
 
@@ -176,28 +210,42 @@ Some things look like they should be reported and are not, on purpose:
 | --- | --- |
 | A table-level `update_action` that does not accept some columns' attributes | Those columns are read-only. |
 | A table-level `update_action` with a required argument | No column is edited through it. |
-| A column with an `update_action`, its own or the table's, whose type has no editor (a UUID, say) or whose attribute is not writable | The column is read-only. Nothing reports it, even for a column's own action. |
+| A table-level `update_action` that accepts a column whose type has no editor (a UUID, say), or a table whose column is an attribute that is not writable | The column is read-only. For a column's own `update_action` the same is reported. |
 | `sortable? false` or `filterable? false` on a column that could not be sorted or filtered anyway | Nothing. |
 | No `table` block | The default table. |
 
 The table-level action is a blanket statement, "edit what this action can
 edit", so what it cannot edit is not an error. A column's own action is a
-statement about that column, so the action is held to it: it has to exist,
-accept the attribute and need no argument. See
+statement about that column, so it is held to it: the action has to exist,
+accept the attribute and need no argument, and the column has to be one a
+table can edit at all. See
 [Inline editing](inline-editing.md).
 
 ## If a finding is ignored
 
 Because a finding is a warning, a resource with a mistake can be compiled
-and its table opened. What happens then depends on the mistake:
+and its table opened. What happens then depends on the mistake. Where the
+table would have nothing sound to do, it refuses: it raises `ArgumentError`
+when it is rendered, with a message that starts "cannot build the table of"
+and names the resource and the cause. A mounted table's page then fails as
+any LiveView does that raises in its first render.
 
 | The mistake | At runtime |
 | --- | --- |
-| A wrong `read_action`, no primary read action, an unsupported `paginate_with` | The table raises `ArgumentError` when it is rendered: "cannot build the table of …". |
+| A wrong `read_action`: not there, not a read action, not public | The table refuses to render. |
+| No primary read action, and no `read_action` | The same. |
+| An unsupported `paginate_with` | The same. |
 | A column that does not exist or is not public | The same. |
-| A calculation column that requires an argument | The table is rendered, and every read fails with an error in place of the rows. |
-| A wrong `update_action`, at the table or at a column | The columns concerned are read-only. |
+| A calculation column that requires an argument | The same. |
+| A wrong `update_action`, at the table or at a column: not there, not an update action, not public | The same. The block asked for editing through an action that cannot be run, and a table that silently offered none would hide that. |
+| Editable columns beside calculation or aggregate columns, without a primary read action | The same. |
+| A column's own `update_action` that exists but does not accept the attribute, or needs an argument | The column is read-only. |
+| A column's own `update_action` on a calculation, an aggregate, a type without an editor or an attribute that is not writable | The column is read-only. |
 | `sortable? true`, `filterable? true` or `confirm` without effect | Nothing. The option has no effect, as the message says. |
+
+The line between the two groups is the one the table-level action draws
+anyway: an action that exists and cannot save a column leaves that column
+read-only, whoever named it. An action that cannot be run at all is refused.
 
 A table is also refused at runtime for a resource that does not list the
 extension at all: "… does not list \`AshTable.Resource\` in its extensions,
@@ -223,7 +271,10 @@ so it has no table."
 ## Things people trip over
 
 - **"It compiled, so the block is right."** Look for warnings, or use
-  `--warnings-as-errors`.
+  `--force --warnings-as-errors`.
+- **"CI is green with `--warnings-as-errors`, so there is no finding."** Not
+  if CI reuses a `_build` in which the resource was already compiled. Add
+  `--force`.
 - **`mix format` adds parentheses to the block.** The formatter does not
   know the DSL: add `:ash_table` to `import_deps` in `.formatter.exs`. This
   is not a compile-time finding, but it shows up at the same moment.

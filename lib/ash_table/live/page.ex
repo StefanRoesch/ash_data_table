@@ -62,9 +62,19 @@ defmodule AshTable.Live.Page do
 
       config :ash_table, layout: {MyAppWeb.Layouts, :app}
 
-  The component is called with the table as its inner block and with the
-  assigns `flash`, `current_scope` (nil when the socket has none) and, when
-  the socket has it, `current_user`. A single table can be given another
+  The component is called with the table as its inner block and with these
+  assigns:
+
+    * `flash`;
+    * `current_scope`, nil when the socket has none;
+    * `current_user` and `current_tenant`, each when the socket has it;
+    * the assigns the resource's domain names as `scope_assign`,
+      `actor_assign` and `tenant_assign` (`AshTable.Domain`), under those
+      names, each when the socket has it. With the default names these are
+      the ones above.
+
+  So a host whose domain says `actor_assign :current_account` has a layout
+  that is given `current_account`. A single table can be given another
   layout, or none, in the router: `ash_table "/tasks", Task, layout: false`.
   The configuration is read when the page is rendered. With neither set the
   page is rendered bare.
@@ -115,9 +125,15 @@ defmodule AshTable.Live.Page do
   defp layout(%{layout: :default}), do: Application.get_env(:ash_table, :layout, false)
   defp layout(%{layout: layout}), do: layout
 
+  # What the layout is told: the flash, and who is asking under the names the
+  # socket has them: those the resource's domain gives them, and the
+  # conventional ones. An assign the socket does not have is not passed,
+  # except `current_scope`, which the layout of a new Phoenix app expects.
   defp layout_assigns(assigns) do
+    names = assigns.table.resource |> AshTable.Domain.Info.assign_names() |> Map.values()
+
     assigns
-    |> Map.take([:flash, :current_user])
+    |> Map.take([:flash, :current_user | names])
     |> Map.put(:current_scope, assigns[:current_scope])
   end
 

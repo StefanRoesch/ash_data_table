@@ -54,14 +54,57 @@ defmodule AshTable.Resource.Editing do
       end
 
     with {:ok, action} <- found,
+         nil <- obstacle(resource, field),
          true <- accepts?(action, field),
-         [] <- required_arguments(action),
-         true <- field.writable?,
-         true <- editor(resource, field) != nil do
+         [] <- required_arguments(action) do
       {:ok, action.name}
     else
       _ -> :none
     end
+  end
+
+  @typedoc "Why a field's cells can be edited through no action at all."
+  @type obstacle :: :not_an_attribute | :not_writable | {:no_editor, Ash.Type.t()}
+
+  @doc """
+  What keeps a field's cells from being edited whichever action is behind
+  them, or nil when nothing does: only an attribute is edited, it has to be
+  writable, and its cell type has to have an editor.
+  """
+  @spec obstacle(Ash.Resource.t(), struct) :: obstacle | nil
+  def obstacle(resource, %Ash.Resource.Attribute{} = attribute) do
+    cond do
+      not attribute.writable? -> :not_writable
+      is_nil(editor(resource, attribute)) -> {:no_editor, attribute.type}
+      true -> nil
+    end
+  end
+
+  def obstacle(_resource, _field), do: :not_an_attribute
+
+  @doc """
+  The calculation and aggregate columns that a row could not be shown with
+  after a save: those of a table with editable columns whose resource has no
+  primary read action, which is what Ash loads them through. Empty when
+  nothing is wrong.
+
+  `columns` are the fields of the table's columns, each with its column as
+  written in the block (nil for a column of the default set).
+  """
+  @spec unloadable_after_save(Ash.Resource.t(), [{struct, AshTable.Resource.Column.t() | nil}]) ::
+          [atom]
+  def unloadable_after_save(resource, columns) do
+    loaded =
+      for {%struct{name: name}, _declared} <- columns,
+          struct in [Ash.Resource.Calculation, Ash.Resource.Aggregate],
+          do: name
+
+    editable? =
+      Enum.any?(columns, fn {field, declared} ->
+        update_action(resource, field, declared) != :none
+      end)
+
+    if editable? and is_nil(Info.primary_action(resource, :read)), do: loaded, else: []
   end
 
   @doc """

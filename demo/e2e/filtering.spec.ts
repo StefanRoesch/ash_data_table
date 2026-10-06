@@ -627,13 +627,14 @@ test.describe("what is read out", () => {
     expect(second, "a screen reader only reads a region that has changed").not.toBe(first)
   })
 
-  test("a keyset table cannot count: it says that the results have changed", async ({ page }) => {
+  test("a keyset table whose action counts says how many it found", async ({ page }) => {
     const comments = new Table(page, "comment", "/comments")
     await comments.open()
 
     await comments.filterValue("body").fill("a")
     await comments.reads(() => comments.filterValue("body").press("Enter"))
-    await expect(comments.status).toHaveText("Results updated")
+    await expect(comments.status).toHaveText(`${SEED.comments.withAnA} results`)
+    await expect(comments.range).toHaveText(`${SEED.comments.withAnA} records`)
     expect(params(page)).toEqual({ "comment[f][body]": "a" })
   })
 })
