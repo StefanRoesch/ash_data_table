@@ -1,6 +1,6 @@
 import { expect, test } from "./support/fixtures"
 import { storageStateOf } from "./support/actors"
-import { SEED } from "./support/data"
+import { SEED, withCommentsBroken } from "./support/data"
 import { Table } from "./support/table"
 import { params } from "./support/url"
 
@@ -74,19 +74,139 @@ test.describe("offset pages: /tasks", () => {
     await expect(tasks.pageButton(2), "the button that was used keeps the focus").toBeFocused()
   })
 
-  test("Next keeps the focus when it is used by keyboard", async ({ tasks }) => {
-    test.fail(
-      true,
-      "DEFECT (library): on a table with page numbers, using Next or Previous drops focus to " +
-        "<body> whenever the set of page-number buttons changes (page 1 to 2 adds the button " +
-        "for page 4): the patch takes #task-next out of the DOM and puts it back. A keyboard " +
-        "user has to Tab through the page again. Keyset tables, without numbers, keep it.",
-    )
+  test.describe("focus stays on the control that was used", () => {
+    /**
+     * Notes every time focus leaves a control of the pagination, and marks
+     * the element that is Next now, so that a test can tell whether a patch
+     * left it in the page or took it out and put it back.
+     */
+    async function watchFocus(tasks: Table): Promise<() => Promise<string[]>> {
+      await tasks.pagination.evaluate((nav) => {
+        const lost: string[] = []
+        ;(window as any).__focusLost = lost
+        nav.addEventListener("focusout", (event) => lost.push((event.target as HTMLElement).id))
+      })
+      return () => tasks.page.evaluate(() => (window as any).__focusLost as string[])
+    }
 
-    await tasks.next.focus()
-    await tasks.reads(() => tasks.press("Enter"))
-    await expect(tasks.range).toHaveText("26–50 of 320")
-    await expect(tasks.next).toBeFocused({ timeout: 1000 })
+    test("Next by keyboard: the page numbers change around it, and it is not moved", async ({
+      tasks,
+    }) => {
+      await tasks.next.focus()
+      const lost = await watchFocus(tasks)
+
+      // page 1 to 2 adds the button of page 4, page 2 to 3 that of page 5
+      await tasks.reads(() => tasks.press("Enter"))
+      await expect(tasks.range).toHaveText("26–50 of 320")
+      await expect(tasks.pageButton(4)).toBeVisible()
+      await expect(tasks.next).toBeFocused()
+
+      await tasks.reads(() => tasks.press("Enter"))
+      await expect(tasks.range).toHaveText("51–75 of 320")
+      await expect(tasks.next).toBeFocused()
+      expect(await lost(), "focus never left Next: it was patched where it is").toEqual([])
+    })
+
+    test("Next and Previous by click", async ({ tasks }) => {
+      await tasks.reads(() => tasks.next.click())
+      await expect(tasks.next).toBeFocused()
+      await tasks.reads(() => tasks.next.click())
+      await expect(tasks.next).toBeFocused()
+
+      const lost = await watchFocus(tasks)
+      await tasks.reads(() => tasks.previous.click())
+      await expect(tasks.range).toHaveText("26–50 of 320")
+      await expect(tasks.previous).toBeFocused()
+      expect(await lost(), "focus went from Next to Previous with the click, and stayed").toEqual([
+        "task-next",
+      ])
+    })
+
+    test("Previous by keyboard, from the last page down", async ({ tasks }) => {
+      await tasks.open("/tasks?task[page]=13")
+      await tasks.previous.focus()
+      const lost = await watchFocus(tasks)
+
+      // 13 to 12 adds the button of page 10 before it, 12 to 11 that of page 9
+      for (const range of ["276–300 of 320", "251–275 of 320"]) {
+        await tasks.reads(() => tasks.press("Enter"))
+        await expect(tasks.range).toHaveText(range)
+        await expect(tasks.previous).toBeFocused()
+      }
+      expect(await lost()).toEqual([])
+    })
+
+    test("a page number, wherever the patch puts its button: by click and by keyboard", async ({
+      tasks,
+    }) => {
+      // 1 2 3 13 becomes 1 11 12 13: the button of page 13 is taken out and put back
+      await tasks.reads(() => tasks.pageButton(13).click())
+      await expect(tasks.range).toHaveText("301–320 of 320")
+      await expect(tasks.pageButton(13)).toBeFocused()
+
+      // 1 11 12 13 becomes 1 9 10 11 12 13
+      await tasks.pageButton(11).focus()
+      await tasks.reads(() => tasks.press("Enter"))
+      await expect(tasks.range).toHaveText("251–275 of 320")
+      await expect(tasks.pageButton(11)).toBeFocused()
+
+      // 1 9 10 11 12 13 becomes 1 2 3 13
+      await tasks.reads(() => tasks.pageButton(1).click())
+      await expect(tasks.range).toHaveText("1–25 of 320")
+      await expect(tasks.pageButton(1)).toBeFocused()
+
+      // and from the middle: 1 2 3 4 5 13 becomes 1 3 4 5 6 7 13
+      await tasks.reads(() => tasks.pageButton(3).click())
+      await tasks.pageButton(5).focus()
+      await tasks.reads(() => tasks.press("Space"))
+      await expect(tasks.range).toHaveText("101–125 of 320")
+      await expect(tasks.pageButton(5)).toBeFocused()
+      await expect(tasks.pageButton(5)).toHaveAttribute("aria-current", "page")
+    })
+
+    test("Next that reaches the last page is disabled: focus goes to that page's button", async ({
+      tasks,
+    }) => {
+      await tasks.open("/tasks?task[page]=12")
+
+      await tasks.next.focus()
+      await tasks.reads(() => tasks.press("Enter"))
+      await expect(tasks.range).toHaveText("301–320 of 320")
+      await expect(tasks.next).toBeDisabled()
+      await expect(tasks.pageButton(13)).toBeFocused()
+      await expect(tasks.pageButton(13)).toHaveAttribute("aria-current", "page")
+
+      // by click as well
+      await tasks.reads(() => tasks.previous.click())
+      await tasks.reads(() => tasks.next.click())
+      await expect(tasks.pageButton(13)).toBeFocused()
+    })
+
+    test("Previous that reaches the first page is disabled: focus goes to that page's button", async ({
+      tasks,
+    }) => {
+      await tasks.open("/tasks?task[page]=2")
+
+      await tasks.previous.focus()
+      await tasks.reads(() => tasks.press("Enter"))
+      await expect(tasks.range).toHaveText("1–25 of 320")
+      await expect(tasks.previous).toBeDisabled()
+      await expect(tasks.pageButton(1)).toBeFocused()
+
+      await tasks.reads(() => tasks.next.click())
+      await tasks.reads(() => tasks.previous.click())
+      await expect(tasks.pageButton(1)).toBeFocused()
+    })
+
+    test("a sort or a filter does not bring focus to the pagination", async ({ tasks }) => {
+      await tasks.reads(() => tasks.header("title").click())
+      await expect(tasks.header("title")).toBeFocused()
+
+      await tasks.filterValue("title").fill("sess")
+      await tasks.reads(() => tasks.filterValue("title").press("Enter"))
+      await expect(tasks.range).toHaveText("1–18 of 18")
+      await expect(tasks.filterValue("title")).toBeFocused()
+    })
   })
 
   test("the page is in the URL: a link, a reload and the back button show it", async ({
@@ -206,10 +326,52 @@ test.describe("keyset pages: /comments", () => {
     expect(await comments.rowKeys(), "a reload shows the same page").toEqual(second)
   })
 
-  test("Next keeps the focus when it is used by keyboard", async () => {
+  test("Next and Previous keep the focus, by keyboard and by click", async () => {
     await comments.next.focus()
     await comments.reads(() => comments.press("Enter"))
     await expect(comments.next).toBeFocused()
+    await comments.reads(() => comments.next.click())
+    await expect(comments.next).toBeFocused()
+
+    await comments.reads(() => comments.previous.click())
+    await expect(comments.previous).toBeFocused()
+    await comments.previous.focus()
+    await comments.reads(() => comments.press("Enter"))
+    await expect(comments.previous, "the first page again").toBeDisabled()
+  })
+
+  test("Next that reaches the last page, and Previous the first: focus goes to the other of the two", async () => {
+    // 27 comments: a page of 20 and one of 7
+    await comments.open("/comments?comment[f][body]=sprint")
+    await expect(comments.rows).toHaveCount(20)
+
+    await comments.next.focus()
+    await comments.reads(() => comments.press("Enter"))
+    await expect(comments.rows).toHaveCount(SEED.comments.nextSprint - 20)
+    await expect(comments.next).toBeDisabled()
+    await expect(comments.previous).toBeFocused()
+
+    await comments.reads(() => comments.press("Enter"))
+    await expect(comments.rows).toHaveCount(20)
+    await expect(comments.previous).toBeDisabled()
+    await expect(comments.next).toBeFocused()
+  })
+
+  test.describe("a read that fails after Next was used", () => {
+    // seeding puts the comments back, should the test end before it has
+    test.use({ writes: true })
+
+    test("the pagination goes away: focus goes to the grid", async ({ request }) => {
+      await comments.next.focus()
+
+      await withCommentsBroken(request, async () => {
+        await comments.press("Enter")
+        await expect(comments.error).toHaveText("The records could not be loaded.")
+        await expect(comments.pagination).toHaveCount(0)
+        await expect(comments.tabStop).toBeFocused()
+        expect(await comments.tabStops()).toHaveLength(1)
+      })
+    })
   })
 
   test("the back button goes back through the pages", async ({ page }) => {

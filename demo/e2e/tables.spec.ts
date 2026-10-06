@@ -70,7 +70,7 @@ const MOUNTED: Mounted[] = [
     id: "task_label",
     title: "Task labels",
     shows: "a primary key of two attributes",
-    headers: ["Task ID", "Label ID"],
+    headers: ["Note", "Task ID", "Label ID"],
     rows: 25,
     pagination: "offset",
   },
@@ -92,6 +92,9 @@ for (const mounted of MOUNTED) {
     await expect(table.grid.locator("tbody td")).toHaveCount(mounted.rows * mounted.headers.length)
 
     await expect(table.pagination).toHaveCount(mounted.pagination === "none" ? 0 : 1)
+    if (mounted.pagination !== "none") {
+      await expect(table.pagination).toHaveAccessibleName(`Pagination: ${mounted.title}`)
+    }
     await expect(table.pageButton(1)).toHaveCount(mounted.pagination === "offset" ? 1 : 0)
 
     // the hook has run: one tab stop, and the arrow keys move from it
@@ -121,39 +124,26 @@ test("every table is reached from the front page by a live navigation", async ({
 })
 
 test("/bare/labels is the table without the app layout", async ({ page }) => {
+  // the app layout: its container around the page, and the flash messages
+  const appLayout = page.locator("#app-layout, #flash-group")
+
   const framed = new Table(page, "label", "/labels")
   await framed.open()
+  await expect(appLayout).toHaveCount(2)
   await expect(page.getByRole("main")).toHaveCount(1)
   const rows = await framed.rowKeys()
 
   const bare = new Table(page, "label", "/bare/labels")
   await bare.open()
-  await expect(page.getByRole("main"), "no app layout around it").toHaveCount(0)
+  await expect(appLayout, "no app layout around it").toHaveCount(0)
+  // the main landmark is the root layout's, so the bare page has it as well
+  await expect(page.getByRole("main")).toHaveCount(1)
+  await expect(page.getByRole("main").getByRole("heading", { level: 1 })).toHaveText("Labels")
+  await expect(page.getByRole("main").getByRole("grid")).toHaveId("label-table")
   expect(await bare.rowKeys()).toEqual(rows)
   // sorting works there as anywhere
   await bare.reads(() => bare.header("name").click())
   await expect(bare.header("name")).toHaveAttribute("aria-sort", "ascending")
-})
-
-test("/task_labels: a row of a composite key has both parts in its ids", async ({ page }) => {
-  const table = new Table(page, "task_label", "/task_labels")
-  await table.open()
-
-  const uuid = "[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"
-  for (const key of await table.rowKeys()) expect(key).toMatch(new RegExp(`^${uuid}-${uuid}$`))
-
-  // the key is what the cells show
-  const first = await table.rowKey(1)
-  const task = await table.cell(first, "task_id").textContent()
-  const label = await table.cell(first, "label_id").textContent()
-  expect(first).toBe(`${task}-${label}`)
-
-  // not editable: no editors, and nothing marked
-  await expect(table.editorTemplates).toHaveCount(0)
-  await expect(table.grid.locator("[aria-readonly]")).toHaveCount(0)
-
-  await table.reads(() => table.next.click())
-  await expect(table.range).toHaveText(/^26–50 of \d+$/)
 })
 
 test.describe("/specimens: one column per built-in type", () => {
@@ -169,9 +159,11 @@ test.describe("/specimens: one column per built-in type", () => {
     await expect(specimens.headers).toHaveCount(47)
     await expect(specimens.grid).toHaveAttribute("aria-colcount", "47")
     await expect(specimens.rows).toHaveCount(20)
-    await expect(specimens.range).toHaveText(`1–20 of ${SEED.specimens}`)
+    await expect(specimens.range).toHaveText(`1–20 of ${SEED.specimens.total}`)
 
     const first = await specimens.rowKey(1)
+    expect(first).toBe(SEED.specimens.first)
+    await expect(specimens.cell(first, "label")).toHaveText("Specimen 001")
     await specimens.cell(first, "id").focus()
     await specimens.press("End")
     await expect(specimens.cell(first, "updated_at")).toBeFocused()
@@ -198,7 +190,7 @@ test.describe("/specimens: one column per built-in type", () => {
   })
 
   test("a type with an editor is editable and filterable; any other is read-only text without a filter", async () => {
-    const first = await specimens.rowKey(1)
+    const first = SEED.specimens.first
 
     for (const column of ["a_string", "an_integer", "a_decimal", "a_boolean", "a_date", "a_shade"]) {
       await expect(specimens.cell(first, column), column).not.toHaveAttribute("aria-readonly")

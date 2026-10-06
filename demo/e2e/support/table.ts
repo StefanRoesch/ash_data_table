@@ -198,8 +198,9 @@ export class Table {
     return this.root.getByRole("alert")
   }
 
+  /** The table's one navigation landmark, named "Pagination: " and the table's name. */
   get pagination(): Locator {
-    return this.root.getByRole("navigation", { name: "Pagination" })
+    return this.root.getByRole("navigation")
   }
 
   /** "1–25 of 320". */

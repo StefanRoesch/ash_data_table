@@ -29,6 +29,24 @@ The options of the two extensions are listed in the DSL reference,
 [`AshTable.Resource`](documentation/dsls/DSL-AshTable.Resource.md) and
 [`AshTable.Domain`](documentation/dsls/DSL-AshTable.Domain.md).
 
+## Guides
+
+This README is the overview. The guides go deeper, one topic each, with
+examples from the demo app and each topic's edge cases.
+
+- Tutorial: [Get started with AshTable](documentation/tutorials/get-started-with-ash-table.md)
+- [Columns and defaults](documentation/topics/columns-and-defaults.md)
+- [Reading, sorting and pagination](documentation/topics/reading-sorting-and-pagination.md)
+- [Filtering](documentation/topics/filtering.md)
+- [State in the URL](documentation/topics/state-in-the-url.md)
+- [Inline editing](documentation/topics/inline-editing.md)
+- [Confirm](documentation/topics/confirm.md)
+- [Authorization](documentation/topics/authorization.md)
+- [Keyboard and accessibility](documentation/topics/keyboard-and-accessibility.md)
+- [Messages and translations](documentation/topics/messages-and-translations.md)
+- [Layout and embedding](documentation/topics/layout-and-embedding.md)
+- [Mistakes at compile time](documentation/topics/mistakes-at-compile-time.md)
+
 ## Install
 
 Requires Elixir 1.17, Ash 3.34, `ash_phoenix` 2.3, Phoenix 1.8 and LiveView
@@ -609,6 +627,14 @@ has it, `current_user`. Without this setting the tables are rendered bare in
 the root layout. One table can differ:
 `ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
 `layout: {Module, :function}`.
+
+A bare table is its heading and the table, nothing around them: it brings no
+landmark of its own, because it cannot know which ones the page already has.
+The page's landmarks are the host's. Where `<main>` is in the app layout, as
+Phoenix generates it, a bare page has none, and accessibility checkers say so
+(axe: `landmark-one-main`, `region`). So either the root layout has the
+`<main>` around `{@inner_content}`, or the table is given a layout that has
+one.
 
 ## Inside an existing LiveView
 

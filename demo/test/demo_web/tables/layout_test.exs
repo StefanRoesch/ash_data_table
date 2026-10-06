@@ -18,7 +18,7 @@ defmodule DemoWeb.Tables.LayoutTest do
     {:ok, _view, html} = live(conn, "/tasks")
 
     # the app layout's own container and its flash group
-    assert attribute(html, "main #task-table", "id") == ["task-table"]
+    assert attribute(html, "#app-layout #task-table", "id") == ["task-table"]
     assert attribute(html, "#flash-group", "id") == ["flash-group"]
   end
 
@@ -27,6 +27,18 @@ defmodule DemoWeb.Tables.LayoutTest do
 
     assert headers(html, "label") == ["ID", "Name", "Colour"]
     assert attribute(html, "#flash-group", "id") == []
-    assert attribute(html, "main", "class") == []
+    assert attribute(html, "#app-layout", "id") == []
+  end
+
+  # A bare table brings no landmark of its own, so the page's are the root
+  # layout's: its header, and the main landmark every page is rendered in.
+  test "the root layout gives every page its main landmark, a bare table's too", %{conn: conn} do
+    for path <- ["/tasks", "/bare/labels"] do
+      html = conn |> get(path) |> html_response(200)
+
+      assert attribute(html, "main", "id") == ["main"], path
+      assert attribute(html, "main h1", "class") != [], path
+      assert attribute(html, "main [role=grid]", "role") == ["grid"], path
+    end
   end
 end

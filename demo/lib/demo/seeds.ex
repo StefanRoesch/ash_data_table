@@ -112,10 +112,11 @@ defmodule Demo.Seeds do
       insert_many!(
         task(
           organization_id: org.id,
-          project_id: pick(Enum.map(projects, & &1.id)),
-          reporter_id: pick(user_ids),
+          # Drawn in this order for every task (see Demo.Generator).
           # About one task in six has no assignee.
-          assignee_id: pick([nil, nil | user_ids])
+          assignee_id: pick([nil, nil | user_ids]),
+          reporter_id: pick(user_ids),
+          project_id: pick(Enum.map(projects, & &1.id))
         ),
         task_count
       )

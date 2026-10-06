@@ -15,8 +15,9 @@ defmodule DemoWeb.Layouts do
   Renders your app layout.
 
   This function is invoked from every template of the demo itself. The
-  page header (navigation and the actor switcher) is in the root layout
-  instead, so that it also surrounds LiveViews mounted by a library.
+  page header (navigation and the actor switcher) and the main landmark are
+  in the root layout instead, so that they also surround LiveViews mounted
+  by a library.
 
   ## Examples
 
@@ -31,11 +32,11 @@ defmodule DemoWeb.Layouts do
 
   def app(assigns) do
     ~H"""
-    <main class="px-4 py-8 sm:px-6 lg:px-8">
+    <div id="app-layout" class="px-4 py-8 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl space-y-6">
         {render_slot(@inner_block)}
       </div>
-    </main>
+    </div>
 
     <.flash_group flash={@flash} />
     """

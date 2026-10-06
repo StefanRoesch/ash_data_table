@@ -5,6 +5,8 @@
 //
 //   npm run measure          both, with 15 repetitions of everything
 //   PERF_REPS=3 node measure.mjs   a quick look
+//   PERF_REPS=1 PERF_RESULTS=/tmp/smoke.json node measure.mjs
+//                            whether it still runs, the committed results left alone
 
 import { execFileSync } from "node:child_process"
 import { writeFileSync } from "node:fs"
@@ -204,6 +206,8 @@ for (const { name, database, sessions } of DATABASES) {
 await browser.close()
 results.machine.load_average_after = os.loadavg().map((load) => Number(load.toFixed(2)))
 
-const file = path.join(import.meta.dirname, "results.json")
+// PERF_RESULTS names another file, for a run that is not to replace the
+// committed results (report.mjs reads results.json).
+const file = path.resolve(process.env.PERF_RESULTS ?? path.join(import.meta.dirname, "results.json"))
 writeFileSync(file, JSON.stringify(results, null, 1) + "\n")
 log("wrote", file)

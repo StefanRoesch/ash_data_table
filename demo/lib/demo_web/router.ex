@@ -61,12 +61,15 @@ defmodule DemoWeb.Router do
   end
 
   # For the browser tests (`e2e/`), in the e2e environment only: seeds the
-  # database again, so that a test that edits starts from known data, and
-  # deletes a task behind the table's back.
+  # database again, so that a test that edits starts from known data,
+  # deletes a task behind the table's back, and makes the reads of the
+  # comments fail.
   if Application.compile_env(:demo, :e2e_routes, false) do
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
       delete "/tasks/:id", DemoWeb.E2E.DataController, :delete_task
+      post "/comments/break", DemoWeb.E2E.DataController, :break_comments
+      post "/comments/mend", DemoWeb.E2E.DataController, :mend_comments
     end
   end
 

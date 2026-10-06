@@ -57,9 +57,13 @@ declared in the resource and mounted with one line in the router.
 ### Accessibility and keyboard
 
 - An ARIA grid with one tab stop, moved by the arrow keys, Home, End, Page Up
-  and Page Down without a round trip; one colocated hook, no npm package.
+  and Page Down without a round trip; colocated hooks, no npm package.
 - Enter, F2 or a character starts editing a cell or goes into a filter;
   Escape gives up. Results of filters and failed saves are announced.
+- The pagination is ordinary buttons outside the grid. Focus stays on the
+  one that was used; when it is disabled by the page it led to, focus goes to
+  the button of that page, or to the other of Previous and Next in a table
+  without page numbers.
 
 ### Translation
 

@@ -636,9 +636,12 @@ defmodule AshTable.Live.TableComponent do
       >
         {Text.t(:no_records)}
       </p>
+      <%!-- The hook keeps focus on the control that was used, or sends it on
+      when that control is gone (see `.Pagination` below). --%>
       <nav
         :if={@page && @model.pagination.strategy != :none}
         id={"#{@id}-pagination"}
+        phx-hook=".Pagination"
         aria-label={Text.t(:pagination, table: @label)}
         class="mt-4 flex flex-wrap items-center justify-between gap-4"
       >
@@ -655,20 +658,28 @@ defmodule AshTable.Live.TableComponent do
           >
             {Text.t(:previous)}
           </button>
-          <button
-            :for={number <- page_numbers(@page, @state)}
+          <%!-- The page numbers have an element to themselves, which the layout
+          does not see: Previous and Next are then always the first and the last
+          of three, and a patch that adds or takes away a number leaves them
+          where they are, with their focus. --%>
+          <span
             :if={@model.pagination.strategy == :offset}
-            type="button"
-            id={"#{@id}-page-#{number}"}
-            class={["join-item btn btn-sm", number == @state.page && "btn-active"]}
-            aria-label={Text.t(:go_to_page, page: number)}
-            aria-current={number == @state.page && "page"}
-            phx-click="page"
-            phx-value-to={number}
-            phx-target={@myself}
+            class="contents [&>:first-child]:ms-[calc(var(--border)*-1)]"
           >
-            {number}
-          </button>
+            <button
+              :for={number <- page_numbers(@page, @state)}
+              type="button"
+              id={"#{@id}-page-#{number}"}
+              class={["join-item btn btn-sm", number == @state.page && "btn-active"]}
+              aria-label={Text.t(:go_to_page, page: number)}
+              aria-current={number == @state.page && "page"}
+              phx-click="page"
+              phx-value-to={number}
+              phx-target={@myself}
+            >
+              {number}
+            </button>
+          </span>
           <button
             type="button"
             id={"#{@id}-next"}
@@ -682,6 +693,64 @@ defmodule AshTable.Live.TableComponent do
           </button>
         </div>
       </nav>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">
+        // Focus stays on the pagination control that was used. Previous and
+        // Next are patched where they are. A page number is not always: when
+        // the numbers around it change, the patch takes its button out and
+        // puts it back, and the browser drops the focus of an element that is
+        // moved, as it does of one that becomes disabled. So the control
+        // that had focus before a patch is given it back after the patch.
+        //
+        // When it cannot have it, because Next was used to reach the last
+        // page or Previous to reach the first, focus goes to the button of
+        // the page that is shown now and, in a table without page numbers, to
+        // the other of the two. When the pagination itself goes away, with a
+        // read that failed, focus goes to the grid.
+        export default {
+          mounted() {
+            this.gridId = this.el.id.replace(/-pagination$/, "-table")
+            this.used = null
+            this.hasFocus = false
+            this.el.addEventListener("focusin", () => { this.hasFocus = true })
+            // noted a moment later: a control that is taken out of the page
+            // loses the focus as one that is left does, and `destroyed` has
+            // to know that it had it
+            this.el.addEventListener("focusout", () => {
+              setTimeout(() => { this.hasFocus = this.el.contains(document.activeElement) })
+            })
+          },
+
+          beforeUpdate() {
+            const active = document.activeElement
+            this.used = this.el.contains(active) ? active.id : null
+          },
+
+          updated() {
+            if (!this.used) return
+            const usable = control => control && this.el.contains(control) && !control.disabled
+            const control = [
+              document.getElementById(this.used),
+              this.el.querySelector("[aria-current='page']"),
+              ...this.el.querySelectorAll("button")
+            ].find(usable)
+            this.used = null
+            if (!control) return this.toGrid()
+            if (control !== document.activeElement) control.focus({preventScroll: true})
+          },
+
+          // After the patch, once the grid has its tab stop again, and only
+          // while focus is still nowhere.
+          destroyed() {
+            if (!this.hasFocus) return
+            setTimeout(() => { if (document.activeElement === document.body) this.toGrid() })
+          },
+
+          toGrid() {
+            const cell = document.querySelector(`[id="${CSS.escape(this.gridId)}"] [tabindex="0"]`)
+            if (cell) cell.focus({preventScroll: true})
+          }
+        }
+      </script>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
         // Keyboard, focus and editing for one grid: a single tab stop with a
         // roving tabindex, moved by the arrow keys.

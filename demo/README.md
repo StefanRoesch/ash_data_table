@@ -59,7 +59,7 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | http://localhost:4478/projects | `Project` | no block: the public attributes. Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
 | http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only; a filter change is announced without a count, as the action cannot count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record |
-| http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false` |
+| http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25 |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 
@@ -216,8 +216,11 @@ Seeds write straight to the data layer (`Ash.Seed` and bulk `insert_all`), so
 no actor, tenant check or policy is involved.
 
 `Demo.Generator` holds the generators, built on `Ash.Generator`. It keeps its
-own random state, seeded with `Demo.Generator.reseed/1`, which is what makes
-the data repeatable. Tests get a small data set from the same generators:
+own random state, seeded with `Demo.Generator.reseed/1`, and draws the values
+of a record in the order they are written in (a map of generators would be
+walked in an order that changes from one start of the VM to the next), which
+is what makes the data repeatable. Tests get a small data set from the same
+generators:
 
 ```elixir
 use DemoWeb.ConnCase, async: true
@@ -357,12 +360,15 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | --- | --- |
 | `navigation.spec.ts` | the grid as one tab stop; arrow keys, Home, End, Page Up and Down; the header rows; that moving sends nothing; where focus is after the rows were replaced |
 | `sorting.spec.ts` | the cycle by click and by Enter, `aria-sort`, what cannot be sorted, the sort in the URL |
-| `pagination.spec.ts` | offset pages, keyset pages, no pages; the page in the URL, reload, a shared link, the back button |
-| `filtering.spec.ts` | every kind of filter and operator; Enter, leaving and choosing; Escape; clearing; what is read out; a value that is none; filters in the URL |
+| `pagination.spec.ts` | offset pages, keyset pages, no pages; the page in the URL, reload, a shared link, the back button; that focus stays on the control that was used, and where it goes when that control is disabled or gone |
+| `filtering.spec.ts` | every kind of filter and operator; a printable key on a filter cell, for each kind of control; Enter, leaving and choosing; Escape; clearing; what is read out; a value that is none; filters in the URL |
 | `editing.spec.ts` | starting, giving up and saving an edit in every editor; the question before saving; a save that fails; a save that returns while another cell is typed in; a record that is gone |
 | `authorization.spec.ts` | `/tasks` as each of the five actors; the member's hidden cells and refused save; the viewer; switching; reads that are refused |
 | `tables.spec.ts` | that each mounted table opens and works, with what makes it different |
-| `a11y.spec.ts` | axe-core, every rule, on every table and in every state |
+| `task_labels.spec.ts` | the table of a resource with a primary key of two attributes: its order, sorting, paging, the filter and the editing of its note, on the row that was meant |
+| `dashboard.spec.ts` | two tables embedded in one LiveView: each with its own sort, filters and page and none of it in the URL; two grids, each one tab stop with a keyboard of its own; editing; a table whose read is refused |
+| `locale.spec.ts` | the language switcher: the tables in German (labels, operators, counts in singular and plural, the messages of failed saves and reads), and back in English |
+| `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, and in German |
 
 How they are built (`e2e/support`):
 
@@ -370,14 +376,19 @@ How they are built (`e2e/support`):
   actors once, through the actor switcher, and keeps the session cookie. A
   file or a test says who it is with `test.use({ actor: "member" })`; the
   admin is the default.
-- **Data.** The tests run on the standard seed, whose records and ids are
-  always the same. A test that changes anything says
-  `test.use({ writes: true })`, and the database is seeded again after it
-  (under a second), so every test starts from the seed, in whatever order.
-  Seeding goes through `POST /e2e/seed`, a route that exists in the `e2e`
-  environment only (`e2e/server`, mounted by `config :demo, e2e_routes: true`),
-  as does the one that deletes a task behind an open table's back. There is
-  one database, so the tests run one at a time.
+- **Data.** The tests run on the standard seed, whose records, ids and
+  values are the same in every VM (`Demo.Generator` draws them in a fixed
+  order), so tests name them (`support/data.ts`). A test that changes
+  anything says `test.use({ writes: true })`, and the database is seeded
+  again after it (under a second), so every test starts from the seed, in
+  whatever order. Seeding goes through `POST /e2e/seed`, a route that exists
+  in the `e2e` environment only (`e2e/server`, mounted by
+  `config :demo, e2e_routes: true`), as do the one that deletes a task behind
+  an open table's back and the two that make the reads of the comments fail
+  and work again. There is one database, so the tests run one at a time.
+- **Language.** A test chooses German through the language switcher
+  (`support/locale.ts`); the choice is in the session cookie, which every
+  test has to itself.
 - **The table.** `support/table.ts` is the one place that knows the ids of
   the library's markup and how to wait for a read or a save
   (`aria-busy`). Tests find controls by role and name where a person would,
@@ -387,7 +398,7 @@ How they are built (`e2e/support`):
 
 A test marked `test.fail()` describes a defect that is known and not yet
 fixed: it passes as long as the defect is there, and fails when it is gone,
-which is the moment to remove the mark.
+which is the moment to remove the mark. No test is marked at present.
 
 ## Performance
 
@@ -414,6 +425,10 @@ npm run measure                 # starts the server itself; writes results.json 
   each database, measures in headless Chromium, and stops it. `PERF_REPS`
   sets the repetitions (15). `npm run report` writes `RESULTS.md` again from
   `results.json` and `NOTES.md`, the findings written by hand.
+- To see whether the scripts still run, without replacing the committed
+  results: `PERF_REPS=1 PERF_RESULTS=/tmp/smoke.json node measure.mjs`. After
+  a new migration the two databases want it first; `npm run setup` does that,
+  and seeds them again.
 - The server runs in the Mix environment `perf` (`config/perf.exs`): as
   production would, without code reloading, debug annotations or runtime
   checks, but started with `mix phx.server`, on plain HTTP, with assets that

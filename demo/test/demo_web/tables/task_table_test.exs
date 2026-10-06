@@ -184,6 +184,26 @@ defmodule DemoWeb.Tables.TaskTableTest do
       assert attribute(html, "#task-pagination [aria-current=page]", "id") == ["task-page-1"]
     end
 
+    # What keeps focus on Previous and Next in a browser: they are the first
+    # and the last of the same three elements on every page, however many
+    # page numbers there are between them.
+    test "previous and next keep their place around the page numbers", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/tasks")
+
+      around = fn html -> attribute(html, "#task-pagination div > *", "id") end
+      numbers = fn html -> attribute(html, "#task-pagination div > span > button", "id") end
+
+      assert around.(html) == ["task-previous", "task-next"]
+      assert numbers.(html) == ["task-page-1", "task-page-2", "task-page-3"]
+
+      view |> element("#task-next") |> render_click()
+      html = render_async(view)
+
+      assert around.(html) == ["task-previous", "task-next"]
+      assert numbers.(html) == ["task-page-1", "task-page-2", "task-page-3"]
+      assert attribute(html, "#task-pagination [aria-current=page]", "id") == ["task-page-2"]
+    end
+
     test "rows are numbered through all pages, the header being row 1 and the filter row 2",
          %{conn: conn} do
       {:ok, view, html} = live(conn, "/tasks")

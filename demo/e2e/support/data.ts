@@ -1,8 +1,10 @@
 import { expect, type APIRequestContext } from "@playwright/test"
 
 // The data the tests run on: the demo's standard seed (Demo.Seeds), which
-// gives the same records with the same ids every time. Only dates move, as
-// they are relative to today, so no test names a date of the seed.
+// gives the same records with the same ids and values every time, in
+// whatever VM it runs: `mix run priv/repo/seeds.exs` when the server starts,
+// and `POST /e2e/seed` in the server afterwards. Only dates move, as they
+// are relative to today, so no test names a date of the seed.
 
 /**
  * Empties the database and seeds it again (under a second). It runs once
@@ -16,6 +18,23 @@ export async function reseed(request: APIRequestContext): Promise<void> {
   expect(await response.json()).toMatchObject({ profile: "standard", tasks: SEED.tasks.total })
 }
 
+/**
+ * Runs `whileBroken` with the comments out of the database's reach, so that
+ * every read of them fails as a database that is down would fail it, and
+ * puts them back. Seeding puts them back as well.
+ */
+export async function withCommentsBroken(
+  request: APIRequestContext,
+  whileBroken: () => Promise<void>,
+): Promise<void> {
+  expect((await request.post("/e2e/comments/break")).status()).toBe(200)
+  try {
+    await whileBroken()
+  } finally {
+    expect((await request.post("/e2e/comments/mend")).status()).toBe(200)
+  }
+}
+
 /** Deletes a task behind the table's back, as another person's destroy would. */
 export async function deleteTask(request: APIRequestContext, id: string): Promise<void> {
   const response = await request.delete(`/e2e/tasks/${id}`)
@@ -25,10 +44,27 @@ export async function deleteTask(request: APIRequestContext, id: string): Promis
 /** What the standard seed holds, as far as the tests count on it. */
 export const SEED = {
   tasks: { total: 400, acme: 320, globex: 80 },
-  comments: { acme: 384 },
+  /** Comments of Acme that say "Moved to the next sprint.": two keyset pages of 20. */
+  comments: { nextSprint: 27 },
   projects: { acme: 6 },
   labels: { acme: 8 },
-  specimens: 36,
+  taskLabels: { acme: 396 },
+  specimens: {
+    total: 36,
+    /** how many have "Alpha" as their `a_ci_string` */
+    alpha: 9,
+    /** the first row of /specimens, "Specimen 001": every column of it has a value but `opt_string` */
+    first: "2b63fed9-48ab-4270-aa82-3d81c7cbafae",
+  },
+  /**
+   * The first rows of /task_labels (by task, then by label), by the two
+   * parts of their key. The first three are labels of one task.
+   */
+  taskLabel: {
+    first: "00a93d01-b260-4126-9715-9ae8e9340287-13eeb792-2564-48dd-b1aa-f7f74a3ddd7a",
+    second: "00a93d01-b260-4126-9715-9ae8e9340287-7290c04a-9873-4058-b97b-ebc307a5d6b9",
+    third: "00a93d01-b260-4126-9715-9ae8e9340287-f20780ce-3392-4203-aace-d0020a980647",
+  },
   /**
    * Tasks of Acme on the first page of /tasks (newest first), by primary
    * key. The policies make them differ for the member:

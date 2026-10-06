@@ -906,13 +906,7 @@ test.describe("a save that returns while the person is typing in another cell of
     page,
     tasks,
   }) => {
-    test.fail(
-      true,
-      "DEFECT (library, known: issue 25 'the stale cell after a cancelled edit'): a cell that " +
-        "is open while another cell's save changes its value keeps, after Escape, the content " +
-        "it had before the edit. Here `set_progress` moves the task to \"In progress\" while " +
-        "the state cell is open; after Escape the cell still says \"To do\".",
-    )
+    // `set_progress` moves the task to "In progress" while its state cell is open
     await withoutMenu(page)
     await withLatency(page, LATENCY)
     const progress = tasks.cell(SECOND, "progress")

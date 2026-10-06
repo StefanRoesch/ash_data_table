@@ -26,6 +26,12 @@ defmodule Demo.Generator do
   not from StreamData's own (time-seeded) one. Call `reseed/1` first and the
   same calls produce the same records, ids included. Dates are relative to
   today, so they move with the calendar.
+
+  The values of a record are drawn in the order they are written in here, and
+  then the overrides in the order they are given in, so pass those as a
+  keyword list. `Ash.Generator` on its own draws them in the order of a map
+  of generators, and a map with atom keys is walked in the order in which the
+  VM numbered the atoms: not the same from one start to the next.
   """
   use Ash.Generator
 
@@ -151,51 +157,69 @@ defmodule Demo.Generator do
     Ecto.UUID.cast!(<<a::48, 4::4, b::12, 2::2, c::62>>)
   end
 
+  ## Records
+
+  # A seed generator of records whose values are drawn one after the other:
+  # those of `fields`, a keyword list of values and generators, in its order,
+  # and then the overrides in theirs. An override takes the place of the
+  # field it names, and no value is drawn for that field.
+  defp record(record, overrides, fields) do
+    overrides = Enum.to_list(overrides)
+    fields = Enum.map(fields, fn {name, value} -> {name, Keyword.get(overrides, name, value)} end)
+    fields = fields ++ Keyword.drop(overrides, Keyword.keys(fields))
+
+    built([], fn -> struct!(record, drawn(fields)) end)
+  end
+
+  # The same for a record that a function builds whole, drawing as it goes:
+  # the overrides are drawn after it, in their order.
+  defp built(overrides, build) do
+    seed_generator(fn _uses -> struct!(build.(), drawn(overrides)) end, uses: %{})
+  end
+
+  defp drawn(values) do
+    Enum.map(values, fn
+      {name, %StreamData{} = generator} -> {name, Enum.at(generator, 0)}
+      pair -> pair
+    end)
+  end
+
   ## Tracker
 
   @doc "An organization. Unique `name` and `slug` come from a sequence."
   def organization(opts \\ []) do
-    seed_generator(
-      %Organization{
-        id: rnd(&uuid/0),
-        name: sequence(:organization_name, &"Organization #{&1 + 1}"),
-        slug: sequence(:organization_slug, &"organization-#{&1 + 1}"),
-        inserted_at: rnd(fn -> past(60, 365) end),
-        updated_at: rnd(fn -> past(0, 60) end)
-      },
-      overrides: opts
+    record(%Organization{}, opts,
+      id: rnd(&uuid/0),
+      name: sequence(:organization_name, &"Organization #{&1 + 1}"),
+      inserted_at: rnd(fn -> past(60, 365) end),
+      slug: sequence(:organization_slug, &"organization-#{&1 + 1}"),
+      updated_at: rnd(fn -> past(0, 60) end)
     )
   end
 
   @doc "A user. Needs `organization_id:`."
   def user(opts \\ []) do
-    seed_generator(
-      %User{
-        id: rnd(&uuid/0),
-        name: rnd(fn -> "#{one(@first_names)} #{one(@last_names)}" end),
-        email: sequence(:user_email, &Ash.CiString.new("user#{&1 + 1}@example.test")),
-        role: :member,
-        inserted_at: rnd(fn -> past(60, 365) end),
-        updated_at: rnd(fn -> past(0, 60) end)
-      },
-      overrides: opts
+    record(%User{}, opts,
+      id: rnd(&uuid/0),
+      name: rnd(fn -> "#{one(@first_names)} #{one(@last_names)}" end),
+      role: :member,
+      inserted_at: rnd(fn -> past(60, 365) end),
+      updated_at: rnd(fn -> past(0, 60) end),
+      email: sequence(:user_email, &Ash.CiString.new("user#{&1 + 1}@example.test"))
     )
   end
 
   @doc "A project. Needs `organization_id:`."
   def project(opts \\ []) do
-    seed_generator(
-      %Project{
-        id: rnd(&uuid/0),
-        name: sequence(:project_name, &"Project #{&1 + 1}"),
-        description: rnd(fn -> maybe(0.8, &sentence/0) end),
-        status: pick([:planned, :active, :active, :active, :on_hold, :completed]),
-        starts_on: rnd(fn -> maybe(0.85, fn -> Date.add(today(), -int(400)) end) end),
-        budget: rnd(fn -> maybe(0.7, fn -> Decimal.new(int(200) * 500) end) end),
-        inserted_at: rnd(fn -> past(60, 365) end),
-        updated_at: rnd(fn -> past(0, 60) end)
-      },
-      overrides: opts
+    record(%Project{}, opts,
+      id: rnd(&uuid/0),
+      name: sequence(:project_name, &"Project #{&1 + 1}"),
+      status: pick([:planned, :active, :active, :active, :on_hold, :completed]),
+      description: rnd(fn -> maybe(0.8, &sentence/0) end),
+      inserted_at: rnd(fn -> past(60, 365) end),
+      updated_at: rnd(fn -> past(0, 60) end),
+      budget: rnd(fn -> maybe(0.7, fn -> Decimal.new(int(200) * 500) end) end),
+      starts_on: rnd(fn -> maybe(0.85, fn -> Date.add(today(), -int(400)) end) end)
     )
   end
 
@@ -208,41 +232,36 @@ defmodule Demo.Generator do
   not adjust the others.
   """
   def task(opts \\ []) do
-    seed_generator(
-      fn %{shape: shape} ->
-        %Task{
-          id: uuid(),
-          title: title(),
-          description: maybe(0.7, &paragraph/0),
-          status: shape.status,
-          priority: one([:low, :medium, :medium, :medium, :high, :high, :urgent]),
-          progress: shape.progress,
-          estimate_hours: maybe(0.8, fn -> Decimal.div(Decimal.new(int(160)), 4) end),
-          billable?: float() < 0.4,
-          due_on: maybe(0.75, fn -> Date.add(today(), int(120) - 45) end),
-          completed_at: shape.completed_at,
-          external_ref: maybe(0.6, fn -> "EXT-#{10_000 + int(89_999)}" end),
-          internal_note: maybe(0.2, fn -> "Internal: #{sentence()}" end),
-          assignee_id: nil,
-          inserted_at: shape.inserted_at,
-          updated_at: shape.updated_at
-        }
-      end,
-      uses: %{shape: rnd(&task_shape/0)},
-      overrides: opts
-    )
+    built(opts, fn ->
+      shape = task_shape()
+
+      %Task{
+        id: uuid(),
+        title: title(),
+        description: maybe(0.7, &paragraph/0),
+        status: shape.status,
+        priority: one([:low, :medium, :medium, :medium, :high, :high, :urgent]),
+        progress: shape.progress,
+        estimate_hours: maybe(0.8, fn -> Decimal.div(Decimal.new(int(160)), 4) end),
+        billable?: float() < 0.4,
+        due_on: maybe(0.75, fn -> Date.add(today(), int(120) - 45) end),
+        completed_at: shape.completed_at,
+        external_ref: maybe(0.6, fn -> "EXT-#{10_000 + int(89_999)}" end),
+        internal_note: maybe(0.2, fn -> "Internal: #{sentence()}" end),
+        assignee_id: nil,
+        inserted_at: shape.inserted_at,
+        updated_at: shape.updated_at
+      }
+    end)
   end
 
   @doc "A comment. Needs `organization_id:`, `task_id:` and `author_id:`."
   def comment(opts \\ []) do
-    seed_generator(
-      %Comment{
-        id: rnd(&uuid/0),
-        body: rnd(&comment_body/0),
-        inserted_at: rnd(fn -> past(1, 60) end),
-        updated_at: rnd(fn -> past(0, 1) end)
-      },
-      overrides: opts
+    record(%Comment{}, opts,
+      id: rnd(&uuid/0),
+      body: rnd(&comment_body/0),
+      inserted_at: rnd(fn -> past(1, 60) end),
+      updated_at: rnd(fn -> past(0, 1) end)
     )
   end
 
@@ -254,41 +273,35 @@ defmodule Demo.Generator do
     tasks = List.to_tuple(tasks)
     authors = List.to_tuple(author_ids)
 
-    seed_generator(
-      fn %{task: task} ->
-        at = between(task.inserted_at, now())
+    built(opts, fn ->
+      task = elem(tasks, int(tuple_size(tasks)) - 1)
+      at = between(task.inserted_at, now())
 
-        %Comment{
-          id: uuid(),
-          body: comment_body(),
-          task_id: task.id,
-          author_id: elem(authors, int(tuple_size(authors)) - 1),
-          inserted_at: at,
-          updated_at: at
-        }
-      end,
-      uses: %{task: rnd(fn -> elem(tasks, int(tuple_size(tasks)) - 1) end)},
-      overrides: opts
-    )
+      %Comment{
+        id: uuid(),
+        body: comment_body(),
+        task_id: task.id,
+        author_id: elem(authors, int(tuple_size(authors)) - 1),
+        inserted_at: at,
+        updated_at: at
+      }
+    end)
   end
 
   @doc "A label. Needs `organization_id:`. Unique `name` comes from a sequence."
   def label(opts \\ []) do
-    seed_generator(
-      %Label{
-        id: rnd(&uuid/0),
-        name: sequence(:label_name, &"label-#{&1 + 1}"),
-        colour: pick(@colours),
-        inserted_at: rnd(fn -> past(60, 365) end),
-        updated_at: rnd(fn -> past(0, 60) end)
-      },
-      overrides: opts
+    record(%Label{}, opts,
+      id: rnd(&uuid/0),
+      name: sequence(:label_name, &"label-#{&1 + 1}"),
+      inserted_at: rnd(fn -> past(60, 365) end),
+      updated_at: rnd(fn -> past(0, 60) end),
+      colour: pick(@colours)
     )
   end
 
   @doc "A task's label. Needs `organization_id:`, `task_id:` and `label_id:`."
   def task_label(opts \\ []) do
-    seed_generator(%TaskLabel{}, overrides: opts)
+    record(%TaskLabel{}, opts, [])
   end
 
   @doc """
@@ -309,83 +322,80 @@ defmodule Demo.Generator do
 
   @doc "A kitchen-sink specimen with every attribute filled, the `opt_*` ones only sometimes."
   def specimen(opts \\ []) do
-    seed_generator(
-      %Specimen{
-        id: rnd(&uuid/0),
-        label: sequence(:specimen_label, &"Specimen #{String.pad_leading("#{&1 + 1}", 3, "0")}"),
-        a_string: rnd(&title/0),
-        a_ci_string: rnd(fn -> Ash.CiString.new(one(~w(Alpha beta GAMMA Delta epsilon))) end),
-        an_atom: pick([:red, :green, :blue]),
-        an_integer: rnd(fn -> int(2001) - 1001 end),
-        a_float: rnd(fn -> Float.round(float(), 4) end),
-        a_decimal: rnd(fn -> Decimal.div(Decimal.new(int(10_000_000)), 100) end),
-        a_boolean: pick([true, false]),
-        a_date: rnd(fn -> Date.add(today(), int(730) - 365) end),
-        a_time: rnd(fn -> Time.new!(int(24) - 1, int(60) - 1, 0) end),
-        a_time_usec:
-          rnd(fn ->
-            Time.new!(
-              int(24) - 1,
-              int(60) - 1,
-              30,
-              {int(999_999), 6}
-            )
-          end),
-        a_utc_datetime: rnd(fn -> DateTime.truncate(past(), :second) end),
-        a_utc_datetime_usec: rnd(&past/0),
-        a_datetime: rnd(fn -> DateTime.truncate(past(), :second) end),
-        a_naive_datetime:
-          rnd(fn -> past() |> DateTime.to_naive() |> NaiveDateTime.truncate(:second) end),
-        a_duration: rnd(fn -> Duration.new!(hour: int(48), minute: int(59)) end),
-        a_duration_name: pick([:day, :week, :month, :year]),
-        a_uuid: rnd(&uuid/0),
-        a_uuid_v7: rnd(&uuid/0),
-        a_binary: rnd(fn -> bytes(8) end),
-        a_url_encoded_binary: rnd(fn -> bytes(8) end),
-        a_map:
-          rnd(fn ->
-            %{"colour" => one(~w(red green blue)), "size" => int(9)}
-          end),
-        a_typed_map: rnd(fn -> %{name: one(@first_names), count: int(20)} end),
-        a_keyword: rnd(fn -> [unit: one(~w(kg m l)), amount: int(100)] end),
-        a_tuple:
-          rnd(fn ->
-            {Float.round(float() * 180 - 90, 4), Float.round(float() * 360 - 180, 4)}
-          end),
-        a_struct: rnd(fn -> %Dimensions{width: int(100), height: int(100)} end),
-        a_term: rnd(fn -> {:any, "term", int(100)} end),
-        a_module: pick([Enum, Map, String, Demo.KitchenSink.Specimen]),
-        a_date_range:
-          rnd(fn ->
-            lower = Date.add(today(), int(60))
-            %Ash.Range{lower: lower, upper: Date.add(lower, int(30)), bounds: :"[)"}
-          end),
-        strings: rnd(fn -> some(~w(one two three four five), int(4) - 1) end),
-        integers: rnd(fn -> Enum.map(1..int(4), fn _ -> int(100) end) end),
-        shades: rnd(fn -> some([:light, :medium, :dark], int(4) - 1) end),
-        an_address: rnd(&address/0),
-        addresses: rnd(fn -> Enum.map(1..int(3), fn _ -> address() end) end),
-        a_union:
-          rnd(fn ->
-            one([
-              %Ash.Union{type: :number, value: int(1000)},
-              %Ash.Union{type: :text, value: one(@label_names)},
-              %Ash.Union{type: :shade, value: one([:light, :medium, :dark])}
-            ])
-          end),
-        a_percentage: rnd(fn -> int(101) - 1 end),
-        a_shade: pick([:light, :medium, :dark]),
-        opt_string: rnd(fn -> maybe(0.5, &sentence/0) end),
-        opt_integer: rnd(fn -> maybe(0.5, fn -> int(1_000_000) end) end),
-        opt_decimal: rnd(fn -> maybe(0.5, fn -> Decimal.new("#{int(999)}.5") end) end),
-        opt_boolean: pick([true, false, nil]),
-        opt_date: rnd(fn -> maybe(0.5, fn -> Date.add(today(), -int(365)) end) end),
-        opt_utc_datetime: rnd(fn -> maybe(0.5, fn -> DateTime.truncate(past(), :second) end) end),
-        opt_shade: pick([:light, :medium, :dark, nil]),
-        inserted_at: rnd(fn -> past(60, 365) end),
-        updated_at: rnd(fn -> past(0, 60) end)
-      },
-      overrides: opts
+    record(%Specimen{}, opts,
+      id: rnd(&uuid/0),
+      label: sequence(:specimen_label, &"Specimen #{String.pad_leading("#{&1 + 1}", 3, "0")}"),
+      a_string: rnd(&title/0),
+      a_ci_string: rnd(fn -> Ash.CiString.new(one(~w(Alpha beta GAMMA Delta epsilon))) end),
+      an_atom: pick([:red, :green, :blue]),
+      an_integer: rnd(fn -> int(2001) - 1001 end),
+      a_float: rnd(fn -> Float.round(float(), 4) end),
+      a_decimal: rnd(fn -> Decimal.div(Decimal.new(int(10_000_000)), 100) end),
+      a_boolean: pick([true, false]),
+      a_date: rnd(fn -> Date.add(today(), int(730) - 365) end),
+      a_time: rnd(fn -> Time.new!(int(24) - 1, int(60) - 1, 0) end),
+      a_time_usec:
+        rnd(fn ->
+          Time.new!(
+            int(24) - 1,
+            int(60) - 1,
+            30,
+            {int(999_999), 6}
+          )
+        end),
+      a_utc_datetime: rnd(fn -> DateTime.truncate(past(), :second) end),
+      a_utc_datetime_usec: rnd(&past/0),
+      a_datetime: rnd(fn -> DateTime.truncate(past(), :second) end),
+      a_naive_datetime:
+        rnd(fn -> past() |> DateTime.to_naive() |> NaiveDateTime.truncate(:second) end),
+      a_duration: rnd(fn -> Duration.new!(hour: int(48), minute: int(59)) end),
+      a_duration_name: pick([:day, :week, :month, :year]),
+      a_uuid: rnd(&uuid/0),
+      a_uuid_v7: rnd(&uuid/0),
+      a_binary: rnd(fn -> bytes(8) end),
+      a_url_encoded_binary: rnd(fn -> bytes(8) end),
+      a_map:
+        rnd(fn ->
+          %{"colour" => one(~w(red green blue)), "size" => int(9)}
+        end),
+      a_typed_map: rnd(fn -> %{name: one(@first_names), count: int(20)} end),
+      a_keyword: rnd(fn -> [unit: one(~w(kg m l)), amount: int(100)] end),
+      a_tuple:
+        rnd(fn ->
+          {Float.round(float() * 180 - 90, 4), Float.round(float() * 360 - 180, 4)}
+        end),
+      a_struct: rnd(fn -> %Dimensions{width: int(100), height: int(100)} end),
+      a_term: rnd(fn -> {:any, "term", int(100)} end),
+      a_module: pick([Enum, Map, String, Demo.KitchenSink.Specimen]),
+      a_date_range:
+        rnd(fn ->
+          lower = Date.add(today(), int(60))
+          %Ash.Range{lower: lower, upper: Date.add(lower, int(30)), bounds: :"[)"}
+        end),
+      strings: rnd(fn -> some(~w(one two three four five), int(4) - 1) end),
+      integers: rnd(fn -> Enum.map(1..int(4), fn _ -> int(100) end) end),
+      shades: rnd(fn -> some([:light, :medium, :dark], int(4) - 1) end),
+      an_address: rnd(&address/0),
+      addresses: rnd(fn -> Enum.map(1..int(3), fn _ -> address() end) end),
+      a_union:
+        rnd(fn ->
+          one([
+            %Ash.Union{type: :number, value: int(1000)},
+            %Ash.Union{type: :text, value: one(@label_names)},
+            %Ash.Union{type: :shade, value: one([:light, :medium, :dark])}
+          ])
+        end),
+      a_percentage: rnd(fn -> int(101) - 1 end),
+      a_shade: pick([:light, :medium, :dark]),
+      opt_string: rnd(fn -> maybe(0.5, &sentence/0) end),
+      opt_integer: rnd(fn -> maybe(0.5, fn -> int(1_000_000) end) end),
+      opt_decimal: rnd(fn -> maybe(0.5, fn -> Decimal.new("#{int(999)}.5") end) end),
+      opt_boolean: pick([true, false, nil]),
+      opt_date: rnd(fn -> maybe(0.5, fn -> Date.add(today(), -int(365)) end) end),
+      opt_utc_datetime: rnd(fn -> maybe(0.5, fn -> DateTime.truncate(past(), :second) end) end),
+      opt_shade: pick([:light, :medium, :dark, nil]),
+      inserted_at: rnd(fn -> past(60, 365) end),
+      updated_at: rnd(fn -> past(0, 60) end)
     )
   end
 

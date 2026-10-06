@@ -34,6 +34,8 @@
     <%!--
       The header lives in the root layout, so it is on every page, including
       the LiveViews a library mounts. Switching the actor is a full page load.
+      So does the main landmark: a table mounted with `layout: false` is
+      rendered straight into this layout and brings no landmark of its own.
     --%>
     <header class="navbar gap-4 border-b border-base-300 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
@@ -54,6 +56,8 @@
       <Layouts.locale_switcher return_to={assigns[:conn] && @conn.request_path} />
       <Layouts.theme_toggle />
     </header>
-    {@inner_content}
+    <main id="main">
+      {@inner_content}
+    </main>
   </body>
 </html>

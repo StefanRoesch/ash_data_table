@@ -2,6 +2,7 @@ import { expectNoAxeViolations } from "./support/a11y"
 import { ACTOR_KEYS } from "./support/actors"
 import { deleteTask, SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
+import { switchLocale } from "./support/locale"
 import { Table } from "./support/table"
 
 // Spec section 8: axe-core must report no violations, on every table and in
@@ -31,15 +32,9 @@ test.describe("every mounted table, as the admin", () => {
     await expectNoAxeViolations(page, "#label-page")
   })
 
+  // A table mounted with `layout: false` brings no landmark of its own: the
+  // main landmark around it is the demo's root layout's.
   test("/bare/labels: the whole page", async ({ page }) => {
-    test.fail(
-      true,
-      "FINDING (demo, or library): mounted with `layout: false`, the table's page has no main " +
-        "landmark: AshTable.Live.Page renders its heading and the table straight into the " +
-        "root layout. axe reports the best-practice rules `landmark-one-main` (html) and " +
-        "`region` (h1, #label-grid), both of moderate impact. In the app layout (/labels) " +
-        "the same table has no violation.",
-    )
     await new Table(page, "label", "/bare/labels").open()
     await expectNoAxeViolations(page)
   })
@@ -48,6 +43,110 @@ test.describe("every mounted table, as the admin", () => {
     await page.goto("/")
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible()
     await expectNoAxeViolations(page)
+  })
+})
+
+test.describe("two tables in one page: /dashboard", () => {
+  let projects: Table
+  let tasks: Table
+
+  test.beforeEach(async ({ page }) => {
+    projects = new Table(page, "dashboard-projects", "/dashboard")
+    tasks = new Table(page, "dashboard-tasks", "/dashboard")
+    await projects.open()
+    await tasks.ready()
+  })
+
+  test("as it opens: every landmark has a name of its own", async ({ page }) => {
+    await expectNoAxeViolations(page)
+
+    // what axe's `landmark-unique` is about, said outright
+    const names = await page
+      .getByRole("navigation")
+      .evaluateAll((landmarks) => landmarks.map((landmark) => landmark.getAttribute("aria-label")))
+    expect(names).toEqual(["Main", "Pagination: Projects", "Pagination: Tasks"])
+    await expect(page.getByRole("region")).toHaveCount(2)
+    await expect(page.getByRole("region", { name: "Projects" })).toHaveId("dashboard-projects-section")
+    await expect(page.getByRole("region", { name: "Tasks" })).toHaveId("dashboard-tasks-section")
+  })
+
+  test("both sorted and filtered, the tasks on a later page", async ({ page }) => {
+    await projects.reads(() => projects.header("name").click())
+    await projects.filterValue("name").fill("i")
+    await projects.reads(() => projects.filterValue("name").press("Enter"))
+    await tasks.reads(() => tasks.header("title").click())
+    await tasks.reads(() => tasks.filterValue("billable?").selectOption("yes"))
+    await tasks.reads(() => tasks.next.click())
+    await expect(tasks.next).toBeFocused()
+    await expect(projects.clearFilters).toBeVisible()
+    await expect(tasks.clearFilters).toBeVisible()
+    await expectNoAxeViolations(page)
+  })
+
+  test("an editor open in one of them, and a cell whose save failed", async ({ page }) => {
+    const title = tasks.cell(SECOND, "title")
+    await title.focus()
+    await tasks.press("Enter")
+    await expect(tasks.editor(title)).toBeFocused()
+    await expectNoAxeViolations(page)
+
+    await tasks.retype("ab")
+    await tasks.saves(title, () => tasks.press("Enter"))
+    await expect(tasks.failure(title)).toBeVisible()
+    await expectNoAxeViolations(page)
+  })
+
+  test("the confirm dialog of the one table that has it", async ({ page }) => {
+    const status = tasks.cell(SECOND, "status")
+    await status.dblclick()
+    await tasks.editor(status).selectOption({ label: "In review" })
+    await expect(tasks.dialog).toBeVisible()
+    await expectNoAxeViolations(page)
+  })
+
+})
+
+test.describe("/dashboard as nobody, for whom one of its tables is not there", () => {
+  test.use({ actor: "nobody" })
+
+  test("the page with the table that is left", async ({ page }) => {
+    const tasks = new Table(page, "dashboard-tasks", "/dashboard")
+    await tasks.open()
+    await expect(page.getByRole("grid")).toHaveCount(1)
+    await expect(tasks.empty).toHaveText("No records")
+    await expectNoAxeViolations(page)
+  })
+})
+
+test.describe("in German", () => {
+  test("/tasks, with a filter active and a cell whose save failed", async ({ page, tasks }) => {
+    await tasks.open()
+    await switchLocale(page, "de")
+    await tasks.ready()
+    await expectNoAxeViolations(page)
+
+    await tasks.reads(() => tasks.filterValue("status").selectOption("todo"))
+    const title = tasks.cell(SECOND, "title")
+    await title.focus()
+    await tasks.press("Enter")
+    await tasks.retype("ab")
+    await tasks.saves(title, () => tasks.press("Enter"))
+    await expect(tasks.failure(title)).toHaveText("muss mindestens 3 Zeichen lang sein")
+    await expectNoAxeViolations(page)
+  })
+
+  test("/dashboard", async ({ page }) => {
+    const projects = new Table(page, "dashboard-projects", "/dashboard")
+    await projects.open()
+    await switchLocale(page, "de")
+    await projects.ready()
+    await new Table(page, "dashboard-tasks", "/dashboard").ready()
+
+    await expectNoAxeViolations(page)
+    const names = await page
+      .getByRole("navigation")
+      .evaluateAll((landmarks) => landmarks.map((landmark) => landmark.getAttribute("aria-label")))
+    expect(names).toEqual(["Main", "Seiten: Projects", "Seiten: Aufgaben"])
   })
 })
 
