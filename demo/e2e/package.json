@@ -1,0 +1,19 @@
+{
+  "name": "ash-table-demo-e2e",
+  "private": true,
+  "description": "Browser tests of the ash_table demo: Playwright and axe-core. A development tool only.",
+  "type": "module",
+  "scripts": {
+    "test": "playwright test",
+    "test:ui": "playwright test --ui",
+    "report": "playwright show-report",
+    "typecheck": "tsc --noEmit",
+    "browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
+    "@playwright/test": "1.63.0",
+    "@types/node": "24.19.1",
+    "typescript": "5.9.3"
+  }
+}

@@ -49,4 +49,33 @@ defmodule DemoWeb.Router do
       end
     end
   end
+
+  # For the browser tests (`e2e/`), in the e2e environment only: seeds the
+  # database again, so that a test that edits starts from known data, and
+  # deletes a task behind the table's back.
+  if Application.compile_env(:demo, :e2e_routes, false) do
+    scope "/e2e" do
+      post "/seed", DemoWeb.E2E.DataController, :seed
+      delete "/tasks/:id", DemoWeb.E2E.DataController, :delete_task
+    end
+  end
+
+  # For the performance scripts (`perf/`), in the perf environment only: the
+  # table of /tasks once more, in pages of 100, and what the server measured.
+  if Application.compile_env(:demo, :perf_routes, false) do
+    scope "/perf" do
+      pipe_through :browser
+
+      live_session :perf, on_mount: [DemoWeb.Actor] do
+        ash_table "/tasks100", Demo.Perf.Task
+      end
+    end
+
+    scope "/perf/probe", DemoWeb.Perf do
+      post "/start", ProbeController, :start
+      get "/events", ProbeController, :events
+      get "/live_views", ProbeController, :live_views
+      get "/versions", ProbeController, :versions
+    end
+  end
 end

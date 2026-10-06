@@ -290,3 +290,106 @@ and `sensitive?`: sensitivity is not an exposure rule, so it is a column.
   declared with `on_forbidden :message`. Its author or an admin may change a
   comment.
 - `Label`, `User`, `Organization`: only admins write.
+
+## Browser tests
+
+`demo/e2e` holds the tests that need a real browser: the keyboard, focus
+after a patch, the editors and the dialog, what each actor's page contains,
+and axe-core on every table in every state. They are written with Playwright
+and `@axe-core/playwright` and run in headless Chromium.
+
+Node is a tool for developing `ash_table` here, nothing more: the library
+puts no npm package into a host app, and neither does the demo itself.
+
+```sh
+docker compose up -d postgres   # in the repository root, if it is not running
+cd demo && mix deps.get
+cd e2e
+npm ci                          # Node 24, pinned in e2e/.tool-versions
+npm run browsers                # once: Playwright's Chromium
+npm test
+```
+
+`npm test` does everything else by itself. It starts the demo through
+`e2e/server.sh` in a Mix environment of its own, `e2e` (`config/e2e.exs`):
+compiled once into `_build/e2e`, without code reloading or watchers, on port
+**4479** and on its own database, **`demo_e2e`**, which it creates, migrates
+and fills with the standard seed. A dev server on 4478 and `demo_dev` are not
+touched. When the tests are done the server is stopped. The first run
+compiles the demo for that environment, which takes a few minutes.
+
+While writing tests, `./server.sh` in a second terminal keeps the server
+running, and `npm test` uses it (`npx playwright test editing`,
+`npm run test:ui`, `npm run report` for the HTML report of the last run).
+
+| File | What it covers |
+| --- | --- |
+| `navigation.spec.ts` | the grid as one tab stop; arrow keys, Home, End, Page Up and Down; the header rows; that moving sends nothing; where focus is after the rows were replaced |
+| `sorting.spec.ts` | the cycle by click and by Enter, `aria-sort`, what cannot be sorted, the sort in the URL |
+| `pagination.spec.ts` | offset pages, keyset pages, no pages; the page in the URL, reload, a shared link, the back button |
+| `filtering.spec.ts` | every kind of filter and operator; Enter, leaving and choosing; Escape; clearing; what is read out; a value that is none; filters in the URL |
+| `editing.spec.ts` | starting, giving up and saving an edit in every editor; the question before saving; a save that fails; a save that returns while another cell is typed in; a record that is gone |
+| `authorization.spec.ts` | `/tasks` as each of the five actors; the member's hidden cells and refused save; the viewer; switching; reads that are refused |
+| `tables.spec.ts` | that each mounted table opens and works, with what makes it different |
+| `a11y.spec.ts` | axe-core, every rule, on every table and in every state |
+
+How they are built (`e2e/support`):
+
+- **Actors.** The setup project (`actors.setup.ts`) becomes each of the five
+  actors once, through the actor switcher, and keeps the session cookie. A
+  file or a test says who it is with `test.use({ actor: "member" })`; the
+  admin is the default.
+- **Data.** The tests run on the standard seed, whose records and ids are
+  always the same. A test that changes anything says
+  `test.use({ writes: true })`, and the database is seeded again after it
+  (under a second), so every test starts from the seed, in whatever order.
+  Seeding goes through `POST /e2e/seed`, a route that exists in the `e2e`
+  environment only (`e2e/server`, mounted by `config :demo, e2e_routes: true`),
+  as does the one that deletes a task behind an open table's back. There is
+  one database, so the tests run one at a time.
+- **The table.** `support/table.ts` is the one place that knows the ids of
+  the library's markup and how to wait for a read or a save
+  (`aria-busy`). Tests find controls by role and name where a person would,
+  and cells by id.
+- **Console.** Every test fails if the browser reported an error it did not
+  expect.
+
+A test marked `test.fail()` describes a defect that is known and not yet
+fixed: it passes as long as the defect is there, and fails when it is gone,
+which is the moment to remove the mark.
+
+## Performance
+
+`demo/perf` repeats the measurements of the prototype on the real demo: on
+Postgres, with the large seed. The results of the last run that was committed
+are in [`perf/RESULTS.md`](perf/RESULTS.md), with the machine, the versions,
+the method and what the numbers say; every repetition is in
+`perf/results.json`.
+
+```sh
+docker compose up -d postgres   # in the repository root, if it is not running
+cd demo && mix deps.get
+cd perf
+npm ci                          # Node 24, pinned in perf/.tool-versions
+npm run browsers                # once: Playwright's Chromium
+npm run setup                   # compiles; creates, migrates and seeds the two databases (about a minute)
+npm run measure                 # starts the server itself; writes results.json and RESULTS.md (a few minutes)
+```
+
+- `npm run setup` fills **`demo_perf`** with the large seed (50,000 tasks)
+  and **`demo_perf_standard`** with the standard one, and analyses both. It
+  can be repeated.
+- `npm run measure` starts the demo on port **4479** (`PERF_PORT`), once on
+  each database, measures in headless Chromium, and stops it. `PERF_REPS`
+  sets the repetitions (15). `npm run report` writes `RESULTS.md` again from
+  `results.json` and `NOTES.md`, the findings written by hand.
+- The server runs in the Mix environment `perf` (`config/perf.exs`): as
+  production would, without code reloading, debug annotations or runtime
+  checks, but started with `mix phx.server`, on plain HTTP, with assets that
+  are not minified. `perf/server` is compiled in that environment only: the
+  table of `/tasks` in pages of 100 at `/perf/tasks100`, and
+  `Demo.Perf.Probe`, which collects the telemetry of LiveView, Ash and Ecto
+  and reads the memory of the LiveView processes.
+
+Measure on a machine that is doing nothing else; the load average is
+recorded with the results.
