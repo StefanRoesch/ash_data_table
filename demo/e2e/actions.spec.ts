@@ -1220,6 +1220,8 @@ test.describe("creating a record", () => {
     tasks,
   }) => {
     await tasks.create.click()
+    // the panel comes from the server: what is typed before it has opened goes nowhere
+    await expect(tasks.field("title")).toBeFocused()
     await page.keyboard.type("ab")
 
     await expect(tasks.fieldError("title")).toHaveText("length must be greater than or equal to 3")
