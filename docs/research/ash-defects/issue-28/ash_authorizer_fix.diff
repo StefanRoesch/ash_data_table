@@ -1,0 +1,29 @@
+--- /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-28/repro/deps/ash/lib/ash/authorizer.ex	2026-10-07 10:51:03.000000000 +0200
++++ lib/ash/authorizer.ex	2026-10-07 11:11:21.451219159 +0200
+@@ -293,7 +293,7 @@
+   @doc false
+   @spec protected_fields(module(), Ash.Resource.t()) :: [atom()]
+   def protected_fields(module, resource) do
+-    if function_exported?(module, :protected_fields, 1) do
++    if Code.ensure_loaded?(module) and function_exported?(module, :protected_fields, 1) do
+       result = apply(module, :protected_fields, [resource])
+ 
+       if is_list(result) and Enum.all?(result, &is_atom/1) do
+@@ -345,7 +345,7 @@
+     resource
+     |> Ash.Resource.Info.authorizers()
+     |> Enum.reduce_while({:ok, records}, fn module, {:ok, records} ->
+-      if function_exported?(module, :apply_field_level_auth, 3) do
++      if Code.ensure_loaded?(module) and function_exported?(module, :apply_field_level_auth, 3) do
+         case Ash.BehaviourHelpers.call_and_validate_return(
+                module,
+                :apply_field_level_auth,
+@@ -404,7 +404,7 @@
+     subject.resource
+     |> Ash.Resource.Info.authorizers()
+     |> Enum.reduce_while({:ok, initial}, fn module, {:ok, results} ->
+-      if function_exported?(module, :evaluate_field_policies, 3) do
++      if Code.ensure_loaded?(module) and function_exported?(module, :evaluate_field_policies, 3) do
+         case Ash.BehaviourHelpers.call_and_validate_return(
+                module,
+                :evaluate_field_policies,

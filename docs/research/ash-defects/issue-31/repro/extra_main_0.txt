@@ -1,0 +1,43 @@
+ash 3.34.4  ash_postgres 2.14.3  ash_sql 0.8.1  flags=0
+
+== 1. member LOADS the first-aggregate over the read-policy-hidden assignee (expected for hidden users: nil)
+  PG  load [:assignee_name_agg]: [{1, nil}, {2, "Alice"}, {3, nil}, {4, "Carol"}, {5, nil}, {6, nil}]
+       SQL: SELECT t0."id", t0."title", t0."owner_id", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" ORDER BY t0."id"
+  PG  load [:assignee_name_agg, :assignee_name_calc]: [{1, "Dave"}, {2, "Alice"}, {3, "Bob"}, {4, "Carol"}, {5, nil}, {6, "Erin"}]
+       SQL: SELECT t0."id", t0."title", t0."owner_id", t0."assignee_id", u1."name"::text, u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY t0."id"
+  ETS load [:assignee_name_agg]: [{1, nil}, {2, "Alice"}, {3, nil}, {4, "Carol"}, {5, nil}, {6, nil}]
+  ETS load [:assignee_name_agg, :assignee_name_calc]: [{1, nil}, {2, "Alice"}, {3, nil}, {4, "Carol"}, {5, nil}, {6, nil}]
+  1b. member: sort_input(["assignee.name"]) AND load the aggregate (no calculation loaded)
+  PG : [{2, "Alice"}, {3, "Bob"}, {4, "Carol"}, {1, "Dave"}, {6, "Erin"}, {5, nil}]
+       SQL: SELECT t0."id", t0."title", t0."owner_id", t0."assignee_id", u1."name"::text, u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text, t0."id"
+       record 3 after the sorted read: calculations=%{__calc__0: "Bob"} aggregates=%{} metadata keys=[:selected, :keyset]
+  ETS: [{2, "Alice"}, {3, nil}, {4, "Carol"}, {1, nil}, {6, nil}, {5, nil}]
+       record 3 after the sorted read: calculations=%{:__calc__0 => "Bob", {:__ash_runtime_sort__, 0} => "Bob"} aggregates=%{} metadata keys=[:selected, :keyset]
+
+== 2. what a member learns (Postgres, action :paged, only sort_input + paging; no filter, no write)
+  2a. total order of tasks by the hidden assignee name, one row per page (offset paging):
+      asc : [2, 3, 4, 1, 6, 5]   (truth as admin: [2, 3, 4, 1, 6, 5])
+      names the member may read, in that order: ["Alice", nil, "Carol", nil, nil, nil]
+      => task 3's hidden assignee sorts between "Alice" and "Carol"; tasks 1 and 6 after "Carol"; 1 before 6.
+  2b. same for the field-policy-hidden owner name:
+      asc : [2, 3, 4, 1, 6, 5]   (truth as admin: [2, 3, 4, 1, 6, 5]; the member reads no owner name at all)
+  2c. equality of hidden values: groups of tasks with the same hidden owner are adjacent (not shown; follows from 2b).
+  2d. keyset cursor of the page sorted by the hidden related field (does it carry the value?):
+      task 2: keyset decodes to ["Ann", 2]
+      task 3: keyset decodes to ["Bea", 3]
+      task 2 (assignee path): keyset decodes to ["Alice", 2]
+      task 3 (assignee path): keyset decodes to ["Bob", 3]
+      task 4 (assignee path): keyset decodes to ["Carol", 4]
+  2e. chosen-probe recovery, ONLY IF the attacker can also create a task pointing at a person/user whose name they chose.
+      Here: as admin (standing in for such a write path) we add probe people; the member then only sorts.
+      recovered owner name of task 3: "Bea"   (truth: "Bea")
+
+== 3. opt-outs (ETS resources defined here)
+  relationship defaults: [default_rel: [public?: true, sortable?: true, filterable?: true], unsortable_rel: [public?: true, sortable?: false, filterable?: true], private_rel: [public?: false, sortable?: true, filterable?: true], many_rel: [public?: true, sortable?: true, filterable?: true]]
+  sort_input(["default_rel.name"]) -> ACCEPTED
+  sort_input(["default_rel.nick"]) -> rejected: :nick is not sortable on X.User
+  sort_input(["default_rel.priv"]) -> rejected: No such field priv for resource X.User
+  sort_input(["unsortable_rel.name"]) -> rejected: :unsortable_rel is not sortable on X.Task
+  sort_input(["private_rel.name"]) -> rejected: No such field name for resource X.Task
+  sort_input(["many_rel.name"]) -> ACCEPTED
+  sort_input(["default_rel.id"]) -> ACCEPTED

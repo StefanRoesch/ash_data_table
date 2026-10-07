@@ -1,0 +1,144 @@
+Setting %{id: "a0ffd7c4-fe17-4086-b5d4-3345534c9c48", name: "n", secret: "TOPSECRET",
+ parent_id: "9837b89a-8161-471b-9629-0301cbef6abb"}
+
+can_see_fields                  cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{name: true, secret: true}}
+Setting %{id: "153d22f0-9071-4132-afbc-4d0ba659907f", name: "n", secret: "TOPSECRET",
+ parent_id: "301ca06a-1f2d-4f16-99f7-506b63bf8307"}
+
+can_see_fields                  warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{name: true, secret: false}}
+Setting %{id: "8c4036a0-4f27-440b-b080-c1655d888b5a", name: "n", secret: "TOPSECRET",
+ parent_id: "adef3635-1613-43a0-985b-e09d6ee7b7a3"}
+
+can_see_fields_resource         cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{secret: true}}
+Setting %{id: "2941fd8f-1efd-47b1-bbe4-88a9e27932ef", name: "n", secret: "TOPSECRET",
+ parent_id: "ea0d0676-59f4-4054-8f10-09dcc7a43114"}
+
+can_see_fields_resource         warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{secret: false}}
+Setting %{id: "94ff5ef5-2cd1-48f9-a656-4643625c7cf3", name: "n", secret: "TOPSECRET",
+ parent_id: "6c9ad12a-5763-4410-88c8-4226074ff924"}
+
+can_see_fields_filter_is_false  cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{secret: true}}
+Setting %{id: "af2435c7-86b6-4acd-ae4a-6d7cea54aa13", name: "n", secret: "TOPSECRET",
+ parent_id: "52b2522f-9d0d-4dbf-bc00-04ef9cba3156"}
+
+can_see_fields_filter_is_false  warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{secret: false}}
+Setting %{id: "ba2f2b59-6ee5-42c6-9c93-008376494a49", name: "n", secret: "TOPSECRET",
+ parent_id: "c99c093b-2931-49ee-9e38-ddea1a675077"}
+
+can_see_fields_query            cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{secret: true}}
+Setting %{id: "9b4c5519-6c4b-4d31-a7f2-168468a42a0e", name: "n", secret: "TOPSECRET",
+ parent_id: "ab2ec6d0-9d1f-40f7-a296-9a5699988183"}
+
+can_see_fields_query            warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{secret: false}}
+Setting %{id: "caf3d523-c0da-4ab5-ad73-3547f23bb587", name: "n", secret: "TOPSECRET",
+ parent_id: "a9f309c7-4190-489a-96dc-e8484e554e8a"}
+
+can_see_fields_record           cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{secret: true}}
+Setting %{id: "dd8534f8-1cf9-4ba3-81f6-dc96a720b312", name: "n", secret: "TOPSECRET",
+ parent_id: "2dddf4a2-0f3d-44d3-8349-6f006a239d04"}
+
+can_see_fields_record           warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{secret: false}}
+Setting %{id: "c7491883-0962-41fa-80b7-e97f349494b6", name: "n", secret: "TOPSECRET",
+ parent_id: "01d49001-f520-4a3d-8172-2e73b7a5bc49"}
+
+can_see_fields?                 cold  loaded(after seed/before call/after call)=false/false/false  => true
+Setting %{id: "e64c7ae7-78c4-4862-8d63-3bdd65e9cce1", name: "n", secret: "TOPSECRET",
+ parent_id: "86d93c09-9cac-474e-acd8-7f098f6fe810"}
+
+can_see_fields?                 warm  loaded(after seed/before call/after call)=false/true/true  => false
+Setting %{id: "0c9ed543-a052-4b25-b89a-9972665569e8", name: "n", secret: "TOPSECRET",
+ parent_id: "3ac7e2ae-b217-4bea-b84c-f3cdf007652f"}
+
+can_see_fields_nil_actor        cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{secret: true}}
+Setting %{id: "02bdf9d7-4130-44db-ab79-20cb9216b4c3", name: "n", secret: "TOPSECRET",
+ parent_id: "f5239ea0-391b-41e7-973f-81566ee35e11"}
+
+can_see_fields_nil_actor        warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{secret: false}}
+Setting %{id: "3b9f21d7-85db-4cef-add9-3683a80dd7b1", name: "n", secret: "TOPSECRET",
+ parent_id: "7475cad2-2399-4631-a869-eab8b2820de0"}
+
+evaluate_field_policies         cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{secret: true}}
+Setting %{id: "6166e98e-ccfa-4731-9250-aaac01ba1ac7", name: "n", secret: "TOPSECRET",
+ parent_id: "e1cc4c94-688e-410f-a7c2-f8f334496932"}
+
+evaluate_field_policies         warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{secret: false}}
+Setting %{id: "03d0ac2a-9053-4522-ae81-c397389a5021", name: "n", secret: "TOPSECRET",
+ parent_id: "9c0a1ef5-b0f3-40ac-934b-2c07cd8e9364"}
+
+read                            cold  loaded(after seed/before call/after call)=false/false/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+Setting %{id: "3e51c36b-3b7e-40dc-856c-09a47b6618e8", name: "n", secret: "TOPSECRET",
+ parent_id: "2c006645-dfb9-4a65-9838-dc070b0d7832"}
+
+read                            warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+Setting %{id: "7952b967-30bc-4527-934c-936ebabd22ae", name: "n", secret: "TOPSECRET",
+ parent_id: "ea2e509f-d574-4ee8-93cb-353a861e5544"}
+
+read_select                     cold  loaded(after seed/before call/after call)=false/false/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+Setting %{id: "b5450cf0-00d6-4b1f-9d20-8fad02f463db", name: "n", secret: "TOPSECRET",
+ parent_id: "19def5d6-0a20-461f-9abb-3572a7b08b21"}
+
+read_select                     warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+Setting %{id: "04e1a0bc-bc60-41bc-be78-b8948610c2f0", name: "n", secret: "TOPSECRET",
+ parent_id: "bd7e9d2f-4646-4cfb-9360-893065aeaf49"}
+
+get                             cold  loaded(after seed/before call/after call)=false/false/true  => #Ash.ForbiddenField<field: :secret, type: :attribute, ...>
+Setting %{id: "94fdb0ff-cd1e-4e59-9529-a1e355c041ad", name: "n", secret: "TOPSECRET",
+ parent_id: "53590b6d-fe52-474c-91a1-0c015ea3b1e4"}
+
+get                             warm  loaded(after seed/before call/after call)=false/true/true  => #Ash.ForbiddenField<field: :secret, type: :attribute, ...>
+Setting %{id: "c1af02a3-44bd-4ece-b4ee-32e595226ad6", name: "n", secret: "TOPSECRET",
+ parent_id: "dc42a88f-2c4c-447c-a3fd-882e0edd277a"}
+
+list_agg                        cold  loaded(after seed/before call/after call)=false/false/true  => {:ok, [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]}
+Setting %{id: "88537fa5-91d0-49d6-846e-c2debfd769e4", name: "n", secret: "TOPSECRET",
+ parent_id: "ff5f1421-3512-4672-87be-7cacb5dee226"}
+
+list_agg                        warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]}
+Setting %{id: "82241258-d834-487b-92ed-5359926d1083", name: "n", secret: "TOPSECRET",
+ parent_id: "4c9aa472-e3a2-4ba7-b1ee-321fc51b01ef"}
+
+list_agg_authorize_fields       cold  loaded(after seed/before call/after call)=false/false/true  => {:ok, [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]}
+Setting %{id: "ce1e324c-b380-4ffb-836f-14a147644138", name: "n", secret: "TOPSECRET",
+ parent_id: "65ff1881-85ac-4d95-8640-4997c895e1fb"}
+
+list_agg_authorize_fields       warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]}
+Setting %{id: "6f3a0de8-7165-48bd-bfe3-cac39ed38d27", name: "n", secret: "TOPSECRET",
+ parent_id: "a66f1caf-acd6-4cd5-ab12-8559420978ee"}
+
+parent_resource_agg             cold  loaded(after seed/before call/after call)=false/false/true  => [["TOPSECRET"]]
+Setting %{id: "77790e63-9cb7-4e39-ba8e-73dd75c921f8", name: "n", secret: "TOPSECRET",
+ parent_id: "ea7def4b-32e7-446c-bc08-4554a71f5755"}
+
+parent_resource_agg             warm  loaded(after seed/before call/after call)=false/true/true  => [["TOPSECRET"]]
+Setting %{id: "9dfe98a3-480a-4c9c-8b1e-b68ab7813878", name: "n", secret: "TOPSECRET",
+ parent_id: "00488cff-7fc8-4c56-9613-2e8aa4208672"}
+
+parent_load_things              cold  loaded(after seed/before call/after call)=false/false/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+Setting %{id: "89b54bd8-eb52-4780-9e50-0a87a0e72a56", name: "n", secret: "TOPSECRET",
+ parent_id: "fa8e99ee-fa54-46b0-b7aa-a0632994ddaa"}
+
+parent_load_things              warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+
+Setting %{id: "4b2b777e-56b9-4c60-8ce9-e3a2f3007fe6", name: "n", secret: "TOPSECRET",
+ parent_id: "fb59be85-936d-4634-8d82-0680703b3073"}
+
+Setting %{id: "d3f83a74-5475-4413-87ca-8f7ea9b775b6", name: "n", secret: "TOPSECRET",
+ parent_id: "fd880de3-d309-4ce6-ac21-fa18292f83e6"}
+
+apply_field_level_auth          warm  loaded(after seed/before call/after call)=false/true/true  => #Ash.ForbiddenField<field: :secret, type: :attribute, ...>
+Setting %{id: "18c6f2ec-6219-48b7-bd49-60ebc32b90a5", name: "n", secret: "TOPSECRET",
+ parent_id: "ff3e6c7f-3a38-4409-bf09-f9e6ee9917c0"}
+
+protected_fields                cold  loaded(after seed/before call/after call)=false/false/false  => []
+Setting %{id: "a6f722b2-51bf-4715-bdfe-714bd4102282", name: "n", secret: "TOPSECRET",
+ parent_id: "7414e404-4b8f-4c78-b61a-ca9a237967c0"}
+
+protected_fields                warm  loaded(after seed/before call/after call)=false/true/true  => [:secret]
+Setting %{id: "1dd2ae71-5ba8-4166-ac91-06161bd6ac15", name: "n", secret: "TOPSECRET",
+ parent_id: "f4c1e4b5-9716-42a7-a142-d5383e19f5eb"}
+
+can_read                        cold  loaded(after seed/before call/after call)=false/false/true  => {:ok, true}
+Setting %{id: "71bbc72c-ffb3-4df3-9dea-6eda86447e85", name: "n", secret: "TOPSECRET",
+ parent_id: "d283cbd9-343f-4b0e-b611-c41744a37593"}
+
+can_read                        warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, true}

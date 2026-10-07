@@ -1,0 +1,335 @@
+ash 3.34.4  ash_postgres 2.14.3  ash_sql 0.8.1  ecto_sql 3.14.0  flags=0
+config :ash = [default_string_length_count: :mixed]
+
+
+================================ POSTGRES ================================
+-- controls: what each actor can READ directly
+users as admin : [{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, "Erin"}]
+users as member: [{1, "Alice"}, {3, "Carol"}]
+people as member: [
+  {1, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {2, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {3, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {4, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {5, #Ash.ForbiddenField<field: :name, type: :attribute, ...>}
+]
+tasks as member {id, secret, assignee.name, owner.name} via load: [
+  {1, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {2, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, "Alice", #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {3, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {4, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, "Carol", #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {5, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, nil},
+  {6, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, #Ash.ForbiddenField<field: :name, type: :attribute, ...>}
+]
+
+-- A  READ POLICY (Task.assignee -> User; member reads only Alice, Carol)
+  sort_input(["assignee.name", "-title"])
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC   params=[]
+  sort_input("assignee.name,-title")
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC   params=[]
+  sort_input([{"assignee.name", :asc}, {"title", :desc}])
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC   params=[]
+  sort_input(assignee: :name) (keyword)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : {:error, "Invalid Error | * No such sort order :name |     at sort"}
+      member: {:error, "Invalid Error | * No such sort order :name |     at sort"}   => rejected
+  sort_input(["assignee", "-title"]) (the relationship itself)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : {:error, "Invalid Error | * :assignee is not sortable on Bug.Pg.Task |     at sort"}
+      member: {:error, "Invalid Error | * :assignee is not sortable on Bug.Pg.Task |     at sort"}   => rejected
+  sort(["assignee.name", "-title"]) (trusted sort, string path)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC   params=[]
+  sort([{calc(assignee.name), :asc}, title: :desc]) (trusted)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC   params=[]
+  sort_input(["assignee_name_agg", "-title"]) (first aggregate)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 4, 6, 5, 3, 1]   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY s1."name"::text::text, t0."title" DESC   params=[true, true]
+  sort_input(["assignee_name_calc", "-title"]) (expr(assignee.name))
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC   params=[]
+  filter_input(%{assignee: %{name: %{eq: "Bob"}}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" WHERE (u1."name" = $1) AND (u1."visible"::boolean = $2::boolean) ORDER BY t0."id"   params=["Bob", true]
+  filter_input(%{assignee: %{name: %{greater_than: "B"}}})
+      expected if authorized: [4]   if NOT authorized: [1, 3, 4, 6]
+      admin : [1, 3, 4, 6]
+      member: [4]   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" WHERE (u1."name" > $1) AND (u1."visible"::boolean = $2::boolean) ORDER BY t0."id"   params=["B", true]
+  filter(assignee.name == "Bob") (trusted)
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" WHERE (u1."name" = $1) ORDER BY t0."id"   params=["Bob"]
+  filter_input(%{assignee_name_agg: %{eq: "Bob"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" WHERE (s1."name"::text::text = $2) ORDER BY t0."id"   params=[true, "Bob"]
+  filter_input(%{assignee_name_calc: %{eq: "Bob"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" WHERE (u1."name"::text = $1) ORDER BY t0."id"   params=["Bob"]
+
+-- B  FIELD POLICY (Task.owner -> Person; member reads every person, never Person.name)
+  sort_input(["owner.name", "-title"])
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" ORDER BY p1."name"::text, t0."title" DESC   params=[]
+  sort_input("owner.name,-title")
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" ORDER BY p1."name"::text, t0."title" DESC   params=[]
+  sort(["owner.name", "-title"]) (trusted sort, string path)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" ORDER BY p1."name"::text, t0."title" DESC   params=[]
+  sort([{calc(owner.name), :asc}, title: :desc]) (trusted)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" ORDER BY p1."name"::text, t0."title" DESC   params=[]
+  sort_input(["owner_name_agg", "-title"]) (first aggregate)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" LEFT OUTER JOIN "public"."people" AS p2 ON t0."owner_id" = p2."id" ORDER BY p1."name"::text::text, t0."title" DESC   params=[]
+  sort_input(["owner_name_calc", "-title"]) (expr(owner.name))
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" ORDER BY p1."name"::text, t0."title" DESC   params=[]
+  filter_input(%{owner: %{name: %{eq: "Bea"}}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 WHERE (NULL = $1) ORDER BY t0."id"   params=["Bea"]
+  filter(owner.name == "Bea") (trusted)
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 INNER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" WHERE (p1."name" = $1) ORDER BY t0."id"   params=["Bea"]
+  filter_input(%{owner_name_agg: %{eq: "Bea"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" WHERE (p1."name"::text::text = $1) ORDER BY t0."id"   params=["Bea"]
+  filter_input(%{owner_name_calc: %{eq: "Bea"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" WHERE (p1."name"::text = $1) ORDER BY t0."id"   params=["Bea"]
+
+-- C  TOP-LEVEL FIELD POLICY (Task.secret, hidden from member) -- the comparison
+  sort_input(["secret", "-title"])
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [6, 5, 4, 3, 2, 1]   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 ORDER BY NULL::text::text, t0."title" DESC   params=[]
+  sort(secret: :asc, title: :desc) (trusted)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 ORDER BY t0."secret", t0."title" DESC   params=[]
+  filter_input(%{secret: %{eq: "b"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+      SQL   : SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 WHERE (NULL = $1) ORDER BY t0."id"   params=["b"]
+
+-- D  actor placement, for sort_input(["assignee.name", "-title"]) as member (authorized [2, 4, 6, 5, 3, 1], not [2, 3, 4, 1, 6, 5])
+  Ash.read(query, actor: member)                              : [2, 3, 4, 1, 6, 5]
+  for_read(.., actor: member) |> Ash.read()                   : [2, 3, 4, 1, 6, 5]
+  for_read first, then sort_input, Ash.read(actor, authorize?): [2, 3, 4, 1, 6, 5]
+  action :paged, keyset page limit 10                         : [2, 3, 4, 1, 6, 5]
+  action :paged, offset page limit 10                         : [2, 3, 4, 1, 6, 5]
+  no actor at all (authorize?: true)                          : [2, 3, 4, 1, 6, 5]
+
+-- E  what is VALUE-visible to the member through aggregate / calculation loads (not only order)
+  task 1: assignee_name_agg="Dave" assignee_name_calc="Dave" owner_name_agg="Dan" owner_name_calc="Dan"
+  task 2: assignee_name_agg="Alice" assignee_name_calc="Alice" owner_name_agg="Ann" owner_name_calc="Ann"
+  task 3: assignee_name_agg="Bob" assignee_name_calc="Bob" owner_name_agg="Bea" owner_name_calc="Bea"
+  task 4: assignee_name_agg="Carol" assignee_name_calc="Carol" owner_name_agg="Cy" owner_name_calc="Cy"
+  task 5: assignee_name_agg=nil assignee_name_calc=nil owner_name_agg=nil owner_name_calc=nil
+  task 6: assignee_name_agg="Erin" assignee_name_calc="Erin" owner_name_agg="Eve" owner_name_calc="Eve"
+
+================================ ETS ================================
+-- controls: what each actor can READ directly
+users as admin : [{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, "Erin"}]
+users as member: [{1, "Alice"}, {3, "Carol"}]
+people as member: [
+  {1, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {2, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {3, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {4, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {5, #Ash.ForbiddenField<field: :name, type: :attribute, ...>}
+]
+tasks as member {id, secret, assignee.name, owner.name} via load: [
+  {1, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {2, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, "Alice", #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {3, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {4, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, "Carol", #Ash.ForbiddenField<field: :name, type: :attribute, ...>},
+  {5, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, nil},
+  {6, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>, nil, #Ash.ForbiddenField<field: :name, type: :attribute, ...>}
+]
+
+-- A  READ POLICY (Task.assignee -> User; member reads only Alice, Carol)
+  sort_input(["assignee.name", "-title"])
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input("assignee.name,-title")
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input([{"assignee.name", :asc}, {"title", :desc}])
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input(assignee: :name) (keyword)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : {:error, "Invalid Error | * No such sort order :name |     at sort"}
+      member: {:error, "Invalid Error | * No such sort order :name |     at sort"}   => rejected
+  sort_input(["assignee", "-title"]) (the relationship itself)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : {:error, "Invalid Error | * :assignee is not sortable on Bug.Ets.Task |     at sort"}
+      member: {:error, "Invalid Error | * :assignee is not sortable on Bug.Ets.Task |     at sort"}   => rejected
+  sort(["assignee.name", "-title"]) (trusted sort, string path)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort([{calc(assignee.name), :asc}, title: :desc]) (trusted)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input(["assignee_name_agg", "-title"]) (first aggregate)
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 4, 6, 5, 3, 1]   => AUTHORIZED order/result
+  sort_input(["assignee_name_calc", "-title"]) (expr(assignee.name))
+      expected if authorized: [2, 4, 6, 5, 3, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  filter_input(%{assignee: %{name: %{eq: "Bob"}}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+  filter_input(%{assignee: %{name: %{greater_than: "B"}}})
+      expected if authorized: [4]   if NOT authorized: [1, 3, 4, 6]
+      admin : [1, 3, 4, 6]
+      member: [4]   => AUTHORIZED order/result
+  filter(assignee.name == "Bob") (trusted)
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+  filter_input(%{assignee_name_agg: %{eq: "Bob"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+  filter_input(%{assignee_name_calc: %{eq: "Bob"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+
+-- B  FIELD POLICY (Task.owner -> Person; member reads every person, never Person.name)
+  sort_input(["owner.name", "-title"])
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input("owner.name,-title")
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort(["owner.name", "-title"]) (trusted sort, string path)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort([{calc(owner.name), :asc}, title: :desc]) (trusted)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input(["owner_name_agg", "-title"]) (first aggregate)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  sort_input(["owner_name_calc", "-title"]) (expr(owner.name))
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  filter_input(%{owner: %{name: %{eq: "Bea"}}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+  filter(owner.name == "Bea") (trusted)
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+  filter_input(%{owner_name_agg: %{eq: "Bea"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+  filter_input(%{owner_name_calc: %{eq: "Bea"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: [3]   => UNAUTHORIZED: reflects hidden data
+
+-- C  TOP-LEVEL FIELD POLICY (Task.secret, hidden from member) -- the comparison
+  sort_input(["secret", "-title"])
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [6, 5, 4, 3, 2, 1]   => AUTHORIZED order/result
+  sort(secret: :asc, title: :desc) (trusted)
+      expected if authorized: [6, 5, 4, 3, 2, 1]   if NOT authorized: [2, 3, 4, 1, 6, 5]
+      admin : [2, 3, 4, 1, 6, 5]
+      member: [2, 3, 4, 1, 6, 5]   => UNAUTHORIZED: reflects hidden data
+  filter_input(%{secret: %{eq: "b"}})
+      expected if authorized: []   if NOT authorized: [3]
+      admin : [3]
+      member: []   => AUTHORIZED order/result
+
+-- D  actor placement, for sort_input(["assignee.name", "-title"]) as member (authorized [2, 4, 6, 5, 3, 1], not [2, 3, 4, 1, 6, 5])
+  Ash.read(query, actor: member)                              : [2, 3, 4, 1, 6, 5]
+  for_read(.., actor: member) |> Ash.read()                   : [2, 3, 4, 1, 6, 5]
+  for_read first, then sort_input, Ash.read(actor, authorize?): [2, 3, 4, 1, 6, 5]
+  action :paged, keyset page limit 10                         : [2, 3, 4, 1, 6, 5]
+  action :paged, offset page limit 10                         : [2, 3, 4, 1, 6, 5]
+  no actor at all (authorize?: true)                          : [2, 3, 4, 1, 6, 5]
+
+-- E  what is VALUE-visible to the member through aggregate / calculation loads (not only order)
+  task 1: assignee_name_agg=nil assignee_name_calc="Dave" owner_name_agg="Dan" owner_name_calc="Dan"
+  task 2: assignee_name_agg="Alice" assignee_name_calc="Alice" owner_name_agg="Ann" owner_name_calc="Ann"
+  task 3: assignee_name_agg=nil assignee_name_calc="Bob" owner_name_agg="Bea" owner_name_calc="Bea"
+  task 4: assignee_name_agg="Carol" assignee_name_calc="Carol" owner_name_agg="Cy" owner_name_calc="Cy"
+  task 5: assignee_name_agg=nil assignee_name_calc=nil owner_name_agg=nil owner_name_calc=nil
+  task 6: assignee_name_agg=nil assignee_name_calc="Erin" owner_name_agg="Eve" owner_name_calc="Eve"
+    warning: unused import Ash.Expr
+    │
+  3 │ import Ash.Expr
+    │ ~
+    │
+    └─ scripts/run.exs:3:1
+

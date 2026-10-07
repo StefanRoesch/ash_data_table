@@ -1,0 +1,3 @@
+can_see_fields                  cold  loaded(after seed/before call/after call)=false/false/true  => {:ok, %{name: true, secret: false}}
+apply_field_level_auth          cold  loaded(after seed/before call/after call)=false/false/true  => #Ash.ForbiddenField<field: :secret, type: :attribute, ...>
+protected_fields                cold  loaded(after seed/before call/after call)=false/false/true  => [:secret]

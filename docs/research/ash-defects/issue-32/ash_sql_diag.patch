@@ -1,0 +1,42 @@
+--- ../repro/deps_hex/ash_sql/lib/aggregate/lateral.ex	2026-10-07 11:20:33.000000000 +0200
++++ lib/aggregate/lateral.ex	2026-10-07 11:35:04.245702490 +0200
+@@ -1226,6 +1226,8 @@
+         %{}
+       end
+ 
++    Process.put(:ashbug32_bindings_before, query.__ash_bindings__.bindings)
++
+     case AshSql.Join.join_all_relationships(
+            query,
+            nil,
+@@ -1254,7 +1256,29 @@
+ 
+         {:ok, query} = AshSql.Join.join_all_relationships(query, ref)
+ 
+-        {value, acc} = AshSql.Expr.dynamic_expr(query, ref, query.__ash_bindings__, false)
++        # ---- DIAGNOSTIC (ashbug-32), not a proposed fix ----
++        diag_before = Process.get(:ashbug32_bindings_before, %{})
++        diag_new = Map.keys(query.__ash_bindings__.bindings) -- Map.keys(diag_before)
++        diag_full_path = path ++ aggregate.relationship_path
++        diag_same_path =
++          for {b, %{path: p, type: ty}} <- query.__ash_bindings__.bindings,
++              ty in [:left, :inner],
++              p == diag_full_path,
++              do: b
++        diag_chosen = AshSql.Expr.ref_binding(%{ref | attribute: %Ash.Resource.Attribute{name: :fake}}, query.__ash_bindings__)
++        if System.get_env("ASHBUG32_TRACE") == "1" do
++          IO.puts("      DIAG first-aggregate #{inspect(aggregate.name)}: join(s) created for it = #{inspect(diag_new)}; all joins with path #{inspect(diag_full_path)} = #{inspect(Enum.sort(diag_same_path))}; ref_binding/2 picks = #{inspect(diag_chosen)}")
++        end
++        diag_bindings =
++          if System.get_env("ASHBUG32_PIN") == "1" and diag_new != [] do
++            keep = List.last(Enum.sort(diag_new))
++            %{query.__ash_bindings__ | bindings: Map.filter(query.__ash_bindings__.bindings, fn {b, d} -> b == keep or b not in diag_same_path or Map.get(d, :path) != diag_full_path end)}
++          else
++            query.__ash_bindings__
++          end
++        # ---- END DIAGNOSTIC ----
++
++        {value, acc} = AshSql.Expr.dynamic_expr(query, ref, diag_bindings, false)
+ 
+         type =
+           AshSql.Expr.parameterized_type(

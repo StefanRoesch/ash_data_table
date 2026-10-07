@@ -1,0 +1,902 @@
+# ash 3.34.4  ash_postgres 2.14.2  ash_sql 0.8.1  FLAGS=0
+
+[00 baseline: load agg only] PG member (client) -- load(:assignee_name_agg)
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id"  -- params [true]
+
+[00 baseline: load agg only] PG admin (client) -- load(:assignee_name_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id"  -- params []
+
+[00 baseline: load agg only] ETS member (client) -- load(:assignee_name_agg)
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[00 baseline: load agg only] ETS admin (client) -- load(:assignee_name_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[01 sort_input path] PG member (client) -- sort_input(["assignee.name"]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params [true]
+
+[01 sort_input path] PG admin (client) -- sort_input(["assignee.name"]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text  -- params []
+
+[01 sort_input path] ETS member (client) -- sort_input(["assignee.name"]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[01 sort_input path] ETS admin (client) -- sort_input(["assignee.name"]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[01b sort_input path, sort BEFORE load] PG member (client) -- order of building
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params [true]
+
+[01b sort_input path, sort BEFORE load] PG admin (client) -- order of building
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text  -- params []
+
+[01b sort_input path, sort BEFORE load] ETS member (client) -- order of building
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[01b sort_input path, sort BEFORE load] ETS admin (client) -- order of building
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[02 Ash.Query.sort path string] PG member (author) -- sort("assignee.name") + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params [true]
+
+[02 Ash.Query.sort path string] PG admin (author) -- sort("assignee.name") + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text  -- params []
+
+[02 Ash.Query.sort path string] ETS member (author) -- sort("assignee.name") + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[02 Ash.Query.sort path string] ETS admin (author) -- sort("assignee.name") + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[03 sort by expr calc (trusted)] PG member (author) -- sort(assignee_name_calc: :asc) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params [true]
+
+[03 sort by expr calc (trusted)] PG admin (author) -- sort(assignee_name_calc: :asc) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text  -- params []
+
+[03 sort by expr calc (trusted)] ETS member (author) -- sort(assignee_name_calc: :asc) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[03 sort by expr calc (trusted)] ETS admin (author) -- sort(assignee_name_calc: :asc) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[04 sort_input by expr calc] PG member (client) -- sort_input(["assignee_name_calc"]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params [true]
+
+[04 sort_input by expr calc] PG admin (client) -- sort_input(["assignee_name_calc"]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text  -- params []
+
+[04 sort_input by expr calc] ETS member (client) -- sort_input(["assignee_name_calc"]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[04 sort_input by expr calc] ETS admin (client) -- sort_input(["assignee_name_calc"]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[05 load expr calc] PG member (client) -- load([:assignee_name_agg, :assignee_name_calc])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id"  -- params [true]
+
+[05 load expr calc] PG admin (client) -- load([:assignee_name_agg, :assignee_name_calc])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id"  -- params []
+
+[05 load expr calc] ETS member (client) -- load([:assignee_name_agg, :assignee_name_calc])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[05 load expr calc] ETS admin (client) -- load([:assignee_name_agg, :assignee_name_calc])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[06 trusted filter through path] PG member (author) -- filter(assignee.name != "zzz") + load agg
+   => ok: order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (u1."name" != $2)  -- params [true, "zzz"]
+
+[06 trusted filter through path] PG admin (author) -- filter(assignee.name != "zzz") + load agg
+   => n/a(admin): order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE (u1."name" != $1)  -- params ["zzz"]
+
+[06 trusted filter through path] ETS member (author) -- filter(assignee.name != "zzz") + load agg
+   => ok: order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}]
+
+[06 trusted filter through path] ETS admin (author) -- filter(assignee.name != "zzz") + load agg
+   => n/a(admin): order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+
+[06b trusted filter path OR (keeps all rows)] PG member (author) -- filter(assignee.name != "zzz" or is_nil(assignee_id) or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE ((u1."name" != $2) OR (t0."id" > $3))  -- params [true, "zzz", 0]
+
+[06b trusted filter path OR (keeps all rows)] PG admin (author) -- filter(assignee.name != "zzz" or is_nil(assignee_id) or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name" != $1) OR (t0."id" > $2))  -- params ["zzz", 0]
+
+[06b trusted filter path OR (keeps all rows)] ETS member (author) -- filter(assignee.name != "zzz" or is_nil(assignee_id) or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[06b trusted filter path OR (keeps all rows)] ETS admin (author) -- filter(assignee.name != "zzz" or is_nil(assignee_id) or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[07 filter_input through path] PG member (client) -- filter_input(%{assignee: %{name: %{not_eq: "zzz"}}}) + load agg
+   => ok: order=[1, 3] assignee_name_agg=[{1, "Alice"}, {3, "Carol"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (u1."visible"::boolean = $2::boolean) AND (u1."name" != $3)  -- params [true, true, "zzz"]
+
+[07 filter_input through path] PG admin (client) -- filter_input(%{assignee: %{name: %{not_eq: "zzz"}}}) + load agg
+   => n/a(admin): order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE (u1."name" != $1)  -- params ["zzz"]
+
+[07 filter_input through path] ETS member (client) -- filter_input(%{assignee: %{name: %{not_eq: "zzz"}}}) + load agg
+   => ok: order=[1, 3] assignee_name_agg=[{1, "Alice"}, {3, "Carol"}]
+
+[07 filter_input through path] ETS admin (client) -- filter_input(%{assignee: %{name: %{not_eq: "zzz"}}}) + load agg
+   => n/a(admin): order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+
+[07b filter_input path OR] PG member (client) -- filter_input(or: [assignee.name != zzz, id > 0]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (((u1."visible"::boolean = $2::boolean) AND (u1."name" != $3)) OR (t0."id" > $4))  -- params [true, true, "zzz", 0]
+
+[07b filter_input path OR] PG admin (client) -- filter_input(or: [assignee.name != zzz, id > 0]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name" != $1) OR (t0."id" > $2))  -- params ["zzz", 0]
+
+[07b filter_input path OR] ETS member (client) -- filter_input(or: [assignee.name != zzz, id > 0]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[07b filter_input path OR] ETS admin (client) -- filter_input(or: [assignee.name != zzz, id > 0]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[08 filter by expr calc (trusted)] PG member (author) -- filter(assignee_name_calc != "zzz" or id > 0) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE ((u1."name"::text != $2) OR (t0."id" > $3))  -- params [true, "zzz", 0]
+
+[08 filter by expr calc (trusted)] PG admin (author) -- filter(assignee_name_calc != "zzz" or id > 0) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name"::text != $1) OR (t0."id" > $2))  -- params ["zzz", 0]
+
+[08 filter by expr calc (trusted)] ETS member (author) -- filter(assignee_name_calc != "zzz" or id > 0) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[08 filter by expr calc (trusted)] ETS admin (author) -- filter(assignee_name_calc != "zzz" or id > 0) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[08b filter_input by expr calc] PG member (client) -- filter_input(or: [assignee_name_calc != zzz, id > 0]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE ((u1."name"::text != $2) OR (t0."id" > $3))  -- params [true, "zzz", 0]
+
+[08b filter_input by expr calc] PG admin (client) -- filter_input(or: [assignee_name_calc != zzz, id > 0]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name"::text != $1) OR (t0."id" > $2))  -- params ["zzz", 0]
+
+[08b filter_input by expr calc] ETS member (client) -- filter_input(or: [assignee_name_calc != zzz, id > 0]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[08b filter_input by expr calc] ETS admin (client) -- filter_input(or: [assignee_name_calc != zzz, id > 0]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[09 load(:assignee)] PG member (client) -- load([:assignee_name_agg, :assignee])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id"  -- params [true]
+      SQL: SELECT u0."id", u0."name", u0."visible", u0."manager_id" FROM "users" AS u0 WHERE (u0."visible"::boolean = $1::boolean) AND (u0."id"::bigint = ANY($2::bigint[]))  -- params [true, [1, 2, 3, 4, nil]]
+
+[09 load(:assignee)] PG admin (client) -- load([:assignee_name_agg, :assignee])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id"  -- params []
+      SQL: SELECT u0."id", u0."name", u0."visible", u0."manager_id" FROM "users" AS u0 WHERE (u0."id"::bigint = ANY($1::bigint[]))  -- params [[1, 2, 3, 4, nil]]
+
+[09 load(:assignee)] ETS member (client) -- load([:assignee_name_agg, :assignee])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[09 load(:assignee)] ETS admin (client) -- load([:assignee_name_agg, :assignee])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[10 + count agg] PG member (client) -- load([agg, :assignee_count])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_count=[{1, 1}, {2, 0}, {3, 1}, {4, 0}, {5, 0}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text, coalesce(s1."assignee_count"::bigint, $1::bigint)::bigint FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", coalesce(count(*), $2::bigint)::bigint AS "assignee_count" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $3::boolean) GROUP BY su0."id") AS s1 ON TRUE LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $4::boolean)) AS s2 ON t0."assignee_id" = s2."id"  -- params [0, 0, true, true]
+
+[10 + count agg] PG admin (client) -- load([agg, :assignee_count])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_count=[{1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 0}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text, coalesce(s1."assignee_count"::bigint, $1::bigint)::bigint FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", coalesce(count(*), $2::bigint)::bigint AS "assignee_count" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s1 ON TRUE LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id"  -- params [0, 0]
+
+[10 + count agg] ETS member (client) -- load([agg, :assignee_count])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_count=[{1, 1}, {2, 0}, {3, 1}, {4, 0}, {5, 0}]
+
+[10 + count agg] ETS admin (client) -- load([agg, :assignee_count])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_count=[{1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 0}]
+
+[11 + exists agg] PG member (client) -- load([agg, :assignee_exists])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_exists=[{1, true}, {2, false}, {3, true}, {4, false}, {5, false}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text, exists((SELECT 1 AS "result" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean) AND (t0."assignee_id" = su0."id"))) FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s1 ON t0."assignee_id" = s1."id"  -- params [true, true]
+
+[11 + exists agg] PG admin (client) -- load([agg, :assignee_exists])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_exists=[{1, true}, {2, true}, {3, true}, {4, true}, {5, false}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text, exists((SELECT 1 AS "result" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id"))) FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id"  -- params []
+
+[11 + exists agg] ETS member (client) -- load([agg, :assignee_exists])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_exists=[{1, true}, {2, false}, {3, true}, {4, false}, {5, false}]
+
+[11 + exists agg] ETS admin (client) -- load([agg, :assignee_exists])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_exists=[{1, true}, {2, true}, {3, true}, {4, true}, {5, false}]
+
+[12 + filtered first agg] PG member (client) -- load([agg, :assignee_name_agg_filtered])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean) AND (su0."name" != $3)) AS s2 ON t0."assignee_id" = s2."id"  -- params [true, true, "zzz"]
+
+[12 + filtered first agg] PG admin (client) -- load([agg, :assignee_name_agg_filtered])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."name" != $1)) AS s2 ON t0."assignee_id" = s2."id"  -- params ["zzz"]
+
+[12 + filtered first agg] ETS member (client) -- load([agg, :assignee_name_agg_filtered])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[12 + filtered first agg] ETS admin (client) -- load([agg, :assignee_name_agg_filtered])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[13 + list and max aggs] PG member (client) -- load([agg, :assignee_names, :assignee_name_max])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_names=[{1, ["Alice"]}, {2, []}, {3, ["Carol"]}, {4, []}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text, s1."assignee_name_max"::text::text, coalesce(s3."assignee_names"::text[], $1::text[])::text[] FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", max(su0."name"::text)::text AS "assignee_name_max" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $2::boolean) GROUP BY su0."id") AS s1 ON TRUE LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $3::boolean)) AS s2 ON t0."assignee_id" = s2."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", coalesce(array_agg(su0."name"::text), $4::text[])::text[] AS "assignee_names" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $5::boolean) GROUP BY su0."id") AS s3 ON TRUE  -- params [[], true, true, [], true]
+
+[13 + list and max aggs] PG admin (client) -- load([agg, :assignee_names, :assignee_name_max])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_names=[{1, ["Alice"]}, {2, ["Bob"]}, {3, ["Carol"]}, {4, ["Dave"]}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text, s1."assignee_name_max"::text::text, coalesce(s3."assignee_names"::text[], $1::text[])::text[] FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", max(su0."name"::text)::text AS "assignee_name_max" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s1 ON TRUE LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", coalesce(array_agg(su0."name"::text), $2::text[])::text[] AS "assignee_names" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s3 ON TRUE  -- params [[], []]
+
+[13 + list and max aggs] ETS member (client) -- load([agg, :assignee_names, :assignee_name_max])
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_names=[{1, ["Alice"]}, {2, []}, {3, ["Carol"]}, {4, []}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[13 + list and max aggs] ETS admin (client) -- load([agg, :assignee_names, :assignee_name_max])
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_names=[{1, ["Alice"]}, {2, ["Bob"]}, {3, ["Carol"]}, {4, ["Dave"]}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[14 distinct on own attr] PG member (author) -- distinct(:title) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT DISTINCT ON (t0."title"::text) t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id"  -- params [true]
+
+[14 distinct on own attr] PG admin (author) -- distinct(:title) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT DISTINCT ON (t0."title"::text) t0."id", t0."title", t0."assignee_id", u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id"  -- params []
+
+[14 distinct on own attr] ETS member (author) -- distinct(:title) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[14 distinct on own attr] ETS admin (author) -- distinct(:title) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[14b distinct_sort path] PG member (author) -- distinct(:id) + distinct_sort("assignee.name")
+   => ERROR:  Bread Crumbs:   > Error returned from: V32.Pg.Task.read  Unknown Error  * ** (Postgrex.Error) ERROR 42703 (undefined_column) column st0.assignee.name does not exist      query: SELECT s1."id", s1."title", s1."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN (SELECT DISTINCT ON (st0
+      SQL: SELECT s1."id", s1."title", s1."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN (SELECT DISTINCT ON (st0."id"::bigint) st0."id" AS "id", st0."title" AS "title", st0."assignee_id" AS "assignee_id" FROM "tasks" AS st0 ORDER BY st0."id"::bigint, st0."assignee.name") AS s1 ON t0."id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id"  -- params [true]
+
+[14b distinct_sort path] PG admin (author) -- distinct(:id) + distinct_sort("assignee.name")
+   => ERROR:  Bread Crumbs:   > Error returned from: V32.Pg.Task.read  Unknown Error  * ** (Postgrex.Error) ERROR 42703 (undefined_column) column st0.assignee.name does not exist      query: SELECT s1."id", s1."title", s1."assignee_id", u2."name"::text::text FROM "tasks" AS t0 INNER JOIN (SELECT DISTINCT ON (st0
+      SQL: SELECT s1."id", s1."title", s1."assignee_id", u2."name"::text::text FROM "tasks" AS t0 INNER JOIN (SELECT DISTINCT ON (st0."id"::bigint) st0."id" AS "id", st0."title" AS "title", st0."assignee_id" AS "assignee_id" FROM "tasks" AS st0 ORDER BY st0."id"::bigint, st0."assignee.name") AS s1 ON t0."id" = s1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id"  -- params []
+
+[14b distinct_sort path] ETS member (author) -- distinct(:id) + distinct_sort("assignee.name")
+   => ERROR:  Bread Crumbs:   > Exception raised in: V32.Ets.Task.read  Invalid Error  * "assignee.name" is not a valid load     at load   (ash 3.34.4) lib/ash/actions/sort.ex:109: Ash.Actions.Sort.runtime_sort/3
+
+[14b distinct_sort path] ETS admin (author) -- distinct(:id) + distinct_sort("assignee.name")
+   => ERROR:  Bread Crumbs:   > Exception raised in: V32.Ets.Task.read  Invalid Error  * "assignee.name" is not a valid load     at load   (ash 3.34.4) lib/ash/actions/sort.ex:109: Ash.Actions.Sort.runtime_sort/3
+
+[15 calc wrapping the agg] PG member (client) -- load(:agg_wrapped_calc) (calc = expr(assignee_name_agg))
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s2 ON t0."assignee_id" = s2."id"  -- params [true, true]
+
+[15 calc wrapping the agg] PG admin (client) -- load(:agg_wrapped_calc) (calc = expr(assignee_name_agg))
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id"  -- params []
+
+[15 calc wrapping the agg] ETS member (client) -- load(:agg_wrapped_calc) (calc = expr(assignee_name_agg))
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[15 calc wrapping the agg] ETS admin (client) -- load(:agg_wrapped_calc) (calc = expr(assignee_name_agg))
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[15b wrapped-agg calc + path sort] PG member (client) -- load(:agg_wrapped_calc) + sort_input path
+   => HIDDEN-VALUE: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      WRONG (field, task, got, entitled): [{:agg_wrapped_calc, 2, "Bob", nil}, {:agg_wrapped_calc, 4, "Dave", nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text::text, u1."name"::text, s3."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s3 ON t0."assignee_id" = s3."id" ORDER BY u1."name"::text  -- params [true, true]
+
+[15b wrapped-agg calc + path sort] PG admin (client) -- load(:agg_wrapped_calc) + sort_input path
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text::text, u1."name"::text, u3."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" LEFT OUTER JOIN "public"."users" AS u3 ON t0."assignee_id" = u3."id" ORDER BY u1."name"::text  -- params []
+
+[15b wrapped-agg calc + path sort] ETS member (client) -- load(:agg_wrapped_calc) + sort_input path
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[15b wrapped-agg calc + path sort] ETS admin (client) -- load(:agg_wrapped_calc) + sort_input path
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] agg_wrapped_calc=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[16 exists() in trusted filter] PG member (author) -- filter(exists(assignee, name != "zzz") or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" WHERE (exists((SELECT 1 FROM "public"."users" AS su0 WHERE (su0."name" != $2) AND (t0."assignee_id" = su0."id"))) OR (t0."id" > $3))  -- params [true, "zzz", 0]
+
+[16 exists() in trusted filter] PG admin (author) -- filter(exists(assignee, name != "zzz") or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" WHERE (exists((SELECT 1 FROM "public"."users" AS su0 WHERE (su0."name" != $1) AND (t0."assignee_id" = su0."id"))) OR (t0."id" > $2))  -- params ["zzz", 0]
+
+[16 exists() in trusted filter] ETS member (author) -- filter(exists(assignee, name != "zzz") or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[16 exists() in trusted filter] ETS admin (author) -- filter(exists(assignee, name != "zzz") or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[17 sort_input by the agg itself] PG member (client) -- sort_input(["assignee_name_agg"]) + load agg
+   => ok: order=[1, 3, 2, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY s1."name"::text::text  -- params [true, true]
+
+[17 sort_input by the agg itself] PG admin (client) -- sort_input(["assignee_name_agg"]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text::text  -- params []
+
+[17 sort_input by the agg itself] ETS member (client) -- sort_input(["assignee_name_agg"]) + load agg
+   => ok: order=[1, 3, 2, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[17 sort_input by the agg itself] ETS admin (client) -- sort_input(["assignee_name_agg"]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[18 filter_input on the agg + path sort] PG member (client) -- filter_input(agg not_eq zzz or id > 0) + sort_input path
+   => ok: order=[1, 3, 2, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE ((s1."name"::text::text != $3) OR (t0."id" > $4)) ORDER BY s1."name"::text  -- params [true, true, "zzz", 0]
+
+[18 filter_input on the agg + path sort] PG admin (client) -- filter_input(agg not_eq zzz or id > 0) + sort_input path
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name"::text::text != $1) OR (t0."id" > $2)) ORDER BY u1."name"::text  -- params ["zzz", 0]
+
+[18 filter_input on the agg + path sort] ETS member (client) -- filter_input(agg not_eq zzz or id > 0) + sort_input path
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[18 filter_input on the agg + path sort] ETS admin (client) -- filter_input(agg not_eq zzz or id > 0) + sort_input path
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[07c filter_input path NOT] PG member (client) -- filter_input(%{not: %{assignee: %{name: %{eq: "zzz"}}}}) + load agg
+   => ok: order=[1, 3] assignee_name_agg=[{1, "Alice"}, {3, "Carol"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (NOT (u1."name" = $2)) AND (u1."visible"::boolean = $3::boolean)  -- params [true, "zzz", true]
+
+[07c filter_input path NOT] PG admin (client) -- filter_input(%{not: %{assignee: %{name: %{eq: "zzz"}}}}) + load agg
+   => n/a(admin): order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE (NOT (u1."name" = $1))  -- params ["zzz"]
+
+[07c filter_input path NOT] ETS member (client) -- filter_input(%{not: %{assignee: %{name: %{eq: "zzz"}}}}) + load agg
+   => ok: order=[1, 3] assignee_name_agg=[{1, "Alice"}, {3, "Carol"}]
+
+[07c filter_input path NOT] ETS admin (client) -- filter_input(%{not: %{assignee: %{name: %{eq: "zzz"}}}}) + load agg
+   => n/a(admin): order=[1, 2, 3, 4] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+
+[07d filter_input on related PK, OR] PG member (client) -- filter_input(or: [assignee.id > 0, id > 0]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (((u1."id" > $2) AND (u1."visible"::boolean = $3::boolean)) OR (t0."id" > $4))  -- params [true, 0, true, 0]
+
+[07d filter_input on related PK, OR] PG admin (client) -- filter_input(or: [assignee.id > 0, id > 0]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."id" > $1) OR (t0."id" > $2))  -- params [0, 0]
+
+[07d filter_input on related PK, OR] ETS member (client) -- filter_input(or: [assignee.id > 0, id > 0]) + load agg
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[07d filter_input on related PK, OR] ETS admin (client) -- filter_input(or: [assignee.id > 0, id > 0]) + load agg
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[12b agg with own filter + path sort] PG member (client) -- load(:assignee_not_alice) + sort_input path (admin is entitled to: 1=>nil 2=>Bob 3=>Carol 4=>Dave)
+   => ok: order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean) AND (su0."name" != $2)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params [true, "Alice"]
+
+[12b agg with own filter + path sort] PG admin (client) -- load(:assignee_not_alice) + sort_input path (admin is entitled to: 1=>nil 2=>Bob 3=>Carol 4=>Dave)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."name" != $1)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text  -- params ["Alice"]
+
+[12b agg with own filter + path sort] ETS member (client) -- load(:assignee_not_alice) + sort_input path (admin is entitled to: 1=>nil 2=>Bob 3=>Carol 4=>Dave)
+   => ok: order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[12b agg with own filter + path sort] ETS admin (client) -- load(:assignee_not_alice) + sort_input path (admin is entitled to: 1=>nil 2=>Bob 3=>Carol 4=>Dave)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[12c agg with own filter + filter_input NOT] PG member (client) -- load(:assignee_not_alice) + filter_input not path
+   => ok: order=[1, 3] assignee_not_alice=[{1, nil}, {3, "Carol"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean) AND (su0."name" != $2)) AS s2 ON t0."assignee_id" = s2."id" WHERE (NOT (u1."name" = $3)) AND (u1."visible"::boolean = $4::boolean)  -- params [true, "Alice", "zzz", true]
+
+[12c agg with own filter + filter_input NOT] PG admin (client) -- load(:assignee_not_alice) + filter_input not path
+   => n/a(admin): order=[1, 2, 3, 4] assignee_not_alice=[{1, nil}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."name" != $1)) AS s2 ON t0."assignee_id" = s2."id" WHERE (NOT (u1."name" = $2))  -- params ["Alice", "zzz"]
+
+[12c agg with own filter + filter_input NOT] ETS member (client) -- load(:assignee_not_alice) + filter_input not path
+   => ok: order=[1, 3] assignee_not_alice=[{1, nil}, {3, "Carol"}]
+
+[12c agg with own filter + filter_input NOT] ETS admin (client) -- load(:assignee_not_alice) + filter_input not path
+   => n/a(admin): order=[1, 2, 3, 4] assignee_not_alice=[{1, nil}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+
+[12d agg with own filter alone] PG member (client) -- load(:assignee_not_alice)
+   => ok: order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean) AND (su0."name" != $2)) AS s1 ON t0."assignee_id" = s1."id"  -- params [true, "Alice"]
+
+[12d agg with own filter alone] PG admin (client) -- load(:assignee_not_alice)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."name" != $1)) AS s1 ON t0."assignee_id" = s1."id"  -- params ["Alice"]
+
+[12d agg with own filter alone] ETS member (client) -- load(:assignee_not_alice)
+   => ok: order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[12d agg with own filter alone] ETS admin (client) -- load(:assignee_not_alice)
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_not_alice=[{1, nil}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[21 ad hoc Ash.Query.aggregate + filter_input NOT] PG member (author) -- aggregate(:adhoc, :first, :assignee, field: :name) + filter_input not path
+   => ERROR:  Bread Crumbs:   > Error returned from: V32.Pg.Task.read  Unknown Error  * ** (ArgumentError) struct V32.Pg.Task does not have the key :adhoc   (ecto 3.14.2) lib/ecto/repo/queryable.ex:334: anonymous fn/4 in Ecto.Repo.Queryable.process/4   (stdlib 7.2) maps.erl:894: :maps.fold_1/4   (ecto 3.14.2) li
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (NOT (u1."name" = $2)) AND (u1."visible"::boolean = $3::boolean)  -- params [true, "zzz", true]
+
+[21 ad hoc Ash.Query.aggregate + filter_input NOT] PG admin (author) -- aggregate(:adhoc, :first, :assignee, field: :name) + filter_input not path
+   => ERROR:  Bread Crumbs:   > Error returned from: V32.Pg.Task.read  Unknown Error  * ** (ArgumentError) struct V32.Pg.Task does not have the key :adhoc   (ecto 3.14.2) lib/ecto/repo/queryable.ex:334: anonymous fn/4 in Ecto.Repo.Queryable.process/4   (stdlib 7.2) maps.erl:894: :maps.fold_1/4   (ecto 3.14.2) li
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE (NOT (u1."name" = $1))  -- params ["zzz"]
+
+[21 ad hoc Ash.Query.aggregate + filter_input NOT] ETS member (author) -- aggregate(:adhoc, :first, :assignee, field: :name) + filter_input not path
+   => ok: order=[1, 3] adhoc=[{1, "Alice"}, {3, "Carol"}]
+
+[21 ad hoc Ash.Query.aggregate + filter_input NOT] ETS admin (author) -- aggregate(:adhoc, :first, :assignee, field: :name) + filter_input not path
+   => n/a(admin): order=[1, 2, 3, 4] adhoc=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}]
+
+[22 agg only in filter_input (not loaded) + path NOT] PG member (client) -- filter_input(and: [agg == "Bob", not(assignee.name == zzz)]); entitled: no rows
+   => ok: order=[] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (u1."name"::text::text = $2) AND (NOT (u1."name" = $3)) AND (u1."visible"::boolean = $4::boolean)  -- params [true, "Bob", "zzz", true]
+
+[22 agg only in filter_input (not loaded) + path NOT] PG admin (client) -- filter_input(and: [agg == "Bob", not(assignee.name == zzz)]); entitled: no rows
+   => n/a(admin): order=[2] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE (u1."name"::text::text = $1) AND (NOT (u1."name" = $2))  -- params ["Bob", "zzz"]
+
+[22 agg only in filter_input (not loaded) + path NOT] ETS member (client) -- filter_input(and: [agg == "Bob", not(assignee.name == zzz)]); entitled: no rows
+   => ok: order=[] 
+
+[22 agg only in filter_input (not loaded) + path NOT] ETS admin (client) -- filter_input(and: [agg == "Bob", not(assignee.name == zzz)]); entitled: no rows
+   => n/a(admin): order=[2] 
+
+[22b agg only in filter_input, path NOT listed first] PG member (client) -- filter_input(and: [not(assignee.name == zzz), agg == "Bob"]); entitled: no rows
+   => ok: order=[] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE (NOT (u1."name" = $2)) AND (u1."name"::text::text = $3) AND (u1."visible"::boolean = $4::boolean)  -- params [true, "zzz", "Bob", true]
+
+[22b agg only in filter_input, path NOT listed first] PG admin (client) -- filter_input(and: [not(assignee.name == zzz), agg == "Bob"]); entitled: no rows
+   => n/a(admin): order=[2] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE (NOT (u1."name" = $1)) AND (u1."name"::text::text = $2)  -- params ["zzz", "Bob"]
+
+[22b agg only in filter_input, path NOT listed first] ETS member (client) -- filter_input(and: [not(assignee.name == zzz), agg == "Bob"]); entitled: no rows
+   => ok: order=[] 
+
+[22b agg only in filter_input, path NOT listed first] ETS admin (client) -- filter_input(and: [not(assignee.name == zzz), agg == "Bob"]); entitled: no rows
+   => n/a(admin): order=[2] 
+
+[22c agg only in filter_input, alone] PG member (client) -- filter_input(agg == "Bob"); entitled: no rows
+   => ok: order=[] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" WHERE (s1."name"::text::text = $2)  -- params [true, "Bob"]
+
+[22c agg only in filter_input, alone] PG admin (client) -- filter_input(agg == "Bob"); entitled: no rows
+   => n/a(admin): order=[2] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" WHERE (u1."name"::text::text = $1)  -- params ["Bob"]
+
+[22c agg only in filter_input, alone] ETS member (client) -- filter_input(agg == "Bob"); entitled: no rows
+   => ok: order=[] 
+
+[22c agg only in filter_input, alone] ETS admin (client) -- filter_input(agg == "Bob"); entitled: no rows
+   => n/a(admin): order=[2] 
+
+[23 sort_input by agg (not loaded) + filter_input path NOT] PG member (client) -- sort_input(["assignee_name_agg","id"]) + filter_input not path; entitled [1,3] (the authorized filter itself removes rows with a hidden assignee)
+   => ok: order=[1, 3] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s3."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s3 ON t0."assignee_id" = s3."id" WHERE (NOT (u1."name" = $3)) AND (u1."visible"::boolean = $4::boolean) ORDER BY u1."name"::text::text, t0."id"  -- params [true, true, "zzz", true]
+
+[23 sort_input by agg (not loaded) + filter_input path NOT] PG admin (client) -- sort_input(["assignee_name_agg","id"]) + filter_input not path; entitled [1,3] (the authorized filter itself removes rows with a hidden assignee)
+   => n/a(admin): order=[1, 2, 3, 4] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u3."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" LEFT OUTER JOIN "public"."users" AS u3 ON t0."assignee_id" = u3."id" WHERE (NOT (u1."name" = $1)) ORDER BY u1."name"::text::text, t0."id"  -- params ["zzz"]
+
+[23 sort_input by agg (not loaded) + filter_input path NOT] ETS member (client) -- sort_input(["assignee_name_agg","id"]) + filter_input not path; entitled [1,3] (the authorized filter itself removes rows with a hidden assignee)
+   => ok: order=[1, 3] 
+
+[23 sort_input by agg (not loaded) + filter_input path NOT] ETS admin (client) -- sort_input(["assignee_name_agg","id"]) + filter_input not path; entitled [1,3] (the authorized filter itself removes rows with a hidden assignee)
+   => n/a(admin): order=[1, 2, 3, 4] 
+
+[23b sort_input by agg (not loaded) + sort_input path] PG member (client) -- sort_input(["assignee_name_agg","assignee.name","id"]); entitled order [1,3,2,4,5]
+   => HIDDEN-VALUE: order=[1, 2, 3, 4, 5] 
+      WRONG (field, task, got, entitled): [{:rows_or_order, [1, 2, 3, 4, 5], :entitled, [1, 3, 2, 4, 5]}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s3."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s3 ON t0."assignee_id" = s3."id" ORDER BY u1."name"::text::text, t0."id", u1."name"::text  -- params [true, true]
+
+[23b sort_input by agg (not loaded) + sort_input path] PG admin (client) -- sort_input(["assignee_name_agg","assignee.name","id"]); entitled order [1,3,2,4,5]
+   => n/a(admin): order=[1, 2, 3, 4, 5] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u3."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" LEFT OUTER JOIN "public"."users" AS u3 ON t0."assignee_id" = u3."id" ORDER BY u1."name"::text::text, t0."id", u1."name"::text  -- params []
+
+[23b sort_input by agg (not loaded) + sort_input path] ETS member (client) -- sort_input(["assignee_name_agg","assignee.name","id"]); entitled order [1,3,2,4,5]
+   => ok: order=[1, 3, 2, 4, 5] 
+
+[23b sort_input by agg (not loaded) + sort_input path] ETS admin (client) -- sort_input(["assignee_name_agg","assignee.name","id"]); entitled order [1,3,2,4,5]
+   => n/a(admin): order=[1, 2, 3, 4, 5] 
+
+[23c sort_input path then agg] PG member (client) -- sort_input(["-assignee_name_agg","id"]) + filter_input not path; entitled [3,1]
+   => ok: order=[3, 1] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s3."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s3 ON t0."assignee_id" = s3."id" WHERE (NOT (u1."name" = $3)) AND (u1."visible"::boolean = $4::boolean) ORDER BY u1."name"::text::text DESC, t0."id"  -- params [true, true, "zzz", true]
+
+[23c sort_input path then agg] PG admin (client) -- sort_input(["-assignee_name_agg","id"]) + filter_input not path; entitled [3,1]
+   => n/a(admin): order=[4, 3, 2, 1] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u3."name"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" LEFT OUTER JOIN "public"."users" AS u3 ON t0."assignee_id" = u3."id" WHERE (NOT (u1."name" = $1)) ORDER BY u1."name"::text::text DESC, t0."id"  -- params ["zzz"]
+
+[23c sort_input path then agg] ETS member (client) -- sort_input(["-assignee_name_agg","id"]) + filter_input not path; entitled [3,1]
+   => ok: order=[3, 1] 
+
+[23c sort_input path then agg] ETS admin (client) -- sort_input(["-assignee_name_agg","id"]) + filter_input not path; entitled [3,1]
+   => n/a(admin): order=[4, 3, 2, 1] 
+
+[22d agg only in filter_input + path OR in same filter] PG member (client) -- filter_input(and: [agg == "Bob", or: [assignee.name != zzz, id > 0]]); entitled: no rows
+   => ok: order=[] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE ((u1."name" != $2) OR (t0."id" > $3)) AND (u1."name"::text::text = $4) AND (u1."visible"::boolean = $5::boolean)  -- params [true, "zzz", 0, "Bob", true]
+
+[22d agg only in filter_input + path OR in same filter] PG admin (client) -- filter_input(and: [agg == "Bob", or: [assignee.name != zzz, id > 0]]); entitled: no rows
+   => n/a(admin): order=[2] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name" != $1) OR (t0."id" > $2)) AND (u1."name"::text::text = $3)  -- params ["zzz", 0, "Bob"]
+
+[22d agg only in filter_input + path OR in same filter] ETS member (client) -- filter_input(and: [agg == "Bob", or: [assignee.name != zzz, id > 0]]); entitled: no rows
+   => ok: order=[] 
+
+[22d agg only in filter_input + path OR in same filter] ETS admin (client) -- filter_input(and: [agg == "Bob", or: [assignee.name != zzz, id > 0]]); entitled: no rows
+   => n/a(admin): order=[2] 
+
+[22e path OR first, then agg, same filter] PG member (client) -- filter_input(and: [or: [assignee.name != zzz, id > 0], agg == "Bob"]); entitled: no rows
+   => ok: order=[] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" WHERE ((u1."name" != $2) OR (t0."id" > $3)) AND (u1."name"::text::text = $4) AND (u1."visible"::boolean = $5::boolean)  -- params [true, "zzz", 0, "Bob", true]
+
+[22e path OR first, then agg, same filter] PG admin (client) -- filter_input(and: [or: [assignee.name != zzz, id > 0], agg == "Bob"]); entitled: no rows
+   => n/a(admin): order=[2] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id" FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" WHERE ((u1."name" != $1) OR (t0."id" > $2)) AND (u1."name"::text::text = $3)  -- params ["zzz", 0, "Bob"]
+
+[22e path OR first, then agg, same filter] ETS member (client) -- filter_input(and: [or: [assignee.name != zzz, id > 0], agg == "Bob"]); entitled: no rows
+   => ok: order=[] 
+
+[22e path OR first, then agg, same filter] ETS admin (client) -- filter_input(and: [or: [assignee.name != zzz, id > 0], agg == "Bob"]); entitled: no rows
+   => n/a(admin): order=[2] 
+
+[23d sort_input by agg (not loaded) + filter_input path OR] PG member (client) -- sort_input(["assignee_name_agg","id"]) + filter_input(or: [assignee.name != zzz, id > 0]); entitled order [1,3,2,4,5]
+   => HIDDEN-VALUE: order=[1, 2, 3, 4, 5] 
+      WRONG (field, task, got, entitled): [{:rows_or_order, [1, 2, 3, 4, 5], :entitled, [1, 3, 2, 4, 5]}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s3."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s3 ON t0."assignee_id" = s3."id" WHERE (((u1."visible"::boolean = $3::boolean) AND (u1."name" != $4)) OR (t0."id" > $5)) ORDER BY u1."name"::text::text, t0."id"  -- params [true, true, true, "zzz", 0]
+
+[23d sort_input by agg (not loaded) + filter_input path OR] PG admin (client) -- sort_input(["assignee_name_agg","id"]) + filter_input(or: [assignee.name != zzz, id > 0]); entitled order [1,3,2,4,5]
+   => n/a(admin): order=[1, 2, 3, 4, 5] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u3."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" LEFT OUTER JOIN "public"."users" AS u3 ON t0."assignee_id" = u3."id" WHERE ((u1."name" != $1) OR (t0."id" > $2)) ORDER BY u1."name"::text::text, t0."id"  -- params ["zzz", 0]
+
+[23d sort_input by agg (not loaded) + filter_input path OR] ETS member (client) -- sort_input(["assignee_name_agg","id"]) + filter_input(or: [assignee.name != zzz, id > 0]); entitled order [1,3,2,4,5]
+   => ok: order=[1, 3, 2, 4, 5] 
+
+[23d sort_input by agg (not loaded) + filter_input path OR] ETS admin (client) -- sort_input(["assignee_name_agg","id"]) + filter_input(or: [assignee.name != zzz, id > 0]); entitled order [1,3,2,4,5]
+   => n/a(admin): order=[1, 2, 3, 4, 5] 
+
+[23e sort (trusted) by agg, alone] PG member (author) -- sort(assignee_name_agg: :asc, id: :asc); entitled order [1,3,2,4,5]
+   => ok: order=[1, 3, 2, 4, 5] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $2::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY s1."name"::text::text, t0."id"  -- params [true, true]
+
+[23e sort (trusted) by agg, alone] PG admin (author) -- sort(assignee_name_agg: :asc, id: :asc); entitled order [1,3,2,4,5]
+   => n/a(admin): order=[1, 2, 3, 4, 5] 
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text::text, t0."id"  -- params []
+
+[23e sort (trusted) by agg, alone] ETS member (author) -- sort(assignee_name_agg: :asc, id: :asc); entitled order [1,3,2,4,5]
+   => ok: order=[1, 3, 2, 4, 5] 
+
+[23e sort (trusted) by agg, alone] ETS admin (author) -- sort(assignee_name_agg: :asc, id: :asc); entitled order [1,3,2,4,5]
+   => n/a(admin): order=[1, 2, 3, 4, 5] 
+
+[34 has_one+identity baseline] PG member (client) -- load(:seal_label_agg)
+   => ok: order=[1, 2, 3, 4, 5] seal_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."label"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT ss0."id" AS "id", ss0."label" AS "label", ss0."visible" AS "visible", ss0."task_id" AS "task_id" FROM "public"."seals" AS ss0 WHERE (ss0."visible"::boolean = $1::boolean)) AS s1 ON t0."id" = s1."task_id"  -- params [true]
+
+[34 has_one+identity baseline] PG admin (client) -- load(:seal_label_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] seal_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."label"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."seals" AS s1 ON t0."id" = s1."task_id"  -- params []
+
+[34 has_one+identity baseline] ETS member (client) -- load(:seal_label_agg)
+   => ok: order=[1, 2, 3, 4, 5] seal_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+
+[34 has_one+identity baseline] ETS admin (client) -- load(:seal_label_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] seal_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+
+[35 has_one+identity + sort_input path] PG member (client) -- sort_input(["seal.label"]) + load(:seal_label_agg)
+   => ok: order=[4, 2, 3, 1, 5] seal_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."label"::text, s2."label"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."seals" AS s1 ON t0."id" = s1."task_id" LEFT OUTER JOIN (SELECT ss0."id" AS "id", ss0."label" AS "label", ss0."visible" AS "visible", ss0."task_id" AS "task_id" FROM "public"."seals" AS ss0 WHERE (ss0."visible"::boolean = $1::boolean)) AS s2 ON t0."id" = s2."task_id" ORDER BY s1."label"::text  -- params [true]
+
+[35 has_one+identity + sort_input path] PG admin (client) -- sort_input(["seal.label"]) + load(:seal_label_agg)
+   => n/a(admin): order=[4, 2, 3, 1, 5] seal_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."label"::text, s2."label"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."seals" AS s1 ON t0."id" = s1."task_id" LEFT OUTER JOIN "public"."seals" AS s2 ON t0."id" = s2."task_id" ORDER BY s1."label"::text  -- params []
+
+[35 has_one+identity + sort_input path] ETS member (client) -- sort_input(["seal.label"]) + load(:seal_label_agg)
+   => ok: order=[4, 2, 3, 1, 5] seal_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+
+[35 has_one+identity + sort_input path] ETS admin (client) -- sort_input(["seal.label"]) + load(:seal_label_agg)
+   => n/a(admin): order=[4, 2, 3, 1, 5] seal_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+
+[36 has_one+identity + filter_input NOT] PG member (client) -- filter_input(not seal.label == zzz) + load(:seal_label_agg)
+   => ok: order=[1, 3] seal_label_agg=[{1, "gold"}, {3, "bronze"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."label"::text::text FROM "tasks" AS t0 INNER JOIN "public"."seals" AS s1 ON t0."id" = s1."task_id" LEFT OUTER JOIN (SELECT ss0."id" AS "id", ss0."label" AS "label", ss0."visible" AS "visible", ss0."task_id" AS "task_id" FROM "public"."seals" AS ss0 WHERE (ss0."visible"::boolean = $1::boolean)) AS s2 ON t0."id" = s2."task_id" WHERE (NOT (s1."label" = $2)) AND (s1."visible"::boolean = $3::boolean)  -- params [true, "zzz", true]
+
+[36 has_one+identity + filter_input NOT] PG admin (client) -- filter_input(not seal.label == zzz) + load(:seal_label_agg)
+   => n/a(admin): order=[1, 2, 3, 4] seal_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."label"::text::text FROM "tasks" AS t0 INNER JOIN "public"."seals" AS s1 ON t0."id" = s1."task_id" LEFT OUTER JOIN "public"."seals" AS s2 ON t0."id" = s2."task_id" WHERE (NOT (s1."label" = $1))  -- params ["zzz"]
+
+[36 has_one+identity + filter_input NOT] ETS member (client) -- filter_input(not seal.label == zzz) + load(:seal_label_agg)
+   => ok: order=[1, 3] seal_label_agg=[{1, "gold"}, {3, "bronze"}]
+
+[36 has_one+identity + filter_input NOT] ETS admin (client) -- filter_input(not seal.label == zzz) + load(:seal_label_agg)
+   => n/a(admin): order=[1, 2, 3, 4] seal_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}]
+
+[37 two-hop belongs_to baseline] PG member (client) -- load(:manager_name_agg)
+   => ok: order=[1, 2, 3, 4, 5] manager_name_agg=[{1, nil}, {2, nil}, {3, "Alice"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."manager_name_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $1::boolean) AND (su1."visible"::boolean = $2::boolean) GROUP BY su0."id") AS s1 ON TRUE  -- params [true, true]
+
+[37 two-hop belongs_to baseline] PG admin (client) -- load(:manager_name_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."manager_name_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s1 ON TRUE  -- params []
+
+[37 two-hop belongs_to baseline] ETS member (client) -- load(:manager_name_agg)
+   => ok: order=[1, 2, 3, 4, 5] manager_name_agg=[{1, nil}, {2, nil}, {3, "Alice"}, {4, nil}, {5, nil}]
+
+[37 two-hop belongs_to baseline] ETS admin (client) -- load(:manager_name_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}, {4, nil}, {5, nil}]
+
+[38 two-hop + filter_input NOT through both hops] PG member (client) -- filter_input(not assignee.manager.name == zzz) + load(:manager_name_agg)
+   => ok: order=[3] manager_name_agg=[{3, "Alice"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s3."manager_name_agg"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" INNER JOIN "public"."users" AS u2 ON u1."manager_id" = u2."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $1::boolean) AND (su1."visible"::boolean = $2::boolean) GROUP BY su0."id") AS s3 ON TRUE WHERE (NOT (u2."name" = $3)) AND (u1."visible"::boolean = $4::boolean) AND (u2."visible"::boolean = $5::boolean)  -- params [true, true, "zzz", true, true]
+
+[38 two-hop + filter_input NOT through both hops] PG admin (client) -- filter_input(not assignee.manager.name == zzz) + load(:manager_name_agg)
+   => n/a(admin): order=[1, 2, 3] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s3."manager_name_agg"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" INNER JOIN "public"."users" AS u2 ON u1."manager_id" = u2."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s3 ON TRUE WHERE (NOT (u2."name" = $1))  -- params ["zzz"]
+
+[38 two-hop + filter_input NOT through both hops] ETS member (client) -- filter_input(not assignee.manager.name == zzz) + load(:manager_name_agg)
+   => ok: order=[3] manager_name_agg=[{3, "Alice"}]
+
+[38 two-hop + filter_input NOT through both hops] ETS admin (client) -- filter_input(not assignee.manager.name == zzz) + load(:manager_name_agg)
+   => n/a(admin): order=[1, 2, 3] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}]
+
+[39 two-hop + sort_input path] PG member (client) -- sort_input(["assignee.manager.name"]) + load(:manager_name_agg)
+   => ok: order=[3, 1, 2, 4, 5] manager_name_agg=[{1, nil}, {2, nil}, {3, "Alice"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text, s3."manager_name_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON u1."manager_id" = u2."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $1::boolean) AND (su1."visible"::boolean = $2::boolean) GROUP BY su0."id") AS s3 ON TRUE ORDER BY u2."name"::text  -- params [true, true]
+
+[39 two-hop + sort_input path] PG admin (client) -- sort_input(["assignee.manager.name"]) + load(:manager_name_agg)
+   => n/a(admin): order=[3, 1, 2, 4, 5] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u2."name"::text, s3."manager_name_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON u1."manager_id" = u2."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s3 ON TRUE ORDER BY u2."name"::text  -- params []
+
+[39 two-hop + sort_input path] ETS member (client) -- sort_input(["assignee.manager.name"]) + load(:manager_name_agg)
+   => ok: order=[3, 1, 2, 4, 5] manager_name_agg=[{1, nil}, {2, nil}, {3, "Alice"}, {4, nil}, {5, nil}]
+
+[39 two-hop + sort_input path] ETS admin (client) -- sort_input(["assignee.manager.name"]) + load(:manager_name_agg)
+   => n/a(admin): order=[3, 1, 2, 4, 5] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}, {4, nil}, {5, nil}]
+
+[39b two-hop agg + filter_input NOT through FIRST hop only] PG member (client) -- filter_input(not assignee.name == zzz) + load(:manager_name_agg)
+   => ok: order=[1, 3] manager_name_agg=[{1, nil}, {3, "Alice"}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."manager_name_agg"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $1::boolean) AND (su1."visible"::boolean = $2::boolean) GROUP BY su0."id") AS s2 ON TRUE WHERE (NOT (u1."name" = $3)) AND (u1."visible"::boolean = $4::boolean)  -- params [true, true, "zzz", true]
+
+[39b two-hop agg + filter_input NOT through FIRST hop only] PG admin (client) -- filter_input(not assignee.name == zzz) + load(:manager_name_agg)
+   => n/a(admin): order=[1, 2, 3, 4] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}, {4, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."manager_name_agg"::text::text FROM "tasks" AS t0 INNER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", any_value(su1."name"::text)::text AS "manager_name_agg" FROM "public"."users" AS su0 INNER JOIN "public"."users" AS su1 ON su0."manager_id" = su1."id" WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s2 ON TRUE WHERE (NOT (u1."name" = $1))  -- params ["zzz"]
+
+[39b two-hop agg + filter_input NOT through FIRST hop only] ETS member (client) -- filter_input(not assignee.name == zzz) + load(:manager_name_agg)
+   => ok: order=[1, 3] manager_name_agg=[{1, nil}, {3, "Alice"}]
+
+[39b two-hop agg + filter_input NOT through FIRST hop only] ETS admin (client) -- filter_input(not assignee.name == zzz) + load(:manager_name_agg)
+   => n/a(admin): order=[1, 2, 3, 4] manager_name_agg=[{1, "Bob"}, {2, "Carol"}, {3, "Alice"}, {4, nil}]
+
+[20 count/exists/list/max + path sort] PG member (client) -- sort_input path + load other aggregate kinds
+   => ok: order=[1, 2, 3, 4, 5] assignee_count=[{1, 1}, {2, 0}, {3, 1}, {4, 0}, {5, 0}] assignee_exists=[{1, true}, {2, false}, {3, true}, {4, false}, {5, false}] assignee_names=[{1, ["Alice"]}, {2, []}, {3, ["Carol"]}, {4, []}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s3."name"::text::text, s2."assignee_name_max"::text::text, coalesce(s4."assignee_names"::text[], $1::text[])::text[], coalesce(s2."assignee_count"::bigint, $2::bigint)::bigint, exists((SELECT 1 AS "result" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $3::boolean) AND (t0."assignee_id" = su0."id"))) FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", max(su0."name"::text) FILTER (WHERE su0."visible"::boolean = $4::boolean)::text AS "assignee_name_max", coalesce(count(*) FILTER (WHERE su0."visible"::boolean = $5::boolean), $6::bigint)::bigint AS "assignee_count" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s2 ON TRUE LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $7::boolean) AND (su0."name" != $8)) AS s3 ON t0."assignee_id" = s3."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", coalesce(array_agg(su0."name"::text), $9::text[])::text[] AS "assignee_names" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") AND (su0."visible"::boolean = $10::boolean) GROUP BY su0."id") AS s4 ON TRUE ORDER BY u1."name"::text  -- params [[], 0, true, true, true, 0, true, "zzz", [], true]
+
+[20 count/exists/list/max + path sort] PG admin (client) -- sort_input path + load other aggregate kinds
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_count=[{1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 0}] assignee_exists=[{1, true}, {2, true}, {3, true}, {4, true}, {5, false}] assignee_names=[{1, ["Alice"]}, {2, ["Bob"]}, {3, ["Carol"]}, {4, ["Dave"]}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s3."name"::text::text, s2."assignee_name_max"::text::text, coalesce(s4."assignee_names"::text[], $1::text[])::text[], coalesce(s2."assignee_count"::bigint, $2::bigint)::bigint, exists((SELECT 1 AS "result" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id"))) FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", max(su0."name"::text) FILTER (WHERE $3)::text AS "assignee_name_max", coalesce(count(*) FILTER (WHERE $4), $5::bigint)::bigint AS "assignee_count" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s2 ON TRUE LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."name" != $6)) AS s3 ON t0."assignee_id" = s3."id" LEFT OUTER JOIN LATERAL (SELECT su0."id" AS "id", coalesce(array_agg(su0."name"::text), $7::text[])::text[] AS "assignee_names" FROM "public"."users" AS su0 WHERE (t0."assignee_id" = su0."id") GROUP BY su0."id") AS s4 ON TRUE ORDER BY u1."name"::text  -- params [[], 0, true, true, 0, "zzz", []]
+
+[20 count/exists/list/max + path sort] ETS member (client) -- sort_input path + load other aggregate kinds
+   => ok: order=[1, 2, 3, 4, 5] assignee_count=[{1, 1}, {2, 0}, {3, 1}, {4, 0}, {5, 0}] assignee_exists=[{1, true}, {2, false}, {3, true}, {4, false}, {5, false}] assignee_names=[{1, ["Alice"]}, {2, []}, {3, ["Carol"]}, {4, []}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[20 count/exists/list/max + path sort] ETS admin (client) -- sort_input path + load other aggregate kinds
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_count=[{1, 1}, {2, 1}, {3, 1}, {4, 1}, {5, 0}] assignee_exists=[{1, true}, {2, true}, {3, true}, {4, true}, {5, false}] assignee_names=[{1, ["Alice"]}, {2, ["Bob"]}, {3, ["Carol"]}, {4, ["Dave"]}, {5, []}] assignee_name_max=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}] assignee_name_agg_filtered=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[30 has_one baseline] PG member (client) -- load(:badge_label_agg)
+   => ok: order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") AND (sb0."visible"::boolean = $1::boolean) GROUP BY sb0."task_id") AS s1 ON TRUE  -- params [true]
+
+[30 has_one baseline] PG admin (client) -- load(:badge_label_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") GROUP BY sb0."task_id") AS s1 ON TRUE  -- params []
+
+[30 has_one baseline] ETS member (client) -- load(:badge_label_agg)
+   => ok: order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+
+[30 has_one baseline] ETS admin (client) -- load(:badge_label_agg)
+   => n/a(admin): order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+
+[31 has_one + sort_input path] PG member (client) -- sort_input(["badge.label"]) + load(:badge_label_agg)
+   => ok: order=[4, 2, 3, 1, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", b1."label"::text, s2."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."badges" AS b1 ON t0."id" = b1."task_id" LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") AND (sb0."visible"::boolean = $1::boolean) GROUP BY sb0."task_id") AS s2 ON TRUE ORDER BY b1."label"::text  -- params [true]
+
+[31 has_one + sort_input path] PG admin (client) -- sort_input(["badge.label"]) + load(:badge_label_agg)
+   => n/a(admin): order=[4, 2, 3, 1, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", b1."label"::text, s2."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."badges" AS b1 ON t0."id" = b1."task_id" LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") GROUP BY sb0."task_id") AS s2 ON TRUE ORDER BY b1."label"::text  -- params []
+
+[31 has_one + sort_input path] ETS member (client) -- sort_input(["badge.label"]) + load(:badge_label_agg)
+   => ok: order=[4, 2, 3, 1, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+
+[31 has_one + sort_input path] ETS admin (client) -- sort_input(["badge.label"]) + load(:badge_label_agg)
+   => n/a(admin): order=[4, 2, 3, 1, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+
+[32 has_one + expr calc] PG member (client) -- load([:badge_label_agg, :badge_label_calc])
+   => ok: order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", b1."label"::text, s2."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."badges" AS b1 ON t0."id" = b1."task_id" LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") AND (sb0."visible"::boolean = $1::boolean) GROUP BY sb0."task_id") AS s2 ON TRUE  -- params [true]
+
+[32 has_one + expr calc] PG admin (client) -- load([:badge_label_agg, :badge_label_calc])
+   => n/a(admin): order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", b1."label"::text, s2."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."badges" AS b1 ON t0."id" = b1."task_id" LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") GROUP BY sb0."task_id") AS s2 ON TRUE  -- params []
+
+[32 has_one + expr calc] ETS member (client) -- load([:badge_label_agg, :badge_label_calc])
+   => ok: order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+
+[32 has_one + expr calc] ETS admin (client) -- load([:badge_label_agg, :badge_label_calc])
+   => n/a(admin): order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+
+[33 has_one + trusted path filter] PG member (author) -- filter(badge.label != "zzz" or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."badges" AS b1 ON t0."id" = b1."task_id" LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") AND (sb0."visible"::boolean = $1::boolean) GROUP BY sb0."task_id") AS s2 ON TRUE WHERE ((b1."label" != $2) OR (t0."id" > $3))  -- params [true, "zzz", 0]
+
+[33 has_one + trusted path filter] PG admin (author) -- filter(badge.label != "zzz" or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."badge_label_agg"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."badges" AS b1 ON t0."id" = b1."task_id" LEFT OUTER JOIN LATERAL (SELECT sb0."task_id" AS "task_id", any_value(sb0."label"::text)::text AS "badge_label_agg" FROM "public"."badges" AS sb0 WHERE (t0."id" = sb0."task_id") GROUP BY sb0."task_id") AS s2 ON TRUE WHERE ((b1."label" != $1) OR (t0."id" > $2))  -- params ["zzz", 0]
+
+[33 has_one + trusted path filter] ETS member (author) -- filter(badge.label != "zzz" or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, nil}, {3, "bronze"}, {4, nil}, {5, nil}]
+
+[33 has_one + trusted path filter] ETS admin (author) -- filter(badge.label != "zzz" or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] badge_label_agg=[{1, "gold"}, {2, "HIDDEN-silver"}, {3, "bronze"}, {4, "HIDDEN-iron"}, {5, nil}]
+
+[40 has_many baseline] PG member (client) -- load([:first_comment_agg, :comment_count])
+   => ok: order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "b-pub1"}, {2, nil}, {3, "c-pub3"}, {4, "z-pub4"}, {5, nil}] comment_count=[{1, 1}, {2, 0}, {3, 1}, {4, 1}, {5, 0}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."first_comment_agg"::text::text, coalesce(s1."comment_count"::bigint, $1::bigint)::bigint FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT sc0."task_id" AS "task_id", coalesce(count(*), $2::bigint)::bigint AS "comment_count" FROM "public"."comments" AS sc0 WHERE (t0."id" = sc0."task_id") AND (sc0."visible"::boolean = $3::boolean) GROUP BY sc0."task_id") AS s1 ON TRUE LEFT OUTER JOIN LATERAL (SELECT ss0."task_id" AS "task_id", any_value(ss0."body"::text ORDER BY  ss0."body" ASC ) FILTER (WHERE ss0."body"::text IS NOT NULL)::text AS "first_comment_agg" FROM (SELECT ssc0."id" AS "id", ssc0."body" AS "body", ssc0."visible" AS "visible", ssc0."task_id" AS "task_id" FROM "public"."comments" AS ssc0 WHERE (t0."id" = ssc0."task_id") AND (ssc0."visible"::boolean = $4::boolean) AND (NOT (ssc0."body" IS NULL)) ORDER BY ssc0."body" LIMIT 1) AS ss0 GROUP BY ss0."task_id") AS s2 ON TRUE  -- params [0, 0, true, true]
+
+[40 has_many baseline] PG admin (client) -- load([:first_comment_agg, :comment_count])
+   => n/a(admin): order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "a-HIDDEN1"}, {2, "a-HIDDEN2"}, {3, "c-pub3"}, {4, "a-HIDDEN4"}, {5, nil}] comment_count=[{1, 2}, {2, 1}, {3, 1}, {4, 2}, {5, 0}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s2."first_comment_agg"::text::text, coalesce(s1."comment_count"::bigint, $1::bigint)::bigint FROM "tasks" AS t0 LEFT OUTER JOIN LATERAL (SELECT sc0."task_id" AS "task_id", coalesce(count(*), $2::bigint)::bigint AS "comment_count" FROM "public"."comments" AS sc0 WHERE (t0."id" = sc0."task_id") GROUP BY sc0."task_id") AS s1 ON TRUE LEFT OUTER JOIN LATERAL (SELECT ss0."task_id" AS "task_id", any_value(ss0."body"::text ORDER BY  ss0."body" ASC ) FILTER (WHERE ss0."body"::text IS NOT NULL)::text AS "first_comment_agg" FROM (SELECT ssc0."id" AS "id", ssc0."body" AS "body", ssc0."visible" AS "visible", ssc0."task_id" AS "task_id" FROM "public"."comments" AS ssc0 WHERE (t0."id" = ssc0."task_id") AND (NOT (ssc0."body" IS NULL)) ORDER BY ssc0."body" LIMIT 1) AS ss0 GROUP BY ss0."task_id") AS s2 ON TRUE  -- params [0, 0]
+
+[40 has_many baseline] ETS member (client) -- load([:first_comment_agg, :comment_count])
+   => ok: order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "b-pub1"}, {2, nil}, {3, "c-pub3"}, {4, "z-pub4"}, {5, nil}] comment_count=[{1, 1}, {2, 0}, {3, 1}, {4, 1}, {5, 0}]
+
+[40 has_many baseline] ETS admin (client) -- load([:first_comment_agg, :comment_count])
+   => n/a(admin): order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "a-HIDDEN1"}, {2, "a-HIDDEN2"}, {3, "c-pub3"}, {4, "a-HIDDEN4"}, {5, nil}] comment_count=[{1, 2}, {2, 1}, {3, 1}, {4, 2}, {5, 0}]
+
+[41 has_many + trusted path filter] PG member (author) -- filter(comments.body != "zzz" or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "b-pub1"}, {2, nil}, {3, "c-pub3"}, {4, "z-pub4"}, {5, nil}] comment_count=[{1, 1}, {2, 0}, {3, 1}, {4, 1}, {5, 0}]
+      SQL: SELECT s0."id", s0."title", s0."assignee_id", s2."first_comment_agg"::text::text, coalesce(s1."comment_count"::bigint, $1::bigint)::bigint FROM (SELECT DISTINCT ON (st0."id") st0."id" AS "id", st0."title" AS "title", st0."assignee_id" AS "assignee_id" FROM "tasks" AS st0 LEFT OUTER JOIN "public"."comments" AS sc1 ON st0."id" = sc1."task_id" WHERE ((sc1."body" != $2) OR (st0."id" > $3))) AS s0 LEFT OUTER JOIN LATERAL (SELECT sc0."task_id" AS "task_id", coalesce(count(*), $4::bigint)::bigint AS "comment_count" FROM "public"."comments" AS sc0 WHERE (s0."id" = sc0."task_id") AND (sc0."visible"::boolean = $5::boolean) GROUP BY sc0."task_id") AS s1 ON TRUE LEFT OUTER JOIN LATERAL (SELECT ss0."task_id" AS "task_id", any_value(ss0."body"::text ORDER BY  ss0."body" ASC ) FILTER (WHERE ss0."body"::text IS NOT NULL)::text AS "first_comment_agg" FROM (SELECT ssc0."id" AS "id", ssc0."body" AS "body", ssc0."visible" AS "visible", ssc0."task_id" AS "task_id" FROM "public"."comments" AS ssc0 WHERE (s0."id" = ssc0."task_id") AND (ssc0."visible"::boolean = $6::boolean) AND (NOT (ssc0."body" IS NULL)) ORDER BY ssc0."body" LIMIT 1) AS ss0 GROUP BY ss0."task_id") AS s2 ON TRUE  -- params [0, "zzz", 0, 0, true, true]
+
+[41 has_many + trusted path filter] PG admin (author) -- filter(comments.body != "zzz" or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "a-HIDDEN1"}, {2, "a-HIDDEN2"}, {3, "c-pub3"}, {4, "a-HIDDEN4"}, {5, nil}] comment_count=[{1, 2}, {2, 1}, {3, 1}, {4, 2}, {5, 0}]
+      SQL: SELECT s0."id", s0."title", s0."assignee_id", s2."first_comment_agg"::text::text, coalesce(s1."comment_count"::bigint, $1::bigint)::bigint FROM (SELECT DISTINCT ON (st0."id") st0."id" AS "id", st0."title" AS "title", st0."assignee_id" AS "assignee_id" FROM "tasks" AS st0 LEFT OUTER JOIN "public"."comments" AS sc1 ON st0."id" = sc1."task_id" WHERE ((sc1."body" != $2) OR (st0."id" > $3))) AS s0 LEFT OUTER JOIN LATERAL (SELECT sc0."task_id" AS "task_id", coalesce(count(*), $4::bigint)::bigint AS "comment_count" FROM "public"."comments" AS sc0 WHERE (s0."id" = sc0."task_id") GROUP BY sc0."task_id") AS s1 ON TRUE LEFT OUTER JOIN LATERAL (SELECT ss0."task_id" AS "task_id", any_value(ss0."body"::text ORDER BY  ss0."body" ASC ) FILTER (WHERE ss0."body"::text IS NOT NULL)::text AS "first_comment_agg" FROM (SELECT ssc0."id" AS "id", ssc0."body" AS "body", ssc0."visible" AS "visible", ssc0."task_id" AS "task_id" FROM "public"."comments" AS ssc0 WHERE (s0."id" = ssc0."task_id") AND (NOT (ssc0."body" IS NULL)) ORDER BY ssc0."body" LIMIT 1) AS ss0 GROUP BY ss0."task_id") AS s2 ON TRUE  -- params [0, "zzz", 0, 0]
+
+[41 has_many + trusted path filter] ETS member (author) -- filter(comments.body != "zzz" or id > 0)
+   => ok: order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "b-pub1"}, {2, nil}, {3, "c-pub3"}, {4, "z-pub4"}, {5, nil}] comment_count=[{1, 1}, {2, 0}, {3, 1}, {4, 1}, {5, 0}]
+
+[41 has_many + trusted path filter] ETS admin (author) -- filter(comments.body != "zzz" or id > 0)
+   => n/a(admin): order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "a-HIDDEN1"}, {2, "a-HIDDEN2"}, {3, "c-pub3"}, {4, "a-HIDDEN4"}, {5, nil}] comment_count=[{1, 2}, {2, 1}, {3, 1}, {4, 2}, {5, 0}]
+
+[42 has_many + filter_input path] PG member (client) -- filter_input(or: [comments.body != zzz, id > 0])
+   => ok: order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "b-pub1"}, {2, nil}, {3, "c-pub3"}, {4, "z-pub4"}, {5, nil}] comment_count=[{1, 1}, {2, 0}, {3, 1}, {4, 1}, {5, 0}]
+      SQL: SELECT s0."id", s0."title", s0."assignee_id", s2."first_comment_agg"::text::text, coalesce(s1."comment_count"::bigint, $1::bigint)::bigint FROM (SELECT DISTINCT ON (st0."id") st0."id" AS "id", st0."title" AS "title", st0."assignee_id" AS "assignee_id" FROM "tasks" AS st0 LEFT OUTER JOIN "public"."comments" AS sc1 ON st0."id" = sc1."task_id" WHERE (((sc1."visible"::boolean = $2::boolean) AND (sc1."body" != $3)) OR (st0."id" > $4))) AS s0 LEFT OUTER JOIN LATERAL (SELECT sc0."task_id" AS "task_id", coalesce(count(*), $5::bigint)::bigint AS "comment_count" FROM "public"."comments" AS sc0 WHERE (s0."id" = sc0."task_id") AND (sc0."visible"::boolean = $6::boolean) GROUP BY sc0."task_id") AS s1 ON TRUE LEFT OUTER JOIN LATERAL (SELECT ss0."task_id" AS "task_id", any_value(ss0."body"::text ORDER BY  ss0."body" ASC ) FILTER (WHERE ss0."body"::text IS NOT NULL)::text AS "first_comment_agg" FROM (SELECT ssc0."id" AS "id", ssc0."body" AS "body", ssc0."visible" AS "visible", ssc0."task_id" AS "task_id" FROM "public"."comments" AS ssc0 WHERE (s0."id" = ssc0."task_id") AND (ssc0."visible"::boolean = $7::boolean) AND (NOT (ssc0."body" IS NULL)) ORDER BY ssc0."body" LIMIT 1) AS ss0 GROUP BY ss0."task_id") AS s2 ON TRUE  -- params [0, true, "zzz", 0, 0, true, true]
+
+[42 has_many + filter_input path] PG admin (client) -- filter_input(or: [comments.body != zzz, id > 0])
+   => n/a(admin): order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "a-HIDDEN1"}, {2, "a-HIDDEN2"}, {3, "c-pub3"}, {4, "a-HIDDEN4"}, {5, nil}] comment_count=[{1, 2}, {2, 1}, {3, 1}, {4, 2}, {5, 0}]
+      SQL: SELECT s0."id", s0."title", s0."assignee_id", s2."first_comment_agg"::text::text, coalesce(s1."comment_count"::bigint, $1::bigint)::bigint FROM (SELECT DISTINCT ON (st0."id") st0."id" AS "id", st0."title" AS "title", st0."assignee_id" AS "assignee_id" FROM "tasks" AS st0 LEFT OUTER JOIN "public"."comments" AS sc1 ON st0."id" = sc1."task_id" WHERE ((sc1."body" != $2) OR (st0."id" > $3))) AS s0 LEFT OUTER JOIN LATERAL (SELECT sc0."task_id" AS "task_id", coalesce(count(*), $4::bigint)::bigint AS "comment_count" FROM "public"."comments" AS sc0 WHERE (s0."id" = sc0."task_id") GROUP BY sc0."task_id") AS s1 ON TRUE LEFT OUTER JOIN LATERAL (SELECT ss0."task_id" AS "task_id", any_value(ss0."body"::text ORDER BY  ss0."body" ASC ) FILTER (WHERE ss0."body"::text IS NOT NULL)::text AS "first_comment_agg" FROM (SELECT ssc0."id" AS "id", ssc0."body" AS "body", ssc0."visible" AS "visible", ssc0."task_id" AS "task_id" FROM "public"."comments" AS ssc0 WHERE (s0."id" = ssc0."task_id") AND (NOT (ssc0."body" IS NULL)) ORDER BY ssc0."body" LIMIT 1) AS ss0 GROUP BY ss0."task_id") AS s2 ON TRUE  -- params [0, "zzz", 0, 0]
+
+[42 has_many + filter_input path] ETS member (client) -- filter_input(or: [comments.body != zzz, id > 0])
+   => ok: order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "b-pub1"}, {2, nil}, {3, "c-pub3"}, {4, "z-pub4"}, {5, nil}] comment_count=[{1, 1}, {2, 0}, {3, 1}, {4, 1}, {5, 0}]
+
+[42 has_many + filter_input path] ETS admin (client) -- filter_input(or: [comments.body != zzz, id > 0])
+   => n/a(admin): order=[1, 2, 3, 4, 5] first_comment_agg=[{1, "a-HIDDEN1"}, {2, "a-HIDDEN2"}, {3, "c-pub3"}, {4, "a-HIDDEN4"}, {5, nil}] comment_count=[{1, 2}, {2, 1}, {3, 1}, {4, 2}, {5, 0}]
+
+[50 offset page + path sort] PG member (client) -- page: [limit: 10, offset: 0], action :paged
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text, t0."id" LIMIT $2  -- params [true, 11]
+
+[50 offset page + path sort] PG admin (client) -- page: [limit: 10, offset: 0], action :paged
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text, t0."id" LIMIT $1  -- params ~c"\v"
+
+[50 offset page + path sort] ETS member (client) -- page: [limit: 10, offset: 0], action :paged
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[50 offset page + path sort] ETS admin (client) -- page: [limit: 10, offset: 0], action :paged
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[51 keyset page + path sort] PG member (client) -- page: [limit: 10], action :paged
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, s2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s2 ON t0."assignee_id" = s2."id" ORDER BY u1."name"::text, t0."id" LIMIT $2  -- params [true, 11]
+
+[51 keyset page + path sort] PG admin (client) -- page: [limit: 10], action :paged
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text, u2."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" LEFT OUTER JOIN "public"."users" AS u2 ON t0."assignee_id" = u2."id" ORDER BY u1."name"::text, t0."id" LIMIT $1  -- params ~c"\v"
+
+[51 keyset page + path sort] ETS member (client) -- page: [limit: 10], action :paged
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[51 keyset page + path sort] ETS admin (client) -- page: [limit: 10], action :paged
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+[52 keyset page, no path] PG member (client) -- page: [limit: 10], action :paged
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", s1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN (SELECT su0."id" AS "id", su0."name" AS "name", su0."visible" AS "visible", su0."manager_id" AS "manager_id" FROM "public"."users" AS su0 WHERE (su0."visible"::boolean = $1::boolean)) AS s1 ON t0."assignee_id" = s1."id" ORDER BY t0."id" LIMIT $2  -- params [true, 11]
+
+[52 keyset page, no path] PG admin (client) -- page: [limit: 10], action :paged
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", u1."name"::text::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY t0."id" LIMIT $1  -- params ~c"\v"
+
+[52 keyset page, no path] ETS member (client) -- page: [limit: 10], action :paged
+   => ok: order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, nil}, {3, "Carol"}, {4, nil}, {5, nil}]
+
+[52 keyset page, no path] ETS admin (client) -- page: [limit: 10], action :paged
+   => n/a(admin): order=[1, 2, 3, 4, 5] assignee_name_agg=[{1, "Alice"}, {2, "Bob"}, {3, "Carol"}, {4, "Dave"}, {5, nil}]
+
+
+==== SUMMARY (member rows: did any asserted aggregate return a value the member is not entitled to?)
+scenario                                        by      PG member     ETS member    PG admin / ETS admin
+00 baseline: load agg only                      client  ok            ok            n/a(admin) / n/a(admin)
+01 sort_input path                              client  ok            ok            n/a(admin) / n/a(admin)
+01b sort_input path, sort BEFORE load           client  ok            ok            n/a(admin) / n/a(admin)
+02 Ash.Query.sort path string                   author  ok            ok            n/a(admin) / n/a(admin)
+03 sort by expr calc (trusted)                  author  ok            ok            n/a(admin) / n/a(admin)
+04 sort_input by expr calc                      client  ok            ok            n/a(admin) / n/a(admin)
+05 load expr calc                               client  ok            ok            n/a(admin) / n/a(admin)
+06 trusted filter through path                  author  ok            ok            n/a(admin) / n/a(admin)
+06b trusted filter path OR (keeps all rows)     author  ok            ok            n/a(admin) / n/a(admin)
+07 filter_input through path                    client  ok            ok            n/a(admin) / n/a(admin)
+07b filter_input path OR                        client  ok            ok            n/a(admin) / n/a(admin)
+08 filter by expr calc (trusted)                author  ok            ok            n/a(admin) / n/a(admin)
+08b filter_input by expr calc                   client  ok            ok            n/a(admin) / n/a(admin)
+09 load(:assignee)                              client  ok            ok            n/a(admin) / n/a(admin)
+10 + count agg                                  client  ok            ok            n/a(admin) / n/a(admin)
+11 + exists agg                                 client  ok            ok            n/a(admin) / n/a(admin)
+12 + filtered first agg                         client  ok            ok            n/a(admin) / n/a(admin)
+13 + list and max aggs                          client  ok            ok            n/a(admin) / n/a(admin)
+14 distinct on own attr                         author  ok            ok            n/a(admin) / n/a(admin)
+14b distinct_sort path                          author  ERROR         ERROR         ERROR / ERROR
+15 calc wrapping the agg                        client  ok            ok            n/a(admin) / n/a(admin)
+15b wrapped-agg calc + path sort                client  HIDDEN-VALUE  ok            n/a(admin) / n/a(admin)
+16 exists() in trusted filter                   author  ok            ok            n/a(admin) / n/a(admin)
+17 sort_input by the agg itself                 client  ok            ok            n/a(admin) / n/a(admin)
+18 filter_input on the agg + path sort          client  ok            ok            n/a(admin) / n/a(admin)
+07c filter_input path NOT                       client  ok            ok            n/a(admin) / n/a(admin)
+07d filter_input on related PK, OR              client  ok            ok            n/a(admin) / n/a(admin)
+12b agg with own filter + path sort             client  ok            ok            n/a(admin) / n/a(admin)
+12c agg with own filter + filter_input NOT      client  ok            ok            n/a(admin) / n/a(admin)
+12d agg with own filter alone                   client  ok            ok            n/a(admin) / n/a(admin)
+21 ad hoc Ash.Query.aggregate + filter_input NOTauthor  ERROR         ok            ERROR / n/a(admin)
+22 agg only in filter_input (not loaded) + path NOTclient  ok            ok            n/a(admin) / n/a(admin)
+22b agg only in filter_input, path NOT listed firstclient  ok            ok            n/a(admin) / n/a(admin)
+22c agg only in filter_input, alone             client  ok            ok            n/a(admin) / n/a(admin)
+23 sort_input by agg (not loaded) + filter_input path NOTclient  ok            ok            n/a(admin) / n/a(admin)
+23b sort_input by agg (not loaded) + sort_input pathclient  HIDDEN-VALUE  ok            n/a(admin) / n/a(admin)
+23c sort_input path then agg                    client  ok            ok            n/a(admin) / n/a(admin)
+22d agg only in filter_input + path OR in same filterclient  ok            ok            n/a(admin) / n/a(admin)
+22e path OR first, then agg, same filter        client  ok            ok            n/a(admin) / n/a(admin)
+23d sort_input by agg (not loaded) + filter_input path ORclient  HIDDEN-VALUE  ok            n/a(admin) / n/a(admin)
+23e sort (trusted) by agg, alone                author  ok            ok            n/a(admin) / n/a(admin)
+34 has_one+identity baseline                    client  ok            ok            n/a(admin) / n/a(admin)
+35 has_one+identity + sort_input path           client  ok            ok            n/a(admin) / n/a(admin)
+36 has_one+identity + filter_input NOT          client  ok            ok            n/a(admin) / n/a(admin)
+37 two-hop belongs_to baseline                  client  ok            ok            n/a(admin) / n/a(admin)
+38 two-hop + filter_input NOT through both hops client  ok            ok            n/a(admin) / n/a(admin)
+39 two-hop + sort_input path                    client  ok            ok            n/a(admin) / n/a(admin)
+39b two-hop agg + filter_input NOT through FIRST hop onlyclient  ok            ok            n/a(admin) / n/a(admin)
+20 count/exists/list/max + path sort            client  ok            ok            n/a(admin) / n/a(admin)
+30 has_one baseline                             client  ok            ok            n/a(admin) / n/a(admin)
+31 has_one + sort_input path                    client  ok            ok            n/a(admin) / n/a(admin)
+32 has_one + expr calc                          client  ok            ok            n/a(admin) / n/a(admin)
+33 has_one + trusted path filter                author  ok            ok            n/a(admin) / n/a(admin)
+40 has_many baseline                            client  ok            ok            n/a(admin) / n/a(admin)
+41 has_many + trusted path filter               author  ok            ok            n/a(admin) / n/a(admin)
+42 has_many + filter_input path                 client  ok            ok            n/a(admin) / n/a(admin)
+50 offset page + path sort                      client  ok            ok            n/a(admin) / n/a(admin)
+51 keyset page + path sort                      client  ok            ok            n/a(admin) / n/a(admin)
+52 keyset page, no path                         client  ok            ok            n/a(admin) / n/a(admin)
+    warning: unused import Ash.Expr
+    │
+  3 │ import Ash.Expr
+    │ ~
+    │
+    └─ scripts/run.exs:3:1
+

@@ -1,0 +1,237 @@
+
+######## data layer=ets  ash=3.34.4 ash_postgres=2.14.3 ash_sql=0.8.1  demo flags=true
+config :ash = [default_actions_require_atomic?: true, infer_generic_action_reactors?: false, many_to_many_destroy_destination_on_match?: true, bulk_actions_default_to_errors?: true, read_action_after_action_hooks_in_order?: true, allow_forbidden_field_for_relationships_by_default: true, known_types: [AshPostgres.Timestamptz, AshPostgres.TimestamptzUsec], default_page_type: :keyset, keep_read_action_loads_when_loading?: false, include_embedded_source_by_default?: false, redact_sensitive_values_in_errors?: true, policies: [no_filter_static_forbidden_reads?: false], default_string_length_count: :codepoints, show_keysets_for_all_actions?: false, transaction_rollback_on_error?: true]
+SEED (org A): 10 tasks, hours = 5,10,..,50, secret = 1..10. Member owns A01..A03 (hours 5,10,15) -> sees `hours` on those 3 only; never sees `secret`.
+EXPECTED            | true (admin) | member sees
+hours > 10          |      8       |   1  (A03 = 15)
+secret > 0          |     10       |   0   (integer, never visible)
+code contains "C"   |     10       |   0   (string, never visible; codes are "C1X".."C10X")
+hours is_nil        |      0       |   7  (the 7 hidden ones read as nil)
+no filter           |     10       |  10
+
+===== 1. TOP-LEVEL read: Ash.read(query |> filter(org_id == A), page: [..count: true], actor: a)
+admin  | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter_input | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+admin  | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter_input | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+admin  | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+admin  | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+member | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+   -- SQL for: top-level, member, none
+member | filter_input | offset | hours > 10      | Offset rows=1 count=1 more?=false  ["A03"]
+   -- SQL for: top-level, member, hours > 10
+member | filter_input | offset | code contains C | Offset rows=0 count=0 more?=false  []
+   -- SQL for: top-level, member, code contains C
+member | filter_input | offset | secret > 0      | Offset rows=0 count=0 more?=false  []
+   -- SQL for: top-level, member, secret > 0
+member | filter_input | offset | hours is_nil    | Offset rows=5 count=7 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+   -- SQL for: top-level, member, hours is_nil
+member | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter_input | keyset | hours > 10      | Keyset rows=1 count=1 more?=false  ["A03"]
+member | filter_input | keyset | code contains C | Keyset rows=0 count=0 more?=false  []
+member | filter_input | keyset | secret > 0      | Keyset rows=0 count=0 more?=false  []
+member | filter_input | keyset | hours is_nil    | Keyset rows=5 count=7 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+member | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+member | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+member | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+member | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+
+===== 1b. TOP-LEVEL Ash.count and Ash.aggregate, member, filter_input
+member | Ash.count | none            | 10
+   -- SQL for: Ash.count, member, none
+member | Ash.count | hours > 10      | 1
+   -- SQL for: Ash.count, member, hours > 10
+member | Ash.count | code contains C | 0
+   -- SQL for: Ash.count, member, code contains C
+member | Ash.count | secret > 0      | 0
+   -- SQL for: Ash.count, member, secret > 0
+member | Ash.count | hours is_nil    | 7
+   -- SQL for: Ash.count, member, hours is_nil
+
+===== 2. RELATIONSHIP load, the colleague's form: Ash.get(Org, A, load: [{rel, related_query}], actor: a)
+tasks        | admin  | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter_input | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+tasks        | admin  | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter_input | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+tasks        | admin  | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+tasks        | admin  | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+tasks        | member | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+   -- SQL for: tasks, member, none
+tasks        | member | filter_input | offset | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+   -- SQL for: tasks, member, hours > 10
+tasks        | member | filter_input | offset | code contains C | Offset rows=0 count=10 more?=false  []
+   -- SQL for: tasks, member, code contains C
+tasks        | member | filter_input | offset | secret > 0      | Offset rows=0 count=10 more?=false  []
+   -- SQL for: tasks, member, secret > 0
+tasks        | member | filter_input | offset | hours is_nil    | Offset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+   -- SQL for: tasks, member, hours is_nil
+tasks        | member | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter_input | keyset | hours > 10      | Keyset rows=1 count=8 more?=false  ["A03"]
+tasks        | member | filter_input | keyset | code contains C | Keyset rows=0 count=10 more?=false  []
+tasks        | member | filter_input | keyset | secret > 0      | Keyset rows=0 count=10 more?=false  []
+tasks        | member | filter_input | keyset | hours is_nil    | Keyset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+tasks        | member | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | member | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+tasks        | member | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | member | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter_input | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter_input | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+linked_tasks | member | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+   -- SQL for: linked_tasks, member, none
+linked_tasks | member | filter_input | offset | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+   -- SQL for: linked_tasks, member, hours > 10
+linked_tasks | member | filter_input | offset | code contains C | Offset rows=0 count=10 more?=false  []
+   -- SQL for: linked_tasks, member, code contains C
+linked_tasks | member | filter_input | offset | secret > 0      | Offset rows=0 count=10 more?=false  []
+   -- SQL for: linked_tasks, member, secret > 0
+linked_tasks | member | filter_input | offset | hours is_nil    | Offset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+   -- SQL for: linked_tasks, member, hours is_nil
+linked_tasks | member | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter_input | keyset | hours > 10      | Keyset rows=1 count=8 more?=false  ["A03"]
+linked_tasks | member | filter_input | keyset | code contains C | Keyset rows=0 count=10 more?=false  []
+linked_tasks | member | filter_input | keyset | secret > 0      | Keyset rows=0 count=10 more?=false  []
+linked_tasks | member | filter_input | keyset | hours is_nil    | Keyset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+linked_tasks | member | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | member | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+linked_tasks | member | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | member | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+
+===== 3. How the related query is built (member, has_many :tasks, offset page, filter_input) and how it is loaded
+filter |> for_read(actor) |> page  | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+filter |> for_read(actor) |> page  | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+filter |> for_read(actor) |> page  | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+filter |> for_read(actor) |> page  | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.Query.load |> read_one        | hours > 10      | Offset rows=0 count=8 more?=false  []
+for_read WITHOUT actor             | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.get(load:)                    | hours > 10      | Offset rows=0 count=8 more?=false  []
+for_read WITHOUT actor             | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=0 count=8 more?=false  []
+for_read WITHOUT actor             | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.load(record)                  | hours > 10      | Offset rows=0 count=8 more?=false  []
+for_read WITHOUT actor             | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+
+===== 4. The same count asked for directly: Ash.Query.aggregate(:n, :count, :tasks, query: q) on the parent, member
+member | filter_input | none            | n=10
+member | filter_input | hours > 10      | n=8
+member | filter_input | code contains C | n=10
+member | filter_input | secret > 0      | n=10
+member | filter_input | hours is_nil    | n=0
+member | filter       | none            | n=10
+member | filter       | hours > 10      | n=8
+member | filter       | code contains C | n=10
+member | filter       | secret > 0      | n=10
+member | filter       | hours is_nil    | n=0
+
+===== 5. Without count: does more? / page walking leak? member, has_many :tasks, limit 1, filter_input
+offset | hours > 10      | Offset rows=1 count=nil more?=false  ["A03"]
+keyset | hours > 10      | Keyset rows=1 count=nil more?=false  ["A03"]
+offset | code contains C | Offset rows=0 count=nil more?=false  []
+keyset | code contains C | Keyset rows=0 count=nil more?=false  []
+offset=0 | hours > 10 | Offset rows=1 count=nil more?=false  ["A03"]
+offset=1 | hours > 10 | Offset rows=0 count=nil more?=false  []
+offset=2 | hours > 10 | Offset rows=0 count=nil more?=false  []
+offset=7 | hours > 10 | Offset rows=0 count=nil more?=false  []
+offset=8 | hours > 10 | Offset rows=0 count=nil more?=false  []
+
+===== 6. EXTRACTION by the member through the relationship count (has_many :tasks, offset page limit 1, count: true)
+A07 as the member reads it: hours=#Ash.ForbiddenField<field: :hours, type: :attribute, ...> code=#Ash.ForbiddenField<field: :code, type: :attribute, ...>
+recovered hours of A07 = 35 (hi=35) in 10 requests; true value 35; rows returned by those requests: 0
+recovered code of A07 = "C7X" (true value "C7X"), at most 46 requests
+
+===== 7. sort_input on a hidden field (member, org A, limit 10): order and keyset cursor contents
+top-level   sort_input -hours: [{"A04", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000104"]}, {"A05", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000105"]}, {"A06", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000106"]}, {"A07", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000107"]}, {"A08", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000108"]}, {"A09", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000109"]}, {"A10", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000110"]}, {"A03", 15, [15, "00000000-0000-0000-0000-000000000103"]}, {"A02", 10, [10, "00000000-0000-0000-0000-000000000102"]}, {"A01", 5, [5, "00000000-0000-0000-0000-000000000101"]}]
+related     sort_input -hours: [{"A04", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000104"]}, {"A05", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000105"]}, {"A06", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000106"]}, {"A07", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000107"]}, {"A08", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000108"]}, {"A09", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000109"]}, {"A10", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000110"]}, {"A03", 15, [15, "00000000-0000-0000-0000-000000000103"]}, {"A02", 10, [10, "00000000-0000-0000-0000-000000000102"]}, {"A01", 5, [5, "00000000-0000-0000-0000-000000000101"]}]
+related     sort (not input) -hours [developer sort, not expected to be protected]: [{"A10", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [50, "00000000-0000-0000-0000-000000000110"]}, {"A09", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [45, "00000000-0000-0000-0000-000000000109"]}, {"A08", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [40, "00000000-0000-0000-0000-000000000108"]}, {"A07", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [35, "00000000-0000-0000-0000-000000000107"]}, {"A06", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [30, "00000000-0000-0000-0000-000000000106"]}, {"A05", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [25, "00000000-0000-0000-0000-000000000105"]}, {"A04", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [20, "00000000-0000-0000-0000-000000000104"]}, {"A03", 15, [15, "00000000-0000-0000-0000-000000000103"]}, {"A02", 10, [10, "00000000-0000-0000-0000-000000000102"]}, {"A01", 5, [5, "00000000-0000-0000-0000-000000000101"]}]
+   -- SQL for: sorts

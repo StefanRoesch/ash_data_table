@@ -1,0 +1,6 @@
+holder_read                     cold  loaded(after seed/before call/after call)=false/false/false  => ["TOPSECRET"]
+holder_read                     warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+holder_read_load_through        cold  loaded(after seed/before call/after call)=false/false/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+holder_read_load_through        warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+holder_ash_load                 cold  loaded(after seed/before call/after call)=false/false/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+holder_ash_load                 warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]

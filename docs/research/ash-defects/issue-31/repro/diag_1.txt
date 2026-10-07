@@ -1,0 +1,31 @@
+==> ash
+    warning: Igniter.Project.Module.find_all_matching_modules/2 is undefined (module Igniter.Project.Module is not available or is yet to be defined)
+    │
+ 88 │       Igniter.Project.Module.find_all_matching_modules(igniter, fn _, zipper ->
+    │                              ~
+    │
+    └─ (ash 3.34.4) lib/mix/tasks/helpers.ex:88:30: Ash.Mix.Tasks.Helpers.discover_domains/1
+
+    warning: Igniter.Code.Module.move_to_use/2 is undefined (module Igniter.Code.Module is not available or is yet to be defined)
+    │
+ 89 │         match?({:ok, _}, Igniter.Code.Module.move_to_use(zipper, Ash.Domain))
+    │                                              ~
+    │
+    └─ (ash 3.34.4) lib/mix/tasks/helpers.ex:89:46: Ash.Mix.Tasks.Helpers.discover_domains/1
+
+BUG_PATCH=1  (1 = `if field do` in place of `if field_name do` in Ash.Policy.Authorizer.authorize_sort)
+  sort_input(["secret", "-title"])  -- top-level secret (field policy); authorized order would be [6, 5, 4, 3, 2, 1], unauthorized [2, 3, 4, 1, 6, 5]
+      [diag authorize_sort] field_name=:secret path=[] field=:secret -> field policy consulted
+      [diag authorize_sort] field_name=:title path=[] field=:title -> field policy consulted
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id" FROM "tasks" AS t0 ORDER BY NULL::text::text, t0."title" DESC
+      member: [6, 5, 4, 3, 2, 1]
+  sort_input(["owner.name", "-title"])  -- owner.name (related field policy); authorized order would be [6, 5, 4, 3, 2, 1], unauthorized [2, 3, 4, 1, 6, 5]
+      [diag authorize_sort] field_name=nil path=[:owner] field=:name -> SKIPPED: returned unchanged
+      [diag authorize_sort] field_name=:title path=[] field=:title -> field policy consulted
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", p1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."people" AS p1 ON t0."owner_id" = p1."id" ORDER BY NULL::text::text, t0."title" DESC
+      member: [6, 5, 4, 3, 2, 1]
+  sort_input(["assignee.name", "-title"])  -- assignee.name (related read policy); authorized order would be [2, 4, 6, 5, 3, 1], unauthorized [2, 3, 4, 1, 6, 5]
+      [diag authorize_sort] field_name=nil path=[:assignee] field=:name -> SKIPPED: returned unchanged
+      [diag authorize_sort] field_name=:title path=[] field=:title -> field policy consulted
+      SQL: SELECT t0."id", t0."title", t0."assignee_id", t0."owner_id", u1."name"::text FROM "tasks" AS t0 LEFT OUTER JOIN "public"."users" AS u1 ON t0."assignee_id" = u1."id" ORDER BY u1."name"::text, t0."title" DESC
+      member: [2, 3, 4, 1, 6, 5]

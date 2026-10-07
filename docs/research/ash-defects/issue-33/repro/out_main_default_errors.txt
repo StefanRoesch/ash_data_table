@@ -1,0 +1,119 @@
+
+---- ETS ParentFP sort_input -max_secret
+
+Bread Crumbs:
+  > Exception raised in: Agg.Ets.ParentFP.read
+  > Exception raised in: Agg.Ets.ParentFP.read
+
+Unknown Error
+
+* ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom
+  :erlang.apply({:ok, Ash.Type.Integer, []}, :can_load?, [[]])
+  (ash 3.34.4) lib/ash/actions/read/read.ex:2307: anonymous fn/2 in Ash.Actions.Read.load_through_attributes/7
+  (stdlib 7.2) maps.erl:894: :maps.fold_1/4
+  (ash 3.34.4) lib/ash/actions/read/read.ex:88: Ash.Actions.Read.run/3
+
+---- PG  ParentFP sort_input -max_secret
+
+Bread Crumbs:
+  > Error returned from: Agg.Pg.ParentFP.read
+
+Unknown Error
+
+* ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:array, t}` where `t` itself follows the same conditions.
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:2078: Ecto.Adapters.Postgres.Connection.ecto_to_db/1
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:1108: Ecto.Adapters.Postgres.Connection.expr/3
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:1108: Ecto.Adapters.Postgres.Connection.expr/3
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:836: Ecto.Adapters.Postgres.Connection.order_by_expr/3
+  (elixir 1.19.4) lib/enum.ex:4555: Enum.map_intersperse_list/3
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:829: Ecto.Adapters.Postgres.Connection.order_by/3
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:190: Ecto.Adapters.Postgres.Connection.all/2
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres.ex:156: Ecto.Adapters.Postgres.prepare/2
+
+---- PG  ParentFP filter_input max_secret > 15
+
+Bread Crumbs:
+  > Error returned from: Agg.Pg.ParentFP.read
+
+Invalid Error
+
+* Invalid filter value `nil`: a value does not fit the type of its column
+  (postgrex 0.22.4) lib/postgrex/type_module.ex:1045: Postgrex.DefaultTypes.encode_params/3
+  (postgrex 0.22.4) lib/postgrex/query.ex:73: DBConnection.Query.Postgrex.Query.encode/3
+  (db_connection 2.10.2) lib/db_connection.ex:1459: DBConnection.encode/5
+  (db_connection 2.10.2) lib/db_connection.ex:1549: DBConnection.run_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:1606: DBConnection.run_with_retries/5
+  (db_connection 2.10.2) lib/db_connection.ex:810: DBConnection.parsed_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:802: DBConnection.prepare_execute/4
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:108: Ecto.Adapters.Postgres.Connection.prepare_execute/5
+
+---- PG  ParentFP filter_input n == 2
+
+Bread Crumbs:
+  > Error returned from: Agg.Pg.ParentFP.read
+
+Invalid Error
+
+* Invalid filter value `nil`: a value does not fit the type of its column
+  (postgrex 0.22.4) lib/postgrex/type_module.ex:1045: Postgrex.DefaultTypes.encode_params/3
+  (postgrex 0.22.4) lib/postgrex/query.ex:73: DBConnection.Query.Postgrex.Query.encode/3
+  (db_connection 2.10.2) lib/db_connection.ex:1459: DBConnection.encode/5
+  (db_connection 2.10.2) lib/db_connection.ex:1549: DBConnection.run_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:1606: DBConnection.run_with_retries/5
+  (db_connection 2.10.2) lib/db_connection.ex:810: DBConnection.parsed_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:802: DBConnection.prepare_execute/4
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:108: Ecto.Adapters.Postgres.Connection.prepare_execute/5
+
+---- PG  ParentA filter_input things.secret > 15
+
+Bread Crumbs:
+  > Error returned from: Agg.Pg.ParentA.read
+
+Invalid Error
+
+* Invalid filter value `nil`: a value does not fit the type of its column
+  (postgrex 0.22.4) lib/postgrex/type_module.ex:1045: Postgrex.DefaultTypes.encode_params/3
+  (postgrex 0.22.4) lib/postgrex/query.ex:73: DBConnection.Query.Postgrex.Query.encode/3
+  (db_connection 2.10.2) lib/db_connection.ex:1459: DBConnection.encode/5
+  (db_connection 2.10.2) lib/db_connection.ex:1549: DBConnection.run_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:1606: DBConnection.run_with_retries/5
+  (db_connection 2.10.2) lib/db_connection.ex:810: DBConnection.parsed_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:802: DBConnection.prepare_execute/4
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:108: Ecto.Adapters.Postgres.Connection.prepare_execute/5
+
+---- PG  Thing filter_input secret > 15
+
+Bread Crumbs:
+  > Error returned from: Agg.Pg.Thing.read
+
+Invalid Error
+
+* Invalid filter value `nil`: a value does not fit the type of its column
+  (postgrex 0.22.4) lib/postgrex/type_module.ex:1045: Postgrex.DefaultTypes.encode_params/3
+  (postgrex 0.22.4) lib/postgrex/query.ex:73: DBConnection.Query.Postgrex.Query.encode/3
+  (db_connection 2.10.2) lib/db_connection.ex:1459: DBConnection.encode/5
+  (db_connection 2.10.2) lib/db_connection.ex:1549: DBConnection.run_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:1606: DBConnection.run_with_retries/5
+  (db_connection 2.10.2) lib/db_connection.ex:810: DBConnection.parsed_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:802: DBConnection.prepare_execute/4
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:108: Ecto.Adapters.Postgres.Connection.prepare_execute/5
+
+---- PG  Thing filter_input secret == 20
+
+Bread Crumbs:
+  > Error returned from: Agg.Pg.Thing.read
+
+Invalid Error
+
+* Invalid filter value `nil`: a value does not fit the type of its column
+  (postgrex 0.22.4) lib/postgrex/type_module.ex:1045: Postgrex.DefaultTypes.encode_params/3
+  (postgrex 0.22.4) lib/postgrex/query.ex:73: DBConnection.Query.Postgrex.Query.encode/3
+  (db_connection 2.10.2) lib/db_connection.ex:1459: DBConnection.encode/5
+  (db_connection 2.10.2) lib/db_connection.ex:1549: DBConnection.run_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:1606: DBConnection.run_with_retries/5
+  (db_connection 2.10.2) lib/db_connection.ex:810: DBConnection.parsed_prepare_execute/5
+  (db_connection 2.10.2) lib/db_connection.ex:802: DBConnection.prepare_execute/4
+  (ecto_sql 3.14.0) lib/ecto/adapters/postgres/connection.ex:108: Ecto.Adapters.Postgres.Connection.prepare_execute/5
+
+---- PG  Thing filter_input name == t1 (control)
+OK: t1

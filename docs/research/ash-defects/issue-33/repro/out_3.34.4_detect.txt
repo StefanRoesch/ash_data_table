@@ -1,0 +1,64 @@
+field policies as Ash.Policy.Info reports them for Agg.Ets.Thing:
+  fields=[:secret] policies=[{:authorize_if, Ash.Policy.Check.ActorAttributeEquals, [value: :admin]}]
+  fields=[:rsecret] policies=[{:authorize_if, Ash.Policy.Check.ActorAttributeEquals, [value: :admin]}, {:authorize_if, Ash.Policy.Check.Expression, []}]
+  fields=[:name, :secret, :rsecret, :open, :visible, :parent_id] policies=[{:authorize_if, Ash.Policy.Check.Static, [result: true]}]
+Agg.Ets.ParentNA: authorizers=[]
+  WARN  Agg.Ets.ParentNA.n_secret (count of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.first_secret (first of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.secrets (list of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.max_secret (max of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.min_secret (min of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_secret (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.avg_secret (avg of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.joined (custom of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_r (sum of rsecret) reaches protected Agg.Ets.Thing field(s) [:rsecret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.list_r (list of rsecret) reaches protected Agg.Ets.Thing field(s) [:rsecret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.n_r (count of rsecret) reaches protected Agg.Ets.Thing field(s) [:rsecret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_open (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.big (count) reaches protected Agg.Ets.Thing field(s) [:secret] [in its filter]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_na (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.list_na (list of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_nofs (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_weight (sum of weight) reaches protected Agg.Ets.Tag field(s) [:weight]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.weights (list of weight) reaches protected Agg.Ets.Tag field(s) [:weight]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+  WARN  Agg.Ets.ParentNA.sum_weight_na (sum of weight) reaches protected Agg.Ets.Tag field(s) [:weight]; no field policy for the aggregate on the declaring resource (it has no policy authorizer at all)
+Agg.Ets.ParentA: authorizers=[Ash.Policy.Authorizer]
+  WARN  Agg.Ets.ParentA.n_secret (count of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.first_secret (first of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.secrets (list of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.max_secret (max of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.min_secret (min of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_secret (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.avg_secret (avg of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.joined (custom of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_r (sum of rsecret) reaches protected Agg.Ets.Thing field(s) [:rsecret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.list_r (list of rsecret) reaches protected Agg.Ets.Thing field(s) [:rsecret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.n_r (count of rsecret) reaches protected Agg.Ets.Thing field(s) [:rsecret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_open (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.big (count) reaches protected Agg.Ets.Thing field(s) [:secret] [in its filter]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_na (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.list_na (list of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_nofs (sum of secret) reaches protected Agg.Ets.Thing field(s) [:secret]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_weight (sum of weight) reaches protected Agg.Ets.Tag field(s) [:weight]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.weights (list of weight) reaches protected Agg.Ets.Tag field(s) [:weight]; no field policy for the aggregate on the declaring resource
+  WARN  Agg.Ets.ParentA.sum_weight_na (sum of weight) reaches protected Agg.Ets.Tag field(s) [:weight]; no field policy for the aggregate on the declaring resource
+Agg.Ets.ParentFP: authorizers=[Ash.Policy.Authorizer]
+  ok    Agg.Ets.ParentFP.n_secret: protected by its own field policy
+  ok    Agg.Ets.ParentFP.first_secret: protected by its own field policy
+  ok    Agg.Ets.ParentFP.secrets: protected by its own field policy
+  ok    Agg.Ets.ParentFP.max_secret: protected by its own field policy
+  ok    Agg.Ets.ParentFP.min_secret: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_secret: protected by its own field policy
+  ok    Agg.Ets.ParentFP.avg_secret: protected by its own field policy
+  ok    Agg.Ets.ParentFP.joined: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_r: protected by its own field policy
+  ok    Agg.Ets.ParentFP.list_r: protected by its own field policy
+  ok    Agg.Ets.ParentFP.n_r: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_open: protected by its own field policy
+  ok    Agg.Ets.ParentFP.big: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_na: protected by its own field policy
+  ok    Agg.Ets.ParentFP.list_na: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_nofs: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_weight: protected by its own field policy
+  ok    Agg.Ets.ParentFP.weights: protected by its own field policy
+  ok    Agg.Ets.ParentFP.sum_weight_na: protected by its own field policy

@@ -1,0 +1,15 @@
+diff -ru /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-31/repro/deps_hex/ash/lib/ash/policy/authorizer/authorizer.ex ash_3.34.4_diagnostic/lib/ash/policy/authorizer/authorizer.ex
+--- /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-31/repro/deps_hex/ash/lib/ash/policy/authorizer/authorizer.ex	2026-10-07 10:51:49.000000000 +0200
++++ ash_3.34.4_diagnostic/lib/ash/policy/authorizer/authorizer.ex	2026-10-07 11:05:22.773074542 +0200
+@@ -973,7 +973,10 @@
+     resource =
+       Ash.Resource.Info.related(authorizer.resource, path)
+ 
+-    if field_name do
++    # DIAGNOSTIC (ashbug-31): show which branch a sort_input entry takes
++    IO.puts("      [diag authorize_sort] field_name=#{inspect(field_name)} path=#{inspect(path)} field=#{inspect(field)} -> " <> if(field_name, do: "field policy consulted", else: "SKIPPED: returned unchanged"))
++
++    if (if System.get_env("BUG_PATCH") == "1", do: field, else: field_name) do
+       case field_condition(
+              resource,
+              field,

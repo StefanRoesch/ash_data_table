@@ -1,0 +1,17 @@
+ash 3.34.4
+
+######## ets: ParentFPR, member
+  load max_secret, secrets: P1: FORBIDDEN FORBIDDEN | P2: 70 [50, 70] | P3: FORBIDDEN FORBIDDEN
+  filter_input max_secret > 15   (unprotected answer P1,P2; protected answer P2): ["P2"]
+  filter_input max_secret is_nil (protected answer P1,P3): ["P1", "P3"]
+  filter_input big == 1          (unprotected answer P1; protected answer none): []
+  sort_input -max_secret,name: RAISED * Assumption failed: unhandled calculation in filter statement max_secret
+  sort_input name (control): ["P1", "P2", "P3"]
+
+######## pg: ParentFPR, member
+  load max_secret, secrets: P1: FORBIDDEN FORBIDDEN | P2: 70 [50, 70] | P3: FORBIDDEN FORBIDDEN
+  filter_input max_secret > 15   (unprotected answer P1,P2; protected answer P2): ["P2"]
+  filter_input max_secret is_nil (protected answer P1,P3): ["P1", "P3"]
+  filter_input big == 1          (unprotected answer P1; protected answer none): []
+  sort_input -max_secret,name: RAISED * Assumption failed: unhandled calculation in filter statement max_secret
+  sort_input name (control): ["P1", "P2", "P3"]

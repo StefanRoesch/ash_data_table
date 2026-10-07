@@ -1,0 +1,8 @@
+apply_field_level_auth          cold  loaded(after seed/before call/after call)=false/false/false  => "TOPSECRET"
+apply_field_level_auth          warm  loaded(after seed/before call/after call)=false/true/true  => #Ash.ForbiddenField<field: :secret, type: :attribute, ...>
+protected_fields                cold  loaded(after seed/before call/after call)=false/false/false  => []
+protected_fields                warm  loaded(after seed/before call/after call)=false/true/true  => [:secret]
+can_see_fields                  cold  loaded(after seed/before call/after call)=false/false/false  => {:ok, %{name: true, secret: true}}
+can_see_fields                  warm  loaded(after seed/before call/after call)=false/true/true  => {:ok, %{name: true, secret: false}}
+read                            cold  loaded(after seed/before call/after call)=false/false/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]
+read                            warm  loaded(after seed/before call/after call)=false/true/true  => [#Ash.ForbiddenField<field: :secret, type: :attribute, ...>]

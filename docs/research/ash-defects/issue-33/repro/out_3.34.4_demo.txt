@@ -1,0 +1,350 @@
+ash 3.34.4  ash_postgres 2.14.3  ash_sql 0.8.1  flags=demo
+no_filter_static_forbidden_reads?=false
+
+################ DATA LAYER ets ################
+
+== A. direct read of Thing (baseline: child READ + FIELD policy)
+  admin: t1(secret=10,rsecret=1)  t2(secret=20,rsecret=2)  t3(secret=300,rsecret=4)  t4(secret=50,rsecret=8)  t5(secret=70,rsecret=16)  t6(secret=1000,rsecret=32)
+  member: t1(secret=FORBIDDEN,rsecret=1)  t2(secret=FORBIDDEN,rsecret=FORBIDDEN)  t4(secret=FORBIDDEN,rsecret=FORBIDDEN)  t5(secret=FORBIDDEN,rsecret=16)
+
+== B. aggregates loaded on the parent (rows P1 | P2 | P3)
+  -- ParentNA
+    n              admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_secret       admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    any            admin: true | true | true   ;   member: true | true | false   ;   member authorize?:false: true | true | true
+    first_secret   admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    secrets        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20] | [50, 70] | []   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    max_secret     admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    min_secret     admin: 10 | 50 | 1000   ;   member: 10 | 50 | nil   ;   member authorize?:false: 10 | 50 | 1000
+    sum_secret     admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+    avg_secret     admin: 110.0 | 60.0 | 1000.0   ;   member: 15.0 | 60.0 | nil   ;   member authorize?:false: 110.0 | 60.0 | 1000.0
+    joined         admin: RAISED Invalid Error / * Data layer for Agg.Ets.ParentNA does not support using aggregates   ;   member: RAISED Invalid Error / * Data layer for Agg.Ets.ParentNA does not support using aggregates   ;   member authorize?:false: RAISED Invalid Error / * Data layer for Agg.Ets.ParentNA does not support using aggregates
+    sum_r          admin: 7 | 24 | 32   ;   member: 3 | 24 | nil   ;   member authorize?:false: 7 | 24 | 32
+    list_r         admin: [1, 2, 4] | [8, 16] | [32]   ;   member: [1, 2] | [8, 16] | []   ;   member authorize?:false: [1, 2, 4] | [8, 16] | [32]
+    n_r            admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_open         admin: 2 | 1 | 1   ;   member: 1 | 1 | 0   ;   member authorize?:false: 2 | 1 | 1
+    sum_open       admin: 310 | 70 | 1000   ;   member: 10 | 70 | nil   ;   member authorize?:false: 310 | 70 | 1000
+    big            admin: 2 | 2 | 1   ;   member: 1 | 2 | 0   ;   member authorize?:false: 2 | 2 | 1
+    sum_na         admin: 330 | 120 | 1000   ;   member: 330 | 120 | 1000   ;   member authorize?:false: 330 | 120 | 1000
+    list_na        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20, 300] | [50, 70] | [1000]   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    sum_weight     admin: 7 | nil | nil   ;   member: 3 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    n_tags         admin: 3 | 0 | 0   ;   member: 2 | 0 | 0   ;   member authorize?:false: 3 | 0 | 0
+    weights        admin: [1, 2, 4] | [] | []   ;   member: [1, 2] | [] | []   ;   member authorize?:false: [1, 2, 4] | [] | []
+    sum_weight_na  admin: 7 | nil | nil   ;   member: 7 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    sum_nofs       admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+  -- ParentA
+    n              admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_secret       admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    any            admin: true | true | true   ;   member: true | true | false   ;   member authorize?:false: true | true | true
+    first_secret   admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    secrets        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20] | [50, 70] | []   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    max_secret     admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    min_secret     admin: 10 | 50 | 1000   ;   member: 10 | 50 | nil   ;   member authorize?:false: 10 | 50 | 1000
+    sum_secret     admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+    avg_secret     admin: 110.0 | 60.0 | 1000.0   ;   member: 15.0 | 60.0 | nil   ;   member authorize?:false: 110.0 | 60.0 | 1000.0
+    joined         admin: RAISED Invalid Error / * Data layer for Agg.Ets.ParentA does not support using aggregates   ;   member: RAISED Invalid Error / * Data layer for Agg.Ets.ParentA does not support using aggregates   ;   member authorize?:false: RAISED Invalid Error / * Data layer for Agg.Ets.ParentA does not support using aggregates
+    sum_r          admin: 7 | 24 | 32   ;   member: 3 | 24 | nil   ;   member authorize?:false: 7 | 24 | 32
+    list_r         admin: [1, 2, 4] | [8, 16] | [32]   ;   member: [1, 2] | [8, 16] | []   ;   member authorize?:false: [1, 2, 4] | [8, 16] | [32]
+    n_r            admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_open         admin: 2 | 1 | 1   ;   member: 1 | 1 | 0   ;   member authorize?:false: 2 | 1 | 1
+    sum_open       admin: 310 | 70 | 1000   ;   member: 10 | 70 | nil   ;   member authorize?:false: 310 | 70 | 1000
+    big            admin: 2 | 2 | 1   ;   member: 1 | 2 | 0   ;   member authorize?:false: 2 | 2 | 1
+    sum_na         admin: 330 | 120 | 1000   ;   member: 330 | 120 | 1000   ;   member authorize?:false: 330 | 120 | 1000
+    list_na        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20, 300] | [50, 70] | [1000]   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    sum_weight     admin: 7 | nil | nil   ;   member: 3 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    n_tags         admin: 3 | 0 | 0   ;   member: 2 | 0 | 0   ;   member authorize?:false: 3 | 0 | 0
+    weights        admin: [1, 2, 4] | [] | []   ;   member: [1, 2] | [] | []   ;   member authorize?:false: [1, 2, 4] | [] | []
+    sum_weight_na  admin: 7 | nil | nil   ;   member: 7 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    sum_nofs       admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+  -- ParentFP
+    n              admin: 3 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 2 | 1
+    n_secret       admin: 3 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 2 | 1
+    any            admin: true | true | true   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: true | true | true
+    first_secret   admin: 300 | 70 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 300 | 70 | 1000
+    secrets        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    max_secret     admin: 300 | 70 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 300 | 70 | 1000
+    min_secret     admin: 10 | 50 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 10 | 50 | 1000
+    sum_secret     admin: 330 | 120 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 330 | 120 | 1000
+    avg_secret     admin: 110.0 | 60.0 | 1000.0   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 110.0 | 60.0 | 1000.0
+    joined         admin: RAISED Invalid Error / * Data layer for Agg.Ets.ParentFP does not support using aggregates   ;   member: RAISED Invalid Error / * Data layer for Agg.Ets.ParentFP does not support using aggregates   ;   member authorize?:false: RAISED Invalid Error / * Data layer for Agg.Ets.ParentFP does not support using aggregates
+    sum_r          admin: 7 | 24 | 32   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 7 | 24 | 32
+    list_r         admin: [1, 2, 4] | [8, 16] | [32]   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [1, 2, 4] | [8, 16] | [32]
+    n_r            admin: 3 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 2 | 1
+    n_open         admin: 2 | 1 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 2 | 1 | 1
+    sum_open       admin: 310 | 70 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 310 | 70 | 1000
+    big            admin: 2 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 2 | 2 | 1
+    sum_na         admin: 330 | 120 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 330 | 120 | 1000
+    list_na        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    sum_weight     admin: 7 | nil | nil   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 7 | nil | nil
+    n_tags         admin: 3 | 0 | 0   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 0 | 0
+    weights        admin: [1, 2, 4] | [] | []   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [1, 2, 4] | [] | []
+    sum_weight_na  admin: 7 | nil | nil   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 7 | nil | nil
+    sum_nofs       admin: 330 | 120 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 330 | 120 | 1000
+
+== C. outside input: sort_input / filter_input on the parent by an aggregate (names returned, in order)
+  -- ParentNA
+    sort_input -max_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input max_secret,name                     admin: [P2,P1,P3]   member: [P1,P2,P3]
+    sort_input -sum_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input -big,name                           admin: [P1,P2,P3]   member: [P2,P1,P3]
+    sort_input -sum_r,name                         admin: [P3,P2,P1]   member: [P3,P2,P1]
+    sort_input -sum_na,name                        admin: [P3,P1,P2]   member: [P3,P1,P2]
+    sort_input -sum_nofs,name (sortable? false)    admin: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Ets.ParentNA]   member: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Ets.ParentNA]
+    filter_input sum_nofs == 30 (filterable? false) admin: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]   member: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]
+    Ash.Query.sort(max_secret: :desc, name: :asc)  admin: [P3,P1,P2]   member: [P3,P2,P1]
+    filter_input max_secret > 15                   admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input max_secret > 25                   admin: [P1,P2,P3]   member: [P2]
+    filter_input max_secret > 100                  admin: [P1,P3]   member: []
+    filter_input max_secret is_nil true            admin: []   member: [P3]
+    filter_input sum_secret == 30                  admin: []   member: [P1]
+    filter_input sum_secret == 330                 admin: [P1]   member: []
+    filter_input n == 2                            admin: [P2]   member: [P1,P2]
+    filter_input n == 3                            admin: [P1]   member: []
+    filter_input any == true                       admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input big == 1                          admin: [P3]   member: [P1]
+    filter_input sum_na == 330                     admin: [P1]   member: [P1]
+    filter_input sum_weight == 1                   admin: []   member: []
+    Ash.Query.filter(max_secret > 15)              admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 15 (rel path)     admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 100 (rel path)    admin: [P1,P3]   member: []
+  -- ParentA
+    sort_input -max_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input max_secret,name                     admin: [P2,P1,P3]   member: [P1,P2,P3]
+    sort_input -sum_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input -big,name                           admin: [P1,P2,P3]   member: [P2,P1,P3]
+    sort_input -sum_r,name                         admin: [P3,P2,P1]   member: [P3,P2,P1]
+    sort_input -sum_na,name                        admin: [P3,P1,P2]   member: [P3,P1,P2]
+    sort_input -sum_nofs,name (sortable? false)    admin: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Ets.ParentA]   member: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Ets.ParentA]
+    filter_input sum_nofs == 30 (filterable? false) admin: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]   member: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]
+    Ash.Query.sort(max_secret: :desc, name: :asc)  admin: [P3,P1,P2]   member: [P3,P2,P1]
+    filter_input max_secret > 15                   admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input max_secret > 25                   admin: [P1,P2,P3]   member: [P2]
+    filter_input max_secret > 100                  admin: [P1,P3]   member: []
+    filter_input max_secret is_nil true            admin: []   member: [P3]
+    filter_input sum_secret == 30                  admin: []   member: [P1]
+    filter_input sum_secret == 330                 admin: [P1]   member: []
+    filter_input n == 2                            admin: [P2]   member: [P1,P2]
+    filter_input n == 3                            admin: [P1]   member: []
+    filter_input any == true                       admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input big == 1                          admin: [P3]   member: [P1]
+    filter_input sum_na == 330                     admin: [P1]   member: [P1]
+    filter_input sum_weight == 1                   admin: []   member: []
+    Ash.Query.filter(max_secret > 15)              admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 15 (rel path)     admin: [P1,P2,P3]   member: []
+    filter_input things.secret > 100 (rel path)    admin: [P1,P3]   member: []
+  -- ParentFP
+    sort_input -max_secret,name                    admin: [P3,P1,P2]   member: [RAISED Unknown Error / * ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom]
+    sort_input max_secret,name                     admin: [P2,P1,P3]   member: [RAISED Unknown Error / * ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom]
+    sort_input -sum_secret,name                    admin: [P3,P1,P2]   member: [RAISED Unknown Error / * ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom]
+    sort_input -big,name                           admin: [P1,P2,P3]   member: [RAISED Unknown Error / * ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom]
+    sort_input -sum_r,name                         admin: [P3,P2,P1]   member: [RAISED Unknown Error / * ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom]
+    sort_input -sum_na,name                        admin: [P3,P1,P2]   member: [RAISED Unknown Error / * ** (ArgumentError) you attempted to apply a function on {:ok, Ash.Type.Integer, []}. Modules (the first argument of apply) must always be an atom]
+    sort_input -sum_nofs,name (sortable? false)    admin: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Ets.ParentFP]   member: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Ets.ParentFP]
+    filter_input sum_nofs == 30 (filterable? false) admin: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]   member: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]
+    Ash.Query.sort(max_secret: :desc, name: :asc)  admin: [P3,P1,P2]   member: [P3,P2,P1]
+    filter_input max_secret > 15                   admin: [P1,P2,P3]   member: []
+    filter_input max_secret > 25                   admin: [P1,P2,P3]   member: []
+    filter_input max_secret > 100                  admin: [P1,P3]   member: []
+    filter_input max_secret is_nil true            admin: []   member: [P1,P2,P3]
+    filter_input sum_secret == 30                  admin: []   member: []
+    filter_input sum_secret == 330                 admin: [P1]   member: []
+    filter_input n == 2                            admin: [P2]   member: []
+    filter_input n == 3                            admin: [P1]   member: []
+    filter_input any == true                       admin: [P1,P2,P3]   member: []
+    filter_input big == 1                          admin: [P3]   member: []
+    filter_input sum_na == 330                     admin: [P1]   member: []
+    filter_input sum_weight == 1                   admin: []   member: []
+    Ash.Query.filter(max_secret > 15)              admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 15 (rel path)     admin: [P1,P2,P3]   member: []
+    filter_input things.secret > 100 (rel path)    admin: [P1,P3]   member: []
+
+== D. binary search by the member: recover max_secret of P1 through filter_input alone
+    ParentNA: recovered max_secret(P1) = 20 in 12 probes  (true value over rows the member may read: 20; over all rows: 300)
+    ParentA: recovered max_secret(P1) = 20 in 12 probes  (true value over rows the member may read: 20; over all rows: 300)
+    ParentFP: no probe ever matched: nothing recovered
+
+== E. baseline: outside input directly on Thing (field policy on the attribute itself)
+    filter_input secret > 15                       admin: [t2,t3,t4,t5,t6]   member: []
+    sort_input -secret,name                        admin: [t6,t3,t5,t4,t2,t1]   member: [t1,t2,t4,t5]
+    Ash.Query.sort(secret: :desc, name: :asc)      admin: [t6,t3,t5,t4,t2,t1]   member: [t5,t4,t2,t1]
+    filter_input rsecret > 0                       admin: [t1,t2,t3,t4,t5,t6]   member: [t1,t5]
+    sort_input -rsecret,name                       admin: [t6,t5,t4,t3,t2,t1]   member: [t2,t4,t5,t1]
+
+== F. Ash.can_see_fields on the parent for the member
+    ParentNA: {:ok, %{name: true, sum_secret: true, secrets: true}}
+    ParentA: {:ok, %{name: true, sum_secret: true, secrets: true}}
+    ParentFP: {:ok, %{name: true, sum_secret: false, secrets: false}}
+
+################ DATA LAYER pg ################
+
+== A. direct read of Thing (baseline: child READ + FIELD policy)
+  admin: t1(secret=10,rsecret=1)  t2(secret=20,rsecret=2)  t3(secret=300,rsecret=4)  t4(secret=50,rsecret=8)  t5(secret=70,rsecret=16)  t6(secret=1000,rsecret=32)
+  member: t1(secret=FORBIDDEN,rsecret=1)  t2(secret=FORBIDDEN,rsecret=FORBIDDEN)  t4(secret=FORBIDDEN,rsecret=FORBIDDEN)  t5(secret=FORBIDDEN,rsecret=16)
+
+== B. aggregates loaded on the parent (rows P1 | P2 | P3)
+  -- ParentNA
+    n              admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_secret       admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    any            admin: true | true | true   ;   member: true | true | false   ;   member authorize?:false: true | true | true
+    first_secret   admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    secrets        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20] | [50, 70] | []   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    max_secret     admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    min_secret     admin: 10 | 50 | 1000   ;   member: 10 | 50 | nil   ;   member authorize?:false: 10 | 50 | 1000
+    sum_secret     admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+    avg_secret     admin: 110.0 | 60.0 | 1000.0   ;   member: 15.0 | 60.0 | nil   ;   member authorize?:false: 110.0 | 60.0 | 1000.0
+    joined         admin: "10,20,300" | "50,70" | "1000"   ;   member: "10,20" | "50,70" | nil   ;   member authorize?:false: "10,20,300" | "50,70" | "1000"
+    sum_r          admin: 7 | 24 | 32   ;   member: 3 | 24 | nil   ;   member authorize?:false: 7 | 24 | 32
+    list_r         admin: [1, 2, 4] | [8, 16] | [32]   ;   member: [1, 2] | [8, 16] | []   ;   member authorize?:false: [1, 2, 4] | [8, 16] | [32]
+    n_r            admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_open         admin: 2 | 1 | 1   ;   member: 1 | 1 | 0   ;   member authorize?:false: 2 | 1 | 1
+    sum_open       admin: 310 | 70 | 1000   ;   member: 10 | 70 | nil   ;   member authorize?:false: 310 | 70 | 1000
+    big            admin: 2 | 2 | 1   ;   member: 1 | 2 | 0   ;   member authorize?:false: 2 | 2 | 1
+    sum_na         admin: 330 | 120 | 1000   ;   member: 330 | 120 | 1000   ;   member authorize?:false: 330 | 120 | 1000
+    list_na        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20, 300] | [50, 70] | [1000]   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    sum_weight     admin: 7 | nil | nil   ;   member: 3 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    n_tags         admin: 3 | 0 | 0   ;   member: 2 | 0 | 0   ;   member authorize?:false: 3 | 0 | 0
+    weights        admin: [1, 2, 4] | [] | []   ;   member: [1, 2] | [] | []   ;   member authorize?:false: [1, 2, 4] | [] | []
+    sum_weight_na  admin: 7 | nil | nil   ;   member: 7 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    sum_nofs       admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+  -- ParentA
+    n              admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_secret       admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    any            admin: true | true | true   ;   member: true | true | false   ;   member authorize?:false: true | true | true
+    first_secret   admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    secrets        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20] | [50, 70] | []   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    max_secret     admin: 300 | 70 | 1000   ;   member: 20 | 70 | nil   ;   member authorize?:false: 300 | 70 | 1000
+    min_secret     admin: 10 | 50 | 1000   ;   member: 10 | 50 | nil   ;   member authorize?:false: 10 | 50 | 1000
+    sum_secret     admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+    avg_secret     admin: 110.0 | 60.0 | 1000.0   ;   member: 15.0 | 60.0 | nil   ;   member authorize?:false: 110.0 | 60.0 | 1000.0
+    joined         admin: "10,20,300" | "50,70" | "1000"   ;   member: "10,20" | "50,70" | nil   ;   member authorize?:false: "10,20,300" | "50,70" | "1000"
+    sum_r          admin: 7 | 24 | 32   ;   member: 3 | 24 | nil   ;   member authorize?:false: 7 | 24 | 32
+    list_r         admin: [1, 2, 4] | [8, 16] | [32]   ;   member: [1, 2] | [8, 16] | []   ;   member authorize?:false: [1, 2, 4] | [8, 16] | [32]
+    n_r            admin: 3 | 2 | 1   ;   member: 2 | 2 | 0   ;   member authorize?:false: 3 | 2 | 1
+    n_open         admin: 2 | 1 | 1   ;   member: 1 | 1 | 0   ;   member authorize?:false: 2 | 1 | 1
+    sum_open       admin: 310 | 70 | 1000   ;   member: 10 | 70 | nil   ;   member authorize?:false: 310 | 70 | 1000
+    big            admin: 2 | 2 | 1   ;   member: 1 | 2 | 0   ;   member authorize?:false: 2 | 2 | 1
+    sum_na         admin: 330 | 120 | 1000   ;   member: 330 | 120 | 1000   ;   member authorize?:false: 330 | 120 | 1000
+    list_na        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: [10, 20, 300] | [50, 70] | [1000]   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    sum_weight     admin: 7 | nil | nil   ;   member: 3 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    n_tags         admin: 3 | 0 | 0   ;   member: 2 | 0 | 0   ;   member authorize?:false: 3 | 0 | 0
+    weights        admin: [1, 2, 4] | [] | []   ;   member: [1, 2] | [] | []   ;   member authorize?:false: [1, 2, 4] | [] | []
+    sum_weight_na  admin: 7 | nil | nil   ;   member: 7 | nil | nil   ;   member authorize?:false: 7 | nil | nil
+    sum_nofs       admin: 330 | 120 | 1000   ;   member: 30 | 120 | nil   ;   member authorize?:false: 330 | 120 | 1000
+  -- ParentFP
+    n              admin: 3 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 2 | 1
+    n_secret       admin: 3 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 2 | 1
+    any            admin: true | true | true   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: true | true | true
+    first_secret   admin: 300 | 70 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 300 | 70 | 1000
+    secrets        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    max_secret     admin: 300 | 70 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 300 | 70 | 1000
+    min_secret     admin: 10 | 50 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 10 | 50 | 1000
+    sum_secret     admin: 330 | 120 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 330 | 120 | 1000
+    avg_secret     admin: 110.0 | 60.0 | 1000.0   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 110.0 | 60.0 | 1000.0
+    joined         admin: "10,20,300" | "50,70" | "1000"   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: "10,20,300" | "50,70" | "1000"
+    sum_r          admin: 7 | 24 | 32   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 7 | 24 | 32
+    list_r         admin: [1, 2, 4] | [8, 16] | [32]   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [1, 2, 4] | [8, 16] | [32]
+    n_r            admin: 3 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 2 | 1
+    n_open         admin: 2 | 1 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 2 | 1 | 1
+    sum_open       admin: 310 | 70 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 310 | 70 | 1000
+    big            admin: 2 | 2 | 1   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 2 | 2 | 1
+    sum_na         admin: 330 | 120 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 330 | 120 | 1000
+    list_na        admin: [10, 20, 300] | [50, 70] | [1000]   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [10, 20, 300] | [50, 70] | [1000]
+    sum_weight     admin: 7 | nil | nil   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 7 | nil | nil
+    n_tags         admin: 3 | 0 | 0   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 3 | 0 | 0
+    weights        admin: [1, 2, 4] | [] | []   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: [1, 2, 4] | [] | []
+    sum_weight_na  admin: 7 | nil | nil   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 7 | nil | nil
+    sum_nofs       admin: 330 | 120 | 1000   ;   member: FORBIDDEN | FORBIDDEN | FORBIDDEN   ;   member authorize?:false: 330 | 120 | 1000
+
+== C. outside input: sort_input / filter_input on the parent by an aggregate (names returned, in order)
+  -- ParentNA
+    sort_input -max_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input max_secret,name                     admin: [P2,P1,P3]   member: [P1,P2,P3]
+    sort_input -sum_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input -big,name                           admin: [P1,P2,P3]   member: [P2,P1,P3]
+    sort_input -sum_r,name                         admin: [P3,P2,P1]   member: [P3,P2,P1]
+    sort_input -sum_na,name                        admin: [P3,P1,P2]   member: [P3,P1,P2]
+    sort_input -sum_nofs,name (sortable? false)    admin: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Pg.ParentNA]   member: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Pg.ParentNA]
+    filter_input sum_nofs == 30 (filterable? false) admin: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]   member: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]
+    Ash.Query.sort(max_secret: :desc, name: :asc)  admin: [P3,P1,P2]   member: [P3,P2,P1]
+    filter_input max_secret > 15                   admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input max_secret > 25                   admin: [P1,P2,P3]   member: [P2]
+    filter_input max_secret > 100                  admin: [P1,P3]   member: []
+    filter_input max_secret is_nil true            admin: []   member: [P3]
+    filter_input sum_secret == 30                  admin: []   member: [P1]
+    filter_input sum_secret == 330                 admin: [P1]   member: []
+    filter_input n == 2                            admin: [P2]   member: [P1,P2]
+    filter_input n == 3                            admin: [P1]   member: []
+    filter_input any == true                       admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input big == 1                          admin: [P3]   member: [P1]
+    filter_input sum_na == 330                     admin: [P1]   member: [P1]
+    filter_input sum_weight == 1                   admin: []   member: []
+    Ash.Query.filter(max_secret > 15)              admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 15 (rel path)     admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 100 (rel path)    admin: [P1,P3]   member: []
+  -- ParentA
+    sort_input -max_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input max_secret,name                     admin: [P2,P1,P3]   member: [P1,P2,P3]
+    sort_input -sum_secret,name                    admin: [P3,P1,P2]   member: [P3,P2,P1]
+    sort_input -big,name                           admin: [P1,P2,P3]   member: [P2,P1,P3]
+    sort_input -sum_r,name                         admin: [P3,P2,P1]   member: [P3,P2,P1]
+    sort_input -sum_na,name                        admin: [P3,P1,P2]   member: [P3,P1,P2]
+    sort_input -sum_nofs,name (sortable? false)    admin: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Pg.ParentA]   member: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Pg.ParentA]
+    filter_input sum_nofs == 30 (filterable? false) admin: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]   member: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]
+    Ash.Query.sort(max_secret: :desc, name: :asc)  admin: [P3,P1,P2]   member: [P3,P2,P1]
+    filter_input max_secret > 15                   admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input max_secret > 25                   admin: [P1,P2,P3]   member: [P2]
+    filter_input max_secret > 100                  admin: [P1,P3]   member: []
+    filter_input max_secret is_nil true            admin: []   member: [P3]
+    filter_input sum_secret == 30                  admin: []   member: [P1]
+    filter_input sum_secret == 330                 admin: [P1]   member: []
+    filter_input n == 2                            admin: [P2]   member: [P1,P2]
+    filter_input n == 3                            admin: [P1]   member: []
+    filter_input any == true                       admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input big == 1                          admin: [P3]   member: [P1]
+    filter_input sum_na == 330                     admin: [P1]   member: [P1]
+    filter_input sum_weight == 1                   admin: []   member: []
+    Ash.Query.filter(max_secret > 15)              admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 15 (rel path)     admin: [P1,P2,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input things.secret > 100 (rel path)    admin: [P1,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+  -- ParentFP
+    sort_input -max_secret,name                    admin: [P3,P1,P2]   member: [RAISED Unknown Error / * ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:arr]
+    sort_input max_secret,name                     admin: [P2,P1,P3]   member: [RAISED Unknown Error / * ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:arr]
+    sort_input -sum_secret,name                    admin: [P3,P1,P2]   member: [RAISED Unknown Error / * ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:arr]
+    sort_input -big,name                           admin: [P1,P2,P3]   member: [RAISED Unknown Error / * ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:arr]
+    sort_input -sum_r,name                         admin: [P3,P2,P1]   member: [RAISED Unknown Error / * ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:arr]
+    sort_input -sum_na,name                        admin: [P3,P1,P2]   member: [RAISED Unknown Error / * ** (ArgumentError) unsupported type `{:ok, Ash.Type.Integer, []}`. The type can either be an atom, a string or a tuple of the form `{:map, t}` or `{:arr]
+    sort_input -sum_nofs,name (sortable? false)    admin: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Pg.ParentFP]   member: [RAISED Invalid Error / * :sum_nofs is not sortable on Agg.Pg.ParentFP]
+    filter_input sum_nofs == 30 (filterable? false) admin: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]   member: [RAISED Invalid Error / * sum_nofs cannot be referenced in filters]
+    Ash.Query.sort(max_secret: :desc, name: :asc)  admin: [P3,P1,P2]   member: [P3,P2,P1]
+    filter_input max_secret > 15                   admin: [P1,P2,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input max_secret > 25                   admin: [P1,P2,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input max_secret > 100                  admin: [P1,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input max_secret is_nil true            admin: []   member: [P1,P2,P3]
+    filter_input sum_secret == 30                  admin: []   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input sum_secret == 330                 admin: [P1]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input n == 2                            admin: [P2]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input n == 3                            admin: [P1]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input any == true                       admin: [P1,P2,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input big == 1                          admin: [P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input sum_na == 330                     admin: [P1]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input sum_weight == 1                   admin: []   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    Ash.Query.filter(max_secret > 15)              admin: [P1,P2,P3]   member: [P1,P2]
+    filter_input things.secret > 15 (rel path)     admin: [P1,P2,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    filter_input things.secret > 100 (rel path)    admin: [P1,P3]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+
+== D. binary search by the member: recover max_secret of P1 through filter_input alone
+    ParentNA: recovered max_secret(P1) = 20 in 12 probes  (true value over rows the member may read: 20; over all rows: 300)
+    ParentA: recovered max_secret(P1) = 20 in 12 probes  (true value over rows the member may read: 20; over all rows: 300)
+    ParentFP: RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column
+
+== E. baseline: outside input directly on Thing (field policy on the attribute itself)
+    filter_input secret > 15                       admin: [t2,t3,t4,t5,t6]   member: [RAISED Invalid Error / * Invalid filter value `nil`: a value does not fit the type of its column]
+    sort_input -secret,name                        admin: [t6,t3,t5,t4,t2,t1]   member: [t1,t2,t4,t5]
+    Ash.Query.sort(secret: :desc, name: :asc)      admin: [t6,t3,t5,t4,t2,t1]   member: [t5,t4,t2,t1]
+    filter_input rsecret > 0                       admin: [t1,t2,t3,t4,t5,t6]   member: [t1,t5]
+    sort_input -rsecret,name                       admin: [t6,t5,t4,t3,t2,t1]   member: [t2,t4,t5,t1]
+
+== F. Ash.can_see_fields on the parent for the member
+    ParentNA: {:ok, %{name: true, sum_secret: true, secrets: true}}
+    ParentA: {:ok, %{name: true, sum_secret: true, secrets: true}}
+    ParentFP: {:ok, %{name: true, sum_secret: false, secrets: false}}

@@ -1,0 +1,106 @@
+ash 3.34.4  elixir 1.19.4
+
+=== control: plain string attribute
+    generate([otp_app: :repro, action_entrypoints: [{Repro.Plain, :read}]])
+    OK Repro.Plain.code filterable?=true operators=[:is_nil, :==, :!=, :in, :<, :>, :<=, :>=] functions=[:contains, :is_distinct_from, :is_not_distinct_from, :string_ends_with, :string_starts_with]
+
+=== control: filterable?: false
+    generate([otp_app: :repro, action_entrypoints: [{Repro.NotFilterable, :read}]])
+    OK Repro.NotFilterable.code filterable?=false operators=nil functions=nil
+
+=== string attribute, filterable?: :simple_equality
+    generate([otp_app: :repro, action_entrypoints: [{Repro.WithFlag, :read}]])
+    RAISED ** (FunctionClauseError) no function clause matching in Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists/5
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:146: Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists(%Ash.Info.Manifest.Field{name: :code, kind: :attribute, type: %Ash.Info.Manifest.Type{kind: :string, name: "String", module: Ash.Type.String, constraints: [trim?: true, allow_empty?: false], 
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:48: Ash.Info.Manifest.Generator.ResourceBuilder.build_fields/4
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:40: Ash.Info.Manifest.Generator.ResourceBuilder.build/3
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+
+
+=== same, entrypoints only (no otp_app)
+    generate([action_entrypoints: [{Repro.WithFlag, :read}]])
+    RAISED ** (KeyError) key :otp_app not found in:
+
+    [action_entrypoints: [{Repro.WithFlag, :read}]]
+
+    (elixir 1.19.4) lib/keyword.ex:608: Keyword.fetch!/2
+    (ash 3.34.4) lib/ash/info/manifest/generator.ex:67: Ash.Info.Manifest.Generator.generate/1
+    run.exs:8: anonymous fn/2 in :elixir_compiler_3.__FILE__/1
+    run.exs:26: (file)
+    (elixir 1.19.4) src/elixir_compiler.erl:81: :elixir_compiler.dispatch/4
+    (elixir 1.19.4) src/elixir_compiler.erl:56: :elixir_compiler.compile/4
+
+
+=== same, via the create action
+    generate([otp_app: :repro, action_entrypoints: [{Repro.WithFlag, :create}]])
+    RAISED ** (FunctionClauseError) no function clause matching in Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists/5
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:146: Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists(%Ash.Info.Manifest.Field{name: :code, kind: :attribute, type: %Ash.Info.Manifest.Type{kind: :string, name: "String", module: Ash.Type.String, constraints: [trim?: true, allow_empty?: false], 
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:48: Ash.Info.Manifest.Generator.ResourceBuilder.build_fields/4
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:40: Ash.Info.Manifest.Generator.ResourceBuilder.build/3
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+
+
+=== integer attribute with the flag
+    generate([otp_app: :repro, action_entrypoints: [{Repro.IntFlag, :read}]])
+    RAISED ** (FunctionClauseError) no function clause matching in Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists/5
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:146: Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists(%Ash.Info.Manifest.Field{name: :n, kind: :attribute, type: %Ash.Info.Manifest.Type{kind: :integer, name: "Integer", module: Ash.Type.Integer, constraints: [], allow_nil?: nil, values: nil, me
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:48: Ash.Info.Manifest.Generator.ResourceBuilder.build_fields/4
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:40: Ash.Info.Manifest.Generator.ResourceBuilder.build/3
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+
+
+=== calculation with the flag
+    generate([otp_app: :repro, action_entrypoints: [{Repro.CalcFlag, :read}]])
+    RAISED ** (FunctionClauseError) no function clause matching in Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists/5
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:146: Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists(%Ash.Info.Manifest.Field{name: :upper, kind: :calculation, type: %Ash.Info.Manifest.Type{kind: :string, name: "String", module: Ash.Type.String, constraints: [trim?: true, allow_empty?: false
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:49: Ash.Info.Manifest.Generator.ResourceBuilder.build_fields/4
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:40: Ash.Info.Manifest.Generator.ResourceBuilder.build/3
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator.ex:122: Ash.Info.Manifest.Generator.generate/1
+
+
+=== aggregate with the flag
+    generate([otp_app: :repro, action_entrypoints: [{Repro.AggFlag, :read}]])
+    RAISED ** (FunctionClauseError) no function clause matching in Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists/5
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:146: Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists(%Ash.Info.Manifest.Field{name: :child_count, kind: :aggregate, type: %Ash.Info.Manifest.Type{kind: :integer, name: "Integer", module: Ash.Type.Integer, constraints: [], allow_nil?: nil, value
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:50: Ash.Info.Manifest.Generator.ResourceBuilder.build_fields/4
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:40: Ash.Info.Manifest.Generator.ResourceBuilder.build/3
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator.ex:122: Ash.Info.Manifest.Generator.generate/1
+
+
+=== Ash.DataLayer.Simple with the flag
+    generate([otp_app: :repro, action_entrypoints: [{Repro.SimpleDL, :read}]])
+    RAISED ** (FunctionClauseError) no function clause matching in Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists/5
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:146: Ash.Info.Manifest.Generator.ResourceBuilder.resolve_filter_lists(%Ash.Info.Manifest.Field{name: :code, kind: :attribute, type: %Ash.Info.Manifest.Type{kind: :string, name: "String", module: Ash.Type.String, constraints: [trim?: true, allow_empty?: false], 
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:48: Ash.Info.Manifest.Generator.ResourceBuilder.build_fields/4
+    (ash 3.34.4) lib/ash/info/manifest/generator/resource_builder.ex:40: Ash.Info.Manifest.Generator.ResourceBuilder.build/3
+    (elixir 1.19.4) lib/enum.ex:1688: Enum."-map/2-lists^map/1-1-"/2
+
+
+=== otp_app only
+    generate([otp_app: :repro])
+
+=== what Ash itself allows on the :simple_equality field (ETS)
+
+10:56:23.322 [debug] Creating Repro.WithFlag:
+
+Setting %{code: "a", id: "20255db2-beca-419e-b4d7-9cca3cb8195f"}
+
+    code == "a": allowed (1 rows)
+    code in ["a"]: rejected: Invalid Error | * code cannot be referenced in filters, except by simple equality |     at filter
+    code != "b": rejected: Invalid Error | * code cannot be referenced in filters, except by simple equality |     at filter
+    is_nil(code): rejected: Invalid Error | * code cannot be referenced in filters, except by simple equality |     at filter
+    contains(code, "a"): rejected: Invalid Error | * code cannot be referenced in filters, except by simple equality |     at filter
+    code > "0": rejected: Invalid Error | * code cannot be referenced in filters, except by simple equality |     at filter
+    code == "a" or code == "b": rejected: Invalid Error | * code cannot be referenced in filters, except by simple equality |     at filter

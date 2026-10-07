@@ -1,0 +1,440 @@
+==> stream_data
+Compiling 3 files (.ex)
+Generated stream_data app
+==> ymlr
+Compiling 3 files (.ex)
+Generated ymlr app
+==> multigraph
+Compiling 16 files (.ex)
+Generated multigraph app
+==> ashbug
+===> Analyzing applications...
+===> Compiling yamerl
+==> ets
+Compiling 7 files (.ex)
+Generated ets app
+==> iterex
+Compiling 48 files (.ex)
+Generated iterex app
+==> decimal
+Compiling 4 files (.ex)
+Generated decimal app
+==> jason
+Compiling 10 files (.ex)
+Generated jason app
+==> spark
+Compiling 46 files (.ex)
+Generated spark app
+==> yaml_elixir
+Compiling 6 files (.ex)
+Generated yaml_elixir app
+==> ashbug
+===> Analyzing applications...
+===> Compiling telemetry
+==> ecto
+Compiling 56 files (.ex)
+Generated ecto app
+==> db_connection
+Compiling 18 files (.ex)
+Generated db_connection app
+==> splode
+Compiling 5 files (.ex)
+Generated splode app
+==> reactor
+Compiling 113 files (.ex)
+Generated reactor app
+==> postgrex
+Compiling 70 files (.ex)
+Compiling lib/postgrex/default_types.ex (it's taking more than 10s)
+Generated postgrex app
+==> ecto_sql
+Compiling 25 files (.ex)
+Generated ecto_sql app
+==> simple_sat
+Compiling 1 file (.ex)
+Generated simple_sat app
+==> crux
+Compiling 20 files (.ex)
+Generated crux app
+==> ash
+Compiling 633 files (.ex)
+Compiling lib/ash/reactor/reactor.ex (it's taking more than 10s)
+Compiling lib/ash/policy/authorizer/authorizer.ex (it's taking more than 10s)
+Compiling lib/ash/changeset/changeset.ex (it's taking more than 10s)
+Compiling lib/ash.ex (it's taking more than 10s)
+Compiling lib/ash/resource/dsl.ex (it's taking more than 10s)
+    warning: Igniter.Project.Module.find_all_matching_modules/2 is undefined (module Igniter.Project.Module is not available or is yet to be defined)
+    │
+ 88 │       Igniter.Project.Module.find_all_matching_modules(igniter, fn _, zipper ->
+    │                              ~
+    │
+    └─ lib/mix/tasks/helpers.ex:88:30: Ash.Mix.Tasks.Helpers.discover_domains/1
+
+    warning: Igniter.Code.Module.move_to_use/2 is undefined (module Igniter.Code.Module is not available or is yet to be defined)
+    │
+ 89 │         match?({:ok, _}, Igniter.Code.Module.move_to_use(zipper, Ash.Domain))
+    │                                              ~
+    │
+    └─ lib/mix/tasks/helpers.ex:89:46: Ash.Mix.Tasks.Helpers.discover_domains/1
+
+Generated ash app
+==> ash_sql
+Compiling 19 files (.ex)
+Compiling lib/expr.ex (it's taking more than 10s)
+Generated ash_sql app
+==> ash_postgres
+Compiling 70 files (.ex)
+Compiling lib/data_layer.ex (it's taking more than 10s)
+     warning: Igniter.Inflex.singularize/1 is undefined (module Igniter.Inflex is not available or is yet to be defined)
+     │
+ 784 │         {Igniter.Inflex.singularize(table), :has_one}
+     │                         ~
+     │
+     └─ lib/resource_generator/spec.ex:784:25: AshPostgres.ResourceGenerator.Spec.build_has_relationship/4
+     └─ lib/resource_generator/spec.ex:807:23: AshPostgres.ResourceGenerator.Spec.safe_pluralize/1
+     └─ lib/resource_generator/spec.ex:1037:27: AshPostgres.ResourceGenerator.Spec.build_alternative_name/2
+     └─ lib/resource_generator/spec.ex:1042:36: AshPostgres.ResourceGenerator.Spec.build_alternative_name/2
+     └─ lib/resource_generator/spec.ex:1057:23: AshPostgres.ResourceGenerator.Spec.default_belongs_to_name/2
+
+     warning: Igniter.Inflex.pluralize/1 is undefined (module Igniter.Inflex is not available or is yet to be defined)
+     │
+ 808 │     |> Igniter.Inflex.pluralize()
+     │                       ~
+     │
+     └─ lib/resource_generator/spec.ex:808:23: AshPostgres.ResourceGenerator.Spec.safe_pluralize/1
+
+     warning: Owl.IO.puts/1 is undefined (module Owl.IO is not available or is yet to be defined)
+     │
+ 974 │     Owl.IO.puts(info)
+     │            ~
+     │
+     └─ lib/resource_generator/spec.ex:974:12: AshPostgres.ResourceGenerator.Spec.prompt_relationship_name/4
+
+     warning: Owl.IO.input/1 is undefined (module Owl.IO is not available or is yet to be defined)
+     │
+ 997 │     Owl.IO.input(
+     │            ~
+     │
+     └─ lib/resource_generator/spec.ex:997:12: AshPostgres.ResourceGenerator.Spec.prompt_relationship_name/4
+
+Generated ash_postgres app
+==> ashbug
+Compiling 3 files (.ex)
+Generated ashbug app
+
+######## data layer=pg  ash=3.34.4 ash_postgres=2.14.3 ash_sql=0.8.1  demo flags=false
+config :ash = [default_string_length_count: :mixed]
+SEED (org A): 10 tasks, hours = 5,10,..,50, secret = 1..10. Member owns A01..A03 (hours 5,10,15) -> sees `hours` on those 3 only; never sees `secret`.
+EXPECTED            | true (admin) | member sees
+hours > 10          |      8       |   1  (A03 = 15)
+secret > 0          |     10       |   0   (integer, never visible)
+code contains "C"   |     10       |   0   (string, never visible; codes are "C1X".."C10X")
+hours is_nil        |      0       |   7  (the 7 hidden ones read as nil)
+no filter           |     10       |  10
+
+===== 1. TOP-LEVEL read: Ash.read(query |> filter(org_id == A), page: [..count: true], actor: a)
+admin  | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter_input | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+admin  | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter_input | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter_input | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+admin  | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+admin  | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+admin  | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+admin  | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+member | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+   -- SQL for: top-level, member, none
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE (t0."org_id"::uuid = $2::uuid)
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>]
+   SQL> SELECT t0."id", t0."title", t0."hours", t0."owner_id", t0."org_id", (t0."owner_id"::uuid = $1::uuid)::boolean FROM "tasks" AS t0 WHERE (t0."org_id"::uuid = $2::uuid) ORDER BY t0."title", t0."id" LIMIT $3
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+member | filter_input | offset | hours > 10      | Offset rows=1 count=1 more?=false  ["A03"]
+   -- SQL for: top-level, member, hours > 10
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE ((CASE WHEN (t0."owner_id" = $2::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END)::bigint > $3) AND (t0."org_id"::uuid = $4::uuid)
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 10, <<...>>]
+   SQL> SELECT t0."id", t0."title", t0."hours", t0."owner_id", t0."org_id", (t0."owner_id"::uuid = $1::uuid)::boolean FROM "tasks" AS t0 WHERE ((CASE WHEN (t0."owner_id" = $2::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END)::bigint > $3) AND (t0."org_id"::uuid = $4::uuid) ORDER BY t0."title", t0."id" LIMIT $5
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+member | filter_input | offset | code contains C | Offset rows=0 count=0 more?=false  []
+   -- SQL for: top-level, member, code contains C
+   SQL> SELECT t0."id", t0."title", t0."hours", t0."owner_id", t0."org_id", (t0."owner_id"::uuid = $1::uuid)::boolean FROM "tasks" AS t0 WHERE (NULL::varchar LIKE $2) AND (t0."org_id"::uuid = $3::uuid) ORDER BY t0."title", t0."id" LIMIT $4
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, "%C%", <<0, ...>>, ...]
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE (NULL::varchar LIKE $2) AND (t0."org_id"::uuid = $3::uuid)
+        params=[0, "%C%", <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>]
+member | filter_input | offset | secret > 0      | RAISED Invalid filter value `nil`: a value does not fit the type of its column (postgrex 0.22.4) lib/postgrex/type_mo
+   -- SQL for: top-level, member, secret > 0
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE (NULL > $2) AND (t0."org_id"::uuid = $3::uuid)
+        params=[0, 0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>]
+   SQL> SELECT t0."id", t0."title", t0."hours", t0."owner_id", t0."org_id", (t0."owner_id"::uuid = $1::uuid)::boolean FROM "tasks" AS t0 WHERE (NULL > $2) AND (t0."org_id"::uuid = $3::uuid) ORDER BY t0."title", t0."id" LIMIT $4
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 0, <<0, ...>>, ...]
+member | filter_input | offset | hours is_nil    | Offset rows=5 count=7 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+   -- SQL for: top-level, member, hours is_nil
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE ((CASE WHEN (t0."owner_id"::uuid = $2::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END) IS NULL) AND (t0."org_id"::uuid = $3::uuid)
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, ...>>]
+   SQL> SELECT t0."id", t0."title", t0."hours", t0."owner_id", t0."org_id", (t0."owner_id"::uuid = $1::uuid)::boolean FROM "tasks" AS t0 WHERE ((CASE WHEN (t0."owner_id"::uuid = $2::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END) IS NULL) AND (t0."org_id"::uuid = $3::uuid) ORDER BY t0."title", t0."id" LIMIT $4
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+member | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter_input | keyset | hours > 10      | Keyset rows=1 count=1 more?=false  ["A03"]
+member | filter_input | keyset | code contains C | Keyset rows=0 count=0 more?=false  []
+member | filter_input | keyset | secret > 0      | RAISED Invalid filter value `nil`: a value does not fit the type of its column (postgrex 0.22.4) lib/postgrex/type_mo
+member | filter_input | keyset | hours is_nil    | Keyset rows=5 count=7 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+member | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+member | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+member | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+member | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+member | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+
+===== 1b. TOP-LEVEL Ash.count and Ash.aggregate, member, filter_input
+member | Ash.count | none            | 10
+   -- SQL for: Ash.count, member, none
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE (t0."org_id"::uuid = $2::uuid)
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>]
+member | Ash.count | hours > 10      | 1
+   -- SQL for: Ash.count, member, hours > 10
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE ((CASE WHEN (t0."owner_id" = $2::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END)::bigint > $3) AND (t0."org_id"::uuid = $4::uuid)
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 10, <<...>>]
+member | Ash.count | code contains C | 0
+   -- SQL for: Ash.count, member, code contains C
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE (NULL::varchar LIKE $2) AND (t0."org_id"::uuid = $3::uuid)
+        params=[0, "%C%", <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>]
+member | Ash.count | secret > 0      | "RAISED Invalid filter value `nil`: a value does not fit the type of its column (postgrex 0.22.4) lib/postgrex/type_mo"
+   -- SQL for: Ash.count, member, secret > 0
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE (NULL > $2) AND (t0."org_id"::uuid = $3::uuid)
+        params=[0, 0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>]
+member | Ash.count | hours is_nil    | 7
+   -- SQL for: Ash.count, member, hours is_nil
+   SQL> SELECT coalesce(count(*), $1::bigint)::bigint FROM "tasks" AS t0 WHERE ((CASE WHEN (t0."owner_id"::uuid = $2::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END) IS NULL) AND (t0."org_id"::uuid = $3::uuid)
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, ...>>]
+
+===== 2. RELATIONSHIP load, the colleague's form: Ash.get(Org, A, load: [{rel, related_query}], actor: a)
+tasks        | admin  | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter_input | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+tasks        | admin  | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter_input | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter_input | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+tasks        | admin  | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+tasks        | admin  | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | admin  | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | admin  | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+tasks        | member | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+   -- SQL for: tasks, member, none
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT st0."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 WHERE (s0."id" = st0."org_id") GROUP BY st0."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $2) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($3::uuid[])) AND (o0."id" = ANY($4)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 6, [<<...>>], ...]
+tasks        | member | filter_input | offset | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+   -- SQL for: tasks, member, hours > 10
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT st0."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 WHERE (s0."id" = st0."org_id") AND (st0."hours" > $5) GROUP BY st0."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0, ...]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE ((CASE WHEN (st0."owner_id" = $2::uuid) THEN st0."hours"::bigint ELSE NULL::bigint END)::bigint > $3) AND (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $4) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($5::uuid[])) AND (o0."id" = ANY($6)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+tasks        | member | filter_input | offset | code contains C | Offset rows=0 count=10 more?=false  []
+   -- SQL for: tasks, member, code contains C
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT st0."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 WHERE (s0."id" = st0."org_id") AND (st0."code"::text LIKE $5) GROUP BY st0."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0, ...]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE (NULL::varchar LIKE $2) AND (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $3) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($4::uuid[])) AND (o0."id" = ANY($5)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, "%C%", 6, [...], ...]
+tasks        | member | filter_input | offset | secret > 0      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at tasks (postgrex 0.22.4) lib/postgre
+   -- SQL for: tasks, member, secret > 0
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT st0."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 WHERE (s0."id" = st0."org_id") AND (st0."secret" > $5) GROUP BY st0."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0, ...]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE (NULL > $2) AND (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $3) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($4::uuid[])) AND (o0."id" = ANY($5)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 0, 6, [...], ...]
+tasks        | member | filter_input | offset | hours is_nil    | Offset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+   -- SQL for: tasks, member, hours is_nil
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT st0."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 WHERE (s0."id" = st0."org_id") AND (st0."hours"::bigint IS NULL) GROUP BY st0."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE ((CASE WHEN (st0."owner_id"::uuid = $2::uuid) THEN st0."hours"::bigint ELSE NULL::bigint END) IS NULL) AND (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $3) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($4::uuid[])) AND (o0."id" = ANY($5)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+tasks        | member | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter_input | keyset | hours > 10      | Keyset rows=1 count=8 more?=false  ["A03"]
+tasks        | member | filter_input | keyset | code contains C | Keyset rows=0 count=10 more?=false  []
+tasks        | member | filter_input | keyset | secret > 0      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at tasks (postgrex 0.22.4) lib/postgre
+tasks        | member | filter_input | keyset | hours is_nil    | Keyset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+tasks        | member | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | member | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+tasks        | member | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+tasks        | member | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+tasks        | member | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter_input | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter_input | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter_input | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+linked_tasks | admin  | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | admin  | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | admin  | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+linked_tasks | member | filter_input | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+   -- SQL for: linked_tasks, member, none
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT DISTINCT ON (sl1."org_id") sl1."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (s0."id" = sl1."org_id") GROUP BY sl1."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (sl1."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $2) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($3::uuid[])) AND (o0."id" = ANY($4)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 6, [<<...>>], ...]
+linked_tasks | member | filter_input | offset | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+   -- SQL for: linked_tasks, member, hours > 10
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT DISTINCT ON (sl1."org_id") sl1."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (s0."id" = sl1."org_id") AND (st0."hours" > $5) GROUP BY sl1."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0, ...]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE ((CASE WHEN (st0."owner_id" = $2::uuid) THEN st0."hours"::bigint ELSE NULL::bigint END)::bigint > $3) AND (sl1."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $4) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($5::uuid[])) AND (o0."id" = ANY($6)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+linked_tasks | member | filter_input | offset | code contains C | Offset rows=0 count=10 more?=false  []
+   -- SQL for: linked_tasks, member, code contains C
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT DISTINCT ON (sl1."org_id") sl1."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (s0."id" = sl1."org_id") AND (st0."code"::text LIKE $5) GROUP BY sl1."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0, ...]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (NULL::varchar LIKE $2) AND (sl1."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $3) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($4::uuid[])) AND (o0."id" = ANY($5)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, "%C%", 6, [...], ...]
+linked_tasks | member | filter_input | offset | secret > 0      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at linked_tasks (postgrex 0.22.4) lib/
+   -- SQL for: linked_tasks, member, secret > 0
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT DISTINCT ON (sl1."org_id") sl1."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (s0."id" = sl1."org_id") AND (st0."secret" > $5) GROUP BY sl1."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0, ...]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (NULL > $2) AND (sl1."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $3) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($4::uuid[])) AND (o0."id" = ANY($5)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 0, 6, [...], ...]
+linked_tasks | member | filter_input | offset | hours is_nil    | Offset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+   -- SQL for: linked_tasks, member, hours is_nil
+   SQL> SELECT s0."id", s0."name", coalesce(s1."aggregate_0"::bigint, $1::bigint)::bigint FROM (SELECT so0."id" AS "id", so0."name" AS "name" FROM "orgs" AS so0 WHERE (so0."id"::uuid = $2::uuid) LIMIT $3) AS s0 LEFT OUTER JOIN LATERAL (SELECT DISTINCT ON (sl1."org_id") sl1."org_id" AS "org_id", coalesce(count(*), $4::bigint)::bigint AS "aggregate_0" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE (s0."id" = sl1."org_id") AND (st0."hours"::bigint IS NULL) GROUP BY sl1."org_id") AS s1 ON TRUE
+        params=[0, <<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2, 0]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 INNER JOIN "public"."links" AS sl1 ON sl1."task_id" = st0."id" WHERE ((CASE WHEN (st0."owner_id"::uuid = $2::uuid) THEN st0."hours"::bigint ELSE NULL::bigint END) IS NULL) AND (sl1."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."title", st0."id") ORDER BY st0."title", st0."id" LIMIT $3) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($4::uuid[])) AND (o0."id" = ANY($5)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+linked_tasks | member | filter_input | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter_input | keyset | hours > 10      | Keyset rows=1 count=8 more?=false  ["A03"]
+linked_tasks | member | filter_input | keyset | code contains C | Keyset rows=0 count=10 more?=false  []
+linked_tasks | member | filter_input | keyset | secret > 0      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at linked_tasks (postgrex 0.22.4) lib/
+linked_tasks | member | filter_input | keyset | hours is_nil    | Keyset rows=5 count=0 more?=true  ["A04", "A05", "A06", "A07", "A08"]
+linked_tasks | member | filter       | offset | none            | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | offset | hours > 10      | Offset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | member | filter       | offset | code contains C | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | offset | secret > 0      | Offset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | offset | hours is_nil    | Offset rows=0 count=0 more?=false  []
+linked_tasks | member | filter       | keyset | none            | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | keyset | hours > 10      | Keyset rows=5 count=8 more?=true  ["A03", "A04", "A05", "A06", "A07"]
+linked_tasks | member | filter       | keyset | code contains C | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | keyset | secret > 0      | Keyset rows=5 count=10 more?=true  ["A01", "A02", "A03", "A04", "A05"]
+linked_tasks | member | filter       | keyset | hours is_nil    | Keyset rows=0 count=0 more?=false  []
+
+===== 3. How the related query is built (member, has_many :tasks, offset page, filter_input) and how it is loaded
+filter |> for_read(actor) |> page  | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+filter |> for_read(actor) |> page  | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+filter |> for_read(actor) |> page  | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+filter |> for_read(actor) |> page  | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+filter |> for_read(actor) |> page  | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.Query.load |> read_one        | hours > 10      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at tasks (postgrex 0.22.4) lib/postgre
+for_read WITHOUT actor             | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.get(load:)                    | hours > 10      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at tasks (postgrex 0.22.4) lib/postgre
+for_read WITHOUT actor             | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.get(load:, authorize?: true)  | hours > 10      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at tasks (postgrex 0.22.4) lib/postgre
+for_read WITHOUT actor             | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read WITHOUT actor             | Ash.load(record)                  | hours > 10      | RAISED Invalid filter value `nil`: a value does not fit the type of its column at tasks (postgrex 0.22.4) lib/postgre
+for_read WITHOUT actor             | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor) |> filter |> page  | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor) |> filter |> page  | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+for_read(actor, authorize?: true)  | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+for_read(actor, authorize?: true)  | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.Query.load |> read_one        | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.Query.load |> read_one        | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.get(load:)                    | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.get(load:)                    | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.get(load:, authorize?: true)  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.get(load:, authorize?: true)  | code contains C | Offset rows=0 count=10 more?=false  []
+no for_read (plain query)          | Ash.load(record)                  | hours > 10      | Offset rows=1 count=8 more?=false  ["A03"]
+no for_read (plain query)          | Ash.load(record)                  | code contains C | Offset rows=0 count=10 more?=false  []
+
+===== 4. The same count asked for directly: Ash.Query.aggregate(:n, :count, :tasks, query: q) on the parent, member
+member | filter_input | none            | n=10
+member | filter_input | hours > 10      | n=8
+member | filter_input | code contains C | n=10
+member | filter_input | secret > 0      | n=10
+member | filter_input | hours is_nil    | n=0
+member | filter       | none            | n=10
+member | filter       | hours > 10      | n=8
+member | filter       | code contains C | n=10
+member | filter       | secret > 0      | n=10
+member | filter       | hours is_nil    | n=0
+
+===== 5. Without count: does more? / page walking leak? member, has_many :tasks, limit 1, filter_input
+offset | hours > 10      | Offset rows=1 count=nil more?=false  ["A03"]
+keyset | hours > 10      | Keyset rows=1 count=nil more?=false  ["A03"]
+offset | code contains C | Offset rows=0 count=nil more?=false  []
+keyset | code contains C | Keyset rows=0 count=nil more?=false  []
+offset=0 | hours > 10 | Offset rows=1 count=nil more?=false  ["A03"]
+offset=1 | hours > 10 | Offset rows=0 count=nil more?=false  []
+offset=2 | hours > 10 | Offset rows=0 count=nil more?=false  []
+offset=7 | hours > 10 | Offset rows=0 count=nil more?=false  []
+offset=8 | hours > 10 | Offset rows=0 count=nil more?=false  []
+
+===== 6. EXTRACTION by the member through the relationship count (has_many :tasks, offset page limit 1, count: true)
+A07 as the member reads it: hours=#Ash.ForbiddenField<field: :hours, type: :attribute, ...> code=#Ash.ForbiddenField<field: :code, type: :attribute, ...>
+recovered hours of A07 = 35 (hi=35) in 10 requests; true value 35; rows returned by those requests: 0
+recovered code of A07 = "C7X" (true value "C7X"), at most 46 requests
+
+===== 7. sort_input on a hidden field (member, org A, limit 10): order and keyset cursor contents
+top-level   sort_input -hours: [{"A04", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000104"]}, {"A05", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000105"]}, {"A06", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000106"]}, {"A07", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000107"]}, {"A08", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000108"]}, {"A09", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000109"]}, {"A10", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000110"]}, {"A03", 15, [nil, "00000000-0000-0000-0000-000000000103"]}, {"A02", 10, [nil, "00000000-0000-0000-0000-000000000102"]}, {"A01", 5, [nil, "00000000-0000-0000-0000-000000000101"]}]
+related     sort_input -hours: [{"A04", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000104"]}, {"A05", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000105"]}, {"A06", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000106"]}, {"A07", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000107"]}, {"A08", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000108"]}, {"A09", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000109"]}, {"A10", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [nil, "00000000-0000-0000-0000-000000000110"]}, {"A03", 15, [nil, "00000000-0000-0000-0000-000000000103"]}, {"A02", 10, [nil, "00000000-0000-0000-0000-000000000102"]}, {"A01", 5, [nil, "00000000-0000-0000-0000-000000000101"]}]
+related     sort (not input) -hours [developer sort, not expected to be protected]: [{"A10", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [50, "00000000-0000-0000-0000-000000000110"]}, {"A09", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [45, "00000000-0000-0000-0000-000000000109"]}, {"A08", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [40, "00000000-0000-0000-0000-000000000108"]}, {"A07", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [35, "00000000-0000-0000-0000-000000000107"]}, {"A06", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [30, "00000000-0000-0000-0000-000000000106"]}, {"A05", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [25, "00000000-0000-0000-0000-000000000105"]}, {"A04", #Ash.ForbiddenField<field: :hours, type: :attribute, ...>, [20, "00000000-0000-0000-0000-000000000104"]}, {"A03", 15, [15, "00000000-0000-0000-0000-000000000103"]}, {"A02", 10, [10, "00000000-0000-0000-0000-000000000102"]}, {"A01", 5, [5, "00000000-0000-0000-0000-000000000101"]}]
+   -- SQL for: sorts
+   SQL> SELECT t0."id", t0."title", t0."hours", t0."owner_id", t0."org_id", (t0."owner_id"::uuid = $1::uuid)::boolean FROM "tasks" AS t0 WHERE (t0."org_id"::uuid = $2::uuid) ORDER BY (CASE WHEN (t0."owner_id"::uuid = $3::uuid) THEN t0."hours"::bigint ELSE NULL::bigint END)::bigint DESC, t0."id" LIMIT $4
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+   SQL> SELECT o0."id", o0."name" FROM "orgs" AS o0 WHERE (o0."id"::uuid = $1::uuid) LIMIT $2
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY (CASE WHEN (st0."owner_id"::uuid = $2::uuid) THEN st0."hours"::bigint ELSE NULL::bigint END)::bigint DESC, st0."id") ORDER BY (CASE WHEN (st0."owner_id"::uuid = $3::uuid) THEN st0."hours"::bigint ELSE NULL::bigint END)::bigint DESC, st0."id" LIMIT $4) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($5::uuid[])) AND (o0."id" = ANY($6)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, <<0, 0, ...>>, ...]
+   SQL> SELECT o0."id", o0."name" FROM "orgs" AS o0 WHERE (o0."id"::uuid = $1::uuid) LIMIT $2
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1>>, 2]
+   SQL> SELECT DISTINCT o0."id", s1."id", s1."title", s1."hours", s1."owner_id", s1."org_id", s1."__calculations__calculation_0", s1."__order__" FROM "public"."orgs" AS o0 INNER JOIN LATERAL (SELECT st0."id" AS "id", st0."title" AS "title", st0."hours" AS "hours", st0."owner_id" AS "owner_id", st0."org_id" AS "org_id", (st0."owner_id"::uuid = $1::uuid)::boolean AS "__calculations__calculation_0", row_number() OVER "order" AS "__order__" FROM "public"."tasks" AS st0 WHERE (st0."org_id" = o0."id") WINDOW "order" AS (ORDER BY st0."hours" DESC, st0."id") ORDER BY st0."hours" DESC, st0."id" LIMIT $2) AS s1 ON TRUE WHERE (o0."id"::uuid = ANY($3::uuid[])) AND (o0."id" = ANY($4)) ORDER BY s1."__order__"
+        params=[<<0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 2>>, 11, [<<...>>], ...]

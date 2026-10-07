@@ -1,0 +1,15 @@
+ash 3.34.4
+
+#### ets
+  direct read of Item by member: item1 code=FORBIDDEN, item2 code=77
+  filter_input(Item, code == 42): []   (correct: [])
+  filter_input(Item, code == 77): [2]   (correct: [2])
+  filter_input(Box, items.code == 42): boxes [1]   (correct: [])
+  filter_input(Box, items.code == 77): boxes []   (correct: [2])
+
+#### pg
+  direct read of Item by member: item1 code=FORBIDDEN, item2 code=77
+  filter_input(Item, code == 42): []   (correct: [])
+  filter_input(Item, code == 77): [2]   (correct: [2])
+  filter_input(Box, items.code == 42): boxes [1]   (correct: [])
+  filter_input(Box, items.code == 77): boxes []   (correct: [2])

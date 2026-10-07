@@ -1,0 +1,1 @@
+mode=interactive authorizer_loaded_before=false member can_see_fields={:ok, %{name: true, secret: true}}
