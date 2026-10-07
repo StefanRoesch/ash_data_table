@@ -1,12 +1,12 @@
 import { expect, test } from "./support/fixtures"
 
 // Spec section 8: the grid is one tab stop, and the arrow keys move in it
-// without a word to the server. /tasks as the admin: 14 columns, 25 rows,
+// without a word to the server. /tasks as the admin: 17 columns, 25 rows,
 // and before the first column the expanders of the rows (nesting.spec.ts).
 
 const FIRST = "title"
 const SECOND = "status"
-const LAST = "inserted_at"
+const LAST = "reporter"
 
 test.beforeEach(async ({ tasks }) => {
   await tasks.open()
@@ -136,8 +136,8 @@ test("Up from the first data row reaches the filter row, then the header", async
   await tasks.press("End", "ArrowUp")
   await expect(tasks.filterCell(LAST)).toBeFocused()
   await tasks.press("ArrowLeft")
-  await expect(tasks.filterCell("description"), "a column without a filter").toBeFocused()
-  expect(await tasks.tabStops()).toEqual(["task-filter-description"])
+  await expect(tasks.filterCell("assignee"), "a column without a filter").toBeFocused()
+  expect(await tasks.tabStops()).toEqual(["task-filter-assignee"])
 })
 
 test("moving about sends nothing to the server", async ({ tasks, frames }) => {

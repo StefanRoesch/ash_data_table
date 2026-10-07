@@ -30,8 +30,21 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     "Headline",
     "External ref",
     "Description",
-    "Inserted at"
+    "Inserted at",
+    "Project",
+    "Assignee",
+    "Reported by"
   ]
+
+  # The columns that show a related record, which are left out for a person
+  # who can never read its resource: a viewer may not read people, and
+  # nobody may not read projects.
+  @unreadable %{
+    member: [],
+    outsider: [],
+    viewer: ["Assignee", "Reported by"],
+    nobody: ["Project"]
+  }
 
   # One task of the world's first organization, reported by the admin and
   # assigned to nobody. Each is created a day after `day`, so that the tasks
@@ -76,25 +89,28 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       assert headers(html, "task") == @headers
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1"]
-      # the 14 columns, and before them the expanders
-      assert attribute(html, "#task-table", "aria-colcount") == ["15"]
+      # the 17 columns, and before them the expanders
+      assert attribute(html, "#task-table", "aria-colcount") == ["18"]
     end
 
     for actor <- [:member, :viewer, :outsider] do
       test "has no column for the #{actor}", %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        assert headers(html, "task") == @headers -- ["External ref"]
+        assert headers(html, "task") ==
+                 @headers -- ["External ref" | @unreadable[unquote(actor)]]
       end
 
       test "leaves the columns of the #{actor} numbered without a gap",
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        # the expanders, and the 13 columns that are left
-        numbers = Enum.map(1..14, &Integer.to_string/1)
+        # the expanders, and the columns that are left: 16, and 14 for the viewer
+        count = 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]])
+        numbers = Enum.map(1..count, &Integer.to_string/1)
 
-        assert attribute(html, "#task-table", "aria-colcount") == ["14"]
+        assert count == if(unquote(actor) == :viewer, do: 15, else: 17)
+        assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
         assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
         assert attribute(html, "#task-head-description", "aria-colindex") == ["13"]
@@ -106,12 +122,14 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
          %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.nobody) |> live("/tasks")
 
-      assert headers(html, "task") == @headers -- ["External ref", "Estimate hours"]
-      # the expanders, and the 12 columns that are left
-      assert attribute(html, "#task-table", "aria-colcount") == ["13"]
+      assert headers(html, "task") ==
+               @headers -- ["External ref", "Estimate hours" | @unreadable.nobody]
+
+      # the expanders, and the 14 columns that are left
+      assert attribute(html, "#task-table", "aria-colcount") == ["15"]
 
       assert attribute(html, "#task-head-row th", "aria-colindex") ==
-               Enum.map(1..13, &Integer.to_string/1)
+               Enum.map(1..15, &Integer.to_string/1)
 
       refute html =~ "estimate_hours"
       refute html =~ "Estimate hours"
@@ -134,7 +152,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       assert attribute(html, "#task-table tbody td", "aria-colindex") ==
-               Enum.map(1..14, &Integer.to_string/1)
+               Enum.map(1..17, &Integer.to_string/1)
     end
   end
 
@@ -455,12 +473,14 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
         end
 
       assert seen == [
-               admin: %{columns: 14, rows: 1, editors: 9},
-               member: %{columns: 13, rows: 1, editors: 9},
-               viewer: %{columns: 13, rows: 1, editors: 0},
+               admin: %{columns: 17, rows: 1, editors: 9},
+               member: %{columns: 16, rows: 1, editors: 9},
+               # may not read people: no assignee, no reporter
+               viewer: %{columns: 14, rows: 1, editors: 0},
                # of the other organization: none of these tasks, and a member there
-               outsider: %{columns: 13, rows: 0, editors: 9},
-               nobody: %{columns: 12, rows: 0, editors: 0}
+               outsider: %{columns: 16, rows: 0, editors: 9},
+               # may not read projects
+               nobody: %{columns: 14, rows: 0, editors: 0}
              ]
     end
   end

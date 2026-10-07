@@ -28,7 +28,8 @@ export default defineConfig({
       dependencies: ["setup"],
       use: {
         ...devices["Desktop Chrome"],
-        // wide enough for the 14 columns of /tasks, so that a click on a
+        // wide enough for the columns of /tasks up to the last one a test
+        // clicks, so that a click on a
         // cell needs no scrolling
         viewport: { width: 1600, height: 900 },
       },

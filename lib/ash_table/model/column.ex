@@ -3,6 +3,13 @@ defmodule AshTable.Model.Column do
   # One column of a table model: a field of the resource as the table shows it.
   #
   #   * `name` is the field's name and `kind` says what it is on the resource.
+  #     A `:reference` column is named after a belongs-to relationship and
+  #     shows the related record's label: `reference` then says which
+  #     relationship, to which `destination`, which of its attributes is the
+  #     label (`label_field`), and the read action Ash loads the related
+  #     record through. `type`, `cell_type` and `values` are those of the
+  #     label. Such a column is never sorted or filtered by, and never
+  #     edited.
   #   * `label` is the column header.
   #   * `cell_type` is what the table shows the field's values as. Types with no
   #     cell of their own (arrays, maps, embedded resources, keys, …) are
@@ -33,6 +40,9 @@ defmodule AshTable.Model.Column do
   #     column that is not editable.
   #   * `confirm` is the question asked before an edit of this column is saved,
   #     or `nil` when none is.
+  #   * `apart?` is `true` for an aggregate that is read in a step of its
+  #     own, apart from everything else a row shows, and is then neither
+  #     sorted nor filtered by: see `AshTable.Resource.Reading.apart/2`.
   #   * `partly_hidden?` is only ever `true` in a model from
   #     `AshTable.Model.for_actor/2`: the person sees the field on some records
   #     and not on others.
@@ -50,13 +60,15 @@ defmodule AshTable.Model.Column do
     :update_action,
     :editor,
     :confirm,
+    :reference,
     editable?: false,
+    apart?: false,
     partly_hidden?: false
   ]
 
   @type t :: %__MODULE__{
           name: atom,
-          kind: :attribute | :calculation | :aggregate,
+          kind: :attribute | :calculation | :aggregate | :reference,
           label: String.t(),
           type: {Ash.Type.t() | nil, keyword},
           cell_type: :text | :number | :boolean | :date | :datetime | :enum | :other,
@@ -67,6 +79,15 @@ defmodule AshTable.Model.Column do
           update_action: atom | nil,
           editor: :text | :number | :boolean | :date | :datetime | :enum | nil,
           confirm: String.t() | nil,
+          reference:
+            %{
+              relationship: atom,
+              destination: Ash.Resource.t(),
+              label_field: atom,
+              read_action: atom
+            }
+            | nil,
+          apart?: boolean,
           partly_hidden?: boolean
         }
 end

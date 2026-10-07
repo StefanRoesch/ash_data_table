@@ -43,6 +43,11 @@ defmodule AshTable.Live.Page do
       URL). With `on_forbidden :message` in the resource's `table` block the
       page stays and says "You are not allowed to see these records."
 
+    * **A related record the person may not read** is an empty reference
+      cell, as no related record is; a label hidden from them is "Not
+      available". **A destination they can never read** has no column for
+      its reference cell.
+
     * **A relationship whose destination the person can never read** has no
       line under an expanded row. In a nested table everything above holds
       for its own resource. The row a nested table belongs to is read again,
@@ -97,6 +102,33 @@ defmodule AshTable.Live.Page do
   Which rows are expanded, and the sort, filters and page of the tables
   nested in them, are not in the URL. A new read of the table (a change of
   its sort, filters or page) closes what was open in it.
+
+  ## Limited to the records related to one record
+
+  One more parameter of the table, `of`, limits it to the records related to
+  one record: `/comments?comment[of][task][comments]=KEY` is the comments of
+  one task. It is the short name of the parent's resource, the name of its
+  relationship, and the parent's primary key (by attribute where it has
+  several: `task[of][task_label][task][task_id]=…`). This is the full view
+  of a nested table, which the link in a nested table's last row leads to
+  when the router mounts the destination's table. Sort, filters and page
+  work beside it, and it stays in the URL through them.
+
+  The page then reads as a nested table does: the parent is read again by
+  its key, as the person, on every read, with the relationship as a load.
+  Above the grid it says what it shows: the parent, called by its resource's
+  `label_field` or by the first column of its table that the person sees on
+  it, and the relationship; with a control that takes the limit away.
+
+  Nothing in the parameter is trusted. The parent's resource is looked up by
+  its short name, as text, among the resources of the application's domains
+  (`config :my_app, ash_domains: […]`, for the app of the endpoint) and of
+  the table's own domain, and counts only when its table offers this person
+  that relationship to this table's resource. Anything else is no limit: the
+  page shows the table as if nothing had been asked. A parent that is gone or
+  not the person's to read shows "This record is no longer available." and
+  names no record; a destination whose read is refused is the page's own
+  refusal, as above.
   """
   use Phoenix.LiveView
 

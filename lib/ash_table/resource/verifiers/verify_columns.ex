@@ -5,6 +5,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   alias AshTable.Model.Operator
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Reading
+  alias AshTable.Resource.Referencing
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
@@ -30,7 +31,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
           error(
             column,
             module,
-            "The resource has no attribute, calculation or aggregate named `#{column.name}`."
+            "The resource has no attribute, calculation, aggregate or belongs-to relationship named `#{column.name}`."
           )
         ]
 
@@ -44,11 +45,49 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
         ]
 
       field ->
-        required_argument_errors(column, field, module) ++
-          sortable_errors(column, module) ++
-          filterable_errors(column, field, module) ++
-          update_action_errors(column, field, module) ++
-          confirm_errors(column, field, module)
+        if Referencing.relationship?(field),
+          do: reference_errors(column, field, module),
+          else: field_errors(column, field, module)
+    end
+  end
+
+  defp field_errors(column, field, module) do
+    required_argument_errors(column, field, module) ++
+      sortable_errors(column, module) ++
+      filterable_errors(column, field, module) ++
+      update_action_errors(column, field, module) ++
+      confirm_errors(column, field, module)
+  end
+
+  # A column that names a relationship is a reference cell, which shows the
+  # related record's label. The destination is looked at, which a verifier
+  # may do (see `VerifyRelationships`).
+  #
+  # The cell is read-only, and a table neither sorts nor filters by it: a
+  # sort through a relationship is not authorized by Ash (internal ticket
+  # #31), and filtering by a related record is not built yet.
+  defp reference_errors(column, relationship, module) do
+    case Referencing.reference(relationship) do
+      {:ok, _reference} -> reference_option_errors(column, module)
+      {:error, reason} -> [error(column, module, Referencing.message(reason))]
+    end
+  end
+
+  defp reference_option_errors(column, module) do
+    shows = "`#{column.name}` shows the label of a related record"
+
+    for {option, message} <- [
+          sortable?:
+            "#{shows}, which a table does not sort by, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`.",
+          filterable?:
+            "#{shows}, which a table does not filter by, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`.",
+          update_action:
+            "#{shows}. Only an attribute can be edited, so a column that names a relationship cannot have an `update_action`.",
+          confirm:
+            "`#{column.name}` can never be edited, so `confirm` has no effect. It shows the label of a related record."
+        ],
+        Map.fetch!(column, option) not in [nil, false] do
+      option_error(column, module, option, message)
     end
   end
 
@@ -225,7 +264,8 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp field(dsl, name) do
     Ash.Resource.Info.attribute(dsl, name) ||
       Ash.Resource.Info.calculation(dsl, name) ||
-      Ash.Resource.Info.aggregate(dsl, name)
+      Ash.Resource.Info.aggregate(dsl, name) ||
+      Ash.Resource.Info.relationship(dsl, name)
   end
 
   defp option_error(column, module, option, message) do

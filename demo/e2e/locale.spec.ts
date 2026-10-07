@@ -117,6 +117,9 @@ test.describe("in German", () => {
       "Externe Referenz",
       "Beschreibung",
       "Angelegt am",
+      "Projekt",
+      "Zugewiesen an",
+      "Gemeldet von",
     ])
 
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText([

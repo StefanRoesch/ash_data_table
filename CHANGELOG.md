@@ -12,8 +12,9 @@ declared in the resource and mounted with one line in the router.
 ### Declaring and placing a table
 
 - `AshTable.Resource`, the extension with the `table` section: `read_action`,
-  `paginate_with`, `update_action`, `on_forbidden`, and `column` entities with
-  `label`, `sortable?`, `filterable?`, `update_action` and `confirm`. With no
+  `paginate_with`, `update_action`, `on_forbidden`, `label_field`, and
+  `column` entities with `label`, `sortable?`, `filterable?`,
+  `update_action`, `confirm` and `exposes_protected_field?`. With no
   block the table shows the public attributes, read-only. Mistakes in the
   block are reported by verifiers when the resource is compiled, as
   warnings: among them a column's own `update_action` on a column that no
@@ -115,6 +116,76 @@ declared in the resource and mounted with one line in the router.
   and collapse; Enter on the cell of a nested table goes into it and Escape
   comes back out. The whole tree of tables is one tab stop.
 - Nothing of a nested table is in the URL.
+- **The full view.** The last row of a nested table is a link, "Open in full
+  view", to the page the host's router mounts the destination's table at:
+  the first `ash_table` route for that resource whose path has no parameter.
+  Without such a route there is no link. The page shows the same records,
+  limited by the table's parameter `of`
+  (`/comments?comment[of][task][comments]=KEY`; a key of several attributes
+  by attribute), with sort, filters and page in the address beside it, a
+  heading that names the parent and the relationship, and "Show all records"
+  to take the limit away. The parent's resource is looked up by its short
+  name among the resources of the application's domains and of the table's
+  own, and only where its table offers the person that relationship; the
+  key is cast; the parent is read as the person on every read. Anything else
+  in the parameter is ignored. A table placed with `<AshTable.table url=…>`
+  reads the same parameter.
+- The heading calls the parent by its `label_field`, else by the first of
+  its table's attribute columns that the person sees on it, and names no
+  record that was not read for them.
+
+### Reference cells
+
+- `column :assignee`, naming a public belongs-to relationship, shows the
+  related record's label: the public attribute that the destination's
+  `table` block names with `label_field`. Read-only; not sorted by (Ash
+  applies no policy of the related resource to a sort through a
+  relationship) and not filtered by.
+- The label is read as Ash loads the relationship, with a select of the key
+  and the label, as the person: one statement per reference column per
+  page, and again for a row that is saved. A related record the person may
+  not read is an empty cell, as no related record is; a label hidden from
+  them is "Not available"; a person who can never read the destination, or
+  never see its label, has no such column.
+- Reported when the resource is compiled: a column naming a relationship
+  that is not a belongs-to, whose destination has no table, no
+  `label_field` or no read action to load through, `sortable? true`,
+  `filterable? true`, `update_action` and `confirm` on such a column, and a
+  `label_field` that names no public attribute.
+
+### Aggregate and calculation columns
+
+- A warning when the resource is compiled, for an aggregate column whose
+  field or `filter` is protected by a field policy on the related resource,
+  and for a calculation column whose expression references a protected
+  field, while the declaring resource has no field policy that names the
+  column. Ash applies no field policy of what an aggregate or a calculation
+  is made from. `exposes_protected_field? true` on the column says that the
+  exposure is meant.
+- A `first` aggregate column over one related record, beside an expression
+  calculation column over the same relationship, is read in a statement of
+  its own and is not sorted or filtered by: read together on a SQL data
+  layer, it returns the value of a record the reader may not read. A warning
+  says so, and how to get out of it (`join_filter` or `read_action` on the
+  aggregate; or `sortable? false` and `filterable? false` on the column).
+- Aggregate columns are loaded onto the records of a page after the page is
+  read, and related records are read bare with everything loaded
+  afterwards: a statement with an aggregate beside a field that a field
+  policy hides on some records fails in the SQL layer where it is a
+  subquery. One more statement per read of a table with aggregate columns.
+- An aggregate column that a field policy hides from a person on some
+  records is not sorted by for them, as Ash raises for it; nor is any
+  aggregate column in a nested table read in pages, for a person who sees
+  some field of that resource on some records only. Their filters stay.
+
+### Changed since the nested tables were added
+
+- A column that names nothing the resource has is now reported as "The
+  resource has no attribute, calculation, aggregate or belongs-to
+  relationship named …", and the finding about editing without a primary
+  read action counts reference columns.
+- The pages of a nested table are no longer the last row of its grid where
+  the nested table has a link to the full view: the link's row follows.
 
 ### Tooling
 

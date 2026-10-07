@@ -58,7 +58,7 @@ test.describe("the page", () => {
     ])
     await expect(projects.rows).toHaveCount(SEED.projects.acme)
     await expect(projects.range).toHaveText("1–6 of 6")
-    await expect(tasks.headers).toHaveCount(14)
+    await expect(tasks.headers).toHaveCount(17)
     await expect(tasks.rows).toHaveCount(25)
     await expect(tasks.range).toHaveText(`1–25 of ${SEED.tasks.acme}`)
     expect((await tasks.rowKeys()).slice(0, 2)).toEqual([FIRST, SECOND])
@@ -379,7 +379,7 @@ test.describe("as another actor", () => {
 
     test("each table is this person's: the tasks without the column they may never see", async () => {
       expect(await tasks.columns()).not.toContain("external_ref")
-      await expect(tasks.headers).toHaveCount(13)
+      await expect(tasks.headers).toHaveCount(16)
       await expect(tasks.cell(FIRST, "estimate_hours")).toHaveText("Not available")
       await expect(projects.rows).toHaveCount(SEED.projects.acme)
     })

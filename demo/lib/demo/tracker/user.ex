@@ -25,15 +25,34 @@ defmodule Demo.Tracker.User do
     end
   end
 
+  field_policies do
+    field_policy :assigned_hours do
+      description "As the estimates it adds up: admins. (A task's own assignee sees its estimate too, which a sum cannot follow.)"
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    field_policy :* do
+      authorize_if always()
+    end
+  end
+
   # Read-only, and its rows never expand: `max_depth 0` switches off the
   # assigned and the reported tasks a row would otherwise offer, wherever
   # this table is shown.
   table do
     max_depth 0
+    # What a person is called where a table shows them as one value: in the
+    # "Assignee" and "Reported by" columns of /tasks.
+    label_field :name
 
     column :name
     column :email
     column :role
+
+    # An aggregate over a field that a field policy protects on the tasks
+    # (`estimate_hours`): Ash does not apply that policy to an aggregate, so
+    # the aggregate has a field policy of its own, below.
+    column :assigned_hours
   end
 
   actions do
@@ -108,6 +127,10 @@ defmodule Demo.Tracker.User do
       destination_attribute :reporter_id
       public? true
     end
+  end
+
+  aggregates do
+    sum :assigned_hours, :assigned_tasks, :estimate_hours, public?: true
   end
 
   identities do

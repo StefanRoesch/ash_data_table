@@ -79,7 +79,7 @@ test.describe("with the pointer", () => {
       tasks.headerCells.evaluateAll((cells) => cells.map((cell) => Math.round(cell.getBoundingClientRect().width)))
     const before = await widths()
 
-    // the tasks of a project, 14 columns wide, under a row of /tasks
+    // the tasks of a project, 17 columns wide, under a row of /tasks
     const project = await tasks.openLine(FIRST, "project")
     const [key] = await project.rowKeys()
     await project.openLine(key, "tasks")
@@ -92,8 +92,8 @@ test.describe("with the pointer", () => {
 
     await expect(reporter.rows).toHaveCount(1)
     await expect(reporter.expanders).toHaveCount(0)
-    expect(await reporter.columns()).toEqual(["name", "email", "role"])
-    await expect(reporter.grid).toHaveAttribute("aria-colcount", "3")
+    expect(await reporter.columns()).toEqual(["name", "email", "role", "assigned_hours"])
+    await expect(reporter.grid).toHaveAttribute("aria-colcount", "4")
   })
 })
 
@@ -210,8 +210,13 @@ test.describe("with the keyboard", () => {
     await expect(project.header("name")).toBeFocused()
     await tasks.press("ArrowUp")
     await expect(project.header("name"), "Up ends at its header, not in the table around it").toBeFocused()
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
-    await expect(project.cell(key, "name"), "Down ends at its last row").toBeFocused()
+    await tasks.press("ArrowDown", "ArrowDown")
+    await expect(project.cell(key, "name")).toBeFocused()
+    // its last row holds its link to the full view (full_view.spec.ts)
+    await tasks.press("ArrowDown", "ArrowDown")
+    await expect(project.viewCell, "Down ends at its last row").toBeFocused()
+    await tasks.press("ArrowUp")
+    await expect(project.cell(key, "name"), "and Up comes back in the column it was in").toBeFocused()
 
     await tasks.press("Escape")
     await expect(tasks.nestedCell(FIRST, "project")).toBeFocused()
@@ -386,7 +391,7 @@ test.describe("focus", () => {
     const nested = await projects.openLine(MOBILE_APP, "tasks")
     await expect(nested.range).toHaveText("1–25 of 57")
 
-    // the pages are a group in the last row of the grid, and no tab stops
+    // the pages are a group in a row at the end of the grid, and no tab stops
     await expect(nested.pagination).toHaveRole("group")
     await expect(nested.pagination).toHaveAccessibleName("Pagination: Tasks")
     const last = (await nested.rowKeys()).at(-1)!
@@ -395,8 +400,13 @@ test.describe("focus", () => {
 
     await projects.press("ArrowDown")
     await expect(nested.pagerCell).toBeFocused()
+    // under them, the link to the full view: the last row
     await projects.press("ArrowDown")
-    await expect(nested.pagerCell, "the last row is where Down ends").toBeFocused()
+    await expect(nested.viewCell).toBeFocused()
+    await projects.press("ArrowDown")
+    await expect(nested.viewCell, "the last row is where Down ends").toBeFocused()
+    await projects.press("ArrowUp")
+    await expect(nested.pagerCell).toBeFocused()
 
     // Enter goes to the first control that can be used; Left and Right move between them
     await projects.press("Enter")

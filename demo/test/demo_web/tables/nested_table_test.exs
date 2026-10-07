@@ -75,7 +75,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "#task-head-title", "aria-colindex") == ["2"]
       assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["2"]
       assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["15"]
-      assert attribute(html, "#task-table", "aria-colcount") == ["15"]
+      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["18"]
+      assert attribute(html, "#task-table", "aria-colcount") == ["18"]
       # and not one of the table's columns
       assert hd(headers(html, "task")) == "Title"
     end
@@ -256,8 +257,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='task-row-#{task.id}-l-comments-b']") =~ "Comments"
       assert text(html, "[id='task-row-#{task.id}-c-title']") == "Write the report"
 
-      # 14 columns and the expanders
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["15"]
+      # 17 columns and the expanders
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["18"]
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
     end
 
@@ -335,7 +336,10 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert column(html, nested(task.id, "project"), "name") == [project.name]
 
       html = toggle(view, task.id, "assignee")
-      assert headers(html, nested(task.id, "assignee")) == ["Name", "Email", "Role"]
+
+      assert headers(html, nested(task.id, "assignee")) ==
+               ["Name", "Email", "Role", "Assigned hours"]
+
       assert column(html, nested(task.id, "assignee"), "name") == [world.member.name]
 
       html = toggle(view, task.id, "reporter")
@@ -770,7 +774,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       assert length(column(html, id, "name")) == 1
       assert attribute(html, "[id='#{id}-table'] [data-expander]", "id") == []
-      assert attribute(html, "[id='#{id}-table']", "aria-colcount") == ["3"]
+      assert attribute(html, "[id='#{id}-table']", "aria-colcount") == ["4"]
     end
 
     test "a table with `max_depth 1` on the page lets its nested tables expand no further",
@@ -1212,7 +1216,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       html = render_async(view, 2000)
       id = nested(task.id, "assignee")
-      assert headers(html, id) == ["Name", "E-Mail", "Rolle"]
+      assert headers(html, id) == ["Name", "E-Mail", "Rolle", "Zugewiesene Stunden"]
       assert text(html, "[id='#{id}-empty']") == "Keine Einträge"
 
       html = toggle(view, task.id, "comments")

@@ -53,6 +53,21 @@ defmodule AshTable.Live.TableComponent do
   # `depth` counts from the table on the page, which is at 0, and
   # `depth_limit` is that table's `max_depth`.
   #
+  # ## The full view
+  #
+  # The last row of a nested table's grid holds a link to the page the host's
+  # router mounts the destination's table at, when it mounts one
+  # (`ID-full-view` in the cell `ID-view`). That page shows the same records:
+  # its table's parameter `of` names the row and the relationship
+  # (`AshTable.Related`).
+  #
+  # A table with its state in the URL reads that parameter. Limited by it,
+  # the table is what a nested table is, read the same way, with `via` and
+  # `parent_key` taken from the URL; only that it is not `nested?` in
+  # another, and so looks and behaves as a table of its own. Above its grid
+  # it says what it shows (`ID-related`: the heading `ID-related-heading`
+  # and the control `ID-related-clear`, which takes the limit away).
+  #
   # Use it through `AshTable.table/1`.
   use Phoenix.LiveComponent
 
@@ -65,7 +80,9 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Model.Operator
   alias AshTable.Model.Relationship
   alias AshTable.Query
+  alias AshTable.Related
   alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Routes
   alias AshTable.State
   alias AshTable.Text
   alias Phoenix.LiveView.JS
@@ -107,7 +124,12 @@ defmodule AshTable.Live.TableComponent do
      |> assign(via: nil, parent_key: nil, parent_authorize?: true, depth: 0, depth_limit: nil)
      # The ids of the elements that name a nested table's grid, in place of
      # `label`; and whether its first read is still on its way.
-     |> assign(labelledby: nil, loading?: false)}
+     |> assign(labelledby: nil, loading?: false)
+     # Whether the table is inside a row of another. What the URL limits a
+     # table of its own to (`AshTable.Related`), and what the record it is
+     # limited to is called, once that record has been read for the person.
+     # Where a nested table's records are shown in the full view.
+     |> assign(nested?: false, related: nil, related_title: nil, full_view: nil)}
   end
 
   @impl true
@@ -134,6 +156,8 @@ defmodule AshTable.Live.TableComponent do
           end
       )
 
+    socket = socket |> assign(nested?: socket.assigns.depth > 0) |> relate()
+
     # The table as the person asking meets it: without the columns they can
     # never see, and with the columns they can never edit read-only. Ash is
     # asked again on every update, which for a table with its state in the
@@ -157,6 +181,43 @@ defmodule AshTable.Live.TableComponent do
      |> assign(expandable?: expandable?(model, socket.assigns.depth, depth_limit))
      |> read()}
   end
+
+  # What makes the table one of related records. A nested table is told by
+  # the table around it, and is given where its records are shown in the
+  # full view. A table with its state in the URL finds it there, and is then
+  # read as a nested table is: through the parent, read again as the person.
+  # Any other table is not limited.
+  defp relate(%{assigns: %{nested?: true, via: via, parent_key: key}} = socket) do
+    assign(socket, full_view: Related.path(socket.router, socket.endpoint, via, key))
+  end
+
+  defp relate(%{assigns: %{url: url, id: id, resource: resource}} = socket)
+       when is_binary(url) do
+    params = url |> query_params() |> Map.get(id)
+
+    case Related.from_params(resource, params, reader(socket.assigns), socket.endpoint) do
+      nil ->
+        assign(socket, via: nil, parent_key: nil, related: nil, related_title: nil)
+
+      %{via: via, key: key} = related ->
+        # as the table around a nested one says for it: what this table was
+        # told, else what the parent's own domain says
+        parent_authorize? =
+          case socket.assigns.authorize_given do
+            nil -> AshTable.Domain.Info.authorize?(via.source)
+            authorize? -> authorize?
+          end
+
+        assign(socket,
+          via: via,
+          parent_key: key,
+          parent_authorize?: parent_authorize?,
+          related: related
+        )
+    end
+  end
+
+  defp relate(socket), do: socket
 
   # Whether the rows of the table have an expander: there is something to
   # offer this person, the table lets its rows expand at all (`max_depth 0`
@@ -210,24 +271,32 @@ defmodule AshTable.Live.TableComponent do
     opts = reader(socket.assigns)
     read = {model, state, opts, key}
 
+    # The records related to one record are read through that record: those
+    # of a nested table, and those a URL limits a table of its own to.
+    fetch =
+      case model.via do
+        %Relationship{} ->
+          opts = [parent_authorize?: socket.assigns.parent_authorize?] ++ opts
+          fn -> Query.read_related(model, state, key, opts) end
+
+        nil ->
+          fn -> Query.read(model, state, opts) end
+      end
+
     cond do
       read == socket.assigns.read ->
         socket
 
-      match?(%Relationship{}, model.via) ->
-        opts = [parent_authorize?: socket.assigns.parent_authorize?] ++ opts
-
+      socket.assigns.nested? ->
         socket
         |> assign(read: read, busy?: true, loading?: is_nil(socket.assigns.read))
-        |> start_async(:read, fn -> Query.read_related(model, state, key, opts) end)
+        |> start_async(:read, fetch)
 
       is_nil(socket.assigns.read) ->
-        socket |> assign(read: read) |> show(Query.read(model, state, opts), :first)
+        socket |> assign(read: read) |> show(fetch.(), :first)
 
       true ->
-        socket
-        |> assign(read: read, busy?: true)
-        |> start_async(:read, fn -> Query.read(model, state, opts) end)
+        socket |> assign(read: read, busy?: true) |> start_async(:read, fetch)
     end
   end
 
@@ -270,7 +339,8 @@ defmodule AshTable.Live.TableComponent do
       end)
 
     socket
-    |> assign(page: %{page | records: []}, row_count: length(rows), error: nil, gone?: false)
+    |> assign(page: %{page | records: [], parent: nil}, row_count: length(rows))
+    |> assign(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
     |> assign(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
       failed: %{},
@@ -291,13 +361,19 @@ defmodule AshTable.Live.TableComponent do
   # so it says something in every case: that they are not allowed when the
   # destination's table is declared with `on_forbidden :message`, and no more
   # than that the records are not available otherwise. Never "No records".
-  defp show(%{assigns: %{via: %Relationship{}}} = socket, {:error, refusal}, _read)
+  defp show(%{assigns: %{nested?: true}} = socket, {:error, refusal}, _read)
        when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
     case TableInfo.table_on_forbidden!(socket.assigns.resource) do
       :message -> show_message(socket, Text.t(:not_allowed))
       :not_found -> show_message(socket, Text.t(:records_not_available))
     end
   end
+
+  # A table of its own that is limited to related records, whose destination
+  # this person may not read: Ash put its refusal in place of the records.
+  # It is the refusal of this table's read, as below.
+  defp show(socket, {:error, :forbidden}, read),
+    do: show(socket, {:error, Ash.Error.Forbidden.exception([])}, read)
 
   # A read the resource refuses outright. Unless the table is declared with
   # `on_forbidden :message`, the person is not told that there is a table:
@@ -319,7 +395,8 @@ defmodule AshTable.Live.TableComponent do
   defp show_message(socket, text) do
     socket
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
-    |> assign(error: text, open: %{})
+    # nothing is said of a record that was not read for this person
+    |> assign(error: text, open: %{}, related_title: nil)
     |> stream(:rows, [], reset: true)
   end
 
@@ -400,6 +477,28 @@ defmodule AshTable.Live.TableComponent do
   end
 
   defp primary_key(%{primary_key: primary_key}, record), do: Map.take(record, primary_key)
+
+  # What the record is called that a table of its own is limited to: what
+  # its resource's table calls a record by, as far as this person may see it
+  # on this record. Taken from the record as it was read for them, and from
+  # nothing else: a record that was not read has no name here.
+  defp related_title(%{related: %{via: via}}, %Query.Page{parent: %_{} = parent}) do
+    via.source
+    |> Model.build()
+    |> in_words()
+    |> Model.naming()
+    |> Enum.find_value(fn column ->
+      case Map.get(parent, column.name) do
+        %Ash.ForbiddenField{} -> nil
+        %Ash.NotLoaded{} -> nil
+        value -> blank_as_nil(Format.format(column, value))
+      end
+    end)
+  end
+
+  defp related_title(_assigns, _page), do: nil
+
+  defp blank_as_nil(text), do: if(String.trim(text) != "", do: text)
 
   # After a filter change, the result is put into the live region: the count
   # when the read action counts, under either pagination strategy, else
@@ -639,21 +738,32 @@ defmodule AshTable.Live.TableComponent do
   defp go(%{assigns: %{state: state}} = socket, state), do: socket
 
   defp go(%{assigns: %{url: url, id: id}} = socket, state) when is_binary(url) do
-    params =
-      case State.to_params(state, socket.assigns.model) do
-        empty when empty == %{} -> Map.delete(query_params(url), id)
-        params -> Map.put(query_params(url), id, params)
+    # what the table is limited to stays, whatever else changes
+    limit =
+      case socket.assigns.related do
+        nil -> %{}
+        %{param: param} -> %{Related.param() => param}
       end
 
-    path = URI.parse(url).path || "/"
-
-    to =
-      if params == %{}, do: path, else: path <> "?" <> Plug.Conn.Query.encode(params)
-
-    push_patch(socket, to: to)
+    push_patch(socket,
+      to: path(url, id, Map.merge(State.to_params(state, socket.assigns.model), limit))
+    )
   end
 
   defp go(socket, state), do: socket |> assign(state: state) |> read()
+
+  # The URL with these parameters for the table `id`, and those of the
+  # page's other tables as they are.
+  defp path(url, id, params) do
+    params =
+      if params == %{},
+        do: Map.delete(query_params(url), id),
+        else: Map.put(query_params(url), id, params)
+
+    path = URI.parse(url).path || "/"
+
+    if params == %{}, do: path, else: path <> "?" <> Plug.Conn.Query.encode(params)
+  end
 
   defp query_params(url) do
     case URI.parse(url).query do
@@ -674,6 +784,14 @@ defmodule AshTable.Live.TableComponent do
     <div id={@id} class="ash-table">
       <%!-- The form of the filter row. A form cannot sit inside a table around
       its cells, so the controls name it instead. --%>
+      <.related
+        :if={@related}
+        id={@id}
+        via={@related.via}
+        title={@related_title}
+        parent={Routes.table(@socket.router, @related.via.source)}
+        clear={path(@url, @id, %{})}
+      />
       <form
         id={"#{@id}-filters"}
         phx-change="filter"
@@ -688,7 +806,7 @@ defmodule AshTable.Live.TableComponent do
           :if={@state.filters != %{}}
           type="button"
           id={"#{@id}-clear-filters"}
-          tabindex={@via && "-1"}
+          tabindex={@nested? && "-1"}
           class="btn btn-sm"
           phx-click={
             JS.push("clear_filters", target: @myself)
@@ -711,7 +829,7 @@ defmodule AshTable.Live.TableComponent do
         phx-target={@myself}
         data-ash-table
         data-lead={lead(@expandable?)}
-        class={is_nil(@via) && "overflow-x-auto"}
+        class={not @nested? && "overflow-x-auto"}
       >
         <table
           id={"#{@id}-table"}
@@ -840,7 +958,11 @@ defmodule AshTable.Live.TableComponent do
           the arrow keys and entered with Enter, as a filter is, and no tab stop in the
           middle of the grid around it. The element stays where it is once it is there,
           as every child of a stream's container with an id does. --%>
-          <tfoot :if={@via} id={"#{@id}-foot"} hidden={not pages?(@page, @model)}>
+          <tfoot
+            :if={@nested?}
+            id={"#{@id}-foot"}
+            hidden={not pages?(@page, @model) and not full_view?(@page, @full_view)}
+          >
             <tr :if={pages?(@page, @model)} id={"#{@id}-foot-row"} role="row">
               <td
                 id={"#{@id}-pager"}
@@ -860,6 +982,28 @@ defmodule AshTable.Live.TableComponent do
                   label={@label}
                   target={@myself}
                 />
+              </td>
+            </tr>
+            <%!-- The link to the full view is the last row of a nested table's grid,
+            for the same reason: reached with the arrow keys and followed with Enter. --%>
+            <tr :if={full_view?(@page, @full_view)} id={"#{@id}-view-row"} role="row">
+              <td
+                id={"#{@id}-view"}
+                role="gridcell"
+                colspan={length(@model.columns) + lead(@expandable?)}
+                aria-colindex="1"
+                tabindex="-1"
+                data-view
+              >
+                <.link
+                  id={"#{@id}-full-view"}
+                  navigate={@full_view}
+                  tabindex="-1"
+                  aria-label={Text.t(:full_view_of, table: @label)}
+                  class="link text-sm"
+                >
+                  {Text.t(:full_view)}
+                </.link>
               </td>
             </tr>
           </tfoot>
@@ -905,7 +1049,7 @@ defmodule AshTable.Live.TableComponent do
         :if={@error}
         id={"#{@id}-error"}
         role="alert"
-        class={[if(@via, do: "py-4", else: "py-8"), "text-center text-sm font-medium"]}
+        class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm font-medium"]}
       >
         {@error}
       </p>
@@ -916,12 +1060,12 @@ defmodule AshTable.Live.TableComponent do
       <p
         :if={is_nil(@error) and @row_count == 0 and not @loading?}
         id={"#{@id}-empty"}
-        class={[if(@via, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
+        class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
       >
         {Text.t(:no_records)}
       </p>
       <.pagination
-        :if={is_nil(@via) and pages?(@page, @model)}
+        :if={not @nested? and pages?(@page, @model)}
         id={@id}
         nested?={false}
         page={@page}
@@ -1035,8 +1179,9 @@ defmodule AshTable.Live.TableComponent do
         const GRID = "[data-ash-table]"
 
         // What a cell is besides a cell of a column: the expander of a row, a
-        // line under an expanded row, the cell that holds a nested table, or
-        // the cell that holds a nested table's pages.
+        // line under an expanded row, the cell that holds a nested table, the
+        // cell that holds a nested table's pages, or the one that holds its
+        // link to the full view.
         const is = (cell, what) => cell.dataset[what] !== undefined
 
         export default {
@@ -1380,6 +1525,12 @@ defmodule AshTable.Live.TableComponent do
             }
           },
 
+          // Follows the link a cell holds, as a click on it does.
+          follow(cell) {
+            const link = cell.querySelector("a[href]")
+            if (link) link.click()
+          },
+
           // Into the nested table a cell holds: to the cell it was left at,
           // or to its first.
           enterNested(cell) {
@@ -1437,6 +1588,7 @@ defmodule AshTable.Live.TableComponent do
                 else if (cell.dataset.filter !== undefined || is(cell, "pager")) this.enter(cell)
                 else if (expands) this.open(cell)
                 else if (is(cell, "nested")) this.enterNested(cell)
+                else if (is(cell, "view")) this.follow(cell)
                 else if (this.canEdit(cell)) this.startEdit(cell, null)
                 else handled = false
                 break
@@ -1916,6 +2068,55 @@ defmodule AshTable.Live.TableComponent do
     }
   end
 
+  # What is above the grid of a table that a URL limits to the records
+  # related to one record: what it shows, and the way back to all records.
+  #
+  # The heading names the relationship, as the parent's table labels it, and
+  # the record once it has been read for this person: as a link to the page
+  # of the record's own table where the router mounts one. The text is one
+  # message, so that a translation can put its parts in another order.
+  attr :id, :string, required: true
+  attr :via, :map, required: true
+  attr :title, :string, default: nil
+  attr :parent, :map, default: nil
+  attr :clear, :string, required: true
+
+  defp related(assigns) do
+    # in the host's words, as the line of the relationship is
+    label = Text.label(assigns.via.label)
+
+    # the message with a mark where the record goes
+    parts =
+      :related_heading
+      |> Text.t(record: "\0", relationship: label)
+      |> String.split("\0", parts: 2)
+
+    assigns =
+      assign(assigns,
+        label: label,
+        parts: parts,
+        titled?: assigns.title && match?([_, _], parts)
+      )
+
+    ~H"""
+    <div id={"#{@id}-related"} class="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <h2 id={"#{@id}-related-heading"} class="font-semibold" phx-no-format><%= if @titled? do %>{hd(@parts)}<.link
+            :if={@parent}
+            id={"#{@id}-related-parent"}
+            navigate={@parent.path}
+            class="link"
+          >{@title}</.link><span :if={!@parent} id={"#{@id}-related-parent"}>{@title}</span>{List.last(@parts)}<% else %>{@label}<% end %></h2>
+      <.link id={"#{@id}-related-clear"} patch={@clear} class="btn btn-sm">
+        {Text.t(:show_all_records)}
+      </.link>
+    </div>
+    """
+  end
+
+  # Whether a nested table has its link to the full view: the router mounts
+  # the destination's table, and the nested table has been read.
+  defp full_view?(page, full_view), do: not is_nil(page) and not is_nil(full_view)
+
   # Whether there are pages to go through.
   defp pages?(page, model), do: not is_nil(page) and model.pagination.strategy != :none
 
@@ -2213,7 +2414,7 @@ defmodule AshTable.Live.TableComponent do
   defp cell_attributes(false, _id, _column, _row), do: []
 
   defp cell_attributes(true, id, column, row) do
-    value = Map.get(row.record, column.name)
+    value = value(column, row.record)
 
     case {editable?(column, value), row.failed[column.name]} do
       {false, _failure} ->
@@ -2235,13 +2436,33 @@ defmodule AshTable.Live.TableComponent do
     end
   end
 
+  # What a record holds for a column. For a reference column that is the
+  # label of the related record, as Ash loaded it for this person:
+  #
+  #   * nil where there is no related record, and where there is one that is
+  #     not theirs to read. Ash gives nil for both, so the cell is empty for
+  #     both, and nothing in it tells the two apart;
+  #   * an `Ash.ForbiddenField` where they may read the related record and
+  #     not its label, or where the read of the destination was refused as a
+  #     whole: the cell of a hidden field.
+  defp value(%{kind: :reference, name: name, reference: %{label_field: label}}, record) do
+    case Map.get(record, name) do
+      %Ash.ForbiddenField{} = hidden -> hidden
+      %Ash.NotLoaded{} = not_loaded -> not_loaded
+      %_{} = related -> Map.get(related, label)
+      nil -> nil
+    end
+  end
+
+  defp value(column, record), do: Map.get(record, column.name)
+
   # A cell whose save failed shows what was typed, as the cell would show it
   # had it been saved, and holds the action's message. The message is a
   # popover the hook opens while the cell has focus or the pointer, so that
   # the row keeps its height; it is in the text colour on the page's
   # background, as the error colour is too faint for small text.
   defp cell_content(id, column, row) do
-    value = Map.get(row.record, column.name)
+    value = value(column, row.record)
 
     case editable?(column, value) && row.failed[column.name] do
       {typed, message} ->

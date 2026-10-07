@@ -190,3 +190,19 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "These records are not available."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{record}: %{relationship}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Open in full view"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Open in full view: %{table}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show all records"
+msgstr ""

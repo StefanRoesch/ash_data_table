@@ -11,9 +11,9 @@ no HEEx.
 > **This is the first version, 0.1.0, and it is not on Hex yet.** It reads,
 > sorts, filters, pages and edits cells in place, adapts its columns and its
 > editing to who is looking, and speaks the host's language. A row expands
-> into the tables of its related records. Opening a nested table as a page
-> of its own, a cell that shows a related record's label, and row actions
-> are later slices.
+> into the tables of its related records, each of which opens on a page of
+> its own, and a cell can show a related record by its label. Creating
+> records and row actions are later slices.
 
 - [Install](#install)
 - [A first table](#a-first-table)
@@ -44,6 +44,7 @@ examples from the demo app and each topic's edge cases.
 - [State in the URL](documentation/topics/state-in-the-url.md)
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
+- [Nested tables](documentation/topics/nested-tables.md)
 - [Authorization](documentation/topics/authorization.md)
 - [Keyboard and accessibility](documentation/topics/keyboard-and-accessibility.md)
 - [Messages and translations](documentation/topics/messages-and-translations.md)
@@ -182,6 +183,7 @@ table do
   end
 
   column :comment_count    # an aggregate
+  column :project          # a belongs-to: the related record's label
 end
 ```
 
@@ -190,12 +192,28 @@ end
   declared order.
 - Calculations and aggregates appear only when named, and are read-only. A
   calculation with a required argument cannot be a column.
+- A column that names a public belongs-to relationship is a reference cell:
+  it shows the related record's label, the attribute that the destination's
+  `table` block names with `label_field :name`. It is read-only, and not
+  sorted or filtered by. The label is read as Ash loads the relationship, as
+  the person, so a related record they may not read is an empty cell, and
+  the column is left out for a person who can never read the destination.
 - Only `public?` fields and actions can appear.
 - `sortable?` can only switch sorting off. Whether a column can be sorted is
   the resource's decision; under keyset pagination, calculations and
   aggregates cannot.
 - `filterable?` can only switch a column's filter off. Whether a column can
   be filtered is the resource's decision too (see [Filtering](#filtering)).
+
+> #### Aggregates and calculations over protected fields {: .warning}
+>
+> Ash applies the related resource's read policy to an aggregate, and not its
+> field policies; a calculation applies no policy to what it references. An
+> aggregate over a field that a field policy protects, and a calculation that
+> references one, need a field policy of their own on the resource that
+> declares them. The compiler warns about a column that has none;
+> `exposes_protected_field? true` on the column says that it is meant. See
+> [Columns and defaults](documentation/topics/columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
 
 Mistakes in the block are reported when the resource is compiled. As with
 every Ash extension's verifiers, they surface as compile warnings. They fail
@@ -298,6 +316,10 @@ value (`task[f][due_on][is_empty]=`); a yes-or-no choice is `yes` or `no`.
 The operators are named `contains`, `equals`, `starts_with`, `is_empty`,
 `greater_than`, `less_than`, `at_least`, `at_most`, `on`, `before` and
 `after`. Parameters that mean nothing to the table are ignored.
+
+One more parameter limits the table to the records related to one record,
+`task[of][project][tasks]=KEY`: the [full view](#nested-tables) of a nested
+table.
 
 The id defaults to the last part of the resource's module name, underscored;
 `ash_table "/tasks", MyApp.Tracker.Task, id: "tasks"` sets another.
@@ -403,7 +425,7 @@ is dimmed and `aria-busy`. A cell that is being edited is left alone when
 another cell's save puts its row back, so what is typed survives; if that
 edit is then given up, the cell shows what the server sent last.
 
-A table with editable columns and calculation or aggregate columns needs a
+A table with editable columns and calculation, aggregate or reference columns needs a
 primary read action, which is what Ash loads them through. Without one the
 resource is reported when it is compiled, and its table refuses to render.
 
@@ -483,6 +505,15 @@ end
   and page of the tables in them, last until the table around them reads
   again (a change of its sort, filters or page), which closes them. A save in
   a row leaves what is open under it open.
+- The last row of a nested table is a link, "Open in full view", to the page
+  the router mounts the destination's table at, when it mounts one. That
+  page shows the same records, with the row and the relationship in the
+  table's own parameter `of`:
+  `/comments?comment[of][task][comments]=KEY`. Its state is in the address,
+  a heading says whose records these are, and "Show all records" takes the
+  limit away. The parent in the address is looked up among the resources
+  whose table offers such a relationship, never trusted, and read again as
+  the person on every read.
 
 What a person may not see applies in a nested table as on a page of its
 own: a line whose destination they can never read is not there, records they
@@ -496,6 +527,10 @@ out, and a hidden field is "Not available".
 > does not count. Ash counts a page of related records with the filter as it
 > is written, without the field policies, and the total would tell how many
 > records match among those whose value is hidden.
+
+The guide [Nested tables](documentation/topics/nested-tables.md) has all of
+this in detail, with the full view, the reference cell and what a person
+sees for each restriction.
 
 ## Who is reading, and what they may see and do
 
@@ -542,6 +577,7 @@ A domain without the extension behaves as one with these defaults. Add
 | The read is **refused outright** (a `Forbidden` error, as from an `access_type :strict` policy) | The page answers as if it did not exist: status 404 and your "not found" page. With `on_forbidden :message`, the page stays and says "You are not allowed to see these records." |
 | The person can **never see a field** (a field policy that depends on the actor only) | The column is left out for that person: no header, no filter, no cells. A URL that sorts or filters by it is ignored. |
 | The person sees a field on **some records only** (a field policy with a check on the record) | The column stays. Hidden cells are empty, announced as "Not available", and cannot be edited. |
+| The person can **never read a related resource** | A reference cell of it has no column for them, and it has no line under an expanded row. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. |
 
@@ -607,12 +643,13 @@ stop at:
 | Enter, on an expander or a line | Open or close it |
 | Enter, F2, on the cell that holds a nested table | Go into the nested table |
 | Escape, in a nested table | Come back out, to the cell that holds it |
+| Enter, F2, on the last row of a nested table, which holds its link | Follow "Open in full view" |
 
 A nested table is a grid of its own, and inside it everything works as in a
 table on a page. The whole tree of tables is one tab stop: Tab leaves all of
-it. The pages of a nested table are the last row of its grid, reached with
-the arrow keys and entered with Enter, where Left and Right Arrow move
-between the buttons.
+it. The pages of a nested table are a row at the end of its grid, reached
+with the arrow keys and entered with Enter, where Left and Right Arrow move
+between the buttons; its link to the full view is the row after them.
 
 On a filter cell, Enter or F2 goes into the filter, and so does a character,
 which is typed there: over the text or number the filter holds, into the
@@ -781,12 +818,21 @@ nothing at all, unless the resource says `on_forbidden :message`.
   It refuses to render (`ArgumentError`, "cannot build the table of …") for
   a wrong `read_action`, a missing primary read action, an unsupported
   `paginate_with`, a column that is no public field or is a calculation that
-  needs an argument, an `update_action` that names no public update action,
-  and editing beside calculation or aggregate columns without a primary read
-  action. A column's own `update_action` that exists but cannot save the
+  needs an argument, a column that names a relationship whose label cannot
+  be shown, a `relationship` that cannot be offered, an `update_action` that
+  names no public update action, and editing beside calculation, aggregate
+  or reference columns without a primary read action. A column's own `update_action` that exists but cannot save the
   column leaves the column read-only, and `sortable? true`,
   `filterable? true` and `confirm` without effect do nothing. See
   [Mistakes at compile time](documentation/topics/mistakes-at-compile-time.md#if-a-finding-is-ignored).
+- **An aggregate does not apply the related resource's field policies, and
+  a calculation applies none.** A column over a protected field needs a field
+  policy of its own. The compiler warns; see
+  [Columns and defaults](documentation/topics/columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
+- **An aggregate column that a person sees on some records only has no sort
+  for them.** Ash cannot sort by it. In a nested table read in pages, a
+  person who sees some field on some records only cannot sort by any
+  aggregate column.
 - **A hidden field cannot be edited through the table, but the table is not
   what protects it.** A field policy is about reading. The same update
   action called through `ash_json_api`, `ash_graphql` or your own code

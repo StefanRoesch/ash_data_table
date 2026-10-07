@@ -92,6 +92,18 @@ msgstr "Die Einträge konnten nicht geladen werden."
 msgid "These records are not available."
 msgstr "Diese Einträge sind nicht verfügbar."
 
+msgid "%{record}: %{relationship}"
+msgstr "%{record}: %{relationship}"
+
+msgid "Open in full view"
+msgstr "In voller Ansicht öffnen"
+
+msgid "Open in full view: %{table}"
+msgstr "In voller Ansicht öffnen: %{table}"
+
+msgid "Show all records"
+msgstr "Alle Einträge anzeigen"
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
@@ -258,6 +270,9 @@ msgstr "E-Mail"
 
 msgid "Role"
 msgstr "Rolle"
+
+msgid "Assigned hours"
+msgstr "Zugewiesene Stunden"
 
 msgid "Admin"
 msgstr "Admin"

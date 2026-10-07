@@ -43,6 +43,20 @@ the order `Ash.Resource.Info.public_attributes/1` returns them. Once one
 `column` is declared, the table is exactly the declared columns in the
 declared order. Calculations and aggregates appear only when named.
 
+A `column` that names a public belongs-to relationship is a reference
+cell: it shows the related record's label, which is the attribute that the
+destination resource's own `table` block names with `label_field`. It is
+read-only, and is neither sorted nor filtered by. The label is read as Ash
+loads the relationship, as the person, so the destination's policies decide
+what they read in the cell.
+
+Ash applies the read policy of a related resource to an aggregate and not
+its field policies, and applies no policy to what a calculation
+references. An aggregate or calculation column over a field that a field
+policy protects needs a field policy of its own, on this resource. The
+compiler warns when it has none; `exposes_protected_field? true` on the
+column says that it is meant.
+
 Every column the resource allows to be filtered has a filter of its type in
 the filter row under the header. `filterable? false` leaves a column
 without one; nothing switches a filter on that the resource does not allow.
@@ -109,6 +123,10 @@ tables at that depth have no expanders. It is the setting of the table on
 the page that counts for everything beneath it. A table with `max_depth 0`
 never expands its rows, wherever it is shown.
 
+The last row of a nested table links to its full view, where the host's
+router mounts the destination's table (`AshTable.Router.ash_table/3`):
+that page, limited to the same records. See `AshTable.Live.Page`.
+
 
 ## table
 How the resource is presented to people as a table.
@@ -126,6 +144,14 @@ table do
 
   column :title
   column :comment_count
+  column :project
+end
+
+```
+
+```
+table do
+  label_field :name
 end
 
 ```
@@ -141,6 +167,7 @@ end
 | [`paginate_with`](#table-paginate_with){: #table-paginate_with } | `:offset \| :keyset` |  | The pagination strategy. Defaults to `:offset` if the read action supports it, else `:keyset`. |
 | [`update_action`](#table-update_action){: #table-update_action } | `atom` |  | The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only. |
 | [`on_forbidden`](#table-on_forbidden){: #table-on_forbidden } | `:not_found \| :message` | `:not_found` | What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a "not allowed" message in place of the rows. |
+| [`label_field`](#table-label_field){: #table-label_field } | `atom` |  | The attribute a record of this resource is called by where it is shown as one value: in a reference cell of another table (a `column` naming a belongs-to relationship to this resource), and in the heading of a table limited to the records related to it. A public attribute. |
 | [`max_depth`](#table-max_depth){: #table-max_depth } | `non_neg_integer` | `3` | How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown. |
 
 
@@ -151,13 +178,17 @@ column name
 ```
 
 
-A column of the table, showing one field of the resource.
+A column of the table, showing one field of the resource, or the label of the record a belongs-to relationship leads to.
 
 
 
 ### Examples
 ```
 column :title
+```
+
+```
+column :assignee
 ```
 
 ```
@@ -182,7 +213,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#table-column-name){: #table-column-name .spark-required} | `atom` |  | The field shown in this column: a public attribute, calculation or aggregate. |
+| [`name`](#table-column-name){: #table-column-name .spark-required} | `atom` |  | What is shown in this column: a public attribute, calculation or aggregate, or a public belongs-to relationship. A relationship makes the column a reference cell: it shows the related record's label, the `label_field` of the destination's table, read-only, and is neither sorted nor filtered by. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -192,6 +223,7 @@ end
 | [`filterable?`](#table-column-filterable?){: #table-column-filterable? } | `boolean` |  | Set to `false` to leave this column without a filter. Defaults to what the resource allows; it cannot switch filtering on. |
 | [`update_action`](#table-column-update_action){: #table-column-update_action } | `false \| atom` |  | The update action an inline edit of this column runs, with the column's attribute as its only input. `false` makes the column read-only. Defaults to the table's `update_action`. |
 | [`confirm`](#table-column-confirm){: #table-column-confirm } | `String.t` |  | A question asked before an inline edit of this column is saved. |
+| [`exposes_protected_field?`](#table-column-exposes_protected_field?){: #table-column-exposes_protected_field? } | `boolean` |  | Set to `true` on an aggregate or calculation column that is meant to show everyone who reads a row what a field policy protects elsewhere: a field of the related resource that the aggregate is over or filters by, or a field the calculation references. It silences the warning the compiler gives about such a column. Ash applies no field policy of what an aggregate or a calculation is made from; the column is protected by a field policy of its own on this resource. |
 
 
 

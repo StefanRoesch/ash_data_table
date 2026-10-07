@@ -40,6 +40,20 @@ defmodule AshTable.Resource do
   `column` is declared, the table is exactly the declared columns in the
   declared order. Calculations and aggregates appear only when named.
 
+  A `column` that names a public belongs-to relationship is a reference
+  cell: it shows the related record's label, which is the attribute that the
+  destination resource's own `table` block names with `label_field`. It is
+  read-only, and is neither sorted nor filtered by. The label is read as Ash
+  loads the relationship, as the person, so the destination's policies decide
+  what they read in the cell.
+
+  Ash applies the read policy of a related resource to an aggregate and not
+  its field policies, and applies no policy to what a calculation
+  references. An aggregate or calculation column over a field that a field
+  policy protects needs a field policy of its own, on this resource. The
+  compiler warns when it has none; `exposes_protected_field? true` on the
+  column says that it is meant.
+
   Every column the resource allows to be filtered has a filter of its type in
   the filter row under the header. `filterable? false` leaves a column
   without one; nothing switches a filter on that the resource does not allow.
@@ -105,13 +119,19 @@ defmodule AshTable.Resource do
   tables at that depth have no expanders. It is the setting of the table on
   the page that counts for everything beneath it. A table with `max_depth 0`
   never expands its rows, wherever it is shown.
+
+  The last row of a nested table links to its full view, where the host's
+  router mounts the destination's table (`AshTable.Router.ash_table/3`):
+  that page, limited to the same records. See `AshTable.Live.Page`.
   """
 
   @column %Spark.Dsl.Entity{
     name: :column,
-    describe: "A column of the table, showing one field of the resource.",
+    describe:
+      "A column of the table, showing one field of the resource, or the label of the record a belongs-to relationship leads to.",
     examples: [
       "column :title",
+      "column :assignee",
       """
       column :status do
         label "State"
@@ -163,6 +183,12 @@ defmodule AshTable.Resource do
 
         column :title
         column :comment_count
+        column :project
+      end
+      """,
+      """
+      table do
+        label_field :name
       end
       """
     ],
@@ -187,6 +213,11 @@ defmodule AshTable.Resource do
         doc:
           "What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a \"not allowed\" message in place of the rows."
       ],
+      label_field: [
+        type: :atom,
+        doc:
+          "The attribute a record of this resource is called by where it is shown as one value: in a reference cell of another table (a `column` naming a belongs-to relationship to this resource), and in the heading of a table limited to the records related to it. A public attribute."
+      ],
       max_depth: [
         type: :non_neg_integer,
         default: 3,
@@ -202,7 +233,9 @@ defmodule AshTable.Resource do
     verifiers: [
       AshTable.Resource.Verifiers.VerifyReadAction,
       AshTable.Resource.Verifiers.VerifyUpdateAction,
+      AshTable.Resource.Verifiers.VerifyLabelField,
       AshTable.Resource.Verifiers.VerifyColumns,
-      AshTable.Resource.Verifiers.VerifyRelationships
+      AshTable.Resource.Verifiers.VerifyRelationships,
+      AshTable.Resource.Verifiers.VerifyExposure
     ]
 end

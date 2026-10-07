@@ -160,7 +160,7 @@ The path is `table -> update_action`, or `table` for the last one.
 | The resource has no action named \`NAME\`. | The table's `update_action` names an action the resource does not have. | Correct the name, or define the action. |
 | \`NAME\` is a destroy action, not an update action. | It names an action of another type. | Name an update action. |
 | The update action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | The action is declared `public? false`. | Make it public, or name another. |
-| The table has editable columns and shows calculations or aggregates (\`NAME\`), but the resource has no primary read action. After a save the row is refreshed with those fields, which Ash loads through the primary read action. Mark a read action \`primary? true\`. | The table reads through a non-primary action named with `read_action`, at least one column can be edited, and at least one column is a calculation or an aggregate. | Mark a read action `primary? true`. |
+| The table has editable columns and shows calculations, aggregates or reference columns (\`NAME\`), but the resource has no primary read action. After a save the row is refreshed with those fields, which Ash loads through the primary read action. Mark a read action \`primary? true\`. | The table reads through a non-primary action named with `read_action`, at least one column can be edited, and at least one column is a calculation, an aggregate or a reference cell. | Mark a read action `primary? true`. |
 
 The last one is about Ash and not about the table: `Ash.load/3`, and the
 load of an update action's result, go through the primary read action, also
@@ -179,7 +179,7 @@ finding is about one.
 
 | Message | Cause | Fix |
 | --- | --- | --- |
-| The resource has no attribute, calculation or aggregate named \`NAME\`. | A `column` names something that is not a field: a typo, or a relationship. | Correct the name. A relationship cannot be a column. |
+| The resource has no attribute, calculation, aggregate or belongs-to relationship named \`NAME\`. | A `column` names something the resource does not have: usually a typo. | Correct the name. |
 | \`NAME\` is not public. Only \`public?\` fields can be columns of a table. | The field is private. | Make the field `public? true` if it may be shown, or leave the column out. |
 | The calculation \`NAME\` requires the argument \`ARG\`. A table cannot supply arguments, so a column can only show a calculation whose arguments are optional or have defaults. | The calculation has an argument with `allow_nil? false` and no default. | Give the argument a default, or define a calculation without the argument for the table. |
 | \`NAME\` cannot be sorted, so \`sortable? true\` has no effect. \`sortable?\` can only switch sorting off; remove it or set it to \`false\`. | `sortable? true` on a field the resource does not allow to be sorted. Under keyset pagination the message says "cannot be sorted with keyset pagination". | Remove the option. To sort by a calculation or an aggregate, page by offset. |
@@ -197,6 +197,77 @@ A column whose type has no editor or whose attribute is not writable gets
 one of the two messages about that, and not the ones about what its action
 accepts or needs: no action could save it.
 
+### A column that names a relationship
+
+A column that names a belongs-to relationship is a reference cell: it shows
+the related record's label. The path is the column's, as above. `NAME` is
+the relationship and `DESTINATION` its destination resource.
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| \`NAME\` is a has-many relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with \`relationship :NAME\`. | The column names a has-many, a has-one or a many-to-many; the message says which. | Remove the column. The related records are a nested table under the row. |
+| The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshTable.Resource\` in its extensions. A column that names a relationship shows the related record's label, which the destination's table declares with \`label_field\`. | The destination resource does not list the extension. | Add the extension and a `label_field` to the destination, or show the foreign key attribute. |
+| The destination of \`NAME\`, DESTINATION, declares no \`label_field\`. A column that names a relationship shows the related record's label: add \`label_field\` to the \`table\` block of DESTINATION. | The destination has a table, and its block names no `label_field`. | Add `label_field` there. |
+| The destination of \`NAME\`, DESTINATION, has no primary read action, and the relationship names no \`read_action\`. The related record of a column is read as Ash loads the relationship, which needs one of the two. | Neither is there. | Mark a read action of the destination `primary? true`, or give the relationship a `read_action`. |
+| \`NAME\` shows the label of a related record, which a table does not sort by, so \`sortable? true\` has no effect. \`sortable?\` can only switch sorting off; remove it or set it to \`false\`. | `sortable? true` on a reference cell. | Remove the option. |
+| \`NAME\` shows the label of a related record, which a table does not filter by, so \`filterable? true\` has no effect. \`filterable?\` can only switch filtering off; remove it or set it to \`false\`. | `filterable? true` on a reference cell. | Remove the option. |
+| \`NAME\` shows the label of a related record. Only an attribute can be edited, so a column that names a relationship cannot have an \`update_action\`. | `update_action` on a reference cell. | Remove the option. |
+| \`NAME\` can never be edited, so \`confirm\` has no effect. It shows the label of a related record. | `confirm` on a reference cell. | Remove the option. |
+
+A private relationship gets the "is not public" message of a private field.
+
+## `label_field`
+
+The path is `table -> label_field`.
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| The resource has no attribute named \`NAME\`. | `label_field` names something the resource does not have. | Correct the name. |
+| \`NAME\` is not public. Only a \`public?\` attribute can be the label of a record. | The attribute is private. | Name a public attribute. |
+| \`NAME\` is a relationship. The label of a record is one of its own attributes: name an attribute of this resource. | `label_field` names a relationship. | Name an attribute. |
+| \`NAME\` is a calculation. The label of a record has to be an attribute: it is read with the record's key and nothing else. | `label_field` names a calculation, or an aggregate ("is an aggregate"). | Name an attribute. |
+
+## Relationships
+
+The path is `table -> relationship -> NAME`.
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| The resource has no relationship named \`NAME\`. | A `relationship` names something that is no relationship of the resource. | Correct the name. |
+| \`NAME\` is not public. Only \`public?\` relationships can be offered by a table. | The relationship is private. | Make it `public? true` if its records may be shown, or leave it out. |
+| The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshTable.Resource\` in its extensions. A row can only be expanded into the table of a resource that has one. | The destination resource does not list the extension. | Add the extension to the destination, or leave the relationship out. |
+| Got duplicate AshTable.Resource.Relationship: NAME | The block declares the same `relationship` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
+
+With no `relationship` declared, a relationship whose destination has no
+table is simply not offered: nothing is reported.
+
+## Warnings about what a column shows
+
+Two findings are not mistakes in the block. The resource may mean what it
+says, so they are plain warnings: the text below with the line of the
+column, without the path and without the `Spark.Error.DslError` in front.
+`--warnings-as-errors` fails on them like on the others. This is the output
+of the compiler for a sketch:
+
+<!-- sketch -->
+```text
+warning: The aggregate column `payroll` shows `salary` of Sketch.Member, which a field policy protects there, and Sketch.Team has no field policy for `payroll`. Ash applies the read policy of the related resource to an aggregate, and not its field policies: everyone who can read a row sees this column, and can sort and filter by it. Protect it with a field policy for `payroll` on Sketch.Team, which needs `Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with `exposes_protected_field? true` on the column.
+    │
+ 48 │     column :payroll
+    │     ~~~~~~~~~~~~~~~
+    │
+    └─ lib/sketch/team.ex:48: (file)
+```
+
+| Message | Cause | Answer |
+| --- | --- | --- |
+| The aggregate column \`NAME\` shows \`FIELD\` of DESTINATION, which a field policy protects there, and RESOURCE has no field policy for \`NAME\`. Ash applies the read policy of the related resource to an aggregate, and not its field policies: everyone who can read a row sees this column, and can sort and filter by it. Protect it with a field policy for \`NAME\` on RESOURCE, which needs \`Ash.Policy.Authorizer\` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with \`exposes_protected_field? true\` on the column. | An aggregate column over a field that a field policy protects on the related resource. For a field in the aggregate's own `filter` the first sentence says "counts by \`FIELD\` of DESTINATION in its \`filter\`". | A field policy for the aggregate, or `exposes_protected_field? true` on the column. |
+| The calculation column \`NAME\` references \`FIELD\` of DESTINATION (through \`PATH\`), which a field policy protects there, and RESOURCE has no field policy for \`NAME\`. Ash applies no policy to what a calculation references: everyone who can read a row sees this column, and can sort and filter by it. Protect it … | A calculation column whose expression references a protected field of a related resource. For a field of the resource itself the first sentence says "references \`FIELD\`, which a field policy protects on this resource". The rest is as above. | The same. |
+| The aggregate column \`NAME\` is a \`first\` aggregate over the one record of \`RELATIONSHIP\`, and the calculation column \`OTHER\` reaches through the same relationship. Read together through a SQL data layer, such an aggregate returns the value of a related record that the reader may not read (ash_table issue #32). The table therefore reads \`NAME\` apart from the rest of the row, and does not sort or filter by it. To have it read with the row again, and sorted and filtered by, take the aggregate out of the join the two share: give it a \`join_filter\` or a \`read_action\` of its own. To leave it at that, say \`sortable? false\` and \`filterable? false\` on the column. | A `first` aggregate column over a belongs-to, or over a has-one on a key of the destination, without `join_filter` and without `read_action`, beside an expression calculation column over the same relationship. | A `join_filter` or a `read_action` on the aggregate; or `sortable? false` and `filterable? false` on the column, which accepts what the table does. |
+
+Both rules, and what the warnings cannot see, are in
+[Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
+
 A resource with one finding prints it as in the example at the top, with the
 line of the block. A resource with several prints them as one warning: the
 line "Multiple Errors Occurred", then each finding with its own path, a line
@@ -213,6 +284,8 @@ Some things look like they should be reported and are not, on purpose:
 | A table-level `update_action` that accepts a column whose type has no editor (a UUID, say), or a table whose column is an attribute that is not writable | The column is read-only. For a column's own `update_action` the same is reported. |
 | `sortable? false` or `filterable? false` on a column that could not be sorted or filtered anyway | Nothing. |
 | No `table` block | The default table. |
+| A public relationship whose destination has no table, in a block that declares no `relationship` | It is not offered. |
+| `exposes_protected_field? true` on a column that exposes nothing | Nothing. |
 
 The table-level action is a blanket statement, "edit what this action can
 edit", so what it cannot edit is not an error. A column's own action is a
@@ -236,9 +309,13 @@ any LiveView does that raises in its first render.
 | No primary read action, and no `read_action` | The same. |
 | An unsupported `paginate_with` | The same. |
 | A column that does not exist or is not public | The same. |
+| A column that names a relationship whose label cannot be shown: not a belongs-to, a destination without a table or without a usable `label_field` | The same. |
+| A `relationship` that is no public relationship, or whose destination has no table | The same. |
 | A calculation column that requires an argument | The same. |
 | A wrong `update_action`, at the table or at a column: not there, not an update action, not public | The same. The block asked for editing through an action that cannot be run, and a table that silently offered none would hide that. |
-| Editable columns beside calculation or aggregate columns, without a primary read action | The same. |
+| Editable columns beside calculation, aggregate or reference columns, without a primary read action | The same. |
+| A `label_field` that names no public attribute | The table itself renders. A table that shows this resource in a reference cell refuses, and a heading that would call a record by it calls it by a column instead. |
+| A warning about what a column shows | The table renders and shows the column: the first kind as Ash returns it, the second read apart and without its sort and filter. |
 | A column's own `update_action` that exists but does not accept the attribute, or needs an argument | The column is read-only. |
 | A column's own `update_action` on a calculation, an aggregate, a type without an editor or an attribute that is not writable | The column is read-only. |
 | `sortable? true`, `filterable? true` or `confirm` without effect | Nothing. The option has no effect, as the message says. |
@@ -262,8 +339,15 @@ so it has no table."
 - **`filterable? true` on a column whose type has no filter** is reported
   with the same message as on a field the resource declares unfilterable.
 - **A private field that exists** gets the "is not public" message, and a
-  name that is no field at all gets "has no attribute, calculation or
-  aggregate". A relationship's name falls under the second.
+  name that is nothing at all gets "has no attribute, calculation, aggregate
+  or belongs-to relationship". A relationship of another kind gets the
+  message that says which kind it is.
+- **A finding about another resource can go stale.** Whether a destination
+  has a table, a `label_field` or a field policy is looked up when the
+  resource that names it is compiled. A later change to the destination does
+  not compile that resource again, so its finding appears, or goes away, at
+  the next full build: one more reason for `--force`. At runtime the table
+  checks again.
 - **The checks know nothing of people.** That a person can never see a
   column or never run an action is a matter of policies and is found out per
   request. See [Authorization](authorization.md).

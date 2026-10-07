@@ -27,7 +27,8 @@ sorted.
 | The sorted column and its direction | Which cell has focus |
 | Every filter that applies: column, operator, value | A filter value that was rejected as invalid |
 | The page number (offset) or the cursor (keyset) | An open editor and what is typed in it |
-| | Cells whose save failed |
+| The parent a table is limited to: the full view of a nested table | Cells whose save failed |
+| | Which rows are expanded, and the sort, filters and page of the tables nested in them |
 
 A default is left out: no sort, no filters and the first page give the plain
 path, `/tasks`.
@@ -51,6 +52,7 @@ cannot collide with the page's own parameters or with another table's.
 | A filter whose operator takes no value | `ID[f][COLUMN][OPERATOR]=` | `task[f][due_on][is_empty]=` |
 | A yes-or-no choice | `ID[f][COLUMN]=yes` or `=no` | `task[f][billable%3F]=yes` |
 | A choice of an enum value | `ID[f][COLUMN]=VALUE` | `task[f][status]=in_review` |
+| Limited to the records related to one record | `ID[of][PARENT][RELATIONSHIP]=KEY` | `comment[of][task][comments]=3f649715-…` |
 
 `COLUMN` is the field's name. The operators are named `contains`, `equals`,
 `starts_with`, `is_empty`, `greater_than`, `less_than`, `at_least`,
@@ -69,6 +71,26 @@ The table writes the parameters in alphabetical order and percent-encodes
 what a query string requires, such as the `?` in `billable?`. When it reads
 them the order does not matter, and it accepts the default operator spelled
 out (`task[f][title][contains]=report`).
+
+## A table limited to the records of one parent
+
+The parameter `of` limits a table to the records related to one record:
+`/comments?comment[of][task][comments]=KEY` shows the comments of one task,
+under a heading that says so. This is the full view of a nested table, and
+the link in the last row of a nested table writes it.
+
+- `PARENT` is the short name of the parent's resource, `RELATIONSHIP` the
+  name of its relationship, and `KEY` its primary key. A key of several
+  attributes is written by attribute:
+  `ID[of][PARENT][RELATIONSHIP][ATTRIBUTE]=VALUE`.
+- Sort, filters and page are written beside it, and it stays through every
+  change of them. It is part of a shared link.
+- "Show all records" above the table removes it, together with the sort,
+  the filters and the page that were chosen under it.
+
+What the parameter can name, how the parent is looked up and read, and what
+the page shows for a parent that is not the person's to read, is in
+[Nested tables](nested-tables.md#the-full-view).
 
 ## The table's id
 
@@ -110,6 +132,7 @@ person meets it is dropped silently, and the rest is applied.
 | A value that is not one of the column's type | `task[f][progress]=abc` | No filter |
 | Two operators for one column | `task[f][title][contains]=a&task[f][title][equals]=b` | No filter |
 | A column the person can never see | `task[f][external_ref]=EXT`, as Max Member | No filter |
+| A limit that names no relationship the person is offered to this table: an unknown resource, a relationship to another table, a private one, a key that is not one | `comment[of][task][labels]=…` | The table, not limited |
 | Parameters that are not the table's | `utm=mail` | Left as they are, and kept when the table patches the URL |
 
 Nothing in the page says that a parameter was ignored. The next change the
@@ -215,6 +238,11 @@ and then the entries gives:
   again, which then answers 404.
 - **The locale and the actor are not in the URL.** They come from the
   session.
+- **A limit names a record, and gives no access to it.** The parent is read
+  as the person on every read. A key of a record that is not theirs shows
+  "This record is no longer available." and no rows.
+- **Going back from a full view** returns to the page the link was on, with
+  the state in its address. The rows that were expanded there are closed.
 
 ## Things people trip over
 
@@ -231,6 +259,7 @@ and then the entries gives:
 
 ## Not in the first version
 
-No saved views, no per-user memory of a table's state, and no sort by
-several columns in the address. The roadmap is in the
+No saved views, no per-user memory of a table's state, no sort by several
+columns in the address, and nothing of a nested table in the address but its
+full view. The roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

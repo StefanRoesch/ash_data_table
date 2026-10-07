@@ -78,12 +78,7 @@ defmodule AshTable.Edit do
   end
 
   # The record with what the table's columns show of it.
-  defp load(model, record, opts) do
-    case Model.loads(model) do
-      [] -> {:ok, record}
-      loads -> Ash.load(record, loads, opts)
-    end
-  end
+  defp load(model, record, opts), do: Query.load(record, model, opts)
 
   defp fetch(model, key, opts) do
     case Query.get(model.resource, key, opts) do
@@ -99,14 +94,15 @@ defmodule AshTable.Edit do
       column.update_action,
       [as: "cell", warn_on_unhandled_errors?: false] ++ opts
     )
-    |> AshPhoenix.Form.submit(
-      params: %{Atom.to_string(column.name) => typed},
-      # the row is shown from what the action returns
-      action_opts: [load: Model.loads(model)]
-    )
+    |> AshPhoenix.Form.submit(params: %{Atom.to_string(column.name) => typed})
     |> case do
-      {:ok, record} ->
-        {:ok, record}
+      # the row is shown from what the action returns
+      {:ok, saved} ->
+        case load(model, saved, opts) do
+          {:ok, saved} -> {:ok, saved}
+          # saved, and no longer this person's to read
+          {:error, _error} -> {:error, nil, Text.t(:record_gone)}
+        end
 
       {:error, form} ->
         failed(model, record, message(form, column, model), opts)

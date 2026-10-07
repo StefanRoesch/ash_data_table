@@ -25,6 +25,11 @@ defmodule AshTable.Router do
   The resource is written in full; an alias of the surrounding `scope` is not
   applied to it.
 
+  A mounted table is also where the nested tables of that resource are
+  opened in their full view: a nested table links to the first route, in the
+  router's order, that mounts its resource at a path without parameters. See
+  `AshTable.Live.Page`.
+
   ## Options
 
     * `:id` - the table's id, a string. It prefixes the DOM ids of the table

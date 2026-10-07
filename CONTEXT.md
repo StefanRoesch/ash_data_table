@@ -31,6 +31,14 @@ _Avoid_: Sub-row, detail row, tab
 A cell that stands for a related record and shows that record's label in place of its key.
 _Avoid_: Lookup, link cell, foreign-key cell
 
+**Label**:
+What a record is called where a table shows it as one value: the attribute its resource's table names as `label_field`.
+_Avoid_: Display name, title field, name field
+
+**Full view**:
+The records of a nested table shown on the page of their own resource's table, limited to the same row and relationship.
+_Avoid_: Detail page, drill-down, scoped page
+
 **Row action**:
 An action of the resource, declared for a table, that a person runs on one record from that record's row.
 _Avoid_: Button, command, operation

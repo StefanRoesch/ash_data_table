@@ -83,10 +83,10 @@ defmodule AshTable.Resource.Editing do
   def obstacle(_resource, _field), do: :not_an_attribute
 
   @doc """
-  The calculation and aggregate columns that a row could not be shown with
-  after a save: those of a table with editable columns whose resource has no
-  primary read action, which is what Ash loads them through. Empty when
-  nothing is wrong.
+  The calculation, aggregate and reference columns that a row could not be
+  shown with after a save: those of a table with editable columns whose
+  resource has no primary read action, which is what Ash loads them through.
+  Empty when nothing is wrong.
 
   `columns` are the fields of the table's columns, each with its column as
   written in the block (nil for a column of the default set).
@@ -96,7 +96,11 @@ defmodule AshTable.Resource.Editing do
   def unloadable_after_save(resource, columns) do
     loaded =
       for {%struct{name: name}, _declared} <- columns,
-          struct in [Ash.Resource.Calculation, Ash.Resource.Aggregate],
+          struct in [
+            Ash.Resource.Calculation,
+            Ash.Resource.Aggregate,
+            Ash.Resource.Relationships.BelongsTo
+          ],
           do: name
 
     editable? =

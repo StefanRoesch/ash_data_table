@@ -9,6 +9,28 @@ defmodule AshTable.Query do
   # comes back into the same `Page`. They differ in the last step alone: the
   # one reads its query, the other reads the parent record by its key with
   # the query as the load of the relationship.
+  #
+  # ## In steps
+  #
+  # What the columns show besides attributes is not all read in the
+  # statement that reads the records. Two defects of the SQL layer stand in
+  # the way (ash_sql 0.8.1), each tracked by the library as an internal
+  # ticket, and each of these steps can go when it is fixed:
+  #
+  #   * #35: a statement that selects an aggregate beside a calculation
+  #     which Ash adds itself (for a field that a field policy hides on some
+  #     records) fails where it is wrapped in a subquery: a page of related
+  #     records always is, a list of them through a join resource or of one
+  #     of many is, and a page of a table of its own can be. So aggregates
+  #     are never selected in the statement that reads the records. They are
+  #     loaded onto the records afterwards (`Ash.load/3`, as the person),
+  #     and a list or page of related records is read bare, with everything
+  #     loaded afterwards. Sorting and filtering by a column stay in the
+  #     statement, where they work but for the sort `AshTable.Model` takes
+  #     away.
+  #
+  #   * #32: see `AshTable.Resource.Reading.apart/2`. The aggregates it
+  #     names are loaded last, in a step that holds nothing else.
 
   alias AshTable.Model
   alias AshTable.Model.Operator
@@ -26,9 +48,11 @@ defmodule AshTable.Query do
     #     not know where it lies among the others, even when it has a total.
     #   * `previous` and `next` are the states of the neighbouring pages, nil
     #     where there is none.
+    #   * `parent` is, for the records related to one record, that record as
+    #     it was read for the person asking; nil for a table of its own.
 
     @enforce_keys [:records]
-    defstruct [:records, :total, :pages, :offset, :previous, :next]
+    defstruct [:records, :total, :pages, :offset, :previous, :next, :parent]
 
     @type t :: %__MODULE__{
             records: [Ash.Resource.record()],
@@ -36,7 +60,8 @@ defmodule AshTable.Query do
             pages: pos_integer | nil,
             offset: non_neg_integer | nil,
             previous: State.t() | nil,
-            next: State.t() | nil
+            next: State.t() | nil,
+            parent: Ash.Resource.record() | nil
           }
   end
 
@@ -59,12 +84,14 @@ defmodule AshTable.Query do
   def read(%Model{via: nil} = model, %State{} = state, opts \\ []) do
     read_opts = reader_opts(opts)
 
-    case Ash.read(
-           query(model, state, Model.loads(model), read_opts),
-           [page: page_opts(model, state)] ++ read_opts
-         ) do
-      {:ok, result} -> {:ok, page(result, model, state)}
-      {:error, error} -> {:error, error}
+    with {:ok, result} <-
+           Ash.read(
+             query(model, state, Model.loads(model), read_opts),
+             [page: page_opts(model, state)] ++ read_opts
+           ),
+         # internal tickets #35 and #32: see "In steps" above
+         {:ok, result} <- loaded(result, [Model.aggregates(model), Model.apart(model)], read_opts) do
+      {:ok, page(result, model, state)}
     end
   end
 
@@ -99,22 +126,13 @@ defmodule AshTable.Query do
       when is_map(key) do
     read_opts = reader_opts(opts)
 
-    loads = Model.loads(model)
-
-    # A page of related records is read bare, and what the table's columns
-    # show besides attributes is loaded onto its records afterwards: the load
-    # of an aggregate inside a paged relationship fails in the data layer for
-    # a person whose field policies look at the record (ash 3.34.4,
-    # ash_postgres 2.14.2: an `Ecto.QueryError` about map values in a
-    # subquery). Sorting and filtering by such a column stay in the query,
-    # where they work. What is not paged is read in one go.
-    {related, later} =
+    # Related records are read bare, and everything the table's columns show
+    # besides attributes is loaded onto them afterwards (internal ticket
+    # #35: see "In steps" above).
+    related =
       case page_opts(model, state) do
-        false ->
-          {query(model, state, loads, read_opts), []}
-
-        page_opts ->
-          {model |> query(state, [], read_opts) |> Ash.Query.page(page_opts), loads}
+        false -> query(model, state, [], read_opts)
+        page_opts -> model |> query(state, [], read_opts) |> Ash.Query.page(page_opts)
       end
 
     parent_opts =
@@ -127,8 +145,8 @@ defmodule AshTable.Query do
     with {:ok, %_{} = parent} <-
            get(via.source, key, [load: [{via.name, related}]] ++ parent_opts),
          {:ok, result} <- related(Map.get(parent, via.name)),
-         {:ok, result} <- loaded(result, later, read_opts) do
-      {:ok, page(result, model, state)}
+         {:ok, result} <- load(result, model, read_opts) do
+      {:ok, %{page(result, model, state) | parent: parent}}
     else
       {:ok, nil} -> {:error, :parent_gone}
       {:error, error} -> {:error, error}
@@ -147,18 +165,41 @@ defmodule AshTable.Query do
   defp related(%_{} = record), do: {:ok, [record]}
   defp related(records) when is_list(records), do: {:ok, records}
 
-  # The records of a page that was read through the person's own read, with
-  # the table's calculations and aggregates put onto them, as the person.
-  defp loaded(result, [], _read_opts), do: {:ok, result}
+  @doc """
+  Puts onto records that were read bare everything the table's columns show
+  besides attributes, as `opts` say who is asking: the calculations and the
+  related records' labels with the aggregates, and last the aggregates that
+  are read apart (internal ticket #32). Takes what a read gave: a page, a
+  list, or one record.
+  """
+  @spec load(result, Model.t(), keyword) :: {:ok, result} | {:error, Ash.Error.t()}
+        when result: Ash.Page.page() | [Ash.Resource.record()] | Ash.Resource.record()
+  def load(result, %Model{} = model, opts) do
+    loaded(result, [Model.loads(model) ++ Model.aggregates(model), Model.apart(model)], opts)
+  end
 
-  defp loaded(%{results: []} = page, _loads, _read_opts), do: {:ok, page}
+  # Each of `steps` is loaded onto the records in a statement of its own, in
+  # that order, as the person.
+  defp loaded(result, steps, read_opts) do
+    Enum.reduce_while(steps, {:ok, result}, fn loads, {:ok, result} ->
+      case step(result, loads, read_opts) do
+        {:ok, result} -> {:cont, {:ok, result}}
+        {:error, error} -> {:halt, {:error, error}}
+      end
+    end)
+  end
 
-  defp loaded(%{results: records} = page, loads, read_opts) do
+  defp step(result, [], _read_opts), do: {:ok, result}
+  defp step([], _loads, _read_opts), do: {:ok, []}
+  defp step(%{results: []} = page, _loads, _read_opts), do: {:ok, page}
+
+  defp step(%struct{results: records} = page, loads, read_opts)
+       when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
     with {:ok, records} <- Ash.load(records, loads, read_opts),
          do: {:ok, %{page | results: records}}
   end
 
-  defp loaded(records, _loads, _read_opts) when is_list(records), do: {:ok, records}
+  defp step(records, loads, read_opts), do: Ash.load(records, loads, read_opts)
 
   @doc """
   Reads one record by its primary key, as `opts` say who is asking: `nil`
@@ -220,7 +261,9 @@ defmodule AshTable.Query do
   # Likewise the sort: by a column of the table that sorts, named by the
   # model's own atom. `Ash.Query.sort_input/2` would take the path through a
   # relationship ("assignee.name") from anybody and apply no policy of the
-  # related resource to it, so nothing but a column's name ever gets there.
+  # related resource to it, so nothing but a column's name ever gets there
+  # (internal ticket #31; a reference column, which is named after a
+  # relationship, is never `sortable?` for the same reason).
   defp known_sort({name, _direction} = sort, model) do
     if Enum.any?(model.columns, &(&1.name == name and &1.sortable?)), do: sort
   end
@@ -281,7 +324,8 @@ defmodule AshTable.Query do
   # on some records only, they would be told how many records match among
   # those whose value they may not see. So no total is asked for then, and
   # the table shows none, as on an action that does not count. A table of
-  # its own counts through the read itself, which applies them.
+  # its own counts through the read itself, which applies them. Internal
+  # ticket #30: this goes when Ash applies field policies to that count.
   defp count?(%{pagination: %{countable?: false}}, _state), do: false
   defp count?(%{via: nil}, _state), do: true
 

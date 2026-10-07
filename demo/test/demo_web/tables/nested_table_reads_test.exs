@@ -84,10 +84,53 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     reads(:sql)
   end
 
-  # twice, as every LiveView is rendered twice; and each time the session's actor
-  test "opening the page reads the tasks and nothing related" do
-    assert reads(:read) == [:user, :task, :user, :task]
-    assert Enum.uniq(reads(:sql)) -- ["tasks", "users", "(subquery)"] == []
+  # Twice, as every LiveView is rendered twice; and each time the session's
+  # actor. With the tasks go the records their reference columns show: the
+  # project, the assignee and the reporter of the page's tasks, each read
+  # once for the whole page.
+  test "opening the page reads the tasks, the labels of their reference columns, and nothing else related" do
+    once = [:user, :project, :user, :user, :task]
+
+    assert reads(:read) |> Enum.chunk_every(5) |> Enum.map(&Enum.sort/1) ==
+             [Enum.sort(once), Enum.sort(once)]
+
+    assert Enum.uniq(reads(:sql)) -- ["tasks", "users", "projects", "(subquery)"] == []
+  end
+
+  test "a page reads the related records of each reference column in one statement, however many rows it has",
+       %{view: view, world: world, project: project} do
+    people =
+      for name <- ["Ada", "Grace", "Linus"] do
+        Generator.generate(Generator.user(organization_id: world.organization.id, name: name))
+      end
+
+    for {person, index} <- Enum.with_index(people), reporter <- people do
+      Generator.generate(
+        Generator.task(
+          organization_id: world.organization.id,
+          project_id: project.id,
+          reporter_id: reporter.id,
+          assignee_id: person.id,
+          title: "Task #{index} of #{reporter.name}"
+        )
+      )
+    end
+
+    forget()
+
+    # a new read of the page: eleven tasks, of four reporters and three assignees
+    html = view |> element("#task-head-title") |> render_click()
+    render_async(view, 2000)
+
+    assert length(column(html, "task", "title")) == 2
+    assert length(column(render(view), "task", "title")) == 11
+
+    assert Enum.sort(reads(:read)) == [:project, :task, :user, :user]
+
+    # The page, its count, and the aggregate of the page's tasks, which is
+    # read in a statement of its own (the library's internal ticket #35);
+    # and one statement per reference column.
+    assert Enum.frequencies(reads(:sql)) == %{"tasks" => 3, "projects" => 1, "users" => 2}
   end
 
   test "expanding a row reads nothing", %{view: view, task: task} do
@@ -144,7 +187,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     assert length(reads(:sql)) == 2
   end
 
-  test "a save in a nested table reads and writes that record, and not the table around it",
+  test "a save in a nested table reads and writes that record with what its row shows, and not the table around it",
        %{conn: conn, world: world, project: project, task: task} do
     {:ok, view, _html} = conn |> log_in(world.admin) |> live("/projects")
     expand(view, "project", project.id)
@@ -155,8 +198,11 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     html = save(view, id, task.id, "title", "Write the summary")
 
     assert text(html, cell(id, task.id, "title")) == "Write the summary"
-    # the task is read again by its key and saved; no project is read
-    assert Enum.uniq(reads(:read)) == [:task]
-    refute "projects" in reads(:sql)
+    # The task is read again by its key and saved, and shown with the labels
+    # of its reference columns: its project, its assignee and its reporter,
+    # each by its key. The projects' own table, around it, is not read again:
+    # that would be a page, and its count.
+    assert Enum.sort(reads(:read)) == [:project, :task, :user, :user]
+    assert Enum.frequencies(reads(:sql)) == %{"tasks" => 3, "users" => 2, "projects" => 1}
   end
 end

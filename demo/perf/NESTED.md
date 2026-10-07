@@ -16,6 +16,17 @@ cd demo/perf && npm run setup      # once: demo_perf_standard
 PERF_PORT=4478 node nested.mjs
 ```
 
+> **Since this run** the library reads in more steps, and the tasks have
+> three reference columns. The times below are of this run and were not
+> taken again; the statements are no longer all as counted here. Counted
+> again on the test database (60 tasks, the admin): a page of `/tasks` is 6
+> statements (the page, its count, the aggregate column, and one per
+> reference column), where one statement for the page with its aggregate
+> came to 5, at a median of 10.0 ms against 8.6 ms for the call alone. A
+> page of 25 tasks under a project is 6 statements as well. The four nested
+> tables of comments, labels and a project are 2 statements each, as below;
+> the people under a task, whose table now has an aggregate column, are 3.
+
 ## Opening one nested table
 
 From the click on a line to the patch that brings the nested table's rows,

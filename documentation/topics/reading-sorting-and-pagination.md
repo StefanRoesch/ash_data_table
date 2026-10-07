@@ -41,9 +41,19 @@ runs it:
 
 - the sort the person chose, with `Ash.Query.sort_input/2`;
 - the filters the person set, with `Ash.Query.filter_input/2`;
-- the calculations and aggregates among the columns, as loads;
+- the calculations among the columns, and the related records of its
+  [reference cells](columns-and-defaults.md#reference-cells), as loads;
 - the page, as the `page` option of the read;
 - the actor, the tenant and `authorize?`.
+
+The aggregates among the columns are loaded onto the records of the page in
+a statement of their own, after the page is read, as the same person
+(`Ash.load/3`). Sorting and filtering by an aggregate are part of the
+query all the same. The extra statement is there for a defect in the SQL
+layer (tracked as #35): a statement that selects an aggregate beside a field
+that a field policy hides on some records can fail as a page. On the demo's
+`/tasks`, which has one aggregate column, it costs a statement of about a
+millisecond and a half per read.
 
 `sort_input` and `filter_input` are the functions Ash has for input from
 outside, the ones the API extensions use. They accept public fields only.
@@ -216,6 +226,12 @@ returns to the first page; the filters stay.
 | A calculation with an expression | yes | no |
 | A calculation computed in Elixir | no | no |
 | An aggregate | yes | no |
+| A reference cell | no | no |
+
+For one person an aggregate column can be without its sort where the table
+has it for others: an aggregate that a field policy hides from them on some
+records. See
+[Columns and defaults](columns-and-defaults.md#what-a-table-does-not-sort-by).
 
 A calculation or an aggregate cannot be sorted under keyset pagination
 because that is Ash's answer: `sortable?/3` says no for both when the
@@ -241,6 +257,28 @@ reported when the resource is compiled. See
 expression calculation) sort. "Headline" (computed in Elixir) and
 "Description" (`sortable? false`) do not: a click on their heading does
 nothing.
+
+## Reading related records
+
+A nested table, and a page limited to the records of one parent, do not
+read their resource's action directly. They read the **parent record by its
+primary key, as the person**, with the relationship as a load that carries
+the query described above: the sort, the filters and the page.
+
+What differs from a table of its own:
+
+- The read action is the relationship's own `read_action` when it has one,
+  else the one of the destination's table.
+- With no sort chosen by the person, the relationship's own `sort` comes
+  first.
+- There are pages only where Ash can page the relationship. A single related
+  record has no sort, no filters and no pages.
+- The records are read bare, and everything the columns show besides
+  attributes is loaded onto them afterwards.
+- No total is asked for while a filter is set on a column the person sees
+  on some records only.
+
+Each of these is explained in [Nested tables](nested-tables.md).
 
 ## Loading, empty and failed reads
 
@@ -285,7 +323,7 @@ resource for it
 - **Under keyset pagination a new sort starts at the first page.** A cursor
   belongs to the order it was made in.
 - **A resource without a primary read action** needs `read_action`. With
-  editable columns and calculation or aggregate columns it needs a primary
+  editable columns and calculation, aggregate or reference columns it needs a primary
   read action all the same; see [Inline editing](inline-editing.md).
 - **Sorting by a field that is hidden from the person on some records** is
   possible and gives nothing away. See [Authorization](authorization.md).

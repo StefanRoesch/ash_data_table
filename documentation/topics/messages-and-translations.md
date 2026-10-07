@@ -116,6 +116,8 @@ These are all the messages of the template
 | Announcements | "1 result" with the plural "%{count} results", "Results updated", "%{column} was not saved: %{message}" |
 | Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
 | Dialog | "Cancel", "Confirm" |
+| Nested tables | "Related records" (the expanders and the heading of their column), "Loading…", "These records are not available." |
+| The full view | "Open in full view", "Open in full view: %{table}" (the link's accessible name), "%{record}: %{relationship}" (the heading over a table limited to the records of one parent), "Show all records" |
 
 **Rewording without translating.** To say "Nothing to show" in place of "No
 records" in an English app, give your backend an `ash_table.po` for `en` with
@@ -132,9 +134,16 @@ msgstr "Nothing to show"
 The table shows text that your resources wrote: the label of each column
 (declared with `label`, or the field's name in words), the labels of the
 values of an enum, the question of a `confirm`, and the name of the table
-(the resource's `plural_name`, or its short name, in words). Each of them is
-looked up as a message in the same `ash_table` domain and shown as it is
-when the domain has no entry.
+(the resource's `plural_name`, or its short name, in words), and the label
+of each relationship line under an expanded row (declared with `label`, or
+the relationship's name in words). Each of them is looked up as a message in
+the same `ash_table` domain and shown as it is when the domain has no entry.
+
+A reference cell shows a value of a related record, its label, which is data
+and is not translated. The heading over a table limited to the records of
+one parent is the table's message "%{record}: %{relationship}", filled with
+that record's label and the translated label of the relationship; a
+translation can put the two in another order.
 
 So a column is translated by adding its label to the same file. The demo
 translates the wording of `/tasks`:

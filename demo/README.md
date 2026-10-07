@@ -55,10 +55,10 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations; offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
-| http://localhost:4478/projects | `Project` | no block: the public attributes. Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
-| http://localhost:4478/comments | `Comment` | keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
-| http://localhost:4478/labels | `Label` | no pagination: every record |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
+| http://localhost:4478/projects | `Project` | no column declared: the public attributes. Its block says only what a project is called in other tables (`label_field :name`). Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
+| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
+| http://localhost:4478/labels | `Label` | no pagination: every record. `label_field :name` and nothing else in its block |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25 |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
@@ -88,7 +88,32 @@ editing. Nothing of it is in the URL.
 `User` has a table and no page: it is only ever seen nested, as the assignee
 or the reporter of a task or the author of a comment. Its block says
 `max_depth 0`, so a person's row never expands, although a user has assigned
-and reported tasks that would be offered.
+and reported tasks that would be offered. Its last column, "Assigned hours",
+is an aggregate over the estimates of a person's tasks, which a field policy
+protects on the tasks: the aggregate has a field policy of its own (admins),
+because Ash does not apply the tasks' one to it.
+
+### The full view of a nested table
+
+The last row of a nested table is a link, "Open in full view". It goes to the
+page of the destination's own table, limited to the same records: from the
+comments under a task to
+`/comments?comment[of][task][comments]=THE-TASK'S-ID`, under a heading that
+names the task ("…: Comments") with "Show all records" beside it. There the
+table has its state in the address.
+
+The link is there where the router mounts the destination: comments, labels,
+projects, tasks and task labels. It is **not** there for people ("Assignee",
+"Reported by", "Author"), whose table has no page: `User` is left unmounted
+as the example of that.
+
+- Open the tasks of "Mobile app" from `/projects` in the full view, sort and
+  page them, reload, and send the address to yourself as another actor.
+- Change the key in the address to something else: "This record is no longer
+  available.", and no record is named. Change `task` to `nothing`: the plain
+  table.
+- Go back with the browser: the page you came from, with its sort and page,
+  and its rows closed again.
 
 Things to try:
 
@@ -105,7 +130,9 @@ Things to try:
   comes back out. Tab leaves the whole tree.
 - As **Vera Viewer**, the lines "Assignee" and "Reported by" are not there
   under a task, nor "Author" under a comment: a viewer's read of the people
-  is refused outright. The tasks under a project have no editors for her.
+  is refused outright. For the same reason `/tasks` has no "Assignee" and no
+  "Reported by" column for her. The tasks under a project have no editors
+  for her.
 - As **Max Member**, the tasks under a project have no "External ref"
   column, and "Estimate hours" is "Not available" except on his own tasks.
   Filter them by "Estimate hours" greater than 10: the total under the
@@ -207,11 +234,11 @@ Switch the actor at the top right and the same page changes:
 
 | Actor | Rows | Columns | Editing |
 | --- | --- | --- | --- |
-| admin | Acme's 320 tasks | all 14, `External ref` among them | every editable column, on every task |
-| member | Acme's 320 tasks | 13: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved |
-| viewer | Acme's 320 tasks | 13, as the member | none: no cell opens, nothing is marked read-only, there are no editors in the page |
-| outsider | Globex's 80 tasks | 13, as the member | as the member, on Globex's tasks |
-| nobody | none: "No records" | 12: no `External ref` and no `Estimate hours`, which nobody can ever see | none |
+| admin | Acme's 320 tasks | all 17, `External ref` among them | every editable column, on every task |
+| member | Acme's 320 tasks | 16: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved |
+| viewer | Acme's 320 tasks | 14: as the member, and no `Assignee` and no `Reported by`, as a viewer may not read people | none: no cell opens, nothing is marked read-only, there are no editors in the page |
+| outsider | Globex's 80 tasks | 16, as the member | as the member, on Globex's tasks |
+| nobody | none: "No records" | 14: no `External ref`, no `Estimate hours`, which nobody can ever see, and no `Project`, whose read is refused when nobody is logged in | none |
 
 A column the actor can never see is left out of the page altogether, and
 http://localhost:4478/tasks?task[sort]=external_ref or
@@ -373,8 +400,15 @@ and `sensitive?`: sensitivity is not an exposure rule, so it is a column.
   comment.
 - `User`'s read is refused outright for a viewer (a strict policy), and
   filtered to the reader's organization for everybody else. So the lines to
-  people are left out for a viewer: the table asks Ash whether the reader can
-  ever read a relationship's destination.
+  people, and the columns that show a person, are left out for a viewer: the
+  table asks Ash whether the reader can ever read a relationship's
+  destination.
+- `User.assigned_hours` and `Project.estimated_hours` add up
+  `Task.estimate_hours`, which a field policy protects on the tasks. Ash
+  applies the tasks' read policy to an aggregate and not their field
+  policies, so each aggregate has a field policy of its own: admins. The
+  first is a column of the people's table; the second is no column anywhere,
+  and is protected for the resource's other interfaces.
 - `Label`, `User`, `Organization`: only admins write.
 
 ## Browser tests
@@ -421,6 +455,8 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `dashboard.spec.ts` | two tables embedded in one LiveView: each with its own sort, filters and page and none of it in the URL; two grids, each one tab stop with a keyboard of its own; editing; a table whose read is refused |
 | `locale.spec.ts` | the language switcher: the tables in German (labels, operators, counts in singular and plural, the messages of failed saves and reads), and back in English |
 | `nesting.spec.ts` | nested tables: the expander and the lines by pointer and by keyboard; Right and Left Arrow; into a nested table and back out; one tab stop for the whole tree at every depth, and Tab out of it; that moving sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or a row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
+| `full_view.spec.ts` | the link of a nested table to the full view, by pointer and by keyboard, and where it is not there; the page it leads to: its heading, the limit in the address through sort, filter and page and after a reload, the way back to all records, editing and expanding under the limit; the browser's back button; the page as the member, the viewer and the outsider; axe on it |
+| `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort, filter or edit, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
 | `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, and with nested tables open at every depth |
 
 How they are built (`e2e/support`):

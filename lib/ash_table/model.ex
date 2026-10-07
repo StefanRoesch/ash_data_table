@@ -22,7 +22,9 @@ defmodule AshTable.Model do
   # attributes in the order `Ash.Resource.Info.public_attributes/1` returns
   # them. Once one `column` is declared, the columns are exactly the declared
   # ones in the declared order. Calculations and aggregates appear only when
-  # named.
+  # named. A column that names a belongs-to relationship is a reference cell:
+  # it shows the related record's label, the `label_field` of the
+  # destination's table.
   #
   # ## Editing
   #
@@ -63,6 +65,7 @@ defmodule AshTable.Model do
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Reading
+  alias AshTable.Resource.Referencing
   alias AshTable.Resource.Relating
 
   @enforce_keys [:resource, :primary_key, :read_action, :pagination, :columns]
@@ -105,9 +108,11 @@ defmodule AshTable.Model do
   Raises `ArgumentError` for a resource without the extension, and for a
   `table` block with a mistake of the compile-time checks that leaves the
   table nothing sound to do: no usable read action or pagination, a column
-  that is no public field or a calculation that needs an argument, an
+  that is no public field or a calculation that needs an argument, a column
+  that names a relationship whose related record's label cannot be shown, an
   `update_action` that names no public update action, editing beside
-  calculations or aggregates without a primary read action, and a
+  calculations, aggregates or reference columns without a primary read
+  action, and a
   `relationship` that is no public relationship, whose destination has no
   table, or that is declared twice. The other findings leave a column
   read-only or an option without effect.
@@ -132,9 +137,16 @@ defmodule AshTable.Model do
 
     row_refresh!(resource, fields)
 
+    apart =
+      for {name, _calculation} <- Reading.apart(resource, Enum.map(fields, &elem(&1, 0))),
+          do: name
+
     columns =
       Enum.map(fields, fn {field, declared} ->
-        resource |> column(field, declared, pagination) |> arrangeable(via)
+        resource
+        |> column(field, declared, pagination)
+        |> arrangeable(via)
+        |> apart(field.name in apart)
       end)
 
     %__MODULE__{
@@ -181,6 +193,17 @@ defmodule AshTable.Model do
       marked `partly_hidden?`. Ash hides its cells where it has to; the mark
       is for what a count would give away (see `AshTable.Query`).
 
+    * An aggregate column that Ash cannot sort by for this person is not
+      `sortable?`: one they see on some records only, and, in a paged table
+      of related records, every one when they see some field of the resource
+      on some records only.
+
+    * A reference column whose destination the person can **never** read,
+      through the action the related record is loaded through, is left out,
+      and so is one whose label field they can never see there (`Ash.can/3`
+      and `Ash.can_see_fields/4`, asked of the destination). Whether one
+      related record, or its label, can be seen is known once it is read.
+
     * A relationship whose destination the person can **never** read,
       through the read action its nested table runs, is left out
       (`Ash.can/3`). One whose records the person may read in part stays: Ash
@@ -191,8 +214,18 @@ defmodule AshTable.Model do
   @spec for_actor(%__MODULE__{}, keyword) :: t
   def for_actor(%__MODULE__{} = model, opts) do
     if Keyword.get(opts, :authorize?, true) do
-      names = Enum.map(model.columns, & &1.name)
-      hidden = Access.hidden_fields(model.resource, model.read_action, names, opts)
+      # a reference column is no field of the resource: Ash has no field
+      # policy for a relationship, and is asked about its destination instead
+      names = for %{kind: kind, name: name} <- model.columns, kind != :reference, do: name
+
+      hidden =
+        Access.hidden_fields(model.resource, model.read_action, names, opts) ++
+          for(
+            %{kind: :reference, name: name, reference: reference} <- model.columns,
+            unreadable?(reference, opts),
+            do: name
+          )
+
       columns = Enum.reject(model.columns, &(&1.name in hidden))
 
       partly_hidden =
@@ -205,11 +238,14 @@ defmodule AshTable.Model do
           opts
         )
 
+      unsortable = unsortable(model, columns, partly_hidden, opts)
+
       columns =
         for column <- columns do
           column
           |> read_only_if(column.update_action in forbidden)
           |> Map.put(:partly_hidden?, column.name in partly_hidden)
+          |> Map.update!(:sortable?, &(&1 and column.name not in unsortable))
         end
 
       relationships =
@@ -224,18 +260,142 @@ defmodule AshTable.Model do
     end
   end
 
+  # The aggregate columns this person cannot sort by, though the resource
+  # lets a table sort by them. Two things Ash, or its SQL layer, cannot do:
+  #
+  #   * sort by an aggregate that a field policy hides from the person on
+  #     some records: Ash raises ("Assumption failed") where it would have to
+  #     put a hidden value in its place. A filter by such a column is fine:
+  #     there a hidden value counts as none.
+  #
+  #   * sort a page of related records by any aggregate, for a person who
+  #     sees some field of the resource on some records only (internal
+  #     ticket #35, a defect in ash_sql 0.8.1: the statement fails once it
+  #     holds both the aggregate and the calculation Ash adds for such a
+  #     field, and a page of related records is a subquery).
+  defp unsortable(model, columns, partly_hidden, opts) do
+    aggregates = for %{kind: :aggregate, sortable?: true, name: name} <- columns, do: name
+
+    cond do
+      aggregates == [] ->
+        []
+
+      match?(
+        %{via: %Relationship{}, pagination: %{strategy: strategy}} when strategy != :none,
+        model
+      ) and
+          sees_some_field_in_part?(model, opts) ->
+        aggregates
+
+      true ->
+        Enum.filter(aggregates, &(&1 in partly_hidden))
+    end
+  end
+
+  # Whether a field policy hides some field of the resource from the person
+  # on some records: one of its attributes, which a read selects whether the
+  # table shows them or not, or one of the table's own columns.
+  defp sees_some_field_in_part?(model, opts) do
+    fields =
+      Enum.uniq(
+        Enum.map(Info.attributes(model.resource), & &1.name) ++
+          for(%{kind: kind, name: name} <- model.columns, kind != :reference, do: name)
+      )
+
+    seen = fields -- Access.hidden_fields(model.resource, model.read_action, fields, opts)
+
+    Access.partly_hidden_fields(model.resource, model.read_action, seen, opts) != []
+  end
+
+  # Whether the person can never be shown the label a reference column
+  # shows: they can never read the destination, through the action the
+  # related record is loaded through, or can never see its label field.
+  defp unreadable?(reference, opts) do
+    %{destination: destination, read_action: read_action, label_field: label_field} = reference
+
+    Access.forbidden_actions(destination, [read_action], opts) != [] or
+      Access.hidden_fields(destination, read_action, [label_field], opts) != []
+  end
+
   defp read_only_if(column, false), do: column
 
   defp read_only_if(column, true),
     do: %{column | editable?: false, update_action: nil, editor: nil, confirm: nil}
 
   @doc """
-  The fields of the table's columns that are not on a record unless asked
-  for: its calculations and aggregates.
+  What the table's columns show that is not on a record unless asked for,
+  and that is read with the records: its calculations, by name, and for each
+  reference column the relationship with the query that reads the related
+  record's label. The aggregates are read after them: see `aggregates/1`.
+
+  The label is read as Ash loads the relationship, as the person asking: the
+  destination's policies say whether there is a related record for them, and
+  its field policies whether they see its label. One statement per reference
+  column for a whole page. It is never an aggregate or a calculation over
+  the relationship, which would apply none of the two.
   """
-  @spec loads(t) :: [atom]
+  @spec loads(t) :: [atom | {atom, Ash.Query.t()}]
   def loads(%__MODULE__{columns: columns}) do
-    for %{kind: kind, name: name} <- columns, kind in [:calculation, :aggregate], do: name
+    Enum.flat_map(columns, fn
+      %{kind: :calculation, name: name} ->
+        [name]
+
+      %{kind: :reference, name: name, reference: reference} ->
+        [
+          {name,
+           Ash.Query.select(
+             reference.destination,
+             Info.primary_key(reference.destination) ++ [reference.label_field]
+           )}
+        ]
+
+      _attribute_or_aggregate ->
+        []
+    end)
+  end
+
+  @doc """
+  The aggregates of the table's columns, which are put onto the records of
+  a page in a step of their own, after the page is read.
+
+  Internal ticket #35, a defect in ash_sql 0.8.1: a statement that selects
+  an aggregate beside a calculation Ash adds by itself, as it does for a
+  field that a field policy hides on some records, fails once it is wrapped
+  in a subquery, which a page of a table can be. Loaded onto records that
+  are already read, by their keys, nothing is wrapped.
+
+  Not among them are the aggregates read `apart/1`.
+  """
+  @spec aggregates(t) :: [atom]
+  def aggregates(%__MODULE__{columns: columns}) do
+    for %{kind: :aggregate, apart?: false, name: name} <- columns, do: name
+  end
+
+  @doc """
+  The aggregates of the table's columns that are read apart from everything
+  else: in a step that holds nothing but them. See
+  `AshTable.Resource.Reading.apart/2`.
+  """
+  @spec apart(t) :: [atom]
+  def apart(%__MODULE__{columns: columns}) do
+    for %{kind: :aggregate, apart?: true, name: name} <- columns, do: name
+  end
+
+  @doc """
+  The columns a record of the table's resource can be called by, the best
+  first: the attribute its block names as `label_field`, then the table's
+  attribute columns in their order. Which of them holds something this
+  person may see is known once a record is read.
+  """
+  @spec naming(t) :: [Column.t()]
+  def naming(%__MODULE__{resource: resource, columns: columns, pagination: pagination}) do
+    label =
+      case Referencing.label_field(resource) do
+        {:ok, attribute} -> [column(resource, attribute, nil, pagination)]
+        _none_or_unusable -> []
+      end
+
+    label ++ Enum.filter(columns, &(&1.kind == :attribute))
   end
 
   @doc """
@@ -404,6 +564,12 @@ defmodule AshTable.Model do
       "it declares the relationship `#{name}`, but the resource has no public relationship " <>
         "of that name"
 
+  # An aggregate that is read apart from the row is never in the statement
+  # that reads the page, so the page is neither sorted nor filtered by it
+  # (internal ticket #32: see `AshTable.Resource.Reading.apart/2`).
+  defp apart(column, false), do: column
+  defp apart(column, true), do: %{column | apart?: true, sortable?: false, operators: []}
+
   # A nested table of one record, or of a manual relationship, has no sort
   # and no filters.
   defp arrangeable(column, nil), do: column
@@ -421,9 +587,18 @@ defmodule AshTable.Model do
       Info.public_attribute(resource, name) ||
         Info.public_calculation(resource, name) ||
         Info.public_aggregate(resource, name) ||
+        Info.public_relationship(resource, name) ||
         raise ArgumentError,
               "cannot build the table of #{inspect(resource)}: it declares the column `#{name}`, " <>
-                "but the resource has no public attribute, calculation or aggregate of that name"
+                "but the resource has no public attribute, calculation, aggregate or belongs-to " <>
+                "relationship of that name"
+
+    with true <- Referencing.relationship?(field),
+         {:error, reason} <- Referencing.reference(field) do
+      raise ArgumentError,
+            "cannot build the table of #{inspect(resource)}: its column `#{name}` cannot be shown. " <>
+              Referencing.message(reason)
+    end
 
     case Reading.required_arguments(field) do
       [] ->
@@ -465,9 +640,43 @@ defmodule AshTable.Model do
       loaded ->
         raise ArgumentError,
               "cannot build the table of #{inspect(resource)}: it has editable columns and shows " <>
-                "calculations or aggregates (#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the " <>
+                "calculations, aggregates or reference columns " <>
+                "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the " <>
                 "resource has no primary read action, which Ash loads those fields through after a save."
     end
+  end
+
+  # A column that names a belongs-to relationship: a reference cell. It is
+  # shown as the label is, and that is all a person can do with it: a sort
+  # through a relationship is not authorized by Ash (internal ticket #31),
+  # so nothing here ever makes it sortable, and filtering by a related
+  # record is not built.
+  defp column(
+         _resource,
+         %Ash.Resource.Relationships.BelongsTo{destination: destination} = relationship,
+         declared,
+         _pagination
+       ) do
+    {:ok, %{label: label, read_action: read_action}} = Referencing.reference(relationship)
+    {type, constraints} = CellType.type(destination, label)
+    {cell_type, values} = CellType.classify(type, constraints)
+
+    %Column{
+      name: relationship.name,
+      kind: :reference,
+      label: (declared && declared.label) || humanize(relationship.name),
+      type: {type, constraints},
+      cell_type: cell_type,
+      values: values,
+      sortable?: false,
+      operators: [],
+      reference: %{
+        relationship: relationship.name,
+        destination: destination,
+        label_field: label.name,
+        read_action: read_action
+      }
+    }
   end
 
   # `declared` is the column as written in the block, or nil for a column of

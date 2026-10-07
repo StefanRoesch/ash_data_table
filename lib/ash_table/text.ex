@@ -69,6 +69,10 @@ defmodule AshTable.Text do
           | :related_records
           | :loading
           | :records_not_available
+          | :full_view
+          | :full_view_of
+          | :related_heading
+          | :show_all_records
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
@@ -188,4 +192,15 @@ defmodule AshTable.Text do
   # does not say `on_forbidden :message`
   defp msgid(:records_not_available),
     do: dgettext_noop("ash_table", "These records are not available.")
+
+  # on the link of a nested table that opens its records on the page of
+  # their own resource; the second names the table, for a screen reader
+  defp msgid(:full_view), do: dgettext_noop("ash_table", "Open in full view")
+  defp msgid(:full_view_of), do: dgettext_noop("ash_table", "Open in full view: %{table}")
+
+  # over a table limited to the records related to one record: what that
+  # record is called, and its relationship ("Write the report: Comments")
+  defp msgid(:related_heading), do: dgettext_noop("ash_table", "%{record}: %{relationship}")
+  # the control that takes the limit away
+  defp msgid(:show_all_records), do: dgettext_noop("ash_table", "Show all records")
 end

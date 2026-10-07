@@ -6,6 +6,68 @@ defmodule AshTable.ModelTest do
 
   defp column_names(model), do: Enum.map(model.columns, & &1.name)
 
+  import Spark.Test, only: [dsl_warnings: 1]
+
+  # For "what a table reads in steps", below: a resource the compiler has
+  # something to say about (see the tests of
+  # the `table` block): a `first` aggregate over one related record beside
+  # a calculation that reaches through the same relationship.
+  setup_all do
+    dsl_warnings do
+      defmodule Elixir.AshTable.ModelTest.Staff do
+        use Ash.Resource,
+          domain: AshTable.Test.Domain,
+          data_layer: Ash.DataLayer.Ets,
+          extensions: [AshTable.Resource]
+
+        attributes do
+          uuid_primary_key :id
+          attribute :title, :string, public?: true
+        end
+
+        relationships do
+          belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+          belongs_to :deputy, AshTable.Test.Exposing.Member, public?: true
+          has_many :reports, AshTable.Test.Exposing.Member, destination_attribute: :team_id
+        end
+
+        aggregates do
+          first :boss_name, :boss, :name, public?: true
+          first :deputy_name, :deputy, :name, public?: true
+          count :report_count, :reports, public?: true
+
+          # on a join of its own
+          first :boss_again, :boss, :name do
+            join_filter :boss, expr(not is_nil(name))
+            public? true
+          end
+        end
+
+        calculations do
+          calculate :boss_initial, :string, expr(string_downcase(boss.name)), public?: true
+          calculate :loud_title, :string, expr(title <> "!"), public?: true
+        end
+
+        actions do
+          defaults [:read]
+        end
+
+        table do
+          column :title
+          column :boss
+          column :boss_name
+          column :deputy_name
+          column :report_count
+          column :boss_again
+          column :boss_initial
+          column :loud_title
+        end
+      end
+    end
+
+    :ok
+  end
+
   describe "build/2" do
     test "carries the resource and its primary key" do
       model = Model.build(AshTable.Test.Task)
@@ -930,6 +992,253 @@ defmodule AshTable.ModelTest do
 
     test "are all of the table's without authorization", %{model: model} do
       assert Model.for_actor(model, actor: nil, authorize?: false) == model
+    end
+  end
+
+  describe "a reference column" do
+    alias AshTable.Test.Referencing.{Agent, Letter, Person, Rank, Vault}
+
+    defp column(model, name), do: Enum.find(model.columns, &(&1.name == name))
+
+    setup do
+      %{model: Model.build(Letter)}
+    end
+
+    test "is a column of its own kind, in its declared place, named after the relationship",
+         %{model: model} do
+      assert Enum.map(model.columns, &{&1.name, &1.kind}) == [
+               subject: :attribute,
+               sender: :reference,
+               rank: :reference,
+               vault: :reference,
+               agent: :reference
+             ]
+    end
+
+    test "is labelled with the humanised name of the relationship, or as the block says",
+         %{model: model} do
+      assert Enum.map(model.columns, & &1.label) == ["Subject", "From", "Rank", "Vault", "Agent"]
+    end
+
+    test "says which relationship, to which resource, which attribute is the label, and how it is read",
+         %{model: model} do
+      assert column(model, :sender).reference ==
+               %{
+                 relationship: :sender,
+                 destination: Person,
+                 label_field: :name,
+                 read_action: :read
+               }
+
+      # the relationship's own read action, as Ash loads it
+      assert column(model, :agent).reference ==
+               %{
+                 relationship: :agent,
+                 destination: Agent,
+                 label_field: :alias,
+                 read_action: :active
+               }
+
+      assert column(model, :subject).reference == nil
+    end
+
+    test "is shown as its label is: the cell type and the values of the label field",
+         %{model: model} do
+      assert column(model, :sender).cell_type == :text
+      assert column(model, :sender).values == nil
+      assert column(model, :rank).cell_type == :enum
+      assert column(model, :rank).values == [junior: "Junior", senior: "Senior"]
+    end
+
+    test "is never sorted by, filtered by or edited", %{model: model} do
+      for name <- [:sender, :rank, :vault, :agent] do
+        assert %{
+                 sortable?: false,
+                 operators: [],
+                 editable?: false,
+                 update_action: nil,
+                 editor: nil
+               } =
+                 column(model, name)
+      end
+
+      # the column beside them is all three
+      assert %{sortable?: true, operators: [_ | _], editable?: true} = column(model, :subject)
+    end
+
+    test "is loaded as its relationship, with a query that selects the key and the label",
+         %{model: model} do
+      assert Enum.map(Model.loads(model), fn {name, %Ash.Query{} = query} ->
+               {name, query.resource, Enum.sort(query.select)}
+             end) == [
+               {:sender, Person, [:id, :name]},
+               {:rank, Rank, [:grade, :id]},
+               {:vault, Vault, [:code, :id]},
+               {:agent, Agent, [:alias, :id]}
+             ]
+
+      # not built for an action: Ash runs the one the relationship is loaded through
+      assert Enum.all?(Model.loads(model), fn {_name, query} -> is_nil(query.action) end)
+    end
+
+    test "is not among the columns of a table that declares none" do
+      assert column_names(Model.build(AshTable.Test.Relating.Note)) == [
+               :body,
+               :written_on,
+               :sibling_count
+             ]
+
+      assert :book not in column_names(Model.build(AshTable.Test.Relating.Secret))
+    end
+
+    test "stays what it is in a nested table of one record, where nothing is sorted or filtered" do
+      via = %AshTable.Model.Relationship{
+        name: :letter,
+        label: "Letter",
+        kind: :belongs_to,
+        cardinality: :one,
+        source: Person,
+        destination: Letter,
+        read_action: :read
+      }
+
+      model = Model.build(Letter, via: via)
+
+      assert %{kind: :reference, sortable?: false, operators: []} = column(model, :sender)
+    end
+  end
+
+  describe "for_actor/2: the reference columns a person sees" do
+    alias AshTable.Test.Referencing.Letter
+
+    setup do
+      %{model: Model.build(Letter)}
+    end
+
+    test "are all of the table's for a person who may read every destination and see every label",
+         %{model: model} do
+      assert column_names(Model.for_actor(model, actor: %{role: :admin})) ==
+               [:subject, :sender, :rank, :vault, :agent]
+    end
+
+    test "leave out one whose destination the person can never read, and one whose label they can never see",
+         %{model: model} do
+      # `vault` is read by admins alone; the `alias` of an agent is seen by admins alone
+      assert column_names(Model.for_actor(model, actor: %{role: :member})) ==
+               [:subject, :sender, :rank]
+
+      assert column_names(Model.for_actor(model, actor: nil)) == [:subject, :sender, :rank]
+    end
+
+    test "are the same whether the person comes as an actor or in a scope", %{model: model} do
+      scope = %AshTable.Test.Scope{user: %{role: :member}, tenant: nil}
+
+      assert Model.for_actor(model, scope: scope) ==
+               Model.for_actor(model, actor: %{role: :member})
+    end
+
+    test "are all of the table's without authorization", %{model: model} do
+      assert Model.for_actor(model, actor: nil, authorize?: false) == model
+    end
+
+    test "do not ask for the label of a destination the person cannot read", %{model: model} do
+      assert [sender: _, rank: _] = model |> Model.for_actor(actor: nil) |> Model.loads()
+    end
+  end
+
+  describe "what a table reads in steps" do
+    alias AshTable.Test.Exposing.Team
+
+    test "calculations and reference columns are read with the records" do
+      assert [:loud_name] = Model.loads(Model.build(Team))
+
+      assert [{:boss, %Ash.Query{}}, :boss_initial, :loud_title] =
+               Model.loads(Model.build(AshTable.ModelTest.Staff))
+    end
+
+    test "aggregates are read after them, in a step of their own" do
+      assert Model.aggregates(Model.build(Team)) == [:headcount, :guest_count]
+      assert Model.aggregates(Model.build(AshTable.Test.Guarded)) == []
+
+      assert Model.aggregates(Model.build(AshTable.ModelTest.Staff)) ==
+               [:deputy_name, :report_count, :boss_again]
+    end
+
+    test "a `first` aggregate over one related record is read apart when a calculation column reaches through the same relationship" do
+      model = Model.build(AshTable.ModelTest.Staff)
+
+      # not the one over another relationship, not the count, not the one
+      # with a join of its own
+      assert Model.apart(model) == [:boss_name]
+      assert Model.apart(Model.build(Team)) == []
+    end
+
+    test "and is then neither sorted nor filtered by, which would put it in the statement of the calculation" do
+      model = Model.build(AshTable.ModelTest.Staff)
+      column = &Enum.find(model.columns, fn column -> column.name == &1 end)
+
+      assert %{sortable?: false, operators: []} = column.(:boss_name)
+
+      for name <- [:deputy_name, :boss_again, :report_count, :boss_initial] do
+        assert %{sortable?: true, operators: [_ | _]} = column.(name)
+      end
+    end
+
+    test "nothing of a column the person cannot see is read" do
+      model = Model.for_actor(Model.build(Team), actor: nil)
+
+      assert Model.aggregates(model) == [:guest_count]
+    end
+  end
+
+  describe "for_actor/2: sorting by an aggregate column" do
+    alias AshTable.Test.Exposing.{League, Team}
+
+    @admin %{id: 1, role: :admin}
+    @lead %{id: 2, role: :member}
+
+    defp sortable(model), do: for(%{sortable?: true} = column <- model.columns, do: column.name)
+
+    defp filterable(model),
+      do: for(%{operators: [_ | _]} = column <- model.columns, do: column.name)
+
+    defp teams(relationship) do
+      Model.build(Team,
+        via: Enum.find(Model.build(League).relationships, &(&1.name == relationship))
+      )
+    end
+
+    test "is offered to a person who sees the aggregate on every record" do
+      model = Model.build(Team)
+
+      assert sortable(model) == [:name, :headcount, :guest_count, :loud_name]
+      assert sortable(Model.for_actor(model, actor: @admin)) == sortable(model)
+      assert sortable(Model.for_actor(model, actor: @admin, authorize?: false)) == sortable(model)
+    end
+
+    test "is not offered for an aggregate the person sees on some records only: Ash cannot sort by it" do
+      model = Model.for_actor(Model.build(Team), actor: @lead)
+
+      assert sortable(model) == [:name, :guest_count, :loud_name]
+      # a filter by it is another matter: Ash takes a hidden value as none
+      assert filterable(model) == [:name, :headcount, :guest_count, :loud_name]
+    end
+
+    test "is not offered in a paged table of related records to a person who sees some field on some records only" do
+      # `budget` is no column of the table, and is such a field all the same
+      assert sortable(Model.for_actor(teams(:teams), actor: @lead)) == [:name, :loud_name]
+
+      assert filterable(Model.for_actor(teams(:teams), actor: @lead)) ==
+               [:name, :headcount, :guest_count, :loud_name]
+
+      # a person who sees every field on every record sorts by them
+      assert sortable(Model.for_actor(teams(:teams), actor: @admin)) ==
+               [:name, :headcount, :guest_count, :loud_name]
+    end
+
+    test "is offered in a table of related records that is read in full" do
+      assert sortable(Model.for_actor(teams(:all_teams), actor: @lead)) ==
+               [:name, :guest_count, :loud_name]
     end
   end
 

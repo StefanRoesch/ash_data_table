@@ -281,6 +281,8 @@ defmodule AshTable.Test.Relating.Author do
 
   table do
     max_depth 1
+    # what a book's reference cell calls its author
+    label_field :name
 
     relationship :manual_books
 

@@ -94,7 +94,8 @@ defmodule AshTable.Model.Access do
   # `function_exported?/3` without loading it), and takes a module that is not
   # as "every field is visible". Outside a release modules are loaded on first
   # use, so a table opened before anything else has run a policy would show
-  # every column.
+  # every column. Internal ticket #28: this goes when Ash loads the module
+  # before it asks.
   defp ensure_authorizers_loaded(resource) do
     resource |> Ash.Resource.Info.authorizers() |> Enum.each(&Code.ensure_loaded/1)
   end

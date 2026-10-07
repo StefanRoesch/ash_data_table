@@ -23,11 +23,13 @@ const EDITABLE = [
 ]
 
 const TASKS: Record<Actor, { columns: number; editors: number; range: string | null }> = {
-  admin: { columns: 14, editors: 9, range: "1–25 of 320" },
-  member: { columns: 13, editors: 9, range: "1–25 of 320" },
-  viewer: { columns: 13, editors: 0, range: "1–25 of 320" },
-  outsider: { columns: 13, editors: 9, range: "1–25 of 80" },
-  nobody: { columns: 12, editors: 0, range: null },
+  admin: { columns: 17, editors: 9, range: "1–25 of 320" },
+  member: { columns: 16, editors: 9, range: "1–25 of 320" },
+  // may not read people: no assignee, no reporter
+  viewer: { columns: 14, editors: 0, range: "1–25 of 320" },
+  outsider: { columns: 16, editors: 9, range: "1–25 of 80" },
+  // may not read projects, and sees no estimate
+  nobody: { columns: 14, editors: 0, range: null },
 }
 
 for (const actor of ACTOR_KEYS) {
@@ -89,7 +91,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: the expanders and 13 columns, numbered 1 to 14, walked without a gap", async ({
+  test("the smaller grid is whole: the expanders and 16 columns, numbered 1 to 17, walked without a gap", async ({
     tasks,
     frames,
   }) => {
@@ -104,11 +106,11 @@ test.describe("the member, whose rights depend on the record", () => {
             Number(cell.getAttribute("aria-colindex")),
           ]),
         )
-    const oneToFourteen = Array.from({ length: 14 }, (_, index) => [index + 1, index + 1])
+    const oneToSeventeen = Array.from({ length: 17 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToFourteen)
-    expect(await numbering("#task-head-row th")).toEqual(oneToFourteen)
-    expect(await numbering("#task-filter-row td")).toEqual(oneToFourteen)
+    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToSeventeen)
+    expect(await numbering("#task-head-row th")).toEqual(oneToSeventeen)
+    expect(await numbering("#task-filter-row td")).toEqual(oneToSeventeen)
 
     await tasks.cell(first, "title").focus()
     await frames.clear()
@@ -122,10 +124,17 @@ test.describe("the member, whose rights depend on the record", () => {
     const columns = await tasks.columns()
     expect(walked).toEqual(columns.map((column) => `task-row-${first}-c-${column}`))
     // where the admin has `external_ref` between these two
-    expect(columns.slice(10)).toEqual(["headline", "description", "inserted_at"])
+    expect(columns.slice(10)).toEqual([
+      "headline",
+      "description",
+      "inserted_at",
+      "project",
+      "assignee",
+      "reporter",
+    ])
 
     await tasks.press("Home", "End", "ArrowUp", "ArrowUp", "ArrowUp")
-    await expect(tasks.header("inserted_at")).toBeFocused()
+    await expect(tasks.header("reporter")).toBeFocused()
     expect(await frames.all()).toEqual([])
     expect(await tasks.tabStops()).toHaveLength(1)
   })

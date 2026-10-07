@@ -118,8 +118,8 @@ app already does that. Run `mix assets.build` now.
 
 ## 2. Give a resource a table
 
-List the extension on the resource. This is the whole of what
-`Demo.Tracker.Project` says about its table, in
+List the extension on the resource. This is all `Demo.Tracker.Project`
+needs for its table, in
 [`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
@@ -131,7 +131,6 @@ defmodule Demo.Tracker.Project do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    # No `table` block: the table shows the public attributes.
     extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
@@ -139,7 +138,10 @@ defmodule Demo.Tracker.Project do
 
 A resource has a table only when it lists the extension. With no `table`
 block the table shows the resource's public attributes, read through its
-primary read action, and nothing can be edited.
+primary read action, and nothing can be edited. (The demo's projects do have
+a block, of one line that changes none of this: it says what a project is
+called in the tables of other resources. See
+[Columns and defaults](../topics/columns-and-defaults.md#reference-cells).)
 
 ## 3. Mount it in the router
 

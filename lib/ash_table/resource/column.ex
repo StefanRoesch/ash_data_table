@@ -14,6 +14,7 @@ defmodule AshTable.Resource.Column do
     :filterable?,
     :update_action,
     :confirm,
+    :exposes_protected_field?,
     :__identifier__,
     :__spark_metadata__
   ]
@@ -24,7 +25,8 @@ defmodule AshTable.Resource.Column do
           sortable?: boolean | nil,
           filterable?: boolean | nil,
           update_action: atom | false | nil,
-          confirm: String.t() | nil
+          confirm: String.t() | nil,
+          exposes_protected_field?: boolean | nil
         }
 
   # Later slices add their options here (`component`); each needs a struct
@@ -33,7 +35,8 @@ defmodule AshTable.Resource.Column do
     name: [
       type: :atom,
       required: true,
-      doc: "The field shown in this column: a public attribute, calculation or aggregate."
+      doc:
+        "What is shown in this column: a public attribute, calculation or aggregate, or a public belongs-to relationship. A relationship makes the column a reference cell: it shows the related record's label, the `label_field` of the destination's table, read-only, and is neither sorted nor filtered by."
     ],
     label: [
       type: :string,
@@ -57,6 +60,11 @@ defmodule AshTable.Resource.Column do
     confirm: [
       type: :string,
       doc: "A question asked before an inline edit of this column is saved."
+    ],
+    exposes_protected_field?: [
+      type: :boolean,
+      doc:
+        "Set to `true` on an aggregate or calculation column that is meant to show everyone who reads a row what a field policy protects elsewhere: a field of the related resource that the aggregate is over or filters by, or a field the calculation references. It silences the warning the compiler gives about such a column. Ash applies no field policy of what an aggregate or a calculation is made from; the column is protected by a field policy of its own on this resource."
     ]
   ]
 

@@ -10,7 +10,6 @@ defmodule Demo.Tracker.Project do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    # No `table` block: the table shows the public attributes.
     extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
@@ -26,6 +25,26 @@ defmodule Demo.Tracker.Project do
 
   resource do
     plural_name :projects
+  end
+
+  # `estimated_hours` adds up a field that a field policy protects on the
+  # tasks, and Ash does not apply that policy to an aggregate: it is
+  # protected here.
+  field_policies do
+    field_policy :estimated_hours do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    field_policy :* do
+      authorize_if always()
+    end
+  end
+
+  # No `column`: the table shows the public attributes. A project is called
+  # by its name where a table shows it as one value: in the "Project" column
+  # of /tasks.
+  table do
+    label_field :name
   end
 
   actions do

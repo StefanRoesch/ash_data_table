@@ -31,8 +31,8 @@ the focus ring, then use the arrow keys.
 ## The grid is one tab stop
 
 Tab moves focus into the grid and Tab moves it out again. Inside, the arrow
-keys move. A table of 25 rows and 14 columns is one stop in the page's tab
-order, not 350.
+keys move. A table of 25 rows and 17 columns is one stop in the page's tab
+order, not 425.
 
 - Exactly one cell is in the tab order at any time. At first it is the first
   cell of the first row of records.
@@ -43,9 +43,7 @@ order, not 350.
 - Moving about never contacts the server.
 - Where rows expand into nested tables, the first cell of a row is its
   expander, and a nested table is a grid of its own inside a cell: the whole
-  tree of grids is one tab stop. The keys for it are in the
-  [README](https://github.com/StefanRoesch/ash_table/blob/main/README.md),
-  under "The keyboard".
+  tree of grids is one tab stop. See [Rows that expand](#rows-that-expand).
 
 ## Keys on a cell
 
@@ -121,6 +119,44 @@ What saving does, and what a failed save looks like, is in
 [Inline editing](inline-editing.md). The dialog of a column with a question
 is in [Confirm](confirm.md).
 
+## Rows that expand
+
+In a table whose rows expand, the first cell of every row holds the
+expander: a button that says whether the row is expanded
+(`aria-expanded`). An expanded row has, under it, one row per relationship
+line, each a cell that spans the grid with a button of its own, and under an
+open line a row whose one cell holds the nested table. All of them are cells
+of the grid, which the arrow keys stop at.
+
+| Key | Where | Effect |
+| --- | --- | --- |
+| Left Arrow | On the first data cell of a row | Moves to the row's expander. Tab enters the grid one cell to its right. |
+| Right Arrow | On an expander or a line that is closed | Opens it. On one that is open, moves on as on any cell. |
+| Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
+| Enter | On an expander or a line | Opens or closes it. |
+| Down Arrow, Up Arrow | | Go through the lines and the nested tables' cells as through rows, keeping the column for the rows below them. |
+| Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first data cell. |
+| Escape | On a cell of a nested table | Comes back out, to the cell that holds it. |
+| Enter, F2 | On the cell of a nested table's pages, a row at the end of its grid | Goes to its buttons. Left Arrow and Right Arrow move between them; Enter uses one; Escape returns to the cell. |
+| Enter, F2 | On the cell of the link "Open in full view", the last row of a nested table's grid | Follows the link, as a click does. |
+
+A nested table is a grid of its own, with its own header row and filter row,
+and inside it every key of this guide works as on a page. Three things differ
+from a table of its own, so that the whole tree stays one tab stop:
+
+- Its pages are a group in a row of its grid, and not a landmark after it.
+- Its link to the full view is a row of its grid.
+- Its "Clear filters" button is not in the tab order and not reached from
+  the keyboard. Each filter is cleared from its own cell.
+
+On the page a nested table's link leads to, the heading that says what the
+table is limited to and the control "Show all records" are ordinary content
+above the grid: a heading and a link, both in the page's tab order.
+
+When a line or a row is closed while focus is in something under it, focus
+goes to the line, or to the row's expander. What a nested table is, and what
+the lines offer, is in [Nested tables](nested-tables.md).
+
 ## Focus after the page changes
 
 The rows of a table are replaced whenever it sorts, filters or changes page,
@@ -162,6 +198,12 @@ page and keeps the focus.
 | The result of a filter change | A polite live region: "12 results", or "Results updated" when the table has no total. |
 | A boolean cell | A mark that is hidden from assistive technology, and the text "Yes" or "No". |
 | A cell hidden from the person by a field policy | The text "Not available", for screen readers only. |
+| The expander of a row, and the button of a line | `aria-expanded`. The expanders, and the heading of their column, are named "Related records"; a line is named by its relationship. The expanders are a column of the grid, counted in `aria-colcount` and `aria-colindex`. |
+| A nested table | A grid of its own, named by its line and by the first cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
+| A nested table whose first rows are on their way | The text "Loading…", and `aria-busy` on its grid. |
+| The pages of a nested table | A group (`role="group"`) named "Pagination: Comments", in place of the landmark. |
+| The link to the full view | A link named "Open in full view: Comments": its text and the nested table's name. |
+| A table limited to the records of one parent | A heading above the grid: the parent and the relationship, "Write the report: Comments". |
 | Cells that cannot be edited | `aria-readonly`, on a table that offers the person any editing. |
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
@@ -195,7 +237,9 @@ The behaviour described in this guide is covered by the demo's browser tests
 scripted keyboard tests in Playwright, and automated checks with axe-core on
 every demo table and in every state a table can be in (sorted, filtered,
 empty, failed, with each editor open, with the dialog open, with a failed
-cell, as each actor).
+cell, as each actor; with rows expanded and nested tables open to the
+deepest level, on a page limited to the records of one parent, and with
+reference cells).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
@@ -207,7 +251,7 @@ That is the whole of the verification, and its limits should be plain:
 | --- | --- |
 | Chromium, headless, keyboard scripted | Tested |
 | axe-core, all of its default rules | Tested, in Chromium |
-| A screen reader (NVDA, JAWS, VoiceOver, TalkBack) | **Not tested.** No screen reader has been tried. |
+| A screen reader (NVDA, JAWS, VoiceOver, TalkBack) | **Not tested.** No screen reader has been tried. This includes how a grid inside a cell of a grid is announced, which the ARIA grid pattern does not describe. |
 | Firefox | **Not tested** |
 | Safari | **Not tested** |
 | Touch devices | **Not tested** |

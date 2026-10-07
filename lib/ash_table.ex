@@ -15,8 +15,8 @@ defmodule AshTable do
   sort live on that action. A cell is edited in place through the update
   action its column names, with the cell's value as the only input, and the
   table shows what the action returns. A row expands into the tables of its
-  related records, each the table of its own resource: see
-  `AshTable.Resource`.
+  related records, each the table of its own resource, and a column can show
+  a related record by its label: see `AshTable.Resource`.
 
   ## Configuration
 
@@ -71,7 +71,13 @@ defmodule AshTable do
   `c:Phoenix.LiveView.handle_params/3`, assigned by the LiveView). The table
   then patches the URL, with its parameters under its `id`:
   `?tasks[sort]=-title&tasks[f][title]=report&tasks[page]=2`. Other parameters
-  of the page are left as they are.
+  of the page are left as they are. A table with its state in the URL also
+  reads the parameter that limits it to the records related to one record
+  (`tasks[of][project][tasks]=KEY`): see `AshTable.Live.Page`.
+
+  A nested table links to its full view wherever the host's router mounts
+  the destination's table with `AshTable.Router.ash_table/3`, also from a
+  table placed here.
   """
   attr :id, :string,
     required: true,

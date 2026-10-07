@@ -315,6 +315,31 @@ export class Table {
     return this.byId(`${this.id}-pager`)
   }
 
+  /** The cell in the last row of a nested table's grid that holds its link to the full view. */
+  get viewCell(): Locator {
+    return this.byId(`${this.id}-view`)
+  }
+
+  /** "Open in full view": the link of a nested table to the page of its records. */
+  get fullView(): Locator {
+    return this.byId(`${this.id}-full-view`)
+  }
+
+  /** Above a table that is limited to the records of one parent: what it shows. */
+  get relatedHeading(): Locator {
+    return this.byId(`${this.id}-related-heading`)
+  }
+
+  /** The parent in that heading: a link where its own table has a page. */
+  get relatedParent(): Locator {
+    return this.byId(`${this.id}-related-parent`)
+  }
+
+  /** "Show all records": the way back from a limited table to all of its records. */
+  get relatedClear(): Locator {
+    return this.byId(`${this.id}-related-clear`)
+  }
+
   /** "Loading…", in a nested table whose first rows are on their way. */
   get loading(): Locator {
     return this.byId(`${this.id}-loading`)

@@ -266,11 +266,11 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message =~
-               "The table has editable columns and shows calculations or aggregates (`shouted_title`), but the resource has no primary read action."
+               "The table has editable columns and shows calculations, aggregates or reference columns (`shouted_title`), but the resource has no primary read action."
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.EditingWithCalculationWithoutPrimaryRead: it has editable columns and shows calculations or aggregates (`shouted_title`), but the resource has no primary read action, which Ash loads those fields through after a save.",
+                   "cannot build the table of AshTable.TableBlockTest.EditingWithCalculationWithoutPrimaryRead: it has editable columns and shows calculations, aggregates or reference columns (`shouted_title`), but the resource has no primary read action, which Ash loads those fields through after a save.",
                    fn ->
                      AshTable.Model.build(
                        AshTable.TableBlockTest.EditingWithCalculationWithoutPrimaryRead
@@ -323,11 +323,12 @@ defmodule AshTable.TableBlockTest do
           end
         end
 
-      assert error.message =~ "shows calculations or aggregates (`child_count`)"
+      assert error.message =~
+               "shows calculations, aggregates or reference columns (`child_count`)"
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.ColumnEditingWithAggregateWithoutPrimaryRead: it has editable columns and shows calculations or aggregates (`child_count`), but the resource has no primary read action, which Ash loads those fields through after a save.",
+                   "cannot build the table of AshTable.TableBlockTest.ColumnEditingWithAggregateWithoutPrimaryRead: it has editable columns and shows calculations, aggregates or reference columns (`child_count`), but the resource has no primary read action, which Ash loads those fields through after a save.",
                    fn ->
                      AshTable.Model.build(
                        AshTable.TableBlockTest.ColumnEditingWithAggregateWithoutPrimaryRead
@@ -1176,11 +1177,13 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.module == AshTable.TableBlockTest.MissingField
-      assert error.message =~ "no attribute, calculation or aggregate named `nope`"
+
+      assert error.message =~
+               "no attribute, calculation, aggregate or belongs-to relationship named `nope`"
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.MissingField: it declares the column `nope`, but the resource has no public attribute, calculation or aggregate of that name",
+                   "cannot build the table of AshTable.TableBlockTest.MissingField: it declares the column `nope`, but the resource has no public attribute, calculation, aggregate or belongs-to relationship of that name",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.MissingField) end
     end
 
@@ -1208,35 +1211,6 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message =~ "`secret` is not public"
-    end
-
-    test "naming a relationship is an error" do
-      error =
-        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :parent]} do
-          defmodule Elixir.AshTable.TableBlockTest.RelationshipColumn do
-            use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
-
-            attributes do
-              uuid_primary_key :id
-            end
-
-            relationships do
-              belongs_to :parent, __MODULE__, public?: true
-            end
-
-            actions do
-              defaults [:read]
-            end
-
-            table do
-              column :parent
-            end
-          end
-        end
-
-      assert error.message =~ "no attribute, calculation or aggregate named `parent`"
     end
 
     test "naming a calculation with a required argument is an error" do
@@ -1918,6 +1892,1443 @@ defmodule AshTable.TableBlockTest do
 
       assert error.path == [:table]
       assert Exception.message(error) =~ "invalid value for :max_depth option"
+    end
+  end
+
+  describe "label_field" do
+    test "names the attribute a record is called by, and is read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Labelled do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :name, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            label_field :name
+          end
+        end
+      end
+
+      assert AshTable.Resource.Info.table_label_field(AshTable.TableBlockTest.Labelled) ==
+               {:ok, :name}
+
+      assert AshTable.Resource.Info.table_label_field(AshTable.Test.Relating.Tag) == :error
+    end
+
+    test "naming a field that does not exist is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :label_field]} do
+          defmodule Elixir.AshTable.TableBlockTest.LabelMissing do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :name, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              label_field :nam
+            end
+          end
+        end
+
+      assert error.message == "The resource has no attribute named `nam`."
+    end
+
+    test "naming an attribute that is not public is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :label_field]} do
+          defmodule Elixir.AshTable.TableBlockTest.LabelPrivate do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :codename, :string
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              label_field :codename
+            end
+          end
+        end
+
+      assert error.message ==
+               "`codename` is not public. Only a `public?` attribute can be the label of a record."
+    end
+
+    test "naming a relationship is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :label_field]} do
+          defmodule Elixir.AshTable.TableBlockTest.LabelRelationship do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              label_field :author
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` is a relationship. The label of a record is one of its own attributes: name an attribute of this resource."
+    end
+
+    test "naming a calculation or an aggregate is an error" do
+      for {field, kind, name} <- [
+            {:shouted, "a calculation", LabelCalculation},
+            {:note_count, "an aggregate", LabelAggregate}
+          ] do
+        module = Module.concat(AshTable.TableBlockTest, name)
+
+        error =
+          assert_dsl_error %Spark.Error.DslError{path: [:table, :label_field]} do
+            defmodule module do
+              use Ash.Resource,
+                domain: AshTable.Test.Domain,
+                extensions: [AshTable.Resource]
+
+              attributes do
+                uuid_primary_key :id
+                attribute :name, :string, public?: true
+              end
+
+              relationships do
+                has_many :notes, AshTable.Test.Relating.Note,
+                  destination_attribute: :book_id,
+                  public?: true
+              end
+
+              calculations do
+                calculate :shouted, :string, expr(name <> "!"), public?: true
+              end
+
+              aggregates do
+                count :note_count, :notes, public?: true
+              end
+
+              actions do
+                defaults [:read]
+              end
+
+              table do
+                label_field(field)
+              end
+            end
+          end
+
+        assert error.message ==
+                 "`#{field}` is #{kind}. The label of a record has to be an attribute: it is read with the record's key and nothing else."
+      end
+    end
+  end
+
+  describe "a reference column" do
+    test "names a belongs-to relationship whose destination's table declares a `label_field`" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Reference do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :author, AshTable.Test.Relating.Author, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:title]]
+          end
+
+          table do
+            column :title
+            column :author
+          end
+        end
+      end
+
+      assert [%AshTable.Resource.Column{name: :title}, %AshTable.Resource.Column{name: :author}] =
+               AshTable.Resource.Info.columns(AshTable.TableBlockTest.Reference)
+    end
+
+    test "naming a has-many relationship is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :books]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceHasMany do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :books, AshTable.Test.Relating.Book,
+                destination_attribute: :author_id,
+                public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :books
+            end
+          end
+        end
+
+      assert error.message ==
+               "`books` is a has-many relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with `relationship :books`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceHasMany: its column `books` cannot be shown. " <>
+                     "`books` is a has-many relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with `relationship :books`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ReferenceHasMany) end
+    end
+
+    test "naming a has-one relationship is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :books]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceHasOne do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_one :books, AshTable.Test.Relating.Book,
+                destination_attribute: :author_id,
+                public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :books
+            end
+          end
+        end
+
+      assert error.message ==
+               "`books` is a has-one relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with `relationship :books`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceHasOne: its column `books` cannot be shown. " <>
+                     "`books` is a has-one relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with `relationship :books`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ReferenceHasOne) end
+    end
+
+    test "naming a many-to-many relationship is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :books]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceManyToMany do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              many_to_many :books, AshTable.Test.Relating.Book do
+                through AshTable.Test.Relating.BookTag
+                source_attribute_on_join_resource :tag_id
+                destination_attribute_on_join_resource :book_id
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :books
+            end
+          end
+        end
+
+      assert error.message ==
+               "`books` is a many-to-many relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with `relationship :books`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceManyToMany: its column `books` cannot be shown. " <>
+                     "`books` is a many-to-many relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with `relationship :books`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ReferenceManyToMany) end
+    end
+
+    test "naming a relationship that is not public is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferencePrivate do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :author
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` is not public. Only `public?` fields can be columns of a table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferencePrivate: it declares the column `author`, but the resource has no public attribute, calculation, aggregate or belongs-to relationship of that name",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ReferencePrivate) end
+    end
+
+    test "naming a belongs-to whose destination has no table is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :shelf]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceWithoutTable do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :shelf, AshTable.Test.Relating.Shelf, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :shelf
+            end
+          end
+        end
+
+      assert error.message ==
+               "The destination of `shelf`, AshTable.Test.Relating.Shelf, has no table: it does not list `AshTable.Resource` in its extensions. A column that names a relationship shows the related record's label, which the destination's table declares with `label_field`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceWithoutTable: its column `shelf` cannot be shown. " <>
+                     "The destination of `shelf`, AshTable.Test.Relating.Shelf, has no table: it does not list `AshTable.Resource` in its extensions. A column that names a relationship shows the related record's label, which the destination's table declares with `label_field`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ReferenceWithoutTable) end
+    end
+
+    test "naming a belongs-to whose destination declares no `label_field` is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :tag]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceWithoutLabel do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :tag, AshTable.Test.Relating.Tag, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :tag
+            end
+          end
+        end
+
+      assert error.message ==
+               "The destination of `tag`, AshTable.Test.Relating.Tag, declares no `label_field`. A column that names a relationship shows the related record's label: add `label_field` to the `table` block of AshTable.Test.Relating.Tag."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceWithoutLabel: its column `tag` cannot be shown. " <>
+                     "The destination of `tag`, AshTable.Test.Relating.Tag, declares no `label_field`. A column that names a relationship shows the related record's label: add `label_field` to the `table` block of AshTable.Test.Relating.Tag.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ReferenceWithoutLabel) end
+    end
+
+    test "naming a belongs-to that Ash has no read action to load through is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :ledger]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceWithoutReadAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :ledger, AshTable.Test.Referencing.Ledger, public?: true
+
+              belongs_to :other_ledger, AshTable.Test.Referencing.Ledger do
+                read_action :list
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :ledger
+              # this one says which action reads it
+              column :other_ledger
+            end
+          end
+        end
+
+      assert error.message ==
+               "The destination of `ledger`, AshTable.Test.Referencing.Ledger, has no primary read action, and the relationship names no `read_action`. The related record of a column is read as Ash loads the relationship, which needs one of the two."
+    end
+
+    test "`sortable? true` is an error: a table does not sort by a related record's field" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author, :sortable?]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceSortable do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :author do
+                sortable? true
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` shows the label of a related record, which a table does not sort by, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`."
+    end
+
+    test "`filterable? true` is an error: a table does not filter by a related record's field" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author, :filterable?]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceFilterable do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :author do
+                filterable? true
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` shows the label of a related record, which a table does not filter by, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`."
+    end
+
+    test "an `update_action` is an error: the cell is read-only" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              column :author do
+                update_action :update
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` shows the label of a related record. Only an attribute can be edited, so a column that names a relationship cannot have an `update_action`."
+    end
+
+    test "`confirm` is an error: the cell is never edited" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author, :confirm]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceConfirm do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:title]]
+            end
+
+            table do
+              update_action :update
+
+              column :author do
+                confirm "Change the author?"
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` can never be edited, so `confirm` has no effect. It shows the label of a related record."
+    end
+
+    test "`sortable? false`, `filterable? false` and `update_action false` say what is so anyway" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceSwitchedOff do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :author, AshTable.Test.Relating.Author, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:title]]
+          end
+
+          table do
+            update_action :update
+
+            column :author do
+              sortable? false
+              filterable? false
+              update_action false
+            end
+          end
+        end
+      end
+    end
+  end
+
+  describe "an aggregate column over a field that a field policy protects on the related resource" do
+    # The warnings of one module, as their texts.
+    defp messages(warnings, module) do
+      for {^module, payloads} <- warnings, {message, _location} <- payloads, do: message
+    end
+
+    test "is reported, with what it shows and the two ways to settle it" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.Exposed do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              sum :payroll, :members, :salary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :title
+              column :payroll
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.Exposed) == [
+               "The aggregate column `payroll` shows `salary` of AshTable.Test.Exposing.Member, which a field policy protects there, and AshTable.TableBlockTest.Exposed has no field policy for `payroll`. " <>
+                 "Ash applies the read policy of the related resource to an aggregate, and not its field policies: everyone who can read a row sees this column, and can sort and filter by it. " <>
+                 "Protect it with a field policy for `payroll` on AshTable.TableBlockTest.Exposed, which needs `Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with `exposes_protected_field? true` on the column."
+             ]
+    end
+
+    test "is reported for a field in the aggregate's own `filter` too" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ExposedByFilter do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              count :well_paid, :members do
+                filter expr(salary > 100)
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :well_paid
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ExposedByFilter) == [
+               "The aggregate column `well_paid` counts by `salary` of AshTable.Test.Exposing.Member in its `filter`, which a field policy protects there, and AshTable.TableBlockTest.ExposedByFilter has no field policy for `well_paid`. " <>
+                 "Ash applies the read policy of the related resource to an aggregate, and not its field policies: everyone who can read a row sees this column, and can sort and filter by it. " <>
+                 "Protect it with a field policy for `well_paid` on AshTable.TableBlockTest.ExposedByFilter, which needs `Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with `exposes_protected_field? true` on the column."
+             ]
+    end
+
+    test "is reported where the resource's only field policy is the one that lets everybody see everything" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ExposedBesideStar do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              authorizers: [Ash.Policy.Authorizer],
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              sum :payroll, :members, :salary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            policies do
+              policy always() do
+                authorize_if always()
+              end
+            end
+
+            field_policies do
+              field_policy :* do
+                authorize_if always()
+              end
+            end
+
+            table do
+              column :payroll
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ExposedBesideStar) == [
+               "The aggregate column `payroll` shows `salary` of AshTable.Test.Exposing.Member, which a field policy protects there, and AshTable.TableBlockTest.ExposedBesideStar has no field policy for `payroll`. " <>
+                 "Ash applies the read policy of the related resource to an aggregate, and not its field policies: everyone who can read a row sees this column, and can sort and filter by it. " <>
+                 "Protect it with a field policy for `payroll` on AshTable.TableBlockTest.ExposedBesideStar, which needs `Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with `exposes_protected_field? true` on the column."
+             ]
+    end
+
+    test "is not reported once the resource has a field policy for the aggregate" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.Protected do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              authorizers: [Ash.Policy.Authorizer],
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              sum :payroll, :members, :salary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            policies do
+              policy always() do
+                authorize_if always()
+              end
+            end
+
+            field_policies do
+              field_policy :payroll do
+                authorize_if actor_attribute_equals(:role, :admin)
+              end
+
+              field_policy :* do
+                authorize_if always()
+              end
+            end
+
+            table do
+              column :payroll
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.Protected) == []
+    end
+
+    test "is not reported when the column says the exposure is meant" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ExposedOnPurpose do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              sum :payroll, :members, :salary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :payroll do
+                exposes_protected_field? true
+              end
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ExposedOnPurpose) == []
+    end
+
+    test "is not reported for an aggregate over a field no field policy protects, or over no field at all" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.NothingExposed do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              count :headcount, :members, public?: true
+              list :names, :members, :name, public?: true
+
+              count :named, :members do
+                filter expr(not is_nil(name))
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :headcount
+              column :names
+              column :named
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.NothingExposed) == []
+    end
+
+    test "is not reported where the related resource's field policies let everybody see every field" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.TriviallyProtected do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :guests, AshTable.Test.Exposing.Guest,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              sum :payroll, :guests, :salary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :payroll
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.TriviallyProtected) == []
+    end
+
+    test "is the table's concern only for an aggregate that is a column" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ExposedButNoColumn do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              sum :payroll, :members, :salary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :title
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ExposedButNoColumn) == []
+    end
+  end
+
+  describe "a calculation column over a field that a field policy protects" do
+    test "is reported for a field of a related resource that its expression references" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ExposedByCalculation do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            calculations do
+              calculate :boss_salary, :integer, expr(boss.salary), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_salary
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ExposedByCalculation) == [
+               "The calculation column `boss_salary` references `salary` of AshTable.Test.Exposing.Member (through `boss`), which a field policy protects there, and AshTable.TableBlockTest.ExposedByCalculation has no field policy for `boss_salary`. " <>
+                 "Ash applies no policy to what a calculation references: everyone who can read a row sees this column, and can sort and filter by it. " <>
+                 "Protect it with a field policy for `boss_salary` on AshTable.TableBlockTest.ExposedByCalculation, which needs `Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with `exposes_protected_field? true` on the column."
+             ]
+    end
+
+    test "is reported for a field of the resource itself" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ExposedOwnField do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              authorizers: [Ash.Policy.Authorizer],
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+              attribute :secret, :string, public?: true
+            end
+
+            calculations do
+              calculate :shouted, :string, expr(secret <> "!"), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            policies do
+              policy always() do
+                authorize_if always()
+              end
+            end
+
+            field_policies do
+              field_policy :secret do
+                authorize_if actor_attribute_equals(:role, :admin)
+              end
+
+              field_policy :* do
+                authorize_if always()
+              end
+            end
+
+            table do
+              column :shouted
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ExposedOwnField) == [
+               "The calculation column `shouted` references `secret`, which a field policy protects on this resource, and AshTable.TableBlockTest.ExposedOwnField has no field policy for `shouted`. " <>
+                 "Ash applies no policy to what a calculation references: everyone who can read a row sees this column, and can sort and filter by it. " <>
+                 "Protect it with a field policy for `shouted` on AshTable.TableBlockTest.ExposedOwnField, which needs `Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, one that authorizes everything. If the column is meant to show this to everyone who reads a row, say so with `exposes_protected_field? true` on the column."
+             ]
+    end
+
+    test "is not reported once the resource has a field policy for the calculation" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.ProtectedCalculation do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              authorizers: [Ash.Policy.Authorizer],
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            calculations do
+              calculate :boss_salary, :integer, expr(boss.salary), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            policies do
+              policy always() do
+                authorize_if always()
+              end
+            end
+
+            field_policies do
+              field_policy :boss_salary do
+                authorize_if actor_attribute_equals(:role, :admin)
+              end
+
+              field_policy :* do
+                authorize_if always()
+              end
+            end
+
+            table do
+              column :boss_salary
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.ProtectedCalculation) == []
+    end
+
+    test "is not reported when the column says the exposure is meant" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.CalculationOnPurpose do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            calculations do
+              calculate :boss_salary, :integer, expr(boss.salary), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_salary do
+                exposes_protected_field? true
+              end
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.CalculationOnPurpose) == []
+
+      assert [%AshTable.Resource.Column{name: :boss_salary, exposes_protected_field?: true}] =
+               AshTable.Resource.Info.columns(AshTable.TableBlockTest.CalculationOnPurpose)
+
+      assert [%AshTable.Resource.Column{name: :title, exposes_protected_field?: nil} | _] =
+               AshTable.Resource.Info.columns(AshTable.Test.Guarded)
+    end
+
+    test "is not reported for what no field policy protects, nor for a calculation computed in Elixir, which cannot be looked into" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.NothingExposedByCalculation do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            calculations do
+              calculate :boss_name, :string, expr(boss.name), public?: true
+              calculate :loud_title, :string, expr(title <> "!"), public?: true
+              calculate :opaque, :string, AshTable.Test.Exposing.BossSalary, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_name
+              column :loud_title
+              column :opaque
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.NothingExposedByCalculation) == []
+    end
+  end
+
+  describe "a `first` aggregate column over one related record, beside a calculation column over the same relationship" do
+    test "is reported, with what the table does about it and how the aggregate gets out of it" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.FirstBesideCalculation do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            aggregates do
+              first :boss_name, :boss, :name, public?: true
+            end
+
+            calculations do
+              calculate :boss_initial, :string, expr(string_downcase(boss.name)), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_name
+              column :boss_initial
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.FirstBesideCalculation) == [
+               "The aggregate column `boss_name` is a `first` aggregate over the one record of `boss`, and the calculation column `boss_initial` reaches through the same relationship. " <>
+                 "Read together through a SQL data layer, such an aggregate returns the value of a related record that the reader may not read (ash_table issue #32). " <>
+                 "The table therefore reads `boss_name` apart from the rest of the row, and does not sort or filter by it. " <>
+                 "To have it read with the row again, and sorted and filtered by, take the aggregate out of the join the two share: give it a `join_filter` or a `read_action` of its own. " <>
+                 "To leave it at that, say `sortable? false` and `filterable? false` on the column."
+             ]
+    end
+
+    test "is not reported for an aggregate with a `join_filter`, which is read on a join of its own" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.FirstWithJoinFilter do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            aggregates do
+              first :boss_name, :boss, :name do
+                join_filter :boss, expr(not is_nil(name))
+                public? true
+              end
+            end
+
+            calculations do
+              calculate :boss_initial, :string, expr(string_downcase(boss.name)), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_name
+              column :boss_initial
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.FirstWithJoinFilter) == []
+    end
+
+    test "is not reported for a column that says itself that it is neither sorted nor filtered by" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.FirstSwitchedOff do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            aggregates do
+              first :boss_name, :boss, :name, public?: true
+            end
+
+            calculations do
+              calculate :boss_initial, :string, expr(string_downcase(boss.name)), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_name do
+                sortable? false
+                filterable? false
+              end
+
+              column :boss_initial
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.FirstSwitchedOff) == []
+    end
+
+    test "is not reported without the calculation column, or with one over another relationship or over none" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.FirstAlone do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+              belongs_to :deputy, AshTable.Test.Exposing.Member, public?: true
+            end
+
+            aggregates do
+              first :boss_name, :boss, :name, public?: true
+            end
+
+            calculations do
+              calculate :deputy_name, :string, expr(deputy.name), public?: true
+              calculate :loud_title, :string, expr(title <> "!"), public?: true
+              calculate :boss_initial, :string, expr(string_downcase(boss.name)), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :boss_name
+              column :deputy_name
+              column :loud_title
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.FirstAlone) == []
+    end
+
+    test "is not reported for a `first` over many related records, nor for another kind of aggregate over the one" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.OtherAggregates do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
+
+              has_many :members, AshTable.Test.Exposing.Member,
+                destination_attribute: :team_id,
+                public?: true
+            end
+
+            aggregates do
+              first :a_member, :members, :name, public?: true
+              count :bosses, :boss, public?: true
+              list :boss_names, :boss, :name, public?: true
+            end
+
+            calculations do
+              calculate :boss_initial, :string, expr(string_downcase(boss.name)), public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :a_member
+              column :bosses
+              column :boss_names
+              column :boss_initial
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.OtherAggregates) == []
     end
   end
 end

@@ -211,7 +211,8 @@ On the server, a save is four steps:
 3. **The column's action runs** through `AshPhoenix.Form`: `for_update` on
    the record, then `submit` with one parameter, the cell's.
 4. **The row is shown from what the action returns**, with the table's
-   calculations and aggregates loaded on it.
+   calculations, aggregates and reference cells loaded onto it, as the
+   person.
 
 The table's read action does not run again. So the row reflects everything
 the action did: on `/tasks`, "Headline" follows a new title and "Overdue?" a
@@ -219,10 +220,10 @@ new due date. And the row stays where it is, even if its new value no longer
 matches the filters or belongs elsewhere in the sort, until the next change
 of page, sort or filter reads the page afresh.
 
-Loading calculations and aggregates on an action's result goes through the
-resource's primary read action, as it always does in Ash. A table that has
-both editable columns and calculation or aggregate columns therefore needs a
-primary read action. The compiler reports it otherwise, and the table of a
+Loading calculations, aggregates and related records onto an action's result
+goes through the resource's primary read action, as it always does in Ash. A
+table that has both editable columns and calculation, aggregate or reference
+columns therefore needs a primary read action. The compiler reports it otherwise, and the table of a
 resource compiled all the same refuses to render.
 
 ## When a save fails

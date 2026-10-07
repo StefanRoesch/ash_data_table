@@ -64,6 +64,9 @@ defmodule Demo.Tracker.Task do
     # edited in place, unless the column says otherwise.
     update_action :update
 
+    # What a task is called where a table shows it as one value.
+    label_field :title
+
     # text
     column :title
 
@@ -115,6 +118,16 @@ defmodule Demo.Tracker.Task do
 
     # no update action accepts it
     column :inserted_at
+
+    # Reference cells: each names a belongs-to relationship and shows the
+    # related record's label, the `label_field` of that resource's table, in
+    # place of the key. Read-only, and neither sorted nor filtered by.
+    column :project
+    column :assignee
+
+    column :reporter do
+      label "Reported by"
+    end
 
     # What a row can be expanded into: these relationships, in this order,
     # each on a line of its own that opens the nested table of the related

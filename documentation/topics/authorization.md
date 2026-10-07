@@ -39,11 +39,11 @@ header changes who you are, and the same page changes with it:
 
 | Actor | Rows | Columns | Editing |
 | --- | --- | --- | --- |
-| Ada Admin | Acme's tasks | all 14 | every editable column, on every task |
-| Max Member | Acme's tasks | 13: no "External ref". "Estimate hours" is empty except on the tasks assigned to him | looks editable everywhere; a task that is not his refuses when a cell is saved |
-| Vera Viewer | Acme's tasks | 13, as the member | none |
-| Olga Outsider | Globex's tasks | 13, as the member | as the member, on Globex's tasks |
-| Nobody | none: "No records" | 12: no "External ref" and no "Estimate hours" | none |
+| Ada Admin | Acme's tasks | all 17 | every editable column, on every task |
+| Max Member | Acme's tasks | 16: no "External ref". "Estimate hours" is empty except on the tasks assigned to him | looks editable everywhere; a task that is not his refuses when a cell is saved |
+| Vera Viewer | Acme's tasks | 14: as the member, and no "Assignee" and no "Reported by", since a viewer may not read people | none |
+| Olga Outsider | Globex's tasks | 16, as the member | as the member, on Globex's tasks |
+| Nobody | none: "No records" | 14: no "External ref", no "Estimate hours" and no "Project" | none |
 
 ## Where actor and tenant come from
 
@@ -140,6 +140,8 @@ as an admin area that the router already restricts.
 | The read is **refused outright**: a `Forbidden` error, as from an `access_type :strict` policy | The page answers as if it did not exist: status 404 and your "not found" page. With `on_forbidden :message` the page stays and says "You are not allowed to see these records." | `/projects` as nobody is a 404; `/comments` as nobody shows the message. |
 | The person can **never see a field**: a field policy that depends on the actor only | The column is left out for that person: no heading, no filter, no cells. A URL that sorts or filters by it is ignored. | "External ref" on `/tasks` exists for Ada Admin only. |
 | The person sees a field on **some records only**: a field policy with a check on the record | The column stays. Hidden cells are empty, announced as "Not available", and cannot be edited. | "Estimate hours" on `/tasks` as Max Member. |
+| The person can **never read a related resource** that a column or a row leads to | A [reference cell](nested-tables.md#the-reference-cell) of that relationship has no column for them, and the relationship has no line under an expanded row. | `/tasks` as Vera Viewer: no "Assignee" column, and no "Assignee" line under a task. |
+| The person may **not read one related record** | Its reference cell is empty, as for no related record. In a nested table its row is not there. | A task assigned to somebody of another organization. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. | `/tasks` as Vera Viewer. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. | `/tasks` as Max Member, on a task that is not his. |
 
@@ -192,6 +194,35 @@ end
 ```
 
 (A line `# ...` stands for lines that are left out.)
+
+## Related records
+
+A row leads to other resources in two ways: a reference cell shows one
+related record by its label, and an expanded row opens the tables of its
+related records. The destination's own policies decide both, with the same
+actor, and the table asks the same two kinds of question of the destination
+that it asks of its own resource.
+
+- A destination the person can **never** read is left out: no column for
+  its reference cell, no line for its nested table.
+- What they may read of it is known when it is read. A related record that
+  is not theirs is an empty cell, and is not among a nested table's rows.
+- A nested table, and a page limited to the records of one parent, read that
+  parent again as the person on every read. A key in an event or in an
+  address gives access to nothing.
+
+[Nested tables](nested-tables.md#what-a-person-may-not-see) has every case.
+
+### Aggregates and calculations
+
+One thing here is Ash's rule and easy to get wrong in the resource: an
+**aggregate** applies the related resource's read policy and not its field
+policies, and a **calculation** applies no policy to what it references. An
+aggregate over a protected field, and a calculation that references one,
+need a field policy of their own on the resource that declares them. The
+table shows such a field as a column like any other, and warns when it is
+not protected. The rule, the warning and how to answer it are in
+[Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
 
 ## `on_forbidden`
 
@@ -293,6 +324,10 @@ validation on the one that does.
   the field's name.
 - **Columns keep their numbering.** With a column left out, the remaining
   ones are numbered without a gap for assistive technology.
+- **An aggregate hidden on some records cannot be sorted by.** Ash raises
+  for such a sort, so the table does not offer it to that person. Its filter
+  stays. See
+  [Columns and defaults](columns-and-defaults.md#what-a-table-does-not-sort-by).
 
 ## Things people trip over
 
