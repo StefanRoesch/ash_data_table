@@ -59,6 +59,52 @@ defmodule AshTable.Resource do
 
   Page size and default sort are not part of the block. They live on the read
   action (`pagination default_limit: …` and `prepare build(sort: …)`).
+
+  ## Nested tables
+
+  A row can be expanded into the tables of its related records:
+
+      table do
+        max_depth 2
+
+        relationship :comments
+
+        relationship :author do
+          label "Written by"
+        end
+      end
+
+  An expanded row shows one line per relationship, and a line opens the
+  nested table: the table of the destination resource, as that resource
+  declares it, limited to the records related to the row. It sorts, filters,
+  pages and edits by itself, and its rows expand again.
+
+  With no `relationship`, a row offers every public relationship whose
+  destination resource has a table (lists this extension), except manual
+  relationships. Once one `relationship` is declared, a row offers exactly
+  the declared ones in the declared order. A resource with nothing to offer
+  has no expanders.
+
+  What a nested table can do follows from the relationship, as Ash loads it:
+
+    * It runs the relationship's own `read_action` when it declares one, else
+      the read action of the destination's table. While the person has chosen
+      no sort, the relationship's own `sort` comes first.
+    * It has pages when the relationship holds many records, is joined by
+      attributes, and that action declares pagination. A relationship with
+      `no_attributes?` and a manual one are shown in full.
+    * A relationship that holds one record (a belongs-to, a has-one) is a
+      table of at most one row, without sort, filters or pages. So is a
+      manual relationship, of however many rows.
+    * A line whose destination the person can never read is left out for
+      them, and the destination's policies and field policies apply to what
+      a nested table shows as they do on a page of its own.
+
+  `max_depth` says how deep a person can expand, counted from the table on
+  the page: its nested tables are at depth 1. The default is 3, and the
+  tables at that depth have no expanders. It is the setting of the table on
+  the page that counts for everything beneath it. A table with `max_depth 0`
+  never expands its rows, wherever it is shown.
   """
 
   @column %Spark.Dsl.Entity{
@@ -83,6 +129,27 @@ defmodule AshTable.Resource do
     args: [:name],
     identifier: :name,
     schema: AshTable.Resource.Column.schema()
+  }
+
+  @relationship %Spark.Dsl.Entity{
+    name: :relationship,
+    describe: """
+    A relationship a row of the table can be expanded into: its line under the row opens the nested table of the related records.
+
+    With no `relationship` declared, a row offers every public relationship of the resource whose destination resource has a table, except manual relationships. Once one is declared, a row offers exactly the declared ones, in the declared order.
+    """,
+    examples: [
+      "relationship :comments",
+      """
+      relationship :author do
+        label "Written by"
+      end
+      """
+    ],
+    target: AshTable.Resource.Relationship,
+    args: [:name],
+    identifier: :name,
+    schema: AshTable.Resource.Relationship.schema()
   }
 
   @table %Spark.Dsl.Section{
@@ -119,9 +186,15 @@ defmodule AshTable.Resource do
         default: :not_found,
         doc:
           "What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a \"not allowed\" message in place of the rows."
+      ],
+      max_depth: [
+        type: :non_neg_integer,
+        default: 3,
+        doc:
+          "How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown."
       ]
     ],
-    entities: [@column]
+    entities: [@column, @relationship]
   }
 
   use Spark.Dsl.Extension,
@@ -129,6 +202,7 @@ defmodule AshTable.Resource do
     verifiers: [
       AshTable.Resource.Verifiers.VerifyReadAction,
       AshTable.Resource.Verifiers.VerifyUpdateAction,
-      AshTable.Resource.Verifiers.VerifyColumns
+      AshTable.Resource.Verifiers.VerifyColumns,
+      AshTable.Resource.Verifiers.VerifyRelationships
     ]
 end

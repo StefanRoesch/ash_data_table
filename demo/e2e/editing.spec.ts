@@ -973,8 +973,11 @@ test("after editing, the grid is still one tab stop and the arrow keys are still
   await tasks.saves(title, () => tasks.press("Enter"))
 
   await frames.clear()
-  await tasks.press("ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "End", "Home", "PageDown")
-  await tasks.press("PageUp")
+  await tasks.press("ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "End", "Home")
+  // Home is the first cell of the row, its expander: the title is beside it
+  await expect(tasks.expanderCell(FIRST)).toBeFocused()
+  await title.focus()
+  await tasks.press("PageDown", "PageUp")
   await expect(title).toBeFocused()
   expect(await frames.all()).toEqual([])
   expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])

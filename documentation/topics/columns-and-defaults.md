@@ -241,7 +241,7 @@ No login is needed for that page.
 
 ## Not in the first version
 
-No reference cells for `belongs_to`, no nested tables, no custom cell
+No reference cells for `belongs_to`, no custom cell
 components, no dedicated cells for arrays, maps and embedded resources, no
 locale-aware formatting, no column widths, and one table per resource. The
 later slices are listed in the

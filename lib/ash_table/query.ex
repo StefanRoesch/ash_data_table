@@ -4,9 +4,15 @@ defmodule AshTable.Query do
   # pagination always run on the server; the sort and the filters a person
   # chose are applied with `Ash.Query.sort_input/2` and
   # `Ash.Query.filter_input/2`, the functions for outside input.
+  #
+  # A table of its own and a nested one build the same query and turn what
+  # comes back into the same `Page`. They differ in the last step alone: the
+  # one reads its query, the other reads the parent record by its key with
+  # the query as the load of the relationship.
 
   alias AshTable.Model
   alias AshTable.Model.Operator
+  alias AshTable.Resource.Reading
   alias AshTable.State
 
   defmodule Page do
@@ -39,7 +45,6 @@ defmodule AshTable.Query do
           | {:actor, term}
           | {:tenant, term}
           | {:authorize?, boolean}
-          | {:query, Ash.Query.t()}
 
   @doc """
   Reads the page `state` points at.
@@ -48,28 +53,144 @@ defmodule AshTable.Query do
 
     * `:scope` - an `Ash.Scope`, carrying actor and tenant;
     * `:actor` and `:tenant` - used when no scope is given;
-    * `:authorize?` - defaults to `true`;
-    * `:query` - a base query to build on in place of the bare resource (for
-      a table limited to related records).
+    * `:authorize?` - defaults to `true`.
   """
   @spec read(Model.t(), State.t(), [option]) :: {:ok, Page.t()} | {:error, Ash.Error.t()}
-  def read(%Model{} = model, %State{} = state, opts \\ []) do
+  def read(%Model{via: nil} = model, %State{} = state, opts \\ []) do
     read_opts = reader_opts(opts)
 
-    # The sort a person chose goes in before the action's preparations run,
-    # so that a sort of the action itself comes second, as a tie-breaker.
-    query =
-      (opts[:query] || model.resource)
-      |> Ash.Query.new()
-      |> sort(state.sort)
-      |> filter(state.filters)
-      |> Ash.Query.load(Model.loads(model))
-      |> Ash.Query.for_read(model.read_action, %{}, read_opts)
-
-    case Ash.read(query, [page: page_opts(model, state)] ++ read_opts) do
+    case Ash.read(
+           query(model, state, Model.loads(model), read_opts),
+           [page: page_opts(model, state)] ++ read_opts
+         ) do
       {:ok, result} -> {:ok, page(result, model, state)}
       {:error, error} -> {:error, error}
     end
+  end
+
+  @doc """
+  Reads the page `state` points at of a nested table: the records related to
+  the record of `model.via.source` with the primary key `key`, through the
+  relationship `model.via`.
+
+  The parent record is read again every time, by its primary key and as the
+  person asking, with the relationship loaded through the nested table's
+  query. A key is all a table keeps of a row, and a key proves nothing: only
+  this read says whether the person may see the record whose related records
+  they ask for. Ash's own loader then decides what "related" means, for
+  every kind of relationship.
+
+  Takes the options of `read/3`, and `:parent_authorize?`: whether the table
+  of the parent authorizes (defaults to `true`). The parent is read with
+  authorization when either table authorizes.
+
+  Returns, besides what `read/3` returns:
+
+    * `{:error, :parent_gone}` - the parent record is gone, or no longer the
+      person's to read;
+    * `{:error, :forbidden}` - the person may not read the destination: Ash
+      put an `Ash.ForbiddenField` in place of the related records. (With
+      `allow_forbidden_field? false` on the relationship the same refusal is
+      an `Ash.Error.Forbidden`.)
+  """
+  @spec read_related(Model.t(), State.t(), map, keyword) ::
+          {:ok, Page.t()} | {:error, :parent_gone | :forbidden | Ash.Error.t()}
+  def read_related(%Model{via: %{} = via} = model, %State{} = state, key, opts \\ [])
+      when is_map(key) do
+    read_opts = reader_opts(opts)
+
+    loads = Model.loads(model)
+
+    # A page of related records is read bare, and what the table's columns
+    # show besides attributes is loaded onto its records afterwards: the load
+    # of an aggregate inside a paged relationship fails in the data layer for
+    # a person whose field policies look at the record (ash 3.34.4,
+    # ash_postgres 2.14.2: an `Ecto.QueryError` about map values in a
+    # subquery). Sorting and filtering by such a column stay in the query,
+    # where they work. What is not paged is read in one go.
+    {related, later} =
+      case page_opts(model, state) do
+        false ->
+          {query(model, state, loads, read_opts), []}
+
+        page_opts ->
+          {model |> query(state, [], read_opts) |> Ash.Query.page(page_opts), loads}
+      end
+
+    parent_opts =
+      Keyword.put(
+        read_opts,
+        :authorize?,
+        read_opts[:authorize?] or Keyword.get(opts, :parent_authorize?, true)
+      )
+
+    with {:ok, %_{} = parent} <-
+           get(via.source, key, [load: [{via.name, related}]] ++ parent_opts),
+         {:ok, result} <- related(Map.get(parent, via.name)),
+         {:ok, result} <- loaded(result, later, read_opts) do
+      {:ok, page(result, model, state)}
+    else
+      {:ok, nil} -> {:error, :parent_gone}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # What Ash put at the relationship: the records, as a page, a list, one
+  # record or none; or its refusal.
+  defp related(%Ash.ForbiddenField{}), do: {:error, :forbidden}
+  defp related(%Ash.NotLoaded{}), do: {:error, :forbidden}
+  defp related(nil), do: {:ok, []}
+
+  defp related(%struct{} = page) when struct in [Ash.Page.Offset, Ash.Page.Keyset],
+    do: {:ok, page}
+
+  defp related(%_{} = record), do: {:ok, [record]}
+  defp related(records) when is_list(records), do: {:ok, records}
+
+  # The records of a page that was read through the person's own read, with
+  # the table's calculations and aggregates put onto them, as the person.
+  defp loaded(result, [], _read_opts), do: {:ok, result}
+
+  defp loaded(%{results: []} = page, _loads, _read_opts), do: {:ok, page}
+
+  defp loaded(%{results: records} = page, loads, read_opts) do
+    with {:ok, records} <- Ash.load(records, loads, read_opts),
+         do: {:ok, %{page | results: records}}
+  end
+
+  defp loaded(records, _loads, _read_opts) when is_list(records), do: {:ok, records}
+
+  @doc """
+  Reads one record by its primary key, as `opts` say who is asking: `nil`
+  when it is not there, or not theirs to read.
+
+  Through the primary read action, as `Ash.load/3` and the load of an
+  update's result go; through the read action of the resource's table when
+  it has none.
+  """
+  @spec get(Ash.Resource.t(), map, keyword) ::
+          {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
+  def get(resource, key, opts) when is_map(key) do
+    action =
+      with nil <- Ash.Resource.Info.primary_action(resource, :read),
+           {:ok, %{name: name}} <- Reading.read_action(resource) do
+        [action: name]
+      else
+        _primary_or_none -> []
+      end
+
+    Ash.get(resource, key, [not_found_error?: false] ++ action ++ opts)
+  end
+
+  # The sort a person chose goes in before the action's preparations run, so
+  # that a sort of the action itself comes second, as a tie-breaker.
+  defp query(model, state, loads, read_opts) do
+    model.resource
+    |> Ash.Query.new()
+    |> sort(known_sort(state.sort, model), model.via)
+    |> filter(known(state.filters, model))
+    |> Ash.Query.load(loads)
+    |> Ash.Query.for_read(model.read_action, %{}, read_opts)
   end
 
   @doc "Who is asking, as the options of an Ash call: scope, or actor and tenant, and `authorize?`."
@@ -86,8 +207,35 @@ defmodule AshTable.Query do
     |> Keyword.put(:authorize?, Keyword.get(opts, :authorize?, true))
   end
 
-  defp sort(query, nil), do: query
-  defp sort(query, {name, direction}), do: Ash.Query.sort_input(query, [{name, direction}])
+  # The filters on columns the table has for this person. The state holds
+  # no others (`AshTable.State` takes none from the outside, and the table
+  # fits a state it kept to the model it has now); this is the same rule once
+  # more, where the query is built.
+  defp known(filters, model) do
+    Map.filter(filters, fn {name, _filter} ->
+      Enum.any?(model.columns, &(&1.name == name and &1.operators != []))
+    end)
+  end
+
+  # Likewise the sort: by a column of the table that sorts, named by the
+  # model's own atom. `Ash.Query.sort_input/2` would take the path through a
+  # relationship ("assignee.name") from anybody and apply no policy of the
+  # related resource to it, so nothing but a column's name ever gets there.
+  defp known_sort({name, _direction} = sort, model) do
+    if Enum.any?(model.columns, &(&1.name == name and &1.sortable?)), do: sort
+  end
+
+  defp known_sort(nil, _model), do: nil
+
+  defp sort(query, {name, direction}, _via),
+    do: Ash.Query.sort_input(query, [{name, direction}])
+
+  # While the person has chosen no sort, the relationship's own goes where
+  # theirs would: in front of the action's. Ash puts it behind, where an
+  # action with a default sort never lets it be seen, and where "the latest
+  # comment" of a has-one that picks one of many would be another one.
+  defp sort(query, nil, %{sort: sort}) when sort not in [nil, []], do: Ash.Query.sort(query, sort)
+  defp sort(query, nil, _via), do: query
 
   # One filter with a predicate per column, which Ash combines with AND. The
   # values go in as they were typed: casting them, and what they match, is
@@ -105,15 +253,15 @@ defmodule AshTable.Query do
 
   defp page_opts(%{pagination: %{strategy: :none}}, _state), do: false
 
-  defp page_opts(%{pagination: %{strategy: :offset} = pagination}, state) do
+  defp page_opts(%{pagination: %{strategy: :offset} = pagination} = model, state) do
     [
       limit: pagination.page_size,
       offset: (state.page - 1) * pagination.page_size,
-      count: pagination.countable?
+      count: count?(model, state)
     ]
   end
 
-  defp page_opts(%{pagination: %{strategy: :keyset} = pagination}, state) do
+  defp page_opts(%{pagination: %{strategy: :keyset} = pagination} = model, state) do
     position =
       cond do
         state.after -> [after: state.after]
@@ -123,7 +271,27 @@ defmodule AshTable.Query do
 
     # Ash counts for a keyset page as it does for an offset one, when the
     # action is countable.
-    [limit: pagination.page_size, count: pagination.countable?] ++ position
+    [limit: pagination.page_size, count: count?(model, state)] ++ position
+  end
+
+  # Whether the read asks for the total: when the action counts, and for a
+  # nested table only while that gives nothing away. The count of a page of
+  # related records is taken with the person's filter as it is written,
+  # without the field policies (ash 3.34.4): filtering by a column they see
+  # on some records only, they would be told how many records match among
+  # those whose value they may not see. So no total is asked for then, and
+  # the table shows none, as on an action that does not count. A table of
+  # its own counts through the read itself, which applies them.
+  defp count?(%{pagination: %{countable?: false}}, _state), do: false
+  defp count?(%{via: nil}, _state), do: true
+
+  # Only a filter on a column the person sees on every record leaves the
+  # count alone. A filter on anything else, were one ever in the state, would
+  # leave no total either: there is none to ask for that is safe.
+  defp count?(model, state) do
+    Enum.all?(state.filters, fn {name, _filter} ->
+      match?(%{partly_hidden?: false}, Enum.find(model.columns, &(&1.name == name)))
+    end)
   end
 
   defp page(records, _model, _state) when is_list(records) do

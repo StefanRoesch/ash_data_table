@@ -70,8 +70,10 @@ export async function open(context, path, id) {
     ...navigation,
     html_bytes: html.length,
     join_frame_bytes: Buffer.byteLength(join ?? ""),
-    rows: await page.locator(`#${id}-table tbody`).count(),
-    columns: await page.locator(`#${id}-table th`).count(),
+    // the rows and the columns of the table itself: not the detail under a
+    // row, which is empty until the row is expanded, nor the expanders
+    rows: await page.locator(`#${id}-table > tbody:not([data-detail])`).count(),
+    columns: await page.locator(`#${id}-table > thead th[id^="${id}-head-"]`).count(),
   }
   return table
 }
@@ -95,7 +97,7 @@ export class Table {
   async rowKeys() {
     const prefix = `${this.id}-row-`
     return this.page
-      .locator(`#${this.id}-table tbody`)
+      .locator(`#${this.id}-table > tbody:not([data-detail])`)
       .evaluateAll((rows, prefix) => rows.map((row) => row.id.slice(prefix.length)), prefix)
   }
 

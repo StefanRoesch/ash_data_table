@@ -85,16 +85,8 @@ defmodule AshTable.Edit do
     end
   end
 
-  # Through the primary read action, as `Ash.load/3` and the load of an
-  # update's result go; through the table's own when the resource has none.
   defp fetch(model, key, opts) do
-    action =
-      case Ash.Resource.Info.primary_action(model.resource, :read) do
-        nil -> [action: model.read_action]
-        _primary -> []
-      end
-
-    case Ash.get(model.resource, key, [not_found_error?: false] ++ action ++ opts) do
+    case Query.get(model.resource, key, opts) do
       {:ok, %_{} = record} -> {:ok, record}
       _not_found_or_refused -> :error
     end

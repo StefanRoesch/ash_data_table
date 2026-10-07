@@ -47,7 +47,7 @@ defmodule DemoWeb.Tables.TaskLabelTableTest do
 
     assert headers(html, "task_label") == ["Note", "Task ID", "Label ID"]
 
-    assert attribute(html, "#task_label-table tbody", "id") == [
+    assert attribute(html, "#task_label-table tbody:not([data-detail])", "id") == [
              "task_label-row-#{task.id}-#{first.id}",
              "task_label-row-#{task.id}-#{second.id}"
            ]
@@ -90,7 +90,7 @@ defmodule DemoWeb.Tables.TaskLabelTableTest do
 
     assert column(html, "task_label", "note") == ["Note 26", "Note 27"]
 
-    assert attribute(html, "#task_label-table tbody", "id") ==
+    assert attribute(html, "#task_label-table tbody:not([data-detail])", "id") ==
              labels |> Enum.drop(25) |> Enum.map(&"task_label-row-#{key(task, &1)}")
   end
 

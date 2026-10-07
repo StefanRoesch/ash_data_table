@@ -178,3 +178,15 @@ msgid "1 record"
 msgid_plural "%{count} records"
 msgstr[0] ""
 msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "Loading…"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Related records"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "These records are not available."
+msgstr ""

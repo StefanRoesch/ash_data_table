@@ -23,9 +23,35 @@ defmodule AshTable.Live.TableComponent do
   #     `ID-head-FIELD` for a header cell, `ID-filter-FIELD` for a filter cell
   #     (its controls end in `-operator`, `-value` and `-clear`), `ID-row-KEY`
   #     for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
-  #   * `aria-colindex` is computed through `colindex/1`, which is where a
-  #     leading expander column will be counted in; an actions column goes
-  #     after the last data column. Neither position holds a cell yet.
+  #   * `aria-colindex` is computed through `colindex/2`, which counts the
+  #     leading expander column in when the table has one; an actions column
+  #     goes after the last data column, which holds no cell yet.
+  #
+  # ## Nested tables
+  #
+  # A table whose rows offer relationships, to this person and at this depth,
+  # has a first column of expanders. The stream then holds two items per
+  # record, both `<tbody>`s: the row (`ID-row-KEY`) and, right after it, its
+  # detail (`ID-row-KEY-x`), which is empty and hidden until the row is
+  # expanded. Expanded, the detail holds one line per relationship
+  # (`ID-row-KEY-l-NAME`, with its cell `…-c` and its button `…-b`) and, under
+  # an open line, a row (`ID-row-KEY-n-NAME`) whose one cell (`…-c`) spans the
+  # table and holds the nested table: this same component once more, under
+  # the id `ID-row-KEY-t-NAME`, which prefixes every id in it.
+  #
+  # The detail is an item of its own so that opening and closing never needs
+  # the record again, which the server does not keep: a toggle puts the
+  # detail back into the stream and leaves the row alone, and a save puts the
+  # row back and leaves the detail alone. What the server keeps for it is
+  # which rows are expanded and which of their lines are open (`open`). A
+  # new read forgets both, as it forgets the failed edits.
+  #
+  # A nested table is given the relationship it is reached through (`via`)
+  # and the primary key of the row it belongs to (`parent_key`); it reads
+  # through `AshTable.Query.read_related/4`, when it is opened and whenever
+  # its own sort, filters or page change. Its state is never in the URL.
+  # `depth` counts from the table on the page, which is at 0, and
+  # `depth_limit` is that table's `max_depth`.
   #
   # Use it through `AshTable.table/1`.
   use Phoenix.LiveComponent
@@ -37,14 +63,12 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Format
   alias AshTable.Model
   alias AshTable.Model.Operator
+  alias AshTable.Model.Relationship
   alias AshTable.Query
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.State
   alias AshTable.Text
   alias Phoenix.LiveView.JS
-
-  # Columns before the first data column: none until rows can be expanded.
-  @leading_columns 0
 
   # The rows above the data rows: the header and the filter row.
   @header_rows 2
@@ -54,6 +78,8 @@ defmodule AshTable.Live.TableComponent do
     {:ok,
      socket
      |> stream_configure(:rows, dom_id: & &1.dom_id)
+     # a nested table is rendered before its first read has come back
+     |> stream(:rows, [])
      |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)
      # Whether the table is a page of its own, which a refused read can turn
      # into "not found", and whether a refused read has left it with nothing
@@ -71,7 +97,17 @@ defmodule AshTable.Live.TableComponent do
      |> assign(announce?: false, announcement: nil, announcements: 0)
      # What a person typed into a filter that is not a value of its column:
      # shown in the filter, marked, and not applied.
-     |> assign(rejected: %{})}
+     |> assign(rejected: %{})
+     # The rows that are expanded, by row key: the names of their open
+     # lines. A new read forgets them.
+     |> assign(open: %{})
+     # What makes a table a nested one: the relationship it is reached
+     # through and the primary key of the row it belongs to. `depth` counts
+     # from the table on the page; `depth_limit` is that table's `max_depth`.
+     |> assign(via: nil, parent_key: nil, parent_authorize?: true, depth: 0, depth_limit: nil)
+     # The ids of the elements that name a nested table's grid, in place of
+     # `label`; and whether its first read is still on its way.
+     |> assign(labelledby: nil, loading?: false)}
   end
 
   @impl true
@@ -81,15 +117,18 @@ defmodule AshTable.Live.TableComponent do
         socket,
         Map.take(
           assigns,
-          [:id, :resource, :scope, :actor, :tenant, :authorize?, :url, :label, :mounted?]
+          [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?] ++
+            [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby]
         )
       )
 
     # Unless the table is told, it authorizes as its resource's domain says.
+    # What it was told is kept as it was given, for the tables nested in it.
     socket =
       assign(socket,
+        authorize_given: assigns[:authorize?],
         authorize?:
-          case socket.assigns[:authorize?] do
+          case assigns[:authorize?] do
             nil -> AshTable.Domain.Info.authorize?(socket.assigns.resource)
             authorize? -> authorize?
           end
@@ -101,17 +140,30 @@ defmodule AshTable.Live.TableComponent do
     # URL is every sort, filter and page change; it costs no query.
     model =
       socket.assigns.resource
-      |> Model.build()
+      |> Model.build(via: socket.assigns.via)
       |> Model.for_actor(reader(socket.assigns))
       |> in_words()
 
     state = current_state(socket.assigns, model)
 
+    # How deep a person can expand is said by the table on the page, for
+    # everything beneath it.
+    depth_limit = socket.assigns.depth_limit || model.max_depth
+
     {:ok,
      socket
      |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     |> assign(depth_limit: depth_limit)
+     |> assign(expandable?: expandable?(model, socket.assigns.depth, depth_limit))
      |> read()}
   end
+
+  # Whether the rows of the table have an expander: there is something to
+  # offer this person, the table lets its rows expand at all (`max_depth 0`
+  # says never, wherever the table is shown), and the table on the page lets
+  # them expand this deep.
+  defp expandable?(model, depth, depth_limit),
+    do: model.relationships != [] and model.max_depth > 0 and depth < depth_limit
 
   # The resource's own wording, as the person reads it: the labels of the
   # columns and of their values, and the questions, in the host's
@@ -131,7 +183,9 @@ defmodule AshTable.Live.TableComponent do
         }
       end
 
-    %{model | columns: columns}
+    relationships = Enum.map(model.relationships, &%{&1 | label: Text.label(&1.label)})
+
+    %{model | columns: columns, relationships: relationships}
   end
 
   # A table whose state lives in the URL takes it from there on every update;
@@ -140,20 +194,32 @@ defmodule AshTable.Live.TableComponent do
     State.from_params(model, url |> query_params() |> Map.get(id))
   end
 
-  defp current_state(%{state: state}, _model), do: state
+  # What it kept is fitted to the model of the person who is asking now.
+  defp current_state(%{state: state}, model), do: State.fit(state, model)
 
   # Reads again only when something a read depends on has changed. The first
   # read is done in place, so that the first render has rows; later ones run
   # beside the process, with the previous rows left in view and the grid
   # marked busy.
+  #
+  # A nested table reads beside the process from the start: its line opens at
+  # once, and several that are opened together read side by side. Until its
+  # first rows are there it says that it is loading.
   defp read(socket) do
-    %{model: model, state: state} = socket.assigns
+    %{model: model, state: state, parent_key: key} = socket.assigns
     opts = reader(socket.assigns)
-    read = {model, state, opts}
+    read = {model, state, opts, key}
 
     cond do
       read == socket.assigns.read ->
         socket
+
+      match?(%Relationship{}, model.via) ->
+        opts = [parent_authorize?: socket.assigns.parent_authorize?] ++ opts
+
+        socket
+        |> assign(read: read, busy?: true, loading?: is_nil(socket.assigns.read))
+        |> start_async(:read, fn -> Query.read_related(model, state, key, opts) end)
 
       is_nil(socket.assigns.read) ->
         socket |> assign(read: read) |> show(Query.read(model, state, opts), :first)
@@ -170,11 +236,11 @@ defmodule AshTable.Live.TableComponent do
 
   @impl true
   def handle_async(:read, {:ok, result}, socket) do
-    {:noreply, socket |> assign(busy?: false) |> show(result, :later)}
+    {:noreply, socket |> assign(busy?: false, loading?: false) |> show(result, :later)}
   end
 
   def handle_async(:read, {:exit, reason}, socket) do
-    {:noreply, socket |> assign(busy?: false) |> show({:error, reason}, :later)}
+    {:noreply, socket |> assign(busy?: false, loading?: false) |> show({:error, reason}, :later)}
   end
 
   # Shows what a read gave. `read` says which one it was: the `:first` of
@@ -196,14 +262,41 @@ defmodule AshTable.Live.TableComponent do
         }
       end)
 
+    # each row, and after it its detail when rows can be expanded: closed
+    items =
+      Enum.flat_map(rows, fn row ->
+        [item(id, row.key, row.record, row.rowindex, %{}, false)] ++
+          if(socket.assigns.expandable?, do: [detail(id, row.key, nil, nil)], else: [])
+      end)
+
     socket
     |> assign(page: %{page | records: []}, row_count: length(rows), error: nil, gone?: false)
     |> assign(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
-      failed: %{}
+      failed: %{},
+      open: %{}
     )
     |> announce(page)
-    |> stream(:rows, Enum.map(rows, &item(id, &1.key, &1.record, &1.rowindex, %{})), reset: true)
+    |> stream(:rows, items, reset: true)
+  end
+
+  # The row a nested table belongs to is gone, or no longer this person's to
+  # read: nothing is known about its related records, which is not the same
+  # as there being none.
+  defp show(socket, {:error, :parent_gone}, _read),
+    do: show_message(socket, Text.t(:record_gone))
+
+  # A nested table whose destination this person may not read, in either of
+  # the two ways Ash says so. Its line has told them that there is a table,
+  # so it says something in every case: that they are not allowed when the
+  # destination's table is declared with `on_forbidden :message`, and no more
+  # than that the records are not available otherwise. Never "No records".
+  defp show(%{assigns: %{via: %Relationship{}}} = socket, {:error, refusal}, _read)
+       when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
+    case TableInfo.table_on_forbidden!(socket.assigns.resource) do
+      :message -> show_message(socket, Text.t(:not_allowed))
+      :not_found -> show_message(socket, Text.t(:records_not_available))
+    end
   end
 
   # A read the resource refuses outright. Unless the table is declared with
@@ -219,11 +312,14 @@ defmodule AshTable.Live.TableComponent do
 
   defp show(socket, {:error, error}, _read), do: show_error(socket, error)
 
-  # The error is an alert of its own.
-  defp show_error(socket, error) do
+  defp show_error(socket, error),
+    do: show_message(socket, error_text(error, socket.assigns.model))
+
+  # The message is an alert of its own, in place of the rows.
+  defp show_message(socket, text) do
     socket
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
-    |> assign(error: error_text(error, socket.assigns.model))
+    |> assign(error: text, open: %{})
     |> stream(:rows, [], reset: true)
   end
 
@@ -244,19 +340,49 @@ defmodule AshTable.Live.TableComponent do
   end
 
   # A row as the stream holds it. `failed` holds, by column name, what was
-  # typed into a cell whose save failed and the action's message.
-  defp item(id, key, record, rowindex, failed) do
-    %{dom_id: "#{id}-row-#{key}", record: record, rowindex: rowindex, failed: failed}
+  # typed into a cell whose save failed and the action's message; `open?`
+  # says whether the row is expanded.
+  defp item(id, key, record, rowindex, failed, open?) do
+    %{
+      dom_id: "#{id}-row-#{key}",
+      record: record,
+      rowindex: rowindex,
+      failed: failed,
+      open?: open?
+    }
+  end
+
+  # The detail of a row as the stream holds it: what is under an expanded
+  # row. `lines` are the names of its open lines, nil while the row is not
+  # expanded; `pk` is the row's primary key, which its nested tables are
+  # given. No record is needed for it.
+  defp detail(id, key, pk, lines) do
+    %{dom_id: "#{id}-row-#{key}-x", detail?: true, key: key, pk: pk, lines: lines}
   end
 
   # Puts a row of the page into the stream again, in its place: with the
   # record as an action returned it or as it was read again, and with the
-  # edits of the row that have failed.
+  # edits of the row that have failed. Its detail is another item and stays
+  # as it is: what is open under the row stays open.
   defp put_row(socket, key, record) do
-    %{id: id, rows: rows, failed: failed} = socket.assigns
+    %{id: id, rows: rows, failed: failed, open: open} = socket.assigns
     cells = get_in(failed, [key, :cells]) || %{}
 
-    stream_insert(socket, :rows, item(id, key, record, rows[key].rowindex, cells))
+    stream_insert(
+      socket,
+      :rows,
+      item(id, key, record, rows[key].rowindex, cells, is_map_key(open, key))
+    )
+  end
+
+  # Puts the detail of a row into the stream again, in its place, as `open`
+  # says it is now. A nested table that stays open is rendered again and
+  # reads nothing for it; one that is no longer rendered is gone, with its
+  # state.
+  defp put_detail(socket, key) do
+    %{id: id, rows: rows, open: open} = socket.assigns
+
+    stream_insert(socket, :rows, detail(id, key, rows[key].pk, open[key]))
   end
 
   # Notes that the save of a cell has failed, or with `nil` that it no longer
@@ -345,16 +471,25 @@ defmodule AshTable.Live.TableComponent do
     {:noreply, go(socket, State.cycle_sort(state, model, name))}
   end
 
+  def handle_event("sort", _params, socket), do: {:noreply, socket}
+
   # Sent by the form of the filter row when a filter is left or a choice is
   # made, with every filter of the row.
   def handle_event("filter", params, socket) do
     %{state: state, model: model} = socket.assigns
-    {state, rejected} = State.filter(state, model, Map.get(params, "filter", %{}))
+
+    form =
+      case params do
+        %{"filter" => %{} = form} -> form
+        _other -> %{}
+      end
+
+    {state, rejected} = State.filter(state, model, form)
 
     {:noreply, socket |> assign(rejected: rejected) |> refilter(state)}
   end
 
-  def handle_event("clear_filter", %{"column" => name}, socket) do
+  def handle_event("clear_filter", %{"column" => name}, socket) when is_binary(name) do
     {:noreply, refilter(socket, State.clear_filter(socket.assigns.state, name))}
   end
 
@@ -364,9 +499,58 @@ defmodule AshTable.Live.TableComponent do
     {:noreply, socket |> assign(rejected: %{}) |> refilter(state)}
   end
 
-  def handle_event("page", %{"to" => to}, socket) do
+  def handle_event("page", %{"to" => to}, socket) when is_binary(to) do
     {:noreply, go(socket, target(socket.assigns, to))}
   end
+
+  # An event of a shape the table never sends: nothing happens.
+  def handle_event(event, _params, socket) when event in ["clear_filter", "page"],
+    do: {:noreply, socket}
+
+  # Sent by the hook when a person uses the expander of a row: the row by
+  # the key in its DOM id. The row is expanded to its lines, or closed with
+  # everything open under it. The answer says which, as the row itself is
+  # not sent again.
+  #
+  # Only a row of the page can be expanded, and only where the table has
+  # expanders: this is where the depth limit holds against an event that the
+  # table never offered.
+  def handle_event("expand", %{"row" => key}, socket) when is_binary(key) do
+    %{rows: rows, open: open, expandable?: expandable?} = socket.assigns
+
+    if expandable? and is_map_key(rows, key) do
+      open = if is_map_key(open, key), do: Map.delete(open, key), else: Map.put(open, key, [])
+
+      {:reply, %{open: is_map_key(open, key)}, socket |> assign(open: open) |> put_detail(key)}
+    else
+      {:reply, %{open: false}, socket}
+    end
+  end
+
+  def handle_event("expand", _params, socket), do: {:reply, %{open: false}, socket}
+
+  # Sent by the hook when a person uses a line under an expanded row: the
+  # row, and the relationship by name. The line's nested table is opened, or
+  # closed and forgotten.
+  #
+  # Only a line that is on the page can be used: of an expanded row of the
+  # page, and for a relationship this person is offered.
+  def handle_event("toggle", %{"row" => key, "relationship" => name}, socket)
+      when is_binary(key) do
+    %{model: model, open: open, expandable?: expandable?} = socket.assigns
+
+    with true <- expandable?,
+         lines when is_list(lines) <- open[key],
+         %Relationship{name: name} <- Model.relationship(model, name) do
+      lines = if name in lines, do: List.delete(lines, name), else: lines ++ [name]
+
+      {:noreply, socket |> assign(open: Map.put(open, key, lines)) |> put_detail(key)}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("toggle", _params, socket), do: {:noreply, socket}
 
   # Sent by the hook when a person has changed a cell's value and pressed
   # Enter or left the cell: the row by the key in its DOM id, the column, and
@@ -397,6 +581,8 @@ defmodule AshTable.Live.TableComponent do
       _ -> {:noreply, socket}
     end
   end
+
+  def handle_event("discard", _params, socket), do: {:noreply, socket}
 
   # Either way the row is put back with what is true now: the action's
   # result, or the record as it is and the cell marked with what was typed.
@@ -502,6 +688,7 @@ defmodule AshTable.Live.TableComponent do
           :if={@state.filters != %{}}
           type="button"
           id={"#{@id}-clear-filters"}
+          tabindex={@via && "-1"}
           class="btn btn-sm"
           phx-click={
             JS.push("clear_filters", target: @myself)
@@ -515,13 +702,24 @@ defmodule AshTable.Live.TableComponent do
       is only read when its content changes, so every other announcement ends in a
       no-break space. --%>
       <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{@announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
-      <div id={"#{@id}-grid"} phx-hook=".Grid" phx-target={@myself} class="overflow-x-auto">
+      <%!-- `data-ash-table` marks the element a grid's hook is on, for the hooks
+      of the tables nested in it and around it; `data-lead` is the number of
+      columns before the first data column. --%>
+      <div
+        id={"#{@id}-grid"}
+        phx-hook=".Grid"
+        phx-target={@myself}
+        data-ash-table
+        data-lead={lead(@expandable?)}
+        class={is_nil(@via) && "overflow-x-auto"}
+      >
         <table
           id={"#{@id}-table"}
           role="grid"
-          aria-label={@label}
+          aria-label={is_nil(@labelledby) && @label}
+          aria-labelledby={@labelledby}
           aria-rowcount={aria_rowcount(@page)}
-          aria-colcount={length(@model.columns)}
+          aria-colcount={length(@model.columns) + lead(@expandable?)}
           aria-busy={@busy? && "true"}
           class={
             [
@@ -529,11 +727,16 @@ defmodule AshTable.Live.TableComponent do
               # what every cell looks like is set once here, to keep each cell's markup small:
               # the focus ring, which a cell keeps while its editor has the focus
               "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary",
-              "[&_tbody_td:focus-within]:outline-2 [&_tbody_td:focus-within]:-outline-offset-2 [&_tbody_td:focus-within]:outline-primary",
+              "[&>tbody>tr>td:not([data-nested]):focus-within]:outline-2 [&>tbody>tr>td:not([data-nested]):focus-within]:-outline-offset-2 [&>tbody>tr>td:not([data-nested]):focus-within]:outline-primary",
               # a cell whose save failed, and one whose save is on its way
               "[&_td[aria-invalid]]:inset-ring-2 [&_td[aria-invalid]]:inset-ring-error [&_td[aria-busy]]:opacity-60",
-              # one line per row: long text is cut off, not wrapped
-              "[&_tbody_td]:max-w-80 [&_tbody_td]:truncate"
+              # one line per row: long text is cut off, not wrapped. Not in a cell
+              # that spans the table: a line, or the cell a nested table is in.
+              "[&>tbody>tr>td:not([colspan])]:max-w-80 [&>tbody>tr>td:not([colspan])]:truncate",
+              # the expander of a row and the button of a line, with the mark that turns when open
+              "[&>tbody>tr>td>button[aria-expanded]]:cursor-pointer [&>tbody>tr>td[data-expander]]:w-0 [&>tbody>tr>td[data-expander]>button]:px-1",
+              "[&>tbody>tr>td[data-expander]>button]:transition-transform [&>tbody>tr>td[data-expander]>button[aria-expanded=true]]:rotate-90",
+              "[&>tbody>tr>td[data-line]>button>span]:inline-block [&>tbody>tr>td[data-line]>button>span]:transition-transform [&>tbody>tr>td[data-line]>button[aria-expanded=true]>span]:rotate-90"
             ]
           }
           phx-update="stream"
@@ -541,11 +744,22 @@ defmodule AshTable.Live.TableComponent do
           <thead id={"#{@id}-head"}>
             <tr id={"#{@id}-head-row"} role="row" aria-rowindex="1">
               <th
+                :if={@expandable?}
+                id={"#{@id}-expander-head"}
+                role="columnheader"
+                scope="col"
+                aria-colindex="1"
+                tabindex="-1"
+                class="w-0"
+              >
+                <span class="sr-only">{Text.t(:related_records)}</span>
+              </th>
+              <th
                 :for={{column, index} <- Enum.with_index(@model.columns)}
                 id={"#{@id}-head-#{column.name}"}
                 role="columnheader"
                 scope="col"
-                aria-colindex={colindex(index)}
+                aria-colindex={colindex(index, @expandable?)}
                 aria-sort={column.sortable? && aria_sort(@state.sort, column)}
                 tabindex="-1"
                 data-sort={column.sortable?}
@@ -558,10 +772,18 @@ defmodule AshTable.Live.TableComponent do
             </tr>
             <tr id={"#{@id}-filter-row"} role="row" aria-rowindex="2">
               <td
+                :if={@expandable?}
+                id={"#{@id}-expander-filter"}
+                role="gridcell"
+                aria-colindex="1"
+                tabindex="-1"
+              >
+              </td>
+              <td
                 :for={{column, index} <- Enum.with_index(@model.columns)}
                 id={"#{@id}-filter-#{column.name}"}
                 role="gridcell"
-                aria-colindex={colindex(index)}
+                aria-colindex={colindex(index, @expandable?)}
                 tabindex="-1"
                 data-filter={column.operators != []}
               >
@@ -578,19 +800,69 @@ defmodule AshTable.Live.TableComponent do
             </tr>
           </thead>
           <%!-- Written without whitespace on purpose: every byte of a row is sent again
-          whenever the row is, and a cell's text must not be padded. --%>
-          <tbody :for={{dom_id, row} <- @streams.rows} id={dom_id} phx-no-format><tr
+          whenever the row is, and a cell's text must not be padded. An item of the
+          stream is a row or, after its row, the row's detail (see "Nested tables"
+          at the top). --%>
+          <tbody
+            :for={{dom_id, row} <- @streams.rows}
+            id={dom_id}
+            hidden={row[:detail?] && is_nil(row.lines)}
+            data-detail={row[:detail?]}
+            data-row={row[:detail?] && row.key}
+            phx-no-format
+          ><.lines
+            :if={row[:detail?] && row.lines}
+            id={@id}
+            row={row}
+            model={@model}
+            reader={nested_reader(assigns)}
+          /><tr
+            :if={!row[:detail?]}
             id={"#{dom_id}-r"}
             role="row"
             aria-rowindex={row.rowindex}
           ><td
+            :if={@expandable?}
+            id={"#{dom_id}-e"}
+            role="gridcell"
+            aria-colindex="1"
+            tabindex="-1"
+            data-expander
+          ><button type="button" tabindex="-1" aria-expanded={to_string(row.open?)} aria-label={Text.t(:related_records)}>▸</button></td><td
             :for={{column, index} <- Enum.with_index(@model.columns)}
             id={"#{dom_id}-c-#{column.name}"}
             role="gridcell"
-            aria-colindex={colindex(index)}
+            aria-colindex={colindex(index, @expandable?)}
             tabindex="-1"
             {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row)}
           >{cell_content("#{dom_id}-c-#{column.name}", column, row)}</td></tr></tbody>
+          <%!-- The pages of a nested table are a last row of its grid: reached with
+          the arrow keys and entered with Enter, as a filter is, and no tab stop in the
+          middle of the grid around it. The element stays where it is once it is there,
+          as every child of a stream's container with an id does. --%>
+          <tfoot :if={@via} id={"#{@id}-foot"} hidden={not pages?(@page, @model)}>
+            <tr :if={pages?(@page, @model)} id={"#{@id}-foot-row"} role="row">
+              <td
+                id={"#{@id}-pager"}
+                role="gridcell"
+                colspan={length(@model.columns) + lead(@expandable?)}
+                aria-colindex="1"
+                tabindex="-1"
+                data-pager
+              >
+                <.pagination
+                  id={@id}
+                  nested?={true}
+                  page={@page}
+                  model={@model}
+                  state={@state}
+                  row_count={@row_count}
+                  label={@label}
+                  target={@myself}
+                />
+              </td>
+            </tr>
+          </tfoot>
         </table>
         <%!-- One editor per editable column. The hook opens a copy of it in the
         cell being edited; which cell that is, the server never knows. --%>
@@ -629,73 +901,36 @@ defmodule AshTable.Live.TableComponent do
         </dialog>
       </div>
       <%!-- in the text colour: the error colour is too faint for small text --%>
-      <p :if={@error} id={"#{@id}-error"} role="alert" class="py-8 text-center text-sm font-medium">
+      <p
+        :if={@error}
+        id={"#{@id}-error"}
+        role="alert"
+        class={[if(@via, do: "py-4", else: "py-8"), "text-center text-sm font-medium"]}
+      >
         {@error}
       </p>
+      <%!-- a nested table whose first read is on its way --%>
+      <p :if={@loading?} id={"#{@id}-loading"} class="py-4 text-center text-sm opacity-70">
+        {Text.t(:loading)}
+      </p>
       <p
-        :if={is_nil(@error) and @row_count == 0}
+        :if={is_nil(@error) and @row_count == 0 and not @loading?}
         id={"#{@id}-empty"}
-        class="py-8 text-center text-sm opacity-70"
+        class={[if(@via, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
       >
         {Text.t(:no_records)}
       </p>
-      <%!-- The hook keeps focus on the control that was used, or sends it on
-      when that control is gone (see `.Pagination` below). --%>
-      <nav
-        :if={@page && @model.pagination.strategy != :none}
-        id={"#{@id}-pagination"}
-        phx-hook=".Pagination"
-        aria-label={Text.t(:pagination, table: @label)}
-        class="mt-4 flex flex-wrap items-center justify-between gap-4"
-      >
-        <p id={"#{@id}-range"} class="text-sm">{range_text(@page, @row_count, @state)}</p>
-        <div class="join">
-          <button
-            type="button"
-            id={"#{@id}-previous"}
-            class="join-item btn btn-sm"
-            disabled={is_nil(@page.previous)}
-            phx-click="page"
-            phx-value-to="previous"
-            phx-target={@myself}
-          >
-            {Text.t(:previous)}
-          </button>
-          <%!-- The page numbers have an element to themselves, which the layout
-          does not see: Previous and Next are then always the first and the last
-          of three, and a patch that adds or takes away a number leaves them
-          where they are, with their focus. --%>
-          <span
-            :if={@model.pagination.strategy == :offset}
-            class="contents [&>:first-child]:ms-[calc(var(--border)*-1)]"
-          >
-            <button
-              :for={number <- page_numbers(@page, @state)}
-              type="button"
-              id={"#{@id}-page-#{number}"}
-              class={["join-item btn btn-sm", number == @state.page && "btn-active"]}
-              aria-label={Text.t(:go_to_page, page: number)}
-              aria-current={number == @state.page && "page"}
-              phx-click="page"
-              phx-value-to={number}
-              phx-target={@myself}
-            >
-              {number}
-            </button>
-          </span>
-          <button
-            type="button"
-            id={"#{@id}-next"}
-            class="join-item btn btn-sm"
-            disabled={is_nil(@page.next)}
-            phx-click="page"
-            phx-value-to="next"
-            phx-target={@myself}
-          >
-            {Text.t(:next)}
-          </button>
-        </div>
-      </nav>
+      <.pagination
+        :if={is_nil(@via) and pages?(@page, @model)}
+        id={@id}
+        nested?={false}
+        page={@page}
+        model={@model}
+        state={@state}
+        row_count={@row_count}
+        label={@label}
+        target={@myself}
+      />
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">
         // Focus stays on the pagination control that was used. Previous and
         // Next are patched where they are. A page number is not always: when
@@ -754,8 +989,11 @@ defmodule AshTable.Live.TableComponent do
             setTimeout(() => { if (document.activeElement === document.body) this.toGrid() })
           },
 
+          // To the grid's tab stop; in a nested table, whose tab stop may be
+          // anywhere in the tables around it, to the cell the controls are in.
           toGrid() {
-            const cell = document.querySelector(`[id="${CSS.escape(this.gridId)}"] [tabindex="0"]`)
+            const cell = this.el.closest("td[data-pager]") ||
+              document.querySelector(`[id="${CSS.escape(this.gridId)}"] [tabindex="0"]`)
             if (cell) cell.focus({preventScroll: true})
           }
         }
@@ -763,6 +1001,14 @@ defmodule AshTable.Live.TableComponent do
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
         // Keyboard, focus and editing for one grid: a single tab stop with a
         // roving tabindex, moved by the arrow keys.
+        //
+        // A nested table is a grid of its own, with a hook of its own, inside
+        // a cell of the grid around it. The tab stop is one for the whole
+        // tree: the tables on top of each other share where it is (`tree()`),
+        // and each hook deals only with what happens in its own grid
+        // (`owns()`). The arrow keys stay in the grid that has the focus;
+        // Enter on the cell that holds a nested table goes into it, and
+        // Escape in it comes back out to that cell.
         //
         // Moving about never talks to the server. Enter on a sortable header
         // clicks it and Enter in a filter submits the filter row's form; both
@@ -785,16 +1031,25 @@ defmodule AshTable.Live.TableComponent do
         // keys that move through the options of a closed select
         const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]
 
+        // the element a grid's hook is on
+        const GRID = "[data-ash-table]"
+
+        // What a cell is besides a cell of a column: the expander of a row, a
+        // line under an expanded row, the cell that holds a nested table, or
+        // the cell that holds a nested table's pages.
+        const is = (cell, what) => cell.dataset[what] !== undefined
+
         export default {
           mounted() {
             // the table's id, which every id in it starts with
             this.id = this.el.id.replace(/-grid$/, "")
-            // the cell arrow keys start from: the first cell of the first data
-            // row, or of the last header row while there are no rows
-            this.pos = {r: this.headRows(), c: 0}
-            this.col = 0
-            this.activeId = null
-            this.hadFocus = false
+            // for the hooks of the grids around this one and in it
+            this.el._ashTable = this
+            // the cell arrow keys start from: the first data cell of the first
+            // data row, or of the last header row while there are no rows. The
+            // expander of the row is one cell to the left of it.
+            this.pos = {r: this.headRows(), c: this.lead()}
+            this.col = this.lead()
             // the edit in progress: {cell, input, type, saved, old, confirm},
             // and `attributes` once a patch has brought the cell's row again
             this.editing = null
@@ -803,11 +1058,13 @@ defmodule AshTable.Live.TableComponent do
             // the cell under the pointer, and the message that is showing
             this.pointed = null
             this.message = null
-            this.el.addEventListener("keydown", e => this.onKeydown(e))
-            this.el.addEventListener("focusin", e => this.onFocusin(e))
-            this.el.addEventListener("focusout", e => this.onFocusout(e))
-            this.el.addEventListener("click", e => this.onClick(e))
-            this.el.addEventListener("dblclick", e => this.onDblclick(e))
+            // what happens in a grid nested in this one is that grid's
+            const own = handle => e => { if (this.owns(e.target)) handle(e) }
+            this.el.addEventListener("keydown", own(e => this.onKeydown(e)))
+            this.el.addEventListener("focusin", own(e => this.onFocusin(e)))
+            this.el.addEventListener("focusout", own(e => this.onFocusout(e)))
+            this.el.addEventListener("click", own(e => this.onClick(e)))
+            this.el.addEventListener("dblclick", own(e => this.onDblclick(e)))
             this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
             this.el.addEventListener("mouseleave", () => this.onPointer(null))
             this.onScroll = () => this.showMessage()
@@ -844,6 +1101,58 @@ defmodule AshTable.Live.TableComponent do
             window.removeEventListener("scroll", this.onScroll, true)
           },
 
+          // ---- the tree of grids -------------------------------------------
+
+          // The grid on the page that this one is nested in, at whatever
+          // depth; itself when it is nested in none.
+          top() {
+            let top = this.el
+            for (let up; (up = top.parentElement && top.parentElement.closest(GRID));) top = up
+            return top
+          },
+
+          // What the grids of one tree share: the one cell that is the tab
+          // stop (`activeId`) with the grid it is in (`owner`), where focus
+          // falls back to when that cell goes away (`trail`), and whether
+          // focus is in the tree.
+          tree() {
+            const top = this.top()
+            return top._ashTableTree || (top._ashTableTree = {activeId: null, owner: null, trail: [], hadFocus: false})
+          },
+
+          // Whether a node is in this grid, and not in a table nested in it:
+          // neither in that table's grid, which has its own hook, nor in what
+          // that table has around its grid (its dialog, its "Clear filters").
+          owns(node) {
+            if (!node || !node.closest || node.closest(GRID) !== this.el) return false
+            const holder = node.closest("td[data-nested]")
+            return !holder || holder === node || !this.el.contains(holder)
+          },
+
+          // The cell of the grid around this one that holds it, if any.
+          holder() {
+            const cell = this.el.parentElement && this.el.parentElement.closest("td[data-nested]")
+            return cell || null
+          },
+
+          // The number of columns before the first data column.
+          lead() { return Number(this.el.dataset.lead || 0) },
+
+          // Where focus goes when a cell goes away with what is around it,
+          // nearest first: out of each nested table to the cell that held it,
+          // then to its line, then to the expander of its row.
+          trailOf(cell) {
+            const trail = []
+            for (let node = cell; node;) {
+              if (is(node, "nested")) trail.push(node.dataset.lineCell, node.dataset.expanderCell)
+              else if (is(node, "line")) trail.push(node.id.replace(/-l-[^-]+-c$/, "-e"))
+              const grid = node.closest(GRID)
+              node = grid && grid.parentElement ? grid.parentElement.closest("td[data-nested]") : null
+              if (node) trail.push(node.id)
+            }
+            return trail
+          },
+
           rows() {
             // HTMLTableElement.rows lists the header rows first, wherever the
             // header sits among the stream's rows in the DOM.
@@ -866,7 +1175,7 @@ defmodule AshTable.Live.TableComponent do
 
           cellOf(node) {
             const cell = node && node.closest ? node.closest("td,th") : null
-            return cell && this.el.contains(cell) ? cell : null
+            return cell && this.owns(cell) ? cell : null
           },
 
           cellAt(r, c) {
@@ -877,9 +1186,12 @@ defmodule AshTable.Live.TableComponent do
           },
 
           setActive(cell) {
-            const previous = this.activeId && document.getElementById(this.activeId)
+            const tree = this.tree()
+            const previous = tree.activeId && document.getElementById(tree.activeId)
             if (previous && previous !== cell && previous.tabIndex !== -1) previous.tabIndex = -1
-            this.activeId = cell.id
+            tree.activeId = cell.id
+            tree.owner = this.el
+            tree.trail = this.trailOf(cell)
             this.pos = {r: cell.parentElement.rowIndex, c: cell.cellIndex}
             // while a cell is edited its editor is the tab stop, so that
             // Shift+Tab from the editor leaves the grid as Tab does
@@ -890,15 +1202,35 @@ defmodule AshTable.Live.TableComponent do
           // After every patch: the server renders each cell with tabindex -1,
           // so the one tab stop has to be put back, and so has focus when the
           // focused cell did not survive the patch.
+          //
+          // The tab stop is one for the whole tree of grids. When its cell is
+          // gone, the next best takes its place: the cell at the same place
+          // of the same grid (after a sort, a filter or another page); when
+          // that grid is gone too, the nearest cell that held it (a line
+          // that was closed, a row that was closed); and at last the cell
+          // the grid on the page had before.
           sync() {
-            let cell = this.activeId && document.getElementById(this.activeId)
-            if (cell && !this.el.contains(cell)) cell = null
-            if (!cell) cell = this.cellAt(this.pos.r, this.pos.c)
-            if (!cell) return
-            this.setActive(cell)
+            const tree = this.tree()
+            const top = this.top()
+            const hook = top._ashTable
+            // the hook of the grid on the page mounts first
+            if (!hook) return
+            let cell = tree.activeId && document.getElementById(tree.activeId)
+            if (cell && !top.contains(cell)) cell = null
+            if (!cell && tree.owner && tree.owner.isConnected && top.contains(tree.owner) && tree.owner._ashTable) {
+              const owner = tree.owner._ashTable
+              cell = owner.cellAt(owner.pos.r, owner.pos.c)
+            }
+            if (!cell) {
+              const id = tree.trail.find(id => id && document.getElementById(id) && top.contains(document.getElementById(id)))
+              cell = id ? document.getElementById(id) : hook.cellAt(hook.pos.r, hook.pos.c)
+            }
+            const owner = cell && cell.closest(GRID)._ashTable
+            if (!owner) return
+            owner.setActive(cell)
             // while the dialog asks, focus is in the dialog and stays there
-            if (this.editing && this.editing.asking) return
-            if (this.hadFocus && !this.el.contains(document.activeElement)) {
+            if (owner.editing && owner.editing.asking) return
+            if (tree.hadFocus && !top.contains(document.activeElement)) {
               cell.focus({preventScroll: true})
             }
             // a patch may have brought, replaced or taken away a message
@@ -910,24 +1242,32 @@ defmodule AshTable.Live.TableComponent do
             if (cell) cell.focus()
           },
 
+          // A cell that spans the table: a line, the cell of a nested table,
+          // the cell of a nested table's pages. Moving up and down through
+          // one keeps the column the person was in.
+          spans(cell) { return cell.colSpan > 1 },
+
           onFocusin(e) {
+            const tree = this.tree()
             const cell = this.cellOf(e.target)
-            if (!cell) { this.hadFocus = false; return }
-            this.hadFocus = true
-            this.col = cell.cellIndex
+            if (!cell) { tree.hadFocus = false; return }
+            tree.hadFocus = true
+            if (!this.spans(cell)) this.col = cell.cellIndex
             this.setActive(cell)
             this.showMessage()
           },
 
           onFocusout(e) {
+            const tree = this.tree()
+            const top = this.top()
             if (e.relatedTarget) {
-              if (!this.el.contains(e.relatedTarget)) this.hadFocus = false
+              if (!top.contains(e.relatedTarget)) tree.hadFocus = false
             } else {
               // No new target: either focus really left (a click on nothing),
               // or a patch removed the focused cell and sync() puts it back.
               const target = e.target
               setTimeout(() => {
-                if (target.isConnected && !this.el.contains(document.activeElement)) this.hadFocus = false
+                if (target.isConnected && !top.contains(document.activeElement)) tree.hadFocus = false
               }, 0)
             }
             setTimeout(() => this.showMessage(), 0)
@@ -936,7 +1276,14 @@ defmodule AshTable.Live.TableComponent do
           onClick(e) {
             const cell = this.cellOf(e.target)
             if (!cell) return
-            this.col = cell.cellIndex
+            if (!this.spans(cell)) this.col = cell.cellIndex
+            // the expander of a row and the button of a line: used, with
+            // focus on their cell
+            if (is(cell, "expander") || is(cell, "line")) {
+              if (e.target.closest("button")) this.open(cell)
+              if (document.activeElement !== cell) cell.focus()
+              return
+            }
             // a click on a filter's control or in an editor leaves focus there
             if (this.controlOf(e.target)) return
             if (this.editing && this.editing.cell === cell) return
@@ -951,7 +1298,8 @@ defmodule AshTable.Live.TableComponent do
           // Into a filter cell: to where its value is typed or chosen, or to
           // its menu when the operator needs no value. Returns the control.
           enter(cell) {
-            const control = cell.querySelector("[id$='-value']") || cell.querySelector("select,button")
+            const control = cell.querySelector("[id$='-value']") ||
+              Array.from(cell.querySelectorAll("select,button")).find(control => !control.disabled)
             if (!control) return null
             control.focus()
             if (control.select) control.select()
@@ -984,16 +1332,61 @@ defmodule AshTable.Live.TableComponent do
                 break
               // through the controls of this filter; from its last one Tab
               // leaves the grid, as it does from a cell
-              case "Tab": {
-                const controls = Array.from(cell.querySelectorAll("input,select,button"))
-                const next = controls[controls.indexOf(control) + (e.shiftKey ? -1 : 1)]
-                if (next) {
-                  next.focus()
+              case "Tab":
+                if (this.toControl(cell, control, e.shiftKey ? -1 : 1)) e.preventDefault()
+                break
+              // through the pages of a nested table, which are buttons in a row
+              case "ArrowLeft":
+              case "ArrowRight":
+                if (is(cell, "pager")) {
+                  this.toControl(cell, control, e.key === "ArrowLeft" ? -1 : 1)
                   e.preventDefault()
                 }
                 break
-              }
             }
+          },
+
+          // To the control before or after this one in its cell, if there is one.
+          toControl(cell, control, step) {
+            const controls = Array.from(cell.querySelectorAll("input,select,button")).filter(control => !control.disabled)
+            const next = controls[controls.indexOf(control) + step]
+            if (next) next.focus()
+            return !!next
+          },
+
+          // ---- expanding ---------------------------------------------------
+
+          // Whether the expander of a row, or a line, is open.
+          isOpen(cell) {
+            const button = cell.querySelector("button")
+            return !!button && button.getAttribute("aria-expanded") === "true"
+          },
+
+          // Uses the expander of a row, or a line under it: one event. A
+          // line comes back with its row's detail, patched in. A row is not
+          // sent again, so the answer says whether it is expanded now.
+          open(cell) {
+            const button = cell.querySelector("button")
+            if (!button || button.dataset.pending !== undefined) return
+            if (is(cell, "line")) {
+              const row = cell.closest("tbody").dataset.row
+              this.pushEventTo(this.el, "toggle", {row, relationship: cell.dataset.line})
+            } else {
+              button.dataset.pending = ""
+              this.pushEventTo(this.el, "expand", {row: this.rowKey(cell)}, reply => {
+                delete button.dataset.pending
+                if (reply && typeof reply.open === "boolean") button.setAttribute("aria-expanded", String(reply.open))
+              })
+            }
+          },
+
+          // Into the nested table a cell holds: to the cell it was left at,
+          // or to its first.
+          enterNested(cell) {
+            const grid = cell.querySelector(GRID)
+            const hook = grid && grid._ashTable
+            if (hook) hook.move(hook.pos.r, hook.pos.c)
+            return !!hook
           },
 
           onKeydown(e) {
@@ -1010,9 +1403,19 @@ defmodule AshTable.Live.TableComponent do
             const lastR = rows.length - 1
             const ctrl = e.ctrlKey || e.metaKey
             let handled = true
+            // the expander of a row, and a line under it
+            const expands = is(cell, "expander") || is(cell, "line")
             switch (e.key) {
-              case "ArrowRight": this.col = Math.min(c + 1, lastC); this.move(r, this.col); break
-              case "ArrowLeft": this.col = Math.max(c - 1, 0); this.move(r, this.col); break
+              // on an expander that is closed, Right Arrow opens it and Left
+              // Arrow on one that is open closes it, as in a tree
+              case "ArrowRight":
+                if (expands && !this.isOpen(cell)) this.open(cell)
+                else if (!this.spans(cell)) { this.col = Math.min(c + 1, lastC); this.move(r, this.col) }
+                break
+              case "ArrowLeft":
+                if (expands && this.isOpen(cell)) this.open(cell)
+                else if (!this.spans(cell)) { this.col = Math.max(c - 1, 0); this.move(r, this.col) }
+                break
               case "ArrowDown": this.move(r + 1, this.col); break
               // from the first data row this reaches the filter row, then the header
               case "ArrowUp": this.move(r - 1, this.col); break
@@ -1025,24 +1428,29 @@ defmodule AshTable.Live.TableComponent do
                 break
               case "End": {
                 const row = ctrl ? rows[lastR] : cell.parentElement
-                this.col = row.cells.length - 1
-                this.move(row.rowIndex, this.col)
+                if (!this.spans(row.cells[0])) this.col = row.cells.length - 1
+                this.move(row.rowIndex, row.cells.length - 1)
                 break
               }
               case "Enter":
                 if (cell.tagName === "TH" && cell.dataset.sort !== undefined) cell.click()
-                else if (cell.dataset.filter !== undefined) this.enter(cell)
+                else if (cell.dataset.filter !== undefined || is(cell, "pager")) this.enter(cell)
+                else if (expands) this.open(cell)
+                else if (is(cell, "nested")) this.enterNested(cell)
                 else if (this.canEdit(cell)) this.startEdit(cell, null)
                 else handled = false
                 break
               case "F2":
-                if (cell.dataset.filter !== undefined) this.enter(cell)
+                if (cell.dataset.filter !== undefined || is(cell, "pager")) this.enter(cell)
+                else if (is(cell, "nested")) this.enterNested(cell)
                 else if (this.canEdit(cell)) this.startEdit(cell, null)
                 else handled = false
                 break
-              // gives up the edit of a cell whose save failed
+              // gives up the edit of a cell whose save failed; in a nested
+              // table, goes back out to the cell that holds it
               case "Escape":
                 if (cell.hasAttribute("aria-invalid")) this.discard(cell)
+                else if (this.holder()) this.holder().focus()
                 else handled = false
                 break
               // reserved for row selection; swallowed so the page does not scroll
@@ -1091,7 +1499,8 @@ defmodule AshTable.Live.TableComponent do
           // A data cell of an editable column that the server has not marked
           // as read-only for this person, and whose last save has been answered.
           canEdit(cell) {
-            return cell.tagName === "TD" && cell.parentElement.parentElement.tagName === "TBODY" &&
+            const body = cell.parentElement.parentElement
+            return cell.tagName === "TD" && body.tagName === "TBODY" && !is(body, "detail") && !is(cell, "expander") &&
               cell.getAttribute("aria-readonly") !== "true" && !cell.hasAttribute("aria-busy") &&
               !!this.editorOf(cell)
           },
@@ -1273,7 +1682,7 @@ defmodule AshTable.Live.TableComponent do
               if (failed) this.discard(cell)
             }
             // the cell is the grid's tab stop again, unless focus has gone to another cell
-            if (this.activeId === cell.id) cell.tabIndex = 0
+            if (this.tree().activeId === cell.id) cell.tabIndex = 0
             if (refocus) cell.focus()
           },
 
@@ -1393,6 +1802,215 @@ defmodule AshTable.Live.TableComponent do
           }
         }
       </script>
+    </div>
+    """
+  end
+
+  # What is under an expanded row: one line per relationship the person is
+  # offered, and under an open line the row whose one cell holds the nested
+  # table. A line is a cell that spans the table, with a button that says
+  # whether it is open; so is the cell of a nested table, which the hook lets
+  # a person go into and come back out of.
+  #
+  # The nested table is named by its line and by the first cell of the row
+  # it belongs to ("Comments" and "Write the report"): both are on the page,
+  # so the name follows the row when it is edited, and the server keeps
+  # nothing for it.
+  attr :id, :string, required: true
+  attr :row, :map, required: true
+  attr :model, :map, required: true
+  attr :reader, :map, required: true
+
+  defp lines(assigns) do
+    assigns =
+      assign(assigns,
+        row_id: "#{assigns.id}-row-#{assigns.row.key}",
+        colspan: length(assigns.model.columns) + 1,
+        first: List.first(assigns.model.columns)
+      )
+
+    ~H"""
+    <%= for relationship <- @model.relationships do %>
+      <tr id={"#{@row_id}-l-#{relationship.name}"} role="row">
+        <td
+          id={"#{@row_id}-l-#{relationship.name}-c"}
+          role="gridcell"
+          colspan={@colspan}
+          aria-colindex="1"
+          tabindex="-1"
+          data-line={relationship.name}
+          class="py-1 ps-10"
+        >
+          <button
+            type="button"
+            id={"#{@row_id}-l-#{relationship.name}-b"}
+            tabindex="-1"
+            aria-expanded={to_string(relationship.name in @row.lines)}
+            class="text-sm font-medium"
+          >
+            <span aria-hidden="true">▸</span> {relationship.label}
+          </button>
+        </td>
+      </tr>
+      <tr
+        :if={relationship.name in @row.lines}
+        id={"#{@row_id}-n-#{relationship.name}"}
+        role="row"
+      >
+        <td
+          id={"#{@row_id}-n-#{relationship.name}-c"}
+          role="gridcell"
+          colspan={@colspan}
+          aria-colindex="1"
+          tabindex="-1"
+          data-nested
+          data-line-cell={"#{@row_id}-l-#{relationship.name}-c"}
+          data-expander-cell={"#{@row_id}-e"}
+          class="pt-0 pb-3 ps-10"
+        >
+          <%!-- No wider than the cell for the layout of the table around it,
+          whatever the nested table would like: the columns around it stay as they
+          are. A nested table that is wider reaches out of the cell to the right,
+          and the grid on the page scrolls for it: one region that scrolls, the one
+          that holds the tab stop, and none inside it that the keyboard could not
+          reach with Tab. --%>
+          <div class="w-0 min-w-full border-s-2 border-base-300 ps-3">
+            <.live_component
+              module={__MODULE__}
+              id={"#{@row_id}-t-#{relationship.name}"}
+              resource={relationship.destination}
+              via={relationship}
+              parent_key={@row.pk}
+              label={relationship.label}
+              labelledby={
+                Enum.join(
+                  ["#{@row_id}-l-#{relationship.name}-b"] ++
+                    if(@first, do: ["#{@row_id}-c-#{@first.name}"], else: []),
+                  " "
+                )
+              }
+              url={nil}
+              mounted?={false}
+              {@reader}
+            />
+          </div>
+        </td>
+      </tr>
+    <% end %>
+    """
+  end
+
+  # What a nested table is given of the table it is in: who is asking, how
+  # deep it is, and how the table around it authorizes. `authorize?` is passed
+  # on only as this table was told it; untold, a nested table authorizes as
+  # its own resource's domain says.
+  defp nested_reader(assigns) do
+    %{
+      scope: assigns.scope,
+      actor: assigns.actor,
+      tenant: assigns.tenant,
+      authorize?: assigns.authorize_given,
+      parent_authorize?: assigns.authorize?,
+      depth: assigns.depth + 1,
+      depth_limit: assigns.depth_limit
+    }
+  end
+
+  # Whether there are pages to go through.
+  defp pages?(page, model), do: not is_nil(page) and model.pagination.strategy != :none
+
+  # The pages of a table: where the page is among the records, and the
+  # controls to go to another. Under a table of its own it is a navigation
+  # landmark after the grid, whose controls are ordinary tab stops. In a
+  # nested table it is a group in the last row of the grid, and its controls
+  # are reached through that row's cell.
+  #
+  # The hook keeps focus on the control that was used, or sends it on when
+  # that control is gone (see `.Pagination` below).
+  attr :id, :string, required: true
+  attr :nested?, :boolean, required: true
+  attr :page, :map, required: true
+  attr :model, :map, required: true
+  attr :state, :map, required: true
+  attr :row_count, :integer, required: true
+  attr :label, :string, required: true
+  attr :target, :any, required: true
+
+  defp pagination(assigns) do
+    ~H"""
+    <nav
+      :if={not @nested?}
+      id={"#{@id}-pagination"}
+      phx-hook=".Pagination"
+      aria-label={Text.t(:pagination, table: @label)}
+      class="mt-4 flex flex-wrap items-center justify-between gap-4"
+    >
+      <.pages {assigns} />
+    </nav>
+    <div
+      :if={@nested?}
+      id={"#{@id}-pagination"}
+      phx-hook=".Pagination"
+      role="group"
+      aria-label={Text.t(:pagination, table: @label)}
+      class="flex flex-wrap items-center justify-between gap-4"
+    >
+      <.pages {assigns} />
+    </div>
+    """
+  end
+
+  defp pages(assigns) do
+    ~H"""
+    <p id={"#{@id}-range"} class="text-sm">{range_text(@page, @row_count, @state)}</p>
+    <div class="join">
+      <button
+        type="button"
+        id={"#{@id}-previous"}
+        class="join-item btn btn-sm"
+        tabindex={@nested? && "-1"}
+        disabled={is_nil(@page.previous)}
+        phx-click="page"
+        phx-value-to="previous"
+        phx-target={@target}
+      >
+        {Text.t(:previous)}
+      </button>
+      <%!-- The page numbers have an element to themselves, which the layout
+      does not see: Previous and Next are then always the first and the last
+      of three, and a patch that adds or takes away a number leaves them
+      where they are, with their focus. --%>
+      <span
+        :if={@model.pagination.strategy == :offset}
+        class="contents [&>:first-child]:ms-[calc(var(--border)*-1)]"
+      >
+        <button
+          :for={number <- page_numbers(@page, @state)}
+          type="button"
+          id={"#{@id}-page-#{number}"}
+          class={["join-item btn btn-sm", number == @state.page && "btn-active"]}
+          tabindex={@nested? && "-1"}
+          aria-label={Text.t(:go_to_page, page: number)}
+          aria-current={number == @state.page && "page"}
+          phx-click="page"
+          phx-value-to={number}
+          phx-target={@target}
+        >
+          {number}
+        </button>
+      </span>
+      <button
+        type="button"
+        id={"#{@id}-next"}
+        class="join-item btn btn-sm"
+        tabindex={@nested? && "-1"}
+        disabled={is_nil(@page.next)}
+        phx-click="page"
+        phx-value-to="next"
+        phx-target={@target}
+      >
+        {Text.t(:next)}
+      </button>
     </div>
     """
   end
@@ -1562,8 +2180,13 @@ defmodule AshTable.Live.TableComponent do
   defp input_step(:datetime), do: "1"
   defp input_step(_cell_type), do: nil
 
+  # The columns before the first data column: the expanders, when the rows
+  # have them.
+  defp lead(true), do: 1
+  defp lead(false), do: 0
+
   # 1-based position of a data column among all columns of the grid.
-  defp colindex(index), do: @leading_columns + index + 1
+  defp colindex(index, expandable?), do: lead(expandable?) + index + 1
 
   # The header rows are counted. -1 says the total is not known.
   defp aria_rowcount(%{total: total}) when is_integer(total), do: total + @header_rows

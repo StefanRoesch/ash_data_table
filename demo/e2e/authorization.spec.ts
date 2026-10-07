@@ -40,7 +40,9 @@ for (const actor of ACTOR_KEYS) {
       const columns = await tasks.columns()
 
       expect(columns).toHaveLength(expected.columns)
-      await expect(tasks.grid).toHaveAttribute("aria-colcount", String(expected.columns))
+      // the columns, and before them the one of the expanders
+      await expect(tasks.grid).toHaveAttribute("aria-colcount", String(expected.columns + 1))
+      await expect(tasks.headerCells).toHaveCount(expected.columns + 1)
       await expect(tasks.editorTemplates).toHaveCount(expected.editors)
 
       if (expected.range) {
@@ -87,7 +89,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: 13 columns numbered 1 to 13, walked without a gap", async ({
+  test("the smaller grid is whole: the expanders and 13 columns, numbered 1 to 14, walked without a gap", async ({
     tasks,
     frames,
   }) => {
@@ -102,11 +104,11 @@ test.describe("the member, whose rights depend on the record", () => {
             Number(cell.getAttribute("aria-colindex")),
           ]),
         )
-    const oneToThirteen = Array.from({ length: 13 }, (_, index) => [index + 1, index + 1])
+    const oneToFourteen = Array.from({ length: 14 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToThirteen)
-    expect(await numbering("#task-head-row th")).toEqual(oneToThirteen)
-    expect(await numbering("#task-filter-row td")).toEqual(oneToThirteen)
+    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToFourteen)
+    expect(await numbering("#task-head-row th")).toEqual(oneToFourteen)
+    expect(await numbering("#task-filter-row td")).toEqual(oneToFourteen)
 
     await tasks.cell(first, "title").focus()
     await frames.clear()

@@ -66,6 +66,9 @@ defmodule AshTable.Text do
           | :not_saved
           | :cancel
           | :confirm
+          | :related_records
+          | :loading
+          | :records_not_available
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
@@ -176,4 +179,13 @@ defmodule AshTable.Text do
   defp msgid(:not_saved), do: dgettext_noop("ash_table", "%{column} was not saved: %{message}")
   defp msgid(:cancel), do: dgettext_noop("ash_table", "Cancel")
   defp msgid(:confirm), do: dgettext_noop("ash_table", "Confirm")
+  # names the column of the expanders, and each expander
+  defp msgid(:related_records), do: dgettext_noop("ash_table", "Related records")
+  # in a nested table whose first read is on its way
+  defp msgid(:loading), do: dgettext_noop("ash_table", "Loading…")
+
+  # in a nested table whose read was refused, where the destination's table
+  # does not say `on_forbidden :message`
+  defp msgid(:records_not_available),
+    do: dgettext_noop("ash_table", "These records are not available.")
 end

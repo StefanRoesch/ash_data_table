@@ -53,6 +53,9 @@ msgstr "Zu Seite %{page}"
 msgid "How to filter %{column}"
 msgstr "Wie %{column} gefiltert wird"
 
+msgid "Loading…"
+msgstr "Lädt…"
+
 msgid "Next"
 msgstr "Weiter"
 
@@ -77,11 +80,17 @@ msgstr "Seiten: %{table}"
 msgid "Previous"
 msgstr "Zurück"
 
+msgid "Related records"
+msgstr "Zugehörige Einträge"
+
 msgid "Results updated"
 msgstr "Ergebnisse aktualisiert"
 
 msgid "The records could not be loaded."
 msgstr "Die Einträge konnten nicht geladen werden."
+
+msgid "These records are not available."
+msgstr "Diese Einträge sind nicht verfügbar."
 
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
@@ -215,3 +224,46 @@ msgstr "Hoch"
 
 msgid "Urgent"
 msgstr "Dringend"
+
+## What a row of /tasks expands into: the labels of its relationships, as
+## the block declares them or as their names are humanised. They are looked
+## up like column labels.
+
+msgid "First comment"
+msgstr "Erster Kommentar"
+
+msgid "Newest comment"
+msgstr "Neuester Kommentar"
+
+msgid "Labels"
+msgstr "Labels"
+
+msgid "Project"
+msgstr "Projekt"
+
+msgid "Assignee"
+msgstr "Zugewiesen an"
+
+msgid "Reported by"
+msgstr "Gemeldet von"
+
+## The table of the people, which is only ever seen nested under a task or a
+## comment.
+
+msgid "Name"
+msgstr "Name"
+
+msgid "Email"
+msgstr "E-Mail"
+
+msgid "Role"
+msgstr "Rolle"
+
+msgid "Admin"
+msgstr "Admin"
+
+msgid "Member"
+msgstr "Mitglied"
+
+msgid "Viewer"
+msgstr "Nur Lesen"

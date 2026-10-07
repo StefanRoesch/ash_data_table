@@ -2,12 +2,17 @@ defmodule Demo.Tracker.User do
   @moduledoc """
   A person, and the actor of the demo. Not multitenant itself: it is looked up
   by id before the tenant is known, and its `organization_id` becomes the tenant.
+
+  Its table is mounted nowhere: it is only ever seen nested, under the row of
+  a task (its assignee, its reporter) or of a comment (its author). A viewer
+  may not read people at all, so those lines are not there for a viewer.
   """
   use Ash.Resource,
     otp_app: :demo,
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 
@@ -18,6 +23,17 @@ defmodule Demo.Tracker.User do
     references do
       reference :organization, on_delete: :delete
     end
+  end
+
+  # Read-only, and its rows never expand: `max_depth 0` switches off the
+  # assigned and the reported tasks a row would otherwise offer, wherever
+  # this table is shown.
+  table do
+    max_depth 0
+
+    column :name
+    column :email
+    column :role
   end
 
   actions do
@@ -35,6 +51,13 @@ defmodule Demo.Tracker.User do
   end
 
   policies do
+    policy action_type(:read) do
+      description "Refused outright, not filtered, for a viewer."
+      access_type :strict
+      forbid_if actor_attribute_equals(:role, :viewer)
+      authorize_if always()
+    end
+
     policy action_type(:read) do
       description "Users see the people of their own organization."
       authorize_if expr(organization_id == ^actor(:organization_id))

@@ -70,6 +70,49 @@ the tenant as attributes. Each sorts, filters, pages and saves by itself, and
 nothing of it is in the URL. As nobody, the projects' read is refused, and
 that table renders nothing at all.
 
+### Rows that expand: nested tables
+
+The mark at the start of a row expands it into one line per relationship,
+and a line opens the table of the related records inside the row: the
+destination resource's own table, with its own sort, filters, pages and
+editing. Nothing of it is in the URL.
+
+| Table | A row expands into | Declared how |
+| --- | --- | --- |
+| `/tasks` | Comments (has-many, keyset pages), First comment and Newest comment (has-ones that each pick one of many by their own sort: the first one sorts against the comments' read action), Labels (many-to-many, not paginated), Project, Assignee and "Reported by" (belongs-tos: a table of one row) | seven `relationship` lines in the `table` block, two of them relabelled; `max_depth` is the default, 3 |
+| `/projects` | Tasks (has-many, offset pages of 25) | nothing declared: every public relationship whose destination has a table |
+| `/comments` | Task, Author | nothing declared |
+| `/labels` | Tasks (many-to-many, offset pages) | nothing declared |
+| `/task_labels` | Task, Label, from a row with a key of two attributes | nothing declared; `max_depth 1`: the nested task has no expanders |
+
+`User` has a table and no page: it is only ever seen nested, as the assignee
+or the reporter of a task or the author of a comment. Its block says
+`max_depth 0`, so a person's row never expands, although a user has assigned
+and reported tasks that would be offered.
+
+Things to try:
+
+- `/tasks`: expand a row, open "Comments" and "Project"; in the project's
+  one row, expand again and open "Tasks": three levels deep, and at the
+  third the rows have no expander. Task → Comments → Task → Comments is a
+  cycle that ends the same way.
+- `/projects`: expand "Mobile app" and open its tasks. Sort them, filter
+  them, go to their second page, edit a title: the projects around them stay
+  as they are, and so does the URL.
+- With the keyboard: Left Arrow from the first cell of a row reaches its
+  expander; Right Arrow opens it and Left Arrow closes it; Down Arrow goes
+  through the lines; on the cell of a nested table Enter goes in and Escape
+  comes back out. Tab leaves the whole tree.
+- As **Vera Viewer**, the lines "Assignee" and "Reported by" are not there
+  under a task, nor "Author" under a comment: a viewer's read of the people
+  is refused outright. The tasks under a project have no editors for her.
+- As **Max Member**, the tasks under a project have no "External ref"
+  column, and "Estimate hours" is "Not available" except on his own tasks.
+  Filter them by "Estimate hours" greater than 10: the total under the
+  nested table goes away while the filter is set (see the README's
+  "Nested tables").
+- As **Olga Outsider**, everything nested is Globex's.
+
 ### In German
 
 The language switcher beside the actor switcher posts to `POST /locale`,
@@ -262,7 +305,8 @@ decide (nobody sees nothing).
 `Task` has, on purpose:
 
 - every relationship kind: `belongs_to` project, assignee and reporter;
-  `has_many` comments; `has_one` latest_comment; `many_to_many` labels
+  `has_many` comments; `has_one` latest_comment and first_comment (each
+  picks one of many by its own sort); `many_to_many` labels
 - enums with labels (`status`, `priority`), a 0 to 100 `progress`, a decimal,
   a boolean (`billable?`), a date, a datetime, long text
 - aggregates: `comment_count`, `last_commented_at`, `label_count`
@@ -327,6 +371,10 @@ and `sensitive?`: sensitivity is not an exposure rule, so it is a column.
 - `Comment`'s read is refused outright for nobody as well, and its table is
   declared with `on_forbidden :message`. Its author or an admin may change a
   comment.
+- `User`'s read is refused outright for a viewer (a strict policy), and
+  filtered to the reader's organization for everybody else. So the lines to
+  people are left out for a viewer: the table asks Ash whether the reader can
+  ever read a relationship's destination.
 - `Label`, `User`, `Organization`: only admins write.
 
 ## Browser tests
@@ -372,7 +420,8 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `task_labels.spec.ts` | the table of a resource with a primary key of two attributes: its order, sorting, paging, the filter and the editing of its note, on the row that was meant |
 | `dashboard.spec.ts` | two tables embedded in one LiveView: each with its own sort, filters and page and none of it in the URL; two grids, each one tab stop with a keyboard of its own; editing; a table whose read is refused |
 | `locale.spec.ts` | the language switcher: the tables in German (labels, operators, counts in singular and plural, the messages of failed saves and reads), and back in English |
-| `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, and in German |
+| `nesting.spec.ts` | nested tables: the expander and the lines by pointer and by keyboard; Right and Left Arrow; into a nested table and back out; one tab stop for the whole tree at every depth, and Tab out of it; that moving sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or a row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
+| `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, and with nested tables open at every depth |
 
 How they are built (`e2e/support`):
 
@@ -411,6 +460,10 @@ Postgres, with the large seed. The results of the last run that was committed
 are in [`perf/RESULTS.md`](perf/RESULTS.md), with the machine, the versions,
 the method and what the numbers say; every repetition is in
 `perf/results.json`.
+
+Nested tables were measured once, by `node nested.mjs`: what opening one
+costs and what the server holds with 1, 10 and 50 open, in
+[`perf/NESTED.md`](perf/NESTED.md).
 
 ```sh
 docker compose up -d postgres   # in the repository root, if it is not running

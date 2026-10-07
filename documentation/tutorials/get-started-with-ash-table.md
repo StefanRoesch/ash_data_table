@@ -339,7 +339,7 @@ The options of the two extensions are listed in the DSL reference:
 
 ## Not in the first version
 
-This tutorial ends where the first version ends. Nested tables for
-relationships, row actions and creating records, custom cell components and
-the other later slices are listed in order in the
+This tutorial ends where the first version ends. Row actions and creating
+records, custom cell components and the other later slices are listed in
+order in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

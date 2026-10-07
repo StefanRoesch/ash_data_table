@@ -85,6 +85,37 @@ declared in the resource and mounted with one line in the router.
 - `config :ash_table, translate_error: …` has the host translate the messages
   of its actions as it does for its forms.
 
+### Nested tables
+
+- A row expands into one line per relationship, and a line opens the nested
+  table: the destination resource's own table inside the row, limited to the
+  records related to it, with its own sort, filters, pages and inline
+  editing. Nested tables expand again.
+- `relationship` entities in the `table` section, with `label`. With none
+  declared, a row offers every public relationship whose destination has a
+  table, except manual ones; once one is declared, exactly the declared ones
+  in the declared order. A `relationship` that names no public relationship,
+  or whose destination has no table, is reported when the resource is
+  compiled, and refused when the table is built.
+- `max_depth` in the `table` section (default 3): how deep a person can
+  expand, counted from the table on the page. `0` means the rows of the
+  table never expand.
+- A nested table reads through Ash's own loader: the row it belongs to is
+  read again by its primary key, as the person, with the relationship as a
+  load that carries the nested table's query. It runs the relationship's own
+  `read_action` if it has one and puts the relationship's own `sort` first.
+  It has pages where Ash can page the relationship; a belongs-to and a
+  has-one are a table of at most one row without sort, filters or pages.
+- A line whose destination a person can never read is left out for them. A
+  nested table shows no total while a filter is set on a column the person
+  sees on some records only, as Ash counts a page of related records without
+  the field policies.
+- The expander is the first cell of a row and counts as a column
+  (`aria-colindex`, `aria-colcount`). Right Arrow and Left Arrow on it expand
+  and collapse; Enter on the cell of a nested table goes into it and Escape
+  comes back out. The whole tree of tables is one tab stop.
+- Nothing of a nested table is in the URL.
+
 ### Tooling
 
 - `mix ash_table.install`, an Igniter installer (`mix igniter.install

@@ -14,7 +14,9 @@ defmodule AshTable do
   pagination run on the server through the read action; page size and default
   sort live on that action. A cell is edited in place through the update
   action its column names, with the cell's value as the only input, and the
-  table shows what the action returns.
+  table shows what the action returns. A row expands into the tables of its
+  related records, each the table of its own resource: see
+  `AshTable.Resource`.
 
   ## Configuration
 

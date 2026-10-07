@@ -33,6 +33,9 @@ defmodule AshTable.Model.Column do
   #     column that is not editable.
   #   * `confirm` is the question asked before an edit of this column is saved,
   #     or `nil` when none is.
+  #   * `partly_hidden?` is only ever `true` in a model from
+  #     `AshTable.Model.for_actor/2`: the person sees the field on some records
+  #     and not on others.
 
   @enforce_keys [:name, :kind, :label, :cell_type, :sortable?, :operators]
   defstruct [
@@ -47,7 +50,8 @@ defmodule AshTable.Model.Column do
     :update_action,
     :editor,
     :confirm,
-    editable?: false
+    editable?: false,
+    partly_hidden?: false
   ]
 
   @type t :: %__MODULE__{
@@ -62,6 +66,7 @@ defmodule AshTable.Model.Column do
           editable?: boolean,
           update_action: atom | nil,
           editor: :text | :number | :boolean | :date | :datetime | :enum | nil,
-          confirm: String.t() | nil
+          confirm: String.t() | nil,
+          partly_hidden?: boolean
         }
 end

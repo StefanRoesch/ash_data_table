@@ -13,24 +13,37 @@ defmodule DemoWeb.HomeLive do
      [
        {"/tasks",
         "declared columns, offset pages, sortable aggregate and calculation; " <>
-          "columns and editing differ by who you are"}
+          "columns and editing differ by who you are. A row expands into seven declared " <>
+          "relationships of every kind, three levels deep; a viewer has no line for people"}
      ]},
     {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
      [
        {"/projects",
-        "no table block: the default columns; for nobody, a page that does not exist"}
+        "no table block: the default columns; for nobody, a page that does not exist. " <>
+          "A row expands into its tasks: the one relationship it offers by default"}
      ]},
     {Demo.Tracker.Comment, "Keyset pagination only. Its read is refused outright for nobody.",
-     [{"/comments", "keyset pages: next and previous; for nobody, a message (on_forbidden)"}]},
+     [
+       {"/comments",
+        "keyset pages: next and previous; for nobody, a message (on_forbidden). " <>
+          "A row expands into its task and its author"}
+     ]},
     {Demo.Tracker.Label, "No pagination.",
      [
-       {"/labels", "no pagination: every record"},
+       {"/labels", "no pagination: every record. A row expands into its tasks"},
        {"/bare/labels", "the same, mounted without the app layout"}
      ]},
-    {Demo.Tracker.User, "Not multitenant; filtered to your organization by policy.", []},
+    {Demo.Tracker.User,
+     "Not multitenant; filtered to your organization by policy, and refused outright for a " <>
+       "viewer. Its table is mounted nowhere: it is seen nested, under a task or a comment, " <>
+       "and its rows never expand (max_depth 0).", []},
     {Demo.Tracker.Organization, "The tenant.", []},
     {Demo.Tracker.TaskLabel, "The join between tasks and labels.",
-     [{"/task_labels", "a key of two attributes"}]},
+     [
+       {"/task_labels",
+        "a key of two attributes. A row expands into its task and its label, and no " <>
+          "further (max_depth 1)"}
+     ]},
     {Demo.KitchenSink.Specimen, "One attribute per built-in Ash type. No tenant, open to anyone.",
      [{"/specimens", "no table block: how every type is shown"}]}
   ]
@@ -75,6 +88,11 @@ defmodule DemoWeb.HomeLive do
           Every table below is a page of its own. The
           <.link navigate={~p"/dashboard"} class="link">dashboard</.link>
           shows two tables placed in a LiveView of the demo's own.
+        </p>
+        <p id="nesting" class="text-base-content/70">
+          Rows expand: the mark at the start of a row shows one line per relationship, and a
+          line opens the table of the related records inside the row, with its own sort,
+          filters, pages and editing.
         </p>
       </div>
 

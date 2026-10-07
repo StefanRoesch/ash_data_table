@@ -34,7 +34,7 @@ defmodule AshTable.Resource.Verifiers.VerifyUpdateAction do
   # primary read action.
   defp verify_row_refresh(dsl, module) do
     columns =
-      for column <- Verifier.get_entities(dsl, [:table]),
+      for column <- AshTable.Resource.Info.columns(dsl),
           field = field(module, column.name),
           do: {field, column}
 

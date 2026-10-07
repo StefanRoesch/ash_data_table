@@ -124,9 +124,10 @@ test.describe("reading", () => {
     await table.tabStop.focus()
     await table.press("ArrowRight", "ArrowRight", "ArrowRight")
     await expect(table.cell(FIRST, "label_id"), "the last column is where Right ends").toBeFocused()
+    // Home is the first cell of the row: its expander, one to the left of the note
     await table.press("ArrowDown", "ArrowDown", "Home")
-    await expect(table.cell(THIRD, "note")).toBeFocused()
-    expect(await table.tabStops()).toEqual([`task_label-row-${THIRD}-c-note`])
+    await expect(table.expanderCell(THIRD)).toBeFocused()
+    expect(await table.tabStops()).toEqual([`task_label-row-${THIRD}-e`])
   })
 })
 

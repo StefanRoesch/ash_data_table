@@ -1,7 +1,8 @@
 import { expect, test } from "./support/fixtures"
 
 // Spec section 8: the grid is one tab stop, and the arrow keys move in it
-// without a word to the server. /tasks as the admin: 14 columns, 25 rows.
+// without a word to the server. /tasks as the admin: 14 columns, 25 rows,
+// and before the first column the expanders of the rows (nesting.spec.ts).
 
 const FIRST = "title"
 const SECOND = "status"
@@ -47,9 +48,13 @@ test("arrow keys move one cell and do not wrap", async ({ tasks }) => {
   await expect(tasks.cell(first, SECOND)).toBeFocused()
   await tasks.press("ArrowLeft")
   await expect(tasks.cell(first, FIRST)).toBeFocused()
+  // one more reaches the row's expander, which is the first cell of the row
   await tasks.press("ArrowLeft")
-  await expect(tasks.cell(first, FIRST), "the first cell of a row is where Left ends").toBeFocused()
+  await expect(tasks.expanderCell(first)).toBeFocused()
+  await tasks.press("ArrowLeft")
+  await expect(tasks.expanderCell(first), "the first cell of a row is where Left ends").toBeFocused()
 
+  await tasks.cell(first, FIRST).focus()
   await tasks.press("ArrowDown")
   await expect(tasks.cell(second, FIRST)).toBeFocused()
   await tasks.press("ArrowUp")
@@ -75,13 +80,14 @@ test("Home and End go to the ends of the row, with Ctrl to the corners of the da
   await tasks.cell(third, "progress").focus()
   await tasks.press("End")
   await expect(tasks.cell(third, LAST)).toBeFocused()
+  // the first cell of a row is its expander
   await tasks.press("Home")
-  await expect(tasks.cell(third, FIRST)).toBeFocused()
+  await expect(tasks.expanderCell(third)).toBeFocused()
 
   await tasks.press("Control+End")
   await expect(tasks.cell(last, LAST)).toBeFocused()
   await tasks.press("Control+Home")
-  await expect(tasks.cell(first, FIRST), "the first data row, not the header").toBeFocused()
+  await expect(tasks.expanderCell(first), "the first data row, not the header").toBeFocused()
 })
 
 test("Page Down and Page Up move by a screenful and stay in the data rows", async ({ tasks }) => {

@@ -276,6 +276,5 @@ table show the message in place of the rows.
 ## Not in the first version
 
 No slots for a toolbar or a custom heading on the mounted page, no theming,
-no table limited to a parent record's related records (that is the nested
-tables slice), and no single router line for all resources of a domain. See
+and no single router line for all resources of a domain. See
 the [specification](https://github.com/StefanRoesch/ash_table/issues/21).

@@ -63,12 +63,59 @@ about what a person may not see or do.
 Page size and default sort are not part of the block. They live on the read
 action (`pagination default_limit: …` and `prepare build(sort: …)`).
 
+## Nested tables
+
+A row can be expanded into the tables of its related records:
+
+    table do
+      max_depth 2
+
+      relationship :comments
+
+      relationship :author do
+        label "Written by"
+      end
+    end
+
+An expanded row shows one line per relationship, and a line opens the
+nested table: the table of the destination resource, as that resource
+declares it, limited to the records related to the row. It sorts, filters,
+pages and edits by itself, and its rows expand again.
+
+With no `relationship`, a row offers every public relationship whose
+destination resource has a table (lists this extension), except manual
+relationships. Once one `relationship` is declared, a row offers exactly
+the declared ones in the declared order. A resource with nothing to offer
+has no expanders.
+
+What a nested table can do follows from the relationship, as Ash loads it:
+
+  * It runs the relationship's own `read_action` when it declares one, else
+    the read action of the destination's table. While the person has chosen
+    no sort, the relationship's own `sort` comes first.
+  * It has pages when the relationship holds many records, is joined by
+    attributes, and that action declares pagination. A relationship with
+    `no_attributes?` and a manual one are shown in full.
+  * A relationship that holds one record (a belongs-to, a has-one) is a
+    table of at most one row, without sort, filters or pages. So is a
+    manual relationship, of however many rows.
+  * A line whose destination the person can never read is left out for
+    them, and the destination's policies and field policies apply to what
+    a nested table shows as they do on a page of its own.
+
+`max_depth` says how deep a person can expand, counted from the table on
+the page: its nested tables are at depth 1. The default is 3, and the
+tables at that depth have no expanders. It is the setting of the table on
+the page that counts for everything beneath it. A table with `max_depth 0`
+never expands its rows, wherever it is shown.
+
 
 ## table
 How the resource is presented to people as a table.
 
 ### Nested DSLs
  * [column](#table-column)
+ * [relationship](#table-relationship)
 
 
 ### Examples
@@ -94,6 +141,7 @@ end
 | [`paginate_with`](#table-paginate_with){: #table-paginate_with } | `:offset \| :keyset` |  | The pagination strategy. Defaults to `:offset` if the read action supports it, else `:keyset`. |
 | [`update_action`](#table-update_action){: #table-update_action } | `atom` |  | The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only. |
 | [`on_forbidden`](#table-on_forbidden){: #table-on_forbidden } | `:not_found \| :message` | `:not_found` | What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a "not allowed" message in place of the rows. |
+| [`max_depth`](#table-max_depth){: #table-max_depth } | `non_neg_integer` | `3` | How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown. |
 
 
 
@@ -152,6 +200,52 @@ end
 ### Introspection
 
 Target: `AshTable.Resource.Column`
+
+### table.relationship
+```elixir
+relationship name
+```
+
+
+A relationship a row of the table can be expanded into: its line under the row opens the nested table of the related records.
+
+With no `relationship` declared, a row offers every public relationship of the resource whose destination resource has a table, except manual relationships. Once one is declared, a row offers exactly the declared ones, in the declared order.
+
+
+
+
+### Examples
+```
+relationship :comments
+```
+
+```
+relationship :author do
+  label "Written by"
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#table-relationship-name){: #table-relationship-name .spark-required} | `atom` |  | The relationship a row offers: a public relationship of the resource whose destination resource has a table. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`label`](#table-relationship-label){: #table-relationship-label } | `String.t` |  | What the relationship is called on its line under a row. Defaults to the humanised relationship name. |
+
+
+
+
+
+### Introspection
+
+Target: `AshTable.Resource.Relationship`
 
 
 

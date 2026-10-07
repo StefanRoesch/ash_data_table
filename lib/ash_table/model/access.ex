@@ -35,8 +35,31 @@ defmodule AshTable.Model.Access do
   end
 
   @doc """
-  The update actions among `actions` that the person can never run: on no
-  record, whatever it holds.
+  The fields among `fields` that the person sees through the read action on
+  some records and not on others: those behind a field policy that looks at
+  the record. `fields` are fields the person does not never see.
+
+  A question Ash cannot answer counts as "on some records only".
+  """
+  @spec partly_hidden_fields(Ash.Resource.t(), atom, [atom], reader) :: [atom]
+  def partly_hidden_fields(_resource, _read_action, [], _reader), do: []
+
+  def partly_hidden_fields(resource, read_action, fields, reader) do
+    ensure_authorizers_loaded(resource)
+    {actor, opts} = actor_and_opts(reader)
+
+    # With `filter_is: false` a field behind a check on the record counts as
+    # hidden: what is left as visible is seen on every record.
+    case Ash.can_see_fields({resource, read_action}, actor, fields, [filter_is: false] ++ opts) do
+      {:ok, always} -> Enum.reject(fields, &Map.get(always, &1, false))
+      {:error, _error} -> fields
+    end
+  end
+
+  @doc """
+  The actions among `actions` that the person can never run: on no record,
+  whatever it holds. Asked of the update actions behind a table's columns,
+  and of the read action behind a nested table.
 
   An action the person may run on some records only is not among them:
   whether it runs on one record is the action's to say when it is run.

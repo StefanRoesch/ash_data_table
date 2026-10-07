@@ -86,10 +86,14 @@ for (const mounted of MOUNTED) {
     await expect(page).toHaveTitle(`${mounted.title} · ash_table demo`)
     await expect(page.getByRole("grid", { name: mounted.title })).toHaveId(`${mounted.id}-table`)
 
+    // each of these tables has relationships to offer: before its columns
+    // is the one of the expanders, named for those who cannot see it
     await expect(table.headers).toHaveText(mounted.headers)
-    await expect(table.grid).toHaveAttribute("aria-colcount", String(mounted.headers.length))
+    await expect(table.headerCells).toHaveText(["Related records", ...mounted.headers])
+    await expect(table.grid).toHaveAttribute("aria-colcount", String(mounted.headers.length + 1))
     await expect(table.rows).toHaveCount(mounted.rows)
-    await expect(table.grid.locator("tbody td")).toHaveCount(mounted.rows * mounted.headers.length)
+    await expect(table.expanders).toHaveCount(mounted.rows)
+    await expect(table.rows.locator("td")).toHaveCount(mounted.rows * (mounted.headers.length + 1))
 
     await expect(table.pagination).toHaveCount(mounted.pagination === "none" ? 0 : 1)
     if (mounted.pagination !== "none") {

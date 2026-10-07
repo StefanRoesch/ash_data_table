@@ -7,7 +7,7 @@ defmodule DemoWeb.TablePage do
   """
 
   import Phoenix.LiveViewTest,
-    only: [element: 2, form: 3, render_change: 1, render_async: 1, render_hook: 3]
+    only: [element: 2, form: 3, render_change: 1, render_async: 2, render_hook: 3]
 
   @doc """
   Sets a column's filter and leaves it, as a person does who types a value or
@@ -21,7 +21,7 @@ defmodule DemoWeb.TablePage do
     entry = Map.new(entry, fn {key, value} -> {Atom.to_string(key), value} end)
 
     view |> form("##{id}-filters", %{"filter" => %{field => entry}}) |> render_change()
-    render_async(view)
+    render_async(view, 2000)
   end
 
   @doc """
@@ -48,16 +48,57 @@ defmodule DemoWeb.TablePage do
     |> render_hook("discard", %{"row" => to_string(key), "column" => field})
   end
 
-  @doc "The header labels, left to right, without the sort marks."
+  @doc """
+  Uses the expander of a row as the table's hook does when a person clicks
+  it or presses Enter on it: one `expand` event with the row's key. Returns
+  the page.
+  """
+  def expand(view, id \\ "task", key) do
+    view |> element("##{id}-grid") |> render_hook("expand", %{"row" => to_string(key)})
+  end
+
+  @doc """
+  Uses a line under an expanded row as the table's hook does: one `toggle`
+  event with the row's key and the relationship's name. Returns the page once
+  a nested table that was opened has read its rows.
+
+      toggle(view, task.id, "comments")
+      toggle(view, nested("task", task.id, "comments"), comment.id, "author")
+  """
+  def toggle(view, id \\ "task", key, relationship) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("toggle", %{"row" => to_string(key), "relationship" => relationship})
+
+    render_async(view, 2000)
+  end
+
+  @doc """
+  The id of the nested table under the row with the key `key` of the table
+  `id`, for the relationship `relationship`. It is a table's id like any
+  other: every function here takes it.
+  """
+  def nested(id \\ "task", key, relationship), do: "#{id}-row-#{key}-t-#{relationship}"
+
+  @doc "What the lines under a row say, top to bottom; none while the row is not expanded."
+  def lines(html, id \\ "task", key) do
+    html
+    |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > button")
+    |> Enum.map(&(&1 |> LazyHTML.text() |> String.replace("▸", "") |> String.trim()))
+  end
+
+  @doc "The header labels of the table's columns, left to right, without the sort marks."
   def headers(html, id) do
     html
-    |> query("##{id}-table thead th")
+    |> query("[id='#{id}-table'] > thead th[id^='#{id}-head-']")
     |> Enum.map(fn th -> th |> LazyHTML.text() |> String.replace(~r/ [▲▼]\z/u, "") end)
   end
 
-  @doc "The texts of one column's cells, top to bottom."
+  @doc "The texts of one column's cells, top to bottom: those of the table itself, not of a table nested in it."
   def column(html, id, field) do
-    html |> query("##{id}-table td[id$='-c-#{field}']") |> Enum.map(&LazyHTML.text/1)
+    html
+    |> query("[id='#{id}-table'] > tbody > tr > td[id$='-c-#{field}']")
+    |> Enum.map(&LazyHTML.text/1)
   end
 
   @doc """

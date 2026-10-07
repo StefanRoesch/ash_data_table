@@ -28,6 +28,9 @@ defmodule Demo.Tracker.TaskLabel do
   # found, shown again and saved by both parts of its key together.
   table do
     update_action :update
+    # A row expands into its task and its label, and no further: the rows of
+    # those nested tables have no expanders.
+    max_depth 1
   end
 
   actions do

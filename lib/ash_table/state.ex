@@ -47,6 +47,37 @@ defmodule AshTable.State do
   def from_params(%Model{}, _params), do: %__MODULE__{}
 
   @doc """
+  The state as far as it fits the model: without a sort by a column the
+  table does not have or does not sort by, and without a filter on a column
+  the table does not have, or with an operator the column does not offer. A
+  state that loses something starts at the first page again.
+
+  A table that keeps its state itself holds it across a change of who is
+  asking, and what one person could sort and filter by is not what the next
+  one can.
+  """
+  @spec fit(t, Model.t()) :: t
+  def fit(%__MODULE__{} = state, %Model{} = model) do
+    sort =
+      case state.sort do
+        {name, _direction} = sort ->
+          if Enum.any?(model.columns, &(&1.name == name and &1.sortable?)), do: sort
+
+        nil ->
+          nil
+      end
+
+    filters =
+      Map.filter(state.filters, fn {name, {operator, _value}} ->
+        Enum.any?(model.columns, &(&1.name == name and operator in &1.operators))
+      end)
+
+    if sort == state.sort and filters == state.filters,
+      do: state,
+      else: %{state | sort: sort, filters: filters, page: 1, after: nil, before: nil}
+  end
+
+  @doc """
   The URL parameters of a state; a default is left out.
 
   The filters are under `"f"`, by column name. A filter with its column's
@@ -79,7 +110,7 @@ defmodule AshTable.State do
   descending, then no sort. Any change of sort returns to the first page; the
   filters stay.
   """
-  @spec cycle_sort(t, Model.t(), String.t()) :: t
+  @spec cycle_sort(t, Model.t(), term) :: t
   def cycle_sort(%__MODULE__{} = state, %Model{} = model, column_name) do
     case sortable_column(model, column_name) do
       nil ->
@@ -237,6 +268,9 @@ defmodule AshTable.State do
   defp sortable_column(model, name) when is_binary(name) do
     Enum.find(model.columns, &(&1.sortable? and Atom.to_string(&1.name) == name))
   end
+
+  # anything else that an event may hold in place of a name
+  defp sortable_column(_model, _other), do: nil
 
   defp put_position(state, :offset, params) do
     case params["page"] do

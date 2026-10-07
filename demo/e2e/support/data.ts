@@ -50,6 +50,11 @@ export const SEED = {
    */
   comments: { acme: 384, withAnA: 311, nextSprint: 27 },
   projects: { acme: 6 },
+  /** Projects of Acme by primary key. */
+  project: {
+    /** "Mobile app": 57 tasks, three offset pages of 25; 7 of them have "Fix" in their title */
+    mobileApp: "72f2d7c8-f124-4435-9f12-15b4956af76b",
+  },
   labels: { acme: 8 },
   taskLabels: { acme: 396 },
   specimens: {

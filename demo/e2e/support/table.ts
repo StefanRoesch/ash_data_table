@@ -6,6 +6,12 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
  * (`ID-head-FIELD`, `ID-filter-FIELD`, `ID-row-KEY`, `ID-row-KEY-c-FIELD`;
  * see AshTable.Live.TableComponent), which is the one place of the suite
  * that knows them.
+ *
+ * A nested table is a table like any other, under an id of its own
+ * (`ID-row-KEY-t-RELATIONSHIP`): `nested()` gives it. What is asked of a
+ * table here is about that table alone, not about the tables nested in it,
+ * with two exceptions that are about the whole tree on purpose: `tabStop`
+ * and `tabStops()`.
  */
 export class Table {
   constructor(
@@ -92,7 +98,7 @@ export class Table {
     return this.byId(`${this.id}-grid`)
   }
 
-  /** The one cell of the grid that Tab stops at. */
+  /** The one cell that Tab stops at, of the grid and of every grid nested in it. */
   get tabStop(): Locator {
     return this.grid.locator('[tabindex="0"]')
   }
@@ -101,8 +107,14 @@ export class Table {
     return this.byId(`${this.id}-head-${column}`)
   }
 
+  /** The headers of the table's columns: not the one of the expanders. */
   get headers(): Locator {
-    return this.grid.getByRole("columnheader")
+    return this.grid.locator(`:scope > thead th[id^="${this.id}-head-"]`)
+  }
+
+  /** Every cell of the header row, the one above the expanders among them. */
+  get headerCells(): Locator {
+    return this.grid.locator(":scope > thead > tr:first-child > th")
   }
 
   /** The names of the columns, in order. */
@@ -114,9 +126,9 @@ export class Table {
     )
   }
 
-  /** The `<tbody>` of each row. */
+  /** The `<tbody>` of each row: not the one under it, which holds what the row expands into. */
   get rows(): Locator {
-    return this.grid.locator("tbody")
+    return this.grid.locator(":scope > tbody:not([data-detail])")
   }
 
   /** The keys of the rows of the page, in order: what follows `ID-row-` in a row's id. */
@@ -145,7 +157,12 @@ export class Table {
 
   /** The cells of a column, down the page. */
   columnCells(column: string): Locator {
-    return this.grid.locator(`tbody td[id$="-c-${column}"]`)
+    return this.grid.locator(`:scope > tbody > tr > td[id$="-c-${column}"]`)
+  }
+
+  /** The cells of a row, left to right, the expander among them. */
+  rowCells(key: string): Locator {
+    return this.row(key).locator(":scope > tr > td")
   }
 
   /** What the cells of a column show, down the page. */
@@ -178,12 +195,12 @@ export class Table {
   }
 
   get clearFilters(): Locator {
-    return this.root.getByRole("button", { name: "Clear filters" })
+    return this.byId(`${this.id}-clear-filters`)
   }
 
   /** The live region: what is read out after a filter change or a failed save. */
   get status(): Locator {
-    return this.root.getByRole("status")
+    return this.byId(`${this.id}-status`)
   }
 
   // ---- states and pagination ----------------------------------------------
@@ -195,12 +212,16 @@ export class Table {
 
   /** The alert of a read that failed or was refused. */
   get error(): Locator {
-    return this.root.getByRole("alert")
+    return this.byId(`${this.id}-error`)
   }
 
-  /** The table's one navigation landmark, named "Pagination: " and the table's name. */
+  /**
+   * The table's pages, named "Pagination: " and the table's name: a
+   * navigation landmark under a table of its own, a group in the last row
+   * of a nested table's grid.
+   */
   get pagination(): Locator {
-    return this.root.getByRole("navigation")
+    return this.byId(`${this.id}-pagination`)
   }
 
   /** "1–25 of 320". */
@@ -229,12 +250,12 @@ export class Table {
 
   /** Every editor open in the grid: one at most. */
   get openEditors(): Locator {
-    return this.grid.locator("tbody textarea, tbody input, tbody select")
+    return this.grid.locator(":scope > tbody > tr > td:not([colspan]) :is(textarea, input, select)")
   }
 
   /** The templates the hook copies a column's editor from: one per column the person can edit. */
   get editorTemplates(): Locator {
-    return this.root.locator(`template[id^="${this.id}-editor-"]`)
+    return this.hookRoot.locator(`:scope > template[id^="${this.id}-editor-"]`)
   }
 
   /** The dialog that asks a column's `confirm` question. */
@@ -245,6 +266,83 @@ export class Table {
   /** The message of a cell whose save failed: what its `aria-describedby` names. */
   failure(cell: Locator): Locator {
     return cell.locator("[popover]")
+  }
+
+  // ---- what a row expands into ---------------------------------------------
+
+  /** The first cell of a row, when the table's rows expand: it holds the expander. */
+  expanderCell(key: string): Locator {
+    return this.byId(`${this.id}-row-${key}-e`)
+  }
+
+  /** The button that expands a row and says whether it is expanded. */
+  expander(key: string): Locator {
+    return this.expanderCell(key).locator("button")
+  }
+
+  /** Every expander of the table. */
+  get expanders(): Locator {
+    return this.grid.locator(":scope > tbody > tr > td[data-expander]")
+  }
+
+  /** The lines under an expanded row, one per relationship: their cells. */
+  lines(key: string): Locator {
+    return this.byId(`${this.id}-row-${key}-x`).locator(":scope > tr > td[data-line]")
+  }
+
+  /** The cell of one line under a row. */
+  lineCell(key: string, relationship: string): Locator {
+    return this.byId(`${this.id}-row-${key}-l-${relationship}-c`)
+  }
+
+  /** The button of a line: it opens the nested table and says whether it is open. */
+  line(key: string, relationship: string): Locator {
+    return this.byId(`${this.id}-row-${key}-l-${relationship}-b`)
+  }
+
+  /** The cell under an open line that holds the nested table. */
+  nestedCell(key: string, relationship: string): Locator {
+    return this.byId(`${this.id}-row-${key}-n-${relationship}-c`)
+  }
+
+  /** The nested table under an open line: a table like any other. */
+  nested(key: string, relationship: string): Table {
+    return new Table(this.page, `${this.id}-row-${key}-t-${relationship}`, this.path)
+  }
+
+  /** The cell in the last row of a nested table's grid that holds its pages. */
+  get pagerCell(): Locator {
+    return this.byId(`${this.id}-pager`)
+  }
+
+  /** "Loading…", in a nested table whose first rows are on their way. */
+  get loading(): Locator {
+    return this.byId(`${this.id}-loading`)
+  }
+
+  /** Expands a row with the pointer and waits for its lines. */
+  async expand(key: string): Promise<void> {
+    await this.expander(key).click()
+    await expect(this.expander(key)).toHaveAttribute("aria-expanded", "true")
+  }
+
+  /**
+   * Expands a row if need be, opens one of its lines with the pointer, and
+   * waits for the nested table's first rows. Returns the nested table.
+   */
+  async openLine(key: string, relationship: string): Promise<Table> {
+    if ((await this.expander(key).getAttribute("aria-expanded")) !== "true") await this.expand(key)
+    await this.line(key, relationship).click()
+    const nested = this.nested(key, relationship)
+    await nested.loaded()
+    return nested
+  }
+
+  /** A nested table has its first read behind it: rows, "No records" or a message. */
+  async loaded(): Promise<void> {
+    await expect(this.grid).toBeVisible()
+    await expect(this.loading).toHaveCount(0)
+    await expect(this.grid).not.toHaveAttribute("aria-busy", "true")
   }
 
   // ---- focus --------------------------------------------------------------
@@ -262,11 +360,21 @@ export class Table {
     return this.hookRoot.evaluate((root) => root.contains(document.activeElement))
   }
 
-  /** Everything in the grid that Tab stops at. It is one thing: a cell, or the editor open in it. */
+  /**
+   * Everything in the grid, and in the tables nested in it, that Tab stops
+   * at. It is one thing: a cell, or the editor open in it.
+   */
   async tabStops(): Promise<string[]> {
     return this.hookRoot.evaluate((root) =>
       Array.from(root.querySelectorAll<HTMLElement>("*"))
-        .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
+        // the buttons of a nested table's dialog are in the grid around it,
+        // and are nothing Tab can reach while the dialog is closed
+        .filter(
+          (element) =>
+            element.tabIndex >= 0 &&
+            !(element as HTMLButtonElement).disabled &&
+            !element.closest("dialog:not([open])"),
+        )
         .map((element) => element.id || element.tagName),
     )
   }

@@ -45,7 +45,8 @@ defmodule DemoWeb.Router do
 
   # Tables of resources that exist for the tests only (`test/support`): a
   # domain that names its own assigns, one that does not authorize, and one
-  # without the domain extension (`plain_tables.ex`); two of them once more
+  # without the domain extension (`plain_tables.ex`), one whose rows expand
+  # into tables that are refused or fail (`nested_tables.ex`); two of them once more
   # in a layout that shows the assigns it is given, and a LiveView whose
   # tables keep their state in its URL.
   if Application.compile_env(:demo, :test_routes, false) do
@@ -58,8 +59,10 @@ defmodule DemoWeb.Router do
         ash_table "/memos", Demo.Support.Plain.Memo, layout: false
         ash_table "/reports", Demo.Support.Plain.Report, layout: false
         ash_table "/tickets", Demo.Support.Plain.Ticket, layout: false
+        ash_table "/binders", Demo.Support.Shelves.Binder, layout: false
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/url", DemoWeb.Support.UrlLive
+        live "/switch", DemoWeb.Support.SwitchLive
 
         ash_table "/framed/guarded-notes", Demo.Support.Guarded.Note,
           layout: {DemoWeb.Support.Layouts, :frame}

@@ -20,6 +20,7 @@ demo's task labels
 ```elixir
 table do
   update_action :update
+  # ...
 end
 
 actions do

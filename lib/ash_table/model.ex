@@ -8,7 +8,13 @@ defmodule AshTable.Model do
   #   * `resource` and its `primary_key`;
   #   * `read_action`, the name of the read action behind the table;
   #   * `pagination`, an `AshTable.Model.Pagination`;
-  #   * `columns`, the ordered list of `AshTable.Model.Column`.
+  #   * `columns`, the ordered list of `AshTable.Model.Column`;
+  #   * `relationships`, the ordered list of `AshTable.Model.Relationship`: what
+  #     a row can be expanded into;
+  #   * `max_depth`, how deep a person can expand from this table when it is
+  #     the one on the page;
+  #   * `via`, the relationship a nested table is reached through, nil for a
+  #     table of its own.
   #
   # ## Columns
   #
@@ -27,6 +33,20 @@ defmodule AshTable.Model do
   # carries that action, its editor and the question of its `confirm`. With no
   # `update_action` at either level nothing is editable.
   #
+  # ## Relationships
+  #
+  # With no `relationship` in the block, a row offers every public
+  # relationship whose destination resource has a table, except manual ones.
+  # Once one is declared, exactly the declared ones in the declared order.
+  #
+  # ## Nested
+  #
+  # The table of the records related to one row is the destination's table,
+  # built with `via:` the relationship: it reads through the action the
+  # relationship runs, pages only when Ash can page the relationship, and has
+  # no sort and no filters when the relationship holds one record or is
+  # manual. Everything else is the destination's own table.
+  #
   # ## Per person
   #
   # All of the above is what the resource and its block say, the same for
@@ -39,19 +59,33 @@ defmodule AshTable.Model do
   alias AshTable.Model.Column
   alias AshTable.Model.Operator
   alias AshTable.Model.Pagination
+  alias AshTable.Model.Relationship
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Reading
+  alias AshTable.Resource.Relating
 
   @enforce_keys [:resource, :primary_key, :read_action, :pagination, :columns]
-  defstruct [:resource, :primary_key, :read_action, :pagination, :columns]
+  defstruct [
+    :resource,
+    :primary_key,
+    :read_action,
+    :pagination,
+    :columns,
+    :via,
+    relationships: [],
+    max_depth: 3
+  ]
 
   @type t :: %__MODULE__{
           resource: Ash.Resource.t(),
           primary_key: [atom],
           read_action: atom,
           pagination: Pagination.t(),
-          columns: [Column.t()]
+          columns: [Column.t()],
+          relationships: [Relationship.t()],
+          max_depth: non_neg_integer,
+          via: Relationship.t() | nil
         }
 
   @default_page_size 25
@@ -59,31 +93,39 @@ defmodule AshTable.Model do
   @doc """
   Builds the table model of a resource.
 
-  The resource must list the extension `AshTable.Resource`. There are no
-  options yet. The model is the same whoever asks; `for_actor/2` gives the
-  one a person meets.
+  The resource must list the extension `AshTable.Resource`. The model is the
+  same whoever asks; `for_actor/2` gives the one a person meets.
+
+  ## Options
+
+    * `:via` - the `AshTable.Model.Relationship` of another table's model
+      whose destination this resource is. The model is then that of the
+      nested table of the records related to one row: see "Nested" above.
 
   Raises `ArgumentError` for a resource without the extension, and for a
   `table` block with a mistake of the compile-time checks that leaves the
   table nothing sound to do: no usable read action or pagination, a column
   that is no public field or a calculation that needs an argument, an
-  `update_action` that names no public update action, and editing beside
-  calculations or aggregates without a primary read action. The other
-  findings leave a column read-only or an option without effect.
+  `update_action` that names no public update action, editing beside
+  calculations or aggregates without a primary read action, and a
+  `relationship` that is no public relationship, whose destination has no
+  table, or that is declared twice. The other findings leave a column
+  read-only or an option without effect.
   """
   @spec build(Ash.Resource.t(), keyword) :: t
-  def build(resource, _opts \\ []) do
+  def build(resource, opts \\ []) do
     ensure_table!(resource)
 
-    read_action = read_action!(resource)
-    pagination = pagination(resource, read_action)
+    via = via!(resource, opts[:via])
+    read_action = read_action!(resource, via)
+    pagination = pagination(resource, read_action, via)
 
     update_actions!(resource)
 
     # each field with its column as written in the block, or nil for a
     # column of the default set
     fields =
-      case TableInfo.table(resource) do
+      case TableInfo.columns(resource) do
         [] -> Enum.map(Info.public_attributes(resource), &{&1, nil})
         declared -> Enum.map(declared, &{field!(resource, &1.name), &1})
       end
@@ -91,14 +133,19 @@ defmodule AshTable.Model do
     row_refresh!(resource, fields)
 
     columns =
-      Enum.map(fields, fn {field, declared} -> column(resource, field, declared, pagination) end)
+      Enum.map(fields, fn {field, declared} ->
+        resource |> column(field, declared, pagination) |> arrangeable(via)
+      end)
 
     %__MODULE__{
       resource: resource,
       primary_key: Info.primary_key(resource),
       read_action: read_action.name,
       pagination: pagination,
-      columns: columns
+      columns: columns,
+      relationships: relationships!(resource),
+      max_depth: TableInfo.table_max_depth!(resource),
+      via: via
     }
   end
 
@@ -130,20 +177,26 @@ defmodule AshTable.Model do
       on some records only leaves its columns editable: whether one record
       can be changed is the action's to say when a cell is saved.
 
+    * A column whose field the person sees **on some records only** is
+      marked `partly_hidden?`. Ash hides its cells where it has to; the mark
+      is for what a count would give away (see `AshTable.Query`).
+
+    * A relationship whose destination the person can **never** read,
+      through the read action its nested table runs, is left out
+      (`Ash.can/3`). One whose records the person may read in part stays: Ash
+      filters them when the nested table is read.
+
   A question Ash cannot answer is taken as "never".
   """
-  @spec for_actor(t, keyword) :: t
+  @spec for_actor(%__MODULE__{}, keyword) :: t
   def for_actor(%__MODULE__{} = model, opts) do
     if Keyword.get(opts, :authorize?, true) do
-      hidden =
-        Access.hidden_fields(
-          model.resource,
-          model.read_action,
-          Enum.map(model.columns, & &1.name),
-          opts
-        )
-
+      names = Enum.map(model.columns, & &1.name)
+      hidden = Access.hidden_fields(model.resource, model.read_action, names, opts)
       columns = Enum.reject(model.columns, &(&1.name in hidden))
+
+      partly_hidden =
+        Access.partly_hidden_fields(model.resource, model.read_action, names -- hidden, opts)
 
       forbidden =
         Access.forbidden_actions(
@@ -152,7 +205,20 @@ defmodule AshTable.Model do
           opts
         )
 
-      %{model | columns: Enum.map(columns, &read_only_if(&1, &1.update_action in forbidden))}
+      columns =
+        for column <- columns do
+          column
+          |> read_only_if(column.update_action in forbidden)
+          |> Map.put(:partly_hidden?, column.name in partly_hidden)
+        end
+
+      relationships =
+        Enum.reject(model.relationships, fn relationship ->
+          Access.forbidden_actions(relationship.destination, [relationship.read_action], opts) !=
+            []
+        end)
+
+      %{model | columns: columns, relationships: relationships}
     else
       model
     end
@@ -184,9 +250,19 @@ defmodule AshTable.Model do
     end
   end
 
+  @doc """
+  The relationship of the table that a person names, looked up by its name as
+  text, so that text from the outside is never turned into an atom. Nil when
+  the table, as this model has it, offers none of that name.
+  """
+  @spec relationship(t, term) :: Relationship.t() | nil
+  def relationship(%__MODULE__{relationships: relationships}, name) when is_binary(name),
+    do: Enum.find(relationships, &(Atom.to_string(&1.name) == name))
+
+  def relationship(%__MODULE__{}, _name), do: nil
+
   defp ensure_table!(resource) do
-    if not (Ash.Resource.Info.resource?(resource) and
-              AshTable.Resource in Spark.extensions(resource)) do
+    if not Relating.table?(resource) do
       raise ArgumentError,
             "#{inspect(resource)} does not list `AshTable.Resource` in its extensions, so it has no table. " <>
               "Add `extensions: [AshTable.Resource]` to its `use Ash.Resource`."
@@ -196,7 +272,7 @@ defmodule AshTable.Model do
   # The verifiers report the mistakes below when the resource is compiled.
   # They are raised here for a resource that was compiled despite them.
 
-  defp read_action!(resource) do
+  defp read_action!(resource, nil) do
     case Reading.read_action(resource) do
       {:ok, action} ->
         action
@@ -208,26 +284,136 @@ defmodule AshTable.Model do
     end
   end
 
-  defp pagination(resource, read_action) do
+  # A nested table runs the action its relationship runs. The table's own is
+  # checked all the same: a table that cannot be built is refused wherever
+  # it is shown.
+  defp read_action!(resource, %Relationship{read_action: name}) do
+    own = read_action!(resource, nil)
+
+    case Info.action(resource, name) do
+      %{type: :read} = action -> action
+      _other -> own
+    end
+  end
+
+  defp via!(_resource, nil), do: nil
+
+  defp via!(resource, %Relationship{destination: resource} = relationship), do: relationship
+
+  defp via!(resource, other) do
+    raise ArgumentError,
+          "cannot build the nested table of #{inspect(resource)}: `via` has to be a relationship " <>
+            "of a table model whose destination it is, got: #{inspect(other)}"
+  end
+
+  defp pagination(resource, read_action, nil) do
     case Reading.strategy(resource, read_action) do
-      {:ok, :none} ->
-        %Pagination{strategy: :none, page_size: nil, countable?: false}
-
       {:ok, strategy} ->
-        %{default_limit: default_limit, max_page_size: max_page_size, countable: countable} =
-          read_action.pagination
-
-        %Pagination{
-          strategy: strategy,
-          page_size: min(default_limit || @default_page_size, max_page_size),
-          countable?: countable in [true, :by_default]
-        }
+        pagination(read_action, strategy)
 
       {:error, {:unsupported, strategy}} ->
         raise ArgumentError,
               "cannot build the table of #{inspect(resource)}: its read action " <>
                 "`#{read_action.name}` does not support #{strategy} pagination"
     end
+  end
+
+  # What Ash cannot page comes back in full, whatever the action declares.
+  defp pagination(_resource, read_action, %Relationship{pageable?: false}),
+    do: pagination(read_action, :none)
+
+  # The strategy the block names when the action that runs supports it, which
+  # the relationship's own action need not.
+  defp pagination(resource, read_action, %Relationship{}) do
+    case Reading.strategy(resource, read_action) do
+      {:ok, strategy} ->
+        pagination(read_action, strategy)
+
+      {:error, {:unsupported, _strategy}} ->
+        pagination(read_action, hd(Reading.supported_strategies(read_action.pagination)))
+    end
+  end
+
+  defp pagination(_read_action, :none),
+    do: %Pagination{strategy: :none, page_size: nil, countable?: false}
+
+  defp pagination(read_action, strategy) do
+    %{default_limit: default_limit, max_page_size: max_page_size, countable: countable} =
+      read_action.pagination
+
+    %Pagination{
+      strategy: strategy,
+      page_size: min(default_limit || @default_page_size, max_page_size),
+      countable?: countable in [true, :by_default]
+    }
+  end
+
+  # The relationships of the block, or the default set, each with what its
+  # nested table can do. The destination is looked at, never built.
+  defp relationships!(resource) do
+    case Relating.offered(resource) do
+      {:ok, offered} ->
+        for {relationship, declared} <- offered do
+          read_action = relationship_read_action!(resource, relationship)
+          arrangeable? = Relating.arrangeable?(relationship)
+
+          %Relationship{
+            name: relationship.name,
+            label: (declared && declared.label) || humanize(relationship.name),
+            kind: relationship.type,
+            cardinality: relationship.cardinality,
+            source: resource,
+            destination: relationship.destination,
+            read_action: read_action.name,
+            sort: relationship.sort,
+            pageable?: Relating.pageable?(relationship, read_action),
+            sortable?: arrangeable?,
+            filterable?: arrangeable?
+          }
+        end
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: " <> relationship_message(reason)
+    end
+  end
+
+  defp relationship_read_action!(resource, relationship) do
+    case Relating.read_action(relationship) do
+      {:ok, action} ->
+        action
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: its relationship " <>
+                "`#{relationship.name}` has no usable read action on " <>
+                "#{inspect(relationship.destination)} (#{inspect(reason)})"
+    end
+  end
+
+  defp relationship_message({:no_table, name, destination}),
+    do:
+      "it declares the relationship `#{name}`, but its destination #{inspect(destination)} " <>
+        "does not list `AshTable.Resource` in its extensions, so it has no table"
+
+  defp relationship_message({:declared_twice, name}),
+    do: "it declares the relationship `#{name}` more than once"
+
+  defp relationship_message({_not_found_or_not_public, name}),
+    do:
+      "it declares the relationship `#{name}`, but the resource has no public relationship " <>
+        "of that name"
+
+  # A nested table of one record, or of a manual relationship, has no sort
+  # and no filters.
+  defp arrangeable(column, nil), do: column
+
+  defp arrangeable(column, %Relationship{} = via) do
+    %{
+      column
+      | sortable?: column.sortable? and via.sortable?,
+        operators: if(via.filterable?, do: column.operators, else: [])
+    }
   end
 
   defp field!(resource, name) do
@@ -261,7 +447,7 @@ defmodule AshTable.Model do
     end
 
     for %{name: column, update_action: name} when name not in [nil, false] <-
-          TableInfo.table(resource),
+          TableInfo.columns(resource),
         {:error, reason} <- [Editing.action(resource, name)] do
       raise ArgumentError,
             "cannot build the table of #{inspect(resource)}: the `update_action` of its column " <>

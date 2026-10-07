@@ -23,6 +23,10 @@ _Avoid_: Quick edit, in-place form
 The table of a related resource, shown inside an expanded row and limited to the records related to that row.
 _Avoid_: Sub-table, detail view, child grid
 
+**Relationship line**:
+One relationship of a record as it appears under that record's expanded row; opening it shows the nested table of the related records.
+_Avoid_: Sub-row, detail row, tab
+
 **Reference cell**:
 A cell that stands for a related record and shows that record's label in place of its key.
 _Avoid_: Lookup, link cell, foreign-key cell

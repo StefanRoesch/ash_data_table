@@ -10,14 +10,17 @@ no HEEx.
 
 > **This is the first version, 0.1.0, and it is not on Hex yet.** It reads,
 > sorts, filters, pages and edits cells in place, adapts its columns and its
-> editing to who is looking, and speaks the host's language. Nested tables
-> and row actions are later slices.
+> editing to who is looking, and speaks the host's language. A row expands
+> into the tables of its related records. Opening a nested table as a page
+> of its own, a cell that shows a related record's label, and row actions
+> are later slices.
 
 - [Install](#install)
 - [A first table](#a-first-table)
 - [Describing the table](#describing-the-table): columns and defaults
 - [Reading](#reading): page size and sort, [filtering](#filtering), [the URL](#the-url), [when a read fails](#when-a-read-fails)
 - [Inline editing](#inline-editing)
+- [Nested tables](#nested-tables)
 - [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
 - [The keyboard](#the-keyboard)
 - [Translations](#translations)
@@ -434,6 +437,66 @@ run. The refusal on the cell is for an action that depends on the record.
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
 returns to the cell, still in edit mode with what was typed.
 
+## Nested tables
+
+A row expands into the tables of its related records. The first cell of a
+row holds the expander; an expanded row shows one line per relationship, and
+a line opens the nested table: the table of the destination resource, as that
+resource declares it, limited to the records related to the row. A nested
+table sorts, filters, pages and edits by itself, and its rows expand again.
+
+```elixir
+table do
+  max_depth 2              # default: 3
+
+  relationship :comments
+
+  relationship :author do
+    label "Written by"
+  end
+end
+```
+
+- With no `relationship`, a row offers every public relationship whose
+  destination resource has a table (lists `AshTable.Resource`), except manual
+  relationships. Once one `relationship` is declared, a row offers exactly
+  the declared ones in the declared order. A table with nothing to offer has
+  no expanders and no column for them.
+- A nested table is read through Ash's own loader, so the relationship means
+  what the resource says it means: its filter, its `read_action` if it has
+  one (else the read action of the destination's table), and its own `sort`,
+  which comes first while the person has chosen none.
+- It has pages where Ash can page the relationship: one that holds many
+  records, is joined by attributes, through an action that declares
+  pagination. A relationship with `no_attributes?` and a manual one are shown
+  in full. A relationship that holds one record (a belongs-to, a has-one) is
+  a table of at most one row without sort, filters or pages, and so is a
+  manual one.
+- `max_depth` says how deep a person can expand, counted from the table on
+  the page, and the tables at that depth have no expanders. The setting of
+  the table on the page counts for everything beneath it. `max_depth 0` on a
+  table means its rows never expand, wherever it is shown.
+- The row a nested table belongs to is read again, as the person, every time
+  the nested table reads. A nested table is fetched when its line is opened,
+  and not before.
+- Nothing of it is in the URL: which rows are expanded, and the sort, filters
+  and page of the tables in them, last until the table around them reads
+  again (a change of its sort, filters or page), which closes them. A save in
+  a row leaves what is open under it open.
+
+What a person may not see applies in a nested table as on a page of its
+own: a line whose destination they can never read is not there, records they
+may not read are not among the rows, a column they can never see is left
+out, and a hidden field is "Not available".
+
+> #### A nested table can lose its total {: .info}
+>
+> While a filter is set on a column the person sees on some records only, a
+> nested table shows and announces no total, as a table does whose action
+> does not count. Ash counts a page of related records with the filter as it
+> is written, without the field policies, and the total would tell how many
+> records match among those whose value is hidden.
+
 ## Who is reading, and what they may see and do
 
 The table has no authorization rules of its own. It passes actor and tenant
@@ -531,6 +594,25 @@ then the header. Nothing of this talks to the server.
 | Tab, Shift+Tab | Leave the grid |
 | Enter, on a header | Sort by the column |
 | Space | Nothing; reserved for row selection |
+
+Where rows expand, the expander is the first cell of a row, one cell to the
+left of where Tab enters the grid. The lines under an expanded row, and the
+cell that holds a nested table, are cells of the grid that the arrow keys
+stop at:
+
+| Key | Effect |
+| --- | --- |
+| Right Arrow, on an expander or a line that is closed | Open it |
+| Left Arrow, on an expander or a line that is open | Close it |
+| Enter, on an expander or a line | Open or close it |
+| Enter, F2, on the cell that holds a nested table | Go into the nested table |
+| Escape, in a nested table | Come back out, to the cell that holds it |
+
+A nested table is a grid of its own, and inside it everything works as in a
+table on a page. The whole tree of tables is one tab stop: Tab leaves all of
+it. The pages of a nested table are the last row of its grid, reached with
+the arrow keys and entered with Enter, where Left and Right Arrow move
+between the buttons.
 
 On a filter cell, Enter or F2 goes into the filter, and so does a character,
 which is typed there: over the text or number the filter holds, into the

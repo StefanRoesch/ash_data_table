@@ -1665,4 +1665,259 @@ defmodule AshTable.TableBlockTest do
       assert Exception.message(error) =~ "expected one of [:not_found, :message]"
     end
   end
+
+  describe "relationship" do
+    test "is accepted with and without a label, beside columns, and read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Relationships do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            has_many :notes, AshTable.Test.Relating.Note do
+              destination_attribute :book_id
+              public? true
+            end
+
+            belongs_to :author, AshTable.Test.Relating.Author, public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :title
+
+            relationship :notes
+
+            relationship :author do
+              label "Written by"
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.Relationships
+
+      assert [
+               %AshTable.Resource.Relationship{name: :notes, label: nil},
+               %AshTable.Resource.Relationship{name: :author, label: "Written by"}
+             ] = AshTable.Resource.Info.relationships(Relationships)
+
+      # the columns are the columns alone
+      assert [%AshTable.Resource.Column{name: :title}] =
+               AshTable.Resource.Info.columns(Relationships)
+    end
+
+    test "naming a relationship that does not exist is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :chapters]} do
+          defmodule Elixir.AshTable.TableBlockTest.MissingRelationship do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              # an attribute is not a relationship
+              attribute :chapters, :integer, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :chapters
+            end
+          end
+        end
+
+      assert error.module == AshTable.TableBlockTest.MissingRelationship
+      assert error.message == "The resource has no relationship named `chapters`."
+
+      # compiled despite the finding, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.MissingRelationship: it declares the relationship `chapters`, but the resource has no public relationship of that name",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.MissingRelationship) end
+    end
+
+    test "naming a relationship that is not public is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :notes]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivateRelationship do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :notes, AshTable.Test.Relating.Note, destination_attribute: :book_id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :notes
+            end
+          end
+        end
+
+      assert error.message ==
+               "`notes` is not public. Only `public?` relationships can be offered by a table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.PrivateRelationship: it declares the relationship `notes`, but the resource has no public relationship of that name",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateRelationship) end
+    end
+
+    test "naming a relationship whose destination has no table is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :shelf]} do
+          defmodule Elixir.AshTable.TableBlockTest.DestinationWithoutTable do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :shelf, AshTable.Test.Relating.Shelf, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :shelf
+            end
+          end
+        end
+
+      assert error.message ==
+               "The destination of `shelf`, AshTable.Test.Relating.Shelf, has no table: it does not list `AshTable.Resource` in its extensions. A row can only be expanded into the table of a resource that has one."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.DestinationWithoutTable: it declares the relationship `shelf`, but its destination AshTable.Test.Relating.Shelf does not list `AshTable.Resource` in its extensions, so it has no table",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.DestinationWithoutTable) end
+    end
+
+    # Spark's own finding, for every entity that is identified by its name
+    test "declaring a relationship twice is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :author]} do
+          defmodule Elixir.AshTable.TableBlockTest.RelationshipTwice do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :author
+
+              relationship :author do
+                label "Written by"
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "Got duplicate AshTable.Resource.Relationship: author"
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.RelationshipTwice: it declares the relationship `author` more than once",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.RelationshipTwice) end
+    end
+
+    test "a relationship to the resource itself, and one in a cycle, compile" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.SelfRelated do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          relationships do
+            belongs_to :parent, __MODULE__, public?: true
+            has_many :children, __MODULE__, destination_attribute: :parent_id, public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            relationship :parent
+            relationship :children
+          end
+        end
+      end
+    end
+  end
+
+  describe "max_depth" do
+    test "is 3 unless the block says otherwise" do
+      assert AshTable.Resource.Info.table_max_depth!(AshTable.Test.Relating.Book) == 3
+    end
+
+    test "accepts a number from 0 up" do
+      assert AshTable.Resource.Info.table_max_depth!(AshTable.Test.Relating.Tag) == 0
+      assert AshTable.Resource.Info.table_max_depth!(AshTable.Test.Relating.Author) == 1
+    end
+
+    test "rejects a negative number" do
+      error =
+        assert_raise Spark.Error.DslError, fn ->
+          defmodule Elixir.AshTable.TableBlockTest.NegativeDepth do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              max_depth -1
+            end
+          end
+        end
+
+      assert error.path == [:table]
+      assert Exception.message(error) =~ "invalid value for :max_depth option"
+    end
+  end
 end

@@ -14,7 +14,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
 
     errors =
       dsl
-      |> Verifier.get_entities([:table])
+      |> AshTable.Resource.Info.columns()
       |> Enum.flat_map(&column_errors(&1, dsl, module))
 
     case errors do

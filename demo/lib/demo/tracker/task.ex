@@ -115,6 +115,29 @@ defmodule Demo.Tracker.Task do
 
     # no update action accepts it
     column :inserted_at
+
+    # What a row can be expanded into: these relationships, in this order,
+    # each on a line of its own that opens the nested table of the related
+    # records. Without any `relationship` here, a row would offer every public
+    # relationship whose destination has a table, under its own name.
+    relationship :comments
+
+    # two has-ones that each pick one of many: the one their own sort puts first
+    relationship :first_comment
+
+    relationship :latest_comment do
+      label "Newest comment"
+    end
+
+    # many-to-many, to a destination that is not paginated
+    relationship :labels
+    # belongs-to: a nested table of one row
+    relationship :project
+    relationship :assignee
+
+    relationship :reporter do
+      label "Reported by"
+    end
   end
 
   actions do
@@ -365,6 +388,14 @@ defmodule Demo.Tracker.Task do
     has_one :latest_comment, Demo.Tracker.Comment do
       from_many? true
       sort inserted_at: :desc
+      public? true
+    end
+
+    # The other end: its sort is the opposite of the one the comments' read
+    # action prepares.
+    has_one :first_comment, Demo.Tracker.Comment do
+      from_many? true
+      sort inserted_at: :asc
       public? true
     end
 

@@ -695,6 +695,269 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "the relationships a row offers" do
+    alias AshTable.Test.Relating.{Author, Book, Note, Secret, Tag}
+
+    defp relationship_names(model), do: Enum.map(model.relationships, & &1.name)
+    defp relationship(model, name), do: Enum.find(model.relationships, &(&1.name == name))
+
+    test "with no `relationship` declared, are the public ones whose destination has a table, except manual ones" do
+      # not `shelf` (its destination has no table), not `private_notes` (not
+      # public), not `manual_notes` (manual)
+      assert relationship_names(Model.build(Book)) ==
+               [
+                 :author,
+                 :notes,
+                 :recent_notes,
+                 :latest_note,
+                 :tags,
+                 :by_the_same_author,
+                 :secrets
+               ]
+    end
+
+    test "once one is declared, are exactly the declared ones in the declared order" do
+      # `first_book` is public and its destination has a table
+      assert relationship_names(Model.build(Author)) == [:manual_books, :books]
+    end
+
+    test "are labelled with the humanised name, or as the block says" do
+      assert Enum.map(Model.build(Book).relationships, & &1.label) ==
+               [
+                 "Author",
+                 "Notes",
+                 "Recent notes",
+                 "Latest note",
+                 "Tags",
+                 "By the same author",
+                 "Secrets"
+               ]
+
+      assert Enum.map(Model.build(Author).relationships, & &1.label) == [
+               "Manual books",
+               "Written"
+             ]
+    end
+
+    test "carry their kind, whether they hold one record or many, and their destination" do
+      assert Enum.map(
+               Model.build(Book).relationships,
+               &{&1.name, &1.kind, &1.cardinality, &1.destination}
+             ) ==
+               [
+                 {:author, :belongs_to, :one, Author},
+                 {:notes, :has_many, :many, Note},
+                 {:recent_notes, :has_many, :many, Note},
+                 {:latest_note, :has_one, :one, Note},
+                 {:tags, :many_to_many, :many, Tag},
+                 {:by_the_same_author, :has_many, :many, Book},
+                 {:secrets, :has_many, :many, Secret}
+               ]
+    end
+
+    test "are read through their own read action, else the one of the destination's table" do
+      model = Model.build(Book)
+
+      assert relationship(model, :notes).read_action == :read
+      assert relationship(model, :recent_notes).read_action == :recent
+    end
+
+    test "can be paged when they hold many, are joined by attributes, and their action paginates" do
+      model = Model.build(Book)
+
+      assert for(%{pageable?: true} = relationship <- model.relationships, do: relationship.name) ==
+               [:notes, :recent_notes, :secrets]
+
+      # a manual relationship comes back in full
+      refute relationship(Model.build(Author), :manual_books).pageable?
+    end
+
+    test "can be sorted and filtered when they hold many and are not manual" do
+      model = Model.build(Book)
+
+      assert for(
+               %{sortable?: true, filterable?: true} = relationship <- model.relationships,
+               do: relationship.name
+             ) ==
+               [:notes, :recent_notes, :tags, :by_the_same_author, :secrets]
+
+      for name <- [:author, :latest_note] do
+        assert %{sortable?: false, filterable?: false} = relationship(model, name)
+      end
+
+      assert %{sortable?: false, filterable?: false} =
+               relationship(Model.build(Author), :manual_books)
+    end
+
+    test "are none for a resource without relationships" do
+      assert Model.build(AshTable.Test.Labelled).relationships == []
+    end
+
+    test "do not build the destination's table: resources that point at each other end" do
+      # Book -> author -> books -> author ...
+      assert %Model{} = Model.build(Book)
+      assert %Model{} = Model.build(Author)
+    end
+  end
+
+  describe "max_depth" do
+    test "is 3 unless the block says otherwise" do
+      assert Model.build(AshTable.Test.Relating.Book).max_depth == 3
+      assert Model.build(AshTable.Test.Task).max_depth == 3
+    end
+
+    test "is what the block says" do
+      assert Model.build(AshTable.Test.Relating.Author).max_depth == 1
+      assert Model.build(AshTable.Test.Relating.Tag).max_depth == 0
+    end
+  end
+
+  describe "the model of a nested table: build/2 with `via`" do
+    alias AshTable.Model.Pagination
+    alias AshTable.Test.Relating.{Author, Book, Note, Tag}
+
+    defp nested(parent, name) do
+      relationship = Enum.find(Model.build(parent).relationships, &(&1.name == name))
+      Model.build(relationship.destination, via: relationship)
+    end
+
+    test "is the destination's table: its columns, its editing" do
+      model = nested(Book, :notes)
+
+      assert model.resource == Note
+      assert column_names(model) == [:body, :written_on, :sibling_count]
+      assert Enum.map(model.columns, & &1.editable?) == [true, false, false]
+    end
+
+    test "pages as the action that runs does" do
+      assert nested(Book, :notes).pagination ==
+               %Pagination{strategy: :offset, page_size: 10, countable?: true}
+
+      # the relationship's own action: keyset only, and it does not count
+      recent = nested(Book, :recent_notes)
+      assert recent.read_action == :recent
+      assert recent.pagination == %Pagination{strategy: :keyset, page_size: 5, countable?: false}
+    end
+
+    test "sorts by what the strategy of the action that runs allows" do
+      sortable = fn model -> for %{sortable?: true} = column <- model.columns, do: column.name end
+
+      assert sortable.(nested(Book, :notes)) == [:body, :written_on, :sibling_count]
+      # no aggregate under keyset pagination
+      assert sortable.(nested(Book, :recent_notes)) == [:body, :written_on]
+    end
+
+    test "does not page when the destination's action has no pagination" do
+      assert nested(Book, :tags).pagination ==
+               %Pagination{strategy: :none, page_size: nil, countable?: false}
+    end
+
+    test "does not page a relationship without attributes, which still sorts and filters" do
+      # the read of the books paginates; through `no_attributes?` Ash returns everything
+      assert Model.build(Book).pagination.strategy == :offset
+
+      model = nested(Book, :by_the_same_author)
+
+      assert model.pagination == %Pagination{strategy: :none, page_size: nil, countable?: false}
+      assert Enum.any?(model.columns, & &1.sortable?)
+      assert Enum.any?(model.columns, &(&1.operators != []))
+    end
+
+    test "of a single related record has no sort, no filter and no pages, and can still be edited" do
+      model = nested(Book, :latest_note)
+
+      assert model.pagination == %Pagination{strategy: :none, page_size: nil, countable?: false}
+      assert Enum.map(model.columns, & &1.sortable?) == [false, false, false]
+      assert Enum.map(model.columns, & &1.operators) == [[], [], []]
+      assert Enum.map(model.columns, & &1.editable?) == [true, false, false]
+    end
+
+    test "of a manual relationship has no sort, no filter and no pages" do
+      model = nested(Author, :manual_books)
+
+      assert model.resource == Book
+      assert model.pagination == %Pagination{strategy: :none, page_size: nil, countable?: false}
+      assert Enum.all?(model.columns, &(not &1.sortable? and &1.operators == []))
+    end
+
+    test "carries the relationship it is reached through, and none at the top" do
+      assert %{name: :latest_note, sort: [written_on: :desc]} = nested(Book, :latest_note).via
+      assert Model.build(Note).via == nil
+    end
+
+    test "offers the destination's own relationships and its own depth setting" do
+      assert relationship_names(nested(Author, :books)) ==
+               [
+                 :author,
+                 :notes,
+                 :recent_notes,
+                 :latest_note,
+                 :tags,
+                 :by_the_same_author,
+                 :secrets
+               ]
+
+      assert nested(Book, :tags).max_depth == 0
+      assert Tag == nested(Book, :tags).resource
+    end
+  end
+
+  describe "for_actor/2: the relationships a person is offered" do
+    alias AshTable.Test.Relating.Book
+
+    setup do
+      %{model: Model.build(Book)}
+    end
+
+    test "are all of the table's for a person who may read every destination", %{model: model} do
+      assert Model.for_actor(model, actor: %{role: :admin}) == model
+    end
+
+    test "leave out one whose destination the person can never read", %{model: model} do
+      assert relationship_names(Model.for_actor(model, actor: %{role: :member})) ==
+               [:author, :notes, :recent_notes, :latest_note, :tags, :by_the_same_author]
+
+      assert relationship_names(Model.for_actor(model, actor: nil)) ==
+               [:author, :notes, :recent_notes, :latest_note, :tags, :by_the_same_author]
+    end
+
+    test "are the same whether the person comes as an actor or in a scope", %{model: model} do
+      scope = %AshTable.Test.Scope{user: %{role: :member}, tenant: nil}
+
+      assert Model.for_actor(model, scope: scope) ==
+               Model.for_actor(model, actor: %{role: :member})
+    end
+
+    test "are all of the table's without authorization", %{model: model} do
+      assert Model.for_actor(model, actor: nil, authorize?: false) == model
+    end
+  end
+
+  describe "for_actor/2: the columns a person sees on some records only" do
+    defp partly_hidden(model),
+      do: for(%{partly_hidden?: true} = column <- model.columns, do: column.name)
+
+    setup do
+      %{model: Model.build(AshTable.Test.Guarded)}
+    end
+
+    test "are marked, as a count over a filter on one of them would tell what its rows do not",
+         %{model: model} do
+      assert partly_hidden(Model.for_actor(model, actor: %{id: 2, role: :member})) == [:salary]
+    end
+
+    test "are none for a person who sees every field, and none without authorization",
+         %{model: model} do
+      assert partly_hidden(Model.for_actor(model, actor: %{id: 1, role: :admin})) == []
+
+      assert partly_hidden(
+               Model.for_actor(model, actor: %{id: 2, role: :member}, authorize?: false)
+             ) == []
+
+      assert partly_hidden(model) == []
+    end
+  end
+
   describe "for_actor/2 in a system that has run no policy yet" do
     # Outside a release, modules are loaded when first used, and Ash asks an
     # authorizer about fields only if its module is loaded already. A table

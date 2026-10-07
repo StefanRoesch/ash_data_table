@@ -74,7 +74,12 @@ defmodule AshTable.MixProject do
         Extensions: [AshTable.Resource, AshTable.Domain],
         "In the page": [AshTable, AshTable.Router, AshTable.Live.Page, AshTable.NotFoundError],
         Translation: [AshTable.Gettext],
-        Introspection: [AshTable.Resource.Info, AshTable.Resource.Column, AshTable.Domain.Info]
+        Introspection: [
+          AshTable.Resource.Info,
+          AshTable.Resource.Column,
+          AshTable.Resource.Relationship,
+          AshTable.Domain.Info
+        ]
       ]
     ]
   end

@@ -43,6 +43,16 @@ defmodule AshTable.Live.Page do
       URL). With `on_forbidden :message` in the resource's `table` block the
       page stays and says "You are not allowed to see these records."
 
+    * **A relationship whose destination the person can never read** has no
+      line under an expanded row. In a nested table everything above holds
+      for its own resource. The row a nested table belongs to is read again,
+      as the person, each time the nested table reads: when that row is gone
+      or no longer theirs, the nested table says "This record is no longer
+      available." A nested table whose read is refused says "You are not
+      allowed to see these records." when its resource's block says
+      `on_forbidden :message`, and "These records are not available."
+      otherwise.
+
   Ash is asked what a person can never see or do each time the table reads:
   when the page is opened and at every change of sort, filter or page. It
   costs no query.
@@ -83,6 +93,10 @@ defmodule AshTable.Live.Page do
 
   Sort, filters and page are kept in the URL, under the table's id:
   `/tasks?task[sort]=-title&task[f][title]=report&task[page]=2`.
+
+  Which rows are expanded, and the sort, filters and page of the tables
+  nested in them, are not in the URL. A new read of the table (a change of
+  its sort, filters or page) closes what was open in it.
   """
   use Phoenix.LiveView
 

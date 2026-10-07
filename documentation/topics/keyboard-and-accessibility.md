@@ -41,6 +41,11 @@ order, not 350.
   button above it, while a filter applies, and the pagination buttons below
   it.
 - Moving about never contacts the server.
+- Where rows expand into nested tables, the first cell of a row is its
+  expander, and a nested table is a grid of its own inside a cell: the whole
+  tree of grids is one tab stop. The keys for it are in the
+  [README](https://github.com/StefanRoesch/ash_table/blob/main/README.md),
+  under "The keyboard".
 
 ## Keys on a cell
 
@@ -217,7 +222,7 @@ technology, a report of what you find is welcome in the
 ## Edge cases
 
 - **A table without records** still has its two header rows. The tab stop is
-  then the first cell of the filter row.
+  then the filter cell of the first column.
 - **A closed choice menu.** In an enum editor whose menu is closed, the arrow
   keys change the value step by step without saving. Enter, or leaving the
   cell, saves the value reached.
@@ -248,7 +253,6 @@ technology, a report of what you find is welcome in the
 
 ## Not in the first version
 
-No row selection, no treegrid navigation for nested tables (Right and Left
-Arrow to expand and collapse), no keyboard shortcuts of the host's choosing,
-and no tested screen reader support. The roadmap is in the
+No row selection, no keyboard shortcuts of the host's choosing, and no
+tested screen reader support. The roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

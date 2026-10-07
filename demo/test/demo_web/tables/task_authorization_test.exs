@@ -76,7 +76,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       assert headers(html, "task") == @headers
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1"]
-      assert attribute(html, "#task-table", "aria-colcount") == ["14"]
+      # the 14 columns, and before them the expanders
+      assert attribute(html, "#task-table", "aria-colcount") == ["15"]
     end
 
     for actor <- [:member, :viewer, :outsider] do
@@ -90,12 +91,13 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        numbers = Enum.map(1..13, &Integer.to_string/1)
+        # the expanders, and the 13 columns that are left
+        numbers = Enum.map(1..14, &Integer.to_string/1)
 
-        assert attribute(html, "#task-table", "aria-colcount") == ["13"]
+        assert attribute(html, "#task-table", "aria-colcount") == ["14"]
         assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
         assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
-        assert attribute(html, "#task-head-description", "aria-colindex") == ["12"]
+        assert attribute(html, "#task-head-description", "aria-colindex") == ["13"]
       end
     end
 
@@ -105,10 +107,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, _view, html} = conn |> log_in(world.nobody) |> live("/tasks")
 
       assert headers(html, "task") == @headers -- ["External ref", "Estimate hours"]
-      assert attribute(html, "#task-table", "aria-colcount") == ["12"]
+      # the expanders, and the 12 columns that are left
+      assert attribute(html, "#task-table", "aria-colcount") == ["13"]
 
       assert attribute(html, "#task-head-row th", "aria-colindex") ==
-               Enum.map(1..12, &Integer.to_string/1)
+               Enum.map(1..13, &Integer.to_string/1)
 
       refute html =~ "estimate_hours"
       refute html =~ "Estimate hours"
@@ -131,7 +134,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       assert attribute(html, "#task-table tbody td", "aria-colindex") ==
-               Enum.map(1..13, &Integer.to_string/1)
+               Enum.map(1..14, &Integer.to_string/1)
     end
   end
 
