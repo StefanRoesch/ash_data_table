@@ -5,7 +5,8 @@ defmodule Demo.Tracker.User do
 
   Its table is mounted nowhere: it is only ever seen nested, under the row of
   a task (its assignee, its reporter) or of a comment (its author). A viewer
-  may not read people at all, so those lines are not there for a viewer.
+  may not read people at all, so those lines are not there for a viewer. It
+  is the one table of the demo that offers no editing to anybody.
   """
   use Ash.Resource,
     otp_app: :demo,
@@ -36,6 +37,11 @@ defmodule Demo.Tracker.User do
     end
   end
 
+  # The demo's one table that is read-only on purpose: it names no
+  # `update_action`, so nothing of a person is edited in it, although an
+  # admin may update one. The people are the demo's actors: the actor
+  # switcher and what each of them is shown go by their names and roles.
+  #
   # Read-only, and its rows never expand: `max_depth 0` switches off the
   # assigned and the reported tasks a row would otherwise offer, wherever
   # this table is shown.

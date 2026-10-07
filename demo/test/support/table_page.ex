@@ -84,7 +84,7 @@ defmodule DemoWeb.TablePage do
   def lines(html, id \\ "task", key) do
     html
     |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > button")
-    |> Enum.map(&(&1 |> LazyHTML.text() |> String.replace("▸", "") |> String.trim()))
+    |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
   @doc "The header labels of the table's columns, left to right, without the sort marks."

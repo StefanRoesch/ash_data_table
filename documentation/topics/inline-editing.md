@@ -40,6 +40,11 @@ Listing the extension so that people can look at a resource must not, by
 itself, let them change it: which action the table runs is a decision, and
 the block is where it is made.
 
+In the demo every mounted table names one. The table of the people
+(`Demo.Tracker.User`) names none, on purpose: under a task on `/tasks`, the
+one row of "Assignee" or "Reported by" has no cell that opens, for an admin
+either.
+
 ## `update_action` at the table and at a column
 
 | Where | Meaning |

@@ -264,20 +264,48 @@ test.describe("editing", () => {
     await page.evaluate(() => (window as any).liveSocket?.disableLatencySim())
   })
 
-  test("only the table whose resource names an update action has editors", async ({ frames }) => {
+  test("each table has the editors of its own resource, and one whose resource names no update action has none", async ({
+    frames,
+  }) => {
     await expect(tasks.editorTemplates).toHaveCount(9)
-    await expect(projects.editorTemplates).toHaveCount(0)
-    await expect(projects.grid.locator("[aria-readonly]"), "nothing is marked either").toHaveCount(0)
+    // name, description, status, starts on and budget: what the projects' `update` accepts
+    await expect(projects.editorTemplates).toHaveCount(5)
 
-    const name = projects.cell(await projects.rowKey(1), "name")
+    // The people's table names no update action. It has no page; under a
+    // task it is the one row of "Reported by".
+    const reporter = await tasks.openLine(FIRST, "reporter")
+    await expect(reporter.editorTemplates).toHaveCount(0)
+    await expect(reporter.grid.locator("[aria-readonly]"), "nothing is marked either").toHaveCount(0)
+
+    const name = reporter.cell(await reporter.rowKey(1), "name")
     await name.focus()
     await frames.clear()
-    await projects.press("Enter", "F2", "x")
+    await tasks.press("Enter", "F2", "x")
     await name.dblclick()
-    await expect(projects.openEditors).toHaveCount(0)
+    await expect(reporter.openEditors).toHaveCount(0)
     await expect(tasks.openEditors).toHaveCount(0)
+    await expect(projects.openEditors).toHaveCount(0)
     await expect(name).toBeFocused()
     expect(await frames.all()).toEqual([])
+  })
+
+  test("a cell of the projects saves through the projects' own action", async ({ page }) => {
+    const key = await projects.rowKey(1)
+    const name = projects.cell(key, "name")
+    const names = await projects.columnTexts("name")
+
+    await name.dblclick()
+    await projects.retype("Renamed on the dashboard")
+    await projects.saves(name, () => projects.press("Enter"))
+
+    await expect(name).toHaveText("Renamed on the dashboard")
+    await expect(name).not.toHaveAttribute("aria-invalid")
+    // the row stays where it is, although the table is sorted by name
+    expect(await projects.columnTexts("name")).toEqual(["Renamed on the dashboard", ...names.slice(1)])
+
+    const own = new Table(page, "project", "/projects")
+    await own.open()
+    await expect(own.cell(key, "name")).toHaveText("Renamed on the dashboard")
   })
 
   test("a cell saves through its own table, and the other table is not read again", async ({

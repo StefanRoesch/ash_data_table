@@ -235,6 +235,7 @@ instead. The demo's comments do
 <!-- source: demo/lib/demo/tracker/comment.ex -->
 ```elixir
 table do
+  update_action :update
   on_forbidden :message
 end
 ```

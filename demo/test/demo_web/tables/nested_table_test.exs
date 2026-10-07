@@ -319,8 +319,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "[id='#{id}-head-row'] th[phx-click]", "id") == []
       assert attribute(html, "[id='#{id}-filter-row'] :is(input, select)", "id") == []
       assert attribute(html, "[id='#{id}-pagination']", "id") == []
-      # nothing of the comments' table can be edited, here as on its own page
-      assert editors(html, id) == []
+      # what the comments' table edits is edited here, as on its own page
+      assert editors(html, id) == ["body"]
     end
 
     test "of a belongs-to shows the one record it points at", %{
@@ -604,8 +604,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
                ~w(title status priority progress estimate_hours billable? due_on completed_at description)
 
       assert editor(html, id, "status").confirm == "Change the state of this task?"
-      # the projects around it have no editing at all
-      assert editors(html, "project") == []
+      # the projects around it have the editors of their own table
+      assert editors(html, "project") == ~w(name description status starts_on budget)
     end
 
     test "saves the cell of the right record through the destination's own update action",
@@ -655,6 +655,140 @@ defmodule DemoWeb.Tables.NestedTableTest do
       html = save(view, id, first.id, "title", "Renamed")
 
       assert column(html, id, "title") == ["Renamed"]
+    end
+  end
+
+  describe "editing in the nested tables under a task" do
+    setup %{conn: conn} do
+      world = world(tasks: 0)
+
+      project =
+        Generator.generate(
+          Generator.project(organization_id: world.organization.id, name: "Aardvark")
+        )
+
+      task = task(world, "Write the report", project_id: project.id)
+      other = task(world, "Another task", inserted_at: DateTime.add(@moment, -1, :day))
+      [first, second] = comments(world, task, ["First", "Second"])
+      [bug, chore] = labels(world, task, ["bug", "chore"])
+      [of_other] = comments(world, other, ["Of the other task"])
+
+      %{
+        world: world,
+        project: project,
+        task: task,
+        comments: %{first: first, second: second, of_other: of_other},
+        labels: %{bug: bug, chore: chore},
+        conn: log_in(conn, world.admin)
+      }
+    end
+
+    defp open_line(conn, task, relationship) do
+      {:ok, view, _html} = live(conn, "/tasks")
+      expand(view, task.id)
+      {view, toggle(view, task.id, relationship), nested(task.id, relationship)}
+    end
+
+    test "a comment is edited in place: the right record is saved, and the row stays where it is",
+         %{conn: conn, task: task, comments: comments} do
+      {view, html, id} = open_line(conn, task, "comments")
+
+      assert editors(html, id) == ["body"]
+      assert column(html, id, "body") == ["Second", "First"]
+      assert attribute(html, cell(id, comments.first.id, "body"), "aria-readonly") == []
+
+      html = save(view, id, comments.first.id, "body", "First, reworded")
+
+      assert column(html, id, "body") == ["Second", "First, reworded"]
+      assert failure(html, id, comments.first.id, "body") == nil
+      stored = &Ash.get!(Demo.Tracker.Comment, &1.id, authorize?: false).body
+      assert stored.(comments.first) == "First, reworded"
+      assert stored.(comments.second) == "Second"
+      assert stored.(comments.of_other) == "Of the other task"
+      # the task around it is as it was, with its line open
+      assert text(html, cell(task.id, "title")) == "Write the report"
+    end
+
+    test "a label is edited in place, in a many-to-many", %{
+      conn: conn,
+      task: task,
+      labels: labels
+    } do
+      {view, html, id} = open_line(conn, task, "labels")
+
+      assert editors(html, id) == ~w(name colour)
+      assert column(html, id, "name") == ["bug", "chore"]
+
+      # the labels are sorted by name; the row keeps its place until the next read
+      html = save(view, id, labels.bug.id, "name", "zebra")
+
+      assert column(html, id, "name") == ["zebra", "chore"]
+      stored = &Ash.get!(Demo.Tracker.Label, &1.id, authorize?: false)
+      assert stored.(labels.bug).name == "zebra"
+      assert stored.(labels.chore).name == "chore"
+
+      # a value the action refuses marks the cell and saves nothing
+      html = save(view, id, labels.chore.id, "colour", "red")
+      assert %{shown: "red"} = failure(html, id, labels.chore.id, "colour")
+      assert stored.(labels.chore).colour == labels.chore.colour
+    end
+
+    test "the project of a task is edited in place, in the one row of a belongs-to",
+         %{conn: conn, world: world, task: task, project: project} do
+      {view, html, id} = open_line(conn, task, "project")
+
+      assert editors(html, id) == ~w(name description status starts_on budget)
+      assert column(html, id, "name") == ["Aardvark"]
+
+      html = save(view, id, project.id, "name", "Anteater")
+
+      assert column(html, id, "name") == ["Anteater"]
+      assert Ash.get!(Demo.Tracker.Project, project.id, authorize?: false).name == "Anteater"
+
+      names =
+        for other <- world.projects,
+            do: Ash.get!(Demo.Tracker.Project, other.id, authorize?: false).name
+
+      assert names == Enum.map(world.projects, & &1.name)
+    end
+
+    test "each person edits what the destination's policies give them",
+         %{conn: conn, world: world, task: task, comments: comments, labels: labels} do
+      [own] = comments(world, task, ["By the member"], author_id: world.member.id)
+
+      # a member: their own comments and every project, no label
+      conn = log_in(conn, world.member)
+      {view, html, id} = open_line(conn, task, "comments")
+      assert editors(html, id) == ["body"]
+      html = save(view, id, own.id, "body", "By the member, reworded")
+      assert text(html, cell(id, own.id, "body")) == "By the member, reworded"
+
+      # whose a comment is, is known when it is saved: the cell says so
+      html = save(view, id, comments.first.id, "body", "Not mine")
+
+      assert failure(html, id, comments.first.id, "body") == %{
+               shown: "Not mine",
+               message: "You are not allowed to change this."
+             }
+
+      assert Ash.get!(Demo.Tracker.Comment, comments.first.id, authorize?: false).body == "First"
+
+      {_view, html, id} = open_line(conn, task, "project")
+      assert editors(html, id) == ~w(name description status starts_on budget)
+
+      {view, html, id} = open_line(conn, task, "labels")
+      assert editors(html, id) == []
+      save(view, id, labels.bug.id, "name", "zebra")
+      assert Ash.get!(Demo.Tracker.Label, labels.bug.id, authorize?: false).name == "bug"
+
+      # a viewer: nothing
+      conn = log_in(conn, world.viewer)
+
+      for relationship <- ~w(comments labels project) do
+        {_view, html, id} = open_line(conn, task, relationship)
+        assert editors(html, id) == [], relationship
+        assert attribute(html, "[id='#{id}-table'] td", "aria-readonly") == [], relationship
+      end
     end
   end
 

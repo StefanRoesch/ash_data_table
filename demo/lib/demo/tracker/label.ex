@@ -22,9 +22,11 @@ defmodule Demo.Tracker.Label do
     plural_name :labels
   end
 
-  # No `column`: the table shows the public attributes. A label is called by
-  # its name: over the tasks of one label, in their full view.
+  # No `column`: the table shows the public attributes, and edits those its
+  # `update` action accepts. A label is called by its name: over the tasks of
+  # one label, in their full view.
   table do
+    update_action :update
     label_field :name
   end
 

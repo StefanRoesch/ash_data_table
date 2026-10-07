@@ -34,9 +34,11 @@ defmodule Demo.Tracker.Comment do
     plural_name :comments
   end
 
-  # No `column`: the table shows the public attributes. A person whose read is
-  # refused is told so, in place of the rows.
+  # No `column`: the table shows the public attributes, and edits the one its
+  # `update` action accepts, the body. A person whose read is refused is told
+  # so, in place of the rows.
   table do
+    update_action :update
     on_forbidden :message
   end
 

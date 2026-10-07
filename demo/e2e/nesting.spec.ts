@@ -562,6 +562,61 @@ test.describe("editing in a nested table", () => {
     await expect(tasks.rows).toHaveCount(1)
   })
 
+  test("the comments, the labels and the project under a task are edited as on their own pages", async ({
+    page,
+    tasks,
+    frames,
+  }) => {
+    for (const { relationship, column, value, path, id } of [
+      { relationship: "comments", column: "body", value: "Edited under its task", path: "/comments", id: "comment" },
+      { relationship: "labels", column: "colour", value: "#123456", path: "/labels", id: "label" },
+      { relationship: "project", column: "name", value: "Renamed under its task", path: "/projects", id: "project" },
+    ]) {
+      await tasks.open()
+      const nested = await tasks.openLine(FIRST, relationship)
+      await expect(nested.editorTemplates, relationship).not.toHaveCount(0)
+      const keys = await nested.rowKeys()
+      const cell = nested.cell(keys[0], column)
+      await expect(cell, relationship).not.toHaveAttribute("aria-readonly")
+
+      await cell.focus()
+      await tasks.press("Enter")
+      await expect(nested.editor(cell), relationship).toBeFocused()
+      await tasks.retype(value)
+      await frames.clear()
+      await nested.saves(cell, () => tasks.press("Enter"))
+
+      await expect(cell, relationship).toHaveText(value)
+      await expect(cell, relationship).toBeFocused()
+      await expect(cell, relationship).not.toHaveAttribute("aria-invalid")
+      // one save, of this table, and nothing is read again: the rows stay where they are
+      expect(await frames.count("save"), relationship).toBe(1)
+      expect(await frames.all(), relationship).toHaveLength(1)
+      expect(await nested.rowKeys(), relationship).toEqual(keys)
+      await expect(tasks.line(FIRST, relationship)).toHaveAttribute("aria-expanded", "true")
+
+      // the record that was saved is that one: its own page shows it, and no other record has the value
+      const own = new Table(page, id, path)
+      await own.open(`${path}?${id}[f][${column}]=${encodeURIComponent(value)}`)
+      expect(await own.rowKeys(), relationship).toEqual([keys[0]])
+    }
+  })
+
+  test("the people under a task cannot be edited: their table names no update action", async ({ tasks, frames }) => {
+    const reporter = await tasks.openLine(FIRST, "reporter")
+    await expect(reporter.editorTemplates).toHaveCount(0)
+    await expect(reporter.grid.locator("[aria-readonly]")).toHaveCount(0)
+
+    const name = reporter.cell(await reporter.rowKey(1), "name")
+    await name.focus()
+    await frames.clear()
+    await tasks.press("Enter", "F2", "x")
+    await name.dblclick()
+    await expect(reporter.openEditors).toHaveCount(0)
+    await expect(name).toBeFocused()
+    expect(await frames.all()).toEqual([])
+  })
+
   test("a column that asks first asks in the nested table's own dialog, and a failed save marks its cell", async ({
     page,
   }) => {

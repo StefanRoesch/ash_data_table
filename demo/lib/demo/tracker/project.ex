@@ -40,10 +40,11 @@ defmodule Demo.Tracker.Project do
     end
   end
 
-  # No `column`: the table shows the public attributes. A project is called
-  # by its name where a table shows it as one value: in the "Project" column
-  # of /tasks.
+  # No `column`: the table shows the public attributes, and edits those its
+  # `update` action accepts. A project is called by its name where a table
+  # shows it as one value: in the "Project" column of /tasks.
   table do
+    update_action :update
     label_field :name
   end
 

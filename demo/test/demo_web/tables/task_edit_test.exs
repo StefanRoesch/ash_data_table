@@ -760,13 +760,28 @@ defmodule DemoWeb.Tables.TaskEditTest do
   describe "a table without an update action" do
     test "a table without an update action offers no editing: nothing is marked and there are no editors",
          %{conn: conn} do
+      # the demo's one table that names no update action is the people's
+      # (`Demo.Tracker.User`), which is only ever seen nested: here as the
+      # task's reporter, for the admin, who may update a person
       world = world(tasks: 0)
-      {:ok, _view, html} = conn |> log_in(world.admin) |> live("/labels")
+      task = task(world, [])
+      {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
+      expand(view, task.id)
+      html = toggle(view, task.id, "reporter")
+      id = nested(task.id, "reporter")
 
-      assert length(column(html, "label", "name")) > 0
-      assert attribute(html, "#label-table td", "aria-readonly") == []
-      assert editors(html, "label") == []
-      assert attribute(html, "#label dialog", "id") == []
+      assert column(html, id, "name") == [world.admin.name]
+      assert attribute(html, "[id='#{id}-table'] td", "aria-readonly") == []
+      assert editors(html, id) == []
+      assert attribute(html, "[id='#{id}'] template", "id") == []
+      assert attribute(html, "[id='#{id}'] dialog", "id") == []
+
+      # and the event the table would send saves nothing
+      html = save(view, id, world.admin.id, "name", "Renamed")
+      assert column(html, id, "name") == [world.admin.name]
+
+      assert Ash.get!(Demo.Tracker.User, world.admin.id, authorize?: false).name ==
+               world.admin.name
     end
   end
 end

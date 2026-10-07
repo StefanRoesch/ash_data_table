@@ -147,7 +147,8 @@ defmodule DemoWeb.Tables.EmbeddedTableTest do
       {:ok, view, html} = live(conn, "/dashboard")
 
       assert "title" in editors(html, @tasks)
-      assert editors(html, @projects) == []
+      # each table has the editors of its own columns
+      assert editors(html, @projects) == ~w(name description status starts_on budget)
 
       html = save(view, @tasks, task.id, "title", "Task thirty")
 

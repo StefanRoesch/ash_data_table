@@ -123,6 +123,13 @@ Three rules decide which records and in which order:
 - **A person's sort or filter never applies to a single record.** On a
   has-one that picks one of many it would change which one that is.
 
+**Try it:** `/tasks` as Ada Admin: expand a row. Under "Comments", edit a
+body; under "Labels", a colour; under "Project", the name of the one row.
+Each is saved through the `update_action` of its own table, as on `/comments`,
+`/labels` and `/projects`. Under "Assignee" no cell opens: the table of the
+demo's people names no `update_action`, so it is read-only wherever it is
+shown.
+
 The demo has no `no_attributes?` and no manual relationship. The library's
 own tests have both
 ([`test/support/relating.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/relating.ex)):
@@ -410,14 +417,16 @@ record that was not read for them is not named at all: the heading is then
 the relationship alone. Where the router mounts the parent's own table, the
 record's name is a link to that page.
 
-The demo's labels declare what they are called by, and nothing else
+The demo's labels declare what they are called by
 ([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
-# No `column`: the table shows the public attributes. A label is called by
-# its name: over the tasks of one label, in their full view.
+# No `column`: the table shows the public attributes, and edits those its
+# `update` action accepts. A label is called by its name: over the tasks of
+# one label, in their full view.
 table do
+  update_action :update
   label_field :name
 end
 ```

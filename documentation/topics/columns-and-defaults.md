@@ -20,17 +20,19 @@ declares none
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
-# No `column`: the table shows the public attributes. A project is called
-# by its name where a table shows it as one value: in the "Project" column
-# of /tasks.
+# No `column`: the table shows the public attributes, and edits those its
+# `update` action accepts. A project is called by its name where a table
+# shows it as one value: in the "Project" column of /tasks.
 table do
+  update_action :update
   label_field :name
 end
 ```
 
-The one line of its block is about other tables (see
-[Reference cells](#reference-cells)). Without the block the table would be
-the same.
+Neither line of its block is about columns. `update_action` makes the table
+editable (see [Inline editing](inline-editing.md)), and `label_field` is
+about other tables (see [Reference cells](#reference-cells)). Without the
+block the table would have the same columns, and be read-only.
 
 **Try it:** `/projects` in the demo, as Ada Admin. The columns are ID, Name,
 Description, Status, Starts on, Budget and Inserted at.
@@ -55,9 +57,9 @@ set. All of the demo's tables but two are of this kind:
 
 | Demo page | Block | Columns |
 | --- | --- | --- |
-| `/projects` | `label_field :name` | ID, Name, Description, Status, Starts on, Budget, Inserted at |
-| `/labels` | `label_field :name` | ID, Name, Colour |
-| `/comments` | `on_forbidden :message` | ID, Body, Inserted at, Task ID, Author ID |
+| `/projects` | `update_action :update`, `label_field :name` | ID, Name, Description, Status, Starts on, Budget, Inserted at |
+| `/labels` | `update_action :update`, `label_field :name` | ID, Name, Colour |
+| `/comments` | `update_action :update`, `on_forbidden :message` | ID, Body, Inserted at, Task ID, Author ID |
 | `/task_labels` | `update_action :update` | Note, Task ID, Label ID |
 | `/specimens` | `update_action :update` | ID, then one column per attribute of the kitchen-sink resource |
 

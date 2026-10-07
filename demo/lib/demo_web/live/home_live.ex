@@ -19,24 +19,28 @@ defmodule DemoWeb.HomeLive do
     {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
      [
        {"/projects",
-        "no table block: the default columns; for nobody, a page that does not exist. " <>
+        "no column declared: the default columns, edited in place by admins and members; " <>
+          "for nobody, a page that does not exist. " <>
           "A row expands into its tasks: the one relationship it offers by default"}
      ]},
     {Demo.Tracker.Comment, "Keyset pagination only. Its read is refused outright for nobody.",
      [
        {"/comments",
-        "keyset pages: next and previous; for nobody, a message (on_forbidden). " <>
+        "keyset pages: next and previous; the body is edited in place by admins and by " <>
+          "its author; for nobody, a message (on_forbidden). " <>
           "A row expands into its task and its author"}
      ]},
     {Demo.Tracker.Label, "No pagination.",
      [
-       {"/labels", "no pagination: every record. A row expands into its tasks"},
+       {"/labels",
+        "no pagination: every record, edited in place by admins. A row expands into its tasks"},
        {"/bare/labels", "the same, mounted without the app layout"}
      ]},
     {Demo.Tracker.User,
      "Not multitenant; filtered to your organization by policy, and refused outright for a " <>
        "viewer. Its table is mounted nowhere: it is seen nested, under a task or a comment, " <>
-       "and its rows never expand (max_depth 0).", []},
+       "and its rows never expand (max_depth 0). The demo's one read-only table: it names " <>
+       "no update action.", []},
     {Demo.Tracker.Organization, "The tenant.", []},
     {Demo.Tracker.TaskLabel, "The join between tasks and labels.",
      [

@@ -799,8 +799,12 @@ defmodule AshTable.Live.TableComponent do
         phx-target={@myself}
       >
       </form>
-      <%!-- as high as its button, so that the table does not move when it appears --%>
-      <div class="mb-2 flex min-h-8 items-center justify-end">
+      <%!-- as high as its button, so that the table does not move when it appears;
+      a nested table keeps no room free for it --%>
+      <div class={[
+        "flex items-center",
+        if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-end")
+      ]}>
         <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
         <button
           :if={@state.filters != %{}}
@@ -842,6 +846,9 @@ defmodule AshTable.Live.TableComponent do
           class={
             [
               "table aria-busy:opacity-60",
+              # a nested table is as wide as its columns need and no wider; in
+              # everything else it looks as a table on a page does
+              @nested? && "w-auto",
               # what every cell looks like is set once here, to keep each cell's markup small:
               # the focus ring, which a cell keeps while its editor has the focus
               "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary",
@@ -851,10 +858,15 @@ defmodule AshTable.Live.TableComponent do
               # one line per row: long text is cut off, not wrapped. Not in a cell
               # that spans the table: a line, or the cell a nested table is in.
               "[&>tbody>tr>td:not([colspan])]:max-w-80 [&>tbody>tr>td:not([colspan])]:truncate",
-              # the expander of a row and the button of a line, with the mark that turns when open
+              # the expander of a row and the button of a line. Their mark is a
+              # triangle drawn in CSS, not a character: it turns about its own
+              # centre, so it sits in the same place open and closed.
               "[&>tbody>tr>td>button[aria-expanded]]:cursor-pointer [&>tbody>tr>td[data-expander]]:w-0 [&>tbody>tr>td[data-expander]>button]:px-1",
-              "[&>tbody>tr>td[data-expander]>button]:transition-transform [&>tbody>tr>td[data-expander]>button[aria-expanded=true]]:rotate-90",
-              "[&>tbody>tr>td[data-line]>button>span]:inline-block [&>tbody>tr>td[data-line]>button>span]:transition-transform [&>tbody>tr>td[data-line]>button[aria-expanded=true]>span]:rotate-90"
+              "[&>tbody>tr>td>button[aria-expanded]]:before:inline-block [&>tbody>tr>td>button[aria-expanded]]:before:size-0 [&>tbody>tr>td>button[aria-expanded]]:before:content-['']",
+              "[&>tbody>tr>td>button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>td>button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>td>button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>td>button[aria-expanded]]:before:border-s-current",
+              "[&>tbody>tr>td>button[aria-expanded]]:before:transition-transform [&>tbody>tr>td>button[aria-expanded=true]]:before:rotate-90",
+              # a line's mark stands under its row's
+              "[&>tbody>tr>td[data-line]>button]:ps-1 [&>tbody>tr>td[data-line]>button]:before:me-2"
             ]
           }
           phx-update="stream"
@@ -946,7 +958,7 @@ defmodule AshTable.Live.TableComponent do
             aria-colindex="1"
             tabindex="-1"
             data-expander
-          ><button type="button" tabindex="-1" aria-expanded={to_string(row.open?)} aria-label={Text.t(:related_records)}>▸</button></td><td
+          ><button type="button" tabindex="-1" aria-expanded={to_string(row.open?)} aria-label={Text.t(:related_records)}></button></td><td
             :for={{column, index} <- Enum.with_index(@model.columns)}
             id={"#{dom_id}-c-#{column.name}"}
             role="gridcell"
@@ -958,9 +970,12 @@ defmodule AshTable.Live.TableComponent do
           the arrow keys and entered with Enter, as a filter is, and no tab stop in the
           middle of the grid around it. The element stays where it is once it is there,
           as every child of a stream's container with an id does. --%>
+          <%!-- In the text of the table: the range reads as it does under a table
+          on a page, not as a footer's heading. --%>
           <tfoot
             :if={@nested?}
             id={"#{@id}-foot"}
+            class="font-normal text-base-content"
             hidden={not pages?(@page, @model) and not full_view?(@page, @full_view)}
           >
             <tr :if={pages?(@page, @model)} id={"#{@id}-foot-row"} role="row">
@@ -1991,16 +2006,16 @@ defmodule AshTable.Live.TableComponent do
           aria-colindex="1"
           tabindex="-1"
           data-line={relationship.name}
-          class="py-1 ps-10"
+          class="py-1"
         >
           <button
             type="button"
             id={"#{@row_id}-l-#{relationship.name}-b"}
             tabindex="-1"
             aria-expanded={to_string(relationship.name in @row.lines)}
-            class="text-sm font-medium"
+            class="font-medium"
           >
-            <span aria-hidden="true">▸</span> {relationship.label}
+            {relationship.label}
           </button>
         </td>
       </tr>
@@ -2018,7 +2033,7 @@ defmodule AshTable.Live.TableComponent do
           data-nested
           data-line-cell={"#{@row_id}-l-#{relationship.name}-c"}
           data-expander-cell={"#{@row_id}-e"}
-          class="pt-0 pb-3 ps-10"
+          class="p-0"
         >
           <%!-- No wider than the cell for the layout of the table around it,
           whatever the nested table would like: the columns around it stay as they
@@ -2026,7 +2041,7 @@ defmodule AshTable.Live.TableComponent do
           and the grid on the page scrolls for it: one region that scrolls, the one
           that holds the tab stop, and none inside it that the keyboard could not
           reach with Tab. --%>
-          <div class="w-0 min-w-full border-s-2 border-base-300 ps-3">
+          <div class="w-0 min-w-full">
             <.live_component
               module={__MODULE__}
               id={"#{@row_id}-t-#{relationship.name}"}
@@ -2124,7 +2139,8 @@ defmodule AshTable.Live.TableComponent do
   # controls to go to another. Under a table of its own it is a navigation
   # landmark after the grid, whose controls are ordinary tab stops. In a
   # nested table it is a group in the last row of the grid, and its controls
-  # are reached through that row's cell.
+  # are reached through that row's cell. There the controls follow the range
+  # at the left: the right end of a nested table may be out of sight.
   #
   # The hook keeps focus on the control that was used, or sends it on when
   # that control is gone (see `.Pagination` below).
@@ -2154,7 +2170,7 @@ defmodule AshTable.Live.TableComponent do
       phx-hook=".Pagination"
       role="group"
       aria-label={Text.t(:pagination, table: @label)}
-      class="flex flex-wrap items-center justify-between gap-4"
+      class="flex flex-wrap items-center justify-start gap-4"
     >
       <.pages {assigns} />
     </div>

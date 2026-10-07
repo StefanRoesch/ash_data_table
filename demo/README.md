@@ -56,9 +56,9 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | URL | Resource | Shows |
 | --- | --- | --- |
 | http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
-| http://localhost:4478/projects | `Project` | no column declared: the public attributes. Its block says only what a project is called in other tables (`label_field :name`). Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
-| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
-| http://localhost:4478/labels | `Label` | no pagination: every record. `label_field :name` and nothing else in its block |
+| http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Its block also says what a project is called in other tables (`label_field :name`). Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
+| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
+| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25 |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
@@ -124,6 +124,11 @@ Things to try:
 - `/projects`: expand "Mobile app" and open its tasks. Sort them, filter
   them, go to their second page, edit a title: the projects around them stay
   as they are, and so does the URL.
+- `/tasks` as Ada Admin: under a task, edit the body of a comment, the
+  colour of a label and the name of the project. A nested table is the
+  destination's own table, so it edits what that table edits on its own
+  page. Under "Assignee" and "Reported by" no cell opens: the table of the
+  people names no `update_action`, as the demo's one read-only table.
 - With the keyboard: Left Arrow from the first cell of a row reaches its
   expander; Right Arrow opens it and Left Arrow closes it; Down Arrow goes
   through the lines; on the cell of a nested table Enter goes in and Escape
