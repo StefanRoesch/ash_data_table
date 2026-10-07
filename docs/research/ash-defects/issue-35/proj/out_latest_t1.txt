@@ -1,0 +1,6 @@
+== Pg
+admin: OK Ash.Page.Offset count=7 [{"t4", 0, "s4"}, {"t6", 2, "s6"}, {"t7", 3, "s7"}]
+member: ERROR
+== Ets
+admin: OK Ash.Page.Offset count=7 [{"t5", 1, "s5"}, {"t4", 0, "s4"}, {"t7", 3, "s7"}]
+member: OK Ash.Page.Offset count=7 [{"t5", 1, "s5"}, {"t4", 0, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>}, {"t7", 3, #Ash.ForbiddenField<field: :secret, type: :attribute, ...>}]

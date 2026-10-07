@@ -1,0 +1,80 @@
+## P. minimal failing load set for a TOP-LEVEL paged read (Pg.TaskRec, member): [:agg_count, :agg_count_fp, :agg_count_calc]
+TaskRec member page(limit 3, offset 0), sort points             | load [:agg_count, :agg_count_fp, :agg_count_calc] => ERROR
+TaskRec member page(limit 3, offset 0, count), sort points      | load [:agg_count, :agg_count_fp, :agg_count_calc] => ERROR
+TaskRec member page(limit 3) no sort                            | load [:agg_count, :agg_count_fp, :agg_count_calc] => ERROR
+TaskRec member NOT paged                                        | load [:agg_count, :agg_count_fp, :agg_count_calc] => OK
+TaskRec ADMIN paged                                             | load [:agg_count, :agg_count_fp, :agg_count_calc] => OK
+TaskRecOnly ADMIN paged                                         | load [:agg_count, :agg_count_fp, :agg_count_calc] => ERROR
+TaskNone member paged                                           | load [:agg_count, :agg_count_fp, :agg_count_calc] => OK
+TaskAct member paged                                            | load [:agg_count, :agg_count_fp, :agg_count_calc] => OK
+Ets.TaskRec member paged                                        | load [:agg_count, :agg_count_fp, :agg_count_calc] => OK
+
+Bread Crumbs:
+  > Error returned from: Pg.TaskRec.read
+
+Unknown Error
+
+* ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+  agg_count_calc:
+    type(
+      type(
+        coalesce(as(1).agg_count(), type(^0, {:parameterized, {Ash.Type.Integer.EctoType, []}})),
+        {:parameterized, {Ash.Type.Integer.EctoType, []}}
+      ),
+      {:parameterized, {Ash.Type.Integer.EctoType, []}}
+    ),
+  calculations: %{
+    calculation_0:
+      type(
+        type(as(0).assignee_id(), {:parameterized, {Ash.Type.UUID.EctoType, []}}) ==
+          type(^1, {:parameterized, {Ash.Type.UUID.EctoType, []}}),
+        {:parameterized, {Ash.Type.Boolean.EctoType, []}}
+      )
+  }
+}` in query:
+
+from t0 in Pg.TaskRec,
+  as: 0,
+  left_lateral_join: c1 in subquery(from c0 in Pg.Comment,
+  as: 1,
+  where: parent_as(0).id == as(1).task_id,
+  group_by: [c0.task_id],
+  select: %{
+  task_id: c0.task_id,
+  agg_count:
+    type(
+      coalesce(count(), type(^0, {:parameterized, {Ash.Type.Integer.EctoType, []}})),
+      {:parameterized, {Ash.Type.Integer.EctoType, []}}
+    )
+}),
+  on: true,
+  order_by: [desc: as(0).points, asc: as(0).id],
+  limit: ^4,
+  select: merge(
+  merge(struct(t0, [:id, :title, :points, :assignee_id, :project_id, :secret]), %{
+    agg_count_calc:
+      type(
+        type(
+          coalesce(as(1).agg_count, type(^0, {:parameterized, {Ash.Type.Integer.EctoType, []}})),
+          {:parameterized, {Ash.Type.Integer.EctoType, []}}
+        ),
+        {:parameterized, {Ash.Type.Integer.EctoType, []}}
+      ),
+    calculations: %{
+      calculation_0:
+        type(
+          type(as(0).assignee_id, {:parameterized, {Ash.Type.UUID.EctoType, []}}) ==
+            type(
+              ^"00000000-0000-0000-0000-0000000000b2",
+              {:parameterized, {Ash.Type.UUID.EctoType, []}}
+            ),
+          {:parameterized, {Ash.Type.Boolean.EctoType, []}}
+        )
+    }
+  }),
+  %{agg_count: coalesce(as(1).agg_count, ^0)}
+)
+
+  (ecto 3.14.2) lib/ecto/repo/queryable.ex:230: Ecto.Repo.Queryable.execute/4
+  (ecto 3.14.2) lib/ecto/repo/queryable.ex:19: Ecto.Repo.Queryable.all/3
+  (ash_postgres 2.14.2) lib/data_layer.ex:940: anonymous fn/3 in AshPostgres.DataLayer.run_query/2

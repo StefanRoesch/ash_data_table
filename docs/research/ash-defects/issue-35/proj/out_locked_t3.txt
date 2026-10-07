@@ -1,0 +1,48 @@
+## G. NO field policy at all: anonymous calculation / aggregate on the related query
+Pg  | None: Ash.Query.calculate only, paged                                 | OK offset n=3 count=7 secret=vvv
+Ets | None: Ash.Query.calculate only, paged                                 | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.calculate + load agg_count, paged                     | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | None: Ash.Query.calculate + load agg_count, paged                     | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.calculate + load agg_count, ADMIN, paged              | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | None: Ash.Query.calculate + load agg_count, ADMIN, paged              | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.calculate + load agg_count, authorize off-ish nil actor| ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | None: Ash.Query.calculate + load agg_count, authorize off-ish nil actor| OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.calculate + load agg_count, NOT paged                 | OK list n=7 count=nil secret=vvvvvvv
+Ets | None: Ash.Query.calculate + load agg_count, NOT paged                 | OK list n=7 count=nil secret=vvvvvvv
+Pg  | None: Ash.Query.calculate + load agg_count, m2m paged                 | OK offset n=3 count=7 secret=vvv
+Ets | None: Ash.Query.calculate + load agg_count, m2m paged                 | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.calculate + load agg_count, top-level paged           | OK offset n=3 count=7 secret=vvv
+Ets | None: Ash.Query.calculate + load agg_count, top-level paged           | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.calculate + load double_points, paged                 | OK offset n=3 count=7 secret=vvv
+Ets | None: Ash.Query.calculate + load double_points, paged                 | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.aggregate only, paged                                 | OK offset n=3 count=7 secret=vvv
+Ets | None: Ash.Query.aggregate only, paged                                 | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.aggregate + load agg_count, paged                     | OK offset n=3 count=7 secret=vvv
+Ets | None: Ash.Query.aggregate + load agg_count, paged                     | OK offset n=3 count=7 secret=vvv
+Pg  | None: Ash.Query.aggregate + Ash.Query.calculate, paged                | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | None: Ash.Query.aggregate + Ash.Query.calculate, paged                | OK offset n=3 count=7 secret=vvv
+Pg  | None: load double_points + agg_count, paged                           | OK offset n=3 count=7 secret=vvv
+Ets | None: load double_points + agg_count, paged                           | OK offset n=3 count=7 secret=vvv
+## H. sorting/filtering by an aggregate (Rec, member, paged)
+Pg  | sort [agg_count: :desc, points: :asc], not loaded                     | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | sort [agg_count: :desc, points: :asc], not loaded                     | OK offset n=3 count=7 secret=FFv
+Pg  | sort_input [-agg_count, points], not loaded                           | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | sort_input [-agg_count, points], not loaded                           | OK offset n=3 count=7 secret=FFv
+Pg  | action :sorted + sort_input -agg_count                                | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | action :sorted + sort_input -agg_count                                | OK offset n=3 count=7 secret=FFv
+Pg  | sort [agg_count: :desc, points: :asc], ADMIN                          | OK offset n=3 count=7 secret=vvv
+Ets | sort [agg_count: :desc, points: :asc], ADMIN                          | OK offset n=3 count=7 secret=vvv
+Pg  | sort [agg_max: :desc, points: :asc], not loaded                       | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | sort [agg_max: :desc, points: :asc], not loaded                       | OK offset n=3 count=7 secret=FFF
+Pg  | sort [agg_first: :desc, points: :asc], not loaded                     | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | sort [agg_first: :desc, points: :asc], not loaded                     | OK offset n=3 count=7 secret=FFF
+Pg  | sort [double_points: :desc], not loaded                               | OK offset n=3 count=7 secret=FFv
+Ets | sort [double_points: :desc], not loaded                               | OK offset n=3 count=7 secret=FFv
+Pg  | filter agg_count > 1                                                  | WRONG count 4 want 7; rows/order differ: got [2, 3, 6] want [1, 2, 3] offset n=3 count=4 secret=vFF
+Ets | filter agg_count > 1                                                  | WRONG count 4 want 7; rows/order differ: got [2, 3, 6] want [1, 2, 3] offset n=3 count=4 secret=vFF
+Pg  | filter_input agg_count greater_than 1                                 | WRONG count 4 want 7; rows/order differ: got [2, 3, 6] want [1, 2, 3] offset n=3 count=4 secret=vFF
+Ets | filter_input agg_count greater_than 1                                 | WRONG count 4 want 7; rows/order differ: got [2, 3, 6] want [1, 2, 3] offset n=3 count=4 secret=vFF
+Pg  | filter secret == "s2" (protected field)                               | WRONG count 3 want 7; rows/order differ: got [2] want [1, 2, 3] offset n=1 count=3 secret=v
+Ets | filter secret == "s2" (protected field)                               | WRONG count 3 want 7; rows/order differ: got [2] want [1, 2, 3] offset n=1 count=3 secret=v
+Pg  | top-level: filter_input secret in [s1,s2,s3]                          | WRONG count 1 want 7; rows/order differ: got [2] want [1, 2, 3] offset n=1 count=1 secret=v
+Ets | top-level: filter_input secret in [s1,s2,s3]                          | WRONG count 1 want 7; rows/order differ: got [2] want [1, 2, 3] offset n=1 count=1 secret=v

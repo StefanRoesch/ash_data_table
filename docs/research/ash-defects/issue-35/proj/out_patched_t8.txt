@@ -1,0 +1,51 @@
+
+
+
+
+
+
+
+
+## O. TOP-LEVEL reads (no relationship): a calculation that refers to an aggregate, plus other loads
+Pg  | TaskRec member paged [:agg_count, :agg_count_calc]                            | OK n=3
+Ets | TaskRec member paged [:agg_count, :agg_count_calc]                            | OK n=3
+Pg  | TaskRec member paged [:agg_first, :agg_count_calc]                            | OK n=3
+Ets | TaskRec member paged [:agg_first, :agg_count_calc]                            | OK n=3
+Pg  | TaskRec member paged [:agg_list, :agg_count_calc]                             | OK n=3
+Ets | TaskRec member paged [:agg_list, :agg_count_calc]                             | OK n=3
+Pg  | TaskRec member paged [:agg_max, :agg_count_calc]                              | OK n=3
+Ets | TaskRec member paged [:agg_max, :agg_count_calc]                              | OK n=3
+Pg  | TaskRec member paged [:agg_sum, :agg_count_calc]                              | OK n=3
+Ets | TaskRec member paged [:agg_sum, :agg_count_calc]                              | OK n=3
+Pg  | TaskRec member paged [:agg_exists, :agg_count_calc]                           | OK n=3
+Ets | TaskRec member paged [:agg_exists, :agg_count_calc]                           | OK n=3
+Pg  | TaskRec member paged [:agg_count_filtered, :agg_count_calc]                   | OK n=3
+Ets | TaskRec member paged [:agg_count_filtered, :agg_count_calc]                   | OK n=3
+Pg  | TaskRec member paged [:agg_max_protected, :agg_count_calc]                    | OK n=3
+Ets | TaskRec member paged [:agg_max_protected, :agg_count_calc]                    | OK n=3
+Pg  | TaskRec member paged [:agg_count_fp, :agg_count_calc]                         | OK n=3
+Ets | TaskRec member paged [:agg_count_fp, :agg_count_calc]                         | OK n=3
+Pg  | TaskRec member paged [:double_points, :agg_count_calc]                        | OK n=3
+Ets | TaskRec member paged [:double_points, :agg_count_calc]                        | OK n=3
+Pg  | TaskRec member paged [:secret_calc, :agg_count_calc]                          | OK n=3
+Ets | TaskRec member paged [:secret_calc, :agg_count_calc]                          | OK n=3
+Pg  | TaskRec member paged [:elixir_calc, :agg_count_calc]                          | OK n=3
+Ets | TaskRec member paged [:elixir_calc, :agg_count_calc]                          | OK n=3
+Pg  | TaskRec member paged ALL + agg_count_calc                                     | OK n=3
+Ets | TaskRec member paged ALL + agg_count_calc                                     | OK n=3
+Pg  | TaskRec member NOT paged ALL + agg_count_calc                                 | OK n=9
+Ets | TaskRec member NOT paged ALL + agg_count_calc                                 | OK n=9
+Pg  | TaskRec ADMIN paged ALL + agg_count_calc                                      | OK n=3
+Ets | TaskRec ADMIN paged ALL + agg_count_calc                                      | OK n=3
+Pg  | TaskNone member paged ALL + agg_count_calc                                    | OK n=3
+Ets | TaskNone member paged ALL + agg_count_calc                                    | OK n=3
+Pg  | TaskAct member paged ALL + agg_count_calc                                     | OK n=3
+Ets | TaskAct member paged ALL + agg_count_calc                                     | OK n=3
+Pg  | TaskNone member paged ALL + agg_count_calc + Ash.Query.calculate(anon)        | OK n=3
+Ets | TaskNone member paged ALL + agg_count_calc + Ash.Query.calculate(anon)        | OK n=3
+Pg  | TaskNone member paged [:agg_count] + Ash.Query.calculate(anon)                | OK n=3
+Ets | TaskNone member paged [:agg_count] + Ash.Query.calculate(anon)                | OK n=3
+Pg  | TaskNone member paged [:agg_first] + Ash.Query.calculate(anon)                | OK n=3
+Ets | TaskNone member paged [:agg_first] + Ash.Query.calculate(anon)                | OK n=3
+Pg  | TaskNone member NOT paged [:agg_first,:agg_count_calc] + Ash.Query.calculate(anon)| OK n=9
+Ets | TaskNone member NOT paged [:agg_first,:agg_count_calc] + Ash.Query.calculate(anon)| OK n=9

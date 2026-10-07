@@ -1,0 +1,29 @@
+bare paged relationship load: ok, n=3
+## N. step two of the workaround, field by field (Pg, member, TaskRec)
+Ash.load(records, [:agg_count], actor: member)                                      | OK [1, 0, 3]
+Ash.load(records, [:agg_first], actor: member)                                      | OK ["c5.1", nil, "c3.1"]
+Ash.load(records, [:agg_list], actor: member)                                       | OK [["c5.1"], [], ["c3.1", "c3.2", "c3.3"]]
+Ash.load(records, [:agg_max], actor: member)                                        | OK [51, nil, 33]
+Ash.load(records, [:agg_sum], actor: member)                                        | OK [51, nil, 96]
+Ash.load(records, [:agg_exists], actor: member)                                     | OK [true, false, true]
+Ash.load(records, [:agg_count_filtered], actor: member)                             | OK [1, 0, 3]
+Ash.load(records, [:agg_max_protected], actor: member)                              | OK [51, nil, 33]
+Ash.load(records, [:agg_count_fp], actor: member)                                   | OK [1, 0, 3]
+Ash.load(records, [:double_points], actor: member)                                  | OK [10, 8, 6]
+Ash.load(records, [:secret_calc], actor: member)                                    | OK ["s5!", "s4!", "s3!"]
+Ash.load(records, [:elixir_calc], actor: member)                                    | OK ["T:t5", "T:t4", "T:t3"]
+Ash.load(records, [:agg_count_pol], actor: member)                                  | OK [1, 0, 2]
+Ash.load(records, [:agg_count_calc], actor: member)                                 | OK [1, 0, 3]
+Ash.load(records, all fields)                                                       | OK 3
+## N2. the top-level read, same actor
+top-level offset page, H.fields()                                                   | OK 3
+top-level [limit: 3, offset: 2, count: true] load [:agg_count_pol]                  | OK [1, 0, 2]
+top-level [limit: 3] load [:agg_count_pol]                                          | OK [2, 1, 1]
+top-level [limit: 3, offset: 2, count: true] load [:agg_count_calc]                 | OK [1, 0, 3]
+top-level [limit: 3] load [:agg_count_calc]                                         | OK [3, 2, 1]
+top-level [limit: 3, offset: 2, count: true] load [:agg_count]                      | OK [1, 0, 3]
+top-level [limit: 3] load [:agg_count]                                              | OK [3, 2, 1]
+top-level, NOT paged, load [:agg_count_calc]                                        | OK 7
+top-level, NOT paged, load [:agg_count_calc], ADMIN                                 | OK 9
+top-level, NOT paged, TaskNone load [:agg_count_calc], member                       | OK 9
+top-level, NOT paged, TaskRec load [:agg_count_calc, :agg_count], member            | OK 9

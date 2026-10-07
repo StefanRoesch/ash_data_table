@@ -1,0 +1,59 @@
+## L. the workaround: bare paged relationship load, then Ash.load(records, loads, actor:) -- compared with ONE top-level read as the same actor
+Pg Rec     member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Rec     member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Rec     admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Rec     admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg RecAgg  member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg RecAgg  member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg RecAgg  admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg RecAgg  admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Act     member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Act     member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Act     admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg Act     admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg None    member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg None    member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg None    admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Pg None    admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Rec     member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Rec     member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Rec     admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Rec     admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets RecAgg  member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets RecAgg  member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets RecAgg  admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets RecAgg  admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Act     member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Act     member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Act     admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets Act     admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets None    member  offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets None    member  keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets None    admin   offset | Ash.Page.Offset n=3 count=7/top 7 order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+Ets None    admin   keyset | Ash.Page.Keyset n=3 count=nil/top nil order_kept=true keyset_metadata_kept=true (present: true) EQUAL_TO_TOP_LEVEL_READ=true
+
+## L2. what the member gets, Pg, variant Rec and RecAgg (values, to read by eye)
+  Rec t1: %{agg_count_pol: 1, agg_count_calc: 1, secret: :FORBIDDEN, agg_count: 1, agg_max_protected: 11, secret_calc: "s1!", double_points: 2}
+  Rec t2: %{agg_count_pol: 1, agg_count_calc: 2, secret: "s2", agg_count: 2, agg_max_protected: 22, secret_calc: "s2!", double_points: 4}
+  Rec t3: %{agg_count_pol: 2, agg_count_calc: 3, secret: :FORBIDDEN, agg_count: 3, agg_max_protected: 33, secret_calc: "s3!", double_points: 6}
+  Rec t4: %{agg_count_pol: 0, agg_count_calc: 0, secret: :FORBIDDEN, agg_count: 0, agg_max_protected: nil, secret_calc: "s4!", double_points: 8}
+  Rec t5: %{agg_count_pol: 1, agg_count_calc: 1, secret: "s5", agg_count: 1, agg_max_protected: 51, secret_calc: "s5!", double_points: 10}
+  Rec t6: %{agg_count_pol: 1, agg_count_calc: 2, secret: :FORBIDDEN, agg_count: 2, agg_max_protected: 62, secret_calc: "s6!", double_points: 12}
+  Rec t7: %{agg_count_pol: 2, agg_count_calc: 3, secret: :FORBIDDEN, agg_count: 3, agg_max_protected: 73, secret_calc: "s7!", double_points: 14}
+  (unauthorized baseline agg_count=[1, 2, 3, 0, 1, 2, 3] agg_count_pol=[1, 2, 3, 0, 1, 2, 3] agg_max_protected=[11, 22, 33, nil, 51, 62, 73])
+  RecAgg t1: %{agg_count_pol: 1, agg_count_calc: 1, secret: "s1", agg_count: :FORBIDDEN, agg_max_protected: 11, secret_calc: "s1!", double_points: :FORBIDDEN}
+  RecAgg t2: %{agg_count_pol: 1, agg_count_calc: 2, secret: "s2", agg_count: 2, agg_max_protected: 22, secret_calc: "s2!", double_points: 4}
+  RecAgg t3: %{agg_count_pol: 2, agg_count_calc: 3, secret: "s3", agg_count: :FORBIDDEN, agg_max_protected: 33, secret_calc: "s3!", double_points: :FORBIDDEN}
+  RecAgg t4: %{agg_count_pol: 0, agg_count_calc: 0, secret: "s4", agg_count: :FORBIDDEN, agg_max_protected: nil, secret_calc: "s4!", double_points: :FORBIDDEN}
+  RecAgg t5: %{agg_count_pol: 1, agg_count_calc: 1, secret: "s5", agg_count: 1, agg_max_protected: 51, secret_calc: "s5!", double_points: 10}
+  RecAgg t6: %{agg_count_pol: 1, agg_count_calc: 2, secret: "s6", agg_count: :FORBIDDEN, agg_max_protected: 62, secret_calc: "s6!", double_points: :FORBIDDEN}
+  RecAgg t7: %{agg_count_pol: 2, agg_count_calc: 3, secret: "s7", agg_count: :FORBIDDEN, agg_max_protected: 73, secret_calc: "s7!", double_points: :FORBIDDEN}
+  (unauthorized baseline agg_count=[1, 2, 3, 0, 1, 2, 3] agg_count_pol=[1, 2, 3, 0, 1, 2, 3] agg_max_protected=[11, 22, 33, nil, 51, 62, 73])
+
+## M. single-statement alternatives inside the paged relationship load (Pg, member)
+Rec: load resource calc agg_count_calc = expr(agg_count)                      | OK offset n=7 count=7 secret=FvFFvFF DIFFS: agg_count_calc@t1: 1 (unauthorized baseline #Ash.NotLoaded<:calcul values=[{1, nil}, {2, nil}, {3, nil}, {0, nil}, {1, nil}, {2, nil}, {3, nil}]
+Rec: Ash.Query.calculate(:c, :integer, expr(agg_count))                       | OK offset n=7 count=7 secret=FvFFvFF values=[NOT_LOADED: 1, NOT_LOADED: 2, NOT_LOADED: 3, NOT_LOADED: 0, NOT_LOADED: 1, NOT_LOADED: 2, NOT_LOADED: 3]
+RecAgg (agg_count itself protected): load agg_count_calc                      | OK offset n=7 count=7 secret=vvvvvvv DIFFS: agg_count_calc@t1: 1 (unauthorized baseline #Ash.NotLoaded<:calcul values=[{1, nil}, {2, nil}, {3, nil}, {0, nil}, {1, nil}, {2, nil}, {3, nil}]
+RecAgg: Ash.Query.calculate(:c, :integer, expr(agg_count))                    | OK offset n=7 count=7 secret=vvvvvvv values=[NOT_LOADED: 1, NOT_LOADED: 2, NOT_LOADED: 3, NOT_LOADED: 0, NOT_LOADED: 1, NOT_LOADED: 2, NOT_LOADED: 3]
+Rec: select without the protected field + load agg_count                      | OK offset n=7 count=7 secret=vvvvvvv values=[NOT_LOADED: nil, NOT_LOADED: nil, NOT_LOADED: nil, NOT_LOADED: nil, NOT_LOADED: nil, NOT_LOADED: nil, NOT_LOADED: nil]
+Rec: Ash.Query.aggregate(:x, :count, :comments) only                          | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in 

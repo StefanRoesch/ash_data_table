@@ -1,0 +1,13 @@
+## Q. top-level paged read, Pg.TaskRec, member: which third load triggers it (with [:agg_count, :agg_count_calc])
+[:agg_count, :agg_first, :agg_count_calc]                   | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_list, :agg_count_calc]                    | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_max, :agg_count_calc]                     | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_sum, :agg_count_calc]                     | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_exists, :agg_count_calc]                  | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_count_filtered, :agg_count_calc]          | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_max_protected, :agg_count_calc]           | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :agg_count_fp, :agg_count_calc]                | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a
+[:agg_count, :double_points, :agg_count_calc]               | OK n=7 count=9 values_equal_unauthorized_baseline=true
+[:agg_count, :secret_calc, :agg_count_calc]                 | OK n=7 count=9 values_equal_unauthorized_baseline=true
+[:agg_count, :elixir_calc, :agg_count_calc]                 | OK n=7 count=9 values_equal_unauthorized_baseline=true
+[:agg_count, :agg_count_pol, :agg_count_calc]               | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples a

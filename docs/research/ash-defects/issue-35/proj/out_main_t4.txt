@@ -1,0 +1,30 @@
+## I. many_to_many through a join resource with a composite primary key (lateral join)
+Pg  | m2m(unique join) member paged agg_count                               | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | m2m(unique join) member paged agg_count                               | OK offset n=3 count=7 secret=FvF
+Pg  | m2m(unique join) member paged no loads                                | OK offset n=3 count=7 secret=FvF
+Ets | m2m(unique join) member paged no loads                                | OK offset n=3 count=7 secret=FvF
+Pg  | m2m(unique join) member NOT paged agg_count                           | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | m2m(unique join) member NOT paged agg_count                           | OK list n=7 count=nil secret=FvFFvFF
+Pg  | m2m(unique join) member NOT paged, sorted none, agg_count             | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | m2m(unique join) member NOT paged, sorted none, agg_count             | OK list n=7 count=nil secret=FFFFFvv
+Pg  | m2m(unique join) admin paged agg_count                                | OK offset n=3 count=7 secret=vvv
+Ets | m2m(unique join) admin paged agg_count                                | OK offset n=3 count=7 secret=vvv
+Pg  | m2m(unique join) member paged double_points                           | OK offset n=3 count=7 secret=FvF
+Ets | m2m(unique join) member paged double_points                           | OK offset n=3 count=7 secret=FvF
+Pg  | m2m(unique join) variant None member paged agg_count                  | OK offset n=3 count=7 secret=vvv
+Ets | m2m(unique join) variant None member paged agg_count                  | OK offset n=3 count=7 secret=vvv
+Pg  | m2m(unique join) variant Act member paged agg_count                   | OK offset n=3 count=7 secret=FFF
+Ets | m2m(unique join) variant Act member paged agg_count                   | OK offset n=3 count=7 secret=FFF
+## J. has_one from_many? (always a lateral join; no paging involved)
+Pg  | has_one from_many member, agg_count                                   | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | has_one from_many member, agg_count                                   | OK one n=1 count=nil secret=F
+Pg  | has_one from_many member, no loads                                    | OK one n=1 count=nil secret=F
+Ets | has_one from_many member, no loads                                    | OK one n=1 count=nil secret=F
+Pg  | has_one from_many admin, agg_count                                    | OK one n=1 count=nil secret=v
+Ets | has_one from_many admin, agg_count                                    | OK one n=1 count=nil secret=v
+Pg  | has_one from_many member, double_points                               | OK one n=1 count=nil secret=F
+Ets | has_one from_many member, double_points                               | OK one n=1 count=nil secret=F
+Pg  | has_one from_many member, variant None, agg_count                     | OK one n=1 count=nil secret=v
+Ets | has_one from_many member, variant None, agg_count                     | OK one n=1 count=nil secret=v
+Pg  | has_one from_many member, variant Act, agg_count                      | OK one n=1 count=nil secret=F
+Ets | has_one from_many member, variant Act, agg_count                      | OK one n=1 count=nil secret=F

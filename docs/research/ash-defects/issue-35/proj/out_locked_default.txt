@@ -1,0 +1,134 @@
+
+## A. baseline claim and actor
+Pg  | member Rec has_many agg_count offset+count                    | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | member Rec has_many agg_count offset+count                    | OK offset n=3 count=7 secret=FvF
+Pg  | admin  Rec has_many agg_count offset+count                    | OK offset n=3 count=7 secret=vvv
+Ets | admin  Rec has_many agg_count offset+count                    | OK offset n=3 count=7 secret=vvv
+Pg  | nil actor Rec has_many agg_count offset+count                 | OK offset n=3 count=7 secret=FFF
+Ets | nil actor Rec has_many agg_count offset+count                 | OK offset n=3 count=7 secret=FFF
+
+## B. what is loaded (member, Rec, has_many, offset+count)
+Pg  | loads []                                                      | OK offset n=3 count=7 secret=FvF
+Ets | loads []                                                      | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_count]                                            | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_count]                                            | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_first]                                            | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_first]                                            | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_list]                                             | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_list]                                             | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_max]                                              | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_max]                                              | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_sum]                                              | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_sum]                                              | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_exists]                                           | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_exists]                                           | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_count_filtered]                                   | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_count_filtered]                                   | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_max_protected]                                    | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_max_protected]                                    | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:agg_count_fp]                                         | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | loads [:agg_count_fp]                                         | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:double_points]                                        | OK offset n=3 count=7 secret=FvF
+Ets | loads [:double_points]                                        | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:secret_calc]                                          | OK offset n=3 count=7 secret=FvF
+Ets | loads [:secret_calc]                                          | OK offset n=3 count=7 secret=FvF
+Pg  | loads [:elixir_calc]                                          | OK offset n=3 count=7 secret=FvF
+Ets | loads [:elixir_calc]                                          | OK offset n=3 count=7 secret=FvF
+
+## C. page shape (member, Rec, has_many, agg_count)
+Pg  | no page, no limit                                             | OK list n=7 count=nil secret=FvFFvFF
+Ets | no page, no limit                                             | OK list n=7 count=nil secret=FvFFvFF
+Pg  | no page, Ash.Query.limit(3)                                   | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | no page, Ash.Query.limit(3)                                   | OK list n=3 count=nil secret=FvF
+Pg  | offset limit only                                             | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | offset limit only                                             | OK offset n=3 count=nil secret=FvF
+Pg  | offset 2 + count                                              | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | offset 2 + count                                              | OK offset n=3 count=7 secret=FFv
+Pg  | page(limit: 3) (default type)                                 | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | page(limit: 3) (default type)                                 | OK offset n=3 count=nil secret=FvF
+Pg  | page(limit: 3, count: true)                                   | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | page(limit: 3, count: true)                                   | OK offset n=3 count=7 secret=FvF
+Pg  | count only page(count: true)                                  | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | count only page(count: true)                                  | OK offset n=7 count=7 secret=FvFFvFF
+
+## C2. same page shapes with NOTHING loaded
+Pg  | no page, Ash.Query.limit(3)                                   | OK list n=3 count=nil secret=FvF
+Ets | no page, Ash.Query.limit(3)                                   | OK list n=3 count=nil secret=FvF
+Pg  | page(limit: 3)                                                | OK offset n=3 count=nil secret=FvF
+Ets | page(limit: 3)                                                | OK offset n=3 count=nil secret=FvF
+
+## C3. keyset via `after` cursor
+Pg  | admin keyset after-cursor loads []                            | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+Pg  | admin keyset after-cursor loads [:agg_count]                  | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+Pg  | member keyset after-cursor loads []                           | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+Pg  | member keyset after-cursor loads [:agg_count]                 | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | admin keyset after-cursor loads []                            | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+Ets | admin keyset after-cursor loads [:agg_count]                  | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+Ets | member keyset after-cursor loads []                           | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+Ets | member keyset after-cursor loads [:agg_count]                 | OK Ash.Page.Keyset points=[3, 4, 5] more?=true
+
+## D. field policy shape on destination (member, has_many, agg_count, offset+count)
+Pg  | variant None                                                  | OK offset n=3 count=7 secret=vvv
+Ets | variant None                                                  | OK offset n=3 count=7 secret=vvv
+Pg  | variant Rec                                                   | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | variant Rec                                                   | OK offset n=3 count=7 secret=FvF
+Pg  | variant RecOnly                                               | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | variant RecOnly                                               | OK offset n=3 count=7 secret=FvF
+Pg  | variant Act                                                   | OK offset n=3 count=7 secret=FFF
+Ets | variant Act                                                   | OK offset n=3 count=7 secret=FFF
+Pg  | variant RecAgg                                                | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | variant RecAgg                                                | OK offset n=3 count=7 secret=vvv DIFFS: agg_count@t1: #Ash.ForbiddenField<field: :agg_count, type: :aggregate, ...> (unauthorized baseline 1) | agg_count@t3: #Ash.ForbiddenField<field: :agg_count, type: :aggregate, ...> (unauthori
+Pg  | variant Filt                                                  | OK offset n=3 count=7 secret=vvv
+Ets | variant Filt                                                  | OK offset n=3 count=7 secret=vvv
+Pg  | variant RecOnly, admin (record-dependent for admin too)       | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | variant RecOnly, admin (record-dependent for admin too)       | OK offset n=3 count=7 secret=FFF
+Pg  | variant RecAgg, member, loads double_points                   | OK offset n=3 count=7 secret=vvv DIFFS: double_points@t1: #Ash.ForbiddenField<field: :double_points, type: :calculation, ...> (unauthorized baseline 2) | double_points@t3: #Ash.ForbiddenField<field: :double_points, type: :calculat
+Ets | variant RecAgg, member, loads double_points                   | OK offset n=3 count=7 secret=vvv DIFFS: double_points@t1: #Ash.ForbiddenField<field: :double_points, type: :calculation, ...> (unauthorized baseline 2) | double_points@t3: #Ash.ForbiddenField<field: :double_points, type: :calculat
+Pg  | variant RecAgg, member, loads agg_max                         | OK offset n=3 count=7 secret=vvv
+Ets | variant RecAgg, member, loads agg_max                         | OK offset n=3 count=7 secret=vvv
+Pg  | variant RecAgg, member, no loads                              | OK offset n=3 count=7 secret=vvv
+Ets | variant RecAgg, member, no loads                              | OK offset n=3 count=7 secret=vvv
+
+## E. relationship kind / top-level (member, Rec, agg_count)
+Pg  | many_to_many offset+count                                     | OK offset n=3 count=7 secret=FvF
+Ets | many_to_many offset+count                                     | OK offset n=3 count=7 secret=FvF
+Pg  | many_to_many no page                                          | OK list n=7 count=nil secret=FvFFvFF
+Ets | many_to_many no page                                          | OK list n=7 count=nil secret=FvFFvFF
+Pg  | many_to_many paged, no loads                                  | OK offset n=3 count=7 secret=FvF
+Ets | many_to_many paged, no loads                                  | OK offset n=3 count=7 secret=FvF
+Pg  | many_to_many admin offset+count                               | OK offset n=3 count=7 secret=vvv
+Ets | many_to_many admin offset+count                               | OK offset n=3 count=7 secret=vvv
+Pg  | top-level read offset+count                                   | OK offset n=3 count=7 secret=FvF
+Ets | top-level read offset+count                                   | OK offset n=3 count=7 secret=FvF
+Pg  | top-level read keyset                                         | OK offset n=3 count=nil secret=FvF
+Ets | top-level read keyset                                         | OK offset n=3 count=nil secret=FvF
+Pg  | top-level read all fields                                     | OK offset n=3 count=7 secret=FvF
+Ets | top-level read all fields                                     | OK offset n=3 count=7 secret=FvF
+
+## F. how the related query is built (member, Rec, has_many, agg_count, offset+count)
+Pg  | build for_read_first                                          | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | build for_read_first                                          | OK offset n=3 count=7 secret=FvF
+Pg  | build load_first                                              | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | build load_first                                              | OK offset n=3 count=7 secret=FvF
+Pg  | build no_actor_in_query                                       | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | build no_actor_in_query                                       | OK offset n=3 count=7 secret=FvF
+Pg  | no sort on related query                                      | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | no sort on related query                                      | OK offset n=3 count=7 secret=FvF
+Pg  | action :sorted (sort from preparation)                        | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | action :sorted (sort from preparation)                        | OK offset n=3 count=7 secret=FFv
+Pg  | select [:id, :title, :points] (secret not selected)           | OK offset n=3 count=7 secret=vvv
+Ets | select [:id, :title, :points] (secret not selected)           | OK offset n=3 count=7 secret=vvv
+Pg  | select [:id, :points], nothing loaded                         | OK offset n=3 count=7 secret=vvv
+Ets | select [:id, :points], nothing loaded                         | OK offset n=3 count=7 secret=vvv
+Pg  | sort by agg_count, not loaded                                 | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | sort by agg_count, not loaded                                 | OK offset n=3 count=7 secret=FFv
+Pg  | sort by agg_count AND load it                                 | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | sort by agg_count AND load it                                 | OK offset n=3 count=7 secret=FFv
+Pg  | filter agg_count > 0, not loaded                              | OK offset n=3 count=7 secret=FvF
+Ets | filter agg_count > 0, not loaded                              | OK offset n=3 count=7 secret=FvF
+Pg  | all fields at once                                            | ERROR * ** (Ecto.QueryError) atoms, structs, maps, lists, tuples and sources are not allowed as map values in subquery, got: `%{
+Ets | all fields at once                                            | OK offset n=3 count=7 secret=FvF
+Pg  | all fields, admin                                             | OK offset n=3 count=7 secret=vvv
+Ets | all fields, admin                                             | OK offset n=3 count=7 secret=vvv
+Pg  | all fields, no page                                           | OK list n=7 count=nil secret=FvFFvFF
+Ets | all fields, no page                                           | OK list n=7 count=nil secret=FvFFvFF

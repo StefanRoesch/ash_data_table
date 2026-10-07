@@ -1,0 +1,67 @@
+diff -ru proj/deps_latest/ash_sql/lib/query.ex copies/ash_sql/lib/query.ex
+--- proj/deps_latest/ash_sql/lib/query.ex	2026-10-07 12:12:18.000000000 +0200
++++ copies/ash_sql/lib/query.ex	2026-10-07 12:18:52.830074947 +0200
+@@ -521,6 +521,63 @@
+ 
+   # sobelow_skip ["DOS.StringToAtom"]
+   def rewrite_nested_selects(query) do
++    if System.get_env("BUG_FIX") do
++      trial_rewrite_nested_selects(query)
++    else
++      orig_rewrite_nested_selects(query)
++    end
++  end
++
++  # TRIAL FIX (verifier's copy only): flatten `calculations:` / `aggregates:` maps at EVERY level of a
++  # chain of merges, not only in the outermost one.
++  defp trial_rewrite_nested_selects(%{select: %Ecto.Query.SelectExpr{expr: expr} = select} = query) do
++    {new_expr, calcs, aggs} = trial_flatten(expr)
++
++    if calcs == %{} and aggs == %{} do
++      {%{}, %{}, query}
++    else
++      new_query =
++        %{query | select: %{select | expr: new_expr}}
++        |> Map.update!(:__ash_bindings__, fn bindings ->
++          Map.update(bindings, :select_calculations, [], &((&1 || []) -- [:calculations]))
++        end)
++
++      {calcs, aggs, new_query}
++    end
++  end
++
++  defp trial_rewrite_nested_selects(query), do: {%{}, %{}, query}
++
++  defp trial_flatten({:merge, meta, [base, {:%{}, map_meta, merging}]}) do
++    {base, calcs1, aggs1} = trial_flatten(base)
++    {merging, calcs2, aggs2} = trial_flatten_map(merging)
++    {{:merge, meta, [base, {:%{}, map_meta, merging}]}, Map.merge(calcs1, calcs2), Map.merge(aggs1, aggs2)}
++  end
++
++  defp trial_flatten({:%{}, map_meta, merging}) when is_list(merging) do
++    {merging, calcs, aggs} = trial_flatten_map(merging)
++    {{:%{}, map_meta, merging}, calcs, aggs}
++  end
++
++  defp trial_flatten(other), do: {other, %{}, %{}}
++
++  # sobelow_skip ["DOS.StringToAtom"]
++  defp trial_flatten_map(merging) do
++    Enum.reduce(merging, {[], %{}, %{}}, fn
++      {type, {:%{}, _, type_exprs}}, {acc, calcs, aggs} when type in [:calculations, :aggregates] ->
++        flat = Enum.map(type_exprs, fn {name, expr} -> {String.to_atom("__#{type}__#{name}"), expr} end)
++        names = Map.new(type_exprs, fn {name, _} -> {String.to_atom("__#{type}__#{name}"), name} end)
++
++        if type == :calculations,
++          do: {acc ++ flat, Map.merge(calcs, names), aggs},
++          else: {acc ++ flat, calcs, Map.merge(aggs, names)}
++
++      other, {acc, calcs, aggs} ->
++        {acc ++ [other], calcs, aggs}
++    end)
++  end
++
++  def orig_rewrite_nested_selects(query) do
+     case query.select do
+       %Ecto.Query.SelectExpr{
+         expr:

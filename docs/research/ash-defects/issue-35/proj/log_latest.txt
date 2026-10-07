@@ -1,0 +1,176 @@
+Resolving Hex dependencies...
+Resolution completed in 0.347s
+New:
+  ash 3.34.4
+  ash_postgres 2.14.3
+  ash_sql 0.8.1
+  crux 0.1.4
+  db_connection 2.10.2
+  decimal 3.1.1
+  ecto 3.14.2
+  ecto_sql 3.14.0
+  elixir_make 0.10.0
+  ets 0.9.0
+  iterex 0.1.2
+  jason 1.4.5
+  multigraph 0.16.1-mg.5
+  picosat_elixir 0.2.3
+  postgrex 0.22.4
+  reactor 1.0.7
+  spark 2.7.6
+  splode 0.3.2
+  stream_data 1.4.0
+  telemetry 1.4.2
+  yamerl 0.10.0
+  yaml_elixir 2.12.2
+  ymlr 5.1.6
+* Getting ash (Hex package)
+* Getting ash_sql (Hex package)
+* Getting ash_postgres (Hex package)
+* Getting picosat_elixir (Hex package)
+* Getting elixir_make (Hex package)
+* Getting ecto (Hex package)
+* Getting ecto_sql (Hex package)
+* Getting jason (Hex package)
+* Getting postgrex (Hex package)
+* Getting spark (Hex package)
+* Getting db_connection (Hex package)
+* Getting decimal (Hex package)
+* Getting telemetry (Hex package)
+* Getting crux (Hex package)
+* Getting ets (Hex package)
+* Getting reactor (Hex package)
+* Getting splode (Hex package)
+* Getting stream_data (Hex package)
+* Getting iterex (Hex package)
+* Getting multigraph (Hex package)
+* Getting yaml_elixir (Hex package)
+* Getting ymlr (Hex package)
+* Getting yamerl (Hex package)
+You have added/upgraded packages you could sponsor, run `mix hex.sponsor` to learn more
+==> stream_data
+Compiling 3 files (.ex)
+Generated stream_data app
+==> ymlr
+Compiling 3 files (.ex)
+Generated ymlr app
+==> multigraph
+Compiling 16 files (.ex)
+Generated multigraph app
+==> bug
+===> Analyzing applications...
+===> Compiling yamerl
+==> ets
+Compiling 7 files (.ex)
+Generated ets app
+==> iterex
+Compiling 48 files (.ex)
+Generated iterex app
+==> elixir_make
+Compiling 8 files (.ex)
+Generated elixir_make app
+==> picosat_elixir
+cc -std=c99 -finline-functions -Wall -O3 -DNDEBUG -fPIC -I /home/stefan-roesch/.asdf/installs/erlang/28.3/erts-16.2/include -o /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/deps_latest/picosat_elixir/priv/picosat.o -c /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/deps_latest/picosat_elixir/c_src/picosat.c
+cc -std=c99 -finline-functions -Wall -O3 -DNDEBUG -fPIC -I /home/stefan-roesch/.asdf/installs/erlang/28.3/erts-16.2/include -o /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/deps_latest/picosat_elixir/priv/picosat_nif.o -c /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/deps_latest/picosat_elixir/c_src/picosat_nif.c
+cc -shared  /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/deps_latest/picosat_elixir/priv/picosat_nif.o /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/deps_latest/picosat_elixir/priv/picosat.o -o /tmp/claude-1000/-home-stefan-roesch-doloops-ash-table/5c7207f9-c9ac-4f1f-a341-9d59f2b21019/scratchpad/ashbug-35/proj/_build_latest/dev/lib/picosat_elixir/priv/picosat_nif.so
+Compiling 1 file (.erl)
+Compiling 2 files (.ex)
+Generated picosat_elixir app
+==> decimal
+Compiling 4 files (.ex)
+Generated decimal app
+==> jason
+Compiling 10 files (.ex)
+Generated jason app
+==> spark
+Compiling 46 files (.ex)
+Generated spark app
+==> yaml_elixir
+Compiling 6 files (.ex)
+Generated yaml_elixir app
+==> bug
+===> Analyzing applications...
+===> Compiling telemetry
+==> ecto
+Compiling 56 files (.ex)
+Generated ecto app
+==> db_connection
+Compiling 18 files (.ex)
+Generated db_connection app
+==> splode
+Compiling 5 files (.ex)
+Generated splode app
+==> reactor
+Compiling 113 files (.ex)
+Generated reactor app
+==> postgrex
+Compiling 70 files (.ex)
+Generated postgrex app
+==> ecto_sql
+Compiling 25 files (.ex)
+Generated ecto_sql app
+==> crux
+Compiling 20 files (.ex)
+Generated crux app
+==> ash
+Compiling 633 files (.ex)
+Compiling lib/ash/policy/authorizer/authorizer.ex (it's taking more than 10s)
+Compiling lib/ash/reactor/reactor.ex (it's taking more than 10s)
+Compiling lib/ash/changeset/changeset.ex (it's taking more than 10s)
+Compiling lib/ash/resource/dsl.ex (it's taking more than 10s)
+    warning: Igniter.Project.Module.find_all_matching_modules/2 is undefined (module Igniter.Project.Module is not available or is yet to be defined)
+    │
+ 88 │       Igniter.Project.Module.find_all_matching_modules(igniter, fn _, zipper ->
+    │                              ~
+    │
+    └─ lib/mix/tasks/helpers.ex:88:30: Ash.Mix.Tasks.Helpers.discover_domains/1
+
+    warning: Igniter.Code.Module.move_to_use/2 is undefined (module Igniter.Code.Module is not available or is yet to be defined)
+    │
+ 89 │         match?({:ok, _}, Igniter.Code.Module.move_to_use(zipper, Ash.Domain))
+    │                                              ~
+    │
+    └─ lib/mix/tasks/helpers.ex:89:46: Ash.Mix.Tasks.Helpers.discover_domains/1
+
+Generated ash app
+==> ash_sql
+Compiling 19 files (.ex)
+Generated ash_sql app
+==> ash_postgres
+Compiling 70 files (.ex)
+     warning: Igniter.Inflex.singularize/1 is undefined (module Igniter.Inflex is not available or is yet to be defined)
+     │
+ 784 │         {Igniter.Inflex.singularize(table), :has_one}
+     │                         ~
+     │
+     └─ lib/resource_generator/spec.ex:784:25: AshPostgres.ResourceGenerator.Spec.build_has_relationship/4
+     └─ lib/resource_generator/spec.ex:807:23: AshPostgres.ResourceGenerator.Spec.safe_pluralize/1
+     └─ lib/resource_generator/spec.ex:1037:27: AshPostgres.ResourceGenerator.Spec.build_alternative_name/2
+     └─ lib/resource_generator/spec.ex:1042:36: AshPostgres.ResourceGenerator.Spec.build_alternative_name/2
+     └─ lib/resource_generator/spec.ex:1057:23: AshPostgres.ResourceGenerator.Spec.default_belongs_to_name/2
+
+     warning: Igniter.Inflex.pluralize/1 is undefined (module Igniter.Inflex is not available or is yet to be defined)
+     │
+ 808 │     |> Igniter.Inflex.pluralize()
+     │                       ~
+     │
+     └─ lib/resource_generator/spec.ex:808:23: AshPostgres.ResourceGenerator.Spec.safe_pluralize/1
+
+     warning: Owl.IO.puts/1 is undefined (module Owl.IO is not available or is yet to be defined)
+     │
+ 974 │     Owl.IO.puts(info)
+     │            ~
+     │
+     └─ lib/resource_generator/spec.ex:974:12: AshPostgres.ResourceGenerator.Spec.prompt_relationship_name/4
+
+     warning: Owl.IO.input/1 is undefined (module Owl.IO is not available or is yet to be defined)
+     │
+ 997 │     Owl.IO.input(
+     │            ~
+     │
+     └─ lib/resource_generator/spec.ex:997:12: AshPostgres.ResourceGenerator.Spec.prompt_relationship_name/4
+
+Generated ash_postgres app
+==> bug
+Compiling 5 files (.ex)
+Generated bug app
