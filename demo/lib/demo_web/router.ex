@@ -62,6 +62,8 @@ defmodule DemoWeb.Router do
         ash_table "/memos", Demo.Support.Plain.Memo, layout: false
         ash_table "/reports", Demo.Support.Plain.Report, layout: false
         ash_table "/tickets", Demo.Support.Plain.Ticket, layout: false
+        ash_table "/orders", Demo.Support.Plain.Order, layout: false
+        ash_table "/customers", Demo.Support.Plain.Customer, layout: false
         ash_table "/binders", Demo.Support.Shelves.Binder, layout: false
         ash_table "/papers", Demo.Support.Shelves.Paper, layout: false
         ash_table "/drafts", Demo.Support.Shelves.Draft, layout: false

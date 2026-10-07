@@ -1,9 +1,12 @@
 spark_locals_without_parens = [
+  action: 1,
+  action: 2,
   actor_assign: 1,
   authorize?: 1,
   column: 1,
   column: 2,
   confirm: 1,
+  create_action: 1,
   exposes_protected_field?: 1,
   filterable?: 1,
   label: 1,

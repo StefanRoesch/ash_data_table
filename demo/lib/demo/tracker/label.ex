@@ -28,6 +28,12 @@ defmodule Demo.Tracker.Label do
   table do
     update_action :update
     label_field :name
+
+    action :destroy do
+      confirm "Delete this label? It is taken off every task."
+    end
+
+    create_action :create
   end
 
   actions do

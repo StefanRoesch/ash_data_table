@@ -2,7 +2,8 @@ import { expect, test } from "./support/fixtures"
 
 // Spec section 8: the grid is one tab stop, and the arrow keys move in it
 // without a word to the server. /tasks as the admin: 17 columns, 25 rows,
-// and before the first column the expanders of the rows (nesting.spec.ts).
+// before the first column the expanders of the rows (nesting.spec.ts), and
+// after the last the buttons of their actions (actions.spec.ts).
 
 const FIRST = "title"
 const SECOND = "status"
@@ -60,9 +61,12 @@ test("arrow keys move one cell and do not wrap", async ({ tasks }) => {
   await tasks.press("ArrowUp")
   await expect(tasks.cell(first, FIRST)).toBeFocused()
 
+  // after the last column is the cell of the row's actions
   await tasks.cell(first, LAST).focus()
   await tasks.press("ArrowRight")
-  await expect(tasks.cell(first, LAST), "the last cell of a row is where Right ends").toBeFocused()
+  await expect(tasks.actionsCell(first)).toBeFocused()
+  await tasks.press("ArrowRight")
+  await expect(tasks.actionsCell(first), "the last cell of a row is where Right ends").toBeFocused()
 
   await tasks.cell(last, SECOND).focus()
   await tasks.press("ArrowDown")
@@ -78,14 +82,15 @@ test("Home and End go to the ends of the row, with Ctrl to the corners of the da
   const last = keys.at(-1)!
 
   await tasks.cell(third, "progress").focus()
+  // the last cell of a row holds its actions
   await tasks.press("End")
-  await expect(tasks.cell(third, LAST)).toBeFocused()
+  await expect(tasks.actionsCell(third)).toBeFocused()
   // the first cell of a row is its expander
   await tasks.press("Home")
   await expect(tasks.expanderCell(third)).toBeFocused()
 
   await tasks.press("Control+End")
-  await expect(tasks.cell(last, LAST)).toBeFocused()
+  await expect(tasks.actionsCell(last)).toBeFocused()
   await tasks.press("Control+Home")
   await expect(tasks.expanderCell(first), "the first data row, not the header").toBeFocused()
 })
@@ -134,6 +139,8 @@ test("Up from the first data row reaches the filter row, then the header", async
 
   // the header rows have every column, the ones without a sort or a filter too
   await tasks.press("End", "ArrowUp")
+  await expect(tasks.actionsFilter, "the column of the actions").toBeFocused()
+  await tasks.press("ArrowLeft")
   await expect(tasks.filterCell(LAST)).toBeFocused()
   await tasks.press("ArrowLeft")
   await expect(tasks.filterCell("assignee"), "a column without a filter").toBeFocused()

@@ -55,20 +55,23 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir) |
-| http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Its block also says what a project is called in other tables (`label_field :name`). Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
-| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
-| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below) |
+| http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Its block also says what a project is called in other tables (`label_field :name`). Two row actions: "Set status", whose one input is a choice, and "Destroy", which asks first; and "New project". Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
+| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a plain field for the task's key. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
+| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
-| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25 |
+| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25. One row action, a destroy relabelled "Remove", which runs at one click and says so (`confirm false`); "New task label", whose panel has a plain field for each of the two keys |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 
 http://localhost:4478/dashboard is a LiveView of the demo's own
 (`DemoWeb.DashboardLive`) with two tables placed in it with
 `<AshTable.table … />`: the projects and the tasks, each given the actor and
-the tenant as attributes. Each sorts, filters, pages and saves by itself, and
-nothing of it is in the URL. As nobody, the projects' read is refused, and
-that table renders nothing at all.
+the tenant as attributes. Each sorts, filters, pages, saves and runs its
+actions by itself, and nothing of it is in the URL. Each table renders the
+line above it, its name and its create button; `heading={2}` makes that name
+an `h2` of the page, and the page's sections are labelled by it. As nobody,
+the projects' read is refused, and that table renders nothing at all, its
+name included.
 
 ### Rows that expand: nested tables
 
@@ -144,6 +147,16 @@ Things to try:
   nested table goes away while the filter is set (see the README's
   "Nested tables").
 - As **Olga Outsider**, everything nested is Globex's.
+- As Ada Admin or Max Member: under a task, open "Comments" and use "New
+  comment" on the line. The panel asks for the body alone; the task is the
+  row above. The comment is the first row of the nested table, and the
+  "Comments" cell of the task still shows the old count until the page is
+  read again. On `/projects`, the "Tasks" line of a project has "New task",
+  without the field "Project ID". "Labels", "Project" and the other lines
+  have no such button: a nested table creates only under a has-many whose
+  create action takes the joining key.
+- With the keyboard: F2 on a line that has a create button goes to its
+  controls; Enter on the line opens and closes it, as before.
 
 ### In German
 
@@ -156,8 +169,10 @@ tables follow:
 - `config :ash_table, gettext_backend: DemoWeb.Gettext` and
   `priv/gettext/de/LC_MESSAGES/ash_table.po`: the table's own texts, and the
   wording of `/tasks` (its name, column labels, enum labels, the question
-  before a change of state). The other tables' labels are not translated,
-  and show as they are.
+  before a change of state, the labels of its row actions and of the fields
+  of their panels). For every table: the row actions, their questions, and
+  what one record is called, so that "New task" is "Aufgabe anlegen". The
+  other tables' column labels are not translated, and show as they are.
 - `config :ash_table, translate_error: {DemoWeb.CoreComponents, :translate_error}`
   and `priv/gettext/de/LC_MESSAGES/errors.po`: the messages of the tasks'
   actions. Try a title of two characters, a progress of 150, or the state
@@ -167,7 +182,12 @@ The table tests are in `test/demo_web/tables/`: LiveView tests that open
 these pages and click through them as each of the actors. Filtering is in
 `task_filter_test.exs` and `specimen_filter_test.exs`, inline editing in
 `task_edit_test.exs` and `specimen_edit_test.exs`, what each actor sees and
-may edit in `task_authorization_test.exs` and `nobody_test.exs`.
+may edit in `task_authorization_test.exs` and `nobody_test.exs`. Row actions
+are in `task_actions_test.exs`, row create in `task_create_test.exs`, create
+in a nested table in `nested_create_test.exs`, both on the other pages, in
+the dashboard and in German in `actions_elsewhere_test.exs`, and what the
+action panel does with hidden fields and with every kind of failure in
+`action_fields_test.exs`, on a resource of `test/support/plain_tables.ex`.
 Languages are in `translation_test.exs` and `translation_settings_test.exs`,
 tables placed in a LiveView in `embedded_table_test.exs`, the key of two
 attributes in `task_label_table_test.exs`, a read that fails in
@@ -214,7 +234,7 @@ Enter or leaving the cell saves, Escape gives up.
 
 `reassign`, the action with a required argument, cannot be behind a column:
 naming it as a column's `update_action` is reported when the resource is
-compiled.
+compiled. It is a row action instead, whose panel asks for the reason.
 
 Saves that fail, to try:
 
@@ -233,17 +253,60 @@ Saves that fail, to try:
 After a save the row is shown from the action's result: `headline` follows a
 new title, `overdue?` a new due date, without the page being read again.
 
+### Row actions and create
+
+A button in the last column of a row runs an update or destroy action on
+that row's record; the button on the line of a table's name creates a
+record. An action with inputs opens the action panel at the right edge of
+the window first.
+
+| Table | Row actions | Create |
+| --- | --- | --- |
+| `/tasks` | "Archive" (no inputs: runs at once), "Reassign" (the assignee's key and a required reason: opens the panel), "Set progress" (one number, with the task's progress in it), "Destroy" (asks "Delete this task? This cannot be undone.") | "New task": eleven fields, among them plain fields for the keys of the project and of the assignee |
+| `/projects` | "Set status" (a choice), "Destroy" (asks) | "New project" |
+| `/comments` | "Destroy" (asks) | "New comment": the body, and the task's key |
+| `/labels` | "Destroy" (asks) | "New label": the colour starts with the attribute's default |
+| `/task_labels` | "Remove": a destroy that runs at one click, declared with `confirm false` | "New task label": two keys and a note |
+
+Things to try, on `/tasks`:
+
+- "Archive": the "State" cell of the row changes at once, and the row stays
+  where it is.
+- "Reassign": the panel is headed "Reassign:" and the task's title. Type a
+  reason of two characters: the action's message is at the field. Use "Run"
+  with the reason empty: "is required", and the panel stays open.
+- "Destroy": Cancel in the dialog changes nothing; Confirm, which is in the
+  error colour, takes the row away, and the range under the table counts one
+  less.
+- "New task": give a title and paste the id of a project (the "ID" column
+  of `/projects`). The task is the first row of the page, whatever the sort,
+  until you sort, filter or change page.
+- As **Max Member**, "Archive" a task that is neither assigned to him nor
+  reported by him: the row's last cell is marked and says "You are not
+  allowed to do this." Escape on that cell clears it. His "New task" has no
+  field "External ref".
+- With the keyboard: End moves to the actions cell, Enter to its first
+  button, Left and Right Arrow between the buttons, Escape back to the cell.
+
+| Actor | Row actions | Create |
+| --- | --- | --- |
+| admin | every button on every table, and each runs | every "New …" button |
+| member | on `/tasks` and `/comments` the buttons are on every row, and a record that is not theirs refuses when the action runs; "Set status" and no "Destroy" on `/projects`; "Remove" on `/task_labels`; no actions column on `/labels` | "New task", "New comment" and "New task label"; no "New project" and no "New label" |
+| viewer | no actions column on any table | no create button |
+| outsider | as the member, on Globex's records | as the member; the records are Globex's |
+| nobody | none | none |
+
 ### `/tasks`, actor by actor
 
 Switch the actor at the top right and the same page changes:
 
-| Actor | Rows | Columns | Editing |
-| --- | --- | --- | --- |
-| admin | Acme's 320 tasks | all 17, `External ref` among them | every editable column, on every task |
-| member | Acme's 320 tasks | 16: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved |
-| viewer | Acme's 320 tasks | 14: as the member, and no `Assignee` and no `Reported by`, as a viewer may not read people | none: no cell opens, nothing is marked read-only, there are no editors in the page |
-| outsider | Globex's 80 tasks | 16, as the member | as the member, on Globex's tasks |
-| nobody | none: "No records" | 14: no `External ref`, no `Estimate hours`, which nobody can ever see, and no `Project`, whose read is refused when nobody is logged in | none |
+| Actor | Rows | Columns | Editing | Row actions and "New task" |
+| --- | --- | --- | --- | --- |
+| admin | Acme's 320 tasks | all 17, `External ref` among them | every editable column, on every task | four buttons on every row, and each runs; "New task" |
+| member | Acme's 320 tasks | 16: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved | four buttons on every row; a task that is not theirs refuses on the actions cell or in the panel; "New task" |
+| viewer | Acme's 320 tasks | 14: as the member, and no `Assignee` and no `Reported by`, as a viewer may not read people | none: no cell opens, nothing is marked read-only, there are no editors in the page | no actions column, no "New task" |
+| outsider | Globex's 80 tasks | 16, as the member | as the member, on Globex's tasks | as the member, on Globex's tasks |
+| nobody | none: "No records" | 14: no `External ref`, no `Estimate hours`, which nobody can ever see, and no `Project`, whose read is refused when nobody is logged in | none | none |
 
 A column the actor can never see is left out of the page altogether, and
 http://localhost:4478/tasks?task[sort]=external_ref or
@@ -348,7 +411,9 @@ decide (nobody sees nothing).
   (priority; it also leaves "Reprioritised" in the private `internal_note`),
   `set_progress` (progress; it also moves a task from "To do" to "In
   progress"), `reassign` (assignee, and a required argument `reason`),
-  `archive` (nothing); plus `create` and `destroy`
+  `archive` (nothing); plus `create` and `destroy`. Four of them are row
+  actions of its table (`archive`, `reassign`, `set_progress`, `destroy`),
+  and `create` is its create action
 - a validation that fails on another field: a task can only be `done` with
   progress 100
 
@@ -462,6 +527,7 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `nesting.spec.ts` | nested tables: the expander and the lines by pointer and by keyboard; Right and Left Arrow; into a nested table and back out; one tab stop for the whole tree at every depth, and Tab out of it; that moving sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or a row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
 | `full_view.spec.ts` | the link of a nested table to the full view, by pointer and by keyboard, and where it is not there; the page it leads to: its heading, the limit in the address through sort, filter and page and after a reload, the way back to all records, editing and expanding under the limit; the browser's back button; the page as the member, the viewer and the outsider; axe on it |
 | `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort, filter or edit, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
+| `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
 | `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, and with nested tables open at every depth |
 
 How they are built (`e2e/support`):

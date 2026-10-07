@@ -51,8 +51,11 @@ test.describe("as the admin", () => {
     await expect(tasks.cell(FIRST, "project")).toBeFocused()
     await tasks.press("ArrowRight", "ArrowRight")
     await expect(tasks.cell(FIRST, "reporter")).toBeFocused()
+    // the last column; the cell after it holds the row's actions
     await tasks.press("ArrowRight")
-    await expect(tasks.cell(FIRST, "reporter"), "the last cell of the row").toBeFocused()
+    await expect(tasks.actionsCell(FIRST)).toBeFocused()
+    await tasks.press("ArrowLeft")
+    await expect(tasks.cell(FIRST, "reporter")).toBeFocused()
 
     await frames.clear()
     const before = await tasks.cell(FIRST, "reporter").textContent()

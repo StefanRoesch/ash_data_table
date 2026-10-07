@@ -15,52 +15,52 @@ defmodule AshTable.Format do
   For a boolean it is the accessible text ("Yes" or "No"); the check indicator
   is markup and belongs to the component. Nil is empty.
   """
-  @spec format(Column.t(), term) :: String.t()
+  @spec format(Column.t() | AshTable.Model.Input.t(), term) :: String.t()
   def format(_column, nil), do: ""
   # A field the actor may not see has a placeholder, which is markup and
   # belongs to the component.
   def format(_column, %Ash.ForbiddenField{}), do: ""
   def format(_column, %Ash.NotLoaded{}), do: ""
 
-  def format(%Column{cell_type: :text}, value), do: to_string(value)
+  def format(%{cell_type: :text}, value), do: to_string(value)
 
-  def format(%Column{cell_type: :number}, %Decimal{} = value),
+  def format(%{cell_type: :number}, %Decimal{} = value),
     do: Decimal.to_string(value, :normal)
 
-  def format(%Column{cell_type: :number}, value), do: to_string(value)
+  def format(%{cell_type: :number}, value), do: to_string(value)
 
-  def format(%Column{cell_type: :boolean}, true), do: Text.t(:yes)
-  def format(%Column{cell_type: :boolean}, false), do: Text.t(:no)
+  def format(%{cell_type: :boolean}, true), do: Text.t(:yes)
+  def format(%{cell_type: :boolean}, false), do: Text.t(:no)
 
-  def format(%Column{cell_type: :date}, %Date{} = value), do: Date.to_iso8601(value)
+  def format(%{cell_type: :date}, %Date{} = value), do: Date.to_iso8601(value)
 
-  def format(%Column{cell_type: :datetime}, %struct{} = value)
+  def format(%{cell_type: :datetime}, %struct{} = value)
       when struct in [DateTime, NaiveDateTime],
       do: Calendar.strftime(value, "%Y-%m-%dT%H:%M:%S")
 
-  def format(%Column{cell_type: :enum, values: values}, value) do
+  def format(%{cell_type: :enum, values: values}, value) do
     case List.keyfind(values || [], value, 0) do
       {_value, label} -> label
       nil -> other(value)
     end
   end
 
-  def format(%Column{}, value), do: other(value)
+  def format(%{cell_type: _}, value), do: other(value)
 
   @doc """
   The text the editor of a cell holds for `value`: what the cell shows, the
   value itself for a choice, and `"true"` or `"false"` for a boolean. Nil is
   empty.
   """
-  @spec input(Column.t(), term) :: String.t()
-  def input(%Column{cell_type: :boolean}, value) when is_boolean(value), do: to_string(value)
+  @spec input(Column.t() | AshTable.Model.Input.t(), term) :: String.t()
+  def input(%{cell_type: :boolean}, value) when is_boolean(value), do: to_string(value)
 
-  def input(%Column{cell_type: :enum}, value) when is_atom(value) and not is_nil(value),
+  def input(%{cell_type: :enum}, value) when is_atom(value) and not is_nil(value),
     do: Atom.to_string(value)
 
-  def input(%Column{cell_type: :enum}, value) when is_binary(value), do: value
-  def input(%Column{cell_type: cell_type}, _value) when cell_type in [:boolean, :enum], do: ""
-  def input(%Column{} = column, value), do: format(column, value)
+  def input(%{cell_type: :enum}, value) when is_binary(value), do: value
+  def input(%{cell_type: cell_type}, _value) when cell_type in [:boolean, :enum], do: ""
+  def input(%{cell_type: _} = column, value), do: format(column, value)
 
   # Read-only text for everything without a cell type of its own.
   defp other(value) when is_binary(value) do

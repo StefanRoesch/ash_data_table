@@ -8,7 +8,9 @@ and when it fails.
 
 The question a column can ask before saving is in [Confirm](confirm.md). What
 depends on who is editing is in [Authorization](authorization.md). The keys
-are in [Keyboard and accessibility](keyboard-and-accessibility.md).
+are in [Keyboard and accessibility](keyboard-and-accessibility.md). An action
+that needs more than one value, deleting a record and creating one are in
+[Row actions and create](row-actions-and-create.md).
 
 ## The smallest example
 
@@ -154,7 +156,11 @@ end
 ```
 
 A cell has nowhere to ask for the reason, and the reason is not on the
-record. The rule is narrow:
+record. Such an action is a row action: the demo's tasks declare
+`action :reassign`, and its button opens the action panel, which asks for
+the reason. See [Row actions and create](row-actions-and-create.md).
+
+The rule for a cell is narrow:
 
 | The action has | Can it serve a cell? |
 | --- | --- |
@@ -266,6 +272,26 @@ A failed cell is put right in one of three ways:
 **Try it:** on `/tasks`, as Ada Admin, set a title to `ab`, or a progress to
 `150`, or the state of a task whose progress is below 100 to "Done".
 
+## An inline edit and a row action
+
+Both run an action of the resource on the record of one row, and they share
+everything around the action: the record is read again as the person, the
+action runs through `AshPhoenix.Form`, and the row is shown from what it
+returns. They differ in what the person gives it.
+
+| | Inline edit | Row action |
+| --- | --- | --- |
+| Declared with | `update_action`, at the table or at a column | `action` |
+| Runs | an update action | an update or a destroy action |
+| Started from | the cell | a button in the last column of the row |
+| Inputs | exactly one: the cell's attribute | none, or every input of the action, given in the action panel |
+| A required argument | cannot be served | is a field of the panel |
+| A failure is shown | on the cell | on the row's actions cell, or in the panel |
+
+One action can be both. On `/tasks`, `set_progress` is the action behind the
+"Progress" column and a row action: the cell changes the number in place,
+the button "Set progress" opens the panel with the same number in it.
+
 ## No undo
 
 The table has no undo and no history. A saved cell is saved. If people need
@@ -322,8 +348,9 @@ only runs actions.
 
 ## Not in the first version
 
-No creating or deleting records, no row actions with several inputs, no
-editing of arrays, maps, embedded resources or related records, no
-validation display before saving, no bulk edits and no undo. They are later
-slices in the
+No editing of arrays, maps, embedded resources or related records in a
+cell, no validation display before a cell is saved, no bulk edits and no
+undo. They are later slices in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).
+Creating and deleting records, and actions with several inputs, are not
+inline edits: see [Row actions and create](row-actions-and-create.md).

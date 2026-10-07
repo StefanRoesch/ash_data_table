@@ -18,7 +18,8 @@ defmodule AshTable.Live.Page do
     * otherwise `current_user` is the actor and `current_tenant` the tenant.
       Neither assigned means nobody is logged in.
 
-  Reads and saves are authorized, unless the domain says `authorize? false`.
+  Reads, saves, row actions and creates are authorized, unless the domain
+  says `authorize? false`.
   The table follows the person who mounted the page: a host that changes who
   is logged in mounts the page again, as a login or logout does.
 
@@ -35,6 +36,19 @@ defmodule AshTable.Live.Page do
       read-only for them; if that is every one, the table offers no editing.
       An action that depends on the record leaves cells looking editable, and
       a refusal is shown on the cell when it is saved.
+    * **A row action the person can never run** has no button for them; if
+      that is every one, the table has no actions column. An action that
+      depends on the record keeps its button on every row, and a refusal is
+      shown when it runs: on the row's actions cell, or above the fields of
+      the action panel, as "You are not allowed to do this."
+    * **A create action the person can never run** leaves the table without
+      its create button.
+    * **An input of a field the person can never see** is no field of an
+      action panel for them, in a row action or in a create; one hidden from
+      them on a record is left out of that record's panel. A value sent for
+      such a field all the same is not given to the action. As for a cell,
+      this protects the table only: the action itself accepts the field from
+      anyone its policy allows.
     * **A read refused outright** makes the page answer as if it did not
       exist: `AshTable.NotFoundError` is raised, which Phoenix renders as 404.
       That holds for a request, for a live navigation to the page (LiveView
@@ -50,7 +64,9 @@ defmodule AshTable.Live.Page do
 
     * **A relationship whose destination the person can never read** has no
       line under an expanded row. In a nested table everything above holds
-      for its own resource. The row a nested table belongs to is read again,
+      for its own resource. A record created in a nested table is joined to
+      the row above by the table, from that row as it is read again for the
+      person, never by what the form sends. The row a nested table belongs to is read again,
       as the person, each time the nested table reads: when that row is gone
       or no longer theirs, the nested table says "This record is no longer
       available." A nested table whose read is refused says "You are not
@@ -61,6 +77,19 @@ defmodule AshTable.Live.Page do
   Ash is asked what a person can never see or do each time the table reads:
   when the page is opened and at every change of sort, filter or page. It
   costs no query.
+
+  Before a cell is saved, before a row action runs and before its panel
+  opens, the record is read again by its primary key, as the person. An
+  event that names a row that is not on the person's page, or an action the
+  table does not offer them, runs nothing.
+
+  ## The heading
+
+  The first line of the page is the table's: its name as the page's `h1`,
+  and at the other end the create button, when the resource's `table` block
+  names a `create_action` that the person may run. The name is the
+  resource's `plural_name`, or its short name, in words (`AshTable.label/1`),
+  and is the page title too.
 
   ## When a read fails
 
@@ -118,7 +147,9 @@ defmodule AshTable.Live.Page do
   its key, as the person, on every read, with the relationship as a load.
   Above the grid it says what it shows: the parent, called by its resource's
   `label_field` or by the first column of its table that the person sees on
-  it, and the relationship; with a control that takes the limit away.
+  it, and the relationship; with a control that takes the limit away. Where
+  the nested table would offer create, its button is on this line, and a
+  record created there is created under that parent.
 
   Nothing in the parameter is trusted. The parent's resource is looked up by
   its short name, as text, among the resources of the application's domains
@@ -151,13 +182,15 @@ defmodule AshTable.Live.Page do
     ~H"""
     <.in_layout layout={@layout} {layout_assigns(assigns)}>
       <div id={"#{@table.id}-page"}>
-        <h1 class="mb-4 text-lg font-semibold">{@page_title}</h1>
+        <%!-- the page's heading is the first line of the table: its name, and
+        its create button at the other end --%>
         <.live_component
           module={AshTable.Live.TableComponent}
           id={@table.id}
           resource={@table.resource}
           url={@url}
           label={@page_title}
+          heading={1}
           authorize?={nil}
           mounted?={true}
           {reader(@table.resource, assigns)}

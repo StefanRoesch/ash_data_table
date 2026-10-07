@@ -18,6 +18,10 @@ defmodule AshTable.Model.Relationship do
   #   * `pageable?` says whether Ash can page through the related records:
   #     several of them, joined by attributes, through an action that declares
   #     pagination. Everything else comes back in full.
+  #   * `link` is, for a has-many joined by attributes, the attribute of the
+  #     row and the attribute of a related record that holds its value
+  #     (`{source_attribute, destination_attribute}`): what a record created
+  #     in the nested table is given. Nil for every other relationship.
   #   * `sortable?` and `filterable?` say whether a person can sort and filter
   #     the nested table: not for a single related record, where either would
   #     change which record it is, and not for a manual relationship.
@@ -32,6 +36,7 @@ defmodule AshTable.Model.Relationship do
     :destination,
     :read_action,
     :sort,
+    :link,
     pageable?: false,
     sortable?: false,
     filterable?: false
@@ -46,6 +51,7 @@ defmodule AshTable.Model.Relationship do
           destination: Ash.Resource.t(),
           read_action: atom,
           sort: term,
+          link: {atom, atom} | nil,
           pageable?: boolean,
           sortable?: boolean,
           filterable?: boolean

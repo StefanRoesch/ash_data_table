@@ -9,17 +9,21 @@ Add the extension to a resource, optionally describe the table in a
 no HEEx.
 
 > **This is the first version, 0.1.0, and it is not on Hex yet.** It reads,
-> sorts, filters, pages and edits cells in place, adapts its columns and its
-> editing to who is looking, and speaks the host's language. A row expands
-> into the tables of its related records, each of which opens on a page of
-> its own, and a cell can show a related record by its label. Creating
-> records and row actions are later slices.
+> sorts, filters, pages and edits cells in place, adapts its columns, its
+> editing and its buttons to who is looking, and speaks the host's language.
+> A row expands into the tables of its related records, each of which opens
+> on a page of its own, and a cell can show a related record by its label.
+> A row has buttons for the update and destroy actions the table declares,
+> and a button above the table creates a record; an action with inputs asks
+> for them in a panel. Custom cell components, a picker for related records,
+> and actions on several rows are later slices.
 
 - [Install](#install)
 - [A first table](#a-first-table)
 - [Describing the table](#describing-the-table): columns and defaults
 - [Reading](#reading): page size and sort, [filtering](#filtering), [the URL](#the-url), [when a read fails](#when-a-read-fails)
 - [Inline editing](#inline-editing)
+- [Row actions and create](#row-actions-and-create)
 - [Nested tables](#nested-tables)
 - [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
 - [The keyboard](#the-keyboard)
@@ -44,6 +48,7 @@ examples from the demo app and each topic's edge cases.
 - [State in the URL](documentation/topics/state-in-the-url.md)
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
+- [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Authorization](documentation/topics/authorization.md)
 - [Keyboard and accessibility](documentation/topics/keyboard-and-accessibility.md)
@@ -164,7 +169,9 @@ end
 `/tasks` now shows the resource's public attributes as a table, read through
 its primary read action. Headers sort on click or Enter, the row under them
 filters, and the arrow keys move through the cells. Nothing can be edited
-until the block says so (see [Inline editing](#inline-editing)).
+until the block says so (see [Inline editing](#inline-editing)), and no
+action is offered until the block names it (see
+[Row actions and create](#row-actions-and-create)).
 
 ## Describing the table
 
@@ -184,6 +191,9 @@ table do
 
   column :comment_count    # an aggregate
   column :project          # a belongs-to: the related record's label
+
+  action :archive          # a button in every row; default: none
+  create_action :create    # the create button; default: none
 end
 ```
 
@@ -459,6 +469,72 @@ run. The refusal on the cell is for an action that depends on the record.
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
 returns to the cell, still in edit mode with what was typed.
 
+## Row actions and create
+
+A row action is an update or destroy action of the resource that a person
+runs on one record, from a button in the last column of its row. A table
+can also offer one create action, behind a button on the line of its name.
+Both are opt-in, and the table adds nothing to the action: it runs through
+`AshPhoenix.Form` as the person, and the table shows what it returns.
+
+```elixir
+table do
+  action :archive                  # buttons, in this order
+
+  action :reassign do
+    label "Hand over"              # default: the action's name in words
+  end
+
+  action :destroy do
+    confirm "Delete this task? This cannot be undone."
+  end
+
+  create_action :create            # "New task"
+end
+```
+
+- **Which actions.** Public update and destroy actions. A generic action
+  takes no record, so it is no row action; a create action is named with
+  `create_action`. Anything else is reported when the resource is compiled.
+- **Straight away, or the action panel.** An action without inputs, or with
+  optional arguments only, runs when its button is used. One that accepts
+  attributes or has a required argument without a default opens the **action panel** first: a
+  modal dialog at the right edge with one field per input, "Cancel" and
+  "Run". A create always opens it.
+- **The panel's fields** are the action's public inputs in its own order,
+  accepted attributes first. A field is called what the table's column for
+  that attribute is called, else by the input's name in words. Its control
+  is the cell editor of its type, and a plain text field for a value
+  written as one line that has no editor (a UUID, a time, an atom): an
+  input that points at another record is such a key field until there is a
+  picker. Attributes start with the record's values, arguments with their
+  defaults. A field is marked as required when the action requires it.
+- **Inputs without a field** (arrays, maps, embedded resources, unions): an
+  optional one is left out of the panel; an action that requires one cannot
+  be run from a table, which the compiler reports.
+- **Errors.** The action's messages are shown at their fields as the person
+  types and after "Run", and the panel stays open. What is about no field
+  of the panel, a refusal among it, is above the fields. An action that ran
+  straight away and failed marks the row's actions cell with its message,
+  as a failed save marks its cell; nothing pops up over the page.
+- **`confirm`** asks a question in the table's dialog before the action
+  runs; with a panel, when "Run" is used. A destroy action without one is a
+  compile warning, since one click would delete the record: give it a
+  question, or say `confirm false`.
+- **Afterwards.** An updated row is shown from the action's result and
+  stays where it is. A destroyed row is taken away with everything open
+  under it. A created record is the first row of the page. The total is
+  changed by one; sort, filters and what other people did show at the next
+  read.
+- **In a nested table** the row actions are those of the destination's
+  table. Create is offered only for a has-many joined by attributes whose
+  destination's `create_action` accepts the joining attribute: the table
+  fills that in from the row above, and the button is on the relationship
+  line.
+
+The guide [Row actions and create](documentation/topics/row-actions-and-create.md)
+has all of this in detail.
+
 ## Nested tables
 
 A row expands into the tables of its related records. The first cell of a
@@ -580,6 +656,8 @@ A domain without the extension behaves as one with these defaults. Add
 | The person can **never read a related resource** | A reference cell of it has no column for them, and it has no line under an expanded row. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. |
+| The person can **never run a row action**, or the create action | The action has no button for them; with no row action left, the table has no actions column. |
+| The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the actions cell or the action panel says "You are not allowed to do this." |
 
 "No records" is only ever shown for a read that succeeded and found nothing.
 
@@ -597,8 +675,9 @@ while the page is open redirects to the page's own URL; both end at the 404.
 Whether a person can never see a field, or never run an action, is asked of
 Ash each time the table reads: when the page is opened, and at every sort,
 filter and page change. Neither question reads a record or runs a query
-(`Ash.can_see_fields/4` and `Ash.can/3`, once per update action). When who is
-logged in changes, mount the page again, as a login or logout does.
+(`Ash.can_see_fields/4` and `Ash.can/3`, once per update action, row action
+and create action). When who is logged in changes, mount the page again, as
+a login or logout does.
 
 **Filtering and sorting by a field that is hidden on some records** stays
 possible, and gives nothing away: Ash treats a hidden value as empty in
@@ -608,7 +687,8 @@ puts the hidden ones together with the empty ones.
 
 > **The table refusing to edit a hidden field protects the table only.** A
 > field policy is about reading. When a person is not shown a field on a
-> record, the table does not let them change it there either, but the update
+> record, the table does not let them change it there either, in a cell or
+> in the action panel, but the update
 > action itself would: the same action called through `ash_json_api`,
 > `ash_graphql` or your own code accepts the field from anyone its *policy*
 > allows. If a field must not be changed by people who cannot see it, say so
@@ -671,6 +751,14 @@ On a cell that can be edited:
 | Arrow keys, Home, End, while editing | Belong to the editor |
 | Space | Nothing; reserved for row selection |
 
+On the actions cell of a row, the last cell, Enter or F2 goes to its first
+button. Left and Right Arrow move between the buttons, Enter or Space uses
+one, Escape returns to the cell, and Tab moves on through the buttons and
+out of the grid after the last. Space on the cell itself stays reserved.
+The action panel is a modal dialog: focus moves into it and stays, and
+Escape is Cancel. A relationship line with a create button is entered with
+F2; Enter on the line opens and closes it as before.
+
 A double click starts editing too. In a choice, the menu opens at once;
 Enter or a click chooses and saves, and Escape closes the menu before it
 gives the edit up. A character the editor of a number does not take (a
@@ -711,8 +799,10 @@ messages it does not find in your code.)
 **Your resources' wording that the table shows** goes through the same
 domain: the labels of columns (declared with `label`, or the humanised field
 names), the labels of the values of an `Ash.Type.Enum`, the questions of
-`confirm`, and the names of the tables. Each is looked up as a message and
-shown as it is when there is no entry. To translate a column, add its label
+`confirm`, the names of the tables, the labels of row actions and of the
+fields of the action panel, and what one record is called in "New task"
+(the resource's short name in words, as the message "task"). Each is looked
+up as a message and shown as it is when there is no entry. To translate a column, add its label
 to the same file:
 
 ```po
@@ -761,6 +851,9 @@ layout. One table can differ:
 `ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
 `layout: {Module, :function}`.
 
+A mounted table's first line is the page's heading: its name as an `h1`,
+and its create button at the other end.
+
 A bare table is its heading and the table, nothing around them: it brings no
 landmark of its own, because it cannot know which ones the page already has.
 The page's landmarks are the host's. Where `<main>` is in the app layout, as
@@ -791,8 +884,12 @@ filter, page and save independently.
 />
 ```
 
-`label` is the accessible name of the grid; it defaults to the resource's
-name.
+`label` is the table's name: the accessible name of the grid, and the text
+on the line above it, where the create button is too. It defaults to the
+resource's name. An embedded table cannot know the outline of your page, so
+it shows that name as text that is no heading. `heading={2}` makes it a
+heading of that level, and `heading={false}` leaves it out, for a page that
+names the table itself.
 
 It authorizes as its resource's domain says (`authorize?` in `AshTable.Domain`,
 `true` by default); `authorize?={false}` or `authorize?={true}` on the table
@@ -820,10 +917,14 @@ nothing at all, unless the resource says `on_forbidden :message`.
   `paginate_with`, a column that is no public field or is a calculation that
   needs an argument, a column that names a relationship whose label cannot
   be shown, a `relationship` that cannot be offered, an `update_action` that
-  names no public update action, and editing beside calculation, aggregate
-  or reference columns without a primary read action. A column's own `update_action` that exists but cannot save the
-  column leaves the column read-only, and `sortable? true`,
-  `filterable? true` and `confirm` without effect do nothing. See
+  names no public update action, an `action` that names no public update or
+  destroy action, a `create_action` that names no public create action, and
+  editing, row actions or create beside calculation, aggregate or reference
+  columns without a primary read action. A column's own `update_action` that
+  exists but cannot save the column leaves the column read-only, an action
+  with a required input the panel has no field for has no button, and
+  `sortable? true`, `filterable? true` and `confirm` without effect do
+  nothing. See
   [Mistakes at compile time](documentation/topics/mistakes-at-compile-time.md#if-a-finding-is-ignored).
 - **An aggregate does not apply the related resource's field policies, and
   a calculation applies none.** A column over a protected field needs a field
@@ -848,6 +949,17 @@ nothing at all, unless the resource says `on_forbidden :message`.
   or later (see [Install](#install)).
 - **Nothing is editable until the block says so**, and then only what the
   action accepts: see [Inline editing](#inline-editing).
+- **A row action's button is on every row**, also on the records its policy
+  refuses. The table asks Ash once per action, not per record; the refusal
+  shows when the action runs.
+- **A new or changed row does not move.** A created record is the first row
+  and a changed one stays in its place until the next sort, filter or page
+  change reads the page again.
+- **`action :destroy` warns when the resource is compiled.** A destroy
+  action without `confirm` deletes at one click. Give it a question, or say
+  `confirm false`.
+- **A related record is given by its key in the action panel.** There is no
+  picker yet.
 - **A table in German with English messages** has `gettext_backend` but no
   `translate_error`, or no entry for that message in the `errors` domain.
 

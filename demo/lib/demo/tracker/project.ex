@@ -46,6 +46,17 @@ defmodule Demo.Tracker.Project do
   table do
     update_action :update
     label_field :name
+
+    # one input, a choice: the panel shows it with the project's state in it
+    action :set_status
+
+    action :destroy do
+      confirm "Delete this project, with all its tasks?"
+    end
+
+    # "New project"; and "New task" on the Tasks line of a project, where
+    # the table gives `project_id` itself
+    create_action :create
   end
 
   actions do

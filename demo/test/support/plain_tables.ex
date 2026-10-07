@@ -21,6 +21,243 @@ defmodule Demo.Support.Plain do
     resource Demo.Support.Plain.Report
     resource Demo.Support.Plain.Entry
     resource Demo.Support.Plain.Ticket
+    resource Demo.Support.Plain.Order
+    resource Demo.Support.Plain.Customer
+    resource Demo.Support.Plain.Visit
+  end
+end
+
+defmodule Demo.Support.Plain.Customer do
+  @moduledoc """
+  A customer that only its keeper reads, with visits anybody may create: for
+  what a nested table does when the row it creates under is no longer the
+  person's to read.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Plain,
+    data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshTable.Resource]
+
+  actions do
+    defaults [:read, create: [:name, :keeper]]
+  end
+
+  policies do
+    policy action_type(:read) do
+      authorize_if expr(keeper == ^actor(:name))
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :name, :string, public?: true
+    attribute :keeper, :string, public?: true
+  end
+
+  relationships do
+    has_many :visits, Demo.Support.Plain.Visit, public?: true
+  end
+end
+
+defmodule Demo.Support.Plain.Visit do
+  @moduledoc false
+  use Ash.Resource,
+    domain: Demo.Support.Plain,
+    data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshTable.Resource]
+
+  table do
+    max_depth 0
+    create_action :create
+  end
+
+  actions do
+    defaults [:read, create: [:note, :customer_id]]
+  end
+
+  policies do
+    policy always() do
+      authorize_if always()
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :note, :string, public?: true
+  end
+
+  relationships do
+    belongs_to :customer, Demo.Support.Plain.Customer, public?: true, attribute_public?: true
+  end
+end
+
+defmodule Demo.Support.Plain.OwnOrder do
+  @moduledoc """
+  Whether the order that is being created is the actor's own. It looks at
+  what the action is given, so it has no answer before there is an order:
+  asked in advance, Ash says "maybe", and the table offers the button.
+  """
+  use Ash.Policy.Check
+
+  @impl true
+  def describe(_opts), do: "the order is the actor's own"
+
+  @impl true
+  def strict_check(actor, %{changeset: %Ash.Changeset{} = changeset}, _opts) do
+    case Ash.Changeset.get_attribute(changeset, :owner) do
+      nil -> {:ok, :unknown}
+      owner -> {:ok, owner == actor[:name]}
+    end
+  end
+
+  def strict_check(_actor, _authorizer, _opts), do: {:ok, :unknown}
+
+  @impl true
+  def check(_actor, _data, _authorizer, _opts), do: []
+end
+
+defmodule Demo.Support.Plain.Order do
+  @moduledoc """
+  An order, for what row actions and row create do with fields that are
+  hidden and with actions that fail in every way: `code` is seen by an admin
+  only, `amount` by an admin and by the order's owner. Everybody may change
+  every order, so that it is the table, and not a policy, that keeps a
+  hidden field from being written. A person who is no admin creates orders
+  of their own only.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Plain,
+    data_layer: Ash.DataLayer.Ets,
+    authorizers: [Ash.Policy.Authorizer],
+    extensions: [AshTable.Resource]
+
+  field_policies do
+    field_policy :code do
+      authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    field_policy :amount do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if expr(owner == ^actor(:name))
+    end
+
+    field_policy :* do
+      authorize_if always()
+    end
+  end
+
+  table do
+    column :title
+    column :note
+    column :amount
+    column :code
+    column :owner
+
+    # opens the panel: every attribute it accepts
+    action :revise
+    # run straight away, and fail: about a field, about none, and underneath
+    action :stamp
+    action :check
+    action :jam
+    # opens the panel, and fails about what is no field of it
+    action :settle
+    # one attribute that can be empty and has a default
+    action :rerank
+
+    create_action :create
+  end
+
+  actions do
+    defaults [:read]
+
+    create :create do
+      accept [:title, :note, :amount, :code, :owner]
+      validate string_length(:title, min: 3)
+    end
+
+    update :revise do
+      accept [:title, :note, :amount, :code]
+      require_atomic? false
+    end
+
+    update :rerank do
+      accept [:rank]
+      require_atomic? false
+    end
+
+    update :stamp do
+      accept []
+      require_atomic? false
+      validate string_length(:note, min: 3)
+    end
+
+    update :check do
+      accept []
+      require_atomic? false
+
+      change fn changeset, _context ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Changes.InvalidChanges.exception(message: "the books are closed")
+        )
+      end
+    end
+
+    update :jam do
+      accept []
+      require_atomic? false
+
+      change fn changeset, _context ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Framework.AssumptionFailed.exception(
+            message: "the vault at 10.0.0.7 did not answer"
+          )
+        )
+      end
+    end
+
+    update :settle do
+      accept []
+      require_atomic? false
+      argument :paid, :integer, allow_nil?: false, constraints: [min: 0]
+
+      # about a column that is no field of the panel, about a private field,
+      # and about no field at all
+      validate string_length(:note, min: 3)
+      validate present(:grade)
+
+      change fn changeset, _context ->
+        Ash.Changeset.add_error(
+          changeset,
+          Ash.Error.Changes.InvalidChanges.exception(message: "the books are closed")
+        )
+      end
+    end
+  end
+
+  policies do
+    policy action_type([:read, :update]) do
+      authorize_if always()
+    end
+
+    policy action_type(:create) do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if Demo.Support.Plain.OwnOrder
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :title, :string, allow_nil?: false, public?: true
+    attribute :note, :string, public?: true
+    attribute :amount, :integer, public?: true
+    attribute :code, :string, public?: true
+    attribute :owner, :string, public?: true
+    attribute :grade, :integer
+    attribute :rank, :integer, default: 5, public?: true
   end
 end
 

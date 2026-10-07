@@ -151,6 +151,11 @@ export class Table {
     return this.byId(`${this.id}-row-${key}`)
   }
 
+  /** The `<tr>` of a row: what its height is measured on. */
+  rowLine(key: string): Locator {
+    return this.byId(`${this.id}-row-${key}-r`)
+  }
+
   cell(key: string, column: string): Locator {
     return this.byId(`${this.id}-row-${key}-c-${column}`)
   }
@@ -263,9 +268,134 @@ export class Table {
     return this.page.getByRole("dialog")
   }
 
+  /**
+   * The table's own dialog for questions, by its id: where another dialog
+   * may be open as well (the action panel), or a nested table has its own.
+   */
+  get question(): Locator {
+    return this.byId(`${this.id}-dialog`)
+  }
+
   /** The message of a cell whose save failed: what its `aria-describedby` names. */
   failure(cell: Locator): Locator {
     return cell.locator("[popover]")
+  }
+
+  // ---- the line of the table's name, and creating ---------------------------
+
+  /** The line above the table: its name at one end, its create button at the other. */
+  get headerLine(): Locator {
+    return this.byId(`${this.id}-header`)
+  }
+
+  /** The table's name on that line: a heading of the page. */
+  get name(): Locator {
+    return this.byId(`${this.id}-name`)
+  }
+
+  /** "New task": it opens the action panel with the inputs of the create action. */
+  get create(): Locator {
+    return this.byId(`${this.id}-create`)
+  }
+
+  // ---- row actions --------------------------------------------------------
+
+  /** The header of the actions column, the last of the grid. */
+  get actionsHeader(): Locator {
+    return this.byId(`${this.id}-actions-head`)
+  }
+
+  /** The cell under it in the filter row, which is empty. */
+  get actionsFilter(): Locator {
+    return this.byId(`${this.id}-actions-filter`)
+  }
+
+  /** The last cell of a row: it holds a button per row action. */
+  actionsCell(key: string): Locator {
+    return this.byId(`${this.id}-row-${key}-a`)
+  }
+
+  /** The button of one row action in a row. */
+  action(key: string, name: string): Locator {
+    return this.byId(`${this.id}-row-${key}-a-${name}`)
+  }
+
+  /** The buttons of a row's actions cell, left to right. */
+  actions(key: string): Locator {
+    return this.actionsCell(key).locator("button[data-action]")
+  }
+
+  /**
+   * Runs `action`, which uses a button of a row's actions cell, and waits
+   * for the server's answer: the cell is `aria-busy` while its action is on
+   * its way. Not for an action that takes the row away.
+   */
+  async acts(key: string, action: () => Promise<unknown>): Promise<void> {
+    await this.busyThenIdle(this.actionsCell(key), action)
+  }
+
+  /** Where each row says it stands among all rows (`aria-rowindex`), down the page. */
+  async rowIndexes(): Promise<number[]> {
+    return this.rows.evaluateAll((rows) =>
+      rows.map((row) => Number((row as HTMLTableSectionElement).rows[0].getAttribute("aria-rowindex"))),
+    )
+  }
+
+  // ---- the action panel ---------------------------------------------------
+
+  /** The action panel: a modal dialog, in the page only while it is open. */
+  get panel(): Locator {
+    return this.byId(`${this.id}-panel`)
+  }
+
+  /** Its heading: the action, and the record it runs on. */
+  get panelTitle(): Locator {
+    return this.byId(`${this.id}-panel-title`)
+  }
+
+  /** The panel's form. */
+  get panelForm(): Locator {
+    return this.byId(`${this.id}-panel-form`)
+  }
+
+  /**
+   * The server has answered everything that was typed into the panel so
+   * far: LiveView marks a form from the moment it sends what the form holds
+   * until the answer is in the page.
+   */
+  async panelSettled(): Promise<void> {
+    await expect(this.panelForm).not.toHaveClass(/phx-change-loading|phx-submit-loading/)
+  }
+
+  /** The control of one input of the action, by the input's name. */
+  field(name: string): Locator {
+    return this.byId(`${this.id}-panel-f-${name}`)
+  }
+
+  /** What the action says about one input. */
+  fieldError(name: string): Locator {
+    return this.byId(`${this.id}-panel-f-${name}-error`)
+  }
+
+  /** The names of the panel's fields, top to bottom. */
+  async fields(): Promise<string[]> {
+    return this.panel
+      .locator("[data-field]")
+      .evaluateAll((fields) => fields.map((field) => (field as HTMLElement).dataset.field!))
+  }
+
+  /** What the action says that is about none of its inputs: an alert above the fields. */
+  get panelErrors(): Locator {
+    return this.byId(`${this.id}-panel-errors`)
+  }
+
+  get panelCancel(): Locator {
+    return this.byId(`${this.id}-panel-cancel`)
+  }
+
+  /** "Run", or "Create". */
+  get panelSubmit(): Locator {
+    return this.byId(`${this.id}-panel-submit`)
   }
 
   // ---- what a row expands into ---------------------------------------------
@@ -298,6 +428,11 @@ export class Table {
   /** The button of a line: it opens the nested table and says whether it is open. */
   line(key: string, relationship: string): Locator {
     return this.byId(`${this.id}-row-${key}-l-${relationship}-b`)
+  }
+
+  /** The create button of a line's nested table: on the line, after its label. */
+  lineCreate(key: string, relationship: string): Locator {
+    return this.byId(`${this.id}-row-${key}-l-${relationship}-create`)
   }
 
   /** The cell under an open line that holds the nested table. */

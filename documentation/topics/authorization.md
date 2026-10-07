@@ -4,7 +4,8 @@ The table has no authorization rules of its own. It passes the actor and the
 tenant into ordinary Ash calls, asks Ash what the person may see and do, and
 shows the answer. After reading this guide you know where the table finds
 the actor, what each kind of policy looks like to a person, and why some
-refusals show before a person acts and others only when they save.
+refusals show before a person acts and others only when they save or run an
+action.
 
 ## The smallest example
 
@@ -37,13 +38,16 @@ that is all the wiring there is.
 **Try it:** `/tasks` in the demo. The "Acting as" switcher in the page
 header changes who you are, and the same page changes with it:
 
-| Actor | Rows | Columns | Editing |
-| --- | --- | --- | --- |
-| Ada Admin | Acme's tasks | all 17 | every editable column, on every task |
-| Max Member | Acme's tasks | 16: no "External ref". "Estimate hours" is empty except on the tasks assigned to him | looks editable everywhere; a task that is not his refuses when a cell is saved |
-| Vera Viewer | Acme's tasks | 14: as the member, and no "Assignee" and no "Reported by", since a viewer may not read people | none |
-| Olga Outsider | Globex's tasks | 16, as the member | as the member, on Globex's tasks |
-| Nobody | none: "No records" | 14: no "External ref", no "Estimate hours" and no "Project" | none |
+| Actor | Rows | Columns | Editing | Row actions and "New task" |
+| --- | --- | --- | --- | --- |
+| Ada Admin | Acme's tasks | all 17 | every editable column, on every task | four buttons on every row, each of which runs; "New task" |
+| Max Member | Acme's tasks | 16: no "External ref". "Estimate hours" is empty except on the tasks assigned to him | looks editable everywhere; a task that is not his refuses when a cell is saved | four buttons on every row; a task that is not his refuses when an action runs; "New task", without the field "External ref" |
+| Vera Viewer | Acme's tasks | 14: as the member, and no "Assignee" and no "Reported by", since a viewer may not read people | none | no actions column, no "New task" |
+| Olga Outsider | Globex's tasks | 16, as the member | as the member, on Globex's tasks | as the member, on Globex's tasks |
+| Nobody | none: "No records" | 14: no "External ref", no "Estimate hours" and no "Project" | none | none |
+
+The columns counted here are the table's own. The column of the expanders
+and the "Actions" column are not among them.
 
 ## Where actor and tenant come from
 
@@ -144,6 +148,10 @@ as an admin area that the router already restricts.
 | The person may **not read one related record** | Its reference cell is empty, as for no related record. In a nested table its row is not there. | A task assigned to somebody of another organization. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. | `/tasks` as Vera Viewer. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. | `/tasks` as Max Member, on a task that is not his. |
+| The person can **never run a row action** | The action has no button for them. If that is every row action, the table has no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member has "Set status" and no "Destroy". |
+| The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the row's actions cell, or the action panel, says "You are not allowed to do this." | `/tasks` as Max Member: "Archive" on a task that is not his. |
+| The person can **never run the create action** | The table has no create button for them. | `/tasks` as Vera Viewer; `/projects` and `/labels` as Max Member. |
+| The person may create **some records only** | The button is there. A record the action refuses says "You are not allowed to do this." in the panel, and nothing is created. | (none in the demo) |
 
 "No records" is only ever shown for a read that succeeded and found nothing.
 
@@ -237,6 +245,7 @@ instead. The demo's comments do
 table do
   update_action :update
   on_forbidden :message
+  # ...
 end
 ```
 
@@ -251,18 +260,21 @@ something not everybody should learn.
 
 ## Why a rule that depends on the record shows on save
 
-The table asks Ash two questions, each time it reads: when the page is
+The table asks Ash three questions, each time it reads: when the page is
 opened and at every change of sort, filter or page.
 
 - **Which of these fields can this person never see?** One call of
-  `Ash.can_see_fields/4` for all columns.
+  `Ash.can_see_fields/4` for all columns, and one for the attributes that
+  the table's row actions and its create action accept.
 - **Which of these update actions can this person never run?** One call of
   `Ash.can/3` per distinct update action, not per cell.
+- **Which of the row actions, and the create action, can this person never
+  run?** One call of `Ash.can/3` per action, not per row.
 
-Neither question reads a record or runs a query. Ash can answer "yes",
-"never", or "that depends on the record". Only "never" changes the table: the
-column is left out, or made read-only. An answer Ash cannot give at all is
-taken as "never".
+None of them reads a record or runs a query. Ash can answer "yes", "never",
+or "that depends on the record". Only "never" changes the table: the column
+is left out or made read-only, the button is left out. An answer Ash cannot
+give at all is taken as "never".
 
 "That depends on the record" leaves the cell looking editable, and this is
 the surprising part. The alternative would be to check every action against
@@ -271,6 +283,12 @@ which may need the database, for an answer that can be out of date by the
 time the person presses Enter. The table asks once per action and leaves the
 decision about one record to the moment it matters: the action runs, and the
 action's policy answers. A refusal then appears on the cell.
+
+A row action follows the same reasoning. Its button is on every row unless
+the person can never run it, and a refusal appears when it runs: on the
+row's actions cell for an action that runs straight away, above the fields
+for one that runs from the action panel. See
+[Row actions and create](row-actions-and-create.md#who-may-run-what).
 
 The same reasoning applies to fields. Whether a field is visible on one
 record is known once the record is read; Ash puts an `Ash.ForbiddenField` in
@@ -292,12 +310,19 @@ When a person is not shown a field on a record, the table does not let them
 change it there either. That is the table's doing, and it stops at the
 table.
 
+The action panel follows the same rule. An attribute the person can never
+see is no field of a row action's panel or of the create panel, an
+attribute hidden from them on one record is no field of that record's
+panel, and a value sent for either all the same is dropped before the
+action is given its inputs. On `/tasks`, "New task" has the field "External
+ref" for Ada Admin only.
+
 A field policy is about reading. The update action itself accepts the field
 from anyone its *policy* allows: the same action called through
 `ash_json_api`, `ash_graphql` or your own code changes a field the caller
-cannot see. If a field must not be changed by people who cannot see it, say
-so in the resource: an action that does not accept the field, or a policy or
-validation on the one that does.
+cannot see. The same holds for a create action. If a field must not be
+changed by people who cannot see it, say so in the resource: an action that
+does not accept the field, or a policy or validation on the one that does.
 
 ## Edge cases
 
@@ -317,6 +342,18 @@ validation on the one that does.
   nothing. For a row that is on the page, the record is read again as the
   person before the action runs, so a record that has left their reach since
   says "This record is no longer available."
+- **An `act` or `create` event from a person who can never run the action
+  is not run**, and opens no panel: the action is looked up among the ones
+  the table offers that person.
+- **A row action cannot reach a record the person cannot read.** As for a
+  save, the event names a row of the person's own page, and the record is
+  read again as the person before the action runs, and for a panel before
+  it opens.
+- **A record created in a nested table is joined to the row above by the
+  table**, from that row as it is read again for the person. A key sent
+  with the form is not looked at.
+- **A record the person creates and may not read** is created, and is no
+  row of their table.
 - **A public `sensitive?` field is a column.** Sensitivity is not an
   exposure rule, here or in the API extensions. Hide a field with a field
   policy or make it private.
@@ -351,6 +388,7 @@ validation on the one that does.
 ## Not in the first version
 
 No per-table authorization setting beside the domain's, no hiding of single
-rows' edit affordance ahead of a save, and no login or session handling:
-that is the host's. The roadmap is in the
+rows' edit affordance ahead of a save or of a row's buttons ahead of an
+action, and no login or session handling: that is the host's. The roadmap
+is in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

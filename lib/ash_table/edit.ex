@@ -5,14 +5,14 @@ defmodule AshTable.Edit do
   # the value becomes, and whether it is accepted, is the action's.
   #
   # The table does not keep the records it shows, so the record is read again
-  # first, by primary key and as the person saving: the same policies and
-  # field policies apply as when the page was read.
+  # first, by primary key and as the person saving (`AshTable.Record`).
 
   alias AshTable.Errors
   alias AshTable.Format
   alias AshTable.Model
   alias AshTable.Model.Column
   alias AshTable.Query
+  alias AshTable.Record
   alias AshTable.Text
 
   @typedoc """
@@ -40,7 +40,7 @@ defmodule AshTable.Edit do
       when is_map(key) and is_binary(typed) do
     opts = Query.reader_opts(opts)
 
-    case fetch(model, key, opts) do
+    case Record.fetch(model, key, opts) do
       {:ok, record} -> save_record(model, column, record, typed, opts)
       :error -> {:error, nil, Text.t(:record_gone)}
     end
@@ -63,27 +63,17 @@ defmodule AshTable.Edit do
   end
 
   defp unchanged(model, record, opts) do
-    case load(model, record, opts) do
+    case Record.load(model, record, opts) do
       {:ok, record} -> {:ok, record}
-      {:error, _error} -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, Text.t(:record_gone)}
     end
   end
 
   # The row is shown again, with the cell marked: from the record as it is.
   defp failed(model, record, message, opts) do
-    case load(model, record, opts) do
+    case Record.load(model, record, opts) do
       {:ok, record} -> {:error, record, message}
-      {:error, _error} -> {:error, nil, message}
-    end
-  end
-
-  # The record with what the table's columns show of it.
-  defp load(model, record, opts), do: Query.load(record, model, opts)
-
-  defp fetch(model, key, opts) do
-    case Query.get(model.resource, key, opts) do
-      {:ok, %_{} = record} -> {:ok, record}
-      _not_found_or_refused -> :error
+      :error -> {:error, nil, message}
     end
   end
 
@@ -98,10 +88,10 @@ defmodule AshTable.Edit do
     |> case do
       # the row is shown from what the action returns
       {:ok, saved} ->
-        case load(model, saved, opts) do
+        case Record.load(model, saved, opts) do
           {:ok, saved} -> {:ok, saved}
           # saved, and no longer this person's to read
-          {:error, _error} -> {:error, nil, Text.t(:record_gone)}
+          :error -> {:error, nil, Text.t(:record_gone)}
         end
 
       {:error, form} ->
@@ -114,25 +104,9 @@ defmodule AshTable.Edit do
   # apart for translation; a refusal and other errors without a field are
   # among its raw errors. See `AshTable.Errors` for what is shown of them.
   defp message(form, column, model) do
-    at_fields =
-      for {field, {message, vars}} <- AshPhoenix.Form.errors(form, format: :raw),
-          is_binary(message),
-          do: Errors.at_field(model, column.name, field, {message, vars})
-
-    without_field =
-      for error <- AshPhoenix.Form.raw_errors(form),
-          not Errors.about_field?(error),
-          message = text(error),
-          do: message
-
-    case Enum.uniq(at_fields ++ without_field) do
+    case Errors.of_form(form, model, column.name, Text.t(:edit_not_allowed)) do
       [] -> Text.t(:save_failed)
       messages -> Enum.join(messages, "; ")
     end
   end
-
-  # A refusal says nothing a person should read: Ash's message for it is
-  # "forbidden", or the breakdown of the policies.
-  defp text(%{class: :forbidden}), do: Text.t(:edit_not_allowed)
-  defp text(error), do: Errors.without_field(error)
 end

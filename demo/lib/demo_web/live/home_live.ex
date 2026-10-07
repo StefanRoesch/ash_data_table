@@ -14,26 +14,34 @@ defmodule DemoWeb.HomeLive do
        {"/tasks",
         "declared columns, offset pages, sortable aggregate and calculation; " <>
           "columns and editing differ by who you are. A row expands into seven declared " <>
-          "relationships of every kind, three levels deep; a viewer has no line for people"}
+          "relationships of every kind, three levels deep; a viewer has no line for people. " <>
+          "Four row actions (one runs at once, two open the action panel, the delete asks " <>
+          "first) and \"New task\", for admins and members; a member's are refused on tasks " <>
+          "that are not theirs, and a viewer has none"}
      ]},
     {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
      [
        {"/projects",
         "no column declared: the default columns, edited in place by admins and members; " <>
           "for nobody, a page that does not exist. " <>
-          "A row expands into its tasks: the one relationship it offers by default"}
+          "A row expands into its tasks: the one relationship it offers by default, with " <>
+          "\"New task\" on its line. \"Set status\" for admins and members; \"Destroy\" " <>
+          "and \"New project\" for admins"}
      ]},
     {Demo.Tracker.Comment, "Keyset pagination only. Its read is refused outright for nobody.",
      [
        {"/comments",
         "keyset pages: next and previous; the body is edited in place by admins and by " <>
           "its author; for nobody, a message (on_forbidden). " <>
-          "A row expands into its task and its author"}
+          "A row expands into its task and its author. \"Destroy\", which asks first and " <>
+          "is refused on a comment that is not yours, and \"New comment\", for admins and " <>
+          "members"}
      ]},
     {Demo.Tracker.Label, "No pagination.",
      [
        {"/labels",
-        "no pagination: every record, edited in place by admins. A row expands into its tasks"},
+        "no pagination: every record, edited in place by admins. A row expands into its " <>
+          "tasks. \"Destroy\" and \"New label\" for admins; nobody else has an actions column"},
        {"/bare/labels", "the same, mounted without the app layout"}
      ]},
     {Demo.Tracker.User,
@@ -46,7 +54,8 @@ defmodule DemoWeb.HomeLive do
      [
        {"/task_labels",
         "a key of two attributes. A row expands into its task and its label, and no " <>
-          "further (max_depth 1)"}
+          "further (max_depth 1). \"Remove\" deletes the link at one click (confirm " <>
+          "false); \"New task label\" takes the two keys"}
      ]},
     {Demo.KitchenSink.Specimen, "One attribute per built-in Ash type. No tenant, open to anyone.",
      [{"/specimens", "no table block: how every type is shown"}]}
@@ -97,6 +106,12 @@ defmodule DemoWeb.HomeLive do
           Rows expand: the mark at the start of a row shows one line per relationship, and a
           line opens the table of the related records inside the row, with its own sort,
           filters, pages and editing.
+        </p>
+        <p id="acting" class="text-base-content/70">
+          Rows have buttons: the last column of a table holds the actions its resource
+          declares for it, and the button on the line of a table's name creates a record. An
+          action with inputs asks for them in a panel first. Which buttons you have depends
+          on who you are: a viewer has none.
         </p>
       </div>
 

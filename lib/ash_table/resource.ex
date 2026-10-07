@@ -123,6 +123,86 @@ defmodule AshTable.Resource do
   The last row of a nested table links to its full view, where the host's
   router mounts the destination's table (`AshTable.Router.ash_table/3`):
   that page, limited to the same records. See `AshTable.Live.Page`.
+
+  ## Row actions and create
+
+  A row can have buttons that run an action on its record, and a table a
+  button that creates one:
+
+      table do
+        action :archive
+
+        action :reassign do
+          label "Hand over"
+        end
+
+        action :destroy do
+          confirm "Delete this task? This cannot be undone."
+        end
+
+        create_action :create
+      end
+
+  Both are opt-in. An `action` names a public update or destroy action of
+  the resource: a row action. Its button stands in the last column of the
+  table, "Actions", in the declared order, and says the action's name in
+  words unless `label` says otherwise. A generic action takes no record and
+  cannot be a row action; a create action is named with `create_action`.
+
+  Using a button runs the action straight away when the action has no
+  inputs, or optional arguments only, which keep their defaults. An action
+  that accepts attributes, or has an argument that is `allow_nil? false`,
+  opens the action panel first: changing its attributes is what such an
+  action is for. The create action always opens the panel.
+
+  The panel has one field per input the action takes from the outside, in
+  the action's own order: the public attributes it accepts, then its public
+  arguments.
+
+    * A field is called what the table's column for the attribute is called,
+      else by the input's name in words.
+    * Its control is the editor a cell of its type has (text, number,
+      boolean, date, datetime, enum), or a plain text field for a value
+      that is written as one line and has no editor of its own: a UUID, a
+      time, an `:atom` without `one_of`. So an input that points at another
+      resource is a field for its key.
+    * A type with no field (an array, a map, an embedded resource, a union)
+      is left out of the panel when the input is optional. An action that
+      requires such an input cannot be run from a table: the compiler
+      reports it, and the table has no button for it.
+    * A field is marked as required as the action says: an attribute that is
+      `allow_nil? false` and not in the action's `allow_nil_input`, or in
+      its `require_attributes`; an argument that is `allow_nil? false`. A
+      create does not require an attribute whose default is computed.
+    * A row action's fields start with the record's values and its
+      arguments' defaults; those of a create with the defaults.
+
+  The action is run through `AshPhoenix.Form`, as the person, on the record
+  as it is read again at that moment. What it says about a field is shown at
+  the field, and the panel stays open; what is about no field of the panel
+  is shown above them. An action that ran straight away and failed marks the
+  row's actions cell with its message.
+
+  `confirm` asks a question before the action runs, or for an action with a
+  panel when "Run" is used. A destroy action without `confirm` deletes at
+  one click, which the compiler warns about: give it a question, or say
+  `confirm false`.
+
+  After an update action the row is shown from what the action returned and
+  stays where it is. After a destroy the row is taken away, with everything
+  open under it. A created record is the first row of the page until the
+  table reads again. The total follows by one.
+
+  The create button is on the line of the table's name and says "New" and
+  the resource's short name in words: "New task". A nested table offers
+  create only where the table can say what joins the new record to the row
+  above: for a has-many joined by attributes, when this `create_action`
+  accepts the relationship's destination attribute. The table then gives
+  that attribute itself, and the button is on the relationship's line.
+
+  A person who can never run an action has no button for it. An input of a
+  field they can never see, or do not see on the record, is no field of
+  their panel. See `AshTable.Live.Page`.
   """
 
   @column %Spark.Dsl.Entity{
@@ -172,6 +252,32 @@ defmodule AshTable.Resource do
     schema: AshTable.Resource.Relationship.schema()
   }
 
+  @action %Spark.Dsl.Entity{
+    name: :action,
+    describe: """
+    A row action: an update or destroy action of the resource that a person runs on the record of a row, from a button in the last column of the table. The buttons stand in the declared order.
+
+    An action without inputs, or with optional arguments only, runs when its button is used. One that accepts attributes or has a required argument without a default opens the action panel first, where the person gives its inputs.
+    """,
+    examples: [
+      "action :archive",
+      """
+      action :reassign do
+        label "Hand over"
+      end
+      """,
+      """
+      action :destroy do
+        confirm "Delete this task? This cannot be undone."
+      end
+      """
+    ],
+    target: AshTable.Resource.Action,
+    args: [:name],
+    identifier: :name,
+    schema: AshTable.Resource.Action.schema()
+  }
+
   @table %Spark.Dsl.Section{
     name: :table,
     describe: "How the resource is presented to people as a table.",
@@ -207,6 +313,11 @@ defmodule AshTable.Resource do
         doc:
           "The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only."
       ],
+      create_action: [
+        type: :atom,
+        doc:
+          "The create action behind the table's create button: a public create action of the resource. The button opens the action panel with the action's inputs, and the new record is shown as the first row of the page. Without it the table has no create button."
+      ],
       on_forbidden: [
         type: {:one_of, [:not_found, :message]},
         default: :not_found,
@@ -225,7 +336,7 @@ defmodule AshTable.Resource do
           "How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown."
       ]
     ],
-    entities: [@column, @relationship]
+    entities: [@column, @relationship, @action]
   }
 
   use Spark.Dsl.Extension,
@@ -236,6 +347,7 @@ defmodule AshTable.Resource do
       AshTable.Resource.Verifiers.VerifyLabelField,
       AshTable.Resource.Verifiers.VerifyColumns,
       AshTable.Resource.Verifiers.VerifyRelationships,
+      AshTable.Resource.Verifiers.VerifyActions,
       AshTable.Resource.Verifiers.VerifyExposure
     ]
 end

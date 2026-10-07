@@ -31,6 +31,16 @@ defmodule Demo.Tracker.TaskLabel do
     # A row expands into its task and its label, and no further: the rows of
     # those nested tables have no expanders.
     max_depth 1
+
+    # Taking a label off a task deletes nothing but the link: it runs at one
+    # click, and `confirm false` says that this is meant. Without it the
+    # compiler warns about a destroy action that asks nothing.
+    action :destroy do
+      label "Remove"
+      confirm false
+    end
+
+    create_action :create
   end
 
   actions do

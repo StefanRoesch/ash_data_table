@@ -26,9 +26,10 @@ sorted.
 | --- | --- |
 | The sorted column and its direction | Which cell has focus |
 | Every filter that applies: column, operator, value | A filter value that was rejected as invalid |
-| The page number (offset) or the cursor (keyset) | An open editor and what is typed in it |
+| The page number (offset) or the cursor (keyset) | An open editor, an open action panel, and what is typed in them |
 | The parent a table is limited to: the full view of a nested table | Cells whose save failed |
 | | Which rows are expanded, and the sort, filters and page of the tables nested in them |
+| | The mark of a row action that failed, and a row that was created and still stands at the top |
 
 A default is left out: no sort, no filters and the first page give the plain
 path, `/tasks`.
@@ -165,10 +166,14 @@ The demo's dashboard has two tables of this kind
 <AshTable.table
   id="dashboard-tasks"
   resource={Demo.Tracker.Task}
+  heading={2}
   actor={@current_user}
   tenant={@current_tenant}
 />
 ```
+
+Neither is given `url`. (`heading` is about the line above the table; see
+[Layout and embedding](layout-and-embedding.md#the-line-of-the-table-s-name).)
 
 **Try it:** `/dashboard` in the demo. Sort one table and page the other: the
 address stays `/dashboard`, and neither table moves when the other does.

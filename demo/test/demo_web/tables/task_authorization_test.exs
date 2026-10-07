@@ -89,8 +89,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       assert headers(html, "task") == @headers
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1"]
-      # the 17 columns, and before them the expanders
-      assert attribute(html, "#task-table", "aria-colcount") == ["18"]
+      # the 17 columns, before them the expanders, and after them the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["19"]
     end
 
     for actor <- [:member, :viewer, :outsider] do
@@ -105,11 +105,13 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        # the expanders, and the columns that are left: 16, and 14 for the viewer
-        count = 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]])
+        # the expanders, the columns that are left (16, and 14 for the viewer),
+        # and the actions, which a viewer can never run
+        actions = if unquote(actor) == :viewer, do: 0, else: 1
+        count = 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]]) + actions
         numbers = Enum.map(1..count, &Integer.to_string/1)
 
-        assert count == if(unquote(actor) == :viewer, do: 15, else: 17)
+        assert count == if(unquote(actor) == :viewer, do: 15, else: 18)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
         assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
@@ -151,8 +153,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "leaves the cells of a row numbered without a gap", %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
+      # the expander, the sixteen columns of a member, the actions
       assert attribute(html, "#task-table tbody td", "aria-colindex") ==
-               Enum.map(1..17, &Integer.to_string/1)
+               Enum.map(1..18, &Integer.to_string/1)
     end
   end
 

@@ -55,6 +55,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/state-in-the-url.md",
         "documentation/topics/inline-editing.md",
         "documentation/topics/confirm.md",
+        "documentation/topics/row-actions-and-create.md",
         "documentation/topics/nested-tables.md",
         "documentation/topics/authorization.md",
         "documentation/topics/keyboard-and-accessibility.md",
@@ -79,6 +80,7 @@ defmodule AshTable.MixProject do
           AshTable.Resource.Info,
           AshTable.Resource.Column,
           AshTable.Resource.Relationship,
+          AshTable.Resource.Action,
           AshTable.Domain.Info
         ]
       ]

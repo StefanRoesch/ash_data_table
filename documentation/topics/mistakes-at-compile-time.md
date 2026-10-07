@@ -67,7 +67,9 @@ The first line names the resource. The second is the path to the option in
 the block, with the file and the line. Then comes the message.
 
 The action is the demo's own. The demo's tasks keep `reassign` to show what
-cannot be behind a column, and its table does not name it
+cannot be behind a column, and no column of its table names it. The table
+offers it as a row action instead, where the action panel asks for the
+reason
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -241,10 +243,69 @@ The path is `table -> relationship -> NAME`.
 With no `relationship` declared, a relationship whose destination has no
 table is simply not offered: nothing is reported.
 
+## Row actions and the create action
+
+The path is `table -> action -> NAME` for a row action,
+`table -> create_action` for the create action, and `table` for the last
+one. `INPUT` is an attribute the action accepts or one of its arguments.
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| The resource has no action named \`NAME\`. | An `action`, or `create_action`, names an action the resource does not have. | Correct the name, or define the action. |
+| The action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | The action is declared `public? false`. | Make it public, or leave it out. |
+| \`NAME\` is a create action. A row action runs on the record of its row, so it has to be an update or a destroy action. A create action is offered with \`create_action :NAME\` in the \`table\` block. | An `action` names a create action. | Name it with `create_action`. |
+| \`NAME\` is a read action. A row action runs on the record of its row, so it has to be an update or a destroy action. | An `action` names a read action. | Remove it. |
+| \`NAME\` is a generic action. A row action runs on the record of its row, so it has to be an update or a destroy action. A generic action takes no record. | An `action` names a generic action. | Remove it. A table has no place for an action without a record. |
+| Got duplicate AshTable.Resource.Action: NAME | The block declares the same `action` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
+| The row action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key. | The action accepts an attribute it requires, or has an argument with `allow_nil? false`, of a type the action panel has no field for: an array, a map, an embedded resource, a union, a binary. `TYPE` is the Ash type, such as `Ash.Type.Map` or `{:array, Ash.Type.UUID}`. | Use an action that does not require the input, or leave the action out. |
+| \`NAME\` is an update action, not a create action. | `create_action` names an action of another type: the message says "an update", "a destroy", "a read" or "a generic". | Name a create action. |
+| The create action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for … | As for a row action. An attribute whose default is computed does not count as required in a create. | Name a create action that does not require the input. |
+| The table has row actions or a create action and shows calculations, aggregates or reference columns (\`NAME\`), but the resource has no primary read action. After an action the row is shown with those fields, which Ash loads through the primary read action. Mark a read action \`primary? true\`. | The table reads through a non-primary action named with `read_action`, has an `action` or a `create_action`, and at least one column is a calculation, an aggregate or a reference cell. A table that has editable columns as well gets the finding about those instead. | Mark a read action `primary? true`. |
+
+An input of a type without a field that the action does **not** require is
+no finding: it is left out of the panel. Which types have a field, and what
+counts as required, is in
+[Row actions and create](row-actions-and-create.md#the-fields-of-the-panel).
+
+### A destroy action without `confirm`
+
+One finding about a row action is not a mistake. A destroy action that
+names no `confirm` deletes its record at one click, and the block may mean
+that. So it is a plain warning, with the line of the action and without the
+path. This is the output of the compiler for a sketch, a resource whose
+block says `action :destroy` and nothing more about it (the path of the
+file is shortened):
+
+<!-- sketch -->
+```text
+warning: The row action `destroy` is a destroy action without `confirm`: one click on its button deletes the record, and nothing asks first. Give it a question (`confirm "Delete this record?"`), or say that a delete in one click is meant with `confirm false`.
+    │
+ 18 │     action :destroy
+    │     ~~~~~~~~~~~~~~~
+    │
+    └─ lib/sketch/task.ex:18: (file)
+```
+
+It is answered in the block, in one of two ways. Both are in the demo, which
+therefore compiles without it: a question on the tasks' action, and
+`confirm false` on the task labels'
+([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
+
+<!-- source: demo/lib/demo/tracker/task_label.ex -->
+```elixir
+action :destroy do
+  label "Remove"
+  confirm false
+end
+```
+
+`--warnings-as-errors` fails on this warning like on every other finding.
+An update action is never warned about.
+
 ## Warnings about what a column shows
 
-Two findings are not mistakes in the block. The resource may mean what it
-says, so they are plain warnings: the text below with the line of the
+Two more findings are not mistakes in the block. The resource may mean what
+it says, so they are plain warnings: the text below with the line of the
 column, without the path and without the `Spark.Error.DslError` in front.
 `--warnings-as-errors` fails on them like on the others. This is the output
 of the compiler for a sketch:
@@ -286,6 +347,10 @@ Some things look like they should be reported and are not, on purpose:
 | No `table` block | The default table. |
 | A public relationship whose destination has no table, in a block that declares no `relationship` | It is not offered. |
 | `exposes_protected_field? true` on a column that exposes nothing | Nothing. |
+| An action, or the create action, with an optional input of a type the panel has no field for | The input is left out of the panel. |
+| A row action that accepts attributes that may all be empty | Its button opens the action panel. |
+| `confirm false` on an update action | Nothing. An update action is not warned about in the first place. |
+| A `create_action` that does not accept the attribute joining its records to a parent | The table has its create button on a page of its own, and none where it is nested under that parent. |
 
 The table-level action is a blanket statement, "edit what this action can
 edit", so what it cannot edit is not an error. A column's own action is a
@@ -314,6 +379,12 @@ any LiveView does that raises in its first render.
 | A calculation column that requires an argument | The same. |
 | A wrong `update_action`, at the table or at a column: not there, not an update action, not public | The same. The block asked for editing through an action that cannot be run, and a table that silently offered none would hide that. |
 | Editable columns beside calculation, aggregate or reference columns, without a primary read action | The same. |
+| An `action` that names no public update or destroy action, or one that is declared twice | The same: "its row action \`NAME\` cannot be used." |
+| A `create_action` that names no public create action | The same: "its \`create_action\` cannot be used." |
+| Row actions or a create action beside calculation, aggregate or reference columns, without a primary read action | The same. |
+| A row action with a required input the panel has no field for | The table renders, and has no button for that action. |
+| A create action with a required input the panel has no field for | The table renders, and has no create button. |
+| A destroy action without `confirm` | The table renders, and the button deletes at one click. |
 | A `label_field` that names no public attribute | The table itself renders. A table that shows this resource in a reference cell refuses, and a heading that would call a record by it calls it by a column instead. |
 | A warning about what a column shows | The table renders and shows the column: the first kind as Ash returns it, the second read apart and without its sort and filter. |
 | A column's own `update_action` that exists but does not accept the attribute, or needs an argument | The column is read-only. |
@@ -348,6 +419,10 @@ so it has no table."
   not compile that resource again, so its finding appears, or goes away, at
   the next full build: one more reason for `--force`. At runtime the table
   checks again.
+- **The warning about a destroy action is not printed beside an error
+  about the actions.** The verifier of the row actions reports its errors
+  first: a block with a wrong `action` and a destroy action without
+  `confirm` shows the error, and the warning once the error is gone.
 - **The checks know nothing of people.** That a person can never see a
   column or never run an action is a matter of policies and is found out per
   request. See [Authorization](authorization.md).
@@ -368,6 +443,5 @@ so it has no table."
 ## Not in the first version
 
 The option `component`, for a column's own cell component, is planned and
-not built; using it today is the "undefined function" error above. A warning
-for a destroy action without `confirm` comes with row actions. See the
+not built; using it today is the "undefined function" error above. See the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

@@ -2,8 +2,9 @@
 
 Every table is an ARIA grid that can be used from the keyboard alone. After
 reading this guide you know every key the table handles, how focus moves
-through the filter row and the editors, what is announced to assistive
-technology, and what has and has not been tested.
+through the filter row, the editors, the row actions and the action panel,
+what is announced to assistive technology, and what has and has not been
+tested.
 
 A note on words: this guide says "grid" for the element with `role="grid"`
 and for the ARIA pattern it follows. Everywhere else the thing is a table.
@@ -37,9 +38,10 @@ order, not 425.
 - Exactly one cell is in the tab order at any time. At first it is the first
   cell of the first row of records.
 - The cell a person moved to is the one Tab returns to.
-- The controls around the grid are ordinary tab stops: the "Clear filters"
-  button above it, while a filter applies, and the pagination buttons below
-  it.
+- The controls around the grid are ordinary tab stops: the create button on
+  the line of the table's name, where the table has one, the "Clear
+  filters" button above the grid, while a filter applies, and the
+  pagination buttons below it.
 - Moving about never contacts the server.
 - Where rows expand into nested tables, the first cell of a row is its
   expander, and a nested table is a grid of its own inside a cell: the whole
@@ -59,8 +61,10 @@ order, not 425.
 | Enter, on the heading of a sortable column | Sorts by the column: ascending, descending, none. Focus stays on the heading. |
 | Enter or F2, on a filter cell | Goes into the filter. |
 | Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. |
+| Enter or F2, on the actions cell of a row | Goes to its first button. See [Row actions and the action panel](#row-actions-and-the-action-panel). |
 | A character, on a filter cell or a cell that can be edited | Goes into the filter or starts editing, with that character typed. |
 | Escape, on a cell whose save failed | Gives the failed edit up: the cell shows the saved value again. |
+| Escape, on an actions cell that shows the message of a failed action | Gives the message up. |
 | Space | Nothing. It is reserved for row selection, and it does not scroll the page. |
 
 On macOS, Cmd works where the table says Ctrl. Key combinations with Alt are
@@ -68,7 +72,9 @@ left to the browser.
 
 The header row and the filter row are rows of the grid. Both have a cell for
 every column, including the columns that cannot be sorted or filtered, so
-the arrow keys never skip a position.
+the arrow keys never skip a position. That includes the column of the
+expanders and the "Actions" column, where a table has them: their filter
+cells are empty.
 
 With the pointer: a click moves focus to a cell, a click on a sortable
 heading sorts, and a double click on an editable cell starts editing.
@@ -119,6 +125,52 @@ What saving does, and what a failed save looks like, is in
 [Inline editing](inline-editing.md). The dialog of a column with a question
 is in [Confirm](confirm.md).
 
+## Row actions and the action panel
+
+A table with row actions has a last column, "Actions", whose cell holds one
+button per action. The cell is a cell of the grid like any other: the arrow
+keys stop at it, and End reaches it. Its buttons are not tab stops. They
+are reached from the cell, as a filter's controls are.
+
+| Key | Where | Effect |
+| --- | --- | --- |
+| Enter, F2 | On an actions cell | Focus goes to its first button. |
+| Left Arrow, Right Arrow | On a button | Move to the button before and after it. They do not leave the cell. |
+| Enter, Space | On a button | Use it: the action runs, its question is asked, or its panel opens. |
+| Escape | On a button | Returns to the cell. |
+| Tab | On a button | Moves to the next button. Tab from the last one leaves the grid. |
+| Escape | On an actions cell that shows a failure | Gives the message up. |
+
+Space uses a button, as it does anywhere. On a **cell**, the actions cell
+included, Space stays reserved for row selection and does nothing.
+
+The **action panel** is a native `<dialog>` opened with `showModal()`, at
+the right edge of the window. While it is open the rest of the page cannot
+be reached, and the browser keeps focus inside it.
+
+| Key | Effect |
+| --- | --- |
+| Tab, Shift+Tab | Move through the panel's fields and its two buttons. |
+| Enter, in a field of one line | Runs the action, as "Run" does. In a text field of several lines it makes a new line. |
+| Escape | Closes the panel, as "Cancel" does. Nothing runs. |
+
+Where focus goes afterwards:
+
+| After | Focus is |
+| --- | --- |
+| An action that ran straight away | Still on its button. The row is patched around it. |
+| A destroy | On the actions cell of the row after the one that went, else of the row before it, else on the grid's first cell. |
+| A create | On the first data cell of the new row, which is the first row of the page. |
+| The panel closed with Cancel or Escape, or after its action ran | On the control that opened it. |
+| A question answered with Cancel or Escape | On the button that asked. |
+
+The **create button** is an ordinary button and a tab stop, before the
+grid in the page's tab order. The create button of a nested table is on its
+relationship line: see the next section.
+
+What each action does is in
+[Row actions and create](row-actions-and-create.md).
+
 ## Rows that expand
 
 In a table whose rows expand, the first cell of every row holds the
@@ -126,7 +178,9 @@ expander: a button that says whether the row is expanded
 (`aria-expanded`). An expanded row has, under it, one row per relationship
 line, each a cell that spans the grid with a button of its own, and under an
 open line a row whose one cell holds the nested table. All of them are cells
-of the grid, which the arrow keys stop at.
+of the grid, which the arrow keys stop at. A line whose nested table lets
+the person create has a second button after its label, such as "New
+comment".
 
 | Key | Where | Effect |
 | --- | --- | --- |
@@ -134,6 +188,7 @@ of the grid, which the arrow keys stop at.
 | Right Arrow | On an expander or a line that is closed | Opens it. On one that is open, moves on as on any cell. |
 | Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
 | Enter | On an expander or a line | Opens or closes it. |
+| F2 | On a line that has a create button | Goes to the line's controls: the button that opens and closes it, and the create button. Left Arrow and Right Arrow move between them; Enter uses one; Escape returns to the line. |
 | Down Arrow, Up Arrow | | Go through the lines and the nested tables' cells as through rows, keeping the column for the rows below them. |
 | Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first data cell. |
 | Escape | On a cell of a nested table | Comes back out, to the cell that holds it. |
@@ -207,11 +262,22 @@ page and keeps the focus.
 | Cells that cannot be edited | `aria-readonly`, on a table that offers the person any editing. |
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
+| The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
+| An action in progress | `aria-busy` on the row's actions cell. |
+| An action that ran | The live region: "Archive: done"; after a create, "Task created". |
+| An action that failed | The live region: "Archive failed: …". For an action that ran straight away, also `aria-invalid` on the row's actions cell, described by the message. |
+| The action panel | A modal dialog named by its heading (`aria-labelledby`): "Reassign: Write the report", "New task". |
+| A field of the panel | A label. A required field has `aria-required`, and the mark " \*" beside its label is hidden from assistive technology. A field with an error has `aria-invalid` and is described by the message. |
+| What an action says that is about no field of its panel | An alert (`role="alert"`) above the fields. |
+| The name of a table and its create button | Above the grid: the name as a heading of the page (`h1` on a mounted page), or as text where an embedded table is not told a heading level; the button named "New task". |
+| A row that was added or taken away | The total (`aria-rowcount`) is one more or one less, and the rows after it are numbered again (`aria-rowindex`). |
 | A failed or refused read | An alert (`role="alert"`) in place of the rows. |
 | The pagination | A navigation landmark named after the table ("Pagination: Tasks"), buttons named "Go to page 3", and `aria-current="page"` on the current one. |
 
 A successful save, a new sort and a new page are not announced in the live
-region. Their result is in the grid itself.
+region. Their result is in the grid itself. A row action and a create are
+announced when they have run: a row that is gone, or one that appeared at
+the top, is not where the person's focus was.
 
 ### Row numbers under keyset pagination
 
@@ -238,12 +304,19 @@ scripted keyboard tests in Playwright, and automated checks with axe-core on
 every demo table and in every state a table can be in (sorted, filtered,
 empty, failed, with each editor open, with the dialog open, with a failed
 cell, as each actor; with rows expanded and nested tables open to the
-deepest level, on a page limited to the records of one parent, and with
-reference cells).
+deepest level, on a page limited to the records of one parent, with
+reference cells; with the actions column, a failed actions cell, the action
+panel open, with errors and with the dialog on top of it, and with the
+create button of a table and of a line).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
 [Layout and embedding](layout-and-embedding.md).
+
+Two things about the action panel are covered more thinly than the rest: no
+panel of the demo has a datetime field, and no action of the demo has both a
+question and a panel, so that path is tested with a question put onto an
+open panel by the test.
 
 That is the whole of the verification, and its limits should be plain:
 
@@ -271,7 +344,8 @@ technology, a report of what you find is welcome in the
   keys change the value step by step without saving. Enter, or leaving the
   cell, saves the value reached.
 - **Escape on an ordinary cell** does nothing. It is only handled on a cell
-  whose save failed, in an editor and in a filter.
+  whose save or action failed, in an editor, in a filter, on a button of a
+  cell and in a nested table.
 - **A cell whose save is on its way** cannot be opened until the server has
   answered.
 - **The message of a failed cell** is a popover under the cell, shown while
@@ -291,6 +365,10 @@ technology, a report of what you find is welcome in the
   the ARIA grid pattern. Arrow keys move between cells.
 - **Expecting Space to toggle a boolean.** Enter and F2 do. Space is held
   back for row selection.
+- **Expecting Tab to reach a row's buttons.** Move to the row's last cell
+  and press Enter.
+- **Expecting Enter on a relationship line to reach its create button.**
+  Enter opens and closes the line. F2 goes to its controls.
 - **Expecting a filter to be a tab stop.** Move to its cell and press Enter.
 - **Treating "axe reports no violations" as "accessible".** See the table
   above.

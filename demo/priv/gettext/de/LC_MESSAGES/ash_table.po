@@ -104,6 +104,36 @@ msgstr "In voller Ansicht öffnen: %{table}"
 msgid "Show all records"
 msgstr "Alle Einträge anzeigen"
 
+msgid "Actions"
+msgstr "Aktionen"
+
+msgid "New %{name}"
+msgstr "%{name} anlegen"
+
+msgid "Run"
+msgstr "Ausführen"
+
+msgid "Create"
+msgstr "Anlegen"
+
+msgid "%{action}: %{record}"
+msgstr "%{action}: %{record}"
+
+msgid "%{action}: done"
+msgstr "%{action}: erledigt"
+
+msgid "%{name} created"
+msgstr "%{name} angelegt"
+
+msgid "%{action} failed: %{message}"
+msgstr "%{action} fehlgeschlagen: %{message}"
+
+msgid "You are not allowed to do this."
+msgstr "Das dürfen Sie nicht tun."
+
+msgid "This could not be done."
+msgstr "Das konnte nicht ausgeführt werden."
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
@@ -282,3 +312,67 @@ msgstr "Mitglied"
 
 msgid "Viewer"
 msgstr "Nur Lesen"
+
+## Row actions and row create: what the buttons say, the questions asked
+## first, the fields of the action panel that are no columns, and what one
+## record of each resource is called ("New task").
+
+msgid "Archive"
+msgstr "Archivieren"
+
+msgid "Reassign"
+msgstr "Neu zuweisen"
+
+msgid "Set progress"
+msgstr "Fortschritt setzen"
+
+msgid "Set status"
+msgstr "Status setzen"
+
+msgid "Destroy"
+msgstr "Löschen"
+
+msgid "Remove"
+msgstr "Entfernen"
+
+msgid "Delete this task? This cannot be undone."
+msgstr "Diese Aufgabe löschen? Das lässt sich nicht rückgängig machen."
+
+msgid "Delete this comment?"
+msgstr "Diesen Kommentar löschen?"
+
+msgid "Delete this label? It is taken off every task."
+msgstr "Dieses Label löschen? Es wird von allen Aufgaben entfernt."
+
+msgid "Delete this project, with all its tasks?"
+msgstr "Dieses Projekt mit allen seinen Aufgaben löschen?"
+
+msgid "Reason"
+msgstr "Begründung"
+
+msgid "Assignee ID"
+msgstr "Zugewiesen an (ID)"
+
+msgid "Project ID"
+msgstr "Projekt (ID)"
+
+msgid "Task ID"
+msgstr "Aufgabe (ID)"
+
+msgid "Label ID"
+msgstr "Label (ID)"
+
+msgid "task"
+msgstr "Aufgabe"
+
+msgid "comment"
+msgstr "Kommentar"
+
+msgid "label"
+msgstr "Label"
+
+msgid "project"
+msgstr "Projekt"
+
+msgid "task label"
+msgstr "Label einer Aufgabe"

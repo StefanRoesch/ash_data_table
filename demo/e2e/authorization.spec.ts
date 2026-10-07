@@ -22,14 +22,16 @@ const EDITABLE = [
   "description",
 ]
 
-const TASKS: Record<Actor, { columns: number; editors: number; range: string | null }> = {
-  admin: { columns: 17, editors: 9, range: "1–25 of 320" },
-  member: { columns: 16, editors: 9, range: "1–25 of 320" },
+// `actions` says whether the grid has the column of the row actions: the
+// person can run one of them on some record (actions.spec.ts).
+const TASKS: Record<Actor, { columns: number; editors: number; actions: boolean; range: string | null }> = {
+  admin: { columns: 17, editors: 9, actions: true, range: "1–25 of 320" },
+  member: { columns: 16, editors: 9, actions: true, range: "1–25 of 320" },
   // may not read people: no assignee, no reporter
-  viewer: { columns: 14, editors: 0, range: "1–25 of 320" },
-  outsider: { columns: 16, editors: 9, range: "1–25 of 80" },
+  viewer: { columns: 14, editors: 0, actions: false, range: "1–25 of 320" },
+  outsider: { columns: 16, editors: 9, actions: true, range: "1–25 of 80" },
   // may not read projects, and sees no estimate
-  nobody: { columns: 14, editors: 0, range: null },
+  nobody: { columns: 14, editors: 0, actions: false, range: null },
 }
 
 for (const actor of ACTOR_KEYS) {
@@ -42,9 +44,12 @@ for (const actor of ACTOR_KEYS) {
       const columns = await tasks.columns()
 
       expect(columns).toHaveLength(expected.columns)
-      // the columns, and before them the one of the expanders
-      await expect(tasks.grid).toHaveAttribute("aria-colcount", String(expected.columns + 1))
-      await expect(tasks.headerCells).toHaveCount(expected.columns + 1)
+      // the columns, before them the one of the expanders, and after them
+      // the one of the actions, for a person who can run any
+      const all = expected.columns + 1 + (expected.actions ? 1 : 0)
+      await expect(tasks.grid).toHaveAttribute("aria-colcount", String(all))
+      await expect(tasks.headerCells).toHaveCount(all)
+      await expect(tasks.actionsHeader).toHaveCount(expected.actions ? 1 : 0)
       await expect(tasks.editorTemplates).toHaveCount(expected.editors)
 
       if (expected.range) {
@@ -91,7 +96,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: the expanders and 16 columns, numbered 1 to 17, walked without a gap", async ({
+  test("the smaller grid is whole: the expanders, 16 columns and the actions, numbered 1 to 18, walked without a gap", async ({
     tasks,
     frames,
   }) => {
@@ -106,11 +111,11 @@ test.describe("the member, whose rights depend on the record", () => {
             Number(cell.getAttribute("aria-colindex")),
           ]),
         )
-    const oneToSeventeen = Array.from({ length: 17 }, (_, index) => [index + 1, index + 1])
+    const oneToEighteen = Array.from({ length: 18 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToSeventeen)
-    expect(await numbering("#task-head-row th")).toEqual(oneToSeventeen)
-    expect(await numbering("#task-filter-row td")).toEqual(oneToSeventeen)
+    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToEighteen)
+    expect(await numbering("#task-head-row th")).toEqual(oneToEighteen)
+    expect(await numbering("#task-filter-row td")).toEqual(oneToEighteen)
 
     await tasks.cell(first, "title").focus()
     await frames.clear()
@@ -122,7 +127,11 @@ test.describe("the member, whose rights depend on the record", () => {
       walked.push(focused)
     }
     const columns = await tasks.columns()
-    expect(walked).toEqual(columns.map((column) => `task-row-${first}-c-${column}`))
+    // every column, and after the last the cell of the row's actions
+    expect(walked).toEqual([
+      ...columns.map((column) => `task-row-${first}-c-${column}`),
+      `task-row-${first}-a`,
+    ])
     // where the admin has `external_ref` between these two
     expect(columns.slice(10)).toEqual([
       "headline",
@@ -134,6 +143,8 @@ test.describe("the member, whose rights depend on the record", () => {
     ])
 
     await tasks.press("Home", "End", "ArrowUp", "ArrowUp", "ArrowUp")
+    await expect(tasks.actionsHeader).toBeFocused()
+    await tasks.press("ArrowLeft")
     await expect(tasks.header("reporter")).toBeFocused()
     expect(await frames.all()).toEqual([])
     expect(await tasks.tabStops()).toHaveLength(1)

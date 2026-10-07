@@ -3331,4 +3331,541 @@ defmodule AshTable.TableBlockTest do
       assert messages(warnings, AshTable.TableBlockTest.OtherAggregates) == []
     end
   end
+
+  describe "row actions" do
+    test "`action` is accepted with and without options, in the declared order, and read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.RowActions do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+            attribute :price, :integer, public?: true
+          end
+
+          actions do
+            defaults [:read, :destroy]
+
+            update :archive do
+              accept []
+            end
+
+            update :reprice do
+              accept [:price]
+            end
+          end
+
+          table do
+            column :title
+
+            action :archive
+
+            action :reprice do
+              label "Change price"
+              confirm "Change the price?"
+            end
+
+            action :destroy do
+              confirm "Delete this? This cannot be undone."
+            end
+          end
+        end
+      end
+
+      assert [
+               %AshTable.Resource.Action{name: :archive, label: nil, confirm: nil},
+               %AshTable.Resource.Action{
+                 name: :reprice,
+                 label: "Change price",
+                 confirm: "Change the price?"
+               },
+               %AshTable.Resource.Action{
+                 name: :destroy,
+                 label: nil,
+                 confirm: "Delete this? This cannot be undone."
+               }
+             ] = AshTable.Resource.Info.actions(AshTable.TableBlockTest.RowActions)
+    end
+
+    test "naming an action that does not exist is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :archive]} do
+          defmodule Elixir.AshTable.TableBlockTest.MissingRowAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              action :archive
+            end
+          end
+        end
+
+      assert error.message == "The resource has no action named `archive`."
+
+      # compiled despite the finding, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.MissingRowAction: its row action `archive` cannot be used. The resource has no action named `archive`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.MissingRowAction) end
+    end
+
+    test "naming an action that is not public is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :internal]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivateRowAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              update :internal do
+                public? false
+              end
+            end
+
+            table do
+              action :internal
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `internal` is not public. Only `public?` actions can be behind a table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.PrivateRowAction: its row action `internal` cannot be used. The action `internal` is not public. Only `public?` actions can be behind a table.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateRowAction) end
+    end
+
+    test "naming a create, a read or a generic action is an error that says why" do
+      [{AshTable.TableBlockTest.WrongKindOfRowAction, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.WrongKindOfRowAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read, create: []]
+
+              action :sweep, :integer do
+                run fn _input, _context -> {:ok, 0} end
+              end
+            end
+
+            table do
+              action :create
+              action :read
+              action :sweep
+            end
+          end
+        end
+
+      assert Enum.map(errors, & &1.path) == [
+               [:table, :action, :create],
+               [:table, :action, :read],
+               [:table, :action, :sweep]
+             ]
+
+      assert Enum.map(errors, & &1.message) == [
+               "`create` is a create action. A row action runs on the record of its row, so it has to be an update or a destroy action. A create action is offered with `create_action :create` in the `table` block.",
+               "`read` is a read action. A row action runs on the record of its row, so it has to be an update or a destroy action.",
+               "`sweep` is a generic action. A row action runs on the record of its row, so it has to be an update or a destroy action. A generic action takes no record."
+             ]
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.WrongKindOfRowAction: its row action `create` cannot be used. `create` is a create action. A row action runs on the record of its row, so it has to be an update or a destroy action. A create action is offered with `create_action :create` in the `table` block.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.WrongKindOfRowAction) end
+    end
+
+    test "declaring an action twice is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :archive]} do
+          defmodule Elixir.AshTable.TableBlockTest.RowActionTwice do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              update :archive do
+                accept []
+              end
+            end
+
+            table do
+              action :archive
+
+              action :archive do
+                label "Put away"
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "Got duplicate AshTable.Resource.Action: archive"
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.RowActionTwice: its row action `archive` cannot be used. `archive` is declared more than once.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.RowActionTwice) end
+    end
+
+    test "a destroy action without `confirm` is warned about: a one-click delete" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.OneClickDelete do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read, :destroy]
+            end
+
+            table do
+              action :destroy
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.OneClickDelete) == [
+               "The row action `destroy` is a destroy action without `confirm`: one click on its button deletes the record, and nothing asks first. " <>
+                 "Give it a question (`confirm \"Delete this record?\"`), or say that a delete in one click is meant with `confirm false`."
+             ]
+
+      # a warning, not a refusal: the table is built, and the action runs without a question
+      assert [%{name: :destroy, confirm: nil}] =
+               AshTable.Model.build(AshTable.TableBlockTest.OneClickDelete).actions
+    end
+
+    test "a destroy action with a question, or with `confirm false`, is not warned about" do
+      warnings =
+        dsl_warnings do
+          defmodule Elixir.AshTable.TableBlockTest.DeleteOnPurpose do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read, :destroy]
+
+              destroy :purge
+
+              update :archive do
+                accept []
+              end
+            end
+
+            table do
+              action :destroy do
+                confirm "Delete this record?"
+              end
+
+              action :purge do
+                confirm false
+              end
+
+              # an update action is never warned about
+              action :archive
+            end
+          end
+        end
+
+      assert messages(warnings, AshTable.TableBlockTest.DeleteOnPurpose) == []
+
+      assert [
+               %{name: :destroy, confirm: "Delete this record?"},
+               %{name: :purge, confirm: nil},
+               %{name: :archive, confirm: nil}
+             ] = AshTable.Model.build(AshTable.TableBlockTest.DeleteOnPurpose).actions
+    end
+
+    test "an action with a required input of a type a table has no field for is an error, and has no button" do
+      [{AshTable.TableBlockTest.NoFieldForInput, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.NoFieldForInput do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :settings, :map, allow_nil?: false, public?: true
+              attribute :tags, {:array, :string}, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :configure do
+                accept [:settings]
+              end
+
+              update :retag do
+                accept [:tags]
+                argument :ids, {:array, :uuid}, allow_nil?: false
+              end
+
+              # nothing required among what has no field: accepted
+              update :touch do
+                accept [:tags]
+              end
+            end
+
+            table do
+              action :configure
+              action :retag
+              action :touch
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :configure],
+                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key."},
+               {[:table, :action, :retag],
+                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key."}
+             ]
+
+      # compiled despite the finding, the table has no button for them
+      assert [%{name: :touch}] =
+               AshTable.Model.build(AshTable.TableBlockTest.NoFieldForInput).actions
+    end
+
+    test "beside a calculation column need a primary read action, as editing does: the row is shown again from it" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table]} do
+          defmodule Elixir.AshTable.TableBlockTest.ActingWithoutPrimaryRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            calculations do
+              calculate :shouted, :string, expr(title <> "!"), public?: true
+            end
+
+            actions do
+              read :list
+
+              update :archive do
+                accept []
+              end
+            end
+
+            table do
+              read_action :list
+              column :title
+              column :shouted
+              action :archive
+            end
+          end
+        end
+
+      assert error.message ==
+               "The table has row actions or a create action and shows calculations, aggregates or reference columns (`shouted`), but the resource has no primary read action. After an action the row is shown with those fields, which Ash loads through the primary read action. Mark a read action `primary? true`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ActingWithoutPrimaryRead: it has row actions or a create action and shows calculations, aggregates or reference columns (`shouted`), but the resource has no primary read action, which Ash loads those fields through after an action.",
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.ActingWithoutPrimaryRead)
+                   end
+    end
+  end
+
+  describe "create_action" do
+    test "names the create action behind the table's create button, and is read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Creating do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            create :open do
+              accept [:title]
+            end
+          end
+
+          table do
+            create_action(:open)
+          end
+        end
+      end
+
+      assert AshTable.Resource.Info.table_create_action(AshTable.TableBlockTest.Creating) ==
+               {:ok, :open}
+
+      assert AshTable.Resource.Info.table_create_action(AshTable.Test.Task) == :error
+    end
+
+    test "naming an action that does not exist is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :create_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.MissingCreateAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              create_action(:create)
+            end
+          end
+        end
+
+      assert error.message == "The resource has no action named `create`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.MissingCreateAction: its `create_action` cannot be used. The resource has no action named `create`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.MissingCreateAction) end
+    end
+
+    test "naming an action that is not a create action is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :create_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.CreateActionIsUpdate do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read, update: []]
+            end
+
+            table do
+              create_action(:update)
+            end
+          end
+        end
+
+      assert error.message == "`update` is an update action, not a create action."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.CreateActionIsUpdate: its `create_action` cannot be used. `update` is an update action, not a create action.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.CreateActionIsUpdate) end
+    end
+
+    test "naming a create action that is not public is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :create_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivateCreateAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              create :import do
+                public? false
+              end
+            end
+
+            table do
+              create_action(:import)
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `import` is not public. Only `public?` actions can be behind a table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.PrivateCreateAction: its `create_action` cannot be used. The action `import` is not public. Only `public?` actions can be behind a table.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateCreateAction) end
+    end
+
+    test "naming a create action with a required input of a type a table has no field for is an error, and the table has no create button" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :create_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.NoFieldForCreate do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :settings, :map, allow_nil?: false, public?: true
+            end
+
+            actions do
+              defaults [:read, create: [:settings]]
+            end
+
+            table do
+              create_action(:create)
+            end
+          end
+        end
+
+      assert error.message ==
+               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key."
+
+      assert AshTable.Model.build(AshTable.TableBlockTest.NoFieldForCreate).create == nil
+    end
+  end
 end

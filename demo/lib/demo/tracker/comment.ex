@@ -40,6 +40,14 @@ defmodule Demo.Tracker.Comment do
   table do
     update_action :update
     on_forbidden :message
+
+    action :destroy do
+      confirm "Delete this comment?"
+    end
+
+    # "New comment". Under a task, the table gives `task_id` itself: the
+    # action accepts it, and the comments of a task are a has-many.
+    create_action :create
   end
 
   actions do

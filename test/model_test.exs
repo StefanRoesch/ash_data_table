@@ -1297,4 +1297,244 @@ defmodule AshTable.ModelTest do
       assert output =~ "[:title, :salary, :rating, :flagged]"
     end
   end
+
+  describe "row actions" do
+    defp action(model, name), do: Enum.find(model.actions, &(&1.name == name))
+
+    test "are none unless the block declares them" do
+      assert Model.build(AshTable.Test.Acting.Plain).actions == []
+    end
+
+    test "are the declared ones in the declared order, each with its kind, its label and its question" do
+      actions =
+        for action <- Model.build(AshTable.Test.Acting).actions,
+            do: {action.name, action.type, action.label, action.confirm}
+
+      assert actions == [
+               {:archive, :update, "Archive", nil},
+               {:close, :update, "Close", nil},
+               {:reassign, :update, "Hand over", nil},
+               {:reschedule, :update, "Reschedule", nil},
+               {:retag, :update, "Retag", nil},
+               {:update, :update, "Update", nil},
+               {:destroy, :destroy, "Destroy", "Delete this ticket?"},
+               {:purge, :destroy, "Purge", nil}
+             ]
+    end
+
+    defp inputs(model, name) do
+      for input <- action(model, name).inputs,
+          do: {input.name, input.kind, input.editor, input.required?}
+    end
+
+    test "take the attributes the action accepts, then its public arguments, in the action's order" do
+      model = Model.build(AshTable.Test.Acting)
+
+      assert inputs(model, :archive) == []
+
+      assert inputs(model, :reassign) == [
+               {:owner_id, :attribute, :plain, false},
+               {:reason, :argument, :text, true},
+               {:silent, :argument, :boolean, true}
+             ]
+
+      # `settings` is a map, which a table has no field for
+      assert inputs(model, :update) == [
+               {:title, :attribute, :text, true},
+               {:notes, :attribute, :text, false},
+               {:points, :attribute, :number, false},
+               {:urgent, :attribute, :boolean, true},
+               # required by the action, with `require_attributes`
+               {:due_on, :attribute, :date, true},
+               {:seen_at, :attribute, :datetime, false},
+               {:status, :attribute, :enum, true},
+               {:owner_id, :attribute, :plain, false}
+             ]
+
+      assert inputs(model, :purge) == [{:reason, :argument, :text, true}]
+    end
+
+    test "leave out an optional input of a type a table has no field for" do
+      assert inputs(Model.build(AshTable.Test.Acting), :retag) == []
+    end
+
+    test "an input is labelled as its column is, else with its humanised name, and carries its choices and its default" do
+      model = Model.build(AshTable.Test.Acting)
+
+      assert [
+               %{name: :title, label: "Subject", cell_type: :text, values: nil, default: nil},
+               %{name: :notes, label: "Notes"},
+               %{name: :points, label: "Points", cell_type: :number},
+               %{name: :urgent, label: "Urgent"},
+               %{name: :due_on, label: "Due on"},
+               %{name: :seen_at, label: "Seen at"},
+               %{
+                 name: :status,
+                 label: "Status",
+                 cell_type: :enum,
+                 values: [open: "Open", in_progress: "Being worked on", done: "Done"]
+               },
+               %{name: :owner_id, label: "Owner ID", cell_type: :other, values: nil}
+             ] = action(model, :update).inputs
+
+      # an argument starts with its default
+      assert [
+               %{name: :owner_id},
+               %{name: :reason, default: nil},
+               %{name: :silent, default: false}
+             ] =
+               action(model, :reassign).inputs
+    end
+
+    test "run straight away without inputs or with optional arguments only, and open the panel otherwise" do
+      model = Model.build(AshTable.Test.Acting)
+
+      panels = for action <- model.actions, do: {action.name, action.panel?}
+
+      assert panels == [
+               archive: false,
+               # arguments it runs without, optional or with a default: they keep their defaults
+               close: false,
+               # a required argument
+               reassign: true,
+               # an attribute, though it can be empty: changing it is what the action is for
+               reschedule: true,
+               # nothing a table has a field for
+               retag: false,
+               update: true,
+               destroy: false,
+               purge: true
+             ]
+    end
+  end
+
+  describe "the create action" do
+    test "is none unless the block names one" do
+      assert Model.build(AshTable.Test.Acting.Plain).create == nil
+    end
+
+    test "is the one the block names, called after the resource, and always opens the panel" do
+      assert %Model.Action{
+               name: :create,
+               type: :create,
+               label: "New acting",
+               panel?: true,
+               link: nil
+             } =
+               Model.build(AshTable.Test.Acting).create
+
+      assert Model.build(AshTable.Test.Acting).name == "acting"
+    end
+
+    test "takes the attributes it accepts and its arguments, required as a create needs them" do
+      inputs =
+        for input <- Model.build(AshTable.Test.Acting).create.inputs,
+            do: {input.name, input.kind, input.editor, input.required?, input.default}
+
+      # `tags` has no field, and `internal_note` is private
+      assert inputs == [
+               {:title, :attribute, :text, true, nil},
+               {:notes, :attribute, :text, false, nil},
+               {:points, :attribute, :number, false, 1},
+               {:urgent, :attribute, :boolean, true, false},
+               {:due_on, :attribute, :date, false, nil},
+               {:seen_at, :attribute, :datetime, false, nil},
+               {:status, :attribute, :enum, true, :open},
+               {:owner_id, :attribute, :plain, false, nil},
+               # cannot be empty, and is filled in by itself: nothing has to be given
+               {:reference, :attribute, :plain, false, nil},
+               {:notify, :argument, :boolean, false, true}
+             ]
+    end
+  end
+
+  describe "the create action of a nested table" do
+    defp nested(relationship) do
+      via =
+        Enum.find(
+          Model.build(AshTable.Test.Acting.Board).relationships,
+          &(&1.name == relationship)
+        )
+
+      Model.build(via.destination, via: via)
+    end
+
+    test "is offered for a has-many whose create action accepts the linking field, which is no input" do
+      assert %Model.Action{name: :create, link: {:id, :board_id}, inputs: [%{name: :title}]} =
+               nested(:cards).create
+
+      # on a page of its own the linking field is an input like any other
+      assert [%{name: :title}, %{name: :board_id, editor: :plain, required?: true}] =
+               Model.build(AshTable.Test.Acting.Card).create.inputs
+    end
+
+    test "is not offered where the create action does not accept the linking field" do
+      assert Model.build(AshTable.Test.Acting.Sticker).create != nil
+      assert nested(:stickers).create == nil
+    end
+
+    test "is not offered for one related record, through a many-to-many, or without attributes" do
+      assert nested(:cover).create == nil
+      assert nested(:friends).create == nil
+      assert nested(:all_cards).create == nil
+    end
+  end
+
+  describe "for_actor/2: what a person can run" do
+    @admin %{id: 1, role: :admin}
+    @member %{id: 2, role: :member}
+    @viewer %{id: 3, role: :viewer}
+
+    setup do
+      %{model: Model.build(AshTable.Test.Guarded)}
+    end
+
+    defp runnable(model), do: Enum.map(model.actions, & &1.name)
+
+    test "is every row action for a person who may always run them", %{model: model} do
+      assert runnable(model) == [:update, :rate, :flag, :destroy]
+      assert runnable(Model.for_actor(model, actor: @admin)) == [:update, :rate, :flag, :destroy]
+    end
+
+    test "includes an action the person may run on some records only, and leaves out one they can never run",
+         %{model: model} do
+      # `update` depends on the record for a member; `rate` and `destroy` are an admin's
+      assert runnable(Model.for_actor(model, actor: @member)) == [:update, :flag]
+      assert runnable(Model.for_actor(model, actor: @viewer)) == [:flag]
+      assert runnable(Model.for_actor(model, actor: nil)) == [:flag]
+    end
+
+    test "is the same whether the person comes as an actor or in a scope", %{model: model} do
+      scope = %AshTable.Test.Scope{user: @viewer, tenant: nil}
+
+      assert runnable(Model.for_actor(model, scope: scope)) == [:flag]
+    end
+
+    test "is everything without authorization", %{model: model} do
+      model = Model.for_actor(model, actor: @viewer, authorize?: false)
+
+      assert runnable(model) == [:update, :rate, :flag, :destroy]
+      assert model.create.name == :create
+    end
+
+    test "has the create action only for a person who may ever create", %{model: model} do
+      assert Model.for_actor(model, actor: @admin).create.name == :create
+      assert Model.for_actor(model, actor: @member).create.name == :create
+      assert Model.for_actor(model, actor: @viewer).create == nil
+      assert Model.for_actor(model, actor: nil).create == nil
+    end
+
+    test "leaves out the inputs of fields the person can never see", %{model: model} do
+      names = fn action -> Enum.map(action.inputs, & &1.name) end
+
+      admin = Model.for_actor(model, actor: @admin)
+      assert names.(Enum.find(admin.actions, &(&1.name == :update))) == [:title, :secret, :salary]
+      assert names.(admin.create) == [:title, :secret, :salary]
+
+      # `secret` is an admin's; `salary` is seen on a person's own records
+      member = Model.for_actor(model, actor: @member)
+      assert names.(Enum.find(member.actions, &(&1.name == :update))) == [:title, :salary]
+      assert names.(member.create) == [:title, :salary]
+    end
+  end
 end

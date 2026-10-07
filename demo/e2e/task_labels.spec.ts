@@ -117,13 +117,16 @@ test.describe("reading", () => {
     expect(tasks[0] > parts(FIRST).task).toBe(true)
   })
 
-  test("the grid is one tab stop, and the arrow keys walk its three columns", async () => {
+  test("the grid is one tab stop, and the arrow keys walk its three columns and its actions", async () => {
     expect(await table.columns()).toEqual(["note", "task_id", "label_id"])
     expect(await table.tabStops()).toEqual([`task_label-row-${FIRST}-c-note`])
 
     await table.tabStop.focus()
-    await table.press("ArrowRight", "ArrowRight", "ArrowRight")
-    await expect(table.cell(FIRST, "label_id"), "the last column is where Right ends").toBeFocused()
+    await table.press("ArrowRight", "ArrowRight")
+    await expect(table.cell(FIRST, "label_id")).toBeFocused()
+    // after the last column is the cell of the row's actions (actions.spec.ts)
+    await table.press("ArrowRight", "ArrowRight")
+    await expect(table.actionsCell(FIRST), "the last cell of a row is where Right ends").toBeFocused()
     // Home is the first cell of the row: its expander, one to the left of the note
     await table.press("ArrowDown", "ArrowDown", "Home")
     await expect(table.expanderCell(THIRD)).toBeFocused()

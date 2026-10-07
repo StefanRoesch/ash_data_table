@@ -52,6 +52,32 @@ defmodule AshTable.Errors do
   def about_field?(_error), do: false
 
   @doc """
+  What the errors of a form say to a person, each message once: those about
+  a field as they are shown on a cell of the column `cell` (nil when they
+  are not shown on a cell), then those about none. `refusal` is what a
+  refusal reads as: Ash's own text for one is "forbidden", or the breakdown
+  of the policies, neither of which is for the person at the table.
+  """
+  @spec of_form(AshPhoenix.Form.t(), Model.t(), atom | nil, String.t()) :: [String.t()]
+  def of_form(form, %Model{} = model, cell, refusal) do
+    at_fields =
+      for {field, {message, vars}} <- AshPhoenix.Form.errors(form, format: :raw),
+          is_binary(message),
+          do: at_field(model, cell, field, {message, vars})
+
+    Enum.uniq(at_fields ++ without_fields(form, refusal))
+  end
+
+  @doc "The texts of a form's errors that are about no field, a refusal among them as `refusal`."
+  @spec without_fields(AshPhoenix.Form.t(), String.t()) :: [String.t()]
+  def without_fields(form, refusal) do
+    for error <- AshPhoenix.Form.raw_errors(form),
+        not about_field?(error),
+        message = if(match?(%{class: :forbidden}, error), do: refusal, else: without_field(error)),
+        do: message
+  end
+
+  @doc """
   What a failed read says to a person: the messages of the errors the read
   action returned on purpose, each one once. Empty when there is none, which
   is when the table says no more than that the records could not be loaded.

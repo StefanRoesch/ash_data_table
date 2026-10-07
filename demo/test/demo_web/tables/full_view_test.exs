@@ -227,7 +227,9 @@ defmodule DemoWeb.Tables.FullViewTest do
     } do
       {:ok, _view, html} = live(conn, of("/comments", "comment", "task", "comments", task.id))
 
-      assert text(html, "#comment-page > h1") == "Comments"
+      # the page's heading is the first line of the table
+      assert text(html, "#comment-page h1") == "Comments"
+      assert attribute(html, "#comment-page h1", "id") == ["comment-name"]
       assert attribute(html, "#comment-table", "aria-label") == ["Comments"]
     end
   end

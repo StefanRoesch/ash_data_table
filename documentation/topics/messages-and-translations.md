@@ -9,8 +9,8 @@ them is missing.
 
 | Kind | Examples | Owner | Translated by |
 | --- | --- | --- | --- |
-| The table's own texts | "No records", "Clear filters", "12 results", the operators of the filters, "You are not allowed to change this." | The library | `gettext_backend`: the Gettext domain `ash_table` in your backend |
-| Your resources' wording, as the table shows it | Column labels, the labels of enum values, the questions of `confirm`, the names of the tables | Your resources | `gettext_backend`: the same domain of the same backend |
+| The table's own texts | "No records", "Clear filters", "12 results", the operators of the filters, "You are not allowed to change this.", "Actions", "Run" | The library | `gettext_backend`: the Gettext domain `ash_table` in your backend |
+| Your resources' wording, as the table shows it | Column labels, the labels of enum values, the questions of `confirm`, the names of the tables, the labels of row actions and of the fields of the action panel, what one record is called | Your resources | `gettext_backend`: the same domain of the same backend |
 | The messages of your actions | "length must be greater than or equal to %{min}", "is required", the `message` of your own validation | Ash and your resources | `translate_error`: your app's error translator |
 
 ## The smallest example
@@ -116,6 +116,9 @@ These are all the messages of the template
 | Announcements | "1 result" with the plural "%{count} results", "Results updated", "%{column} was not saved: %{message}" |
 | Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
 | Dialog | "Cancel", "Confirm" |
+| Row actions | "Actions" (the heading of their column), "You are not allowed to do this.", "This could not be done.", and what is read out: "%{action}: done", "%{action} failed: %{message}" |
+| The action panel | "%{action}: %{record}" (the heading of a row action's panel), "Run", "Create"; "Cancel" is the dialog's |
+| Create | "New %{name}" (the create button and the heading of its panel), "%{name} created" (read out; `name` is what one record is called: "Task created") |
 | Nested tables | "Related records" (the expanders and the heading of their column), "Loading…", "These records are not available." |
 | The full view | "Open in full view", "Open in full view: %{table}" (the link's accessible name), "%{record}: %{relationship}" (the heading over a table limited to the records of one parent), "Show all records" |
 
@@ -138,6 +141,58 @@ values of an enum, the question of a `confirm`, and the name of the table
 of each relationship line under an expanded row (declared with `label`, or
 the relationship's name in words). Each of them is looked up as a message in
 the same `ash_table` domain and shown as it is when the domain has no entry.
+
+Row actions and create add four more of the same kind:
+
+| Wording | The message id |
+| --- | --- |
+| What a row action's button says | Its `label`, or the action's name in words: "Archive", "Set progress", "Remove". |
+| The question of an action's `confirm` | The question as written: "Delete this task? This cannot be undone." |
+| What a field of the action panel is called | The label of the column, for an attribute the table has a column for: the entry that translates the heading translates the field. Else the input's name in words: "Reason", "Assignee ID". |
+| What one record is called | The resource's short name in words, in lower case: "task", "task label". It fills the table's own message "New %{name}". |
+
+The create button is therefore translated in two places, as the demo does
+for German: the table's message says where the name goes, and the name is
+your resource's wording.
+
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+```po
+msgid "New %{name}"
+msgstr "%{name} anlegen"
+```
+
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+```po
+msgid "task"
+msgstr "Aufgabe"
+```
+
+"New task" is "Aufgabe anlegen". The buttons and the fields of "Reassign"
+are entries like a column's label:
+
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+```po
+msgid "Archive"
+msgstr "Archivieren"
+
+msgid "Reassign"
+msgstr "Neu zuweisen"
+```
+
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+```po
+msgid "Reason"
+msgstr "Begründung"
+
+msgid "Assignee ID"
+msgstr "Zugewiesen an (ID)"
+```
+
+**Try it:** `/tasks` in German, as Ada Admin: the column "Aktionen" with
+"Archivieren", "Neu zuweisen", "Fortschritt setzen" and "Löschen", and
+"Aufgabe anlegen" above the table. "Neu zuweisen" opens a panel with the
+fields "Zugewiesen an (ID)" and "Begründung" and the buttons "Abbrechen" and
+"Ausführen".
 
 A reference cell shows a value of a related record, its label, which is data
 and is not translated. The heading over a table limited to the records of
@@ -162,8 +217,11 @@ msgstr "Status"
 
 The message id is the English text exactly as the table would show it:
 "State" for the column declared with `label "State"`, "Due on" for the field
-`due_on`, "In progress" for the enum value's label. The other tables of the
-demo have no entries, and their headings stay English in German.
+`due_on`, "In progress" for the enum value's label. The tables
+mounted beside `/tasks` have entries for their row actions, their questions
+and what one of their records is called. Their columns have none of their
+own, so a heading there is German only where it reads exactly like an entry
+that is there, such as "Name".
 
 ## The messages of your actions
 
@@ -248,6 +306,13 @@ The sentence is put together from three parts with three owners: the label
 The announcement to screen readers is framed the same way: "%{column} was
 not saved: %{message}".
 
+A row action uses the same frame. An error about a field that is shown on
+the row's actions cell, or above the fields of the action panel, has the
+field's column label in front, by the two rules below. An error at a field
+of the panel has no prefix there; in the announcement it has the field's
+label in front: "Reassign failed: Reason: is required", in German "Neu
+zuweisen fehlgeschlagen: Begründung: …".
+
 The prefix follows two rules:
 
 - An error about the edited field itself has no prefix.
@@ -271,8 +336,14 @@ English, and the resource's own wording.
 
 - **Only errors of Ash's "invalid" class reach `translate_error`.** A refusal
   by a policy, a record that is gone and a failure underneath are reported
-  in the table's own texts ("You are not allowed to change this." and the
-  others), which `gettext_backend` translates.
+  in the table's own texts ("You are not allowed to change this.", "You are
+  not allowed to do this." and the others), which `gettext_backend`
+  translates.
+- **An action's label and a column's label can be one entry.** "Destroy" on
+  every table of the demo is the one message "Destroy". A table that wants
+  another word says so with `label`, as the task labels do with "Remove".
+- **What a record is called is in lower case.** The entry is "task", not
+  "Task", so that a translation can use it inside a sentence.
 - **Failed reads are translated like failed saves.** An error the read
   action returned on purpose goes through `translate_error`, with its field's
   label in front when the person has a column for the field.

@@ -24,8 +24,12 @@ defmodule AshTable.Live.TableComponent do
   #     (its controls end in `-operator`, `-value` and `-clear`), `ID-row-KEY`
   #     for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
   #   * `aria-colindex` is computed through `colindex/2`, which counts the
-  #     leading expander column in when the table has one; an actions column
-  #     goes after the last data column, which holds no cell yet.
+  #     leading expander column in when the table has one; the actions
+  #     column goes after the last data column;
+  #   * the question of a row action is on its button, and on its panel, as
+  #     `data-question`. Never as `data-confirm` on anything a person can
+  #     click: `phoenix_html`, which a Phoenix application loads, asks the
+  #     browser's own `confirm` for every click inside such an element.
   #
   # ## Nested tables
   #
@@ -73,6 +77,7 @@ defmodule AshTable.Live.TableComponent do
 
   require Logger
 
+  alias AshTable.Act
   alias AshTable.Edit
   alias AshTable.Errors
   alias AshTable.Format
@@ -102,6 +107,9 @@ defmodule AshTable.Live.TableComponent do
      # into "not found", and whether a refused read has left it with nothing
      # to show at all.
      |> assign(mounted?: false, gone?: false)
+     # How the table's name is shown on the line above it: a heading of that
+     # level, `true` for a name that is no heading, `false` for none.
+     |> assign(heading: false)
      # The rows of the page by the key in their DOM id: each one's primary key
      # and row index. What an edit event names is looked up here.
      |> assign(rows: %{})
@@ -129,7 +137,11 @@ defmodule AshTable.Live.TableComponent do
      # table of its own to (`AshTable.Related`), and what the record it is
      # limited to is called, once that record has been read for the person.
      # Where a nested table's records are shown in the full view.
-     |> assign(nested?: false, related: nil, related_title: nil, full_view: nil)}
+     |> assign(nested?: false, related: nil, related_title: nil, full_view: nil)
+     # The action panel, while it is open: the one action a person is giving
+     # the inputs of, with its form. At most one per table; a new read
+     # closes it.
+     |> assign(panel: nil)}
   end
 
   @impl true
@@ -139,7 +151,7 @@ defmodule AshTable.Live.TableComponent do
         socket,
         Map.take(
           assigns,
-          [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?] ++
+          [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby]
         )
       )
@@ -177,8 +189,11 @@ defmodule AshTable.Live.TableComponent do
     {:ok,
      socket
      |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     # whether the rows have an actions cell: the last column of the grid
+     |> assign(acting?: model.actions != [])
      |> assign(depth_limit: depth_limit)
      |> assign(expandable?: expandable?(model, socket.assigns.depth, depth_limit))
+     |> creates()
      |> read()}
   end
 
@@ -219,6 +234,34 @@ defmodule AshTable.Live.TableComponent do
 
   defp relate(socket), do: socket
 
+  # What the nested tables of this table's rows let the person create: by
+  # relationship, what the create button on its line says. The button is on
+  # the line, which is this table's, and opens the panel of the nested
+  # table, which decides everything about it once more.
+  defp creates(%{assigns: %{expandable?: true, model: model}} = socket) do
+    reader = nested_reader(socket.assigns)
+
+    creates =
+      for relationship <- model.relationships,
+          # a nested table authorizes as it was told, else as its domain says
+          authorize? =
+            if(is_nil(reader.authorize?),
+              do: AshTable.Domain.Info.authorize?(relationship.destination),
+              else: reader.authorize?
+            ),
+          opts =
+            [authorize?: authorize?] ++ Map.to_list(Map.take(reader, [:scope, :actor, :tenant])),
+          Model.nested_create(relationship, opts),
+          into: %{} do
+        name = relationship.destination |> Model.build() |> Map.fetch!(:name)
+        {relationship.name, Text.t(:new_record, name: Text.label(name))}
+      end
+
+    assign(socket, creates: creates)
+  end
+
+  defp creates(socket), do: assign(socket, creates: %{})
+
   # Whether the rows of the table have an expander: there is something to
   # offer this person, the table lets its rows expand at all (`max_depth 0`
   # says never, wherever the table is shown), and the table on the page lets
@@ -246,7 +289,40 @@ defmodule AshTable.Live.TableComponent do
 
     relationships = Enum.map(model.relationships, &%{&1 | label: Text.label(&1.label)})
 
-    %{model | columns: columns, relationships: relationships}
+    # an input of an attribute the table has a column for is called what
+    # that column is; the others by their own names
+    action = fn action ->
+      inputs =
+        for input <- action.inputs do
+          %{
+            input
+            | label: Text.label(input.label),
+              values:
+                input.values &&
+                  Enum.map(input.values, fn {value, label} -> {value, Text.label(label)} end)
+          }
+        end
+
+      %{
+        action
+        | label: Text.label(action.label),
+          confirm: action.confirm && Text.label(action.confirm),
+          inputs: inputs
+      }
+    end
+
+    # the create action is called after the resource: "New task"
+    create =
+      model.create &&
+        %{action.(model.create) | label: Text.t(:new_record, name: Text.label(model.name))}
+
+    %{
+      model
+      | columns: columns,
+        relationships: relationships,
+        actions: Enum.map(model.actions, action),
+        create: create
+    }
   end
 
   # A table whose state lives in the URL takes it from there on every update;
@@ -286,6 +362,9 @@ defmodule AshTable.Live.TableComponent do
     cond do
       read == socket.assigns.read ->
         socket
+
+      socket.assigns.read == :again ->
+        socket |> assign(read: read, busy?: true) |> start_async(:read, fetch)
 
       socket.assigns.nested? ->
         socket
@@ -341,6 +420,9 @@ defmodule AshTable.Live.TableComponent do
     socket
     |> assign(page: %{page | records: [], parent: nil}, row_count: length(rows))
     |> assign(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
+    # the rows are other rows now: a panel never acts on a record that the
+    # table no longer shows
+    |> assign(panel: nil)
     |> assign(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
       failed: %{},
@@ -396,7 +478,7 @@ defmodule AshTable.Live.TableComponent do
     socket
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     # nothing is said of a record that was not read for this person
-    |> assign(error: text, open: %{}, related_title: nil)
+    |> assign(error: text, open: %{}, related_title: nil, panel: nil)
     |> stream(:rows, [], reset: true)
   end
 
@@ -416,15 +498,17 @@ defmodule AshTable.Live.TableComponent do
     redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())
   end
 
-  # A row as the stream holds it. `failed` holds, by column name, what was
-  # typed into a cell whose save failed and the action's message; `open?`
-  # says whether the row is expanded.
+  # A row as the stream holds it. `failed` holds what has failed in the row:
+  # under `cells`, by column name, what was typed into a cell whose save
+  # failed and the action's message, and under `action` the message of a row
+  # action that failed. `open?` says whether the row is expanded.
   defp item(id, key, record, rowindex, failed, open?) do
     %{
       dom_id: "#{id}-row-#{key}",
       record: record,
       rowindex: rowindex,
-      failed: failed,
+      failed: Map.get(failed, :cells, %{}),
+      acted: Map.get(failed, :action),
       open?: open?
     }
   end
@@ -443,12 +527,11 @@ defmodule AshTable.Live.TableComponent do
   # as it is: what is open under the row stays open.
   defp put_row(socket, key, record) do
     %{id: id, rows: rows, failed: failed, open: open} = socket.assigns
-    cells = get_in(failed, [key, :cells]) || %{}
 
     stream_insert(
       socket,
       :rows,
-      item(id, key, record, rows[key].rowindex, cells, is_map_key(open, key))
+      item(id, key, record, rows[key].rowindex, failed[key] || %{}, is_map_key(open, key))
     )
   end
 
@@ -465,16 +548,60 @@ defmodule AshTable.Live.TableComponent do
   # Notes that the save of a cell has failed, or with `nil` that it no longer
   # has. The record is kept with the failures of its row, and only then.
   defp put_failure(socket, key, record, name, failure) do
-    cells = get_in(socket.assigns.failed, [key, :cells]) || %{}
+    row = socket.assigns.failed[key] || %{}
+    cells = Map.get(row, :cells, %{})
     cells = if failure, do: Map.put(cells, name, failure), else: Map.delete(cells, name)
 
-    failed =
-      if cells == %{},
-        do: Map.delete(socket.assigns.failed, key),
-        else: Map.put(socket.assigns.failed, key, %{record: record, cells: cells})
-
-    assign(socket, failed: failed)
+    put_failed(socket, key, record, %{cells: cells, action: Map.get(row, :action)})
   end
+
+  # Notes that a row action has failed, with the action's message, or with
+  # `nil` that the row's actions cell has nothing to say any more.
+  defp put_action_failure(socket, key, record, message) do
+    row = socket.assigns.failed[key] || %{}
+
+    put_failed(socket, key, record, %{cells: Map.get(row, :cells, %{}), action: message})
+  end
+
+  defp put_failed(socket, key, _record, %{cells: cells, action: nil}) when cells == %{},
+    do: assign(socket, failed: Map.delete(socket.assigns.failed, key))
+
+  defp put_failed(socket, key, record, failures) do
+    assign(socket,
+      failed: Map.put(socket.assigns.failed, key, Map.put(failures, :record, record))
+    )
+  end
+
+  # Takes a row out of the page, with its detail and so with everything that
+  # is open under it: its record is no more. The rows after it move up by
+  # one, and the total is one less: of what the last read counted, this
+  # record is gone for certain. A page that is left without rows is read
+  # again.
+  defp remove_row(socket, key) do
+    %{id: id, rows: rows, page: page} = socket.assigns
+    %{rowindex: removed} = rows[key]
+
+    rows =
+      rows
+      |> Map.delete(key)
+      |> Map.new(fn {key, row} ->
+        {key, if(row.rowindex > removed, do: %{row | rowindex: row.rowindex - 1}, else: row)}
+      end)
+
+    socket =
+      socket
+      |> assign(rows: rows, row_count: map_size(rows))
+      |> assign(failed: Map.delete(socket.assigns.failed, key))
+      |> assign(open: Map.delete(socket.assigns.open, key))
+      |> assign(page: %{page | total: page.total && max(page.total - 1, 0)})
+      |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}")
+      |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}-x")
+
+    if rows == %{}, do: reread(socket), else: socket
+  end
+
+  # Reads the page again as it is asked for now, beside the process.
+  defp reread(socket), do: socket |> assign(read: :again) |> read()
 
   defp primary_key(%{primary_key: primary_key}, record), do: Map.take(record, primary_key)
 
@@ -482,21 +609,25 @@ defmodule AshTable.Live.TableComponent do
   # its resource's table calls a record by, as far as this person may see it
   # on this record. Taken from the record as it was read for them, and from
   # nothing else: a record that was not read has no name here.
-  defp related_title(%{related: %{via: via}}, %Query.Page{parent: %_{} = parent}) do
-    via.source
-    |> Model.build()
-    |> in_words()
+  defp related_title(%{related: %{via: via}}, %Query.Page{parent: %_{} = parent}),
+    do: via.source |> Model.build() |> in_words() |> title_of(parent)
+
+  defp related_title(_assigns, _page), do: nil
+
+  # What a record is called: by the first of the columns its table names a
+  # record by that holds something this person may see on it. Nil when none
+  # does.
+  defp title_of(model, record) do
+    model
     |> Model.naming()
     |> Enum.find_value(fn column ->
-      case Map.get(parent, column.name) do
+      case Map.get(record, column.name) do
         %Ash.ForbiddenField{} -> nil
         %Ash.NotLoaded{} -> nil
         value -> blank_as_nil(Format.format(column, value))
       end
     end)
   end
-
-  defp related_title(_assigns, _page), do: nil
 
   defp blank_as_nil(text), do: if(String.trim(text) != "", do: text)
 
@@ -670,6 +801,80 @@ defmodule AshTable.Live.TableComponent do
 
   def handle_event("save", _params, socket), do: {:reply, %{ok: false}, socket}
 
+  # Sent by the hook when a person uses a button of a row's actions cell,
+  # once they have answered the question of an action that has one: the row
+  # by the key in its DOM id, and the action by name.
+  #
+  # Nothing of it is taken on trust: the action has to be one this table
+  # offers this person, and the row one of the page. Whether the action runs
+  # straight away or opens its panel is the table's to say, not the event's.
+  def handle_event("act", %{"row" => key, "action" => name}, socket) when is_binary(key) do
+    %{model: model, rows: rows} = socket.assigns
+
+    with %Model.Action{} = action <- action(model, name),
+         %{} = row <- rows[key] do
+      act(socket, key, row, action)
+    else
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("act", _params, socket), do: {:reply, %{ok: false}, socket}
+
+  # Sent by the panel's form as the person types: what its fields hold. The
+  # action is given it, as `AshPhoenix.Form.validate/3` does, and says what
+  # it makes of it; nothing runs.
+  def handle_event("panel_validate", params, %{assigns: %{panel: %{} = panel}} = socket) do
+    typed = typed(params)
+    form = Act.validate(panel.form, panel.inputs, typed, given(panel))
+
+    {:noreply,
+     assign(socket, panel: errors(%{panel | form: form, used: used(typed)}, socket.assigns.model))}
+  end
+
+  # Sent by the panel's form when the person uses its button: the action
+  # runs with what the fields hold.
+  def handle_event("panel_submit", params, %{assigns: %{panel: %{} = panel}} = socket),
+    do: submit(socket, panel, typed(params))
+
+  # Sent by the panel's hook for Cancel and Escape.
+  def handle_event("panel_cancel", _params, socket), do: {:noreply, assign(socket, panel: nil)}
+
+  # the form of a panel that is no longer open
+  def handle_event(event, _params, socket) when event in ["panel_validate", "panel_submit"],
+    do: {:noreply, socket}
+
+  # Sent by the table's create button. The panel opens with the form of the
+  # create action; nothing is created yet. A nested table creates under the
+  # row it belongs to, which is read first, as the person.
+  def handle_event("create", _params, %{assigns: %{model: %{create: %{} = action}}} = socket) do
+    %{id: id, model: model} = socket.assigns
+
+    case parent_link(socket.assigns, action) do
+      {:ok, given} ->
+        panel = %{
+          kind: :create,
+          action: action,
+          key: nil,
+          form: Act.open_create(model, action, "#{id}-panel", reader(socket.assigns)),
+          inputs: action.inputs,
+          title: action.label,
+          submit: Text.t(:create),
+          errors: %{},
+          submitted?: false,
+          used: MapSet.new(),
+          given: given
+        }
+
+        {:noreply, assign(socket, panel: panel)}
+
+      :error ->
+        {:noreply, say(socket, Text.t(:record_gone))}
+    end
+  end
+
+  def handle_event("create", _params, socket), do: {:noreply, socket}
+
   # Sent by the hook when a person presses Escape on a cell whose save has
   # failed: the edit is given up, and the cell shows its record's value again.
   def handle_event("discard", %{"row" => key, "column" => name}, socket) do
@@ -682,6 +887,20 @@ defmodule AshTable.Live.TableComponent do
   end
 
   def handle_event("discard", _params, socket), do: {:noreply, socket}
+
+  # Sent by the hook when a person presses Escape on a row's actions cell
+  # that shows the message of an action that failed: the message is given up.
+  def handle_event("dismiss", %{"row" => key}, socket) do
+    case socket.assigns.failed[key] do
+      %{record: record, action: message} when is_binary(message) ->
+        {:noreply, socket |> put_action_failure(key, record, nil) |> put_row(key, record)}
+
+      _none ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("dismiss", _params, socket), do: {:noreply, socket}
 
   # Either way the row is put back with what is true now: the action's
   # result, or the record as it is and the cell marked with what was typed.
@@ -707,8 +926,259 @@ defmodule AshTable.Live.TableComponent do
     end
   end
 
+  # A row action that runs straight away. The row is put back with what is
+  # true now: the action's result, or the record as it is and the actions
+  # cell marked with the action's message. A record that was destroyed is
+  # taken out of the page.
+  defp act(socket, key, row, %Model.Action{panel?: false} = action) do
+    socket.assigns.model
+    |> Act.run(action, row.pk, reader(socket.assigns))
+    |> ran(socket, key, action)
+  end
+
+  # A row action with inputs opens the action panel: the record is read
+  # again, as the person, and the form of the action on it is what the panel
+  # shows. Nothing runs yet.
+  defp act(socket, key, row, %Model.Action{panel?: true} = action) do
+    %{id: id, model: model} = socket.assigns
+
+    case Act.open(model, action, row.pk, "#{id}-panel", reader(socket.assigns)) do
+      {:ok, record, form, inputs} ->
+        title =
+          case title_of(model, record) do
+            nil -> action.label
+            name -> Text.t(:action_on, action: action.label, record: name)
+          end
+
+        panel = %{
+          kind: :row,
+          action: action,
+          key: key,
+          form: form,
+          inputs: inputs,
+          title: title,
+          submit: Text.t(:run),
+          errors: %{},
+          submitted?: false,
+          used: MapSet.new()
+        }
+
+        {:reply, %{ok: true, panel: true}, assign(socket, panel: panel)}
+
+      :error ->
+        ran({:error, nil, Text.t(:record_gone)}, socket, key, action)
+    end
+  end
+
+  # What the panel's form sends: the values of its fields, by name. Which of
+  # them are taken is decided where the action is given them (`AshTable.Act`).
+  defp typed(%{"panel" => %{} = params}), do: params
+  defp typed(_params), do: %{}
+
+  # The fields of the panel a person has been in, by name. The browser says
+  # which they have not (`_unused_NAME`, as for `Phoenix.Component.used_input?/1`),
+  # and the action is not given that.
+  defp used(typed) do
+    for {name, _value} <- typed,
+        not String.starts_with?(name, "_unused_"),
+        not is_map_key(typed, "_unused_" <> name),
+        into: MapSet.new(),
+        do: name
+  end
+
+  # What the table itself gives the action of a panel.
+  defp given(panel), do: Map.get(panel, :given, %{})
+
+  # The panel with what its form's errors say, by field.
+  defp errors(panel, model), do: %{panel | errors: Act.errors(panel.form, model, panel.inputs)}
+
+  # Runs the action of a row's panel. The row has to be one of the page
+  # still; its record is read again, as the person, before the action runs.
+  defp submit(socket, %{kind: :row, key: key, action: action} = panel, params) do
+    %{id: id, model: model, rows: rows} = socket.assigns
+
+    case rows[key] do
+      nil ->
+        {:noreply, assign(socket, panel: nil)}
+
+      row ->
+        case Act.submit_row(model, action, row.pk, params, "#{id}-panel", reader(socket.assigns)) do
+          {:error, %AshPhoenix.Form{} = form} ->
+            {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
+
+          # the record is gone, or no longer this person's to read
+          {:error, nil, message} ->
+            {:noreply, failed_panel(socket, panel, message)}
+
+          ran ->
+            {:reply, _reply, socket} = ran(ran, assign(socket, panel: nil), key, action)
+            {:noreply, socket}
+        end
+    end
+  end
+
+  # Runs the table's create action. In a nested table the new record is
+  # joined to the row the table belongs to: by that row's own value, read
+  # again now, as the person. Nothing the form sends can say otherwise.
+  defp submit(socket, %{kind: :create, action: action} = panel, params) do
+    %{id: id, model: model} = socket.assigns
+
+    case parent_link(socket.assigns, action) do
+      {:ok, given} ->
+        case Act.submit_create(
+               model,
+               action,
+               params,
+               given,
+               "#{id}-panel",
+               reader(socket.assigns)
+             ) do
+          {:ok, record} ->
+            {:noreply,
+             socket
+             |> assign(panel: nil)
+             |> add_row(record)
+             |> say(Text.t(:created, name: created_name(model)))}
+
+          # created, and not this person's to read: there is no row to show
+          :gone ->
+            {:noreply,
+             socket |> assign(panel: nil) |> say(Text.t(:created, name: created_name(model)))}
+
+          {:error, form} ->
+            {:noreply, failed_panel(socket, %{panel | form: form, given: given}, nil)}
+        end
+
+      :error ->
+        {:noreply, failed_panel(socket, panel, Text.t(:record_gone))}
+    end
+  end
+
+  # What one record of the table is called, at the start of a sentence.
+  defp created_name(model), do: model.name |> Text.label() |> String.capitalize()
+
+  # What a nested table gives its create action: the field that joins the
+  # new record to the row the table belongs to, with that row's value. The
+  # row is read for it, as the person, with authorization when either table
+  # authorizes: a key proves nothing. A table of its own gives nothing.
+  defp parent_link(_assigns, %Model.Action{link: nil}), do: {:ok, %{}}
+
+  defp parent_link(assigns, %Model.Action{link: {source, destination}}) do
+    %{model: %{via: via}, parent_key: key} = assigns
+
+    opts =
+      assigns
+      |> reader()
+      |> Query.reader_opts()
+      |> Keyword.update!(:authorize?, &(&1 or assigns.parent_authorize?))
+
+    case Query.get(via.source, key, opts) do
+      {:ok, %_{} = parent} ->
+        case Map.get(parent, source) do
+          hidden when is_struct(hidden, Ash.ForbiddenField) or is_nil(hidden) -> :error
+          value -> {:ok, %{Atom.to_string(destination) => value}}
+        end
+
+      _gone_or_refused ->
+        :error
+    end
+  end
+
+  # Puts a record that was created at the top of the page, as a row like
+  # the others, with its detail when rows expand. It stays there until the
+  # table reads again. The rows after it move down by one, and the total is
+  # one more: this record is there for certain, though a new read may not
+  # find it on this page, or under these filters at all.
+  defp add_row(socket, record) do
+    %{id: id, model: model, rows: rows, page: page} = socket.assigns
+    key = row_key(model, record, map_size(rows))
+
+    if is_map_key(rows, key) do
+      put_row(socket, key, record)
+    else
+      first = first_row(page)
+      rows = Map.new(rows, fn {key, row} -> {key, %{row | rowindex: row.rowindex + 1}} end)
+      rows = Map.put(rows, key, %{rowindex: first, pk: primary_key(model, record)})
+
+      socket
+      |> assign(rows: rows, row_count: map_size(rows))
+      |> assign(page: page && %{page | total: page.total && page.total + 1})
+      # the detail first: each goes to the top, so the row ends up above it
+      |> then(fn socket ->
+        if socket.assigns.expandable?,
+          do: stream_insert(socket, :rows, detail(id, key, nil, nil), at: 0),
+          else: socket
+      end)
+      |> stream_insert(:rows, item(id, key, record, first, %{}, false), at: 0)
+      |> push_event("ash_table:focus", %{table: id, cell: first_cell(id, key, model)})
+    end
+  end
+
+  # The first data cell of a row, where focus goes when the row was created.
+  defp first_cell(id, key, %{columns: [column | _]}), do: "#{id}-row-#{key}-c-#{column.name}"
+  defp first_cell(id, key, _model), do: "#{id}-row-#{key}-a"
+
+  # The panel stays open with what the action said: at the fields, and above
+  # them what is about no field of the panel. All of it is read out.
+  defp failed_panel(socket, panel, message) do
+    panel = errors(%{panel | submitted?: true}, socket.assigns.model)
+
+    panel =
+      if message,
+        do: %{panel | errors: Map.update(panel.errors, nil, [message], &[message | &1])},
+        else: panel
+
+    said =
+      for input <- [nil | panel.inputs],
+          text <- Map.get(panel.errors, input && input.name, []) do
+        if input, do: Text.t(:error_on_field, field: input.label, message: text), else: text
+      end
+
+    socket
+    |> assign(panel: panel)
+    |> say(Text.t(:action_not_done, action: panel.action.label, message: Enum.join(said, "; ")))
+  end
+
+  # What became of a row action, run straight away or from its panel: the
+  # reply to the hook, and the page as it is now.
+  defp ran({:ok, record}, socket, key, action) do
+    {:reply, %{ok: true},
+     socket
+     |> put_action_failure(key, record, nil)
+     |> put_row(key, record)
+     |> say(Text.t(:action_done, action: action.label))}
+  end
+
+  # destroyed, or no longer this person's to read: the row is not theirs to
+  # see any more
+  defp ran(removed, socket, key, action) when removed in [:destroyed, :gone] do
+    {:reply, %{ok: true, removed: true},
+     socket |> remove_row(key) |> say(Text.t(:action_done, action: action.label))}
+  end
+
+  defp ran({:error, %_{} = record, message}, socket, key, action) do
+    {:reply, %{ok: false},
+     socket
+     |> put_action_failure(key, record, message)
+     |> put_row(key, record)
+     |> say(Text.t(:action_not_done, action: action.label, message: message))}
+  end
+
+  # The record is gone, or no longer this person's to read: there is nothing
+  # to show the row from, so it stays as it is, and the hook marks the
+  # actions cell with the message.
+  defp ran({:error, nil, message}, socket, _key, action) do
+    {:reply, %{ok: false, error: message},
+     say(socket, Text.t(:action_not_done, action: action.label, message: message))}
+  end
+
   # Looked up by its name as text, so that text from the outside is never
   # turned into an atom.
+  defp action(model, name) when is_binary(name),
+    do: Enum.find(model.actions, &(Atom.to_string(&1.name) == name))
+
+  defp action(_model, _name), do: nil
+
   defp column(model, name) when is_binary(name),
     do: Enum.find(model.columns, &(Atom.to_string(&1.name) == name))
 
@@ -781,9 +1251,28 @@ defmodule AshTable.Live.TableComponent do
 
   def render(assigns) do
     ~H"""
-    <div id={@id} class="ash-table">
-      <%!-- The form of the filter row. A form cannot sit inside a table around
-      its cells, so the controls name it instead. --%>
+    <div id={@id} class="ash-table" data-read={not is_nil(@page)}>
+      <%!-- The line of the table's name: the name at one end, and what the
+      table lets a person create at the other. A nested table has its name on
+      the line that opens it, and a table limited to related records says what
+      it shows on the line below. --%>
+      <div
+        :if={not @nested? and (@heading || (@model.create && is_nil(@related)))}
+        id={"#{@id}-header"}
+        class="mb-4 flex min-h-8 items-center justify-between gap-2"
+      >
+        <.dynamic_tag
+          :if={@heading}
+          tag_name={if is_integer(@heading), do: "h#{@heading}", else: "div"}
+          id={"#{@id}-name"}
+          class="text-lg font-semibold"
+        >
+          {@label}
+        </.dynamic_tag>
+        <div :if={@model.create && is_nil(@related)} class="ms-auto flex items-center gap-2">
+          <.create id={@id} action={@model.create} target={@myself} />
+        </div>
+      </div>
       <.related
         :if={@related}
         id={@id}
@@ -791,7 +1280,11 @@ defmodule AshTable.Live.TableComponent do
         title={@related_title}
         parent={Routes.table(@socket.router, @related.via.source)}
         clear={path(@url, @id, %{})}
+        create={@page && @model.create}
+        target={@myself}
       />
+      <%!-- The form of the filter row. A form cannot sit inside a table around
+      its cells, so the controls name it instead. --%>
       <form
         id={"#{@id}-filters"}
         phx-change="filter"
@@ -841,8 +1334,9 @@ defmodule AshTable.Live.TableComponent do
           aria-label={is_nil(@labelledby) && @label}
           aria-labelledby={@labelledby}
           aria-rowcount={aria_rowcount(@page)}
-          aria-colcount={length(@model.columns) + lead(@expandable?)}
+          aria-colcount={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
           aria-busy={@busy? && "true"}
+          data-first-row={first_row(@page)}
           class={
             [
               "table aria-busy:opacity-60",
@@ -857,7 +1351,7 @@ defmodule AshTable.Live.TableComponent do
               "[&_td[aria-invalid]]:inset-ring-2 [&_td[aria-invalid]]:inset-ring-error [&_td[aria-busy]]:opacity-60",
               # one line per row: long text is cut off, not wrapped. Not in a cell
               # that spans the table: a line, or the cell a nested table is in.
-              "[&>tbody>tr>td:not([colspan])]:max-w-80 [&>tbody>tr>td:not([colspan])]:truncate",
+              "[&>tbody>tr>td:not([colspan],[data-actions])]:max-w-80 [&>tbody>tr>td:not([colspan],[data-actions])]:truncate [&>tbody>tr>td[data-actions]]:whitespace-nowrap",
               # the expander of a row and the button of a line. Their mark is a
               # triangle drawn in CSS, not a character: it turns about its own
               # centre, so it sits in the same place open and closed.
@@ -866,7 +1360,9 @@ defmodule AshTable.Live.TableComponent do
               "[&>tbody>tr>td>button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>td>button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>td>button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>td>button[aria-expanded]]:before:border-s-current",
               "[&>tbody>tr>td>button[aria-expanded]]:before:transition-transform [&>tbody>tr>td>button[aria-expanded=true]]:before:rotate-90",
               # a line's mark stands under its row's
-              "[&>tbody>tr>td[data-line]>button]:ps-1 [&>tbody>tr>td[data-line]>button]:before:me-2"
+              "[&>tbody>tr>td[data-line]>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>button[aria-expanded]]:before:me-2",
+              # the create button on a line, once the nested table under it has read
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>[data-read])>td[data-line]>button[data-create]]:inline-flex"
             ]
           }
           phx-update="stream"
@@ -899,6 +1395,17 @@ defmodule AshTable.Live.TableComponent do
                 class={["whitespace-nowrap", column.sortable? && "cursor-pointer select-none"]}
                 phx-no-format
               >{column.label}<span :if={column.sortable?} aria-hidden="true">{sort_mark(@state.sort, column)}</span></th>
+              <th
+                :if={@acting?}
+                id={"#{@id}-actions-head"}
+                role="columnheader"
+                scope="col"
+                aria-colindex={length(@model.columns) + lead(@expandable?) + 1}
+                tabindex="-1"
+                class="whitespace-nowrap"
+              >
+                {Text.t(:actions)}
+              </th>
             </tr>
             <tr id={"#{@id}-filter-row"} role="row" aria-rowindex="2">
               <td
@@ -927,6 +1434,14 @@ defmodule AshTable.Live.TableComponent do
                   target={@myself}
                 />
               </td>
+              <td
+                :if={@acting?}
+                id={"#{@id}-actions-filter"}
+                role="gridcell"
+                aria-colindex={length(@model.columns) + lead(@expandable?) + 1}
+                tabindex="-1"
+              >
+              </td>
             </tr>
           </thead>
           <%!-- Written without whitespace on purpose: every byte of a row is sent again
@@ -945,6 +1460,8 @@ defmodule AshTable.Live.TableComponent do
             id={@id}
             row={row}
             model={@model}
+            colspan={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
+            creates={@creates}
             reader={nested_reader(assigns)}
           /><tr
             :if={!row[:detail?]}
@@ -965,7 +1482,24 @@ defmodule AshTable.Live.TableComponent do
             aria-colindex={colindex(index, @expandable?)}
             tabindex="-1"
             {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row)}
-          >{cell_content("#{dom_id}-c-#{column.name}", column, row)}</td></tr></tbody>
+          >{cell_content("#{dom_id}-c-#{column.name}", column, row)}</td><td
+            :if={@acting?}
+            id={"#{dom_id}-a"}
+            role="gridcell"
+            aria-colindex={length(@model.columns) + lead(@expandable?) + 1}
+            tabindex="-1"
+            data-actions
+            {action_attributes("#{dom_id}-a", row)}
+          ><button
+            :for={action <- @model.actions}
+            type="button"
+            id={"#{dom_id}-a-#{action.name}"}
+            tabindex="-1"
+            data-action={action.name}
+            data-question={action.confirm}
+            data-destructive={action.type == :destroy}
+            class="btn btn-xs -my-1 me-1"
+          >{action.label}</button>{action_failure("#{dom_id}-a", row)}</td></tr></tbody>
           <%!-- The pages of a nested table are a last row of its grid: reached with
           the arrow keys and entered with Enter, as a filter is, and no tab stop in the
           middle of the grid around it. The element stays where it is once it is there,
@@ -982,7 +1516,7 @@ defmodule AshTable.Live.TableComponent do
               <td
                 id={"#{@id}-pager"}
                 role="gridcell"
-                colspan={length(@model.columns) + lead(@expandable?)}
+                colspan={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
                 aria-colindex="1"
                 tabindex="-1"
                 data-pager
@@ -1005,7 +1539,7 @@ defmodule AshTable.Live.TableComponent do
               <td
                 id={"#{@id}-view"}
                 role="gridcell"
-                colspan={length(@model.columns) + lead(@expandable?)}
+                colspan={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
                 aria-colindex="1"
                 tabindex="-1"
                 data-view
@@ -1037,12 +1571,12 @@ defmodule AshTable.Live.TableComponent do
         <%!-- The message of a cell whose save failed, for the one case in which
         the hook has to mark the cell itself: the record is gone, so there is
         no row to send. --%>
-        <template :if={@editing?} id={"#{@id}-failure"}>{failure_message(nil, "")}</template>
+        <template :if={@editing? or @acting?} id={"#{@id}-failure"}>{failure_message(nil, "")}</template>
       </div>
       <%!-- The one dialog of the table: it asks the question of a column with
       `confirm` before the cell is saved. The hook opens it and puts the question
       in, so patches leave it alone. --%>
-      <div :if={Enum.any?(@model.columns, & &1.confirm)} id={"#{@id}-dialogs"} phx-update="ignore">
+      <div :if={asks?(@model)} id={"#{@id}-dialogs"} phx-update="ignore">
         <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
         a dialog that is not visible yet when it opens cannot take the focus. --%>
         <dialog
@@ -1059,6 +1593,7 @@ defmodule AshTable.Live.TableComponent do
           </form>
         </dialog>
       </div>
+      <.panel :if={@panel} id={@id} panel={@panel} target={@myself} />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <p
         :if={@error}
@@ -1157,6 +1692,64 @@ defmodule AshTable.Live.TableComponent do
           }
         }
       </script>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Panel">
+        // The action panel: a modal dialog that is open for as long as the
+        // server renders it. Focus moves into it and stays there; Escape and
+        // Cancel ask the server to take it away; when it is gone, focus goes
+        // back to the control that opened it, and to the grid when that
+        // control is gone too.
+        export default {
+          mounted() {
+            const dialog = this.el
+            const grid = document.getElementById(dialog.id.replace(/-panel$/, "-grid"))
+            this.grid = grid && grid._ashTable
+            // the control that opened the panel has the focus still
+            const active = document.activeElement
+            this.opener = active && active !== document.body ? active : null
+            this.openerId = this.opener && this.opener.id
+            this.confirmed = false
+            if (dialog.showModal) dialog.showModal()
+            // Escape: the dialog stays until the server has taken it away
+            dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
+            dialog.addEventListener("click", e => { if (e.target.closest("[data-cancel]")) this.cancel() })
+            // An action with a question asks it when "Run" is used, in the
+            // table's other dialog, on top of this one. Cancel there comes
+            // back here, with everything as it was typed.
+            dialog.addEventListener("submit", e => {
+              const question = dialog.dataset.question
+              if (!question || !this.grid || this.confirmed) { this.confirmed = false; return }
+              e.preventDefault()
+              e.stopPropagation()
+              const submitter = e.submitter
+              this.grid.ask(question, dialog.dataset.destructive !== undefined).then(confirmed => {
+                if (!confirmed || !dialog.isConnected) return
+                this.confirmed = true
+                e.target.requestSubmit(submitter)
+              })
+            }, true)
+          },
+
+          cancel() { this.pushEventTo(this.el, "panel_cancel", {}) },
+
+          // Once the patch is done, and only while focus is nowhere: the
+          // server may have sent it somewhere itself (to a new row). The
+          // panel of a nested table is inside the grid around that table,
+          // which takes focus back to its tab stop when the panel goes: the
+          // cell the opener is in. That is nowhere yet, too.
+          destroyed() {
+            setTimeout(() => {
+              const active = document.activeElement
+              const opener = this.opener && this.opener.isConnected
+                ? this.opener
+                : (this.openerId ? document.getElementById(this.openerId) : null)
+              const cell = opener && opener.closest("td,th")
+              if (active && active !== document.body && active !== cell) return
+              if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
+              else if (this.grid && this.grid.el.isConnected) this.grid.refocus()
+            })
+          }
+        }
+      </script>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
         // Keyboard, focus and editing for one grid: a single tab stop with a
         // roving tabindex, moved by the arrow keys.
@@ -1218,6 +1811,16 @@ defmodule AshTable.Live.TableComponent do
             // the cell under the pointer, and the message that is showing
             this.pointed = null
             this.message = null
+            // the row action that was used last: where its cell stood, for
+            // when its row is gone
+            this.acted = null
+            // the server says where focus goes after something it did: to
+            // the first cell of a row that was created
+            this.handleEvent("ash_table:focus", ({table, cell}) => {
+              if (table !== this.id) return
+              const target = document.getElementById(cell)
+              if (target && this.el.contains(target)) target.focus({preventScroll: true})
+            })
             // what happens in a grid nested in this one is that grid's
             const own = handle => e => { if (this.owns(e.target)) handle(e) }
             this.el.addEventListener("keydown", own(e => this.onKeydown(e)))
@@ -1388,6 +1991,7 @@ defmodule AshTable.Live.TableComponent do
             const owner = cell && cell.closest(GRID)._ashTable
             if (!owner) return
             owner.setActive(cell)
+            this.renumber()
             // while the dialog asks, focus is in the dialog and stays there
             if (owner.editing && owner.editing.asking) return
             if (tree.hadFocus && !top.contains(document.activeElement)) {
@@ -1400,6 +2004,25 @@ defmodule AshTable.Live.TableComponent do
           move(r, c) {
             const cell = this.cellAt(r, c)
             if (cell) cell.focus()
+          },
+
+          // The rows say where they stand among all rows (`aria-rowindex`).
+          // The server numbers them when it reads a page, and sends a row
+          // again only when that row changes: after a row was added at the
+          // top or taken out, the others are numbered here, from the first
+          // row's index on, in the order they stand in. The server counts
+          // the same way for the rows it sends later.
+          renumber() {
+            const table = this.el.querySelector("table")
+            let index = table && Number(table.dataset.firstRow)
+            if (!index) return
+            for (const body of table.tBodies) {
+              if (is(body, "detail") || !body.rows[0]) continue
+              if (body.rows[0].getAttribute("aria-rowindex") !== String(index)) {
+                body.rows[0].setAttribute("aria-rowindex", String(index))
+              }
+              index++
+            }
           },
 
           // A cell that spans the table: a line, the cell of a nested table,
@@ -1440,9 +2063,20 @@ defmodule AshTable.Live.TableComponent do
             // the expander of a row and the button of a line: used, with
             // focus on their cell
             if (is(cell, "expander") || is(cell, "line")) {
-              if (e.target.closest("button")) this.open(cell)
-              if (document.activeElement !== cell) cell.focus()
+              const button = e.target.closest("button")
+              // another control of a line (its create button) is used as it
+              // is, and keeps the focus: its panel gives it back
+              if (button && !button.hasAttribute("aria-expanded")) return
+              if (button) this.open(cell)
+              // a button that was used from the keyboard keeps the focus
+              if (document.activeElement !== cell && !(button && e.detail === 0)) cell.focus()
               return
+            }
+            // a button of the actions cell: used, and it keeps the focus. A
+            // click beside the buttons is a click on the cell.
+            if (is(cell, "actions")) {
+              const button = e.target.closest("button[data-action]")
+              if (button) return this.act(button)
             }
             // a click on a filter's control or in an editor leaves focus there
             if (this.controlOf(e.target)) return
@@ -1456,10 +2090,12 @@ defmodule AshTable.Live.TableComponent do
           },
 
           // Into a filter cell: to where its value is typed or chosen, or to
-          // its menu when the operator needs no value. Returns the control.
+          // its menu when the operator needs no value. Into a cell that
+          // holds buttons (the actions of a row, the pages of a nested
+          // table): to the first of them. Returns the control.
           enter(cell) {
             const control = cell.querySelector("[id$='-value']") ||
-              Array.from(cell.querySelectorAll("select,button")).find(control => !control.disabled)
+              Array.from(cell.querySelectorAll("select,button")).find(control => this.usable(control))
             if (!control) return null
             control.focus()
             if (control.select) control.select()
@@ -1495,10 +2131,11 @@ defmodule AshTable.Live.TableComponent do
               case "Tab":
                 if (this.toControl(cell, control, e.shiftKey ? -1 : 1)) e.preventDefault()
                 break
-              // through the pages of a nested table, which are buttons in a row
+              // through the buttons of a cell that holds several: the pages
+              // of a nested table, the actions of a row, a line's controls
               case "ArrowLeft":
               case "ArrowRight":
-                if (is(cell, "pager")) {
+                if (is(cell, "pager") || is(cell, "actions") || is(cell, "line")) {
                   this.toControl(cell, control, e.key === "ArrowLeft" ? -1 : 1)
                   e.preventDefault()
                 }
@@ -1507,8 +2144,11 @@ defmodule AshTable.Live.TableComponent do
           },
 
           // To the control before or after this one in its cell, if there is one.
+          // A control a person can use: not disabled, and not hidden.
+          usable(control) { return !control.disabled && control.getClientRects().length > 0 },
+
           toControl(cell, control, step) {
-            const controls = Array.from(cell.querySelectorAll("input,select,button")).filter(control => !control.disabled)
+            const controls = Array.from(cell.querySelectorAll("input,select,button")).filter(control => this.usable(control))
             const next = controls[controls.indexOf(control) + step]
             if (next) next.focus()
             return !!next
@@ -1600,7 +2240,7 @@ defmodule AshTable.Live.TableComponent do
               }
               case "Enter":
                 if (cell.tagName === "TH" && cell.dataset.sort !== undefined) cell.click()
-                else if (cell.dataset.filter !== undefined || is(cell, "pager")) this.enter(cell)
+                else if (cell.dataset.filter !== undefined || is(cell, "pager") || is(cell, "actions")) this.enter(cell)
                 else if (expands) this.open(cell)
                 else if (is(cell, "nested")) this.enterNested(cell)
                 else if (is(cell, "view")) this.follow(cell)
@@ -1608,7 +2248,10 @@ defmodule AshTable.Live.TableComponent do
                 else handled = false
                 break
               case "F2":
-                if (cell.dataset.filter !== undefined || is(cell, "pager")) this.enter(cell)
+                // into a cell that holds controls; a line among them, when
+                // it holds more than the button that opens it
+                if (cell.dataset.filter !== undefined || is(cell, "pager") || is(cell, "actions")) this.enter(cell)
+                else if (is(cell, "line") && cell.querySelector("button[data-create]")) this.enter(cell)
                 else if (is(cell, "nested")) this.enterNested(cell)
                 else if (this.canEdit(cell)) this.startEdit(cell, null)
                 else handled = false
@@ -1652,6 +2295,66 @@ defmodule AshTable.Live.TableComponent do
 
           pageRows(cell) {
             return Math.max(1, Math.floor(window.innerHeight / (cell.offsetHeight || 24)) - 2)
+          },
+
+          // ---- row actions -------------------------------------------------
+
+          // Uses a button of a row's actions cell: one event with the row
+          // and the action, after the question of an action that has one.
+          // What happens then is the server's: the action runs and the row
+          // comes back, patched in, or is taken away; or its panel opens.
+          act(button) {
+            const cell = this.cellOf(button)
+            if (!cell || cell.hasAttribute("aria-busy")) return
+            const run = () => {
+              this.note(cell, button)
+              cell.setAttribute("aria-busy", "true")
+              const payload = {row: this.rowKey(cell), action: button.dataset.action}
+              this.pushEventTo(this.el, "act", payload, reply => {
+                if (reply && reply.removed) return this.refocus()
+                if (!cell.isConnected) return
+                cell.removeAttribute("aria-busy")
+                // the record is gone: there is no row to send, so the cell is marked here
+                if (reply && reply.error) this.fail(cell, reply.error, () => {})
+                // the button keeps the focus through the patch of its row
+                if (reply && !reply.panel && document.activeElement === document.body) {
+                  const same = document.getElementById(button.id)
+                  if (same) same.focus({preventScroll: true})
+                }
+              })
+            }
+            const question = button.dataset.question
+            if (!question) return run()
+            // Cancel, and Escape: the browser puts focus back on the button
+            this.ask(question, button.dataset.destructive !== undefined).then(confirmed => { if (confirmed) run() })
+          },
+
+          // Where the cell of the action stands, for when its row is gone:
+          // its column, and the rows after and before its own.
+          note(cell, button) {
+            const row = step => {
+              let body = cell.closest("tbody")
+              do { body = step(body) } while (body && (body.tagName !== "TBODY" || is(body, "detail")))
+              return body ? body.id : null
+            }
+            this.acted = {
+              c: cell.cellIndex,
+              next: row(body => body.nextElementSibling),
+              previous: row(body => body.previousElementSibling),
+              button: button.id
+            }
+          },
+
+          // After the row of the action that was used last is gone: to the
+          // same column of the row after it, else of the row before it,
+          // else to the grid's first cell.
+          refocus() {
+            const acted = this.acted || {}
+            const body = [acted.next, acted.previous].map(id => id && document.getElementById(id)).find(body => body && body.rows[0])
+            const cell = body
+              ? body.rows[0].cells[Math.min(acted.c, body.rows[0].cells.length - 1)]
+              : this.cellAt(this.headRows(), this.lead())
+            if (cell) cell.focus({preventScroll: true})
           },
 
           // ---- editing ---------------------------------------------------
@@ -1892,6 +2595,14 @@ defmodule AshTable.Live.TableComponent do
           // Marks a cell as failed the way the server does, for a record
           // that is gone.
           mark(cell, value, old, message, restore) {
+            this.fail(cell, message, restore)
+            cell.dataset.value = value
+            cell.dataset.saved = old
+          },
+
+          // Marks a cell with a message, as the server marks one whose save
+          // or whose action failed. `restore` puts the cell back as it was.
+          fail(cell, message, restore) {
             const template = document.getElementById(`${this.id}-failure`)
             const error = template.content.firstElementChild.cloneNode(true)
             error.id = `${cell.id}-error`
@@ -1902,8 +2613,6 @@ defmodule AshTable.Live.TableComponent do
             cell.append(error)
             cell.setAttribute("aria-invalid", "true")
             cell.setAttribute("aria-describedby", error.id)
-            cell.dataset.value = value
-            cell.dataset.saved = old
             this.showMessage()
           },
 
@@ -1913,12 +2622,17 @@ defmodule AshTable.Live.TableComponent do
             const restore = this.marked.get(cell)
             if (restore) {
               this.marked.delete(cell)
+              const error = document.getElementById(`${cell.id}-error`)
+              if (error && is(cell, "actions")) error.remove()
               cell.removeAttribute("aria-invalid")
               cell.removeAttribute("aria-describedby")
               delete cell.dataset.value
               delete cell.dataset.saved
               restore()
               this.showMessage()
+            } else if (is(cell, "actions")) {
+              // the message of a row action that failed is given up
+              this.pushEventTo(this.el, "dismiss", {row: this.rowKey(cell)})
             } else {
               this.pushEventTo(this.el, "discard", {row: this.rowKey(cell), column: this.columnOf(cell)})
             }
@@ -1929,10 +2643,14 @@ defmodule AshTable.Live.TableComponent do
           // Asks a question in the table's dialog and resolves to whether it
           // was confirmed. Escape closes the dialog as Cancel does. When it
           // closes, the browser puts focus back where it was.
-          ask(question) {
+          ask(question, destructive) {
             const dialog = document.getElementById(`${this.id}-dialog`)
             if (!dialog || !dialog.showModal) return Promise.resolve(true)
             document.getElementById(`${this.id}-dialog-question`).textContent = question
+            // the answer that deletes says so by its colour
+            const confirm = dialog.querySelector("button[value='confirm']")
+            confirm.classList.toggle("btn-error", !!destructive)
+            confirm.classList.toggle("btn-primary", !destructive)
             dialog.returnValue = ""
             return new Promise(resolve => {
               dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), {once: true})
@@ -1986,13 +2704,14 @@ defmodule AshTable.Live.TableComponent do
   attr :id, :string, required: true
   attr :row, :map, required: true
   attr :model, :map, required: true
+  attr :colspan, :integer, required: true
+  attr :creates, :map, required: true
   attr :reader, :map, required: true
 
   defp lines(assigns) do
     assigns =
       assign(assigns,
         row_id: "#{assigns.id}-row-#{assigns.row.key}",
-        colspan: length(assigns.model.columns) + 1,
         first: List.first(assigns.model.columns)
       )
 
@@ -2016,6 +2735,23 @@ defmodule AshTable.Live.TableComponent do
             class="font-medium"
           >
             {relationship.label}
+          </button>
+          <%!-- The create button of the nested table, on the line that names
+          it: after the label, since the line is as wide as the table around it
+          and its far end is usually out of sight. It is shown once the nested
+          table has read (the rule is with the table's classes), and as high as
+          the line's text, so the line is as high with it as without. --%>
+          <button
+            :if={relationship.name in @row.lines and @creates[relationship.name]}
+            type="button"
+            id={"#{@row_id}-l-#{relationship.name}-create"}
+            tabindex="-1"
+            data-create
+            class="btn btn-xs ms-2 hidden h-5 align-top"
+            phx-click="create"
+            phx-target={"##{@row_id}-t-#{relationship.name}"}
+          >
+            {@creates[relationship.name]}
           </button>
         </td>
       </tr>
@@ -2067,6 +2803,183 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # The action panel: where a person gives the inputs of a row action, or of
+  # the create action, before it runs. A modal dialog at the right edge of
+  # the window, which its hook opens when it is put into the page and which
+  # goes when the server takes it out again. Its form is an
+  # `AshPhoenix.Form` of the action, kept by the table while the panel is
+  # open: what is typed is given to the action as it is typed, and the
+  # action's errors are shown at their fields.
+  attr :id, :string, required: true
+  attr :panel, :map, required: true
+  attr :target, :any, required: true
+
+  defp panel(assigns) do
+    assigns = assign(assigns, form: to_form(assigns.panel.form))
+
+    ~H"""
+    <%!-- `open` is the hook's: a patch leaves it alone. Not daisyUI's `modal`,
+    for the reason given at the other dialog. --%>
+    <dialog
+      id={"#{@id}-panel"}
+      phx-hook=".Panel"
+      phx-mounted={JS.ignore_attributes(["open"])}
+      phx-target={@target}
+      data-question={@panel.action.confirm}
+      data-destructive={@panel.action.type == :destroy}
+      aria-labelledby={"#{@id}-panel-title"}
+      class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40"
+    >
+      <.form
+        for={@form}
+        id={"#{@id}-panel-form"}
+        phx-change="panel_validate"
+        phx-submit="panel_submit"
+        phx-target={@target}
+      >
+        <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{@panel.title}</h2>
+        <%!-- what the action says that is about none of the fields --%>
+        <div
+          :if={@panel.errors[nil]}
+          id={"#{@id}-panel-errors"}
+          role="alert"
+          class="mb-4 text-sm font-medium"
+        >
+          <p :for={message <- @panel.errors[nil]}>{message}</p>
+        </div>
+        <.field
+          :for={input <- @panel.inputs}
+          id={"#{@id}-panel-f-#{input.name}"}
+          input={input}
+          field={@form[input.name]}
+          default?={@panel.kind == :create or input.kind == :argument}
+          errors={field_errors(@panel, input)}
+        />
+        <div class="mt-6 flex justify-end gap-2">
+          <button type="button" id={"#{@id}-panel-cancel"} class="btn" data-cancel>
+            {Text.t(:cancel)}
+          </button>
+          <button
+            type="submit"
+            id={"#{@id}-panel-submit"}
+            class={["btn", if(@panel.action.type == :destroy, do: "btn-error", else: "btn-primary")]}
+          >
+            {@panel.submit}
+          </button>
+        </div>
+      </.form>
+    </dialog>
+    """
+  end
+
+  # The errors of a field that are shown: all of them once the person has
+  # used "Run", and until then those of the fields they have been in.
+  defp field_errors(panel, input) do
+    if panel.submitted? or Atom.to_string(input.name) in panel.used,
+      do: Map.get(panel.errors, input.name, []),
+      else: []
+  end
+
+  # One field of the action panel: its label, the control of its type, and
+  # the action's errors about it. The controls are those of the cell
+  # editors, at the size of a form's.
+  attr :id, :string, required: true
+  attr :input, :map, required: true
+  attr :field, :any, required: true
+  attr :errors, :list, required: true
+  attr :default?, :boolean, required: true
+
+  defp field(assigns) do
+    assigns =
+      assign(assigns,
+        value: field_value(assigns.input, assigns.field.value, assigns.default?),
+        described: assigns.errors != [] && "#{assigns.id}-error"
+      )
+
+    ~H"""
+    <div class="fieldset mb-2" data-field={@input.name}>
+      <%!-- an unchecked box sends nothing: this says "false" for it --%>
+      <input :if={@input.editor == :boolean} type="hidden" name={@field.name} value="false" />
+      <label for={@id} class="label mb-1 text-base-content">
+        <input
+          :if={@input.editor == :boolean}
+          type="checkbox"
+          id={@id}
+          name={@field.name}
+          value="true"
+          checked={@value == "true"}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@described}
+          class="checkbox checkbox-sm"
+        />
+        <span data-label>{@input.label}</span>
+        <span :if={@input.required? and @input.editor != :boolean} aria-hidden="true">*</span>
+      </label>
+
+      <textarea
+        :if={@input.editor == :text}
+        id={@id}
+        name={@field.name}
+        rows="3"
+        aria-required={@input.required? && "true"}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@described}
+        class={["textarea w-full", @errors != [] && "textarea-error"]}
+      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      <select
+        :if={@input.editor == :enum}
+        id={@id}
+        name={@field.name}
+        aria-required={@input.required? && "true"}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@described}
+        class={["select w-full", @errors != [] && "select-error"]}
+      >
+        <option :if={not @input.required? or @value == ""} value=""></option>
+        <option
+          :for={{choice, label} <- @input.values}
+          value={choice}
+          selected={to_string(choice) == @value}
+        >
+          {label}
+        </option>
+      </select>
+      <input
+        :if={@input.editor in [:number, :date, :datetime, :plain]}
+        type={field_type(@input.editor)}
+        step={input_step(@input.editor)}
+        id={@id}
+        name={@field.name}
+        value={@value}
+        aria-required={@input.required? && "true"}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@described}
+        class={["input w-full", @errors != [] && "input-error"]}
+      />
+      <%!-- in the text colour: the error colour is too faint for small text --%>
+      <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-sm">
+        <p :for={message <- @errors} data-error>{message}</p>
+      </div>
+    </div>
+    """
+  end
+
+  defp field_type(:plain), do: "text"
+  defp field_type(editor), do: input_type(editor)
+
+  # What a field holds: what the person typed, once they have; else the
+  # value of the record; or, for an input that has no record to take one
+  # from (an argument, an attribute of a record that is being created), its
+  # default. Written as the editor of its type writes it. An attribute that
+  # is empty on a record is empty in the field, whatever its default.
+  defp field_value(_input, typed, _default?) when is_binary(typed), do: typed
+
+  defp field_value(%{default: default} = input, nil, true) when not is_nil(default),
+    do: Format.input(input, default)
+
+  defp field_value(_input, nil, _default?), do: ""
+  defp field_value(input, value, _default?), do: Format.input(input, value)
+
   # What a nested table is given of the table it is in: who is asking, how
   # deep it is, and how the table around it authorizes. `authorize?` is passed
   # on only as this table was told it; untold, a nested table authorizes as
@@ -2095,6 +3008,8 @@ defmodule AshTable.Live.TableComponent do
   attr :title, :string, default: nil
   attr :parent, :map, default: nil
   attr :clear, :string, required: true
+  attr :create, :map, default: nil
+  attr :target, :any, default: nil
 
   defp related(assigns) do
     # in the host's words, as the line of the relationship is
@@ -2121,12 +3036,40 @@ defmodule AshTable.Live.TableComponent do
             navigate={@parent.path}
             class="link"
           >{@title}</.link><span :if={!@parent} id={"#{@id}-related-parent"}>{@title}</span>{List.last(@parts)}<% else %>{@label}<% end %></h2>
-      <.link id={"#{@id}-related-clear"} patch={@clear} class="btn btn-sm">
-        {Text.t(:show_all_records)}
-      </.link>
+      <div class="flex items-center gap-2">
+        <.create :if={@create} id={@id} action={@create} target={@target} />
+        <.link id={"#{@id}-related-clear"} patch={@clear} class="btn btn-sm">
+          {Text.t(:show_all_records)}
+        </.link>
+      </div>
     </div>
     """
   end
+
+  # The create button of a table: it opens the action panel with the inputs
+  # of the table's create action.
+  attr :id, :string, required: true
+  attr :action, :map, required: true
+  attr :target, :any, required: true
+
+  defp create(assigns) do
+    ~H"""
+    <button
+      type="button"
+      id={"#{@id}-create"}
+      class="btn btn-sm"
+      phx-click="create"
+      phx-target={@target}
+    >
+      {@action.label}
+    </button>
+    """
+  end
+
+  # Whether anything of the table asks a question before it runs: a column,
+  # a row action.
+  defp asks?(model),
+    do: Enum.any?(model.columns, & &1.confirm) or Enum.any?(model.actions, & &1.confirm)
 
   # Whether a nested table has its link to the full view: the router mounts
   # the destination's table, and the nested table has been read.
@@ -2402,8 +3345,18 @@ defmodule AshTable.Live.TableComponent do
   defp lead(true), do: 1
   defp lead(false), do: 0
 
+  # The columns after the last data column: the actions, when the rows have
+  # them.
+  defp trail(true), do: 1
+  defp trail(false), do: 0
+
   # 1-based position of a data column among all columns of the grid.
   defp colindex(index, expandable?), do: lead(expandable?) + index + 1
+
+  # The row index of the first row of the page: the hook numbers the rows
+  # from it, in the order they stand in, after a row was added or taken out.
+  defp first_row(%{offset: offset}) when is_integer(offset), do: offset + @header_rows + 1
+  defp first_row(_page), do: @header_rows + 1
 
   # The header rows are counted. -1 says the total is not known.
   defp aria_rowcount(%{total: total}) when is_integer(total), do: total + @header_rows
@@ -2451,6 +3404,17 @@ defmodule AshTable.Live.TableComponent do
         []
     end
   end
+
+  # What the actions cell of a row says about an action that failed: as a
+  # cell whose save failed, `aria-invalid` and `aria-describedby` naming the
+  # action's message.
+  defp action_attributes(_id, %{acted: nil}), do: []
+
+  defp action_attributes(id, _row),
+    do: [{"aria-invalid", "true"}, {"aria-describedby", "#{id}-error"}]
+
+  defp action_failure(_id, %{acted: nil}), do: []
+  defp action_failure(id, %{acted: message}), do: failure_message("#{id}-error", message)
 
   # What a record holds for a column. For a reference column that is the
   # label of the related record, as Ash loaded it for this person:

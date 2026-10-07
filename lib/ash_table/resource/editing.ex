@@ -117,11 +117,14 @@ defmodule AshTable.Resource.Editing do
   """
   @spec editor(Ash.Resource.t(), struct) :: CellType.t() | nil
   def editor(resource, field) do
-    case CellType.of(resource, field) do
-      {cell_type, _values} when cell_type in @editors -> cell_type
-      _ -> nil
-    end
+    {cell_type, _values} = CellType.of(resource, field)
+    editor(cell_type)
   end
+
+  @doc "The editor of a cell type; nil for one without."
+  @spec editor(CellType.t()) :: CellType.t() | nil
+  def editor(cell_type) when cell_type in @editors, do: cell_type
+  def editor(_cell_type), do: nil
 
   @doc "Whether the action takes the field as an input: an attribute it accepts."
   @spec accepts?(Ash.Resource.Actions.Update.t(), struct) :: boolean

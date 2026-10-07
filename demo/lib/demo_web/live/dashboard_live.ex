@@ -27,21 +27,24 @@ defmodule DemoWeb.DashboardLive do
         </p>
       </div>
 
-      <section id="dashboard-projects-section" aria-labelledby="dashboard-projects-heading">
-        <h2 id="dashboard-projects-heading" class="mb-2 text-lg font-semibold">Projects</h2>
+      <%!-- Each table names itself on the line above it, with its create
+      button at the other end: `heading` makes that name a heading of this
+      page, and the section is named by it. --%>
+      <section id="dashboard-projects-section" aria-labelledby="dashboard-projects-name">
         <AshTable.table
           id="dashboard-projects"
           resource={Demo.Tracker.Project}
+          heading={2}
           actor={@current_user}
           tenant={@current_tenant}
         />
       </section>
 
-      <section id="dashboard-tasks-section" aria-labelledby="dashboard-tasks-heading">
-        <h2 id="dashboard-tasks-heading" class="mb-2 text-lg font-semibold">Tasks</h2>
+      <section id="dashboard-tasks-section" aria-labelledby="dashboard-tasks-name">
         <AshTable.table
           id="dashboard-tasks"
           resource={Demo.Tracker.Task}
+          heading={2}
           actor={@current_user}
           tenant={@current_tenant}
         />

@@ -76,7 +76,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["2"]
       assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["15"]
       assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["18"]
-      assert attribute(html, "#task-table", "aria-colcount") == ["18"]
+      # the expanders, the 17 columns and the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["19"]
       # and not one of the table's columns
       assert hd(headers(html, "task")) == "Title"
     end
@@ -257,8 +258,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='task-row-#{task.id}-l-comments-b']") =~ "Comments"
       assert text(html, "[id='task-row-#{task.id}-c-title']") == "Write the report"
 
-      # 17 columns and the expanders
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["18"]
+      # the expanders, 17 columns and the actions
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["19"]
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
     end
 
@@ -869,10 +870,11 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # at the limit: no expander, no column for one, and the columns counted without it
       assert attribute(html, "[id='#{third}-table'] [data-expander]", "id") == []
       assert attribute(html, "[id='#{third}-expander-head']", "id") == []
-      assert attribute(html, "[id='#{third}-table']", "aria-colcount") == ["5"]
+      # the comments' five columns and their actions
+      assert attribute(html, "[id='#{third}-table']", "aria-colcount") == ["6"]
       assert attribute(html, "[id='#{third}-head-id']", "aria-colindex") == ["1"]
       # where the same table one level up has it
-      assert attribute(html, "[id='#{first}-table']", "aria-colcount") == ["6"]
+      assert attribute(html, "[id='#{first}-table']", "aria-colcount") == ["7"]
     end
 
     test "an event for a table at the limit, which that table never offers, opens nothing",

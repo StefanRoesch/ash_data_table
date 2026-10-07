@@ -327,10 +327,11 @@ test.describe("three levels down", () => {
 
     const comments = await projectTasks.openLine(taskKey, "comments")
     expect(await tasks.tabStops()).toHaveLength(1)
-    // at depth 3 of 3: the same table as one level up, without expanders
+    // at depth 3 of 3: the same table as one level up, without expanders:
+    // its five columns and the one of its actions
     await expect(comments.expanders).toHaveCount(0)
-    await expect(comments.headerCells).toHaveCount(5)
-    await expect(comments.grid).toHaveAttribute("aria-colcount", "5")
+    await expect(comments.headerCells).toHaveCount(6)
+    await expect(comments.grid).toHaveAttribute("aria-colcount", "6")
 
     // by keyboard all the way in, and all the way out again
     await projectTasks.cell(taskKey, "title").focus()

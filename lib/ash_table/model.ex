@@ -11,6 +11,10 @@ defmodule AshTable.Model do
   #   * `columns`, the ordered list of `AshTable.Model.Column`;
   #   * `relationships`, the ordered list of `AshTable.Model.Relationship`: what
   #     a row can be expanded into;
+  #   * `actions`, the ordered list of `AshTable.Model.Action`: the row
+  #     actions, and `create`, the table's create action or nil;
+  #   * `name`, what one record of the resource is called: its short name in
+  #     words ("task label");
   #   * `max_depth`, how deep a person can expand from this table when it is
   #     the one on the page;
   #   * `via`, the relationship a nested table is reached through, nil for a
@@ -41,6 +45,20 @@ defmodule AshTable.Model do
   # relationship whose destination resource has a table, except manual ones.
   # Once one is declared, exactly the declared ones in the declared order.
   #
+  # ## Acting
+  #
+  # The row actions are the `action`s of the block, in the declared order:
+  # public update and destroy actions. The create action is the one the block
+  # names with `create_action`. Each carries its inputs, the attributes it
+  # accepts and then its arguments, as far as a table has a field for their
+  # type (`AshTable.Model.Input`): an optional input without a field is left
+  # out, and an action that requires one is no action of the model at all.
+  #
+  # `panel?` says whether using an action opens the action panel first: it
+  # does when the action accepts an attribute or has a required argument,
+  # and always for the create action. An action without inputs, or with
+  # optional arguments only, runs straight away.
+  #
   # ## Nested
   #
   # The table of the records related to one row is the destination's table,
@@ -49,19 +67,27 @@ defmodule AshTable.Model do
   # no sort and no filters when the relationship holds one record or is
   # manual. Everything else is the destination's own table.
   #
+  # Its create action is kept only where the table can say what joins a new
+  # record to its row: under a has-many joined by attributes, when the action
+  # accepts the relationship's destination attribute. That attribute is then
+  # the action's `link`, which the table fills in, and no input.
+  #
   # ## Per person
   #
   # All of the above is what the resource and its block say, the same for
-  # everybody. What one person can never see or edit is taken out by
+  # everybody. What one person can never see, edit or run is taken out by
   # `for_actor/2`, which asks Ash.
 
   alias Ash.Resource.Info
   alias AshTable.Model.Access
+  alias AshTable.Model.Action
   alias AshTable.Model.CellType
   alias AshTable.Model.Column
+  alias AshTable.Model.Input
   alias AshTable.Model.Operator
   alias AshTable.Model.Pagination
   alias AshTable.Model.Relationship
+  alias AshTable.Resource.Acting
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Reading
@@ -76,7 +102,10 @@ defmodule AshTable.Model do
     :pagination,
     :columns,
     :via,
+    :name,
+    :create,
     relationships: [],
+    actions: [],
     max_depth: 3
   ]
 
@@ -87,6 +116,9 @@ defmodule AshTable.Model do
           pagination: Pagination.t(),
           columns: [Column.t()],
           relationships: [Relationship.t()],
+          actions: [Action.t()],
+          create: Action.t() | nil,
+          name: String.t(),
           max_depth: non_neg_integer,
           via: Relationship.t() | nil
         }
@@ -156,6 +188,9 @@ defmodule AshTable.Model do
       pagination: pagination,
       columns: columns,
       relationships: relationships!(resource),
+      actions: row_actions!(resource, columns),
+      create: create!(resource, columns, via),
+      name: name(resource),
       max_depth: TableInfo.table_max_depth!(resource),
       via: via
     }
@@ -209,6 +244,12 @@ defmodule AshTable.Model do
       (`Ash.can/3`). One whose records the person may read in part stays: Ash
       filters them when the nested table is read.
 
+    * A row action the person can **never** run is left out, and so is the
+      create action (`Ash.can/3`, once per action). One they may run on some
+      records only stays: whether it runs on one record is the action's to
+      say when it is run. An input of a field the person can never see is
+      left out of an action's inputs.
+
   A question Ash cannot answer is taken as "never".
   """
   @spec for_actor(%__MODULE__{}, keyword) :: t
@@ -255,9 +296,65 @@ defmodule AshTable.Model do
         end)
 
       %{model | columns: columns, relationships: relationships}
+      |> runnable(opts)
     else
       model
     end
+  end
+
+  @doc """
+  What the nested table of `relationship` lets this person create, without
+  building everything else of it for them: the create action of its model,
+  or nil when it has none or the person can never run it. `opts` are those
+  of `for_actor/2`.
+  """
+  @spec nested_create(Relationship.t(), keyword) :: Action.t() | nil
+  def nested_create(%Relationship{destination: destination} = relationship, opts) do
+    with %{create: %Action{} = create} <- build(destination, via: relationship),
+         true <-
+           not Keyword.get(opts, :authorize?, true) or
+             Access.forbidden_actions(destination, [create.name], opts) == [] do
+      create
+    else
+      _none_or_never -> nil
+    end
+  end
+
+  # The row actions and the create action as this person meets them:
+  # without an action they can never run, and without the inputs of fields
+  # they can never see. A field policy is about reading; the table takes it
+  # to mean that what a person never sees is not theirs to write through a
+  # table either, as it does for a cell.
+  defp runnable(model, opts) do
+    offered = model.actions ++ List.wrap(model.create)
+
+    forbidden = Access.forbidden_actions(model.resource, Enum.map(offered, & &1.name), opts)
+
+    attributes =
+      Enum.uniq(
+        for %{inputs: inputs} <- offered, %{kind: :attribute, name: name} <- inputs, do: name
+      )
+
+    hidden = Access.hidden_fields(model.resource, model.read_action, attributes, opts)
+
+    [create | actions] =
+      for action <- [model.create | model.actions] do
+        cond do
+          is_nil(action) ->
+            nil
+
+          action.name in forbidden ->
+            nil
+
+          true ->
+            %{
+              action
+              | inputs: Enum.reject(action.inputs, &(&1.kind == :attribute and &1.name in hidden))
+            }
+        end
+      end
+
+    %{model | actions: Enum.reject(actions, &is_nil/1), create: create}
   end
 
   # The aggregate columns this person cannot sort by, though the resource
@@ -526,6 +623,7 @@ defmodule AshTable.Model do
             destination: relationship.destination,
             read_action: read_action.name,
             sort: relationship.sort,
+            link: Relating.link(relationship),
             pageable?: Relating.pageable?(relationship, read_action),
             sortable?: arrangeable?,
             filterable?: arrangeable?
@@ -632,7 +730,119 @@ defmodule AshTable.Model do
     :ok
   end
 
+  # An `action` that names no public update or destroy action of the resource.
+  defp row_actions!(resource, columns) do
+    declared = TableInfo.actions(resource)
+    names = Enum.map(declared, & &1.name)
+
+    for %{name: name} = declaration <- declared,
+        found = row_action(resource, name, names),
+        # an action with a required input that a table has no field for
+        # cannot be run from one: it has no button
+        found != :unusable do
+      case found do
+        {:ok, action} ->
+          action(resource, action, columns, declaration.label, declaration.confirm || nil)
+
+        {:error, reason} ->
+          raise ArgumentError,
+                "cannot build the table of #{inspect(resource)}: its row action `#{name}` cannot " <>
+                  "be used. " <> Acting.message(reason)
+      end
+    end
+  end
+
+  defp row_action(resource, name, names) do
+    if name in (names -- Enum.uniq(names)) do
+      {:error, {:declared_twice, name}}
+    else
+      with {:ok, action} <- Acting.row_action(resource, name) do
+        if Acting.unusable(resource, action) == [], do: {:ok, action}, else: :unusable
+      end
+    end
+  end
+
+  # The create action of the block, when a table can run it. A nested table
+  # creates only where it can say what joins the new record to its row: in a
+  # has-many joined by attributes, through an action that accepts the
+  # attribute. It fills that one in itself, so it is no input.
+  defp create!(resource, columns, via) do
+    case Acting.create_action(resource) do
+      :none ->
+        nil
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: its `create_action` cannot be used. " <>
+                Acting.message(reason)
+
+      {:ok, action} ->
+        create = action(resource, action, columns, "New #{name(resource)}", nil)
+
+        cond do
+          Acting.unusable(resource, action) != [] ->
+            nil
+
+          is_nil(via) ->
+            %{create | panel?: true}
+
+          match?(%{link: {_source, _destination}}, via) and elem(via.link, 1) in action.accept ->
+            {_source, destination} = via.link
+
+            %{
+              create
+              | panel?: true,
+                link: via.link,
+                inputs: Enum.reject(create.inputs, &(&1.name == destination))
+            }
+
+          true ->
+            nil
+        end
+    end
+  end
+
+  # What one record of the resource is called: its short name, in words.
+  defp name(resource) do
+    resource |> Info.short_name() |> to_string() |> String.replace("_", " ")
+  end
+
+  # An action as a table offers it, with the inputs a table has a field for.
+  defp action(resource, action, columns, label, confirm) do
+    inputs =
+      for %{editor: editor} = input when not is_nil(editor) <- Acting.inputs(resource, action) do
+        struct!(Input, Map.put(input, :label, input_label(input, columns)))
+      end
+
+    %Action{
+      name: action.name,
+      type: action.type,
+      label: label || humanize(action.name),
+      confirm: confirm,
+      inputs: inputs,
+      panel?: Acting.panel?(inputs)
+    }
+  end
+
+  # An attribute the table has a column for is called what its column is.
+  defp input_label(%{kind: :attribute, name: name}, columns) do
+    case Enum.find(columns, &(&1.name == name and &1.kind == :attribute)) do
+      nil -> humanize(name)
+      column -> column.label
+    end
+  end
+
+  defp input_label(%{name: name}, _columns), do: humanize(name)
+
   defp row_refresh!(resource, fields) do
+    with [_ | _] = loaded <- Acting.unloadable_after_action(resource, fields) do
+      raise ArgumentError,
+            "cannot build the table of #{inspect(resource)}: it has row actions or a create action " <>
+              "and shows calculations, aggregates or reference columns " <>
+              "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the " <>
+              "resource has no primary read action, which Ash loads those fields through after an action."
+    end
+
     case Editing.unloadable_after_save(resource, fields) do
       [] ->
         :ok

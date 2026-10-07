@@ -151,6 +151,24 @@ defmodule Demo.Tracker.Task do
     relationship :reporter do
       label "Reported by"
     end
+
+    # Row actions: a button each, in this order, in the last column of the
+    # table. `archive` has no inputs and runs when its button is used.
+    action :archive
+
+    # A required argument and an attribute: the button opens the action panel.
+    action :reassign
+
+    # One attribute, which the panel shows with the task's progress in it.
+    action :set_progress
+
+    # A destroy action asks first, or says that it does not (`confirm false`).
+    action :destroy do
+      confirm "Delete this task? This cannot be undone."
+    end
+
+    # The "New task" button, on the line of the table's name.
+    create_action :create
   end
 
   actions do

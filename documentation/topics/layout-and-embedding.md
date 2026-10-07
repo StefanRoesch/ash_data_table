@@ -30,6 +30,7 @@ for translations.)
 <AshTable.table
   id="dashboard-projects"
   resource={Demo.Tracker.Project}
+  heading={2}
   actor={@current_user}
   tenant={@current_tenant}
 />
@@ -90,10 +91,12 @@ The setting is read when the page is rendered, so it can be changed without
 recompiling the dependency. `mix ash_table.install` sets it when your app has
 `MyAppWeb.Layouts.app/1`.
 
-Inside the layout the page is a heading with the table's name and the table.
-The name is the resource's `plural_name`, or its short name, in words:
-"Tasks", "Task labels". It is also the page title and the accessible name of
-the table.
+Inside the layout the page is the table, and the first line of the table is
+the page's heading: the table's name as an `h1` at the left and, where the
+table has a create action that the person may run, its create button at the
+right. The name is the resource's `plural_name`, or its short name, in
+words: "Tasks", "Task labels". It is also the page title and the accessible
+name of the table.
 
 ### One table with another layout, or none
 
@@ -141,15 +144,16 @@ router is compiled.
 ## Embedding a table in your own LiveView
 
 `<AshTable.table>` renders the same table inside a page you own. The demo's
-dashboard places two of them under its own headings, in its own layout:
+dashboard places two of them in its own layout, under its own `h1`, each in
+a section of its own:
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```heex
-<section id="dashboard-tasks-section" aria-labelledby="dashboard-tasks-heading">
-  <h2 id="dashboard-tasks-heading" class="mb-2 text-lg font-semibold">Tasks</h2>
+<section id="dashboard-tasks-section" aria-labelledby="dashboard-tasks-name">
   <AshTable.table
     id="dashboard-tasks"
     resource={Demo.Tracker.Task}
+    heading={2}
     actor={@current_user}
     tenant={@current_tenant}
   />
@@ -164,10 +168,38 @@ dashboard places two of them under its own headings, in its own layout:
 | `actor`, `tenant` | | Used when no `scope` is given. |
 | `authorize?` | | Overrides the domain's `authorize?` for this table, either way. |
 | `url` | | The page's current URL. When given, the table keeps its state in it. See [State in the URL](state-in-the-url.md#a-table-inside-your-own-liveview). |
-| `label` | | The accessible name of the table. Defaults to the table's name. |
+| `label` | | The table's name: the accessible name of the grid, and the text of the line above it. Defaults to the name described above. |
+| `heading` | | How the name is shown on the line above the table: `true` (the default), a number from 1 to 6, or `false`. See below. |
 
-The table is a LiveComponent, so the page has to be a LiveView. It renders no
-heading and no layout; those are yours.
+The table is a LiveComponent, so the page has to be a LiveView. It renders
+no layout; that is yours.
+
+### The line of the table's name
+
+Above its grid a table has one line: its name at the left and its create
+button at the right. On a mounted page that line is the page's `h1`. An
+embedded table cannot know the outline of the page it is in, so `heading`
+says what the name is:
+
+| `heading` | The name is | The line |
+| --- | --- | --- |
+| `true`, the default | Text that is no heading. | The name, and the create button where there is one. |
+| A number from 1 to 6 | A heading of that level: `heading={2}` renders an `h2`. | The same. |
+| `false` | Left out, for a page that names the table itself. | The create button alone, where there is one; else no line at all. |
+
+The element of the name has the id of the table followed by `-name`. The
+dashboard uses it to name each section by its table
+(`aria-labelledby="dashboard-tasks-name"`), so the page has no heading of
+its own to keep in step with the table.
+
+The create button is there for a table whose block names a `create_action`
+that the person may run; see
+[Row actions and create](row-actions-and-create.md#creating-records). The
+line is the table's and is rendered by it. There is no slot in it.
+
+**Try it:** `/dashboard` as Ada Admin: "Projects" with "New project" and
+"Tasks" with "New task", each on one line. As Max Member the first line is
+"Projects" alone: a member may not create projects.
 
 ### Passing scope, actor and tenant
 
@@ -201,7 +233,8 @@ See [Authorization](authorization.md) for what `authorize? false` means.
 | | Mounted | Embedded |
 | --- | --- | --- |
 | Declared in | the router, with `ash_table` | a template, with `<AshTable.table>` |
-| The page | the library's, in your layout, with a heading | yours |
+| The page | the library's, in your layout | yours |
+| The table's name, above the grid | an `h1` | text, a heading of the level `heading` gives, or left out |
 | `id` | defaults to the resource's name | required |
 | Who is asking | the socket assigns the domain names | the attributes `scope`, or `actor` and `tenant` |
 | `authorize?` | the domain's | the domain's, unless the attribute is given |
@@ -211,8 +244,8 @@ See [Authorization](authorization.md) for what `authorize? false` means.
 | A read refused outright, with `on_forbidden :message` | "You are not allowed to see these records." | the same message |
 
 Everything else is the same table: columns, sorting, filtering, pagination,
-inline editing, what each person may see and do, the keyboard, the
-translations.
+inline editing, row actions and create, nested tables, what each person may
+see and do, the keyboard, the translations.
 
 ### What a refused read does
 
@@ -223,8 +256,10 @@ renders nothing at all. Nothing in the page says that a table would be
 there.
 
 **Try it:** `/dashboard` in the demo, as nobody. The projects' read is
-refused, so under the heading "Projects" there is no table. The tasks' read
-is only filtered, so the tasks table is there and says "No records".
+refused, so nothing of that table is there: no grid, and no line with its
+name either, since the table renders that line. The tasks' read is only
+filtered, so the tasks table is there, under its name, and says "No
+records".
 
 With `on_forbidden :message` in the resource's `table` block, both kinds of
 table show the message in place of the rows.
@@ -236,8 +271,16 @@ table show the message in place of the rows.
   and whenever the attributes it is given change. Pass a new `actor` and the
   table follows.
 - **Nothing remains of a refused embedded table but an empty, hidden
-  element** with the table's id. Your surrounding heading stays, so consider
-  what the page should show a person who gets no table.
+  element** with the table's id. The name the table renders is gone with
+  it. A heading of your own stays, and so does what points at the table's
+  name: on the demo's dashboard, the projects' section is then labelled by
+  an element that is not there. Consider what the page should show a person
+  who gets no table.
+- **`heading` is not checked.** A number outside 1 to 6 is rendered as it
+  is given, which is no HTML heading.
+- **The full view in an embedded table.** A table with `url` that is limited
+  to the records of one parent has a second line under its name, which says
+  what it is limited to. The create button is then on that line.
 - **A domain that names its own assigns** changes where the mounted table
   finds the actor, and adds those assigns to what the layout is given. The
   layout still receives `current_scope`, and `current_user` and
@@ -272,6 +315,9 @@ table show the message in place of the rows.
   your LiveView who may open the page.
 - **A custom `<h1>` above a mounted table.** The page already has one with
   the table's name. For a page with your own headings, embed the table.
+- **The name twice over an embedded table.** Your own heading and the
+  table's line both show it. Pass `heading={false}`, or drop your heading
+  and give the table its level.
 
 ## Not in the first version
 

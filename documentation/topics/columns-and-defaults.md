@@ -26,13 +26,18 @@ declares none
 table do
   update_action :update
   label_field :name
+  # ...
 end
 ```
 
-Neither line of its block is about columns. `update_action` makes the table
+(A line `# ...` stands for lines of the block that are left out here.)
+
+No line of its block is about columns. `update_action` makes the table
 editable (see [Inline editing](inline-editing.md)), and `label_field` is
-about other tables (see [Reference cells](#reference-cells)). Without the
-block the table would have the same columns, and be read-only.
+about other tables (see [Reference cells](#reference-cells)). The lines left
+out declare its row actions and its create button (see
+[Row actions and create](row-actions-and-create.md)). Without the block the
+table would have the same columns, and be read-only.
 
 **Try it:** `/projects` in the demo, as Ada Admin. The columns are ID, Name,
 Description, Status, Starts on, Budget and Inserted at.
@@ -57,14 +62,20 @@ set. All of the demo's tables but two are of this kind:
 
 | Demo page | Block | Columns |
 | --- | --- | --- |
-| `/projects` | `update_action :update`, `label_field :name` | ID, Name, Description, Status, Starts on, Budget, Inserted at |
-| `/labels` | `update_action :update`, `label_field :name` | ID, Name, Colour |
-| `/comments` | `update_action :update`, `on_forbidden :message` | ID, Body, Inserted at, Task ID, Author ID |
-| `/task_labels` | `update_action :update` | Note, Task ID, Label ID |
+| `/projects` | `update_action :update`, `label_field :name`, two `action`s, `create_action` | ID, Name, Description, Status, Starts on, Budget, Inserted at |
+| `/labels` | `update_action :update`, `label_field :name`, one `action`, `create_action` | ID, Name, Colour |
+| `/comments` | `update_action :update`, `on_forbidden :message`, one `action`, `create_action` | ID, Body, Inserted at, Task ID, Author ID |
+| `/task_labels` | `update_action :update`, `max_depth 1`, one `action`, `create_action` | Note, Task ID, Label ID |
 | `/specimens` | `update_action :update` | ID, then one column per attribute of the kitchen-sink resource |
 
 On `/comments` and `/task_labels` the foreign keys come last, although a task
 label's two foreign keys are its primary key.
+
+An `action` adds no column to this list. The grid of a table with row
+actions has one more column at its end, "Actions", which holds their
+buttons, as the grid of a table whose rows expand has one more at its start.
+Neither is a column in the sense of this guide: it shows no field, and is
+not declared, sorted or filtered.
 
 ## Declaring columns
 
@@ -435,7 +446,9 @@ No login is needed for that page.
 - **The heading is not the attribute's `description`.** It is the name in
   words, or `label`.
 - **A time or a UUID cannot be edited or filtered.** Their types are shown
-  as read-only text in the first version.
+  as read-only text in the first version. As an input of a row action or of
+  a create they do have a field, a plain one: see
+  [Row actions and create](row-actions-and-create.md#the-fields-of-the-panel).
 
 ## Not in the first version
 

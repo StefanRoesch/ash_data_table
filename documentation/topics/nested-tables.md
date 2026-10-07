@@ -99,8 +99,9 @@ compiled. See [Mistakes at compile time](mistakes-at-compile-time.md).
 ## What each kind of relationship looks like
 
 A nested table is the destination's own table: the columns of its block, its
-editing, its filters. What it can do beyond showing its rows follows from
-the relationship, because it is read as Ash loads that relationship.
+editing, its filters, its row actions. What it can do beyond showing its
+rows follows from the relationship, because it is read as Ash loads that
+relationship.
 
 | Relationship | The nested table | In the demo, under a row of `/tasks` |
 | --- | --- | --- |
@@ -147,6 +148,34 @@ has_many :manual_notes, AshTable.Test.Relating.Note do
   public? true
 end
 ```
+
+## Row actions and create in a nested table
+
+A nested table has the actions column of the destination's table, and its
+buttons do there what they do on the destination's own page: under a task
+on `/tasks`, a comment has "Destroy", and a label has it for an admin.
+
+Creating is narrower, because a record created under a row has to be joined
+to that row, and the table has to be the one that says how. A nested table
+offers create only where
+
+- the relationship is a has-many joined by attributes, and
+- the `create_action` of the destination's table accepts the relationship's
+  destination attribute.
+
+The table then fills that attribute in from the row above, which it reads
+again as the person, and leaves it out of the panel. The button is on the
+relationship line, after the label, once the nested table has read: "New
+comment" on the "Comments" line of a task, "New task" on the "Tasks" line
+of a project. A belongs-to, a has-one, a many-to-many, a manual
+relationship and one with `no_attributes?` offer none.
+
+**Try it:** `/projects` as Ada Admin: expand "Mobile app", open "Tasks" and
+use "New task" on the line. The panel has no field "Project ID", and the new
+task is the first row of the nested table.
+
+[Row actions and create](row-actions-and-create.md#creating-in-a-nested-table)
+has the rule in full, and what the panel shows.
 
 ## `max_depth`
 
@@ -217,6 +246,8 @@ which a page of related records always is. The steps go when it is fixed.
 | The person can never see a field of the destination | The nested table has no column for it. |
 | The person sees a field on some records only | The column stays; hidden cells are empty and announced as "Not available". |
 | The person can never run an update action of the destination | Its columns are read-only in the nested table. |
+| The person can never run a row action of the destination | The nested table has no button for it, and no actions column when that is every one. |
+| The person can never run the destination's create action | The line has no create button. |
 | The parent row is gone, or no longer theirs to read | "This record is no longer available." in place of the nested rows. |
 | The destination's read comes to be refused while the line is open | "You are not allowed to see these records." when the destination's table says `on_forbidden :message`, else "These records are not available." |
 
@@ -280,6 +311,7 @@ own in a cell of the grid around it.
 | Right Arrow | On an expander or a line that is closed | Opens it. |
 | Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
 | Enter | On an expander or a line | Opens or closes it. |
+| F2 | On a line that has a create button | Goes to the line's controls: the button that opens and closes it, and the create button. Left Arrow and Right Arrow move between them, Enter uses one, Escape returns to the line. |
 | Down Arrow, Up Arrow | In the grid | Go through the lines of an expanded row and the cell of each open nested table, as through rows. |
 | Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first. |
 | Escape | In a nested table | Comes back out, to the cell that holds it. |
@@ -288,9 +320,11 @@ own in a cell of the grid around it.
 | Enter, F2 | On the cell of the link to the full view | Follows the link. |
 
 Inside a nested table every key works as in a table on a page: headings
-sort, filter cells are entered, cells are edited. The pages and the link of
+sort, filter cells are entered, cells are edited, the buttons of a row's
+actions cell are reached with Enter. The pages and the link of
 a nested table are rows of its grid and no tab stops of their own, so that
-Tab from anywhere in the tree leaves it. The "Clear filters" button of a
+Tab from anywhere in the tree leaves it. Its create button is on its line
+for the same reason. The "Clear filters" button of a
 nested table is not reached from the keyboard; each filter is cleared from
 its own cell.
 
@@ -403,7 +437,9 @@ person makes writes a clean address.
 
 Above the grid, the table says what it is limited to: the record, a colon,
 and the relationship as its line is labelled. "Show all records" is beside
-it.
+it, and before that the create button, where the nested table would have
+one on its line: a record created there is created under the same parent.
+The line of the page's own name, above this one, then has no create button.
 
 The record is called by the first of these that the person sees on it:
 
@@ -428,8 +464,11 @@ The demo's labels declare what they are called by
 table do
   update_action :update
   label_field :name
+  # ...
 end
 ```
+
+(A line `# ...` stands for lines of the block that are left out here.)
 
 Without it the tasks of a label would be headed by the label's first
 column, its ID.
@@ -455,8 +494,10 @@ address.
 
 Each nested table is a component of its own with its own stream. The server
 keeps the keys of its page, its state and its table model, and no records.
-It queries when it is opened, sorted, filtered or paged, and at no other
-time.
+It queries when it is opened, sorted, filtered or paged, and when a person
+saves a cell or runs an action in it. While an action panel is open, the
+table it belongs to also keeps the panel's form and, for a row action, the
+record it was opened with.
 
 Statements for one read, counted on Postgres with the demo's data
 ([`demo/perf/NESTED.md`](https://github.com/StefanRoesch/ash_table/blob/main/demo/perf/NESTED.md)
@@ -561,12 +602,14 @@ in a nested table for each of its rows.
 - **A record that no longer matches the relationship stays in place** until
   the nested table reads again. Editing a comment or a task under a row
   saves, and the row is shown from what the action returns, as on a page.
-- **The cells of the parent row do not follow.** After a comment is added or
-  a task edited below it, the parent's own aggregates are as they were when
-  its page was read.
+- **The cells of the parent row do not follow.** After a comment is created,
+  deleted or a task edited below it, the parent's own aggregates are as they
+  were when its page was read: the "Comments" cell of a task still counts
+  the old number.
 - **A new read of a table closes what is open in it.** A change of its sort,
   filters or page reads again and forgets which rows were expanded. A save in
-  a row leaves what is open under it open.
+  a row, and a row action that changes it, leave what is open under it open.
+  A destroy takes the row away with everything open under it.
 - **Many-to-many edits the destination**, not the join. A label edited under
   a task changes for every task that carries it. The fields of the join
   resource are not columns of the destination's table.
@@ -615,8 +658,9 @@ in a nested table for each of its rows.
 
 ## Not in the first version
 
-No counts on the relationship lines, no creating a related record from a
-nested table, no choosing another related record in a reference cell, no
+No counts on the relationship lines, no adding or linking a record through
+a many-to-many, no creating under a has-one or a belongs-to, no choosing
+another related record in a reference cell, no
 sorting or filtering by a reference cell, no label that is a calculation, no
 link from a reference cell to its record, and nothing of a nested table in
 the address but its full view. The later slices are listed in the

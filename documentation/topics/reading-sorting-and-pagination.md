@@ -323,8 +323,13 @@ resource for it
 - **Under keyset pagination a new sort starts at the first page.** A cursor
   belongs to the order it was made in.
 - **A resource without a primary read action** needs `read_action`. With
-  editable columns and calculation, aggregate or reference columns it needs a primary
-  read action all the same; see [Inline editing](inline-editing.md).
+  editable columns, row actions or a create action, and calculation,
+  aggregate or reference columns, it needs a primary read action all the
+  same; see [Inline editing](inline-editing.md).
+- **A row that a person creates or deletes in the table changes the total
+  by one**, and a new row stands at the top of the page, without a read.
+  The next read counts and orders afresh. See
+  [Row actions and create](row-actions-and-create.md#the-total).
 - **Sorting by a field that is hidden from the person on some records** is
   possible and gives nothing away. See [Authorization](authorization.md).
 

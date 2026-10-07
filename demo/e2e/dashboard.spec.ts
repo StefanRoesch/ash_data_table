@@ -174,6 +174,9 @@ test.describe("two grids on one page", () => {
     await projects.tabStop.focus()
     await page.keyboard.press("Tab")
     await expect(projects.pageButton(1), "Previous and Next are disabled").toBeFocused()
+    // above the second grid, on the line of its name: its create button
+    await page.keyboard.press("Tab")
+    await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
     await page.keyboard.press("Tab")
@@ -181,6 +184,8 @@ test.describe("two grids on one page", () => {
 
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(projects.pageButton(1)).toBeFocused()
     await page.keyboard.press("Shift+Tab")
@@ -206,11 +211,12 @@ test.describe("two grids on one page", () => {
       `dashboard-tasks-row-${FIRST}-c-title`,
     ])
 
-    // the ends of the first grid are ends: no key goes on into the second
+    // the ends of the first grid are ends: no key goes on into the second.
+    // The last cell of a row holds its actions.
     await projects.press("Control+End")
-    await expect(projects.cell(projectKeys.at(-1)!, "inserted_at")).toBeFocused()
+    await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
     await projects.press("ArrowDown", "ArrowRight", "PageDown", "End")
-    await expect(projects.cell(projectKeys.at(-1)!, "inserted_at")).toBeFocused()
+    await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
     expect(await tasks.hasFocus()).toBe(false)
 
     // and the second grid's first rows are its header rows, not the first grid
@@ -231,9 +237,12 @@ test.describe("two grids on one page", () => {
     // Tab from the one comes to the cell the other was left on
     await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
     await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
+    // between the two grids: the pages of the first, and the create button of the second
     await page.keyboard.press("Shift+Tab")
     await page.keyboard.press("Shift+Tab")
-    await expect(projects.cell(projectKeys.at(-1)!, "inserted_at")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
+    await page.keyboard.press("Tab")
     await page.keyboard.press("Tab")
     await page.keyboard.press("Tab")
     await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
@@ -386,13 +395,19 @@ test.describe("editing", () => {
   })
 
   test("the question before a save is asked by the table the cell is in", async ({ page }) => {
-    // only the tasks have a column that asks
-    await expect(page.locator("dialog")).toHaveCount(1)
-    await expect(page.locator("dialog")).toHaveId("dashboard-tasks-dialog")
+    // only the tasks have a column that asks; each table has a row action
+    // that does (actions.spec.ts), and so a dialog of its own
+    await expect(page.locator("dialog")).toHaveCount(2)
+    expect(await page.locator("dialog").evaluateAll((dialogs) => dialogs.map((dialog) => dialog.id))).toEqual([
+      "dashboard-projects-dialog",
+      "dashboard-tasks-dialog",
+    ])
 
     const status = tasks.cell(SECOND, "status")
     await status.dblclick()
     await tasks.editor(status).selectOption({ label: "In review" })
+    await expect(tasks.question).toBeVisible()
+    await expect(projects.question).toBeHidden()
     await expect(tasks.dialog).toBeVisible()
     await expect(tasks.dialog).toHaveAccessibleName("Change the state of this task?")
     await tasks.saves(status, () => tasks.dialog.getByRole("button", { name: "Confirm" }).click())

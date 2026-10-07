@@ -7,7 +7,16 @@ defmodule DemoWeb.TablePage do
   """
 
   import Phoenix.LiveViewTest,
-    only: [element: 2, form: 3, render_change: 1, render_async: 2, render_hook: 3]
+    only: [
+      element: 2,
+      form: 3,
+      render_change: 1,
+      render_async: 2,
+      render_hook: 3,
+      render_click: 1,
+      render_submit: 1,
+      render_submit: 2
+    ]
 
   @doc """
   Sets a column's filter and leaves it, as a person does who types a value or
@@ -83,7 +92,7 @@ defmodule DemoWeb.TablePage do
   @doc "What the lines under a row say, top to bottom; none while the row is not expanded."
   def lines(html, id \\ "task", key) do
     html
-    |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > button")
+    |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > button[aria-expanded]")
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
@@ -106,6 +115,161 @@ defmodule DemoWeb.TablePage do
   `field` of the table `id`. The table's id defaults to `"task"`.
   """
   def cell(id \\ "task", key, field), do: "[id='#{id}-row-#{key}-c-#{field}']"
+
+  @doc """
+  Uses a button of a row's actions cell as the table's hook does, once the
+  person has answered the question of an action that has one: one `act`
+  event with the row's key and the action. Returns the page.
+
+      act(view, task.id, "archive")
+      act(view, nested("task", task.id, "comments"), comment.id, "destroy")
+  """
+  def act(view, id \\ "task", key, action) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("act", %{"row" => to_string(key), "action" => action})
+  end
+
+  @doc """
+  Gives up the failure of a row's actions cell, as the table's hook does
+  when a person presses Escape on it. Returns the page.
+  """
+  def dismiss(view, id \\ "task", key) do
+    view |> element("##{id}-grid") |> render_hook("dismiss", %{"row" => to_string(key)})
+  end
+
+  @doc """
+  What a row's actions cell tells a person about an action that failed: the
+  message it is described by, nil when the cell is not marked as invalid.
+  """
+  def action_failure(html, id \\ "task", key) do
+    selector = actions_cell(id, key)
+
+    case {attribute(html, selector, "aria-invalid"),
+          attribute(html, selector, "aria-describedby")} do
+      {["true"], [error_id]} -> text(html, "[id='#{error_id}']")
+      {[], []} -> nil
+    end
+  end
+
+  @doc """
+  The action panel of the table `id` as a person reads it: its heading, its
+  fields top to bottom (each with its label, its control, its value, whether
+  it is marked as required, and its errors), the errors that are about no
+  field, and what its button says. Nil while no panel is open.
+  """
+  def panel(html, id \\ "task") do
+    case Enum.to_list(query(html, "[id='#{id}-panel']")) do
+      [] ->
+        nil
+
+      [_dialog] ->
+        fields =
+          for field <- query(html, "[id='#{id}-panel'] [data-field]") do
+            [name] = LazyHTML.attribute(field, "data-field")
+            control = LazyHTML.query(field, "textarea, select, input:not([type=hidden])")
+            [{tag, attributes, children}] = LazyHTML.to_tree(control)
+            type = :proplists.get_value("type", attributes, nil)
+
+            value =
+              case {tag, type} do
+                {"textarea", _} ->
+                  children |> LazyHTML.from_tree() |> LazyHTML.text() |> String.trim_leading("\n")
+
+                {"select", _} ->
+                  control
+                  |> LazyHTML.query("option[selected]")
+                  |> LazyHTML.attribute("value")
+                  |> List.first("")
+
+                {"input", "checkbox"} ->
+                  to_string(List.keymember?(attributes, "checked", 0))
+
+                {"input", _} ->
+                  :proplists.get_value("value", attributes, "")
+              end
+
+            %{
+              name: name,
+              label:
+                field
+                |> LazyHTML.query("[data-label]")
+                |> LazyHTML.text()
+                |> String.trim(),
+              control: if(tag == "input", do: type, else: tag),
+              value: value,
+              required?: :proplists.get_value("aria-required", attributes, nil) == "true",
+              errors:
+                field
+                |> LazyHTML.query("[data-error]")
+                |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+            }
+          end
+
+        %{
+          heading: text(html, "[id='#{id}-panel-title']"),
+          fields: fields,
+          errors:
+            html
+            |> query("[id='#{id}-panel-errors'] > *")
+            |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())),
+          submit: text(html, "[id='#{id}-panel-submit']")
+        }
+    end
+  end
+
+  @doc """
+  Uses the create button of the table `id`. Returns the page.
+  """
+  def open_create(view, id \\ "task") do
+    view |> element("[id='#{id}-create']") |> render_click()
+  end
+
+  @doc """
+  Types into the fields of the open action panel, as a person does: the
+  form's change event with what its fields hold. Returns the page.
+
+      type_in_panel(view, reason: "Back from leave")
+  """
+  def type_in_panel(view, id \\ "task", values) do
+    view |> form("[id='#{id}-panel-form']", %{"panel" => Map.new(values)}) |> render_change()
+  end
+
+  @doc """
+  Uses the button of the open action panel that runs the action, with what
+  its fields hold and `values` typed into them. Returns the page.
+  """
+  def run_panel(view, id \\ "task", values) do
+    view |> form("[id='#{id}-panel-form']", %{"panel" => Map.new(values)}) |> render_submit()
+  end
+
+  @doc """
+  Sends the open action panel's form with exactly `params`, as a browser
+  does not: for what a person could only send by hand. Returns the page.
+  """
+  def send_panel(view, id \\ "task", params) do
+    view |> element("[id='#{id}-panel-form']") |> render_submit(params)
+  end
+
+  @doc "Closes the open action panel as Cancel and Escape do. Returns the page."
+  def cancel_panel(view, id \\ "task") do
+    view |> element("[id='#{id}-panel']") |> render_hook("panel_cancel", %{})
+  end
+
+  @doc "What the table's live region says."
+  def announcement(html, id \\ "task") do
+    html |> text("[id='#{id}-status']") |> String.replace("\u00A0", "")
+  end
+
+  @doc "The selector of the actions cell of the record with primary key `key` in the table `id`."
+  def actions_cell(id \\ "task", key), do: "[id='#{id}-row-#{key}-a']"
+
+  @doc "What the buttons of a row's actions cell say, left to right."
+  def actions(html, id \\ "task", key) do
+    html
+    |> query("#{actions_cell(id, key)} > button")
+    |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+  end
 
   @doc "The columns of the table `id` that have an editor, left to right."
   def editors(html, id) do

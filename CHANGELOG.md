@@ -14,7 +14,8 @@ declared in the resource and mounted with one line in the router.
 - `AshTable.Resource`, the extension with the `table` section: `read_action`,
   `paginate_with`, `update_action`, `on_forbidden`, `label_field`, and
   `column` entities with `label`, `sortable?`, `filterable?`,
-  `update_action`, `confirm` and `exposes_protected_field?`. With no
+  `update_action`, `confirm` and `exposes_protected_field?`; `relationship`
+  and `action` entities and `create_action` are described below. With no
   block the table shows the public attributes, read-only. Mistakes in the
   block are reported by verifiers when the resource is compiled, as
   warnings: among them a column's own `update_action` on a column that no
@@ -177,6 +178,93 @@ declared in the resource and mounted with one line in the router.
   records is not sorted by for them, as Ash raises for it; nor is any
   aggregate column in a nested table read in pages, for a person who sees
   some field of that resource on some records only. Their filters stay.
+
+### Row actions and create
+
+- `action` entities in the `table` section, with `label` and `confirm`: a
+  row action, a public update or destroy action of the resource that a
+  person runs on the record of a row. The buttons stand in the declared
+  order in a last column of the grid, "Actions", which counts as a column
+  (`aria-colindex`, `aria-colcount`). Opt-in: no `action`, no column.
+- `create_action` in the `table` section: a public create action behind a
+  create button, named after the resource ("New task").
+- An action without inputs, or with optional arguments only, runs when its
+  button is used. One that accepts attributes or has a required argument
+  opens the **action panel** first, a modal dialog at the right edge of the
+  window, built on the native `<dialog>`; a create always does. The panel
+  has one field per public input in the action's order, accepted attributes
+  first: labelled as the table's column for the attribute, else by the
+  input's name in words; with the cell editor of its type, or a plain text
+  field for a value written as one line (a UUID, a time, an atom); starting
+  with the record's values and the arguments' defaults; marked as required
+  as the action requires it.
+- An optional input of a type without a field (arrays, maps, embedded
+  resources, unions) is left out of the panel. An action that requires one
+  is reported when the resource is compiled and has no button.
+- The panel's form is an `AshPhoenix.Form`: what is typed is validated by
+  the action as it is typed, errors are shown at their fields, and what is
+  about no field of the panel is above them. The panel stays open when the
+  action fails.
+- `confirm` on an action asks its question in the table's dialog before the
+  action runs; for an action with a panel, when "Run" is used. The answer
+  that confirms a destroy action is in the error colour. A destroy action
+  without `confirm` is a warning when the resource is compiled;
+  `confirm false` says that a delete in one click is meant.
+- The record of a row is read again, as the person, before its action runs,
+  and before its panel opens. After an update the row is shown from what
+  the action returned, in its place; after a destroy the row is taken away
+  with everything open under it; a created record is the first row of the
+  page until the next read. The total, the range and the row indices follow
+  by one. A page left without rows is read again.
+- An action that ran straight away and failed marks the row's actions cell
+  with the action's message, as a failed save marks its cell, and is
+  announced. Escape on the cell gives the message up.
+- A row action a person can never run has no button for them, and a table
+  with none left has no actions column; a create action they can never run
+  has no create button (`Ash.can/3`, once per action). An input of a field
+  a person can never see is no field of a panel for them, one hidden on the
+  record is left out of that record's panel, and a value sent for either is
+  dropped.
+- A nested table has the row actions of the destination's table. It offers
+  create for a has-many joined by attributes whose destination's
+  `create_action` accepts the joining attribute: the table fills that in
+  from the row above, read again as the person, and the button is on the
+  relationship line. The full view has it beside "Show all records".
+- The keyboard: Enter or F2 on an actions cell goes to its first button,
+  Left and Right Arrow move between the buttons, Escape returns to the
+  cell, Tab goes on through them and out of the grid. F2 on a relationship
+  line with a create button goes to the line's controls. After a destroy,
+  focus goes to the actions cell of the next row; after a create, to the
+  first cell of the new row; after the panel closes, to the control that
+  opened it.
+- `heading` on `<AshTable.table>`: how the table's name is shown on the
+  line above it, which also holds the create button. `true` (the default)
+  shows it as text, a number from 1 to 6 as a heading of that level, `false`
+  leaves it out.
+- New messages in the Gettext template: "Actions", "New %{name}", "Run",
+  "Create", "%{action}: %{record}", "%{action}: done", "%{name} created",
+  "%{action} failed: %{message}", "You are not allowed to do this." and
+  "This could not be done." The labels of actions and of the panel's fields,
+  the questions, and what one record is called are looked up like column
+  labels.
+- Reported when the resource is compiled: an `action` that names no public
+  update or destroy action (a create, a read and a generic action each with
+  its own sentence), one declared twice, an action or a create action with
+  a required input the panel has no field for, a `create_action` that names
+  no public create action, and row actions or a create action beside
+  calculation, aggregate or reference columns without a primary read
+  action.
+
+### Changed since the reference cells were added
+
+- A table placed with `<AshTable.table … />` now shows its name on a line
+  above its grid. A page that names the table itself passes
+  `heading={false}`.
+- The heading of a mounted page is rendered by the table: the `h1` has the
+  id `ID-name`, in the line `ID-header`, beside the create button.
+- A table with row actions has one column more for assistive technology
+  (`aria-colcount`), and the cells that span a nested table's grid span it
+  too.
 
 ### Changed since the nested tables were added
 

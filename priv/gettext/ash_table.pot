@@ -206,3 +206,43 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Show all records"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action} failed: %{message}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action}: %{record}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action}: done"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Actions"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Create"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "New %{name}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Run"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "This could not be done."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "You are not allowed to do this."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{name} created"
+msgstr ""

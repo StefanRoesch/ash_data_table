@@ -125,6 +125,22 @@ defmodule AshTable.Resource.Relating do
       Reading.supported_strategies(read_action.pagination) != []
   end
 
+  @doc """
+  What joins a record created in the nested table to the row: the row's
+  attribute and the new record's attribute that takes its value. Only a
+  has-many joined by attributes has it: a many-to-many is joined by a record
+  of another resource, a relationship to one record already has its record,
+  and a manual one or one with `no_attributes?` is joined by nothing a table
+  could fill in.
+  """
+  @spec link(struct) :: {atom, atom} | nil
+  def link(%{type: :has_many} = relationship) do
+    if not manual?(relationship) and not Map.get(relationship, :no_attributes?, false),
+      do: {relationship.source_attribute, relationship.destination_attribute}
+  end
+
+  def link(_relationship), do: nil
+
   @doc "What is wrong with a declared relationship, for a diagnostic."
   @spec message(reason) :: String.t()
   def message({:not_found, name}), do: "The resource has no relationship named `#{name}`."

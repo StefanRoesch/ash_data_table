@@ -73,6 +73,16 @@ defmodule AshTable.Text do
           | :full_view_of
           | :related_heading
           | :show_all_records
+          | :actions
+          | :new_record
+          | :run
+          | :create
+          | :action_on
+          | :action_done
+          | :created
+          | :action_not_done
+          | :action_not_allowed
+          | :action_failed
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
@@ -203,4 +213,24 @@ defmodule AshTable.Text do
   defp msgid(:related_heading), do: dgettext_noop("ash_table", "%{record}: %{relationship}")
   # the control that takes the limit away
   defp msgid(:show_all_records), do: dgettext_noop("ash_table", "Show all records")
+
+  # the header of the column that holds the row actions
+  defp msgid(:actions), do: dgettext_noop("ash_table", "Actions")
+  # the create button, and the heading of its panel: "New task"
+  defp msgid(:new_record), do: dgettext_noop("ash_table", "New %{name}")
+  # the buttons of the action panel that run a row action and a create action
+  defp msgid(:run), do: dgettext_noop("ash_table", "Run")
+  defp msgid(:create), do: dgettext_noop("ash_table", "Create")
+  # the heading of the panel of a row action: the action and the record
+  defp msgid(:action_on), do: dgettext_noop("ash_table", "%{action}: %{record}")
+  # read out when an action has run, and when a record was created
+  defp msgid(:action_done), do: dgettext_noop("ash_table", "%{action}: done")
+  defp msgid(:created), do: dgettext_noop("ash_table", "%{name} created")
+  # read out when an action failed, with the action's message
+  defp msgid(:action_not_done), do: dgettext_noop("ash_table", "%{action} failed: %{message}")
+
+  defp msgid(:action_not_allowed),
+    do: dgettext_noop("ash_table", "You are not allowed to do this.")
+
+  defp msgid(:action_failed), do: dgettext_noop("ash_table", "This could not be done.")
 end

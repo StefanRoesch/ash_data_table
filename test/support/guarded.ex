@@ -45,6 +45,12 @@ defmodule AshTable.Test.Guarded do
     update :flag do
       accept [:flagged]
     end
+
+    create :create do
+      accept [:title, :secret, :salary]
+    end
+
+    destroy :destroy
   end
 
   policies do
@@ -67,6 +73,17 @@ defmodule AshTable.Test.Guarded do
     policy action(:flag) do
       description "Anyone, logged in or not."
       authorize_if always()
+    end
+
+    policy action(:create) do
+      description "Admins and members."
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :member)
+    end
+
+    policy action(:destroy) do
+      description "Admins only."
+      authorize_if actor_attribute_equals(:role, :admin)
     end
   end
 
@@ -104,6 +121,16 @@ defmodule AshTable.Test.Guarded do
     end
 
     column :secret_shouted
+
+    action :update
+    action :rate
+    action :flag
+
+    action :destroy do
+      confirm "Delete this?"
+    end
+
+    create_action(:create)
   end
 end
 

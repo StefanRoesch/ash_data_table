@@ -139,8 +139,11 @@ defmodule Demo.Tracker.Project do
 A resource has a table only when it lists the extension. With no `table`
 block the table shows the resource's public attributes, read through its
 primary read action, and nothing can be edited. (The demo's projects do have
-a block, of one line that changes none of this: it says what a project is
-called in the tables of other resources. See
+a block. It declares no column, so the columns are the ones described
+here. What it adds is the rest: it switches on editing, declares two row
+actions and a create button, and says what a project is called in the
+tables of other resources. See step 5,
+[Row actions and create](../topics/row-actions-and-create.md) and
 [Columns and defaults](../topics/columns-and-defaults.md#reference-cells).)
 
 ## 3. Mount it in the router
@@ -177,6 +180,12 @@ the order are not the table's: they are the `default_limit` and the sort of
 the primary read action.
 [Reading, sorting and pagination](../topics/reading-sorting-and-pagination.md)
 explains why.
+
+The demo's projects go beyond this step: the marks at the start of the rows,
+the last column "Actions" and the button "New project" come from the
+resource's relationships and from its `table` block. They are the subject of
+[Nested tables](../topics/nested-tables.md) and
+[Row actions and create](../topics/row-actions-and-create.md).
 
 The table reads as the person your `on_mount` hook put into the socket
 assigns `current_user` and `current_tenant` (or `current_scope`). In the demo
@@ -296,6 +305,9 @@ with hidden columns and refused reads.
 - [State in the URL](../topics/state-in-the-url.md)
 - [Inline editing](../topics/inline-editing.md)
 - [Confirm](../topics/confirm.md)
+- [Row actions and create](../topics/row-actions-and-create.md): buttons in
+  a row that run an action on its record, and a button that creates one
+- [Nested tables](../topics/nested-tables.md)
 - [Authorization](../topics/authorization.md)
 - [Keyboard and accessibility](../topics/keyboard-and-accessibility.md)
 - [Messages and translations](../topics/messages-and-translations.md)
@@ -341,7 +353,8 @@ The options of the two extensions are listed in the DSL reference:
 
 ## Not in the first version
 
-This tutorial ends where the first version ends. Row actions and creating
-records, custom cell components and the other later slices are listed in
-order in the
+This tutorial stops at a table that reads and edits cells. Row actions,
+creating records and nested tables are built and have guides of their own,
+linked above. Custom cell components and the other later slices are listed
+in order in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

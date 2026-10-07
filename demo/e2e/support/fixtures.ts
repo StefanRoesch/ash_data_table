@@ -71,6 +71,23 @@ export class ConsoleErrors {
   }
 }
 
+/**
+ * Collects the dialogs of the browser itself: `alert`, `confirm`, `prompt`.
+ * A table asks in a dialog of its own, in the page; the browser's would be
+ * a second question on top of it. Each is dismissed, as Playwright does with
+ * one that nobody listens for, which is why a test would not notice it.
+ */
+export class NativeDialogs {
+  readonly seen: string[] = []
+
+  constructor(page: Page) {
+    page.on("dialog", async (dialog) => {
+      this.seen.push(`${dialog.type()}: ${dialog.message()}`)
+      await dialog.dismiss()
+    })
+  }
+}
+
 type Options = {
   /** Who the test is: one of the demo's five actors. The admin unless a file or test says otherwise. */
   actor: Actor
@@ -86,6 +103,7 @@ type Fixtures = {
   seededAgain: void
   frames: Frames
   consoleErrors: ConsoleErrors
+  nativeDialogs: NativeDialogs
   /** The table at /tasks. */
   tasks: Table
 }
@@ -121,6 +139,16 @@ export const test = base.extend<Options & Fixtures>({
       const errors = new ConsoleErrors(page)
       await use(errors)
       expect(errors.unexpected(), "console errors and uncaught exceptions").toEqual([])
+    },
+    { auto: true },
+  ],
+
+  // And with this: the browser was never made to ask anything itself.
+  nativeDialogs: [
+    async ({ page }, use) => {
+      const dialogs = new NativeDialogs(page)
+      await use(dialogs)
+      expect(dialogs.seen, "dialogs of the browser itself").toEqual([])
     },
     { auto: true },
   ],

@@ -14,9 +14,12 @@ defmodule AshTable do
   pagination run on the server through the read action; page size and default
   sort live on that action. A cell is edited in place through the update
   action its column names, with the cell's value as the only input, and the
-  table shows what the action returns. A row expands into the tables of its
-  related records, each the table of its own resource, and a column can show
-  a related record by its label: see `AshTable.Resource`.
+  table shows what the action returns. A row has buttons for the update and
+  destroy actions the block declares, and the table a button for its create
+  action; an action with inputs asks for them in the action panel. A row
+  expands into the tables of its related records, each the table of its own
+  resource, and a column can show a related record by its label: see
+  `AshTable.Resource`.
 
   ## Configuration
 
@@ -36,8 +39,8 @@ defmodule AshTable do
       `{message, variables}` and returns the text to show, as the
       `translate_error/1` of a Phoenix application's core components does.
       The messages of the resource's actions are given to it: those of a
-      failed save, and those of a read that failed with an error the action
-      returned. Without it, a message is shown as the resource wrote it, with
+      failed save, of a row action or a create that failed, and those of a
+      read that failed with an error the action returned. Without it, a message is shown as the resource wrote it, with
       its variables filled in.
 
   `mix ash_table.install` sets all three for a new Phoenix application.
@@ -49,8 +52,9 @@ defmodule AshTable do
 
       <AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 
-  The table reads through the resource's read action, and saves through its
-  update actions. Pass who is reading as `scope` (an `Ash.Scope`), or as
+  The table reads through the resource's read action, saves through its
+  update actions, and runs the row actions and the create action its block
+  declares. Pass who is reading as `scope` (an `Ash.Scope`), or as
   `actor` and `tenant`; with none of them nobody is logged in. The assign
   names of `AshTable.Domain` are for mounted tables and play no part here.
 
@@ -78,6 +82,27 @@ defmodule AshTable do
   A nested table links to its full view wherever the host's router mounts
   the destination's table with `AshTable.Router.ash_table/3`, also from a
   table placed here.
+
+  ## The line of the table's name
+
+  Above its grid the table has one line: its name at one end, and at the
+  other the create button, when the resource's `table` block names a
+  `create_action` that the person may run. The name is `label`.
+
+  A table cannot know the outline of the page it is placed in, so by default
+  the name is text that is no heading. `heading` says otherwise:
+
+      <AshTable.table id="tasks" resource={MyApp.Tracker.Task} heading={2} scope={@current_scope} />
+
+    * `true` (the default) - the name as text;
+    * a number from 1 to 6 - the name as a heading of that level;
+    * `false` - no name, for a page that names the table itself. The line
+      then holds the create button alone, and is left out when there is
+      none.
+
+  The element of the name has the id of the table followed by `-name`, for a
+  page that labels a region by it (`aria-labelledby="tasks-name"`). A table
+  whose read is refused outright renders nothing, this line included.
   """
   attr :id, :string,
     required: true,
@@ -102,10 +127,22 @@ defmodule AshTable do
 
   attr :label, :string,
     default: nil,
-    doc: "The accessible name of the grid. Defaults to the humanised name of the resource."
+    doc:
+      "The table's name: the accessible name of the grid, and the text of the line above it. Defaults to the humanised name of the resource."
+
+  attr :heading, :any,
+    default: true,
+    doc:
+      "How the table's name is shown on the line above it, with the create button at the other end. `true` shows it as text that is no heading, since a table cannot know the outline of the page it is in; a number from 1 to 6 makes it a heading of that level; `false` leaves it out, for a page that names the table itself."
 
   def table(assigns) do
     assigns = assign_new(assigns, :grid_label, fn -> assigns.label || label(assigns.resource) end)
+
+    if assigns.heading not in [true, false, 1, 2, 3, 4, 5, 6] do
+      raise ArgumentError,
+            "the `heading` of <AshTable.table> is `true`, `false` or a heading level from 1 to 6, " <>
+              "got: #{inspect(assigns.heading)}"
+    end
 
     ~H"""
     <.live_component
@@ -118,6 +155,7 @@ defmodule AshTable do
       authorize?={@authorize?}
       url={@url}
       label={@grid_label}
+      heading={@heading}
       mounted?={false}
     />
     """
