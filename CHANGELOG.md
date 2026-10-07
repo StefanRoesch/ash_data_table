@@ -78,6 +78,16 @@ declared in the resource and mounted with one line in the router.
   one that was used; when it is disabled by the page it led to, focus goes to
   the button of that page, or to the other of Previous and Next in a table
   without page numbers.
+- States are shown with the theme's colours and can be seen: the focus ring
+  is in the text colour, 2px inside the cell; a failed cell has a ring and a
+  "!" that does not depend on a colour, and shows both rings when it has
+  focus; a saving cell and the rows of a table that is reading are dimmed to
+  70%, the header and the filters not at all; inputs and menus have an edge
+  at half the strength of the text colour. Their contrast is measured by the
+  demo's browser tests in its light and dark theme.
+- In forced colours every state is still drawn: the failed ring is a border,
+  the dialog and the action panel have one there, the current page is
+  underlined there, and an expander stays a triangle.
 
 ### Translation
 

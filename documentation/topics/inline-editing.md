@@ -241,8 +241,9 @@ resource compiled all the same refuses to render.
 
 Nothing is saved, and the table shows what the action returned.
 
-- The cell keeps what was typed and is marked: `aria-invalid`, and a ring in
-  the error colour.
+- The cell keeps what was typed and is marked: `aria-invalid`, a ring in
+  the error colour, and a "!" at its end, which shows the failure without a
+  colour.
 - The action's message is the cell's description (`aria-describedby`). It
   appears under the cell while the cell has focus or the pointer, so the row
   keeps its height, and it is announced to screen readers when it arrives.

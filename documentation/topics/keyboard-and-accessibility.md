@@ -3,8 +3,9 @@
 Every table is an ARIA grid that can be used from the keyboard alone. After
 reading this guide you know every key the table handles, how focus moves
 through the filter row, the editors, the row actions and the action panel,
-what is announced to assistive technology, and what has and has not been
-tested.
+what is announced to assistive technology, how focus and the other states
+are shown and what contrast they were measured at, and what has and has not
+been tested.
 
 A note on words: this guide says "grid" for the element with `role="grid"`
 and for the ARIA pattern it follows. Everywhere else the thing is a table.
@@ -296,6 +297,75 @@ On a later page it is not: what a screen reader may announce there as the
 third row of the table is the third row of the page. The total is true on
 every page.
 
+## How the states are shown
+
+The table has no colours of its own and no setting for any. Everything
+below is drawn in the semantic colours of the host's daisyUI theme, so it
+follows the theme, light or dark.
+
+| State | What a person sees |
+| --- | --- |
+| The focused cell | A solid ring of 2px, flush inside the cell, in the theme's text colour (`base-content`). Not in `primary`: a brand colour may be any lightness, and the text colour is the one a theme promises can be seen on its background. A cell keeps the ring while its editor has focus. |
+| Focus in a control | A filter's input and menu, a button in a cell, the pagination buttons and the fields and buttons of the action panel and the dialog show daisyUI's own focus ring. It is in the text colour as well. |
+| A cell whose save or action failed | A ring of 2px in the error colour mixed with the text colour, and a "!" at the end of the cell. The "!" is the mark that does not depend on a colour. Both are drawn by the cell's style: they do not change the row's height or the cell's width, and the cell's text stays where it is. The message is in a popover under the cell, in the text colour. |
+| A failed cell that has focus | Both rings: the focus ring at the edge of the cell and the ring of the failure inside it, with the "!". |
+| A cell whose save or action is on its way | Its text at 70% opacity. |
+| A table that is reading | Its rows at 70% opacity. The header and the filters are not dimmed: they can be used meanwhile, and their text is muted already. |
+| An input or a menu | An edge in the text colour at half strength, on the filters and on the fields of the action panel. daisyUI's own edge, at a fifth, does not show where an empty input is. |
+| A rejected filter value, and a field of the panel with an error | The edge in the colour of a failed cell's ring, and the message under the control, in the text colour. The message is what says so without a colour. |
+
+In **forced colours** (the contrast themes of Windows) the browser paints
+with the system's colours and drops every fill and every shadow. Outlines,
+borders and text stay, so the focus ring, the ring and the "!" of a failed
+cell, the edges of inputs and buttons, and the dimming stay as well. Three
+things are different there, and only there: the dialog and the action panel
+have a border, since their shadow is gone; the current page is underlined,
+since its fill is gone; and the triangle of an expander is told to keep its
+two transparent sides, without which it would be a square that looks the
+same open and closed.
+
+### What was measured
+
+Contrast was measured in Chromium, from the colours the browser computed for
+each state and painted over what is behind them, in the demo's two themes,
+which are those of a new Phoenix 1.8 application. The demo's browser tests
+([`demo/e2e/contrast.spec.ts`](https://github.com/StefanRoesch/ash_table/blob/main/demo/e2e/contrast.spec.ts))
+measure the same and hold each line at what WCAG 2 asks.
+
+| | WCAG asks | Light | Dark |
+| --- | --- | --- | --- |
+| The focus ring against the cell (1.4.11) | 3:1 | 16.7:1 | 12.6:1 |
+| The ring of a failed cell against the cell (1.4.11) | 3:1 | 7.1:1 | 4.6:1 |
+| The "!" of a failed cell (1.4.1, 1.4.11) | 3:1 | 16.7:1 | 12.6:1 |
+| The message of a failed cell, of a filter and of a field (1.4.3) | 4.5:1 | 16.7:1; a filter's 4.6:1 | 12.6:1; a filter's 5.6:1 |
+| The text of a cell that is saving, and of the rows of a table that is reading (1.4.3) | 4.5:1 | 6.4:1 | 7.0:1 |
+| The same on a row with the theme's second background (`base-200`) | 4.5:1 | 6.2:1 | 8.0:1 |
+| The text of the header row and of the filters' controls, which daisyUI mutes (1.4.3) | 4.5:1 | 4.6:1 | 5.6:1 |
+| The edge of an input or a menu (1.4.11) | 3:1 | 3.3:1 | 4.4:1 |
+| The edge and the focus ring of an input that is `aria-invalid` (1.4.11) | 3:1 | 7.1:1 | 4.6:1 |
+
+What these numbers do not cover:
+
+- **Another theme.** The colours are the host's. The text colour is safe by
+  daisyUI's own rule for a theme; the error colour is mixed with it for that
+  reason. A theme whose `base-content` does not contrast with its `base-100`
+  fails everywhere, not only in a table.
+- **The labels of the coloured buttons.** "Run", "Create" and "Confirm" are
+  daisyUI's `btn-primary`, and the button that deletes is `btn-error`: the
+  theme's `primary-content` on `primary`, and `error-content` on `error`. In
+  the demo's themes these pairs measure 2.75:1 (light) and 4.1:1 (dark) for
+  `primary`, and 4.1:1 for `error`, which is less than the 4.5:1 that text
+  needs. That is the theme's to put right, for every button of the
+  application; the table does not recolour them.
+- **Disabled buttons.** Previous and Next, when there is no such page, are
+  1.5:1 and 1.75:1. WCAG leaves disabled controls out.
+- **Focus Appearance (2.4.13, level AAA).** A solid ring of 2px inside the
+  edge of the cell, 16.7:1 and 12.6:1 against the same cell without focus, is
+  what that criterion describes as its smallest case. It was not tested as
+  such and is not claimed.
+- **`prefers-contrast: more`.** Nothing in the table or in daisyUI answers to
+  it: the table looks the same with it.
+
 ## What has been tested, and what has not
 
 The behaviour described in this guide is covered by the demo's browser tests
@@ -313,6 +383,10 @@ The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
 [Layout and embedding](layout-and-embedding.md).
 
+axe does not judge whether a focus ring can be seen, whether a state is shown
+by more than a colour, or what is left in forced colours. Those are measured
+by tests of their own, as [What was measured](#what-was-measured) says.
+
 Two things about the action panel are covered more thinly than the rest: no
 panel of the demo has a datetime field, and no action of the demo has both a
 question and a panel, so that path is tested with a question put onto an
@@ -324,6 +398,8 @@ That is the whole of the verification, and its limits should be plain:
 | --- | --- |
 | Chromium, headless, keyboard scripted | Tested |
 | axe-core, all of its default rules | Tested, in Chromium |
+| Contrast of the focus ring, of a failed cell's ring and mark, of dimmed text and of the edges of inputs | Measured in Chromium, in the demo's light and dark theme. No other theme. |
+| Forced colours | Tested as Chromium emulates them (`forced-colors: active`): that each state is still drawn. **Not tested** in a contrast theme of Windows itself. |
 | A screen reader (NVDA, JAWS, VoiceOver, TalkBack) | **Not tested.** No screen reader has been tried. This includes how a grid inside a cell of a grid is announced, which the ARIA grid pattern does not describe. |
 | Firefox | **Not tested** |
 | Safari | **Not tested** |
@@ -350,6 +426,7 @@ technology, a report of what you find is welcome in the
   answered.
 - **The message of a failed cell** is a popover under the cell, shown while
   the cell has focus or the pointer. It does not change the row's height.
+  The ring and the "!" of the cell are there all the time.
 - **Long text is cut off** to keep rows one line high. The whole value is in
   the cell for assistive technology, and in the editor.
 - **A mounted table brings no main landmark.** Its page is a heading and the
@@ -372,6 +449,9 @@ technology, a report of what you find is welcome in the
 - **Expecting a filter to be a tab stop.** Move to its cell and press Enter.
 - **Treating "axe reports no violations" as "accessible".** See the table
   above.
+- **A theme whose colours do not contrast.** The table draws with the
+  theme's colours. See [What was measured](#what-was-measured) for what
+  that leaves to the theme.
 
 ## Not in the first version
 

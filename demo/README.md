@@ -529,6 +529,7 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort, filter or edit, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
 | `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
 | `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, and with nested tables open at every depth |
+| `contrast.spec.ts` | what axe does not judge, measured from the colours the browser computed, in the light and the dark theme: the focus ring of every kind of cell; the ring and the "!" of a failed cell, that they move nothing, and both rings on a failed cell with focus; the text of a saving cell and of a table that is reading; the muted text of the header and the filters; the edges of inputs, and of invalid ones. In forced colours: that the focus ring, the failed cell, the expander's triangle, the current page and the edges of the dialog and the panel are still drawn |
 
 How they are built (`e2e/support`):
 
@@ -553,6 +554,9 @@ How they are built (`e2e/support`):
   the library's markup and how to wait for a read or a save
   (`aria-busy`). Tests find controls by role and name where a person would,
   and cells by id.
+- **Contrast.** `support/contrast.ts` gives the colour a text, an outline or
+  a border has on the screen (painted by the browser over everything behind
+  it) and the WCAG contrast ratio of two colours.
 - **Console.** Every test fails if the browser reported an error it did not
   expect.
 

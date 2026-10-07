@@ -1339,16 +1339,33 @@ defmodule AshTable.Live.TableComponent do
           data-first-row={first_row(@page)}
           class={
             [
-              "table aria-busy:opacity-60",
+              "table",
               # a nested table is as wide as its columns need and no wider; in
               # everything else it looks as a table on a page does
               @nested? && "w-auto",
               # what every cell looks like is set once here, to keep each cell's markup small:
-              # the focus ring, which a cell keeps while its editor has the focus
-              "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-primary",
-              "[&>tbody>tr>td:not([data-nested]):focus-within]:outline-2 [&>tbody>tr>td:not([data-nested]):focus-within]:-outline-offset-2 [&>tbody>tr>td:not([data-nested]):focus-within]:outline-primary",
-              # a cell whose save failed, and one whose save is on its way
-              "[&_td[aria-invalid]]:inset-ring-2 [&_td[aria-invalid]]:inset-ring-error [&_td[aria-busy]]:opacity-60",
+              # the focus ring, which a cell keeps while its editor has the focus. In
+              # the text colour: the one colour a theme promises to be seen on its
+              # background, which its brand colour need not be.
+              "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-base-content",
+              "[&>tbody>tr>td:not([data-nested]):focus-within]:outline-2 [&>tbody>tr>td:not([data-nested]):focus-within]:-outline-offset-2 [&>tbody>tr>td:not([data-nested]):focus-within]:outline-base-content",
+              # A cell whose save is on its way, and the rows of a table that is
+              # reading: dimmed, and no further than text may be. The header and the
+              # filters are not dimmed, as they can be used meanwhile and are muted
+              # already; nor is a nested table, which is not what is reading.
+              "[&_td[aria-busy]]:opacity-70 [&[aria-busy]>tbody>tr>td:not([data-nested])]:opacity-70",
+              # A cell whose save or action failed: a ring and a mark, both drawn by
+              # the cell's style, so that they add nothing to a row's markup. The ring
+              # is a border, which forced colours keep and a shadow they do not, in
+              # the error colour mixed with the text colour, so that it is seen on the
+              # background in a theme whose error colour alone is not. With focus it
+              # moves inside the focus ring, and both show.
+              "[&_td[aria-invalid]]:relative [&_td[aria-invalid]]:before:pointer-events-none [&_td[aria-invalid]]:before:absolute [&_td[aria-invalid]]:before:inset-0 [&_td[aria-invalid]]:before:border-2 [&_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&_td[aria-invalid]]:before:content-['']",
+              "[&_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px]",
+              # The mark is what says "failed" without a colour: a "!" in the cell's
+              # padding at its end, in the text colour. It is for the eye only (the
+              # empty alternative text): the cell says the same with `aria-invalid`.
+              "[&_td[aria-invalid]]:after:absolute [&_td[aria-invalid]]:after:end-2 [&_td[aria-invalid]]:after:top-1/2 [&_td[aria-invalid]]:after:-translate-y-1/2 [&_td[aria-invalid]]:after:leading-none [&_td[aria-invalid]]:after:font-bold [&_td[aria-invalid]]:after:content-['!'_/_'']",
               # one line per row: long text is cut off, not wrapped. Not in a cell
               # that spans the table: a line, or the cell a nested table is in.
               "[&>tbody>tr>td:not([colspan],[data-actions])]:max-w-80 [&>tbody>tr>td:not([colspan],[data-actions])]:truncate [&>tbody>tr>td[data-actions]]:whitespace-nowrap",
@@ -1359,6 +1376,9 @@ defmodule AshTable.Live.TableComponent do
               "[&>tbody>tr>td>button[aria-expanded]]:before:inline-block [&>tbody>tr>td>button[aria-expanded]]:before:size-0 [&>tbody>tr>td>button[aria-expanded]]:before:content-['']",
               "[&>tbody>tr>td>button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>td>button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>td>button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>td>button[aria-expanded]]:before:border-s-current",
               "[&>tbody>tr>td>button[aria-expanded]]:before:transition-transform [&>tbody>tr>td>button[aria-expanded=true]]:before:rotate-90",
+              # forced colours would fill the two transparent sides of the triangle
+              # and make it a square, which looks the same open and closed
+              "[&>tbody>tr>td>button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&>tbody>tr>td>button[aria-expanded]]:before:border-s-[CanvasText]",
               # a line's mark stands under its row's
               "[&>tbody>tr>td[data-line]>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>button[aria-expanded]]:before:me-2",
               # the create button on a line, once the nested table under it has read
@@ -1578,11 +1598,12 @@ defmodule AshTable.Live.TableComponent do
       in, so patches leave it alone. --%>
       <div :if={asks?(@model)} id={"#{@id}-dialogs"} phx-update="ignore">
         <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
-        a dialog that is not visible yet when it opens cannot take the focus. --%>
+        a dialog that is not visible yet when it opens cannot take the focus. Its
+        edge is its shadow, which forced colours take away: there it has a border. --%>
         <dialog
           id={"#{@id}-dialog"}
           aria-labelledby={"#{@id}-dialog-question"}
-          class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40"
+          class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
         >
           <form method="dialog">
             <p id={"#{@id}-dialog-question"}></p>
@@ -2828,7 +2849,7 @@ defmodule AshTable.Live.TableComponent do
       data-question={@panel.action.confirm}
       data-destructive={@panel.action.type == :destroy}
       aria-labelledby={"#{@id}-panel-title"}
-      class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40"
+      class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
     >
       <.form
         for={@form}
@@ -2910,7 +2931,7 @@ defmodule AshTable.Live.TableComponent do
           checked={@value == "true"}
           aria-invalid={@errors != [] && "true"}
           aria-describedby={@described}
-          class="checkbox checkbox-sm"
+          class={["checkbox checkbox-sm", box_edge()]}
         />
         <span data-label>{@input.label}</span>
         <span :if={@input.required? and @input.editor != :boolean} aria-hidden="true">*</span>
@@ -2924,7 +2945,7 @@ defmodule AshTable.Live.TableComponent do
         aria-required={@input.required? && "true"}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@described}
-        class={["textarea w-full", @errors != [] && "textarea-error"]}
+        class={["textarea w-full", control_edge()]}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       <select
         :if={@input.editor == :enum}
@@ -2933,7 +2954,7 @@ defmodule AshTable.Live.TableComponent do
         aria-required={@input.required? && "true"}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@described}
-        class={["select w-full", @errors != [] && "select-error"]}
+        class={["select w-full", control_edge()]}
       >
         <option :if={not @input.required? or @value == ""} value=""></option>
         <option
@@ -2954,7 +2975,7 @@ defmodule AshTable.Live.TableComponent do
         aria-required={@input.required? && "true"}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@described}
-        class={["input w-full", @errors != [] && "input-error"]}
+        class={["input w-full", control_edge()]}
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-sm">
@@ -2962,6 +2983,21 @@ defmodule AshTable.Live.TableComponent do
       </div>
     </div>
     """
+  end
+
+  # The edge of an input or a menu of the table's own, through the variable
+  # daisyUI draws it with. At rest daisyUI's edge is too faint to show where
+  # an empty input is: here it is the text colour at half strength. With
+  # focus it is daisyUI's, which is the text colour. On a control that is
+  # `aria-invalid` it is the colour of a failed cell's ring, with focus too;
+  # the message under the control is what says so without a colour.
+  defp control_edge do
+    "not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"
+  end
+
+  # The same for a checkbox, whose variable would also fill it when checked.
+  defp box_edge do
+    "border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"
   end
 
   defp field_type(:plain), do: "text"
@@ -3139,7 +3175,8 @@ defmodule AshTable.Live.TableComponent do
       <%!-- The page numbers have an element to themselves, which the layout
       does not see: Previous and Next are then always the first and the last
       of three, and a patch that adds or takes away a number leaves them
-      where they are, with their focus. --%>
+      where they are, with their focus. The current page is marked by its fill,
+      which forced colours take away: there it is underlined. --%>
       <span
         :if={@model.pagination.strategy == :offset}
         class="contents [&>:first-child]:ms-[calc(var(--border)*-1)]"
@@ -3148,7 +3185,10 @@ defmodule AshTable.Live.TableComponent do
           :for={number <- page_numbers(@page, @state)}
           type="button"
           id={"#{@id}-page-#{number}"}
-          class={["join-item btn btn-sm", number == @state.page && "btn-active"]}
+          class={[
+            "join-item btn btn-sm forced-colors:aria-[current=page]:underline",
+            number == @state.page && "btn-active"
+          ]}
           tabindex={@nested? && "-1"}
           aria-label={Text.t(:go_to_page, page: number)}
           aria-current={number == @state.page && "page"}
@@ -3191,7 +3231,7 @@ defmodule AshTable.Live.TableComponent do
         form={@form}
         tabindex="-1"
         aria-label={Text.t(:filter, column: @column.label)}
-        class="select select-xs w-auto"
+        class={["select select-xs w-auto", control_edge()]}
       >
         <option value="">{Text.t(:any)}</option>
         <option :for={choice <- @column.operators} value={choice} selected={choice == @operator}>
@@ -3205,7 +3245,7 @@ defmodule AshTable.Live.TableComponent do
         form={@form}
         tabindex="-1"
         aria-label={Text.t(:filter_operator, column: @column.label)}
-        class="select select-xs w-auto"
+        class={["select select-xs w-auto", control_edge()]}
       >
         <option :for={choice <- @column.operators} value={choice} selected={choice == @operator}>
           {operator_text(choice)}
@@ -3218,7 +3258,7 @@ defmodule AshTable.Live.TableComponent do
         form={@form}
         tabindex="-1"
         aria-label={Text.t(:filter, column: @column.label)}
-        class="select select-xs w-auto"
+        class={["select select-xs w-auto", control_edge()]}
       >
         <option value="">{Text.t(:any)}</option>
         <option
@@ -3246,7 +3286,7 @@ defmodule AshTable.Live.TableComponent do
         aria-label={Text.t(:filter, column: @column.label)}
         aria-invalid={@rejected? && "true"}
         aria-describedby={@rejected? && "#{@id}-error"}
-        class={["input input-xs w-32", @rejected? && "input-error"]}
+        class={["input input-xs w-32", control_edge()]}
       />
       <button
         :if={@filter && not @rejected?}
@@ -3460,7 +3500,7 @@ defmodule AshTable.Live.TableComponent do
      [
        "<span",
        if(id, do: [~s( id="), escape(id), ~s(")], else: []),
-       ~s( popover="manual" class="inset-auto m-0 max-w-xs rounded border border-error bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">),
+       ~s| popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">|,
        escape(message),
        "</span>"
      ]}

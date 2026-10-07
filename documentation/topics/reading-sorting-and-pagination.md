@@ -284,7 +284,7 @@ Each of these is explained in [Nested tables](nested-tables.md).
 
 The first read runs while the page is mounted, so the first render already
 has its rows. Later reads run beside the LiveView process: the table is
-marked `aria-busy` and dimmed, and the previous rows stay in view until the
+marked `aria-busy`, and the previous rows stay in view, dimmed, until the
 new ones arrive.
 
 A read that succeeds and finds nothing shows "No records".

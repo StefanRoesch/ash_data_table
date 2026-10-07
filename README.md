@@ -235,8 +235,8 @@ in CI (see [Things people trip over](#things-people-trip-over)).
 
 Sorting, filtering and pagination always run on the server, through the
 table's read action; nothing is sorted or filtered in the browser. While a
-read runs the grid is marked `aria-busy` and dimmed, with the previous rows
-left in view. A read that finds nothing shows "No records".
+read runs the grid is marked `aria-busy` and the previous rows stay in view,
+dimmed. A read that finds nothing shows "No records".
 
 Headers sort on a click or Enter: ascending, descending, then back to the
 read action's own sort. One column at a time.
@@ -443,7 +443,7 @@ resource is reported when it is compiled, and its table refuses to render.
 returned:
 
 - the cell keeps what was typed and is marked (`aria-invalid`, a ring in the
-  error colour);
+  error colour and a "!" at its end);
 - the action's message is the cell's description (`aria-describedby`). It
   appears under the cell while the cell has focus or the pointer, so the row
   keeps its height, and it is announced to screen readers when it arrives;
