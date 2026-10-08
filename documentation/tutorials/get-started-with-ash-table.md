@@ -82,9 +82,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
-The table has two hooks, one for the grid and one for the pagination. Both
-ship with the library as colocated hooks behind the one import. There is
-nothing to install from npm.
+The table has three hooks, for the grid, the pagination and the action
+panel. All ship with the library as colocated hooks behind the one import.
+There is nothing to install from npm.
 
 The configuration, in
 [`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs):

@@ -93,10 +93,10 @@ printed for you to take by hand.
    {:ash_table, "~> 0.1"}
    ```
 
-2. Register the table's JavaScript hooks in `assets/js/app.js`. There are two,
-   one for the grid and one for the pagination, and both ship with the
-   library as colocated hooks behind this one import; there is nothing to
-   install from npm.
+2. Register the table's JavaScript hooks in `assets/js/app.js`. There are
+   three, for the grid, the pagination and the action panel, and all ship
+   with the library as colocated hooks behind this one import; there is
+   nothing to install from npm.
 
    ```js
    import {hooks as ashTableHooks} from "phoenix-colocated/ash_table"
