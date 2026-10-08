@@ -3,7 +3,8 @@ defmodule AshTable.Model do
   # The table model: everything a table is rendered from.
   #
   # It is built at runtime from `Ash.Resource.Info` and the resource's `table`
-  # block (see ADR 0001). Building is cheap and the result is not cached.
+  # block (see ADR 0001). Building is cheap and the result is not cached
+  # here: a table keeps the one it shows for as long as its page lives.
   #
   #   * `resource` and its `primary_key`;
   #   * `read_action`, the name of the read action behind the table;
@@ -315,17 +316,20 @@ defmodule AshTable.Model do
   end
 
   @doc """
-  What the nested table of `relationship` lets this person create, without
-  building everything else of it for them: the create action of its model,
-  or nil when it has none or the person can never run it. `opts` are those
-  of `for_actor/2`.
+  What a nested table lets this person create, without working out
+  everything else of it for them: the create action of its model, or nil
+  when it has none or the person can never run it.
+
+  `nested` is the model `build/2` gives with `via:` the relationship, which
+  is the same for everybody. `opts` are those of `for_actor/2`; Ash is asked
+  on every call.
   """
-  @spec nested_create(Relationship.t(), keyword) :: Action.t() | nil
-  def nested_create(%Relationship{destination: destination} = relationship, opts) do
-    with %{create: %Action{} = create} <- build(destination, via: relationship),
+  @spec nested_create(%__MODULE__{}, keyword) :: Action.t() | nil
+  def nested_create(%__MODULE__{resource: resource, create: create}, opts) do
+    with %Action{} <- create,
          true <-
            not Keyword.get(opts, :authorize?, true) or
-             Access.forbidden_actions(destination, [create.name], opts) == [] do
+             Access.forbidden_actions(resource, [create.name], opts) == [] do
       create
     else
       _none_or_never -> nil

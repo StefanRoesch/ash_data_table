@@ -4240,4 +4240,65 @@ defmodule AshTable.TableBlockTest do
       end
     end
   end
+
+  describe "the DSL's own definition" do
+    # Spark builds an entity with `struct/2`, which leaves out what the
+    # struct has no field for, without a word. So every key Spark puts into
+    # an entity has to be a field of its target: the keys of its schema (the
+    # positional arguments are among them), under the name `as` gives them,
+    # its `auto_set_fields`, and the keys its nested entities are kept
+    # under. The two fields Spark fills in itself, `__identifier__` and
+    # `__spark_metadata__`, have no key in the schema, and Spark says so
+    # itself when one is missing.
+    #
+    # The options of a section are not built into a struct: Spark keeps them
+    # as the keyword list its schema validated, and the functions of
+    # `Info` are generated from that schema. Nothing of them can be dropped.
+    test "every option an entity accepts has a field in the struct the entity is built into" do
+      entities =
+        for extension <- [AshTable.Resource, AshTable.Domain],
+            entity <- entities(extension),
+            do: {extension, entity}
+
+      # the three of the resource's block, at least: the walk finds them
+      assert [:action, :column, :relationship] --
+               for({AshTable.Resource, entity} <- entities, do: entity.name) == []
+
+      dropped =
+        for {extension, entity} <- entities,
+            fields = entity.target.__struct__() |> Map.keys(),
+            key <- keys(entity),
+            key not in fields do
+          "`#{entity.name}` of #{inspect(extension)} accepts `#{key}`, but " <>
+            "#{inspect(entity.target)} has no field `#{key}`: Spark would drop its value silently. " <>
+            "Add `:#{key}` to the `defstruct` of #{inspect(entity.target)}."
+        end
+
+      assert dropped == [], Enum.join(dropped, "\n")
+    end
+
+    # Every entity of an extension: those of its sections and of the
+    # sections in them, those it patches into the sections of others, and
+    # the entities nested in any of them.
+    defp entities(extension) do
+      patched =
+        for %Spark.Dsl.Patch.AddEntity{entity: entity} <- extension.dsl_patches(), do: entity
+
+      Enum.flat_map(extension.sections(), &entities_of/1) ++
+        Enum.flat_map(patched, &entities_of/1)
+    end
+
+    defp entities_of(%Spark.Dsl.Section{sections: sections, entities: entities}),
+      do: Enum.flat_map(sections ++ entities, &entities_of/1)
+
+    defp entities_of(%Spark.Dsl.Entity{entities: nested} = entity),
+      do: [entity | nested |> Keyword.values() |> List.flatten() |> Enum.flat_map(&entities_of/1)]
+
+    # What Spark sets on the struct of an entity when it builds one. A
+    # schema that takes any key (`*`) names none to look for.
+    defp keys(%Spark.Dsl.Entity{} = entity) do
+      for({key, option} <- entity.schema, key != :*, do: option[:as] || key) ++
+        Keyword.keys(entity.auto_set_fields || []) ++ Keyword.keys(entity.entities)
+    end
+  end
 end

@@ -146,6 +146,10 @@ defmodule AshTable.Live.TableComponent do
      # limited to is called, once that record has been read for the person.
      # Where a nested table's records are shown in the full view.
      |> assign(nested?: false, related: nil, related_title: nil, full_view: nil)
+     # What the resources and their blocks say, the same for everybody, built
+     # once for as long as the component lives: the table's model, and that
+     # of a nested table by its relationship. See `build/1`.
+     |> assign(built: nil)
      # The action panel, while it is open: the one action a person is giving
      # the inputs of, with its form. At most one per table; a new read
      # closes it.
@@ -176,15 +180,14 @@ defmodule AshTable.Live.TableComponent do
           end
       )
 
-    socket = socket |> assign(nested?: socket.assigns.depth > 0) |> relate()
+    socket = socket |> assign(nested?: socket.assigns.depth > 0) |> relate() |> build()
 
     # The table as the person asking meets it: without the columns they can
     # never see, and with the columns they can never edit read-only. Ash is
     # asked again on every update, which for a table with its state in the
     # URL is every sort, filter and page change; it costs no query.
     model =
-      socket.assigns.resource
-      |> Model.build(via: socket.assigns.via)
+      socket.assigns.built.model
       |> Model.for_actor(reader(socket.assigns))
       |> in_words()
 
@@ -242,28 +245,77 @@ defmodule AshTable.Live.TableComponent do
 
   defp relate(socket), do: socket
 
+  # The table's model as its resource and block say it, which is the same
+  # whoever asks, and so is built once and kept for as long as the component
+  # lives and shows the same table: of the same resource, reached through
+  # the same relationship. Nothing of it depends on who is asking; what
+  # does is asked of Ash on every update, and never kept.
+  #
+  # It is kept in the assigns and nowhere else, so that it goes with the
+  # page (ADR 0001: a model that outlives a recompile is stale without a
+  # sign). Where the endpoint reloads code, in development, it is not kept
+  # at all: Phoenix can recompile and render a page again without mounting
+  # it (`live_reload: [notify: [live_view: …]]`), and the table then has to
+  # be what the block says now.
+  defp build(%{assigns: %{resource: resource, via: via, built: built}} = socket) do
+    if match?(%{resource: ^resource, via: ^via}, built) and not reloading?(socket) do
+      socket
+    else
+      model = Model.build(resource, via: via)
+      assign(socket, built: %{resource: resource, via: via, model: model, nested: %{}})
+    end
+  end
+
+  defp reloading?(%{endpoint: nil}), do: false
+  defp reloading?(%{endpoint: endpoint}), do: endpoint.config(:code_reloader) == true
+
+  # The model of the nested table of a relationship, as far as it is the
+  # same for everybody: built when it is first asked for, and kept with the
+  # table's own.
+  defp nested_model(%{assigns: %{built: built}} = socket, relationship) do
+    case built.nested do
+      %{^relationship => model} ->
+        {model, socket}
+
+      _not_yet ->
+        model = Model.build(relationship.destination, via: relationship)
+        nested = Map.put(built.nested, relationship, model)
+        {model, assign(socket, built: %{built | nested: nested})}
+    end
+  end
+
   # What the nested tables of this table's rows let the person create: by
   # relationship, what the create button on its line says. The button is on
   # the line, which is this table's, and opens the panel of the nested
   # table, which decides everything about it once more.
+  #
+  # Whether a nested table has a create action is its model's to say, and
+  # is the same for everybody. Whether this person may run it is asked of
+  # Ash here, on every update.
   defp creates(%{assigns: %{expandable?: true, model: model}} = socket) do
     reader = nested_reader(socket.assigns)
 
-    creates =
-      for relationship <- model.relationships,
-          # a nested table authorizes as it was told, else as its domain says
-          authorize? =
-            if(is_nil(reader.authorize?),
-              do: AshTable.Domain.Info.authorize?(relationship.destination),
-              else: reader.authorize?
-            ),
-          opts =
-            [authorize?: authorize?] ++ Map.to_list(Map.take(reader, [:scope, :actor, :tenant])),
-          Model.nested_create(relationship, opts),
-          into: %{} do
-        name = relationship.destination |> Model.build() |> Map.fetch!(:name)
-        {relationship.name, Text.t(:new_record, name: Text.label(name))}
-      end
+    {creates, socket} =
+      Enum.reduce(model.relationships, {%{}, socket}, fn relationship, {creates, socket} ->
+        {nested, socket} = nested_model(socket, relationship)
+
+        # a nested table authorizes as it was told, else as its domain says
+        authorize? =
+          if(is_nil(reader.authorize?),
+            do: AshTable.Domain.Info.authorize?(relationship.destination),
+            else: reader.authorize?
+          )
+
+        opts =
+          [authorize?: authorize?] ++ Map.to_list(Map.take(reader, [:scope, :actor, :tenant]))
+
+        if Model.nested_create(nested, opts) do
+          label = Text.t(:new_record, name: Text.label(nested.name))
+          {Map.put(creates, relationship.name, label), socket}
+        else
+          {creates, socket}
+        end
+      end)
 
     assign(socket, creates: creates)
   end

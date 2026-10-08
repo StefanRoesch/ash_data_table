@@ -97,11 +97,9 @@ defmodule AshTable.Related do
   # text, so that text from the outside is never turned into an atom.
   defp offered(resource, parent_name, relationship_name, reader, endpoint) do
     case named(resource, parent_name, relationship_name, endpoint) do
-      [parent] ->
-        model = parent |> Model.build() |> Model.for_actor(reader)
-
+      [model] ->
         with %Relationship{destination: ^resource} = via <-
-               Model.relationship(model, relationship_name),
+               model |> Model.for_actor(reader) |> Model.relationship(relationship_name),
              do: via
 
       _none_or_several ->
@@ -110,7 +108,8 @@ defmodule AshTable.Related do
   end
 
   # The resources of that short name whose table has such a relationship to
-  # this resource, and lets its rows expand at all.
+  # this resource, and lets its rows expand at all: the models of their
+  # tables, as they are for everybody.
   defp named(resource, parent_name, relationship_name, endpoint)
        when is_binary(parent_name) and
               (is_binary(relationship_name) or is_atom(relationship_name)) do
@@ -125,7 +124,7 @@ defmodule AshTable.Related do
           %Relationship{destination: ^resource},
           Model.relationship(model, relationship_name)
         ) do
-      parent
+      model
     end
   end
 

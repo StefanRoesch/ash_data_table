@@ -123,6 +123,39 @@ defmodule DemoWeb.Tables.NestedCreateTest do
       assert column(html, nested(task.id, "comments"), "body") == ["First!"]
       assert text(html, line_create(task.id, "comments")) == nil
     end
+
+    test "follows the person asking, who changes while the page is open",
+         %{conn: conn, world: world, task: task} do
+      conn =
+        Phoenix.ConnTest.init_test_session(conn, %{"assigns" => %{actor_id: world.member.id}})
+
+      {:ok, view, _html} = live(conn, "/support/switch")
+
+      comments = nested("tasks", task.id, "comments")
+      button = "[id='tasks-row-#{task.id}-l-comments-create']"
+
+      # what is open is closed when the person changes: opened again each time
+      open = fn ->
+        expand(view, "tasks", task.id)
+        toggle(view, "tasks", task.id, "comments")
+      end
+
+      become = fn user ->
+        view |> element("#become") |> render_click(%{"id" => user.id})
+        render_async(view, 2000)
+      end
+
+      assert text(open.(), button) == "New comment"
+
+      # a viewer reads the comments and may never write one
+      become.(world.viewer)
+      html = open.()
+      assert column(html, comments, "body") == ["First!"]
+      assert text(html, button) == nil
+
+      become.(world.member)
+      assert text(open.(), button) == "New comment"
+    end
   end
 
   describe "creating in a nested table" do
