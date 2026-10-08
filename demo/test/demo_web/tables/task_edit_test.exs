@@ -73,7 +73,8 @@ defmodule DemoWeb.Tables.TaskEditTest do
 
       assert editor(html, "task", "title") == %{control: "textarea", choices: nil, confirm: nil}
       assert editor(html, "task", "description").control == "textarea"
-      assert editor(html, "task", "progress") == %{control: "number", choices: nil, confirm: nil}
+      # a slider, which is the column's component (see `task_components_test.exs`)
+      assert editor(html, "task", "progress") == %{control: "range", choices: nil, confirm: nil}
       assert editor(html, "task", "estimate_hours").control == "number"
       assert editor(html, "task", "billable?").control == "checkbox"
       assert editor(html, "task", "due_on").control == "date"
@@ -112,10 +113,10 @@ defmodule DemoWeb.Tables.TaskEditTest do
     test "of a number", %{conn: conn, view: view, task: task} do
       html = save(view, task.id, "estimate_hours", "7.25")
 
-      assert text(html, cell(task.id, "estimate_hours")) == "7.25"
+      assert text(html, cell(task.id, "estimate_hours")) == "7.25 h"
 
       {:ok, _view, html} = live(conn, "/tasks")
-      assert text(html, cell(task.id, "estimate_hours")) == "7.25"
+      assert text(html, cell(task.id, "estimate_hours")) == "7.25 h"
     end
 
     test "of a boolean", %{conn: conn, view: view, task: task} do
@@ -508,7 +509,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
       assert text(html, cell(other.id, "estimate_hours")) == "Not available"
       assert attribute(html, cell(other.id, "estimate_hours"), "aria-readonly") == ["true"]
 
-      assert text(html, cell(theirs.id, "estimate_hours")) == "12.5"
+      assert text(html, cell(theirs.id, "estimate_hours")) == "12.5 h"
       assert attribute(html, cell(theirs.id, "estimate_hours"), "aria-readonly") == []
     end
 
@@ -539,7 +540,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
     test "can be changed where it is shown", %{view: view, theirs: theirs} do
       html = save(view, theirs.id, "estimate_hours", "99")
 
-      assert text(html, cell(theirs.id, "estimate_hours")) == "99"
+      assert text(html, cell(theirs.id, "estimate_hours")) == "99 h"
       assert Decimal.equal?(stored(theirs).estimate_hours, Decimal.new("99"))
     end
   end

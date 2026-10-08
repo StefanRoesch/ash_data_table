@@ -47,6 +47,10 @@ _Avoid_: Button, command, operation
 The panel in which a person supplies the inputs of a row action, or of a create, before running it.
 _Avoid_: Modal, drawer, form dialog
 
+**Component**:
+A module that a column names to say how its cells are shown, what they are edited with, or both. It changes presentation and the control only: what is saved, and through which action, stays the column's.
+_Avoid_: Renderer, widget, custom cell, formatter
+
 **Manifest**:
 Ash's own static description of an application's resources, fields, relationships and actions. A table is not built from it; it serves as a checklist of what a table must account for.
 _Avoid_: Introspection data, schema

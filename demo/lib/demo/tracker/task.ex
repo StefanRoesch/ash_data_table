@@ -70,24 +70,32 @@ defmodule Demo.Tracker.Task do
     # text
     column :title
 
-    # enums. A change of state asks first.
+    # enums, each shown as a badge. A change of state asks first.
     column :status do
       label "State"
       confirm "Change the state of this task?"
+      component AshTable.Components.Badge
     end
 
     # edited through an action of its own
     column :priority do
       update_action :reprioritise
+      component AshTable.Components.Badge
     end
 
     # numbers: one that is always there and one that can be empty. Progress
-    # has its own action, which also starts a task that is still to do.
+    # has its own action, which also starts a task that is still to do. It
+    # is shown as a bar and edited with a slider.
     column :progress do
       update_action :set_progress
+      component DemoWeb.Cells.Progress
     end
 
-    column :estimate_hours
+    # the demo's own component: the number with its unit
+    column :estimate_hours do
+      component DemoWeb.Cells.Hours
+    end
+
     # a boolean
     column :billable?
     # a date and a datetime, both of which can be empty

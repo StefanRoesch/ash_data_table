@@ -13,7 +13,9 @@ defmodule DemoWeb.HomeLive do
      [
        {"/tasks",
         "declared columns, offset pages, sortable aggregate and calculation; " <>
-          "columns and editing differ by who you are. A row expands into seven declared " <>
+          "columns and editing differ by who you are. Four columns have a component: " <>
+          "badges, a bar with a slider, and hours with their unit. " <>
+          "A row expands into seven declared " <>
           "relationships of every kind, three levels deep; a viewer has no line for people. " <>
           "Four row actions (one runs at once, two open the action panel, the delete asks " <>
           "first) and \"New task\", for admins and members; a member's are refused on tasks " <>
@@ -112,6 +114,12 @@ defmodule DemoWeb.HomeLive do
           declares for it, and the button on the line of a table's name creates a record. An
           action with inputs asks for them in a panel first. Which buttons you have depends
           on who you are: a viewer has none.
+        </p>
+        <p id="components" class="text-base-content/70">
+          A column can have a component of its own: on <code class="text-xs">/tasks</code>
+          the state and the priority are badges, the progress is a bar that is edited with a
+          slider, and the estimate has its unit. <code class="text-xs">/specimens</code>
+          has none, and shows how the table itself shows every type.
         </p>
       </div>
 

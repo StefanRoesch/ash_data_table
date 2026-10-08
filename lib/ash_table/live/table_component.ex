@@ -26,6 +26,14 @@ defmodule AshTable.Live.TableComponent do
   #   * `aria-colindex` is computed through `colindex/2`, which counts the
   #     leading expander column in when the table has one; the actions
   #     column goes after the last data column;
+  #   * a column's component renders inside the cell, never the cell: the
+  #     `<td>`, its id and what it says of itself are the table's. The
+  #     component is called for a value that is there and that the person
+  #     may see, with that value, its text and the column, and never with
+  #     the record (`cell/2`). Its editor is the content of the column's
+  #     editor `<template>`, which then says `data-editor="component"` and
+  #     when it saves (`data-commit`); the control in it is the element
+  #     marked `data-control`;
   #   * the question of a row action is on its button, and on its panel, as
   #     `data-question`. Never as `data-confirm` on anything a person can
   #     click: `phoenix_html`, which a Phoenix application loads, asks the
@@ -277,15 +285,31 @@ defmodule AshTable.Live.TableComponent do
   defp in_words(model) do
     columns =
       for column <- model.columns do
+        label = Text.label(column.label)
+
+        values =
+          column.values &&
+            Enum.map(column.values, fn {value, label} -> {value, Text.label(label)} end)
+
         %{
           column
-          | label: Text.label(column.label),
+          | label: label,
             confirm: column.confirm && Text.label(column.confirm),
-            values:
-              column.values &&
-                Enum.map(column.values, fn {value, label} -> {value, Text.label(label)} end)
+            values: values,
+            # what the column's component is told, in the same words
+            component:
+              column.component &&
+                %{
+                  column.component
+                  | column: %{column.component.column | label: label, values: values}
+                }
         }
       end
+
+    # the components of the columns, by column: those of the inputs below
+    # are told the same
+    components =
+      for %{component: %{} = component, name: name} <- columns, into: %{}, do: {name, component}
 
     relationships = Enum.map(model.relationships, &%{&1 | label: Text.label(&1.label)})
 
@@ -299,7 +323,8 @@ defmodule AshTable.Live.TableComponent do
             | label: Text.label(input.label),
               values:
                 input.values &&
-                  Enum.map(input.values, fn {value, label} -> {value, Text.label(label)} end)
+                  Enum.map(input.values, fn {value, label} -> {value, Text.label(label)} end),
+              component: input.component && Map.get(components, input.name, input.component)
           }
         end
 
@@ -1584,6 +1609,7 @@ defmodule AshTable.Live.TableComponent do
           :if={column.editable?}
           id={"#{@id}-editor-#{column.name}"}
           data-editor={column.editor}
+          data-commit={column.editor == :component && column.component.commit}
           data-confirm={column.confirm}
         >
           <.editor column={column} allow_nil?={allow_nil?(@model.resource, column)} />
@@ -1733,6 +1759,15 @@ defmodule AshTable.Live.TableComponent do
             // Escape: the dialog stays until the server has taken it away
             dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
             dialog.addEventListener("click", e => { if (e.target.closest("[data-cancel]")) this.cancel() })
+            // What the editor of a column's component shows of its control's
+            // value besides the control (the number beside a slider) follows
+            // the control here, as it does in a cell, without waiting for
+            // the server.
+            dialog.addEventListener("input", e => {
+              const field = e.target.closest && e.target.closest("[data-field]")
+              if (!field || !e.target.matches("[data-control]")) return
+              for (const shown of field.querySelectorAll("[data-value-text]")) shown.textContent = e.target.value
+            })
             // An action with a question asks it when "Run" is used, in the
             // table's other dialog, on top of this one. Cancel there comes
             // back here, with everything as it was typed.
@@ -1807,6 +1842,18 @@ defmodule AshTable.Live.TableComponent do
         // the element a grid's hook is on
         const GRID = "[data-ash-table]"
 
+        // The control of an editor: what holds the value and takes the
+        // focus. A built-in editor is its own control. The editor of a
+        // column's component is whatever the component renders, and its
+        // control is the one that carries what the table gave it
+        // (`data-control`), else the first form control in it.
+        const CONTROL = root => root.matches("[data-control]")
+          ? root
+          : (root.querySelector("[data-control]") || root.querySelector("input,select,textarea") || root)
+
+        // a control that text is typed into: typing on its cell replaces its value
+        const TYPED = "textarea,input:is([type=text],[type=search],[type=tel],[type=url],[type=email],[type=password],[type=number],:not([type]))"
+
         // What a cell is besides a cell of a column: the expander of a row, a
         // line under an expanded row, the cell that holds a nested table, the
         // cell that holds a nested table's pages, or the one that holds its
@@ -1824,8 +1871,11 @@ defmodule AshTable.Live.TableComponent do
             // expander of the row is one cell to the left of it.
             this.pos = {r: this.headRows(), c: this.lead()}
             this.col = this.lead()
-            // the edit in progress: {cell, input, type, saved, old, confirm},
-            // and `attributes` once a patch has brought the cell's row again
+            // the edit in progress: {cell, root, input, type, saved, old,
+            // confirm, commit}, and `attributes` once a patch has brought
+            // the cell's row again. `root` is what was put into the cell
+            // and `input` the control in it; `commit` says when a
+            // component's editor saves.
             this.editing = null
             // cells this hook has marked as failed itself, with what they showed before
             this.marked = new WeakMap()
@@ -2107,7 +2157,10 @@ defmodule AshTable.Live.TableComponent do
 
           onDblclick(e) {
             const cell = this.cellOf(e.target)
-            if (cell && !this.controlOf(e.target) && this.canEdit(cell)) this.startEdit(cell, null)
+            if (!cell || this.controlOf(e.target) || !this.canEdit(cell)) return
+            // beside the control of an editor that is open already: nothing to open
+            if (this.editing && this.editing.cell === cell) return
+            this.startEdit(cell, null)
           },
 
           // Into a filter cell: to where its value is typed or chosen, or to
@@ -2415,24 +2468,27 @@ defmodule AshTable.Live.TableComponent do
               if (key === null) this.toggle(cell, template)
               return key === null
             }
-            const input = template.content.firstElementChild.cloneNode(true)
+            const root = template.content.firstElementChild.cloneNode(true)
+            const input = CONTROL(root)
             const current = this.valueOf(cell)
             const saved = Array.from(cell.childNodes)
             // LiveView leaves an element marked like this alone, so a patch of
             // the row, after another cell's save, does not take the editor away.
             cell.setAttribute("phx-update", "ignore")
-            cell.replaceChildren(input)
+            cell.replaceChildren(root)
             // What "unchanged" means: the value the record has, as this
             // editor writes it. A failed cell shows what was typed instead.
             input.value = cell.dataset.saved !== undefined ? cell.dataset.saved : current
             const old = input.value
             input.value = current
-            const ed = {cell, input, type, saved, old, confirm: template.dataset.confirm, lastKey: null}
+            const ed = {cell, root, input, type, saved, old, confirm: template.dataset.confirm, commit: template.dataset.commit, lastKey: null}
             this.editing = ed
             cell.tabIndex = -1
             input.addEventListener("blur", () => this.onEditorBlur(ed))
             let handled = true
-            if (type === "enum") {
+            if (type === "component") {
+              handled = this.startComponent(ed, key, current)
+            } else if (type === "enum") {
               input.addEventListener("change", () => this.onEditorChange(ed))
               input.addEventListener("pointerdown", () => { ed.lastKey = null })
               // a typed character goes to the first choice that starts with
@@ -2477,6 +2533,64 @@ defmodule AshTable.Live.TableComponent do
             return handled
           },
 
+          // The editor of a column's component. What the table does for it
+          // follows from its control, as it knows nothing else about it.
+          //
+          // A control that text is typed into (text, a number) behaves as
+          // the built-in editors of text and numbers do: typing on the
+          // cell replaces the value. Any other control (a slider, a menu,
+          // a date) keeps its value, as the built-in date does: a key
+          // typed on the cell opens the editor and goes on to the control,
+          // which does with it what it does.
+          //
+          // An editor that saves when its value changes (`commit` is
+          // "change") is saved on the control's `change` event, and stays
+          // open. As with the built-in menu, a change made by stepping
+          // with the keys is not yet a choice: Enter or leaving saves it.
+          startComponent(ed, key, current) {
+            const {root, input} = ed
+            this.showValue(ed)
+            input.addEventListener("input", () => this.showValue(ed))
+            if (ed.commit === "change") {
+              input.addEventListener("change", () => this.onComponentChange(ed))
+              input.addEventListener("pointerdown", () => { ed.lastKey = null })
+            }
+            // a click beside the control, in the editor, leaves the focus in it
+            root.addEventListener("mousedown", e => { if (e.target !== input && !input.contains(e.target)) e.preventDefault() })
+            input.focus()
+            if (!input.matches(TYPED)) return key === null
+            if (input.tagName === "TEXTAREA") {
+              input.addEventListener("input", () => this.fit(input))
+              this.fit(input)
+            }
+            if (key === null) { input.select(); return true }
+            // typing replaces the value; the character itself is typed by the
+            // browser. One a number does not take changes nothing.
+            input.value = ""
+            if (input.type === "number") {
+              setTimeout(() => {
+                if (this.editing === ed && input.value === "" && !input.validity.badInput) {
+                  input.value = current
+                  input.select()
+                }
+              }, 0)
+            }
+            return false
+          },
+
+          // What an editor shows of its control's value besides the control:
+          // the number beside a slider. An element of the editor that is
+          // marked `data-value-text` is kept at the control's value.
+          showValue(ed) {
+            for (const shown of ed.root.querySelectorAll("[data-value-text]")) {
+              const text = shown.childNodes.length === 1 && shown.firstChild.nodeType === 3 ? shown.firstChild : null
+              // the text node is changed where there is one: the observer
+              // of the rows has nothing to do with it
+              if (text) text.nodeValue = ed.input.value
+              else shown.textContent = ed.input.value
+            }
+          },
+
           // A textarea as high as its text, up to eight lines or so.
           fit(input) {
             input.style.height = "auto"
@@ -2496,8 +2610,8 @@ defmodule AshTable.Live.TableComponent do
                 break
               case "Enter":
                 // a new line in text
-                if (ed.type === "text" && e.shiftKey) return
-                if (ed.type === "enum") {
+                if (ed.input.tagName === "TEXTAREA" && e.shiftKey) return
+                if (ed.input.tagName === "SELECT") {
                   // an open menu takes Enter as the choice, which saves; a
                   // closed one has its value already
                   setTimeout(() => this.finish(ed, true, true), 0)
@@ -2516,6 +2630,60 @@ defmodule AshTable.Live.TableComponent do
           onEditorChange(ed) {
             if (SELECT_KEYS.includes(ed.lastKey)) return
             this.finish(ed, true, true)
+          },
+
+          // The editor of a component that saves when its value changes: a
+          // change made with the pointer, or by a key that is a choice, is
+          // saved at once. The editor stays open.
+          onComponentChange(ed) {
+            if (SELECT_KEYS.includes(ed.lastKey)) return
+            this.commit(ed)
+          },
+
+          // Saves what an open editor holds, after asking when the column
+          // has a question, and leaves the editor open.
+          commit(ed) {
+            if (this.editing !== ed || ed.asking) return
+            const {cell, input} = ed
+            const value = input.value
+            const old = ed.old
+            if (value === old) return
+            const send = () => {
+              // what "unchanged" means from here on, unless the save fails
+              ed.old = value
+              ed.pending = true
+              this.save(cell, value, old, () => cell.replaceChildren(...ed.saved), ed)
+            }
+            if (!ed.confirm) return send()
+            ed.asking = true
+            this.ask(ed.confirm).then(confirmed => {
+              ed.asking = false
+              if (this.editing !== ed) return
+              // Cancel: back in the editor, with what was chosen
+              if (confirmed) send()
+              input.focus()
+            })
+          },
+
+          // The server's answer to the save of an editor that is still
+          // open. A patch has left its cell alone, and has been kept aside
+          // (`beforeUpdate`). Saved: the editor stays as it is. Not saved:
+          // the editor is closed, and the cell says what the server says
+          // of it, as any cell whose save failed.
+          committed(ed, value, old, reply) {
+            const {cell} = ed
+            cell.removeAttribute("aria-busy")
+            ed.pending = false
+            if (reply && reply.ok) return
+            ed.old = old
+            const focused = ed.root.contains(document.activeElement)
+            this.detach(ed)
+            cell.replaceChildren(...ed.saved)
+            // the record is gone: there is no row to send, so the cell is marked here
+            if (reply && reply.error) this.mark(cell, value, old, reply.error, () => cell.replaceChildren(...ed.saved))
+            if (this.tree().activeId === cell.id) cell.tabIndex = 0
+            if (focused) cell.focus()
+            this.showMessage()
           },
 
           onEditorBlur(ed) {
@@ -2548,24 +2716,39 @@ defmodule AshTable.Live.TableComponent do
             }
           },
 
+          // The cell is no longer being edited: it says of itself what the
+          // server last said of it, and patches reach it again. What it
+          // shows is the caller's to put in.
+          detach(ed) {
+            const {cell} = ed
+            for (const [name, value] of ed.attributes || []) {
+              if (value === null) cell.removeAttribute(name)
+              else cell.setAttribute(name, value)
+            }
+            this.editing = null
+            cell.removeAttribute("phx-update")
+          },
+
           close(ed, save, refocus) {
             const {cell, input} = ed
             const value = input.value
             // The cell as the server last sent it: as it was when the
             // editor opened, or as a patch of its row has brought it since.
             const restore = () => cell.replaceChildren(...ed.saved)
-            for (const [name, value] of ed.attributes || []) {
-              if (value === null) cell.removeAttribute(name)
-              else cell.setAttribute(name, value)
-            }
+            this.detach(ed)
             const failed = cell.hasAttribute("aria-invalid")
-            this.editing = null
-            cell.removeAttribute("phx-update")
-            if (save && value !== ed.old) {
-              // shows what was typed until the server has answered
-              const option = ed.type === "enum" && input.selectedOptions[0]
+            // shows what was typed until the server has answered
+            const typed = () => {
+              const option = input.tagName === "SELECT" && input.selectedOptions[0]
               cell.replaceChildren(document.createTextNode(option ? option.textContent : value))
+            }
+            if (save && value !== ed.old) {
+              typed()
               this.save(cell, value, ed.old, restore)
+            } else if (ed.pending) {
+              // a save of this editor is on its way still: its answer puts
+              // the cell right, as the answer to any save does
+              typed()
             } else {
               // given up, or back at the value the record has: nothing is
               // saved, and a failed edit of the cell is given up with it
@@ -2602,11 +2785,16 @@ defmodule AshTable.Live.TableComponent do
           // cell. Where no patch came, the cell is put back as it was: the
           // server refused the event, or the record is gone, and then the
           // cell is marked here.
-          save(cell, value, old, restore) {
+          //
+          // `ed` is the editor the value was saved from, when that editor
+          // stays open: see `committed`.
+          save(cell, value, old, restore, ed) {
             cell.setAttribute("aria-busy", "true")
             const payload = {row: this.rowKey(cell), column: this.columnOf(cell), value}
             this.pushEventTo(this.el, "save", payload, reply => {
-              if (!cell.isConnected || !cell.hasAttribute("aria-busy")) return
+              if (!cell.isConnected) return
+              if (ed && this.editing === ed) return this.committed(ed, value, old, reply)
+              if (!cell.hasAttribute("aria-busy")) return
               cell.removeAttribute("aria-busy")
               if (reply && reply.error) this.mark(cell, value, old, reply.error, restore)
               else restore()
@@ -2937,6 +3125,8 @@ defmodule AshTable.Live.TableComponent do
         <span :if={@input.required? and @input.editor != :boolean} aria-hidden="true">*</span>
       </label>
 
+      <%!-- an attribute whose column has a component that edits: its editor --%>
+      {if @input.editor == :component, do: field_editor(assigns)}
       <textarea
         :if={@input.editor == :text}
         id={@id}
@@ -2983,6 +3173,30 @@ defmodule AshTable.Live.TableComponent do
       </div>
     </div>
     """
+  end
+
+  # The editor of a column's component as a field of the panel. It is given
+  # what the same editor is given in a cell, with the field's value, and on
+  # its control what a field of the panel has: the id its label points at,
+  # the name its value is sent under, and what says that it is required or
+  # has an error. The label, the mark and the messages around it stay the
+  # table's.
+  defp field_editor(%{input: %{component: component} = input} = assigns) do
+    component.module.editor(%{
+      __changed__: nil,
+      value: assigns.value,
+      label: input.label,
+      column: component.column,
+      place: :panel,
+      control: %{
+        "id" => assigns.id,
+        "name" => assigns.field.name,
+        "aria-required" => input.required? && "true",
+        "aria-invalid" => assigns.errors != [] && "true",
+        "aria-describedby" => assigns.described,
+        "data-control" => true
+      }
+    })
   end
 
   # The edge of an input or a menu of the table's own, through the variable
@@ -3316,6 +3530,18 @@ defmodule AshTable.Live.TableComponent do
   attr :column, :map, required: true
   attr :allow_nil?, :boolean, required: true
 
+  # A column whose component edits: the editor is the component's.
+  defp editor(%{column: %{editor: :component, component: component} = column}) do
+    component.module.editor(%{
+      __changed__: nil,
+      value: "",
+      label: column.label,
+      column: component.column,
+      place: :grid,
+      control: %{"aria-label" => column.label, "data-control" => true}
+    })
+  end
+
   # Text is edited in a textarea, so that text of several lines keeps its
   # lines. It is one line high until the text needs more.
   defp editor(%{column: %{editor: :text}} = assigns) do
@@ -3415,8 +3641,8 @@ defmodule AshTable.Live.TableComponent do
   #   * `aria-readonly` on a cell that cannot be edited, when the table
   #     offers editing at all;
   #   * `data-value` where the editor's value is not the text the cell shows:
-  #     a choice and a boolean, and a cell whose save failed, which shows
-  #     what was typed;
+  #     a choice and a boolean, a cell whose content is a component's, and a
+  #     cell whose save failed, which shows what was typed;
   #   * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
   #     naming the action's message, and `data-saved`, the value the record
   #     still has, which the hook compares with what is typed next.
@@ -3437,13 +3663,17 @@ defmodule AshTable.Live.TableComponent do
           {"data-saved", Format.input(column, value)}
         ]
 
-      {true, nil} when column.editor in [:boolean, :enum] ->
-        [{"data-value", Format.input(column, value)}]
-
       {true, nil} ->
-        []
+        if own_value?(column), do: [{"data-value", Format.input(column, value)}], else: []
     end
   end
+
+  # Whether what a column's editor holds is something else than the text its
+  # cells show: a choice, which shows its label; a boolean; and a column
+  # whose component shows the value in a way of its own.
+  defp own_value?(%{cell_type: cell_type}) when cell_type in [:boolean, :enum], do: true
+  defp own_value?(%{component: %{cell?: true}}), do: true
+  defp own_value?(_column), do: false
 
   # What the actions cell of a row says about an action that failed: as a
   # cell whose save failed, `aria-invalid` and `aria-describedby` naming the
@@ -3524,6 +3754,24 @@ defmodule AshTable.Live.TableComponent do
   # A field the actor may not see on this row looks empty and is announced.
   defp cell(_column, %Ash.ForbiddenField{}) do
     {:safe, [~s(<span class="sr-only">), escape(Text.t(:not_available)), "</span>"]}
+  end
+
+  # A record that has no value has an empty cell, whatever its column: what
+  # "empty" looks like is the table's to say, in one way for all columns.
+  defp cell(_column, nil), do: ""
+  defp cell(_column, %Ash.NotLoaded{}), do: ""
+
+  # A column whose component shows: the cell's content is the component's,
+  # which is given the value and what the table itself would show for it.
+  # Below the clauses above on purpose: a value that is hidden from the
+  # person never reaches a component, and neither does the lack of one.
+  defp cell(%{component: %{cell?: true} = component} = column, value) do
+    component.module.cell(%{
+      __changed__: nil,
+      value: value,
+      text: Format.format(column, value),
+      column: component.column
+    })
   end
 
   # A boolean is a check indicator with its accessible text beside it;

@@ -983,7 +983,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       id = nested("project", context.project.id, "tasks")
 
       assert column(html, id, "external_ref") == ["EXT-1", "EXT-2"]
-      assert column(html, id, "estimate_hours") == ["8", "5"]
+      assert column(html, id, "estimate_hours") == ["8 h", "5 h"]
       assert "title" in editors(html, id)
     end
 
@@ -1021,7 +1021,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       refute "External ref" in headers(html, id)
       refute html =~ "EXT-1"
       # the estimate of the member's own task, and "Not available" for the other
-      assert column(html, id, "estimate_hours") == ["8", "Not available"]
+      assert column(html, id, "estimate_hours") == ["8 h", "Not available"]
       assert attribute(html, cell(id, other.id, "estimate_hours"), "aria-readonly") == ["true"]
       assert attribute(html, cell(id, own.id, "estimate_hours"), "aria-readonly") == []
       refute html =~ ">5<"

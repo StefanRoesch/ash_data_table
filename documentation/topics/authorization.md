@@ -155,6 +155,11 @@ as an admin area that the router already restricts.
 
 "No records" is only ever shown for a read that succeeded and found nothing.
 
+None of this depends on how a column is shown. A column with a
+[component](custom-components.md), such as "Estimate hours" on `/tasks`, has
+the same hidden cells: the component is not called for a value the person
+may not see, and it is never given the record.
+
 The policies behind the first two rows differ in one line. The tasks' read
 policy filters:
 

@@ -159,7 +159,7 @@ test.describe("the member, whose rights depend on the record", () => {
     const own = tasks.cell(SEED.task.membersOwn, "estimate_hours")
     const hidden = tasks.cell(SEED.task.first, "estimate_hours")
 
-    await expect(own).toHaveText("11.25")
+    await expect(own).toHaveText("11.25 h")
     await expect(own).not.toHaveAttribute("aria-readonly")
 
     await expect(hidden, "read out, and nothing to see").toHaveText("Not available")
@@ -185,7 +185,8 @@ test.describe("the member, whose rights depend on the record", () => {
     await tasks.reads(() => tasks.filterValue("estimate_hours").press("Enter"))
     const found = await tasks.columnTexts("estimate_hours")
     expect(found.length).toBeGreaterThan(0)
-    for (const estimate of found) expect(Number(estimate)).toBeGreaterThan(10)
+    // "12.5 h": the number, and the unit of the column's component
+    for (const estimate of found) expect(Number.parseFloat(estimate)).toBeGreaterThan(10)
 
     // a hidden estimate looks empty to the member, whatever it holds
     await tasks.reads(() => tasks.filterOperator("estimate_hours").selectOption("is_empty"))
@@ -214,12 +215,12 @@ test.describe("the member, whose rights depend on the record", () => {
       await tasks.press("Enter")
       await tasks.retype("12")
       await tasks.saves(estimate, () => tasks.press("Enter"))
-      await expect(estimate).toHaveText("12")
+      await expect(estimate).toHaveText("12 h")
 
       await page.reload()
       await tasks.ready()
       await expect(title).toHaveText("Changed by the member")
-      await expect(estimate).toHaveText("12")
+      await expect(estimate).toHaveText("12 h")
     })
 
     test("someone else's task looks editable and refuses on the cell when it is saved", async ({

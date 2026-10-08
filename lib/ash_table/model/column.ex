@@ -36,8 +36,15 @@ defmodule AshTable.Model.Column do
   #     the column's attribute as its only input: the column's own, else the
   #     table's. `nil` for a column that is not editable.
   #   * `editor` is what a cell of this column is edited with: `:text`,
-  #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`. `nil` for a
+  #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`, or
+  #     `:component` for a column whose component has an editor. `nil` for a
   #     column that is not editable.
+  #   * `component` is the column's component, nil when the block names
+  #     none: its `module`, which of the two parts it has (`cell?`,
+  #     `editor?`), when its editor saves (`commit`: `:enter` or `:change`),
+  #     and `column`, the `AshTable.Component.Column` it is told about the
+  #     column, which is all it is told. A reference column has none. See
+  #     `AshTable.Resource.Presenting`.
   #   * `confirm` is the question asked before an edit of this column is saved,
   #     or `nil` when none is.
   #   * `apart?` is `true` for an aggregate that is read in a step of its
@@ -60,6 +67,7 @@ defmodule AshTable.Model.Column do
     :update_action,
     :editor,
     :confirm,
+    :component,
     :reference,
     editable?: false,
     apart?: false,
@@ -77,7 +85,8 @@ defmodule AshTable.Model.Column do
           operators: [AshTable.Model.Operator.t()],
           editable?: boolean,
           update_action: atom | nil,
-          editor: :text | :number | :boolean | :date | :datetime | :enum | nil,
+          editor: :text | :number | :boolean | :date | :datetime | :enum | :component | nil,
+          component: AshTable.Resource.Presenting.component() | nil,
           confirm: String.t() | nil,
           reference:
             %{

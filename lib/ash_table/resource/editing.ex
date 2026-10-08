@@ -142,6 +142,21 @@ defmodule AshTable.Resource.Editing do
     for %{allow_nil?: false, default: nil, name: name} <- action.arguments, do: name
   end
 
+  @doc """
+  Why a column can never be edited, for a diagnostic: by its obstacle, or
+  with nil, when nothing but the lack of an action that saves it stands in
+  the way.
+  """
+  @spec never_edited(obstacle | nil) :: String.t()
+  def never_edited(:not_writable), do: "Its attribute is declared `writable?: false`."
+
+  def never_edited({:no_editor, type}),
+    do: "It has the type `#{inspect(type)}`, which a table has no editor for."
+
+  def never_edited(_other),
+    do:
+      "A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
+
   @doc "What is wrong with a named update action, for a diagnostic."
   @spec message(reason) :: String.t()
   def message({:not_found, name}), do: "The resource has no action named `#{name}`."

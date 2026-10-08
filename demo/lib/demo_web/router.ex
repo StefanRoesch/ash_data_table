@@ -48,7 +48,8 @@ defmodule DemoWeb.Router do
   # without the domain extension (`plain_tables.ex`), one whose rows expand
   # into tables that are refused or fail (`nested_tables.ex`), one with a
   # reference cell whose label is not always shown (`reference_tables.ex`),
-  # two with aggregate columns under field policies (`ledger_tables.ex`);
+  # two with aggregate columns under field policies (`ledger_tables.ex`),
+  # one whose columns have components (`component_tables.ex`);
   # two of them once more
   # in a layout that shows the assigns it is given, and a LiveView whose
   # tables keep their state in its URL.
@@ -71,6 +72,7 @@ defmodule DemoWeb.Router do
         ash_table "/jobs", Demo.Support.Ledger.Job, layout: false
         ash_table "/tags", Demo.Support.Ledger.Tag, layout: false
         ash_table "/errands", Demo.Support.Ledger.Errand, layout: false
+        ash_table "/gauges", Demo.Support.Styled.Gauge, layout: false
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/url", DemoWeb.Support.UrlLive
         live "/switch", DemoWeb.Support.SwitchLive

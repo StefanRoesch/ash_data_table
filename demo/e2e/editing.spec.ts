@@ -193,7 +193,7 @@ test.describe("saving", () => {
     await tasks.retype("3.25")
     await tasks.saves(estimate, () => elsewhere.click())
 
-    await expect(estimate).toHaveText("3.25")
+    await expect(estimate).toHaveText("3.25 h")
     await expect(elsewhere).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
   })
@@ -205,7 +205,7 @@ test.describe("saving", () => {
     await tasks.retype("5")
 
     await tasks.saves(estimate, () => tasks.press("Tab"))
-    await expect(estimate).toHaveText("5")
+    await expect(estimate).toHaveText("5 h")
     expect(await tasks.hasFocus(), "Tab left the grid").toBe(false)
     await expect(tasks.pageButton(1)).toBeFocused()
 
@@ -215,7 +215,7 @@ test.describe("saving", () => {
     await tasks.press("Enter")
     await tasks.retype("6.5")
     await tasks.saves(estimate, () => tasks.press("Shift+Tab"))
-    await expect(estimate).toHaveText("6.5")
+    await expect(estimate).toHaveText("6.5 h")
     expect(await tasks.hasFocus(), "Shift+Tab left the grid, backwards").toBe(false)
     await expect(tasks.pageButton(1)).not.toBeFocused()
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-estimate_hours`])
@@ -224,12 +224,14 @@ test.describe("saving", () => {
     await expect(estimate).toBeFocused()
   })
 
+  // "Estimate hours" is edited with the demo's own component, whose control
+  // is a number input: it behaves as the table's own number editor does.
   test("a number: a digit starts with that digit, a letter keeps the number, empty saves nothing as the value", async ({
     tasks,
   }) => {
     const estimate = tasks.cell(FIRST, "estimate_hours")
     const editor = tasks.editor(estimate)
-    await expect(estimate).toHaveText("39")
+    await expect(estimate).toHaveText("39 h")
 
     await estimate.focus()
     await tasks.press("7")
@@ -241,7 +243,7 @@ test.describe("saving", () => {
     await expect(editor).toBeFocused()
     await expect(editor, "a number input takes no letter").toHaveValue("39")
     await tasks.press("Escape")
-    await expect(estimate).toHaveText("39")
+    await expect(estimate).toHaveText("39 h")
 
     // emptied: the action decides what that becomes, here nil
     await tasks.press("Enter")
@@ -249,6 +251,32 @@ test.describe("saving", () => {
     await tasks.saves(estimate, () => tasks.press("Enter"))
     await expect(estimate).toHaveText("")
     await expect(estimate).not.toHaveAttribute("aria-invalid")
+  })
+
+  test("the number editor of the table itself, on /specimens: a digit starts with that digit, a letter keeps the number", async ({
+    page,
+  }) => {
+    // on /tasks both numbers have a component; this one has the editor of its type
+    const specimens = new Table(page, "specimen", "/specimens")
+    await specimens.open()
+    const integer = specimens.cell(SEED.specimens.first, "an_integer")
+    const editor = specimens.editor(integer)
+    const before = (await integer.textContent())!
+    expect(before).toMatch(/^-?\d+$/)
+
+    await integer.focus()
+    await specimens.press("7")
+    await expect(editor).toHaveValue("7")
+    await expect(editor).toHaveAttribute("type", "number")
+    await specimens.press("Escape")
+    await expect(integer).toHaveText(before)
+
+    await specimens.press("a")
+    await expect(editor).toBeFocused()
+    await expect(editor, "a number input takes no letter").toHaveValue(before)
+    await specimens.press("Escape")
+    await expect(integer).toHaveText(before)
+    await expect(integer).toBeFocused()
   })
 
   test("a date: typing keeps the date; a new date saves, and the row's calculation follows", async ({
@@ -349,12 +377,12 @@ test.describe("saving", () => {
     const progress = tasks.cell(SECOND, "progress")
     await expect(tasks.cell(SECOND, "status")).toHaveText("To do")
 
+    // the column's editor is a slider (components.spec.ts): End is its maximum
     await progress.focus()
-    await tasks.press("Enter")
-    await tasks.retype("40")
+    await tasks.press("Enter", "End")
     await tasks.saves(progress, () => tasks.press("Enter"))
 
-    await expect(progress).toHaveText("40")
+    await expect(progress).toHaveText("100")
     await expect(tasks.cell(SECOND, "status"), "the same row, from the action's result").toHaveText(
       "In progress",
     )
@@ -767,24 +795,25 @@ test.describe("a save that fails", () => {
     await tasks.retype("9")
     await tasks.saves(estimate, () => tasks.press("Enter"))
 
-    await expect(estimate).toHaveText("9")
+    await expect(estimate).toHaveText("9 h")
     await expect(title).toHaveAttribute("aria-invalid", "true")
     await expect(title).toContainText("ab")
     await expect(tasks.failure(title)).toHaveText(TOO_SHORT)
   })
 
   test("a number out of the attribute's range fails with the action's message", async ({ tasks }) => {
-    const progress = tasks.cell(THIRD, "progress")
-    await progress.focus()
+    // the estimate has `min: 0`
+    const estimate = tasks.cell(THIRD, "estimate_hours")
+    await estimate.focus()
     await tasks.press("Enter")
-    await tasks.retype("150")
-    await tasks.saves(progress, () => tasks.press("Enter"))
+    await tasks.retype("-3")
+    await tasks.saves(estimate, () => tasks.press("Enter"))
 
-    await expect(progress).toHaveAttribute("aria-invalid", "true")
-    await expect(progress).toContainText("150")
-    await expect(tasks.failure(progress)).toHaveText("must be less than or equal to 100")
+    await expect(estimate).toHaveAttribute("aria-invalid", "true")
+    await expect(estimate).toContainText("-3")
+    await expect(tasks.failure(estimate)).toHaveText("must be greater than or equal to 0")
     await expect(tasks.status).toHaveText(
-      "Progress was not saved: must be less than or equal to 100",
+      "Estimate hours was not saved: must be greater than or equal to 0",
     )
   })
 
@@ -847,7 +876,7 @@ test.describe("a save that returns while the person is typing in another cell of
     await withLatency(page, LATENCY)
     const title = tasks.cell(THIRD, "title")
     const estimate = tasks.cell(THIRD, "estimate_hours")
-    await expect(estimate).toHaveText("6.25")
+    await expect(estimate).toHaveText("6.25 h")
 
     await title.focus()
     await tasks.press("Enter")
@@ -868,7 +897,7 @@ test.describe("a save that returns while the person is typing in another cell of
 
     // Escape still restores what this cell held
     await tasks.press("Escape")
-    await expect(estimate).toHaveText("6.25")
+    await expect(estimate).toHaveText("6.25 h")
     await expect(estimate).toBeFocused()
   })
 
@@ -898,7 +927,7 @@ test.describe("a save that returns while the person is typing in another cell of
 
     // the cell typed in meanwhile saves, and the failed one stays failed
     await tasks.saves(estimate, () => tasks.press("Enter"))
-    await expect(estimate).toHaveText("12")
+    await expect(estimate).toHaveText("12 h")
     await expect(title).toHaveAttribute("aria-invalid", "true")
   })
 
@@ -912,10 +941,9 @@ test.describe("a save that returns while the person is typing in another cell of
     const progress = tasks.cell(SECOND, "progress")
     const status = tasks.cell(SECOND, "status")
 
+    // the slider's maximum, saved with Enter
     await progress.focus()
-    await tasks.press("Enter")
-    await tasks.retype("40")
-    await tasks.press("Enter")
+    await tasks.press("Enter", "End", "Enter")
 
     await status.focus()
     await tasks.press("Enter")

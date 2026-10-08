@@ -91,3 +91,40 @@ export async function contrastOf(locator: Locator, paint: Paint, pseudo?: Pseudo
   const { colour, behind } = await shown(locator, paint, pseudo)
   return contrast(colour, behind)
 }
+
+/**
+ * The colours an element has on the screen at points of its box, each
+ * given in pixels from the box's left and top: read from a picture of the
+ * page, so they are what was painted, whatever painted it. For what no
+ * computed style tells: the filled part of a progress bar or of a slider,
+ * which the browser draws inside the element.
+ */
+export async function painted(locator: Locator, points: [number, number][]): Promise<RGB[]> {
+  const page = locator.page()
+  await locator.scrollIntoViewIfNeeded()
+  const box = (await locator.boundingBox())!
+  const picture = await page.screenshot({ clip: box, animations: "disabled" })
+
+  return page.evaluate(
+    async ([picture, points, width]) => {
+      const image = new Image()
+      image.src = `data:image/png;base64,${picture}`
+      await image.decode()
+      const canvas = document.createElement("canvas")
+      canvas.width = image.width
+      canvas.height = image.height
+      const context = canvas.getContext("2d")!
+      context.drawImage(image, 0, 0)
+      // a picture has more pixels than the box where the screen has
+      const scale = image.width / width
+      return points.map(
+        ([x, y]) =>
+          Array.from(
+            context.getImageData(Math.round(x * scale), Math.round(y * scale), 1, 1).data.slice(0, 3),
+          ) as [number, number, number],
+      )
+    },
+    [picture.toString("base64"), points, box.width] as const,
+  )
+}
+

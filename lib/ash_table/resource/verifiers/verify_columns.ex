@@ -103,7 +103,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
             module,
             :confirm,
             "`#{column.name}` can never be edited, so `confirm` has no effect. " <>
-              never_edited(Editing.obstacle(module, field))
+              Editing.never_edited(Editing.obstacle(module, field))
           )
         ]
     end
@@ -182,16 +182,6 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp read_only(column, {:no_editor, type}) do
     "`#{column.name}` has the type `#{inspect(type)}`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums. Remove `update_action` from this column."
   end
-
-  # Why `confirm` has nothing to ask about.
-  defp never_edited(:not_writable), do: "Its attribute is declared `writable?: false`."
-
-  defp never_edited({:no_editor, type}),
-    do: "It has the type `#{inspect(type)}`, which a table has no editor for."
-
-  defp never_edited(_other),
-    do:
-      "A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
 
   defp accept_errors(column, field, action, module) do
     if Editing.accepts?(action, field) do

@@ -111,6 +111,8 @@ cell's type:
 | date, datetime | Opens the editor with its value. | Opens the editor and keeps the value; a digit goes into the input's first part. |
 | enum | Opens the menu at the cell's value. | Opens the menu at the first value that starts with the character. Nothing is saved by that alone. |
 | boolean | Toggles the value and saves. | Nothing. |
+| The editor of a column's component, with a control that is typed into (text, a number) | Opens the editor with its value selected. | As text and number above. |
+| The editor of a column's component, with any other control (a slider, a menu, a date) | Opens the editor with its value. | Opens the editor and keeps the value; the key goes on to the control, which does with it what it does. A slider takes no characters. |
 
 While a cell is being edited:
 
@@ -120,7 +122,14 @@ While a cell is being edited:
 | Shift+Enter, in text | A new line. |
 | Escape | Gives the edit up. In an open menu, Escape closes the menu first. |
 | Tab, Shift+Tab | Save and leave the grid, forwards or backwards. Tab does not move to the next cell. |
-| Arrow keys, Home, End | Belong to the editor. |
+| Arrow keys, Home, End, Page Up, Page Down | Belong to the editor: in a slider they move it. |
+
+An editor of a component that saves when its value changes, such as the
+slider of "Progress" on `/tasks`, saves a change made with the pointer at
+once and stays open. A step made with these keys is not yet a choice, as in
+a menu: Enter or leaving the cell saves it, and Escape gives it up. Escape
+never takes back what was saved. See
+[Custom components](custom-components.md#the-keyboard).
 
 What saving does, and what a failed save looks like, is in
 [Inline editing](inline-editing.md). The dialog of a column with a question
@@ -313,6 +322,7 @@ follows the theme, light or dark.
 | A table that is reading | Its rows at 70% opacity. The header and the filters are not dimmed: they can be used meanwhile, and their text is muted already. |
 | An input or a menu | An edge in the text colour at half strength, on the filters and on the fields of the action panel. daisyUI's own edge, at a fifth, does not show where an empty input is. |
 | A rejected filter value, and a field of the panel with an error | The edge in the colour of a failed cell's ring, and the message under the control, in the text colour. The message is what says so without a colour. |
+| A badge, a progress bar and a slider (the three components that are shipped) | The badge has an edge in the text colour at half strength and its label in the text colour. The bar is filled in the text colour, on a track at a fifth of it, with the number beside it as text. The slider is filled in the text colour, with a track at half strength and the number beside it. None of them has a colour that means something. |
 
 In **forced colours** (the contrast themes of Windows) the browser paints
 with the system's colours and drops every fill and every shadow. Outlines,
@@ -322,7 +332,9 @@ things are different there, and only there: the dialog and the action panel
 have a border, since their shadow is gone; the current page is underlined,
 since its fill is gone; and the triangle of an expander is told to keep its
 two transparent sides, without which it would be a square that looks the
-same open and closed.
+same open and closed. A progress bar and a slider keep their own drawing
+there, in the system's text colour: their filled parts are a fill and a
+shadow, which forced colours would take away.
 
 ### What was measured
 
@@ -343,6 +355,9 @@ measure the same and hold each line at what WCAG 2 asks.
 | The text of the header row and of the filters' controls, which daisyUI mutes (1.4.3) | 4.5:1 | 4.6:1 | 5.6:1 |
 | The edge of an input or a menu (1.4.11) | 3:1 | 3.3:1 | 4.4:1 |
 | The edge and the focus ring of an input that is `aria-invalid` (1.4.11) | 3:1 | 7.1:1 | 4.6:1 |
+| The label of a badge (1.4.3), and its edge | 4.5:1; the edge is not asked for | 16.7:1; 3.3:1 | 12.6:1; 4.4:1 |
+| The filled part of a progress bar against its track (1.4.11) | 3:1 | 10.9:1 | 6.8:1 |
+| The track of a slider, its filled part, and its thumb, each against the page (1.4.11) | 3:1 | 3.3:1; 16.7:1; 16.7:1 | 4.4:1; 12.6:1; 12.6:1 |
 
 What these numbers do not cover:
 
@@ -357,6 +372,14 @@ What these numbers do not cover:
   `primary`, and 4.1:1 for `error`, which is less than the 4.5:1 that text
   needs. That is the theme's to put right, for every button of the
   application; the table does not recolour them.
+- **The filled part of a slider against the rest of its track** is 5.0:1 in
+  the light theme and 2.9:1 in the dark one. Where the slider stands is
+  shown by its thumb, which stands out of the track, and by the number
+  beside it; the two parts of the track are not what says it.
+- **The track of a progress bar against the page** is 1.5:1 and 1.9:1. The
+  bar's value is its number.
+- **A component of the host's own.** What it draws is the host's to
+  measure. See [Custom components](custom-components.md#what-a-component-owes-the-people-who-use-it).
 - **Disabled buttons.** Previous and Next, when there is no such page, are
   1.5:1 and 1.75:1. WCAG leaves disabled controls out.
 - **Focus Appearance (2.4.13, level AAA).** A solid ring of 2px inside the

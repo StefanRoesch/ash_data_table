@@ -14,6 +14,7 @@ defmodule AshTable.Resource.Column do
     :filterable?,
     :update_action,
     :confirm,
+    :component,
     :exposes_protected_field?,
     :__identifier__,
     :__spark_metadata__
@@ -26,11 +27,12 @@ defmodule AshTable.Resource.Column do
           filterable?: boolean | nil,
           update_action: atom | false | nil,
           confirm: String.t() | nil,
+          component: module | nil,
           exposes_protected_field?: boolean | nil
         }
 
-  # Later slices add their options here (`component`); each needs a struct
-  # field above and a key below.
+  # A later slice adds its options here; each needs a struct field above and
+  # a key below.
   @schema [
     name: [
       type: :atom,
@@ -60,6 +62,11 @@ defmodule AshTable.Resource.Column do
     confirm: [
       type: :string,
       doc: "A question asked before an inline edit of this column is saved."
+    ],
+    component: [
+      type: :module,
+      doc:
+        "A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of the three that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship."
     ],
     exposes_protected_field?: [
       type: :boolean,

@@ -136,7 +136,7 @@ rejected by Spark while the module is being compiled. That stops any build:
 | Mistake | What the compiler says |
 | --- | --- |
 | A value an option does not take, such as `on_forbidden :hide` | `invalid value for :on_forbidden option: expected one of [:not_found, :message], got: :hide` |
-| An option that does not exist, such as `component` on a column | `undefined function component/1 (there is no such import)` |
+| An option that does not exist, such as `width` on a column | `undefined function width/1 (there is no such import)` |
 | An option of the wrong type, such as `label :title` | An "invalid value" error of the same kind. |
 
 ## The read action
@@ -217,6 +217,58 @@ the relationship and `DESTINATION` its destination resource.
 | \`NAME\` can never be edited, so \`confirm\` has no effect. It shows the label of a related record. | `confirm` on a reference cell. | Remove the option. |
 
 A private relationship gets the "is not public" message of a private field.
+
+## A column's component
+
+The path is `table -> column -> NAME -> component`. `MODULE` is the module
+the option names. See [Custom components](custom-components.md).
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| The component \`MODULE\` cannot be found: there is no module of that name. | `component` names a module that does not exist: a typo, an alias that is not in scope in the resource, or a module that was renamed. | Correct the name. Write the module's whole name, or `alias` it in the resource. |
+| \`MODULE\` is not a component: it does not implement the behaviour \`AshTable.Component\`. Add \`use AshTable.Component\` to it and define \`cell/1\`, \`editor/1\` or both. | The module exists and is something else: a LiveComponent, a module of function components without the behaviour. | Add `use AshTable.Component` to it. |
+| The component \`MODULE\` defines neither \`cell/1\` nor \`editor/1\`, so it changes nothing. | A module that declares the behaviour by hand (`@behaviour AshTable.Component`) and has neither part. With `use AshTable.Component` this is an error of that module's own compile: see below. | Define one of the two. |
+| The component \`MODULE\` only edits (it has no \`cell/1\`), and \`NAME\` can never be edited, so the component is never used. A column is edited through an \`update_action\`, its own or the table's, that accepts its attribute. | A component with `editor/1` alone, such as `AshTable.Components.Slider`, on a column nobody can edit. The last sentence says why, as for `confirm`: no action, a type without an editor, or "Its attribute is declared \`writable?: false\`." | Make the column editable, or remove `component`. |
+| \`NAME\` shows the label of a related record. A reference cell has no component: remove \`component\` from this column. | `component` on a column that names a relationship. | Remove the option. |
+| The component \`AshTable.Components.Slider\` cannot be used on \`NAME\`: a slider needs a number with a minimum and a maximum. Declare both on the attribute: \`constraints min: 0, max: 100\`. | The slider on a number whose constraints lack `min`, `max` or both. `AshTable.Components.Progress` says the same of "a progress bar". | Add the constraints to the attribute. |
+| The component \`AshTable.Components.Slider\` cannot be used on \`NAME\`: a slider needs a number with a minimum and a maximum, and this field is shown as text. | The slider, or the progress bar, on a field that is no number. The end of the message says what the field is shown as: text, a boolean, a date, a date and time, a choice or read-only text. | Use it on a number, or remove `component`. |
+| The component \`AshTable.Components.Badge\` cannot be used on \`NAME\`: a badge shows the label of a choice, and this field is shown as a number. It needs an \`Ash.Type.Enum\`, or an \`:atom\` with \`constraints one_of: [...]\`. | The badge on a field that is no enum. | Use it on an enum, or remove `component`. |
+
+The last three are what the three shipped components say of themselves. A
+component of your own says what it needs in the same place, with the same
+first half of the message: "The component \`MODULE\` cannot be used on
+\`NAME\`: " and then what its `verify/1` returned.
+
+A component with both parts on a column that can never be edited is not
+reported: its `cell/1` is used there, and the same module may edit another
+column.
+
+### The component's own compile
+
+`use AshTable.Component` checks the module that uses it, and these are
+errors of that module, which stop the build:
+
+| Message | Cause |
+| --- | --- |
+| MODULE uses AshTable.Component and defines neither \`cell/1\` nor \`editor/1\`. A component shows a cell's value (\`cell/1\`), edits it (\`editor/1\`), or both. | The module has neither function. |
+| MODULE: \`commit\` says when the editor saves, and is \`:enter\` (on Enter or on leaving the cell, the default) or \`:change\` (when the value changes). Got: :blur | `use AshTable.Component, commit:` with another value. |
+| MODULE: \`commit: :change\` says when the editor saves, and the module defines no \`editor/1\`. | `commit: :change` on a component that only shows. |
+
+### When a component changes after the resource was compiled
+
+A resource does not depend on the component it names: the option is read
+without a compile-time dependency from the data layer to the web layer, and
+the component is looked at once the whole application is compiled. So a
+change to the component alone does not compile the resource again, and the
+findings above are not looked for again either. This is what happens when a
+component is renamed and the resource still names the old one (Elixir 1.19,
+Spark 2.7):
+
+| Run | Result |
+| --- | --- |
+| `mix compile`, after the component's file changed | Nothing is printed: the resource is not compiled again. |
+| Opening the table | It refuses to render: "cannot build the table of … the \`component\` of its column \`NAME\` cannot be used. The component \`MODULE\` cannot be found: there is no module of that name." |
+| `mix compile --force`, or a build from clean | The finding is printed, and fails the build with `--warnings-as-errors`. |
 
 ## `label_field`
 
@@ -389,6 +441,9 @@ any LiveView does that raises in its first render.
 | A warning about what a column shows | The table renders and shows the column: the first kind as Ash returns it, the second read apart and without its sort and filter. |
 | A column's own `update_action` that exists but does not accept the attribute, or needs an argument | The column is read-only. |
 | A column's own `update_action` on a calculation, an aggregate, a type without an editor or an attribute that is not writable | The column is read-only. |
+| A `component` that cannot be found, is not a component, has neither part, or says that it cannot serve the column | The table refuses to render: "the \`component\` of its column \`NAME\` cannot be used." |
+| A `component` that only edits, on a column that can never be edited | The table renders, and the component is not used. |
+| A `component` on a column that names a relationship | The table renders, with the reference cell as it is without the option. |
 | `sortable? true`, `filterable? true` or `confirm` without effect | Nothing. The option has no effect, as the message says. |
 
 The line between the two groups is the one the table-level action draws
@@ -442,6 +497,7 @@ so it has no table."
 
 ## Not in the first version
 
-The option `component`, for a column's own cell component, is planned and
-not built; using it today is the "undefined function" error above. See the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+Nothing checks what a component renders: that its editor holds a control
+with `{@control}` on it, or that its cell stays one line high. Those are in
+[Custom components](custom-components.md). The later slices are listed in
+the [specification](https://github.com/StefanRoesch/ash_table/issues/21).

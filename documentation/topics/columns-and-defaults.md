@@ -85,7 +85,6 @@ the declared order. The table at `/tasks` is declared this way
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
-column :estimate_hours
 # a boolean
 column :billable?
 # a date and a datetime, both of which can be empty
@@ -395,6 +394,12 @@ localized in the first version.
 
 `nil` is an empty cell for every type.
 
+A column can show its values another way: `component` names a module that
+renders the cell. On `/tasks`, "State" and "Priority" are badges, "Progress"
+is a bar with its number, and "Estimate hours" has its unit. The cell type
+stays what the table above says, and with it the filter and the sorting.
+See [Custom components](custom-components.md).
+
 A NewType counts as the type it is made of. The demo's
 `Demo.KitchenSink.Percentage`, a NewType of `:integer`, is a number column.
 
@@ -453,7 +458,9 @@ No login is needed for that page.
 ## Not in the first version
 
 No reference cell for a has-one, no label that is a calculation, no choosing
-another related record in a reference cell, no custom cell components, no dedicated cells for arrays, maps and embedded resources, no
-locale-aware formatting, no column widths, and one table per resource. The
+another related record in a reference cell, no dedicated cells for arrays,
+maps and embedded resources, no locale-aware formatting, no column widths,
+and one table per resource. A column's own look and editor are built: see
+[Custom components](custom-components.md). The
 later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

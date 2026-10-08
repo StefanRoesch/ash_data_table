@@ -444,7 +444,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
 
       assert column(html, "task", "title") == ["Not mine", "Mine"]
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1", "EXT-SECRET-1"]
-      assert column(html, "task", "estimate_hours") == ["9.25", "7.5"]
+      assert column(html, "task", "estimate_hours") == ["9.25 h", "7.5 h"]
     end
 
     # What a person can never see has no column for them: see
@@ -462,7 +462,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       refute html =~ "9.25"
-      assert column(html, "task", "estimate_hours") == ["Not available", "7.5"]
+      assert column(html, "task", "estimate_hours") == ["Not available", "7.5 h"]
     end
 
     test "the placeholder for a hidden field is text for screen readers only",

@@ -443,7 +443,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
              ]
     end
 
-    test "labels the field of an attribute as its column, with the editor of its type",
+    test "labels the field of an attribute as its column, with the editor its column has",
          %{view: view, task: task} do
       assert panel(act(view, task.id, "set_progress")) == %{
                heading: "Set progress: Write the report",
@@ -451,7 +451,8 @@ defmodule DemoWeb.Tables.TaskActionsTest do
                  %{
                    name: "progress",
                    label: "Progress",
-                   control: "number",
+                   # the slider of the column's component
+                   control: "range",
                    value: "40",
                    required?: true,
                    errors: []

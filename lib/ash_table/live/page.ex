@@ -32,6 +32,8 @@ defmodule AshTable.Live.Page do
       that sorts or filters by it is ignored.
     * **A field hidden on some records only** keeps its column. Its hidden
       cells are empty, announced as "Not available", and cannot be edited.
+      A column's component (`AshTable.Component`) is not called for such a
+      cell, and is never given the record.
     * **An update action the person can never run** leaves its columns
       read-only for them; if that is every one, the table offers no editing.
       An action that depends on the record leaves cells looking editable, and

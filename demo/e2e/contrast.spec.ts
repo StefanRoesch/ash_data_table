@@ -1,5 +1,5 @@
 import type { Locator, Page } from "@playwright/test"
-import { contrastOf, type Pseudo } from "./support/contrast"
+import { contrast, contrastOf, painted, type Pseudo, type RGB } from "./support/contrast"
 import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import type { Table } from "./support/table"
@@ -77,6 +77,56 @@ async function failTitle(page: Page, tasks: Table): Promise<Locator> {
   await expect(title).toHaveAttribute("aria-invalid", "true")
   await page.mouse.move(5, 5)
   return title
+}
+
+/** The key of the first task of the page whose progress is well inside the bar: neither end is near. */
+async function taskUnderWay(tasks: Table): Promise<string> {
+  const values = await tasks.columnTexts("progress")
+  const position = values.findIndex((value) => Number(value) >= 30 && Number(value) <= 70)
+  expect(position, "the first page has a task whose progress is between 30 and 70").toBeGreaterThanOrEqual(0)
+  return tasks.rowKey(position + 1)
+}
+
+/**
+ * What a progress bar is painted with: its filled part, the rest of its
+ * track, and the page beside it. Of a bar whose value is between 30 and 70
+ * of 100.
+ */
+async function barColours(cell: Locator): Promise<{ filled: RGB; track: RGB; page: RGB }> {
+  const bar = cell.locator("progress")
+  const box = (await bar.boundingBox())!
+  const [filled, track] = await painted(bar, [
+    [box.width * 0.15, box.height / 2],
+    [box.width * 0.85, box.height / 2],
+  ])
+  // the cell's padding, above the bar
+  const [page] = await painted(cell, [[4, 4]])
+  return { filled, track, page }
+}
+
+/**
+ * What a slider is painted with: the filled part of its track, the part
+ * that is not filled, the ring of its thumb where it stands out of the
+ * track, and the page beside it. Of a slider whose value is between 30 and
+ * 70 of 100.
+ */
+async function sliderColours(
+  slider: Locator,
+): Promise<{ filled: RGB; unfilled: RGB; thumb: RGB; page: RGB }> {
+  const box = (await slider.boundingBox())!
+  const share = Number(await slider.inputValue()) / 100
+  // the thumb is as high as the slider, and its centre travels between the
+  // two ends less half a thumb
+  const thumb = box.height
+  const centre = thumb / 2 + share * (box.width - thumb)
+  const [filled, unfilled, ring, page] = await painted(slider, [
+    [box.width * 0.08, box.height / 2],
+    [box.width * 0.93, box.height / 2],
+    // above the track, where only the thumb is
+    [centre, 1.5],
+    [box.width * 0.93, 1.5],
+  ])
+  return { filled, unfilled, thumb: ring, page }
 }
 
 /** Where a cell and its text are: what a mark must not change. */
@@ -353,13 +403,17 @@ for (const theme of ["light", "dark"] as const) {
       test("of every field of the action panel: text, choice, number, date and checkbox", async ({ tasks }) => {
         await tasks.create.click()
         await expect(tasks.panelForm).toBeVisible()
-        const fields = tasks.panel.locator("input:not([type=hidden]), select, textarea")
-        const types = await fields.evaluateAll((fields) =>
+        const all = tasks.panel.locator("input:not([type=hidden]), select, textarea")
+        const types = await all.evaluateAll((fields) =>
           fields.map((field) => (field as HTMLInputElement).type),
         )
         expect([...new Set(types)].sort()).toEqual(
-          ["checkbox", "date", "number", "select-one", "text", "textarea"].sort(),
+          ["checkbox", "date", "number", "range", "select-one", "text", "textarea"].sort(),
         )
+        // The number is the input of the demo's own component ("Estimate
+        // hours"), which has to see to its edge itself. The slider has no
+        // edge: its track is measured with the components, below.
+        const fields = tasks.panel.locator("input:not([type=hidden], [type=range]), select, textarea")
         for (const field of await fields.all()) {
           expect(await contrastOf(field, "border"), await field.getAttribute("id") ?? "").toBeGreaterThanOrEqual(MARK)
         }
@@ -381,6 +435,85 @@ for (const theme of ["light", "dark"] as const) {
 
         await tasks.field("assignee_id").focus()
         expect(await contrastOf(reason, "border")).toBeGreaterThanOrEqual(MARK)
+      })
+    })
+    test.describe("the components of a column", () => {
+      test("a badge: its text is text, and its edge is seen", async ({ tasks }) => {
+        for (const column of ["status", "priority"]) {
+          const badge = tasks.cell(FIRST, column).locator(".badge")
+          await expect(badge).toHaveCount(1)
+          expect(await contrastOf(badge, "text"), `the text of the ${column} badge`).toBeGreaterThanOrEqual(
+            TEXT,
+          )
+          expect(await contrastOf(badge, "border"), `the edge of the ${column} badge`).toBeGreaterThanOrEqual(
+            MARK,
+          )
+        }
+      })
+
+      test("a progress bar: its filled part stands out of its track, and its number is text", async ({
+        tasks,
+      }) => {
+        const cell = tasks.cell(await taskUnderWay(tasks), "progress")
+        const { filled, track, page } = await barColours(cell)
+
+        expect(contrast(filled, track), "the filled part against the track").toBeGreaterThanOrEqual(MARK)
+        expect(contrast(filled, page), "the filled part against the page").toBeGreaterThanOrEqual(MARK)
+        expect(track, "the track is drawn").not.toEqual(page)
+        // the number beside the bar says the value without a colour
+        expect(await contrastOf(cell.locator("span").first(), "text")).toBeGreaterThanOrEqual(TEXT)
+      })
+
+      test("the slider: its track, its filled part and its thumb are seen on the page, and its number is text", async ({
+        page,
+        tasks,
+      }) => {
+        const cell = tasks.cell(await taskUnderWay(tasks), "progress")
+        await cell.focus()
+        await tasks.press("Enter")
+        const slider = tasks.editor(cell)
+        await expect(slider).toBeFocused()
+        await page.mouse.move(5, 5)
+
+        const colours = await sliderColours(slider)
+        expect(contrast(colours.unfilled, colours.page), "the track against the page").toBeGreaterThanOrEqual(
+          MARK,
+        )
+        expect(contrast(colours.filled, colours.page), "the filled part against the page").toBeGreaterThanOrEqual(
+          MARK,
+        )
+        expect(contrast(colours.thumb, colours.page), "the thumb against the page").toBeGreaterThanOrEqual(MARK)
+        expect(colours.filled, "the filled part differs from the rest of the track").not.toEqual(
+          colours.unfilled,
+        )
+        expect(await contrastOf(cell.locator("[data-value-text]"), "text")).toBeGreaterThanOrEqual(TEXT)
+        // the cell shows the focus, as for every editor
+        await expectFocusRing(cell, "the cell of an open slider")
+        expect(await contrastOf(cell, "outline")).toBeGreaterThanOrEqual(MARK)
+      })
+
+      test("the slider in the action panel: its track, its filled part and its thumb, and its focus", async ({
+        page,
+        tasks,
+      }) => {
+        const key = await taskUnderWay(tasks)
+        await tasks.acts(key, () => tasks.action(key, "set_progress").click())
+        const slider = tasks.field("progress")
+        await expect(slider).toBeFocused()
+        await page.mouse.move(5, 5)
+
+        const colours = await sliderColours(slider)
+        expect(contrast(colours.unfilled, colours.page), "the track against the panel").toBeGreaterThanOrEqual(
+          MARK,
+        )
+        expect(contrast(colours.filled, colours.page)).toBeGreaterThanOrEqual(MARK)
+        expect(contrast(colours.thumb, colours.page)).toBeGreaterThanOrEqual(MARK)
+        // in a form the slider shows the focus itself
+        expect(await style(slider, ["outline-style", "outline-width"])).toEqual({
+          "outline-style": "solid",
+          "outline-width": "2px",
+        })
+        expect(await contrastOf(slider, "outline")).toBeGreaterThanOrEqual(MARK)
       })
     })
   })
@@ -446,6 +579,44 @@ test.describe("in forced colours", () => {
       .poll(() => triangle(tasks.expander(FIRST)))
       .toEqual({ above: 0, below: 0, side: 255, turned: "90deg" })
     expect(await triangle(tasks.line(FIRST, "comments"))).toMatchObject({ above: 0, below: 0, side: 255 })
+  })
+
+  // A fill is gone here, and so is a shadow, which is what daisyUI draws the
+  // filled part of a slider with: the bar and the slider keep their own
+  // drawing, in the system's colours.
+  test("a badge, a progress bar and a slider are still drawn", async ({ page, tasks }) => {
+    const key = await taskUnderWay(tasks)
+
+    const badge = tasks.cell(key, "status").locator(".badge")
+    expect(await style(badge, ["border-top-style", "border-top-width"])).toEqual({
+      "border-top-style": "solid",
+      "border-top-width": "1px",
+    })
+    expect(await contrastOf(badge, "border")).toBeGreaterThanOrEqual(MARK)
+    expect(await contrastOf(badge, "text")).toBeGreaterThanOrEqual(TEXT)
+
+    const cell = tasks.cell(key, "progress")
+    const bar = await barColours(cell)
+    expect(contrast(bar.filled, bar.track), "the bar's filled part against its track").toBeGreaterThanOrEqual(
+      MARK,
+    )
+    expect(contrast(bar.filled, bar.page)).toBeGreaterThanOrEqual(MARK)
+
+    await cell.focus()
+    await tasks.press("Enter")
+    const slider = tasks.editor(cell)
+    await expect(slider).toBeFocused()
+    await page.mouse.move(5, 5)
+    const colours = await sliderColours(slider)
+    expect(contrast(colours.unfilled, colours.page), "the slider's track against the page").toBeGreaterThanOrEqual(
+      MARK,
+    )
+    expect(contrast(colours.filled, colours.page)).toBeGreaterThanOrEqual(MARK)
+    expect(contrast(colours.filled, colours.unfilled), "its filled part against the rest").toBeGreaterThanOrEqual(
+      MARK,
+    )
+    expect(contrast(colours.thumb, colours.page)).toBeGreaterThanOrEqual(MARK)
+    await expectFocusRing(cell, "the cell of an open slider")
   })
 
   // The fill that marks the current page is gone here, as every fill is.

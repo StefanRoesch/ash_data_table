@@ -203,6 +203,43 @@ defmodule AshTable.Resource do
   A person who can never run an action has no button for it. An input of a
   field they can never see, or do not see on the record, is no field of
   their panel. See `AshTable.Live.Page`.
+
+  ## Custom components
+
+  A column can name a module that says how its cells look, what they are
+  edited with, or both:
+
+      table do
+        update_action :update
+
+        column :status do
+          component AshTable.Components.Badge
+        end
+
+        column :progress do
+          component MyAppWeb.Cells.Progress
+        end
+      end
+
+  The module implements `AshTable.Component`: `cell/1` shows a value and
+  `editor/1` edits it, each a function component, and the table's own
+  display or editor is used for the part a component does not have. Three
+  are shipped: `AshTable.Components.Badge`, `AshTable.Components.Progress`
+  and `AshTable.Components.Slider`.
+
+  A component changes the look and the control and nothing else. A cell is
+  saved through the column's `update_action` as before, with what the
+  control holds; sorting, filtering and authorization are those of the
+  field. A component is given the cell's value and what the resource knows
+  about the field, never the record; it is not called for a value the person
+  may not see, for which the table shows its own placeholder, nor for a
+  record without one. The editor of a column's component is also the field
+  of that attribute in the action panel.
+
+  The resource does not depend on the module it names. A module that does
+  not exist, is no component, or says that it cannot serve the column is
+  reported once the application is compiled, and the table refuses to be
+  built with it. A column that names a relationship has no component.
   """
 
   @column %Spark.Dsl.Entity{
@@ -223,11 +260,20 @@ defmodule AshTable.Resource do
         update_action :reprice
         confirm "Change the price?"
       end
+      """,
+      """
+      column :progress do
+        component AshTable.Components.Slider
+      end
       """
     ],
     target: AshTable.Resource.Column,
     args: [:name],
     identifier: :name,
+    # named without a dependency of the resource on the module: a component
+    # is a module of the web layer, and is looked at once everything is
+    # compiled (`VerifyComponents`)
+    no_depend_modules: [:component],
     schema: AshTable.Resource.Column.schema()
   }
 
@@ -346,6 +392,7 @@ defmodule AshTable.Resource do
       AshTable.Resource.Verifiers.VerifyUpdateAction,
       AshTable.Resource.Verifiers.VerifyLabelField,
       AshTable.Resource.Verifiers.VerifyColumns,
+      AshTable.Resource.Verifiers.VerifyComponents,
       AshTable.Resource.Verifiers.VerifyRelationships,
       AshTable.Resource.Verifiers.VerifyActions,
       AshTable.Resource.Verifiers.VerifyExposure

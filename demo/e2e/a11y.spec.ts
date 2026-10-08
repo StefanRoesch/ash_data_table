@@ -9,6 +9,7 @@ import { Table } from "./support/table"
 // every state a table can be in. Each test brings the page into one state
 // and runs every rule axe has on the whole document.
 
+const FIRST_TASK = SEED.task.first
 const SECOND = SEED.task.second
 
 test.describe("every mounted table, as the admin", () => {
@@ -294,6 +295,99 @@ test.describe("editing states", () => {
       await expect(tasks.failure(title)).toBeVisible()
       await expectNoAxeViolations(page)
     })
+  })
+})
+
+// The components of /tasks: "State" and "Priority" are badges, "Progress" a
+// bar that is edited with a slider, "Estimate hours" the demo's own. The
+// tables above are checked with them as they are; these are the states that
+// only a component has.
+test.describe("the components of a column", () => {
+  test.use({ writes: true })
+
+  for (const theme of ["light", "dark"] as const) {
+    test.describe(`in the ${theme} theme`, () => {
+      test.beforeEach(async ({ page, tasks }) => {
+        await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
+        await tasks.open()
+        await expect(page.locator("html")).toHaveAttribute("data-theme", theme)
+      })
+
+      test("badges and bars at rest, the slider open, and the editor of the demo's own component", async ({
+        page,
+        tasks,
+      }) => {
+        await expect(tasks.cell(SECOND, "status").locator(".badge")).toHaveCount(1)
+        await expect(tasks.cell(SECOND, "progress").locator("progress")).toHaveCount(1)
+        await expectNoAxeViolations(page)
+
+        const progress = tasks.cell(SECOND, "progress")
+        await progress.focus()
+        await tasks.press("Enter", "ArrowRight")
+        await expect(tasks.editor(progress)).toBeFocused()
+        await expect(tasks.editor(progress)).toHaveAccessibleName("Progress")
+        await expectNoAxeViolations(page)
+        await tasks.press("Escape")
+
+        const estimate = tasks.cell(FIRST_TASK, "estimate_hours")
+        await estimate.focus()
+        await tasks.press("Enter")
+        await expect(tasks.editor(estimate)).toBeFocused()
+        await expectNoAxeViolations(page)
+      })
+
+      test("the action panel with the slider as a field, and the create panel with both editors", async ({
+        page,
+        tasks,
+      }) => {
+        await tasks.acts(SECOND, () => tasks.action(SECOND, "set_progress").click())
+        await expect(tasks.field("progress")).toBeFocused()
+        await expect(tasks.field("progress")).toHaveAttribute("type", "range")
+        await expectNoAxeViolations(page)
+        await tasks.press("Escape")
+        await expect(tasks.panel).toHaveCount(0)
+
+        await tasks.create.click()
+        await expect(tasks.field("title")).toBeFocused()
+        await expect(tasks.field("progress")).toHaveAttribute("type", "range")
+        await expect(tasks.field("estimate_hours")).toHaveAttribute("type", "number")
+        await expectNoAxeViolations(page)
+
+        // with the errors of its required fields
+        await tasks.panelSubmit.click()
+        await expect(tasks.fieldError("title")).toBeVisible()
+        await expectNoAxeViolations(page)
+      })
+    })
+  }
+
+  test("a cell whose save through the slider failed, with its message showing", async ({ page, tasks }) => {
+    await tasks.open()
+    const states = await tasks.columnTexts("status")
+    const key = await tasks.rowKey(states.indexOf("Done") + 1)
+    const progress = tasks.cell(key, "progress")
+
+    await progress.focus()
+    await tasks.press("Enter", "ArrowLeft")
+    await tasks.saves(progress, () => tasks.press("Enter"))
+    await expect(progress).toHaveAttribute("aria-invalid", "true")
+    await page.mouse.move(5, 5)
+    await expect(tasks.failure(progress)).toBeVisible()
+    await expectNoAxeViolations(page)
+  })
+
+  test("in German, and nested under a project", async ({ page }) => {
+    await page.goto("/")
+    await switchLocale(page, "de")
+    const projects = new Table(page, "project", "/projects")
+    await projects.open()
+    const nested = await projects.openLine(SEED.project.mobileApp, "tasks")
+    const key = await nested.rowKey(1)
+    const progress = nested.cell(key, "progress")
+    await progress.focus()
+    await nested.press("Enter")
+    await expect(nested.editor(progress)).toHaveAccessibleName("Fortschritt")
+    await expectNoAxeViolations(page)
   })
 })
 

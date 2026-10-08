@@ -1537,4 +1537,134 @@ defmodule AshTable.ModelTest do
       assert names.(member.create) == [:title, :salary]
     end
   end
+
+  describe "a column's component" do
+    defp presenting(name, model \\ Model.build(AshTable.Test.Presenting)),
+      do: Enum.find(model.columns, &(&1.name == name))
+
+    test "is none unless the block names one" do
+      assert presenting(:plain).component == nil
+      assert Enum.all?(Model.build(AshTable.Test.Editing).columns, &is_nil(&1.component))
+    end
+
+    test "says which module it is, which of the two parts it has, and when its editor saves" do
+      assert %{module: AshTable.Test.Cells.Shout, cell?: true, editor?: false, commit: :enter} =
+               presenting(:mood).component
+
+      assert %{module: AshTable.Test.Cells.Knob, cell?: false, editor?: true, commit: :change} =
+               presenting(:level).component
+
+      assert %{module: AshTable.Test.Cells.Both, cell?: true, editor?: true, commit: :enter} =
+               presenting(:note).component
+    end
+
+    test "with an editor is what an editable column is edited with, in place of the editor of its type" do
+      assert %{editable?: true, editor: :component} = presenting(:level)
+      assert %{editable?: true, editor: :component} = presenting(:grade)
+      # one that only shows leaves the column the editor of its type
+      assert %{editable?: true, editor: :text} = presenting(:mood)
+    end
+
+    test "on a column nobody edits, a calculation say, shows and gives the column no editor" do
+      assert %{
+               kind: :calculation,
+               editable?: false,
+               editor: nil,
+               component: %{cell?: true, editor?: true, column: %{editable?: false}}
+             } = presenting(:loud_mood)
+    end
+
+    test "carries what the resource knows about the field, for the component to read" do
+      assert presenting(:level).component.column == %AshTable.Component.Column{
+               name: :level,
+               label: "Rung",
+               type: Ash.Type.Integer,
+               constraints: [min: 0, max: 10],
+               cell_type: :number,
+               values: nil,
+               editable?: true
+             }
+
+      assert %AshTable.Component.Column{
+               name: :grade,
+               label: "Grade",
+               type: Ash.Type.Atom,
+               cell_type: :enum,
+               values: [junior: "Junior", senior: "Senior"]
+             } = presenting(:grade).component.column
+    end
+  end
+
+  describe "for_actor/2: a column's component" do
+    @admin %{role: :admin}
+    @viewer %{role: :viewer}
+
+    setup do
+      %{model: Model.build(AshTable.Test.Presenting)}
+    end
+
+    test "stays as it is for a person who can edit the column", %{model: model} do
+      for_admin = Model.for_actor(model, actor: @admin)
+
+      assert presenting(:level, for_admin) == presenting(:level, model)
+      assert presenting(:note, for_admin) == presenting(:note, model)
+    end
+
+    test "shows and no longer edits for a person who can never edit the column", %{model: model} do
+      for_viewer = Model.for_actor(model, actor: @viewer)
+
+      # the part that shows is used as before; the column has no editor
+      assert %{editable?: false, editor: nil, component: %{cell?: true, editor?: true}} =
+               presenting(:note, for_viewer)
+
+      assert %{editable?: false, editor: nil} = presenting(:level, for_viewer)
+      # and the component is told so
+      assert presenting(:note, for_viewer).component.column.editable? == false
+      assert presenting(:level, for_viewer).component.column.editable? == false
+    end
+
+    test "goes with a column the person can never see", %{model: model} do
+      assert presenting(:secret, Model.for_actor(model, actor: @viewer)) == nil
+      assert %{component: %{module: AshTable.Test.Cells.Both}} = presenting(:secret, model)
+    end
+  end
+
+  describe "the inputs of an action, and a column's component" do
+    defp input(action, name), do: Enum.find(action.inputs, &(&1.name == name))
+
+    test "an attribute whose column has a component with an editor is given through that editor" do
+      %{actions: [relevel], create: create} = Model.build(AshTable.Test.Presenting)
+
+      assert %{editor: :component} = input(relevel, :level)
+
+      assert %{module: AshTable.Test.Cells.Knob, commit: :change, column: %{name: :level}} =
+               input(relevel, :level).component
+
+      assert %{module: AshTable.Test.Cells.Both} = input(create, :note).component
+    end
+
+    test "every other input has the field of its type" do
+      %{actions: [relevel]} = Model.build(AshTable.Test.Presenting)
+
+      # an attribute whose column has no component
+      assert %{editor: :text, component: nil} = input(relevel, :plain)
+      # an argument, though a column of that name has a component
+      assert %{kind: :argument, component: nil} = input(relevel, :note)
+
+      # an attribute whose column's component only shows
+      assert %{editor: :text, component: nil} = input(relevel, :mood)
+    end
+
+    test "for_actor/2: the component of an input is told what its column is told" do
+      model = Model.build(AshTable.Test.Presenting)
+
+      # a viewer never edits a cell of `level`, and may run `relevel`
+      %{actions: [relevel]} = Model.for_actor(model, actor: %{role: :viewer})
+      assert %{editor: :component} = input(relevel, :level)
+      assert input(relevel, :level).component.column.editable? == false
+
+      %{actions: [relevel]} = Model.for_actor(model, actor: %{role: :admin})
+      assert input(relevel, :level).component.column.editable? == true
+    end
+  end
 end

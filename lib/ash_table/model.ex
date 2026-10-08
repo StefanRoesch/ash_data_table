@@ -39,6 +39,15 @@ defmodule AshTable.Model do
   # carries that action, its editor and the question of its `confirm`. With no
   # `update_action` at either level nothing is editable.
   #
+  # ## Components
+  #
+  # A column whose block names a `component` carries it: the module, which
+  # of its two parts it has, when its editor saves, and what it is told
+  # about the column (`AshTable.Resource.Presenting`). Its editor, if it has
+  # one, is the column's editor where the column is editable; a component
+  # makes nothing editable. An input of an action that is an attribute with
+  # such a column is given through the same editor.
+  #
   # ## Relationships
   #
   # With no `relationship` in the block, a row offers every public
@@ -90,6 +99,7 @@ defmodule AshTable.Model do
   alias AshTable.Resource.Acting
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Presenting
   alias AshTable.Resource.Reading
   alias AshTable.Resource.Referencing
   alias AshTable.Resource.Relating
@@ -144,7 +154,8 @@ defmodule AshTable.Model do
   that names a relationship whose related record's label cannot be shown, an
   `update_action` that names no public update action, editing beside
   calculations, aggregates or reference columns without a primary read
-  action, and a
+  action, a `component` that cannot be found, is no component or cannot
+  serve its column, and a
   `relationship` that is no public relationship, whose destination has no
   table, or that is declared twice. The other findings leave a column
   read-only or an option without effect.
@@ -220,7 +231,8 @@ defmodule AshTable.Model do
 
     * A column whose update action the person can **never** run is not
       editable for them: it has no action, no editor and no question
-      (`Ash.can/3`, once per distinct action). An action the person may run
+      (`Ash.can/3`, once per distinct action). Its component, if it has
+      one, still shows its cells. An action the person may run
       on some records only leaves its columns editable: whether one record
       can be changed is the action's to say when a cell is saved.
 
@@ -347,10 +359,14 @@ defmodule AshTable.Model do
             nil
 
           true ->
-            %{
-              action
-              | inputs: Enum.reject(action.inputs, &(&1.kind == :attribute and &1.name in hidden))
-            }
+            inputs =
+              for input <- action.inputs,
+                  not (input.kind == :attribute and input.name in hidden) do
+                # the component of its column, as this person's column has it
+                if input.component, do: with_component(input, model.columns), else: input
+              end
+
+            %{action | inputs: inputs}
         end
       end
 
@@ -416,8 +432,19 @@ defmodule AshTable.Model do
 
   defp read_only_if(column, false), do: column
 
-  defp read_only_if(column, true),
-    do: %{column | editable?: false, update_action: nil, editor: nil, confirm: nil}
+  defp read_only_if(column, true) do
+    %{
+      column
+      | editable?: false,
+        update_action: nil,
+        editor: nil,
+        confirm: nil,
+        # its component still shows, and is told that nothing is edited
+        component:
+          column.component &&
+            %{column.component | column: %{column.component.column | editable?: false}}
+    }
+  end
 
   @doc """
   What the table's columns show that is not on a record unless asked for,
@@ -811,7 +838,9 @@ defmodule AshTable.Model do
   defp action(resource, action, columns, label, confirm) do
     inputs =
       for %{editor: editor} = input when not is_nil(editor) <- Acting.inputs(resource, action) do
-        struct!(Input, Map.put(input, :label, input_label(input, columns)))
+        Input
+        |> struct!(Map.put(input, :label, input_label(input, columns)))
+        |> with_component(columns)
       end
 
     %Action{
@@ -823,6 +852,20 @@ defmodule AshTable.Model do
       panel?: Acting.panel?(inputs)
     }
   end
+
+  # An attribute whose column has a component with an editor is given
+  # through that editor, in the panel as in a cell.
+  defp with_component(%Input{kind: :attribute, name: name} = input, columns) do
+    case Enum.find(columns, &(&1.name == name and &1.kind == :attribute)) do
+      %{component: %{editor?: true} = component} ->
+        %{input | editor: :component, component: component}
+
+      _none ->
+        input
+    end
+  end
+
+  defp with_component(input, _columns), do: input
 
   # An attribute the table has a column for is called what its column is.
   defp input_label(%{kind: :attribute, name: name}, columns) do
@@ -901,14 +944,18 @@ defmodule AshTable.Model do
         :none -> nil
       end
 
+    label = (declared && declared.label) || humanize(field.name)
+    component = component!(resource, field, declared, label, not is_nil(update_action))
+
     %Column{
       editable?: not is_nil(update_action),
       update_action: update_action,
-      editor: update_action && cell_type,
+      editor: update_action && editor(cell_type, component),
       confirm: update_action && declared && declared.confirm,
+      component: component,
       name: field.name,
       kind: kind(field),
-      label: (declared && declared.label) || humanize(field.name),
+      label: label,
       type: {type, constraints},
       cell_type: cell_type,
       values: values,
@@ -925,11 +972,38 @@ defmodule AshTable.Model do
     }
   end
 
+  # What an editable column is edited with: the editor of its component,
+  # when that has one, else the editor of its cell type.
+  defp editor(_cell_type, %{editor?: true}), do: :component
+  defp editor(cell_type, _component), do: cell_type
+
+  # The component of a column, as far as the block names one, with what it
+  # is told about the column, which is all it is told.
+  defp component!(_resource, _field, %{component: module}, _label, _editable?)
+       when is_nil(module),
+       do: nil
+
+  defp component!(_resource, _field, nil, _label, _editable?), do: nil
+
+  defp component!(resource, field, %{component: module}, label, editable?) do
+    case Presenting.component(module, Presenting.column(resource, field, label, editable?)) do
+      {:ok, component} ->
+        component
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: the `component` of its column " <>
+                "`#{field.name}` cannot be used. " <> Presenting.message(reason)
+    end
+  end
+
   defp kind(%Ash.Resource.Attribute{}), do: :attribute
   defp kind(%Ash.Resource.Calculation{}), do: :calculation
   defp kind(%Ash.Resource.Aggregate{}), do: :aggregate
 
-  defp humanize(name) do
+  @doc false
+  # A field's name in words: what its column is called unless the block says.
+  def humanize(name) do
     name
     |> to_string()
     |> String.split("_", trim: true)

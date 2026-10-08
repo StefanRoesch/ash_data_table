@@ -16,12 +16,17 @@ state asks first
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
-# enums. A change of state asks first.
+# enums, each shown as a badge. A change of state asks first.
 column :status do
   label "State"
   confirm "Change the state of this task?"
+  component AshTable.Components.Badge
 end
 ```
+
+(`component` is how the cells of the column look, here as badges: see
+[Custom components](custom-components.md). It has nothing to do with the
+question.)
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Move to a cell of the
 "State" column, press Enter and choose another state. A dialog asks "Change
@@ -38,6 +43,7 @@ runs and before anything is sent to the server:
 | Leaves the cell (a click elsewhere, Tab), with a changed value | Yes |
 | Chooses a value from a menu | Yes |
 | Toggles a boolean | Yes |
+| Lets go of a slider, or changes any other editor of a component that saves on change | Yes |
 | Presses Escape in the editor | No: the edit is given up |
 | Saves the value the cell already had | No: nothing would be saved |
 
@@ -54,6 +60,11 @@ a whole table and none that depends on the value or on the record.
 
 For a boolean cell, which has no edit mode, Cancel leaves the value as it
 was and puts focus on the cell.
+
+The editor of a column's [component](custom-components.md) that saves when
+its value changes, such as a slider, stays open after a save. So Confirm
+leaves the person in it, with the value saved, and Cancel leaves them in it
+with the value they chose and nothing saved.
 
 The dialog is a native `<dialog>` opened with `showModal()`: the rest of the
 page cannot be reached while it is open, and the browser keeps focus inside

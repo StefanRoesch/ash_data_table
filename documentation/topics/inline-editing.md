@@ -69,12 +69,15 @@ table do
   # edited through an action of its own
   column :priority do
     update_action :reprioritise
+    component AshTable.Components.Badge
   end
 
   # numbers: one that is always there and one that can be empty. Progress
-  # has its own action, which also starts a task that is still to do.
+  # has its own action, which also starts a task that is still to do. It
+  # is shown as a bar and edited with a slider.
   column :progress do
     update_action :set_progress
+    component DemoWeb.Cells.Progress
   end
   # ...
   # `update` accepts it, the table does not offer it
@@ -85,7 +88,10 @@ table do
 end
 ```
 
-(A line `# ...` stands for lines of the block that are left out here.)
+(A line `# ...` stands for lines of the block that are left out here.
+`component` says how the cells of a column look and what they are edited
+with; it changes nothing about how they are saved. See
+[Custom components](custom-components.md).)
 
 A column's own action is the way to let a cell do more than store a value.
 The table runs the whole action, with its changes and validations:
@@ -184,6 +190,12 @@ Every other type is read-only text; see
 [Columns and defaults](columns-and-defaults.md#types-shown-as-read-only-text).
 A NewType is edited as the type it is made of.
 
+A column's `component` can put an editor of its own in the place of the one
+in this table: on `/tasks`, "Progress" is edited with a slider and "Estimate
+hours" in a number input with its unit beside it. Such an editor is opened,
+saved and cancelled as the others are, and its value goes through the same
+action. See [Custom components](custom-components.md).
+
 **Try it:** `/specimens` in the demo has an editable cell of every type with
 an editor, beside the read-only ones.
 
@@ -195,6 +207,7 @@ an editor, beside the read-only ones.
 | Leaving the cell: a click elsewhere, Tab | Saves. Focus goes where the person sent it. |
 | Escape | Gives the edit up. The cell shows its value again. |
 | Toggling a boolean, choosing from a menu | Saves at once. |
+| Letting go of a slider, or changing any other editor of a component that saves on change | Saves at once. The editor stays open; Enter or leaving the cell closes it. |
 
 Two rules keep the table from doing more than was asked:
 
@@ -270,8 +283,8 @@ A failed cell is put right in one of three ways:
 - Press Escape on the cell: it shows the saved value again.
 - Type the saved value again: nothing runs, and the mark is gone.
 
-**Try it:** on `/tasks`, as Ada Admin, set a title to `ab`, or a progress to
-`150`, or the state of a task whose progress is below 100 to "Done".
+**Try it:** on `/tasks`, as Ada Admin, set a title to `ab`, or an estimate
+to `-3`, or the state of a task whose progress is below 100 to "Done".
 
 ## An inline edit and a row action
 
@@ -351,7 +364,8 @@ only runs actions.
 
 No editing of arrays, maps, embedded resources or related records in a
 cell, no validation display before a cell is saved, no bulk edits and no
-undo. They are later slices in the
+undo. A column's own editor is built: see
+[Custom components](custom-components.md). They are later slices in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).
 Creating and deleting records, and actions with several inputs, are not
 inline edits: see [Row actions and create](row-actions-and-create.md).

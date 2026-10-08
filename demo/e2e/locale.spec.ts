@@ -277,14 +277,15 @@ test.describe("in German", () => {
       await expect(title).toHaveAccessibleDescription(tooShort)
       await expect(tasks.status).toHaveText(`Titel wurde nicht gespeichert: ${tooShort}`)
 
-      const progress = tasks.cell(SECOND, "progress")
-      await progress.focus()
+      // the estimate has `min: 0`
+      const estimate = tasks.cell(SECOND, "estimate_hours")
+      await estimate.focus()
       await tasks.press("Enter")
-      await tasks.retype("150")
-      await tasks.saves(progress, () => tasks.press("Enter"))
-      await expect(tasks.failure(progress)).toHaveText("darf höchstens 100 sein")
+      await tasks.retype("-3")
+      await tasks.saves(estimate, () => tasks.press("Enter"))
+      await expect(tasks.failure(estimate)).toHaveText("muss mindestens 0 sein")
       await expect(tasks.status).toHaveText(
-        "Fortschritt wurde nicht gespeichert: darf höchstens 100 sein",
+        "Geschätzte Stunden wurde nicht gespeichert: muss mindestens 0 sein",
       )
     })
 

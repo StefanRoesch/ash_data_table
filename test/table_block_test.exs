@@ -3868,4 +3868,376 @@ defmodule AshTable.TableBlockTest do
       assert AshTable.Model.build(AshTable.TableBlockTest.NoFieldForCreate).create == nil
     end
   end
+
+  describe "component" do
+    test "is accepted on a column and read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.WithComponent do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+            attribute :mood, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :title
+
+            column :mood do
+              component AshTable.Test.Cells.Shout
+            end
+          end
+        end
+      end
+
+      assert [
+               %AshTable.Resource.Column{name: :title, component: nil},
+               %AshTable.Resource.Column{name: :mood, component: AshTable.Test.Cells.Shout}
+             ] = AshTable.Resource.Info.table(AshTable.TableBlockTest.WithComponent)
+    end
+
+    test "naming a module that does not exist is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :mood, :component]} do
+          defmodule Elixir.AshTable.TableBlockTest.MissingComponent do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :mood, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :mood do
+                component AshTable.Test.Cells.Nowhere
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The component `AshTable.Test.Cells.Nowhere` cannot be found: there is no module of that name."
+
+      # compiled despite the finding, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.MissingComponent: the `component` of its column `mood` cannot be used. The component `AshTable.Test.Cells.Nowhere` cannot be found: there is no module of that name.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.MissingComponent) end
+    end
+
+    test "naming a module that does not implement the behaviour is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :mood, :component]} do
+          defmodule Elixir.AshTable.TableBlockTest.NoComponent do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :mood, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :mood do
+                component String
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`String` is not a component: it does not implement the behaviour `AshTable.Component`. Add `use AshTable.Component` to it and define `cell/1`, `editor/1` or both."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.NoComponent: the `component` of its column `mood` cannot be used. `String` is not a component: it does not implement the behaviour `AshTable.Component`. Add `use AshTable.Component` to it and define `cell/1`, `editor/1` or both.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.NoComponent) end
+    end
+
+    test "naming a module that has neither part is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :mood, :component]} do
+          defmodule Elixir.AshTable.TableBlockTest.HollowComponent do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :mood, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :mood do
+                component AshTable.Test.Cells.Hollow
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The component `AshTable.Test.Cells.Hollow` defines neither `cell/1` nor `editor/1`, so it changes nothing."
+
+      assert_raise ArgumentError, ~r/defines neither `cell\/1` nor `editor\/1`/, fn ->
+        AshTable.Model.build(AshTable.TableBlockTest.HollowComponent)
+      end
+    end
+
+    test "on a column that names a relationship is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author, :component]} do
+          defmodule Elixir.AshTable.TableBlockTest.ComponentOnReference do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Referencing.Person, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :author do
+                component AshTable.Test.Cells.Shout
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` shows the label of a related record. A reference cell has no component: remove `component` from this column."
+
+      # the option is without effect: the column is the reference cell it would be without it
+      assert [%{name: :author, kind: :reference, component: nil}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ComponentOnReference).columns
+    end
+
+    test "that only edits, on a column that can never be edited, is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :level, :component]} do
+          defmodule Elixir.AshTable.TableBlockTest.EditorNeverUsed do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :level, :integer, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :level do
+                component AshTable.Test.Cells.Knob
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The component `AshTable.Test.Cells.Knob` only edits (it has no `cell/1`), and `level` can never be edited, so the component is never used. A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
+    end
+
+    test "with both parts is accepted on a column that can never be edited, and one that only edits on a column that can" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ComponentParts do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :level, :integer, public?: true
+            attribute :note, :string, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:level]]
+          end
+
+          table do
+            update_action :update
+
+            column :level do
+              component AshTable.Test.Cells.Knob
+            end
+
+            column :note do
+              component AshTable.Test.Cells.Both
+            end
+          end
+        end
+      end
+    end
+  end
+
+  describe "the shipped components" do
+    test "the slider on a number without a minimum and a maximum is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :level, :component]} do
+          defmodule Elixir.AshTable.TableBlockTest.UnboundedSlider do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+
+              attribute :level, :integer do
+                public? true
+                constraints min: 0
+              end
+            end
+
+            actions do
+              defaults [:read, update: [:level]]
+            end
+
+            table do
+              update_action :update
+
+              column :level do
+                component AshTable.Components.Slider
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The component `AshTable.Components.Slider` cannot be used on `level`: a slider needs a number with a minimum and a maximum. Declare both on the attribute: `constraints min: 0, max: 100`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.UnboundedSlider: the `component` of its column `level` cannot be used. The component `AshTable.Components.Slider` cannot be used on `level`: a slider needs a number with a minimum and a maximum. Declare both on the attribute: `constraints min: 0, max: 100`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.UnboundedSlider) end
+    end
+
+    # a resource with one column of `type` and `constraints`, which has `component`
+    defmacrop shipped(name, type, constraints, component) do
+      quote do
+        defmodule unquote(name) do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+
+            attribute :field, unquote(type) do
+              public? true
+              constraints unquote(constraints)
+            end
+          end
+
+          actions do
+            defaults [:read, update: [:field]]
+          end
+
+          table do
+            update_action :update
+
+            column :field do
+              component unquote(component)
+            end
+          end
+        end
+      end
+    end
+
+    test "the slider on a field that is no number is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :field, :component]} do
+          shipped(SliderOnText, :string, [], AshTable.Components.Slider)
+        end
+
+      assert error.message ==
+               "The component `AshTable.Components.Slider` cannot be used on `field`: a slider needs a number with a minimum and a maximum, and this field is shown as text."
+    end
+
+    test "the slider is accepted on a bounded integer, decimal and float" do
+      refute_dsl_errors do
+        shipped(SliderOnInteger, :integer, [min: 0, max: 100], AshTable.Components.Slider)
+
+        shipped(SliderOnDecimal, :decimal, [min: 0, max: 1], AshTable.Components.Slider)
+
+        shipped(SliderOnFloat, :float, [min: -1.0, max: 1.0], AshTable.Components.Slider)
+      end
+    end
+
+    test "the progress bar on a number without a minimum and a maximum is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :field, :component]} do
+          shipped(UnboundedProgress, :integer, [max: 100], AshTable.Components.Progress)
+        end
+
+      assert error.message ==
+               "The component `AshTable.Components.Progress` cannot be used on `field`: a progress bar needs a number with a minimum and a maximum. Declare both on the attribute: `constraints min: 0, max: 100`."
+    end
+
+    test "the progress bar on a field that is no number is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :field, :component]} do
+          shipped(ProgressOnDate, :date, [], AshTable.Components.Progress)
+        end
+
+      assert error.message ==
+               "The component `AshTable.Components.Progress` cannot be used on `field`: a progress bar needs a number with a minimum and a maximum, and this field is shown as a date."
+    end
+
+    test "the badge on a field that is no choice is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :field, :component]} do
+          shipped(BadgeOnNumber, :integer, [min: 0, max: 5], AshTable.Components.Badge)
+        end
+
+      assert error.message ==
+               "The component `AshTable.Components.Badge` cannot be used on `field`: a badge shows the label of a choice, and this field is shown as a number. It needs an `Ash.Type.Enum`, or an `:atom` with `constraints one_of: [...]`."
+    end
+
+    test "the badge and the progress bar are accepted on the fields they are for" do
+      refute_dsl_errors do
+        shipped(BadgeOnEnum, AshTable.Test.Status, [], AshTable.Components.Badge)
+        shipped(BadgeOnAtom, :atom, [one_of: [:low, :high]], AshTable.Components.Badge)
+        shipped(ProgressOnInteger, :integer, [min: 0, max: 100], AshTable.Components.Progress)
+      end
+    end
+  end
 end

@@ -265,9 +265,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert "Estimate hours" in headers(html, "task")
 
       assert Enum.zip(titles(html), column(html, "task", "estimate_hours")) == [
-               {"Mine, 8 hours", "8"},
+               {"Mine, 8 hours", "8 h"},
                {"Theirs, 30 hours", "Not available"},
-               {"Mine, 20 hours", "20"},
+               {"Mine, 20 hours", "20 h"},
                {"Theirs, 5 hours", "Not available"},
                {"Theirs, no estimate", "Not available"},
                {"Mine, no estimate", ""}

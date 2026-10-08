@@ -15,8 +15,10 @@ no HEEx.
 > on a page of its own, and a cell can show a related record by its label.
 > A row has buttons for the update and destroy actions the table declares,
 > and a button above the table creates a record; an action with inputs asks
-> for them in a panel. Custom cell components, a picker for related records,
-> and actions on several rows are later slices.
+> for them in a panel. A column can name a component of its own for how its
+> cells look and what they are edited with; a badge, a progress bar and a
+> slider are shipped. A picker for related records and actions on several
+> rows are later slices.
 
 - [Install](#install)
 - [A first table](#a-first-table)
@@ -25,6 +27,7 @@ no HEEx.
 - [Inline editing](#inline-editing)
 - [Row actions and create](#row-actions-and-create)
 - [Nested tables](#nested-tables)
+- [Custom components](#custom-components)
 - [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
 - [The keyboard](#the-keyboard)
 - [Translations](#translations)
@@ -50,6 +53,7 @@ examples from the demo app and each topic's edge cases.
 - [Confirm](documentation/topics/confirm.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Nested tables](documentation/topics/nested-tables.md)
+- [Custom components](documentation/topics/custom-components.md)
 - [Authorization](documentation/topics/authorization.md)
 - [Keyboard and accessibility](documentation/topics/keyboard-and-accessibility.md)
 - [Messages and translations](documentation/topics/messages-and-translations.md)
@@ -191,6 +195,10 @@ table do
 
   column :comment_count    # an aggregate
   column :project          # a belongs-to: the related record's label
+
+  column :progress do      # how its cells look and what they are edited with
+    component AshTable.Components.Slider
+  end
 
   action :archive          # a button in every row; default: none
   create_action :create    # the create button; default: none
@@ -608,6 +616,75 @@ The guide [Nested tables](documentation/topics/nested-tables.md) has all of
 this in detail, with the full view, the reference cell and what a person
 sees for each restriction.
 
+## Custom components
+
+A column can name a module that says how its cells look, what they are
+edited with, or both:
+
+```elixir
+table do
+  update_action :update
+
+  column :status do
+    component AshTable.Components.Badge
+  end
+
+  column :progress do
+    component MyAppWeb.Cells.Progress
+  end
+end
+```
+
+Three are shipped: `AshTable.Components.Badge` shows an enum's value as a
+badge, `AshTable.Components.Progress` shows a number between its minimum and
+maximum as a bar with the number beside it, and `AshTable.Components.Slider`
+edits such a number with a slider. A component of your own is a module with
+two function components, either of which can be left out:
+
+```elixir
+defmodule MyAppWeb.Cells.Hours do
+  use AshTable.Component
+
+  # how a cell shows the value
+  def cell(assigns), do: ~H"{@text} h"
+
+  # what it is edited with, in a cell and in the action panel
+  def editor(assigns) do
+    ~H"""
+    <span class="flex items-center gap-1">
+      <input type="number" min={@column.constraints[:min]} value={@value} {@control} />
+      <span aria-hidden="true">h</span>
+    </span>
+    """
+  end
+end
+```
+
+- A component changes the look and the control, and nothing else. A value is
+  saved through the column's `update_action`, as without one; sorting,
+  filtering and authorization do not know that it is there.
+- `cell/1` is given the value, the text the table itself would show, and
+  what the resource knows about the field: its type and constraints, an
+  enum's values with their labels, the column's label. It is not given the
+  record, and it is not called for a value the person may not see, nor for a
+  record without one: the table shows its own placeholder and its own empty
+  cell.
+- `editor/1` renders one element with one form control in it, which carries
+  `{@control}`; the control's value is what is saved. The same editor is the
+  field of that attribute in the action panel.
+- An editor saves on Enter or on leaving the cell, as anything typed does.
+  `use AshTable.Component, commit: :change` makes it save when its value
+  changes instead: a slider when it is let go. Escape gives up what has not
+  been saved.
+- The resource does not depend on the component's module: there is no
+  compile-time dependency from the data layer to the web layer. The module
+  is checked once the application is compiled, and again when the table is
+  built.
+
+The guide [Custom components](documentation/topics/custom-components.md)
+has the assigns, the control's contract, the keyboard, what a component owes
+the people who use it, and what it costs.
+
 ## Who is reading, and what they may see and do
 
 The table has no authorization rules of its own. It passes actor and tenant
@@ -918,10 +995,12 @@ nothing at all, unless the resource says `on_forbidden :message`.
   needs an argument, a column that names a relationship whose label cannot
   be shown, a `relationship` that cannot be offered, an `update_action` that
   names no public update action, an `action` that names no public update or
-  destroy action, a `create_action` that names no public create action, and
+  destroy action, a `create_action` that names no public create action,
   editing, row actions or create beside calculation, aggregate or reference
-  columns without a primary read action. A column's own `update_action` that
-  exists but cannot save the column leaves the column read-only, an action
+  columns without a primary read action, and a `component` that cannot be
+  found, is no component, or says that it cannot serve its column. A
+  column's own `update_action` that exists but cannot save the column leaves
+  the column read-only, an action
   with a required input the panel has no field for has no button, and
   `sortable? true`, `filterable? true` and `confirm` without effect do
   nothing. See
@@ -960,6 +1039,10 @@ nothing at all, unless the resource says `on_forbidden :message`.
   `confirm false`.
 - **A related record is given by its key in the action panel.** There is no
   picker yet.
+- **A component was renamed, and the table says it cannot be found.** The
+  resource that names it was not compiled again, as it does not depend on
+  the component. `mix compile --force` reports it; so does a build from
+  clean.
 - **A table in German with English messages** has `gettext_backend` but no
   `translate_error`, or no entry for that message in the `errors` domain.
 

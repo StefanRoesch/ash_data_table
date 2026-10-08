@@ -207,10 +207,11 @@ table do
   # text
   column :title
 
-  # enums. A change of state asks first.
+  # enums, each shown as a badge. A change of state asks first.
   column :status do
     label "State"
     confirm "Change the state of this task?"
+    component AshTable.Components.Badge
   end
   # ...
   # an aggregate: sortable and filterable, never editable
@@ -223,8 +224,9 @@ end
 
 Once one `column` is declared, the table has the declared columns and no
 others. `label` replaces the column's heading, which is otherwise the field's
-name in words. `comment_count` is an aggregate: it is a column because the
-block names it. Open `/tasks` in the demo to see the full block at work.
+name in words. `component` shows the state as a badge, in place of plain
+text ([Custom components](../topics/custom-components.md)). `comment_count`
+is an aggregate: it is a column because the block names it. Open `/tasks` in the demo to see the full block at work.
 [Columns and defaults](../topics/columns-and-defaults.md) has the rules.
 
 ## 5. Switch on editing for a column
@@ -238,6 +240,7 @@ name its own. The priority of a task is edited through the action
 # edited through an action of its own
 column :priority do
   update_action :reprioritise
+  component AshTable.Components.Badge
 end
 ```
 
@@ -354,7 +357,7 @@ The options of the two extensions are listed in the DSL reference:
 ## Not in the first version
 
 This tutorial stops at a table that reads and edits cells. Row actions,
-creating records and nested tables are built and have guides of their own,
-linked above. Custom cell components and the other later slices are listed
-in order in the
+creating records, nested tables and a column's own component are built and
+have guides of their own, linked above. The later slices are listed in
+order in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

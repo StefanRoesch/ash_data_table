@@ -89,7 +89,8 @@ defmodule DemoWeb.Tables.TaskCreateTest do
                  # labelled as its column is, and starting with the attribute's default
                  {"status", "State", "select", "todo", true},
                  {"priority", "Priority", "select", "medium", true},
-                 {"progress", "Progress", "number", "0", true},
+                 # the slider of the column's component
+                 {"progress", "Progress", "range", "0", true},
                  {"estimate_hours", "Estimate hours", "number", "", false},
                  # a box is never empty, so it is never marked as required
                  {"billable?", "Billable?", "checkbox", "false", false},

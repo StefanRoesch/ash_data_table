@@ -225,8 +225,8 @@ Enter or leaving the cell saves, Escape gives up.
 | `title`, `description` | text; Shift+Enter makes a new line | the table's `update_action :update` |
 | `status` ("State") | a choice | `update`, after the question of its `confirm`: "Change the state of this task?" |
 | `priority` | a choice | its own action, `reprioritise` |
-| `progress` | a number | its own action, `set_progress`, which also starts a task that is still to do: its state changes in the same row |
-| `estimate_hours` | a number | `update`. Empty it to see nil saved |
+| `progress` | a slider, with the number beside it: its column's component. It saves when it is let go and stays open; a step with the arrow keys is saved by Enter or by leaving | its own action, `set_progress`, which also starts a task that is still to do: its state changes in the same row |
+| `estimate_hours` | a number with its unit beside it: the demo's own component | `update`. Empty it to see nil saved |
 | `billable?` | a boolean: Enter toggles and saves | `update` |
 | `due_on`, `completed_at` | a date, a datetime | `update` |
 | `external_ref` | read-only | `update` accepts it, the column says `update_action false` |
@@ -238,9 +238,11 @@ compiled. It is a row action instead, whose panel asks for the reason.
 
 Saves that fail, to try:
 
-- as anyone: a `title` shorter than 3 characters, or a `progress` above 100:
+- as anyone: a `title` shorter than 3 characters, or an estimate below 0:
   the action's message on the cell, which keeps what was typed. Escape on the
   cell restores the saved value
+- move the progress of a task that is "Done" below 100: refused ("must be
+  100 when the task is done"), the slider closes and the cell is marked
 - set the state of a task with progress below 100 to "Done": refused because
   of another field, shown on the state cell as "Progress: must be 100 when
   the task is done"
@@ -252,6 +254,29 @@ Saves that fail, to try:
 
 After a save the row is shown from the action's result: `headline` follows a
 new title, `overdue?` a new due date, without the page being read again.
+
+### Components on `/tasks`
+
+Four columns of `/tasks` name a `component`, a module that says how their
+cells look and what they are edited with. Nothing else about them changes:
+they are saved through the same actions, sorted and filtered as before, and
+hidden from the same people.
+
+| Column | Component | Shows | Edits |
+| --- | --- | --- | --- |
+| `status` ("State"), `priority` | `AshTable.Components.Badge`, shipped | the value's label in a badge | with the table's own menu |
+| `progress` | `DemoWeb.Cells.Progress`, which takes its two parts from the shipped `AshTable.Components.Progress` and `AshTable.Components.Slider` | a bar with the number beside it | with a slider |
+| `estimate_hours` | `DemoWeb.Cells.Hours`, the demo's own (`lib/demo_web/components/cells/hours.ex`) | the number with "h" | in a number input with "h" beside it |
+
+- "Set progress" and "New task" have the slider and the hours input as
+  fields of their panel. There a change saves nothing: it goes with the form.
+- As Max Member, the estimates of tasks that are not his say "Not
+  available": the component is not asked to show a hidden value.
+- `/specimens` has no component on any column, so that the table's own look
+  of every type stays visible beside `/tasks`.
+- `Demo.Tracker.Task` names `DemoWeb.Cells.Progress`, a module of the web
+  layer, and does not depend on it: `mix xref graph --source
+  lib/demo/tracker/task.ex` lists no file of `lib/demo_web`.
 
 ### Row actions and create
 
@@ -528,8 +553,9 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `full_view.spec.ts` | the link of a nested table to the full view, by pointer and by keyboard, and where it is not there; the page it leads to: its heading, the limit in the address through sort, filter and page and after a reload, the way back to all records, editing and expanding under the limit; the browser's back button; the page as the member, the viewer and the outsider; axe on it |
 | `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort, filter or edit, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
 | `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
-| `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, and with nested tables open at every depth |
-| `contrast.spec.ts` | what axe does not judge, measured from the colours the browser computed, in the light and the dark theme: the focus ring of every kind of cell; the ring and the "!" of a failed cell, that they move nothing, and both rings on a failed cell with focus; the text of a saving cell and of a table that is reading; the muted text of the header and the filters; the edges of inputs, and of invalid ones. In forced colours: that the focus ring, the failed cell, the expander's triangle, the current page and the edges of the dialog and the panel are still drawn |
+| `components.spec.ts` | the components of `/tasks`: the slider by keyboard (its keys are its own; a step is saved by Enter or by leaving) and by pointer (nothing sent while it is dragged, one save on letting go, the number beside it following, the slider staying open); Escape after a save; a save through it that fails; the question of a column before a change is saved; the demo's own component, whose editor saves on Enter or on leaving; the slider as a field of the action panel; the height of a row with and without components; components in a nested table |
+| `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, with nested tables open at every depth, and with the components of `/tasks`: at rest, a slider open, a failed one, and in the panels |
+| `contrast.spec.ts` | what axe does not judge, measured from the colours the browser computed, in the light and the dark theme: the focus ring of every kind of cell; the ring and the "!" of a failed cell, that they move nothing, and both rings on a failed cell with focus; the text of a saving cell and of a table that is reading; the muted text of the header and the filters; the edges of inputs, and of invalid ones; the label and the edge of a badge, the filled part of a progress bar against its track, and the track, the filled part and the thumb of a slider, read from the pixels the browser painted. In forced colours: that the focus ring, the failed cell, the expander's triangle, the current page, the edges of the dialog and the panel, and a badge, a bar and a slider are still drawn |
 
 How they are built (`e2e/support`):
 
@@ -556,7 +582,9 @@ How they are built (`e2e/support`):
   and cells by id.
 - **Contrast.** `support/contrast.ts` gives the colour a text, an outline or
   a border has on the screen (painted by the browser over everything behind
-  it) and the WCAG contrast ratio of two colours.
+  it), the colours at points of a picture of an element, for what no
+  computed style tells (the filled part of a bar or of a slider), and the
+  WCAG contrast ratio of two colours.
 - **Console.** Every test fails if the browser reported an error it did not
   expect.
 

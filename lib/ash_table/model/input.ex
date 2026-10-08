@@ -13,7 +13,9 @@ defmodule AshTable.Model.Input do
   #   * `editor` is the control of the field: that of a cell of its type
   #     (`:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`), or
   #     `:plain` for a value that is written as one line of text and has no
-  #     editor of its own (a key, a time, an atom).
+  #     editor of its own (a key, a time, an atom), or `:component` for an
+  #     attribute whose column in this table has a component with an editor:
+  #     `component` is then that column's (see `AshTable.Model.Column`).
   #   * `required?` says whether the action takes the input empty: as the
   #     attribute and the action say (`allow_nil?`, `allow_nil_input`,
   #     `require_attributes`), or the argument (`allow_nil?`).
@@ -30,6 +32,7 @@ defmodule AshTable.Model.Input do
     :cell_type,
     :values,
     :editor,
+    :component,
     :default,
     required?: false
   ]
@@ -41,7 +44,8 @@ defmodule AshTable.Model.Input do
           type: {Ash.Type.t(), keyword},
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
-          editor: :text | :number | :boolean | :date | :datetime | :enum | :plain,
+          editor: :text | :number | :boolean | :date | :datetime | :enum | :plain | :component,
+          component: map | nil,
           default: term,
           required?: boolean
         }

@@ -57,6 +57,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/confirm.md",
         "documentation/topics/row-actions-and-create.md",
         "documentation/topics/nested-tables.md",
+        "documentation/topics/custom-components.md",
         "documentation/topics/authorization.md",
         "documentation/topics/keyboard-and-accessibility.md",
         "documentation/topics/messages-and-translations.md",
@@ -75,6 +76,13 @@ defmodule AshTable.MixProject do
       groups_for_modules: [
         Extensions: [AshTable.Resource, AshTable.Domain],
         "In the page": [AshTable, AshTable.Router, AshTable.Live.Page, AshTable.NotFoundError],
+        Components: [
+          AshTable.Component,
+          AshTable.Component.Column,
+          AshTable.Components.Badge,
+          AshTable.Components.Progress,
+          AshTable.Components.Slider
+        ],
         Translation: [AshTable.Gettext],
         Introspection: [
           AshTable.Resource.Info,

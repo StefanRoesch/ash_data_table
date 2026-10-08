@@ -216,6 +216,15 @@ An input that points at another resource, such as `assignee_id` or
 `project_id`, is a key, and so a plain text field into which the key is
 typed or pasted. A picker of related records is a later slice.
 
+**An attribute whose column has a component that edits** has that editor as
+its field, in place of the control of its type: on `/tasks`, "Progress" is a
+slider in the panel as it is in a cell, and "Estimate hours" a number input
+with its unit. The label, the mark of a required field and the action's
+messages around it stay the table's. Nothing is saved by moving the slider:
+its value is sent with the form. An input the table has no column for, and
+an argument, have the control of their type. See
+[Custom components](custom-components.md#in-the-action-panel).
+
 **What a field starts with.**
 
 | The input | Starts with |
@@ -241,7 +250,7 @@ shown at the field like every other message of the action.
 
 **Try it:** `/tasks` as Ada Admin, "New task". Eleven fields: "Title \*",
 "Description", "State \*" starting with "To do", "Priority \*" with
-"Medium", "Progress \*" with 0, "Estimate hours", the checkbox "Billable?",
+"Medium", "Progress \*", a slider at 0, "Estimate hours", the checkbox "Billable?",
 "Due on", "External ref", "Project ID \*" and "Assignee ID". The create
 action accepts exactly these:
 

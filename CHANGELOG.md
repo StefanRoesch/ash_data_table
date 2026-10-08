@@ -265,6 +265,51 @@ declared in the resource and mounted with one line in the router.
   calculation, aggregate or reference columns without a primary read
   action.
 
+### Custom components
+
+- `component` on a `column`: a module that says how the cells of the column
+  look, what they are edited with, or both. It changes the look and the
+  control only: a save runs the column's `update_action` as before, and
+  sorting, filtering and authorization are untouched.
+- `AshTable.Component`, the behaviour of such a module, with two optional
+  function components. `cell/1` is given the value, the text the table
+  itself would show, and the column (`AshTable.Component.Column`: the
+  field's name, type and constraints, an enum's values with their labels,
+  the column's label, whether the person can edit it). `editor/1` is given
+  the control's value, the attributes the table needs on the control
+  (`{@control}`), the label, the column, and where it is (`:grid` or
+  `:panel`). `use AshTable.Component` checks that a module has one of the
+  two parts.
+- A component is never given a value the person may not see, a record
+  without a value, or the record itself: the table shows its own placeholder
+  and its own empty cell.
+- `use AshTable.Component, commit: :change` makes an editor save when its
+  value changes (a slider when it is let go) and stay open; the default,
+  `:enter`, saves on Enter and on leaving the cell. A step with the keyboard
+  is saved by Enter or by leaving, as in the table's own menus. Escape gives
+  up what has not been saved. `confirm` asks before a change is saved.
+- The editor of a column's component is the field of that attribute in the
+  action panel, under the table's label and with the action's messages. In
+  the panel a change saves nothing: the value goes with the form.
+- Three components are shipped: `AshTable.Components.Badge` shows an enum's
+  value as a badge, `AshTable.Components.Progress` a number between its
+  minimum and maximum as a bar with the number beside it, and
+  `AshTable.Components.Slider` edits such a number with a native range
+  input. Each says when the resource is compiled what its field has to be
+  (`verify/1`, which a component of the host's can define as well).
+- Reported when the resource is compiled, and refused when the table is
+  built: a `component` that names no module, a module that is no component
+  or has neither part, and a component that cannot serve its column. Also
+  reported: a component that only edits on a column that can never be
+  edited, and `component` on a column that names a relationship.
+- A resource does not depend on the component it names: no compile-time
+  dependency from the data layer to the web layer. The component is looked
+  at once the application is compiled, so a change to the component alone is
+  checked by the next full compile.
+- A badge, a progress bar and a slider leave a row as high as it is without
+  them, are drawn in the theme's text colour, and are still drawn in forced
+  colours. Their contrast is measured by the demo's browser tests.
+
 ### Changed since the reference cells were added
 
 - A table placed with `<AshTable.table … />` now shows its name on a line
@@ -284,6 +329,15 @@ declared in the resource and mounted with one line in the router.
   read action counts reference columns.
 - The pages of a nested table are no longer the last row of its grid where
   the nested table has a link to the full view: the link's row follows.
+
+### Changed since row actions and create were added
+
+- The editor template of a column says when it saves (`data-commit`) when
+  it is a component's, and `data-editor` is `component` then.
+- A cell of an editable column whose component shows carries `data-value`,
+  as the cells of choices and booleans do.
+- A double click beside the control of an editor that is open no longer
+  opens the editor a second time.
 
 ### Tooling
 

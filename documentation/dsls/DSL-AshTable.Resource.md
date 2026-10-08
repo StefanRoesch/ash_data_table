@@ -207,6 +207,43 @@ A person who can never run an action has no button for it. An input of a
 field they can never see, or do not see on the record, is no field of
 their panel. See `AshTable.Live.Page`.
 
+## Custom components
+
+A column can name a module that says how its cells look, what they are
+edited with, or both:
+
+    table do
+      update_action :update
+
+      column :status do
+        component AshTable.Components.Badge
+      end
+
+      column :progress do
+        component MyAppWeb.Cells.Progress
+      end
+    end
+
+The module implements `AshTable.Component`: `cell/1` shows a value and
+`editor/1` edits it, each a function component, and the table's own
+display or editor is used for the part a component does not have. Three
+are shipped: `AshTable.Components.Badge`, `AshTable.Components.Progress`
+and `AshTable.Components.Slider`.
+
+A component changes the look and the control and nothing else. A cell is
+saved through the column's `update_action` as before, with what the
+control holds; sorting, filtering and authorization are those of the
+field. A component is given the cell's value and what the resource knows
+about the field, never the record; it is not called for a value the person
+may not see, for which the table shows its own placeholder, nor for a
+record without one. The editor of a column's component is also the field
+of that attribute in the action panel.
+
+The resource does not depend on the module it names. A module that does
+not exist, is no component, or says that it cannot serve the column is
+reported once the application is compiled, and the table refuses to be
+built with it. A column that names a relationship has no component.
+
 
 ## table
 How the resource is presented to people as a table.
@@ -289,6 +326,13 @@ end
 
 ```
 
+```
+column :progress do
+  component AshTable.Components.Slider
+end
+
+```
+
 
 
 ### Arguments
@@ -305,6 +349,7 @@ end
 | [`filterable?`](#table-column-filterable?){: #table-column-filterable? } | `boolean` |  | Set to `false` to leave this column without a filter. Defaults to what the resource allows; it cannot switch filtering on. |
 | [`update_action`](#table-column-update_action){: #table-column-update_action } | `false \| atom` |  | The update action an inline edit of this column runs, with the column's attribute as its only input. `false` makes the column read-only. Defaults to the table's `update_action`. |
 | [`confirm`](#table-column-confirm){: #table-column-confirm } | `String.t` |  | A question asked before an inline edit of this column is saved. |
+| [`component`](#table-column-component){: #table-column-component } | `module` |  | A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of the three that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship. |
 | [`exposes_protected_field?`](#table-column-exposes_protected_field?){: #table-column-exposes_protected_field? } | `boolean` |  | Set to `true` on an aggregate or calculation column that is meant to show everyone who reads a row what a field policy protects elsewhere: a field of the related resource that the aggregate is over or filters by, or a field the calculation references. It silences the warning the compiler gives about such a column. Ash applies no field policy of what an aggregate or a calculation is made from; the column is protected by a field policy of its own on this resource. |
 
 

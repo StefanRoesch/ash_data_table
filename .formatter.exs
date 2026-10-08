@@ -5,6 +5,7 @@ spark_locals_without_parens = [
   authorize?: 1,
   column: 1,
   column: 2,
+  component: 1,
   confirm: 1,
   create_action: 1,
   exposes_protected_field?: 1,
