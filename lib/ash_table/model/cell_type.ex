@@ -4,7 +4,14 @@ defmodule AshTable.Model.CellType do
   # (later) edits and filters it as. `Ash.Info.Manifest` is not consulted at
   # runtime (ADR 0001); the test suite compares this module's answers with it.
 
-  @type t :: :text | :number | :boolean | :date | :datetime | :enum | :other
+  @typedoc "The cell type of one value."
+  @type item :: :text | :number | :boolean | :date | :datetime | :enum
+
+  @typedoc """
+  A cell type: that of one value, `{:array, item}` for a list of such
+  values, or `:other`.
+  """
+  @type t :: item | {:array, item} | :other
 
   @typedoc "The values of an enum cell with their labels, in declared order."
   @type values :: [{atom | String.t(), String.t()}]
@@ -46,12 +53,23 @@ defmodule AshTable.Model.CellType do
   @doc """
   Classifies an Ash type with its constraints.
 
-  Returns the cell type and, for `:enum`, the values with their labels.
-  Everything a table has no dedicated cell for is `:other`: arrays, maps,
-  embedded resources, unions, keys, times, durations and so on.
+  Returns the cell type and, for `:enum`, the values with their labels. An
+  array of values that have a cell type of their own is `{:array, item}`,
+  with the values of an enum item.
+
+  Everything a table has no dedicated cell for is `:other`: maps, embedded
+  resources, unions, keys, times, durations and so on, and the arrays of
+  those and of arrays.
   """
   @spec classify(Ash.Type.t(), keyword) :: {t, values | nil}
-  def classify({:array, _type}, _constraints), do: {:other, nil}
+  def classify({:array, type}, constraints) do
+    # the constraints of the values are those of the array's `items`
+    case classify(type, constraints[:items] || []) do
+      {:other, nil} -> {:other, nil}
+      {{:array, _item}, _values} -> {:other, nil}
+      {item, values} -> {{:array, item}, values}
+    end
+  end
 
   def classify(type, constraints) do
     type = Ash.Type.get_type(type)

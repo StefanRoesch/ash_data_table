@@ -11,7 +11,8 @@ defmodule AshTable.Model.Input do
   #     are what a column of that type has (see `AshTable.Model.Column`), and
   #     what the field's value is written with (`AshTable.Format.input/2`).
   #   * `editor` is the control of the field: that of a cell of its type
-  #     (`:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`), or
+  #     (`:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`, and
+  #     `:choices` or `:list` for an array), or
   #     `:plain` for a value that is written as one line of text and has no
   #     editor of its own (a key, a time, an atom), or `:component` for an
   #     attribute whose column in this table has a component with an editor:
@@ -44,7 +45,7 @@ defmodule AshTable.Model.Input do
           type: {Ash.Type.t(), keyword},
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
-          editor: :text | :number | :boolean | :date | :datetime | :enum | :plain | :component,
+          editor: AshTable.Resource.Editing.editor() | :plain | :component,
           component: map | nil,
           default: term,
           required?: boolean

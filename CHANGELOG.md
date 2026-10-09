@@ -58,6 +58,23 @@ declared in the resource and mounted with one line in the router.
   datetimes and enums. The row is shown from what the action returns.
 - A failed save marks its cell with the action's message and keeps what was
   typed. `confirm` asks in a dialog before saving.
+- **Arrays.** An array of text, numbers, booleans, dates, datetimes or enum
+  values is a cell of its own: shown as its values, as plain text separated
+  by commas, each as a cell of its type shows it (the labels of an enum's
+  values), and edited as a whole. An array of enum values is edited as
+  multiple choice, a list of boxes that opens in the cell; any other with
+  one control per value, a button that takes each value away and one that
+  adds a value. Enter or leaving the editor saves the list, Escape gives it
+  up; the values go to the column's update action as they were typed, and
+  the array's constraints are the action's to check. The same two editors
+  are the fields of an array in the action panel. An array column is
+  neither sorted nor filtered by, as in Ash's interface extensions. Arrays
+  of anything else (maps, embedded resources, unions, keys, arrays) stay
+  read-only text. A column's `component` shows an array's cells; its editor
+  is not used for one. A component is told `cell_type: {:array, item}` for
+  such a column, where it was told `:other`.
+- An error an action returns about one value of an array is shown, in a
+  cell and in the action panel.
 
 ### Authorization
 
@@ -227,8 +244,8 @@ declared in the resource and mounted with one line in the router.
   field for a value written as one line (a UUID, a time, an atom); starting
   with the record's values and the arguments' defaults; marked as required
   as the action requires it.
-- An optional input of a type without a field (arrays, maps, embedded
-  resources, unions) is left out of the panel. An action that requires one
+- An optional input of a type without a field (maps, embedded resources,
+  unions, and arrays of them) is left out of the panel. An action that requires one
   is reported when the resource is compiled and has no button.
 - The panel's form is an `AshPhoenix.Form`: what is typed is validated by
   the action as it is typed, errors are shown at their fields, and what is

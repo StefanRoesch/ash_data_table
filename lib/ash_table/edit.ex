@@ -30,14 +30,15 @@ defmodule AshTable.Edit do
           | {:error, Ash.Resource.record() | nil, String.t()}
 
   @doc """
-  Saves `typed`, the text of a cell's editor, as the value of `column` on the
-  record with the primary key `key`.
+  Saves `typed`, what a cell's editor holds, as the value of `column` on the
+  record with the primary key `key`: the text of the editor, and for an
+  array the texts of its values (see `typed?/2`).
 
   Takes the options of `AshTable.Query.read/3` that say who is asking.
   """
-  @spec save(Model.t(), Column.t(), map, String.t(), [Query.option()]) :: result
+  @spec save(Model.t(), Column.t(), map, String.t() | [String.t()], [Query.option()]) :: result
   def save(%Model{} = model, %Column{editable?: true} = column, key, typed, opts)
-      when is_map(key) and is_binary(typed) do
+      when is_map(key) and (is_binary(typed) or is_list(typed)) do
     opts = Query.reader_opts(opts)
 
     case Record.fetch(model, key, opts) do
@@ -45,6 +46,17 @@ defmodule AshTable.Edit do
       :error -> {:error, nil, Text.t(:record_gone)}
     end
   end
+
+  @doc """
+  Whether `typed` is what an editor of `column` holds: one text, and for an
+  array a list of texts, one per value. Anything else is nothing the table's
+  editors send.
+  """
+  @spec typed?(Column.t(), term) :: boolean
+  def typed?(%Column{cell_type: {:array, _item}}, typed),
+    do: is_list(typed) and Enum.all?(typed, &is_binary/1)
+
+  def typed?(%Column{}, typed), do: is_binary(typed)
 
   defp save_record(model, column, record, typed, opts) do
     case Map.get(record, column.name) do

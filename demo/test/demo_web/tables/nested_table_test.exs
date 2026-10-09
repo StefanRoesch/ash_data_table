@@ -74,10 +74,10 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "#task-head-row > th:first-child", "aria-colindex") == ["1"]
       assert attribute(html, "#task-head-title", "aria-colindex") == ["2"]
       assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["2"]
-      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["15"]
-      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["18"]
-      # the expanders, the 17 columns and the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["19"]
+      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["17"]
+      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["20"]
+      # the expanders, the 19 columns and the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
       # and not one of the table's columns
       assert hd(headers(html, "task")) == "Title"
     end
@@ -258,8 +258,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='task-row-#{task.id}-l-comments-b']") =~ "Comments"
       assert text(html, "[id='task-row-#{task.id}-c-title']") == "Write the report"
 
-      # the expanders, 17 columns and the actions
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["19"]
+      # the expanders, 19 columns and the actions
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["21"]
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
     end
 
@@ -602,7 +602,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       {_view, html} = open_tasks(conn, project)
 
       assert editors(html, id) ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
 
       assert editor(html, id, "status").confirm == "Change the state of this task?"
       # the projects around it have the editors of their own table

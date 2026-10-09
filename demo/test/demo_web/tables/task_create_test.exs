@@ -98,7 +98,11 @@ defmodule DemoWeb.Tables.TaskCreateTest do
                  {"external_ref", "External ref", "textarea", "", false},
                  # keys: plain fields until there is a picker
                  {"project_id", "Project ID", "text", "", true},
-                 {"assignee_id", "Assignee ID", "text", "", false}
+                 {"assignee_id", "Assignee ID", "text", "", false},
+                 # arrays: value by value, and multiple choice. Both start
+                 # with the attribute's default, which is no values
+                 {"tags", "Tags", "list", [], false},
+                 {"checks", "Checks", "choices", [], false}
                ]
 
       assert length(stored(world)) == 2

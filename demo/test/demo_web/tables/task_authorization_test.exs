@@ -30,6 +30,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     "Headline",
     "External ref",
     "Description",
+    "Tags",
+    "Checks",
     "Inserted at",
     "Project",
     "Assignee",
@@ -89,8 +91,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       assert headers(html, "task") == @headers
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1"]
-      # the 17 columns, before them the expanders, and after them the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["19"]
+      # the 19 columns, before them the expanders, and after them the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
     end
 
     for actor <- [:member, :viewer, :outsider] do
@@ -105,13 +107,13 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        # the expanders, the columns that are left (16, and 14 for the viewer),
+        # the expanders, the columns that are left (18, and 16 for the viewer),
         # and the actions, which a viewer can never run
         actions = if unquote(actor) == :viewer, do: 0, else: 1
         count = 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]]) + actions
         numbers = Enum.map(1..count, &Integer.to_string/1)
 
-        assert count == if(unquote(actor) == :viewer, do: 15, else: 18)
+        assert count == if(unquote(actor) == :viewer, do: 17, else: 20)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
         assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
@@ -127,11 +129,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert headers(html, "task") ==
                @headers -- ["External ref", "Estimate hours" | @unreadable.nobody]
 
-      # the expanders, and the 14 columns that are left
-      assert attribute(html, "#task-table", "aria-colcount") == ["15"]
+      # the expanders, and the 16 columns that are left
+      assert attribute(html, "#task-table", "aria-colcount") == ["17"]
 
       assert attribute(html, "#task-head-row th", "aria-colindex") ==
-               Enum.map(1..15, &Integer.to_string/1)
+               Enum.map(1..17, &Integer.to_string/1)
 
       refute html =~ "estimate_hours"
       refute html =~ "Estimate hours"
@@ -153,9 +155,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "leaves the cells of a row numbered without a gap", %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
-      # the expander, the sixteen columns of a member, the actions
+      # the expander, the eighteen columns of a member, the actions
       assert attribute(html, "#task-table tbody td", "aria-colindex") ==
-               Enum.map(1..18, &Integer.to_string/1)
+               Enum.map(1..20, &Integer.to_string/1)
     end
   end
 
@@ -403,7 +405,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "is offered editing on every task: the table cannot know yet which will be refused",
          %{html: html, mine: mine, theirs: theirs} do
       assert editors(html, "task") ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
 
       for task <- [mine, theirs], field <- ~w(title status priority progress billable?) do
         assert attribute(html, cell(task.id, field), "aria-readonly") == [], field
@@ -447,7 +449,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
       assert editors(html, "task") ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
 
       assert attribute(html, cell(task.id, "title"), "aria-readonly") == []
 
@@ -476,14 +478,14 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
         end
 
       assert seen == [
-               admin: %{columns: 17, rows: 1, editors: 9},
-               member: %{columns: 16, rows: 1, editors: 9},
+               admin: %{columns: 19, rows: 1, editors: 11},
+               member: %{columns: 18, rows: 1, editors: 11},
                # may not read people: no assignee, no reporter
-               viewer: %{columns: 14, rows: 1, editors: 0},
+               viewer: %{columns: 16, rows: 1, editors: 0},
                # of the other organization: none of these tasks, and a member there
-               outsider: %{columns: 16, rows: 0, editors: 9},
+               outsider: %{columns: 18, rows: 0, editors: 11},
                # may not read projects
-               nobody: %{columns: 14, rows: 0, editors: 0}
+               nobody: %{columns: 16, rows: 0, editors: 0}
              ]
     end
   end

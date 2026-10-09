@@ -40,6 +40,15 @@ defmodule AshTable.Model do
   # carries that action, its editor and the question of its `confirm`. With no
   # `update_action` at either level nothing is editable.
   #
+  # ## Arrays
+  #
+  # An array of values that have a cell type of their own has the cell type
+  # `{:array, item}` (`AshTable.Model.CellType`): shown as its values, each as
+  # a cell of its type shows it, and edited as a whole. An array of enum
+  # values is edited as multiple choice (`:choices`), any other with one
+  # control per value (`:list`). It is neither sorted nor filtered by: Ash
+  # sorts by no array, and its interface extensions filter by none.
+  #
   # ## Components
   #
   # A column whose block names a `component` carries it: the module, which
@@ -954,7 +963,9 @@ defmodule AshTable.Model do
   end
 
   # An attribute whose column has a component with an editor is given
-  # through that editor, in the panel as in a cell.
+  # through that editor, in the panel as in a cell. An array never is.
+  defp with_component(%Input{cell_type: {:array, _item}} = input, _columns), do: input
+
   defp with_component(%Input{kind: :attribute, name: name} = input, columns) do
     case Enum.find(columns, &(&1.name == name and &1.kind == :attribute)) do
       %{component: %{editor?: true} = component} ->
@@ -1079,9 +1090,11 @@ defmodule AshTable.Model do
   end
 
   # What an editable column is edited with: the editor of its component,
-  # when that has one, else the editor of its cell type.
+  # when that has one, else the editor of its cell type. An array is always
+  # edited with the table's own editor: that of a component holds one value.
+  defp editor({:array, _item} = cell_type, _component), do: Editing.editor(cell_type)
   defp editor(_cell_type, %{editor?: true}), do: :component
-  defp editor(cell_type, _component), do: cell_type
+  defp editor(cell_type, _component), do: Editing.editor(cell_type)
 
   # The component of a column, as far as the block names one, with what it
   # is told about the column, which is all it is told.

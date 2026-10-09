@@ -40,6 +40,10 @@ defmodule DemoWeb.TablePage do
 
       save(view, task.id, "title", "Write the summary")
       save(view, "specimen", specimen.id, "a_boolean", "true")
+
+  The value of an array is a list, of its values as typed:
+
+      save(view, task.id, "tags", ["api", "mobile"])
   """
   def save(view, id \\ "task", key, field, value) do
     view
@@ -157,6 +161,10 @@ defmodule DemoWeb.TablePage do
   fields top to bottom (each with its label, its control, its value, whether
   it is marked as required, and its errors), the errors that are about no
   field, and what its button says. Nil while no panel is open.
+
+  The field of an array has several controls, and its value is a list: for
+  `"choices"`, the boxes of a multiple choice, the values that are ticked;
+  for `"list"`, one control per value, what each of them holds.
   """
   def panel(html, id \\ "task") do
     case Enum.to_list(query(html, "[id='#{id}-panel']")) do
@@ -167,27 +175,7 @@ defmodule DemoWeb.TablePage do
         fields =
           for field <- query(html, "[id='#{id}-panel'] [data-field]") do
             [name] = LazyHTML.attribute(field, "data-field")
-            control = LazyHTML.query(field, "textarea, select, input:not([type=hidden])")
-            [{tag, attributes, children}] = LazyHTML.to_tree(control)
-            type = :proplists.get_value("type", attributes, nil)
-
-            value =
-              case {tag, type} do
-                {"textarea", _} ->
-                  children |> LazyHTML.from_tree() |> LazyHTML.text() |> String.trim_leading("\n")
-
-                {"select", _} ->
-                  control
-                  |> LazyHTML.query("option[selected]")
-                  |> LazyHTML.attribute("value")
-                  |> List.first("")
-
-                {"input", "checkbox"} ->
-                  to_string(List.keymember?(attributes, "checked", 0))
-
-                {"input", _} ->
-                  :proplists.get_value("value", attributes, "")
-              end
+            {control, value, required?} = field_control(field)
 
             %{
               name: name,
@@ -196,9 +184,9 @@ defmodule DemoWeb.TablePage do
                 |> LazyHTML.query("[data-label]")
                 |> LazyHTML.text()
                 |> String.trim(),
-              control: if(tag == "input", do: type, else: tag),
+              control: control,
               value: value,
-              required?: :proplists.get_value("aria-required", attributes, nil) == "true",
+              required?: required?,
               errors:
                 field
                 |> LazyHTML.query("[data-error]")
@@ -215,6 +203,57 @@ defmodule DemoWeb.TablePage do
             |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())),
           submit: text(html, "[id='#{id}-panel-submit']")
         }
+    end
+  end
+
+  # The control of a field of the panel, what it holds, and whether it says
+  # that it is required.
+  defp field_control(field) do
+    cond do
+      # an array, value by value: its rows, without the one in the `<template>`
+      Enum.any?(LazyHTML.query(field, "[data-list]")) ->
+        values =
+          for item <- LazyHTML.query(field, "[data-list] > [data-item]") do
+            item |> LazyHTML.query("textarea, input:not([type=hidden])") |> control_value()
+          end
+
+        {"list", values, false}
+
+      # an array of enum values: the boxes that are ticked
+      Enum.any?(LazyHTML.query(field, "[role=group]")) ->
+        {"choices",
+         field
+         |> LazyHTML.query("[role=group] input[type=checkbox][checked]")
+         |> LazyHTML.attribute("value"), false}
+
+      true ->
+        control = LazyHTML.query(field, "textarea, select, input:not([type=hidden])")
+        [{tag, attributes, _children}] = LazyHTML.to_tree(control)
+        type = :proplists.get_value("type", attributes, nil)
+
+        {if(tag == "input", do: type, else: tag), control_value(control),
+         :proplists.get_value("aria-required", attributes, nil) == "true"}
+    end
+  end
+
+  defp control_value(control) do
+    [{tag, attributes, children}] = LazyHTML.to_tree(control)
+
+    case {tag, :proplists.get_value("type", attributes, nil)} do
+      {"textarea", _} ->
+        children |> LazyHTML.from_tree() |> LazyHTML.text() |> String.trim_leading("\n")
+
+      {"select", _} ->
+        control
+        |> LazyHTML.query("option[selected]")
+        |> LazyHTML.attribute("value")
+        |> List.first("")
+
+      {"input", "checkbox"} ->
+        to_string(List.keymember?(attributes, "checked", 0))
+
+      {"input", _} ->
+        :proplists.get_value("value", attributes, "")
     end
   end
 
@@ -284,6 +323,10 @@ defmodule DemoWeb.TablePage do
   What a column's cells are edited with: the control (`"textarea"`,
   `"select"`, or the type of an input), the choices of a select, and the
   question asked before saving. Nil for a column without an editor.
+
+  An array has several controls: `"choices"`, one box per choice, or
+  `{"list", control}`, a row per value with that control, a button that
+  takes the value away, and a button that adds one.
   """
   def editor(html, id, field) do
     case html |> query("template[id='#{id}-editor-#{field}']") |> LazyHTML.to_tree() do
@@ -294,20 +337,45 @@ defmodule DemoWeb.TablePage do
         # a template's content is not part of the document, so it is read on its own
         content = LazyHTML.from_tree(children)
 
-        [{tag, control, _children}] =
-          content |> LazyHTML.query("textarea,select,input") |> LazyHTML.to_tree()
+        {control, choices} =
+          case :proplists.get_value("data-editor", attributes, nil) do
+            "choices" ->
+              {"choices",
+               content
+               |> LazyHTML.query("label")
+               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))}
 
-        choices =
-          content
-          |> LazyHTML.query("option")
-          |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+            "list" ->
+              # the row of a value is in a template of its own
+              [{"template", _attributes, row}] =
+                content |> LazyHTML.query("[data-list] > template") |> LazyHTML.to_tree()
+
+              row = LazyHTML.from_tree(row)
+
+              true =
+                Enum.count(LazyHTML.query(row, "button[data-remove]")) == 1 and
+                  Enum.count(LazyHTML.query(content, "[data-list] > button[data-add]")) == 1
+
+              {{"list", control(LazyHTML.query(row, "textarea,input"))}, []}
+
+            _one_control ->
+              {control(LazyHTML.query(content, "textarea,select,input")),
+               content
+               |> LazyHTML.query("option")
+               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))}
+          end
 
         %{
-          control: if(tag == "input", do: :proplists.get_value("type", control), else: tag),
+          control: control,
           choices: none_as_nil(choices),
           confirm: :proplists.get_value("data-confirm", attributes, nil)
         }
     end
+  end
+
+  defp control(element) do
+    [{tag, attributes, _children}] = LazyHTML.to_tree(element)
+    if tag == "input", do: :proplists.get_value("type", attributes), else: tag
   end
 
   @doc """

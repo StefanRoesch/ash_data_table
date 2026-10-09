@@ -94,6 +94,8 @@ defmodule Demo.Generator do
   @first_names ~w(Alex Bea Chris Dana Eli Fay Gus Hana Ivo Jule Kim Lars Mia Nils Oda Pia)
   @last_names ~w(Arnold Becker Conrad Dietz Ernst Fuchs Graf Hahn Jung Kraus Lang Maier)
   @label_names ~w(bug feature chore docs design ops security question)
+  @tags ~w(frontend backend api database mobile customer quick-win needs-design)
+  @checks [:reviewed, :tested, :documented, :released]
   @colours ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #64748b)
   @project_names [
     "Website relaunch",
@@ -234,9 +236,12 @@ defmodule Demo.Generator do
   def task(opts \\ []) do
     built(opts, fn ->
       shape = task_shape()
+      id = uuid()
 
       %Task{
-        id: uuid(),
+        id: id,
+        tags: derived(id, :tags, @tags, [0, 0, 1, 1, 2, 3]),
+        checks: derived(id, :checks, @checks, [0, 0, 0, 1, 2, 3]),
         title: title(),
         description: maybe(0.7, &paragraph/0),
         status: shape.status,
@@ -253,6 +258,19 @@ defmodule Demo.Generator do
         updated_at: shape.updated_at
       }
     end)
+  end
+
+  # Some of `values`, in their order: as many as one of `counts` says. Which
+  # ones follows from the record's id and from nothing else, so that a field
+  # filled this way draws nothing from the random state: every value drawn
+  # after it is what it was before the field was there.
+  defp derived(id, field, values, counts) do
+    count = Enum.at(counts, :erlang.phash2({id, field, :count}, length(counts)))
+
+    values
+    |> Enum.sort_by(&:erlang.phash2({id, field, &1}))
+    |> Enum.take(count)
+    |> Enum.sort_by(fn value -> Enum.find_index(values, &(&1 == value)) end)
   end
 
   @doc "A comment. Needs `organization_id:`, `task_id:` and `author_id:`."

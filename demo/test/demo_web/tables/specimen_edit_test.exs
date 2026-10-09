@@ -29,6 +29,9 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
           a_utc_datetime_usec: ~U[2026-03-09 14:30:05.123456Z],
           a_datetime: ~U[2026-03-09 14:30:05Z],
           a_naive_datetime: ~N[2026-03-09 14:30:05],
+          strings: ["one", "two"],
+          integers: [3, 4],
+          shades: [:light, :dark],
           a_percentage: 80,
           a_shade: :medium,
           opt_string: "Something",
@@ -48,15 +51,17 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
   end
 
   defp shown(html, specimen, field), do: text(html, cell("specimen", specimen.id, field))
+  defp html(view), do: render(view)
 
   @editable ~w(label a_string a_ci_string an_atom an_integer a_float a_decimal a_boolean a_date
                a_utc_datetime a_utc_datetime_usec a_datetime a_naive_datetime a_duration_name
-               a_percentage a_shade opt_string opt_integer opt_decimal opt_boolean opt_date
-               opt_utc_datetime opt_shade)
+               strings integers shades a_percentage a_shade opt_string opt_integer opt_decimal
+               opt_boolean opt_date opt_utc_datetime opt_shade)
 
+  # an array of embedded resources among them: its values have no editor
   @read_only ~w(id a_time a_time_usec a_duration a_uuid a_uuid_v7 a_binary a_url_encoded_binary
-                a_map a_typed_map a_keyword a_tuple a_struct a_term a_module a_date_range strings
-                integers shades an_address addresses a_union inserted_at updated_at)
+                a_map a_typed_map a_keyword a_tuple a_struct a_term a_module a_date_range
+                an_address addresses a_union inserted_at updated_at)
 
   describe "what can be edited" do
     test "the types with an editor have one; the others, and what the action does not accept, are read-only",
@@ -104,6 +109,81 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
         {:ok, _view, html} = live(conn, "/specimens")
         assert shown(html, specimen, unquote(field)) == unquote(shown)
       end
+    end
+
+    test "an array of text and one of numbers are saved value by value", %{
+      conn: conn,
+      view: view,
+      specimen: specimen
+    } do
+      assert editor(html(view), "specimen", "strings").control == {"list", "textarea"}
+      assert editor(html(view), "specimen", "integers").control == {"list", "number"}
+
+      html = save(view, "specimen", specimen.id, "strings", ["three", "one", "four"])
+      assert shown(html, specimen, "strings") == "three, one, four"
+
+      html = save(view, "specimen", specimen.id, "integers", ["10", "0"])
+      assert shown(html, specimen, "integers") == "10, 0"
+
+      assert %{strings: ["three", "one", "four"], integers: [10, 0]} =
+               Ash.get!(Demo.KitchenSink.Specimen, specimen.id)
+
+      {:ok, _view, html} = live(conn, "/specimens")
+      assert shown(html, specimen, "strings") == "three, one, four"
+      assert shown(html, specimen, "integers") == "10, 0"
+    end
+
+    test "an array of enum values is saved as multiple choice", %{
+      conn: conn,
+      view: view,
+      specimen: specimen
+    } do
+      assert editor(html(view), "specimen", "shades") == %{
+               control: "choices",
+               choices: ["Light", "Medium", "Dark"],
+               confirm: nil
+             }
+
+      html = save(view, "specimen", specimen.id, "shades", ["medium", "dark"])
+      assert shown(html, specimen, "shades") == "Medium, Dark"
+      assert Ash.get!(Demo.KitchenSink.Specimen, specimen.id).shades == [:medium, :dark]
+
+      # nothing ticked: the empty array
+      html = save(view, "specimen", specimen.id, "shades", [])
+      assert shown(html, specimen, "shades") == ""
+      assert failure(html, "specimen", specimen.id, "shades") == nil
+
+      {:ok, _view, html} = live(conn, "/specimens")
+      assert shown(html, specimen, "shades") == ""
+    end
+
+    test "an array the action refuses is shown as it was typed, with the action's message",
+         %{view: view, specimen: specimen} do
+      # `integers` has to have a value, and its values may not be negative
+      html = save(view, "specimen", specimen.id, "integers", [])
+
+      assert failure(html, "specimen", specimen.id, "integers") == %{
+               shown: "",
+               message: "must have 1 or more items"
+             }
+
+      html = save(view, "specimen", specimen.id, "integers", ["5", "-1"])
+
+      assert failure(html, "specimen", specimen.id, "integers") == %{
+               shown: "5, -1",
+               message: "must be greater than or equal to 0"
+             }
+
+      # `strings` takes five values at most
+      html = save(view, "specimen", specimen.id, "strings", ~w(a b c d e f))
+
+      assert failure(html, "specimen", specimen.id, "strings") == %{
+               shown: "a, b, c, d, e, f",
+               message: "must have 5 or fewer items"
+             }
+
+      assert %{strings: ["one", "two"], integers: [3, 4]} =
+               Ash.get!(Demo.KitchenSink.Specimen, specimen.id)
     end
 
     test "empty input empties every kind of field that can be empty",

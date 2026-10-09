@@ -22,7 +22,7 @@ defmodule AshTable.Resource.Acting do
           type: {Ash.Type.t(), keyword},
           cell_type: CellType.t(),
           values: CellType.values() | nil,
-          editor: atom | nil,
+          editor: Editing.editor() | :plain | nil,
           required?: boolean,
           default: term
         }
@@ -123,8 +123,8 @@ defmodule AshTable.Resource.Acting do
   end
 
   # The control of a cell of that type, or a plain field for a value that
-  # is written as one line of text. Nothing for the rest: arrays, maps,
-  # embedded resources and so on.
+  # is written as one line of text. Nothing for the rest: maps, embedded
+  # resources and so on, and the arrays of anything without a cell type.
   defp editor(:other, {:array, _type}, _constraints), do: nil
 
   defp editor(:other, type, constraints) do
@@ -247,8 +247,8 @@ defmodule AshTable.Resource.Acting do
     do:
       "The #{what} action `#{name}` cannot be run from a table: its input `#{input}` is " <>
         "required, and a table has no field for its type (#{inspect(type)}). The action panel " <>
-        "has fields for text, numbers, booleans, dates, datetimes, choices, and for values " <>
-        "written as one line of text, such as a key."
+        "has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, " <>
+        "and for values written as one line of text, such as a key."
 
   def message({:result_read_not_public, name}),
     do:

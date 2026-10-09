@@ -329,6 +329,14 @@ defmodule AshTable.ModelTest do
     test "is switched off by `sortable? false` in the block" do
       assert sortability(AshTable.Test.Labelled) == [due_on: true, comment_count: false]
     end
+
+    # as `Ash.Resource.Info.sortable?/3` says for every array
+    test "is never an array's" do
+      for column <- Model.build(AshTable.Test.KitchenSink).columns,
+          match?({:array, _item}, column.cell_type) do
+        refute column.sortable?, "#{column.name}"
+      end
+    end
   end
 
   describe "a column's cell type" do
@@ -370,12 +378,45 @@ defmodule AshTable.ModelTest do
                term: :other,
                module: :other,
                address: :other,
-               strings: :other,
-               statuses: :other,
+               strings: {:array, :text},
+               slugs: {:array, :text},
+               integers: {:array, :number},
+               decimals: {:array, :number},
+               booleans: {:array, :boolean},
+               dates: {:array, :date},
+               datetimes: {:array, :datetime},
+               statuses: {:array, :enum},
+               sizes: {:array, :enum},
+               priorities: {:array, :enum},
+               atoms: :other,
+               uuids: :other,
+               times: :other,
+               maps: :other,
+               addresses: :other,
+               lists: :other,
+               unions: :other,
                union: :other,
                inserted_at: :datetime,
                updated_at: :datetime
              ]
+    end
+
+    test "is an array's when its values have a cell type of their own, and `:other` for every other array" do
+      types = cell_types(AshTable.Test.KitchenSink)
+
+      # text, numbers, booleans, dates, datetimes and enums, also as NewTypes
+      # and as an atom limited to a set of values
+      assert types[:strings] == {:array, :text}
+      assert types[:integers] == {:array, :number}
+      assert types[:statuses] == {:array, :enum}
+      assert types[:sizes] == {:array, :enum}
+      assert types[:slugs] == {:array, :text}
+      assert types[:priorities] == {:array, :enum}
+
+      # an array of values a table has no cell for, and an array of arrays
+      for name <- [:atoms, :uuids, :times, :maps, :addresses, :lists, :unions] do
+        assert types[name] == :other, "#{name}"
+      end
     end
 
     test "follows the type of a calculation and of an aggregate" do
@@ -385,6 +426,62 @@ defmodule AshTable.ModelTest do
                title: :text,
                shouted_title: :text
              ]
+    end
+  end
+
+  describe "what an array shows and what its editor holds" do
+    alias AshTable.Format
+
+    defp sink(name),
+      do: Enum.find(Model.build(AshTable.Test.KitchenSink).columns, &(&1.name == name))
+
+    test "its values as text, separated by commas, each as a cell of its type shows it" do
+      assert Format.format(sink(:strings), ["red", "green"]) == "red, green"
+      assert Format.format(sink(:integers), [3, -1]) == "3, -1"
+
+      assert Format.format(sink(:decimals), [Decimal.new("1.50"), Decimal.new("1E+3")]) ==
+               "1.50, 1000"
+
+      assert Format.format(sink(:booleans), [true, false]) == "Yes, No"
+
+      assert Format.format(sink(:dates), [~D[2026-03-09], ~D[2026-12-01]]) ==
+               "2026-03-09, 2026-12-01"
+
+      assert Format.format(sink(:datetimes), [~U[2026-03-09 14:30:05Z]]) ==
+               "2026-03-09T14:30:05"
+    end
+
+    test "the labels of the values of an enum, in the order the record has them" do
+      assert Format.format(sink(:statuses), [:done, :in_progress]) == "Done, Being worked on"
+      assert Format.format(sink(:sizes), [:extra_large]) == "Extra large"
+    end
+
+    test "nothing for an empty array and for nil, as every empty cell" do
+      assert Format.format(sink(:strings), []) == ""
+      assert Format.format(sink(:strings), nil) == ""
+      assert Format.format(sink(:statuses), []) == ""
+    end
+
+    test "an array a table has no cell for stays as it was: read-only text" do
+      assert Format.format(sink(:atoms), [:a, :b]) == "a, b"
+      assert Format.format(sink(:lists), [["a"], ["b", "c"]]) == "a, b, c"
+    end
+
+    test "its editor holds a list: each value as the editor of its type writes it" do
+      assert Format.input(sink(:strings), ["red", "green"]) == ["red", "green"]
+      assert Format.input(sink(:integers), [3, -1]) == ["3", "-1"]
+      assert Format.input(sink(:booleans), [true, false]) == ["true", "false"]
+      assert Format.input(sink(:dates), [~D[2026-03-09]]) == ["2026-03-09"]
+      # a choice is its value, not its label
+      assert Format.input(sink(:statuses), [:done, :in_progress]) == ["done", "in_progress"]
+      # nil and the empty array are the same to an editor: no values
+      assert Format.input(sink(:strings), nil) == []
+      assert Format.input(sink(:strings), []) == []
+    end
+
+    test "what a person typed is held as it was typed" do
+      assert Format.input(sink(:integers), ["1", "x", ""]) == ["1", "x", ""]
+      assert Format.input(sink(:booleans), ["true"]) == ["true"]
     end
   end
 
@@ -424,9 +521,23 @@ defmodule AshTable.ModelTest do
       assert values(AshTable.Test.KitchenSink, :priority) == [low: "Low", high: "High"]
     end
 
+    test "are those of the values of an array of enum values" do
+      assert values(AshTable.Test.KitchenSink, :statuses) ==
+               values(AshTable.Test.KitchenSink, :status)
+
+      assert values(AshTable.Test.KitchenSink, :sizes) == [
+               small: "Small",
+               extra_large: "Extra large"
+             ]
+
+      assert values(AshTable.Test.KitchenSink, :priorities) == [low: "Low", high: "High"]
+    end
+
     test "are nil for every other cell type" do
       assert values(AshTable.Test.KitchenSink, :string) == nil
       assert values(AshTable.Test.KitchenSink, :atom) == nil
+      assert values(AshTable.Test.KitchenSink, :strings) == nil
+      assert values(AshTable.Test.KitchenSink, :atoms) == nil
     end
   end
 
@@ -480,11 +591,17 @@ defmodule AshTable.ModelTest do
     end
 
     test "are none for a column shown as read-only text" do
-      assert operators(AshTable.Test.Filtering, [:id, :tags, :settings]) == [
-               id: [],
-               tags: [],
-               settings: []
-             ]
+      assert operators(AshTable.Test.Filtering, [:id, :settings]) == [id: [], settings: []]
+    end
+
+    # Ash's interface extensions filter by no array, whatever it holds
+    test "are none for an array" do
+      assert operators(AshTable.Test.Filtering, [:tags]) == [tags: []]
+
+      for column <- Model.build(AshTable.Test.KitchenSink).columns,
+          match?({:array, _item}, column.cell_type) do
+        assert column.operators == [], "#{column.name}"
+      end
     end
 
     test "are none for a column the block declares `filterable? false`" do
@@ -551,15 +668,24 @@ defmodule AshTable.ModelTest do
       fields = Manifest.get_resource!(Manifest.resource_lookup(manifest), resource).fields
 
       Map.new(fields, fn {name, field} ->
+        # a named type is looked up, and so is that of an array's values
         type =
-          case field.type do
-            %{kind: :type_ref, module: module} -> Manifest.get_type!(named_types, module)
-            type -> type
+          case named(field.type, named_types) do
+            %{kind: :array, item_type: item} = type ->
+              %{type | item_type: named(item, named_types)}
+
+            type ->
+              type
           end
 
         {name, type}
       end)
     end
+
+    defp named(%{kind: :type_ref, module: module}, named_types),
+      do: Manifest.get_type!(named_types, module)
+
+    defp named(type, _named_types), do: type
 
     for resource <- [AshTable.Test.KitchenSink, AshTable.Test.Issue] do
       test "agree for every column of #{inspect(resource)}" do
@@ -570,7 +696,19 @@ defmodule AshTable.ModelTest do
 
         for column <- model.columns do
           manifest_type = Map.fetch!(manifest_types, column.name)
-          expected = Map.get(@cell_type_of_manifest_kind, manifest_type.kind, :other)
+
+          # an array is the cell type of its values, when they have one
+          expected =
+            case manifest_type do
+              %{kind: :array, item_type: item} ->
+                case Map.get(@cell_type_of_manifest_kind, item.kind, :other) do
+                  :other -> :other
+                  cell_type -> {:array, cell_type}
+                end
+
+              %{kind: kind} ->
+                Map.get(@cell_type_of_manifest_kind, kind, :other)
+            end
 
           assert column.cell_type == expected,
                  "#{column.name}: the manifest reports #{inspect(manifest_type.kind)}, " <>
@@ -578,6 +716,10 @@ defmodule AshTable.ModelTest do
 
           if expected == :enum do
             assert Enum.map(column.values, &elem(&1, 0)) == manifest_type.values
+          end
+
+          if expected == {:array, :enum} do
+            assert Enum.map(column.values, &elem(&1, 0)) == manifest_type.item_type.values
           end
         end
       end
@@ -685,8 +827,20 @@ defmodule AshTable.ModelTest do
     test "an accepted attribute of a type without an editor is read-only" do
       edited = edited_through(AshTable.Test.Editing)
 
-      refute Keyword.has_key?(edited, :tags)
       refute Keyword.has_key?(edited, :settings)
+      # arrays of values without an editor, and of arrays
+      refute Keyword.has_key?(edited, :keys)
+      refute Keyword.has_key?(edited, :grid)
+    end
+
+    test "an array of values that have an editor is editable on the same conditions as any column" do
+      edited = edited_through(AshTable.Test.Editing)
+
+      assert edited[:tags] == :update
+      assert edited[:scores] == :update
+      assert edited[:stages] == :update
+      # the table's action does not accept it
+      refute Keyword.has_key?(edited, :aliases)
     end
 
     test "a table-level action with a required argument makes no column editable" do
@@ -709,7 +863,12 @@ defmodule AshTable.ModelTest do
                due_on: :date,
                seen_at: :datetime,
                status: :enum,
-               size: :enum
+               size: :enum,
+               # an array is edited value by value, and one of enum values as
+               # multiple choice
+               tags: :list,
+               scores: :list,
+               stages: :choices
              ]
     end
 
@@ -1432,6 +1591,7 @@ defmodule AshTable.ModelTest do
                {:reassign, :update, "Hand over", nil},
                {:reschedule, :update, "Reschedule", nil},
                {:retag, :update, "Retag", nil},
+               {:relabel, :update, "Relabel", nil},
                {:update, :update, "Update", nil},
                {:destroy, :destroy, "Destroy", "Delete this ticket?"},
                {:purge, :destroy, "Purge", nil}
@@ -1472,6 +1632,22 @@ defmodule AshTable.ModelTest do
 
     test "leave out an optional input of a type a table has no field for" do
       assert inputs(Model.build(AshTable.Test.Acting), :retag) == []
+    end
+
+    test "take an array as multiple choice or value by value, an argument as an attribute" do
+      model = Model.build(AshTable.Test.Acting)
+
+      assert inputs(model, :relabel) == [
+               {:labels, :attribute, :list, false},
+               {:stages, :attribute, :choices, true},
+               {:weights, :argument, :list, true}
+             ]
+
+      assert [
+               %{cell_type: {:array, :text}, values: nil},
+               %{cell_type: {:array, :enum}, values: [{:open, "Open"} | _], default: []},
+               %{cell_type: {:array, :number}}
+             ] = action(model, :relabel).inputs
     end
 
     test "an input is labelled as its column is, else with its humanised name, and carries its choices and its default" do
@@ -1517,6 +1693,8 @@ defmodule AshTable.ModelTest do
                reschedule: true,
                # nothing a table has a field for
                retag: false,
+               # arrays: attributes, and an argument it does not run without
+               relabel: true,
                update: true,
                destroy: false,
                purge: true
@@ -1559,6 +1737,9 @@ defmodule AshTable.ModelTest do
                {:owner_id, :attribute, :plain, false, nil},
                # cannot be empty, and is filled in by itself: nothing has to be given
                {:reference, :attribute, :plain, false, nil},
+               # arrays
+               {:labels, :attribute, :list, false, nil},
+               {:stages, :attribute, :choices, true, []},
                {:notify, :argument, :boolean, false, true}
              ]
     end
@@ -1717,6 +1898,45 @@ defmodule AshTable.ModelTest do
                cell_type: :enum,
                values: [junior: "Junior", senior: "Senior"]
              } = presenting(:grade).component.column
+    end
+  end
+
+  describe "a component on an array column" do
+    alias AshTable.Test.Presenting.Lists
+
+    test "shows, and is told that the column is an array, of what, and the values of an enum" do
+      [moods, grades] = Model.build(Lists).columns
+
+      assert %{module: AshTable.Test.Cells.Both, cell?: true} = moods.component
+
+      assert %AshTable.Component.Column{
+               type: {:array, Ash.Type.String},
+               cell_type: {:array, :text},
+               values: nil,
+               editable?: true
+             } = moods.component.column
+
+      assert %AshTable.Component.Column{
+               cell_type: {:array, :enum},
+               values: [junior: "Junior", senior: "Senior"]
+             } = grades.component.column
+    end
+
+    # the editor of a component holds one value
+    test "never edits: an array is edited with the table's own editor" do
+      [moods, grades] = Model.build(Lists).columns
+
+      assert %{editable?: true, editor: :list, component: %{editor?: true}} = moods
+      assert %{editable?: true, editor: :choices, component: %{editor?: true}} = grades
+    end
+
+    test "nor in the action panel" do
+      %{actions: [update]} = Model.build(Lists)
+
+      assert [
+               %{name: :moods, editor: :list, component: nil},
+               %{name: :grades, editor: :choices, component: nil}
+             ] = update.inputs
     end
   end
 

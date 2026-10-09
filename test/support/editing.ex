@@ -27,9 +27,17 @@ defmodule AshTable.Test.Editing do
     attribute :slug, :string, public?: true
     # not accepted by the table's action
     attribute :notes, :string, public?: true
-    # accepted, but of a type without an editor
+    # arrays of values that have an editor: edited value by value, and an
+    # array of enum values as multiple choice
     attribute :tags, {:array, :string}, public?: true
+    attribute :scores, {:array, :integer}, public?: true
+    attribute :stages, {:array, AshTable.Test.Status}, public?: true
+    # an array the table's action does not accept
+    attribute :aliases, {:array, :string}, public?: true
+    # accepted, but of a type without an editor
     attribute :settings, :map, public?: true
+    attribute :keys, {:array, :uuid}, public?: true
+    attribute :grid, {:array, {:array, :integer}}, public?: true
     # never an input of any action
     attribute :locked, :string, public?: true, writable?: false
   end
@@ -65,7 +73,11 @@ defmodule AshTable.Test.Editing do
         :size,
         :slug,
         :tags,
-        :settings
+        :scores,
+        :stages,
+        :settings,
+        :keys,
+        :grid
       ]
     end
 
@@ -100,7 +112,12 @@ defmodule AshTable.Test.Editing do
 
     column :notes
     column :tags
+    column :scores
+    column :stages
+    column :aliases
     column :settings
+    column :keys
+    column :grid
     column :locked
     column :shouted_title
     column :comment_count

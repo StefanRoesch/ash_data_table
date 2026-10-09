@@ -19,6 +19,14 @@ The meeting of one record and one column; the unit a person reads, focuses and e
 Changing a cell's value in place, saved for that cell alone through the action its column names.
 _Avoid_: Quick edit, in-place form
 
+**Array cell**:
+A cell whose value is a list of values of one type that the table has a cell for; shown as those values in plain text and edited as a whole.
+_Avoid_: List cell, tags, chips, multi-value cell
+
+**Multiple choice**:
+The editor of an array of enum values: one box per value of the enum, of which any number can be ticked.
+_Avoid_: Multi-select, checkbox group, tag picker
+
 **Nested table**:
 The table of a related resource, shown inside an expanded row and limited to the records related to that row.
 _Avoid_: Sub-table, detail view, child grid
@@ -46,6 +54,14 @@ _Avoid_: Button, command, operation
 **Action panel**:
 The panel in which a person supplies the inputs of a row action, or of a create, before running it.
 _Avoid_: Modal, drawer, form dialog
+
+**Table action**:
+An action of the resource, declared for a table, that a person runs on the table as a whole and not on one record.
+_Avoid_: Global action, toolbar button, generic action (that is the resource's term)
+
+**Argument line**:
+The line of inputs above a table's rows in which a person supplies the arguments of the table's read action and of its calculation columns.
+_Avoid_: Toolbar, search bar, query form
 
 **Component**:
 A module that a column names to say how its cells are shown, what they are edited with, or both. It changes presentation and the control only: what is saved, and through which action, stays the column's.

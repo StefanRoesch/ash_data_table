@@ -116,6 +116,8 @@ test.describe("in German", () => {
       "Überschrift",
       "Externe Referenz",
       "Beschreibung",
+      "Schlagwörter",
+      "Prüfungen",
       "Angelegt am",
       "Projekt",
       "Zugewiesen an",

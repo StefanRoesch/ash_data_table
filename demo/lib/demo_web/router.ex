@@ -50,6 +50,7 @@ defmodule DemoWeb.Router do
   # reference cell whose label is not always shown (`reference_tables.ex`),
   # two with aggregate columns under field policies (`ledger_tables.ex`),
   # one whose columns have components (`component_tables.ex`), one whose
+  # columns are arrays (`array_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
   # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
@@ -75,6 +76,7 @@ defmodule DemoWeb.Router do
         ash_table "/tags", Demo.Support.Ledger.Tag, layout: false
         ash_table "/errands", Demo.Support.Ledger.Errand, layout: false
         ash_table "/gauges", Demo.Support.Styled.Gauge, layout: false
+        ash_table "/rosters", Demo.Support.Lists.Roster, layout: false
         ash_table "/dossiers", Demo.Support.Vault.Dossier, layout: false
         ash_table "/notes", Demo.Support.Vault.Note, layout: false
         ash_table "/folders", Demo.Support.Vault.Folder, layout: false

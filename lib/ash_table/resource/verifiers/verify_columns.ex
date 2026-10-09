@@ -181,7 +181,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   end
 
   defp read_only(column, {:no_editor, type}) do
-    "`#{column.name}` has the type `#{inspect(type)}`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums. Remove `update_action` from this column."
+    "`#{column.name}` has the type `#{inspect(type)}`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, and arrays of those. Remove `update_action` from this column."
   end
 
   defp accept_errors(column, field, action, module) do

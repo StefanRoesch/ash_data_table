@@ -3,8 +3,9 @@ defmodule AshTable.Format do
   # How a cell's value is shown: one clause of `format/2` per cell type.
   # Text, numbers, dates and datetimes are shown in the format of the matching
   # native HTML input, so what a cell shows is what its editor holds
-  # (`input/2`). Nothing is parsed here: what a person types goes to the
-  # resource's action as typed.
+  # (`input/2`). An array is its values, each as its own cell type shows it.
+  # Nothing is parsed here: what a person types goes to the resource's action
+  # as typed.
 
   alias AshTable.Model.Column
   alias AshTable.Text
@@ -45,14 +46,31 @@ defmodule AshTable.Format do
     end
   end
 
+  # the values of an array, each as a cell of its type shows it
+  def format(%{cell_type: {:array, item}} = column, values) when is_list(values),
+    do: Enum.map_join(values, ", ", &format(%{column | cell_type: item}, &1))
+
   def format(%{cell_type: _}, value), do: other(value)
 
   @doc """
   The text the editor of a cell holds for `value`: what the cell shows, the
   value itself for a choice, and `"true"` or `"false"` for a boolean. Nil is
   empty.
+
+  The editor of an array holds a list: the text of each of its values. Nil
+  is the empty list there. A value that is text already is what a person
+  typed, and is held as it is.
   """
-  @spec input(Column.t() | AshTable.Model.Input.t(), term) :: String.t()
+  @spec input(Column.t() | AshTable.Model.Input.t(), term) :: String.t() | [String.t()]
+  def input(%{cell_type: {:array, item}} = column, values) when is_list(values) do
+    Enum.map(values, fn
+      typed when is_binary(typed) -> typed
+      value -> input(%{column | cell_type: item}, value)
+    end)
+  end
+
+  def input(%{cell_type: {:array, _item}}, _value), do: []
+
   def input(%{cell_type: :boolean}, value) when is_boolean(value), do: to_string(value)
 
   def input(%{cell_type: :enum}, value) when is_atom(value) and not is_nil(value),

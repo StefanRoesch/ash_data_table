@@ -23,8 +23,16 @@ defmodule AshTable.Test.Acting do
     attribute :owner_id, :uuid, public?: true
     # required, and filled in by itself
     attribute :reference, :uuid, allow_nil?: false, default: &Ash.UUID.generate/0, public?: true
+    # arrays of values a table has a field for
+    attribute :labels, {:array, :string}, public?: true
+
+    attribute :stages, {:array, AshTable.Test.Status},
+      allow_nil?: false,
+      default: [],
+      public?: true
+
     # types a table has no field for
-    attribute :tags, {:array, :string}, public?: true
+    attribute :tags, {:array, :uuid}, public?: true
     attribute :settings, :map, public?: true
     # private: never an input
     attribute :internal_note, :string
@@ -46,6 +54,8 @@ defmodule AshTable.Test.Acting do
         :status,
         :owner_id,
         :reference,
+        :labels,
+        :stages,
         :tags,
         :internal_note
       ]
@@ -90,6 +100,12 @@ defmodule AshTable.Test.Acting do
       argument :extra, :map
     end
 
+    # arrays: two attributes and an argument, which is required
+    update :relabel do
+      accept [:labels, :stages]
+      argument :weights, {:array, :integer}, allow_nil?: false
+    end
+
     destroy :purge do
       argument :reason, :string, allow_nil?: false
     end
@@ -112,6 +128,7 @@ defmodule AshTable.Test.Acting do
 
     action :reschedule
     action :retag
+    action :relabel
     action :update
 
     action :destroy do

@@ -50,6 +50,8 @@ defmodule DemoWeb.Tables.TaskTableTest do
                "Headline",
                "External ref",
                "Description",
+               "Tags",
+               "Checks",
                "Inserted at",
                "Project",
                "Assignee",

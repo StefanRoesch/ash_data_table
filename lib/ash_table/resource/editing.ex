@@ -111,19 +111,30 @@ defmodule AshTable.Resource.Editing do
     if editable? and is_nil(Info.primary_action(resource, :read)), do: loaded, else: []
   end
 
+  @typedoc """
+  What a cell is edited with: the control of its cell type; for an array of
+  enum values `:choices`, one checkbox per value of the enum (multiple
+  choice); and for any other array `:list`, one control per value, of the
+  values' cell type, with a way to add a value and to remove one.
+  """
+  @type editor :: CellType.item() | :choices | :list
+
   @doc """
   What a field's cells are edited with, by cell type; nil for a type without
-  an editor (arrays, maps, embedded resources, keys, times and so on).
+  an editor (maps, embedded resources, keys, times and so on, and the arrays
+  of those).
   """
-  @spec editor(Ash.Resource.t(), struct) :: CellType.t() | nil
+  @spec editor(Ash.Resource.t(), struct) :: editor | nil
   def editor(resource, field) do
     {cell_type, _values} = CellType.of(resource, field)
     editor(cell_type)
   end
 
   @doc "The editor of a cell type; nil for one without."
-  @spec editor(CellType.t()) :: CellType.t() | nil
+  @spec editor(CellType.t()) :: editor | nil
   def editor(cell_type) when cell_type in @editors, do: cell_type
+  def editor({:array, :enum}), do: :choices
+  def editor({:array, item}) when item in @editors, do: :list
   def editor(_cell_type), do: nil
 
   @doc "Whether the action takes the field as an input: an attribute it accepts."

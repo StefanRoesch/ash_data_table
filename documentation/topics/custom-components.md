@@ -205,10 +205,10 @@ component need not be told twice:
 | --- | --- |
 | `name` | The field's name: `:progress`. |
 | `label` | The column's header, translated: "Progress". |
-| `type` | The Ash type, as a module: `Ash.Type.Integer`, `Demo.Tracker.TaskStatus`. |
+| `type` | The Ash type, as a module: `Ash.Type.Integer`, `Demo.Tracker.TaskStatus`. An array is `{:array, module}`. |
 | `constraints` | The type's constraints as the resource declares them: `[min: 0, max: 100]`. |
-| `cell_type` | What the table shows the field as: `:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum` or `:other`. |
-| `values` | For an enum, each value with its label, translated, in declared order; else `nil`. |
+| `cell_type` | What the table shows the field as: `:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`; `{:array, :text}` and so on for an array of such values; or `:other`. |
+| `values` | For an enum and for an array of enum values, each value with its label, translated, in declared order; else `nil`. |
 | `editable?` | Whether this person can edit cells of the column at all. |
 
 ### The control
@@ -409,6 +409,13 @@ the cell.
 - **The actions column and the expanders.** They are not columns.
 - **The header and the filter row.** A component is about the cells.
 - **The placeholder of a hidden value, and the empty cell.**
+- **The editor of an array.** A column that is an array can have a
+  component, and its `cell/1` shows the cells: `@value` is the list, and
+  `@text` its values as the table would show them, separated by commas. Its
+  `editor/1` is not used, in a cell or in the action panel: an editor's
+  control holds one value, and an array is edited with the table's own
+  editor, a multiple choice or a list of values. See
+  [Inline editing](inline-editing.md#arrays).
 
 ## Edge cases
 
@@ -462,6 +469,7 @@ value for the badge and no step for the slider; no component that is given
 the record or other fields of the row; no checkbox or other control without
 a value as an editor's control; no JavaScript hook of a component's own in a
 cell; no component for a reference cell, the actions column, the header or
-the filter row; and no editor for a type the table shows as read-only text.
+the filter row; no editor of a component for an array; and no editor for a
+type the table shows as read-only text.
 The later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

@@ -61,11 +61,43 @@ defmodule AshTable.Errors do
   @spec of_form(AshPhoenix.Form.t(), Model.t(), atom | nil, String.t()) :: [String.t()]
   def of_form(form, %Model{} = model, cell, refusal) do
     at_fields =
-      for {field, {message, vars}} <- AshPhoenix.Form.errors(form, format: :raw),
-          is_binary(message),
+      for {field, {message, vars}} <- at_fields(form),
           do: at_field(model, cell, field, {message, vars})
 
     Enum.uniq(at_fields ++ without_fields(form, refusal))
+  end
+
+  @doc """
+  The errors of a form that are about a field, each with its message and
+  variables apart: those the form has put at a field, and those about one
+  value of a field that is an array.
+
+  Ash says which value of an array an error is about by a path into the
+  field, the value's place in the array (`path: [1]`), and a form takes a
+  path for the way to a form nested in it. An array of plain values has
+  none, so the form puts such an error nowhere. It is read from the form's
+  raw errors here, through the protocol the form itself reads an error
+  with. An error with any other path is about a field of something nested
+  in the record, which only has the name in common with a field of the
+  record, and is left where the form leaves it.
+  """
+  @spec at_fields(AshPhoenix.Form.t()) :: [{atom, {String.t(), keyword}}]
+  def at_fields(form) do
+    placed =
+      for {field, {message, vars}} <- AshPhoenix.Form.errors(form, format: :raw),
+          is_binary(message),
+          do: {field, {message, vars}}
+
+    at_values =
+      for %{class: :invalid, path: [_ | _] = path} = error <- AshPhoenix.Form.raw_errors(form),
+          Enum.all?(path, &is_integer/1),
+          about_field?(error),
+          AshPhoenix.FormData.Error.impl_for(error),
+          {field, message, vars} <- List.wrap(AshPhoenix.FormData.Error.to_form_error(error)),
+          is_binary(message),
+          do: {field, {message, vars}}
+
+    placed ++ at_values
   end
 
   @doc "The texts of a form's errors that are about no field, a refusal among them as `refusal`."

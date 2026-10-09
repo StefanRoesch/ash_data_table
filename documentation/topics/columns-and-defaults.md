@@ -401,13 +401,16 @@ decides how a value is shown, which filter the column gets and which editor.
 | `:date` | date | ISO 8601: `2026-10-06`. |
 | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime | To the second, without a zone: `2026-10-06T14:23:03`. The UTC types are shown in UTC. |
 | A module that uses `Ash.Type.Enum`; `:atom` with the constraint `one_of`; `:duration_name` | enum | The label of the value: what the enum's `label/1` returns, else the value in words (`:in_progress` becomes "In progress"). |
+| `{:array, type}` of one of the types above | array | The values as plain text, separated by a comma and a space, each as a cell of its type shows it: `api, mobile` for text, `Reviewed, Tested` for an enum, `Yes, No` for booleans. |
 | Everything else | other | Read-only text. |
 
 Text, numbers, dates and datetimes are shown in the format the matching
 native HTML input uses, so a cell shows what its editor will hold. Nothing is
 localized in the first version.
 
-`nil` is an empty cell for every type.
+`nil` is an empty cell for every type, and so is an array without values.
+An array cell is text and nothing else: its values are not set apart from
+each other by anything but the commas.
 
 A column can show its values another way: `component` names a module that
 renders the cell. On `/tasks`, "State" and "Priority" are badges, "Progress"
@@ -420,11 +423,17 @@ A NewType counts as the type it is made of. The demo's
 
 ### Types shown as read-only text
 
-"Everything else" is: arrays of any type, maps, keywords, tuples, structs,
-embedded resources, unions, UUIDs, times, durations, binaries, modules,
-ranges, terms, and an `:atom` without `one_of`. A column of such a type has
-no editor and no filter. Whether it can be sorted is still the resource's
-decision: a UUID column sorts, an array or a map column does not.
+"Everything else" is: maps, keywords, tuples, structs, embedded resources,
+unions, UUIDs, times, durations, binaries, modules, ranges, terms, an
+`:atom` without `one_of`, and the arrays of all of these and of arrays. A
+column of such a type has no editor and no filter. Whether it can be sorted
+is still the resource's decision: a UUID column sorts, a map column does
+not.
+
+An array of values that do have a cell type is not among them: it is shown
+as its values and can be edited, see
+[Inline editing](inline-editing.md#arrays). It has no sort and no filter
+either.
 
 The text is the plainest form the value has: a string as it is, a number or
 an atom written out, a module without its `Elixir.` prefix, a list as its
@@ -473,8 +482,8 @@ No login is needed for that page.
 ## Not in the first version
 
 No reference cell for a has-one, no label that is a calculation, no choosing
-another related record in a reference cell, no dedicated cells for arrays,
-maps and embedded resources, no locale-aware formatting, no column widths,
+another related record in a reference cell, no dedicated cells for maps and
+embedded resources, no locale-aware formatting, no column widths,
 and one table per resource. A column's own look and editor are built: see
 [Custom components](custom-components.md). The
 later slices are listed in the

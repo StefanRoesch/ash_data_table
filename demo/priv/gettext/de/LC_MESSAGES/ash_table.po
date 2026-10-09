@@ -134,6 +134,15 @@ msgstr "Das dürfen Sie nicht tun."
 msgid "This could not be done."
 msgstr "Das konnte nicht ausgeführt werden."
 
+msgid "Add value"
+msgstr "Wert hinzufügen"
+
+msgid "%{column} %{position}"
+msgstr "%{column} %{position}"
+
+msgid "Remove %{column} %{position}"
+msgstr "%{column} %{position} entfernen"
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
@@ -266,6 +275,24 @@ msgstr "Hoch"
 
 msgid "Urgent"
 msgstr "Dringend"
+
+msgid "Tags"
+msgstr "Schlagwörter"
+
+msgid "Checks"
+msgstr "Prüfungen"
+
+msgid "Reviewed"
+msgstr "Durchgesehen"
+
+msgid "Tested"
+msgstr "Getestet"
+
+msgid "Documented"
+msgstr "Dokumentiert"
+
+msgid "Released"
+msgstr "Veröffentlicht"
 
 ## What a row of /tasks expands into: the labels of its relationships, as
 ## the block declares them or as their names are humanised. They are looked

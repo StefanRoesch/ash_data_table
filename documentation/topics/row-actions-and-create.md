@@ -209,12 +209,32 @@ input's type, and one more:
 | date | A date input. |
 | datetime | A datetime input, in UTC, to the second. |
 | enum | A menu of the values, with an empty choice when the input is not required. |
+| array of enum values | Multiple choice: a box per value of the enum, in declared order, under the field's label. |
+| array of text, numbers, booleans, dates or datetimes | A row per value, with the control of its type and a button that takes the value away, and the button "Add value" under them. |
 | A value written as one line of text that has no editor of its own: a UUID, an `:atom` without `one_of`, a time, a duration | A plain text field. What is typed is given to the action as it is, and Ash casts it. |
-| Anything else: an array, a map, an embedded resource, a union, a binary | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
+| Anything else: a map, an embedded resource, a union, a binary, and an array of any of these or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
 
 An input that points at another resource, such as `assignee_id` or
 `project_id`, is a key, and so a plain text field into which the key is
 typed or pasted. A picker of related records is a later slice.
+
+**The field of an array** is a group of controls under one label, in a row
+action and in a create alike. On `/tasks`, "New task" has "Tags", a list of
+values, and "Checks", a multiple choice.
+
+- It gives the action a list in every case: the values as they were typed,
+  and the empty array when there are none. It never gives nil, so a record
+  whose array is nil has an empty array once an action with that field has
+  run.
+- It therefore has no mark of a required field. How many values an array
+  has to have is the action's to say (`min_length`), and is shown at the
+  field when the action says it.
+- A value left empty is left out, as in a cell: see
+  [Inline editing](inline-editing.md#arrays).
+- Nothing is sent to the action when a value is added or taken away, other
+  than what typing in any field sends: the form as it stands, for the action
+  to say what it makes of it.
+- The editor of a column's component is not used for it.
 
 **An attribute whose column has a component that edits** has that editor as
 its field, in place of the control of its type: on `/tasks`, "Progress" is a
@@ -248,11 +268,12 @@ The browser's own `required` is not used. A field that is left empty is not
 stopped by the browser; the action says "is required", and the message is
 shown at the field like every other message of the action.
 
-**Try it:** `/tasks` as Ada Admin, "New task". Eleven fields: "Title \*",
+**Try it:** `/tasks` as Ada Admin, "New task". Thirteen fields: "Title \*",
 "Description", "State \*" starting with "To do", "Priority \*" with
 "Medium", "Progress \*", a slider at 0, "Estimate hours", the checkbox "Billable?",
-"Due on", "External ref", "Project ID \*" and "Assignee ID". The create
-action accepts exactly these:
+"Due on", "External ref", "Project ID \*", "Assignee ID", and the two
+arrays: "Tags", with the button "Add value" and no values yet, and "Checks",
+four boxes. The create action accepts exactly these:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -270,7 +291,9 @@ create :create do
     :due_on,
     :external_ref,
     :project_id,
-    :assignee_id
+    :assignee_id,
+    :tags,
+    :checks
   ]
 
   change relate_actor(:reporter)
@@ -567,8 +590,8 @@ On `/tasks` in the demo:
 
 | Actor | Actions column | "New task" |
 | --- | --- | --- |
-| Ada Admin | Four buttons on every row, and each runs on every task. | Yes, with eleven fields. |
-| Max Member | Four buttons on every row. A task that is neither assigned to him nor reported by him refuses: "You are not allowed to do this." | Yes, with ten fields: no "External ref". |
+| Ada Admin | Four buttons on every row, and each runs on every task. | Yes, with thirteen fields. |
+| Max Member | Four buttons on every row. A task that is neither assigned to him nor reported by him refuses: "You are not allowed to do this." | Yes, with twelve fields: no "External ref". |
 | Vera Viewer | None. | No. |
 | Olga Outsider | As the member, on Globex's tasks. | Yes; the task is Globex's. |
 | Nobody | None, and no rows. | No. |
@@ -669,7 +692,8 @@ All keys of a table are in
 ## Not in the first version
 
 No picker for an input that points at another resource, no fields for
-arrays, maps, embedded resources and unions, no actions that belong to the
+maps, embedded resources and unions, nor for arrays of them, no actions
+that belong to the
 table and not to a row (generic actions), no running an action on several
 selected rows, no adding or linking through a many-to-many, no create under
 a has-one, no type-to-confirm, no custom buttons or icons, and no undo.

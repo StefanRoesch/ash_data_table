@@ -246,3 +246,15 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "%{name} created"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{column} %{position}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Add value"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Remove %{column} %{position}"
+msgstr ""

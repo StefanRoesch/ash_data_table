@@ -124,6 +124,12 @@ defmodule Demo.Tracker.Task do
       filterable? false
     end
 
+    # Arrays, shown as their values and edited as a whole: text value by
+    # value, and enum values as multiple choice. Neither sorted nor
+    # filtered by.
+    column :tags
+    column :checks
+
     # no update action accepts it
     column :inserted_at
 
@@ -236,7 +242,9 @@ defmodule Demo.Tracker.Task do
         :due_on,
         :external_ref,
         :project_id,
-        :assignee_id
+        :assignee_id,
+        :tags,
+        :checks
       ]
 
       change relate_actor(:reporter)
@@ -257,7 +265,9 @@ defmodule Demo.Tracker.Task do
         :completed_at,
         :external_ref,
         :project_id,
-        :assignee_id
+        :assignee_id,
+        :tags,
+        :checks
       ]
     end
 
@@ -392,6 +402,21 @@ defmodule Demo.Tracker.Task do
       sensitive? true
       public? true
       constraints max_length: 40
+    end
+
+    # An array of text: at most five tags, each of two to twenty characters.
+    attribute :tags, {:array, :string} do
+      allow_nil? false
+      default []
+      public? true
+      constraints max_length: 5, items: [min_length: 2, max_length: 20]
+    end
+
+    # An array of enum values.
+    attribute :checks, {:array, Demo.Tracker.TaskCheck} do
+      allow_nil? false
+      default []
+      public? true
     end
 
     # Private on purpose: never a column.

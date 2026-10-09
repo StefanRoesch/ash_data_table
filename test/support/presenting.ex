@@ -115,3 +115,39 @@ defmodule AshTable.Test.Presenting do
     create_action :create
   end
 end
+
+defmodule AshTable.Test.Presenting.Lists do
+  @moduledoc "Arrays whose columns have a component: one that shows and edits, one that only edits."
+  use Ash.Resource,
+    domain: AshTable.Test.Domain,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource]
+
+  attributes do
+    uuid_primary_key :id
+    attribute :moods, {:array, :string}, public?: true
+
+    attribute :grades, {:array, :atom} do
+      public? true
+      constraints items: [one_of: [:junior, :senior]]
+    end
+  end
+
+  actions do
+    defaults [:read, update: [:moods, :grades]]
+  end
+
+  table do
+    update_action :update
+
+    column :moods do
+      component AshTable.Test.Cells.Both
+    end
+
+    column :grades do
+      component AshTable.Test.Cells.Knob
+    end
+
+    action :update
+  end
+end

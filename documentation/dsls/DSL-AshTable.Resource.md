@@ -172,12 +172,12 @@ arguments.
   * A field is called what the table's column for the attribute is called,
     else by the input's name in words.
   * Its control is the editor a cell of its type has (text, number,
-    boolean, date, datetime, enum), or a plain text field for a value
-    that is written as one line and has no editor of its own: a UUID, a
-    time, an `:atom` without `one_of`. So an input that points at another
-    resource is a field for its key.
-  * A type with no field (an array, a map, an embedded resource, a union)
-    is left out of the panel when the input is optional. An action that
+    boolean, date, datetime, enum, and an array of those), or a plain
+    text field for a value that is written as one line and has no editor
+    of its own: a UUID, a time, an `:atom` without `one_of`. So an input
+    that points at another resource is a field for its key.
+  * A type with no field (a map, an embedded resource, a union, an array
+    of those) is left out of the panel when the input is optional. An action that
     requires such an input cannot be run from a table: the compiler
     reports it, and the table has no button for it.
   * A field is marked as required as the action says: an attribute that is

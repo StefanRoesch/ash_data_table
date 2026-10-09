@@ -79,7 +79,7 @@ test.describe("with the pointer", () => {
       tasks.headerCells.evaluateAll((cells) => cells.map((cell) => Math.round(cell.getBoundingClientRect().width)))
     const before = await widths()
 
-    // the tasks of a project, 17 columns wide, under a row of /tasks
+    // the tasks of a project, 19 columns wide, under a row of /tasks
     const project = await tasks.openLine(FIRST, "project")
     const [key] = await project.rowKeys()
     await project.openLine(key, "tasks")

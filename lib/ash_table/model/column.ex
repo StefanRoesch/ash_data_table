@@ -11,21 +11,23 @@ defmodule AshTable.Model.Column do
   #     label. Such a column is never sorted or filtered by, and never
   #     edited.
   #   * `label` is the column header.
-  #   * `cell_type` is what the table shows the field's values as. Types with no
-  #     cell of their own (arrays, maps, embedded resources, keys, …) are
-  #     `:other` and shown as read-only text.
+  #   * `cell_type` is what the table shows the field's values as. An array
+  #     of values that have a cell type is `{:array, item}`. Types with no
+  #     cell of their own (maps, embedded resources, keys, …, and the arrays
+  #     of those) are `:other` and shown as read-only text.
   #   * `type` is the field's Ash type with its constraints. What a person
   #     types into the column's filter is checked against it.
-  #   * `values` holds, for an `:enum` column, each value with its label in
-  #     declared order; `nil` for every other cell type.
+  #   * `values` holds, for an `:enum` column and for an array of enum
+  #     values, each value with its label in declared order; `nil` for every
+  #     other cell type.
   #   * `sortable?` says whether a person can sort by this column: what the
   #     resource allows under the table's pagination strategy, unless the block
   #     switched it off.
   #   * `operators` lists what a person can filter this column by, the default
   #     operator first: those of the cell type that Ash supports for the field.
   #     It is empty for a column without a filter: one the resource does not
-  #     allow to be filtered, one of cell type `:other`, or one the block
-  #     switched off. See `AshTable.Model.Operator`.
+  #     allow to be filtered, one of cell type `:other`, an array, or one the
+  #     block switched off. See `AshTable.Model.Operator`.
   #   * `editable?` says whether a person can edit the cells of this column in
   #     principle: the column is an attribute, the attribute is writable, an
   #     update action accepts it and its cell type has an editor. In a model
@@ -36,9 +38,10 @@ defmodule AshTable.Model.Column do
   #     the column's attribute as its only input: the column's own, else the
   #     table's. `nil` for a column that is not editable.
   #   * `editor` is what a cell of this column is edited with: `:text`,
-  #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`, or
-  #     `:component` for a column whose component has an editor. `nil` for a
-  #     column that is not editable.
+  #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`; for an array
+  #     `:choices` (one checkbox per value of an enum) or `:list` (one
+  #     control per value); or `:component` for a column whose component has
+  #     an editor. `nil` for a column that is not editable.
   #   * `component` is the column's component, nil when the block names
   #     none: its `module`, which of the two parts it has (`cell?`,
   #     `editor?`), when its editor saves (`commit`: `:enter` or `:change`),
@@ -79,13 +82,13 @@ defmodule AshTable.Model.Column do
           kind: :attribute | :calculation | :aggregate | :reference,
           label: String.t(),
           type: {Ash.Type.t() | nil, keyword},
-          cell_type: :text | :number | :boolean | :date | :datetime | :enum | :other,
+          cell_type: AshTable.Model.CellType.t(),
           values: [{atom | String.t(), String.t()}] | nil,
           sortable?: boolean,
           operators: [AshTable.Model.Operator.t()],
           editable?: boolean,
           update_action: atom | nil,
-          editor: :text | :number | :boolean | :date | :datetime | :enum | :component | nil,
+          editor: AshTable.Resource.Editing.editor() | :component | nil,
           component: AshTable.Resource.Presenting.component() | nil,
           confirm: String.t() | nil,
           reference:

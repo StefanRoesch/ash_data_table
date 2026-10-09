@@ -104,12 +104,19 @@ defmodule DemoWeb.Tables.SpecimenTableTest do
     end
   end
 
+  test "an array is shown as its values, separated by commas, each as a cell of its type shows it",
+       %{html: html} do
+    assert shown(html, "strings") == "one, two"
+    assert shown(html, "integers") == "3, 4"
+    # the labels of an enum's values
+    assert shown(html, "shades") == "Light, Dark"
+    # an array of embedded resources has no cell of its own: read-only text, as before
+    assert shown(html, "addresses") =~ "%Demo.KitchenSink.Address{"
+  end
+
   test "every other type is shown as text", %{html: html} do
     assert shown(html, "a_uuid") == "11111111-2222-4333-8444-555555555555"
     assert shown(html, "a_time") == "07:05:00"
-    assert shown(html, "strings") == "one, two"
-    assert shown(html, "integers") == "3, 4"
-    assert shown(html, "shades") == "light, dark"
     assert shown(html, "a_module") == "Enum"
     assert shown(html, "a_map") == ~s(%{"colour" => "red"})
     assert shown(html, "an_address") =~ "Köln"

@@ -57,10 +57,10 @@ test.describe("which cells can be edited", () => {
     for (const column of ["overdue?", "comment_count", "headline", "external_ref", "inserted_at"]) {
       await expect(tasks.cell(FIRST, column)).toHaveAttribute("aria-readonly", "true")
     }
-    for (const column of ["title", "status", "priority", "progress", "estimate_hours"]) {
+    for (const column of ["title", "status", "priority", "progress", "estimate_hours", "tags", "checks"]) {
       await expect(tasks.cell(FIRST, column)).not.toHaveAttribute("aria-readonly")
     }
-    await expect(tasks.editorTemplates).toHaveCount(9)
+    await expect(tasks.editorTemplates).toHaveCount(11)
 
     const headline = tasks.cell(FIRST, "headline")
     await headline.focus()

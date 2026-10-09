@@ -132,8 +132,10 @@ text whatever its case, make the attribute a `:ci_string`.
 
 A column has no filter, and an empty cell in the filter row, when
 
-- its cell type is "other": arrays, maps, embedded resources, UUIDs, times
-  and the rest of the types shown as read-only text;
+- its cell type is "other": maps, embedded resources, UUIDs, times and the
+  rest of the types shown as read-only text;
+- it is an array, whatever it holds: see
+  [Why an array has no filter](#why-an-array-has-no-filter);
 - the resource declares the field `filterable?: false`;
 - it is a calculation computed in Elixir, without an expression: the data
   layer cannot filter by it. `headline` on `/tasks` is one;
@@ -164,6 +166,29 @@ attribute :secret, :string, public?: true, filterable?: false
 on a column the resource does not allow to be filtered is reported when the
 resource is compiled; see
 [Mistakes at compile time](mistakes-at-compile-time.md).
+
+### Why an array has no filter
+
+Ash can ask whether an array holds a value: `has(tags, "api")` in an
+expression. The table does not offer it, for two reasons.
+
+- **The other interfaces offer no filter for an array.** `ash_json_api` and
+  `ash_graphql` leave every array attribute out of the filters they
+  generate, whatever the array holds. A table offers what the resource's
+  other interfaces offer.
+- **A typed value is not cast.** A table gives Ash a filter from outside
+  through `Ash.Query.filter_input/2`, with the value as it was typed. For
+  the other operators Ash casts that text to the column's type. For `has`
+  it does not cast it to the type of the array's values: `42` typed for an
+  array of integers arrives as text, finds nothing in a table kept in
+  memory, and fails the read on Postgres. The table would have to cast the
+  value itself, which it does for no filter.
+
+So an array column has an empty cell in the filter row, and
+`filterable? true` on it is reported as on any column without a filter. A
+resource that should be searched by its tags can offer a read action with
+an argument and a filter of its own; a table does not show such arguments
+yet.
 
 ## Values that are not valid
 
@@ -221,7 +246,7 @@ values.
 ## Not in the first version
 
 No search across columns, no filter builder with OR, no multiple choice for
-enums, no date ranges in one control, and no filters from the arguments of a
+enums, no filter for an array, no date ranges in one control, and no filters from the arguments of a
 read action. Search, facets and a filter builder are expected from a separate
 extension. See the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

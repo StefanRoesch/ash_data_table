@@ -10,7 +10,9 @@ defmodule AshTable.Live.TableComponent do
   # Editing a cell is the hook's until the value is saved: it opens the
   # column's editor in the cell and sends one `save` event with the row, the
   # column and the value as typed. The server reads the record again, runs the
-  # column's update action and puts the row back into the stream.
+  # column's update action and puts the row back into the stream. The value
+  # of an array is the list of its values as typed; a cell says it as JSON
+  # (`data-value`), which the hook reads and the server never does.
   #
   # Markup contract (spec sections 7.2 and 13):
   #
@@ -861,12 +863,13 @@ defmodule AshTable.Live.TableComponent do
 
   # Sent by the hook when a person has changed a cell's value and pressed
   # Enter or left the cell: the row by the key in its DOM id, the column, and
-  # the value as it was typed.
-  def handle_event("save", %{"row" => key, "column" => name, "value" => typed}, socket)
-      when is_binary(typed) do
+  # the value as it was typed. For an array that is a list, of its values as
+  # they were typed.
+  def handle_event("save", %{"row" => key, "column" => name, "value" => typed}, socket) do
     %{model: model, rows: rows} = socket.assigns
 
     with %{editable?: true} = column <- column(model, name),
+         true <- Edit.typed?(column, typed),
          %{} = row <- rows[key] do
       save(socket, key, row, column, typed)
     else
@@ -1827,6 +1830,29 @@ defmodule AshTable.Live.TableComponent do
               if (!field || !e.target.matches("[data-control]")) return
               for (const shown of field.querySelectorAll("[data-value-text]")) shown.textContent = e.target.value
             })
+            // The field of an array that is given value by value: its rows
+            // are added and taken away here, as they are in a cell, by the
+            // grid's hook. The server is told as it is of anything typed
+            // into a field, by the entry the field sends before its values.
+            const changed = list => {
+              const own = list.parentElement.querySelector("input[data-own]")
+              if (own) own.dispatchEvent(new Event("input", {bubbles: true}))
+            }
+            dialog.addEventListener("click", e => {
+              const list = e.target.closest && e.target.closest("[data-list]")
+              if (!list || !this.grid) return
+              if (e.target.closest("[data-add]")) this.grid.addValue(list, "").focus()
+              else if (e.target.closest("[data-remove]")) this.grid.removeValue(list, e.target.closest("[data-item]"))
+              else return
+              changed(list)
+            })
+            // a box of such a field: what it holds is sent by the input beside it
+            dialog.addEventListener("change", e => {
+              const item = e.target.closest && e.target.closest("[data-list] [data-item]")
+              if (!item || e.target.type !== "checkbox" || !this.grid) return
+              this.grid.hold(item)
+              changed(item.closest("[data-list]"))
+            })
             // An action with a question asks it when "Run" is used, in the
             // table's other dialog, on top of this one. Cancel there comes
             // back here, with everything as it was typed.
@@ -1887,6 +1913,10 @@ defmodule AshTable.Live.TableComponent do
         // out with the row, the column and the value as typed. The answer is
         // the row itself, patched in: with the new value, or with the cell
         // marked as failed.
+        //
+        // The editor of an array is several controls in one cell, and what
+        // it holds is a list: the values as typed. A cell says a list as
+        // JSON, as it says everything in text (`data-value`).
 
         // a key that types a character
         const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -1909,6 +1939,19 @@ defmodule AshTable.Live.TableComponent do
         const CONTROL = root => root.matches("[data-control]")
           ? root
           : (root.querySelector("[data-control]") || root.querySelector("input,select,textarea") || root)
+
+        // What an editor holds, as a cell says it: a list is written as
+        // JSON. Two values are the same when they are written the same.
+        const TEXT = value => Array.isArray(value) ? JSON.stringify(value) : value
+        const SAME = (a, b) => TEXT(a) === TEXT(b)
+
+        // the list a cell says
+        const LIST = text => {
+          try {
+            const list = JSON.parse(text)
+            return Array.isArray(list) ? list : []
+          } catch (_error) { return [] }
+        }
 
         // a control that text is typed into: typing on its cell replaces its value
         const TYPED = "textarea,input:is([type=text],[type=search],[type=tel],[type=url],[type=email],[type=password],[type=number],:not([type]))"
@@ -1934,7 +1977,10 @@ defmodule AshTable.Live.TableComponent do
             // confirm, commit}, and `attributes` once a patch has brought
             // the cell's row again. `root` is what was put into the cell
             // and `input` the control in it; `commit` says when a
-            // component's editor saves.
+            // component's editor saves. The editor of an array (`list`)
+            // has several controls: `read` gives what they hold, `shown`
+            // what the cell shows of it, and `input` is the one the focus
+            // was in last.
             this.editing = null
             // cells this hook has marked as failed itself, with what they showed before
             this.marked = new WeakMap()
@@ -2331,6 +2377,7 @@ defmodule AshTable.Live.TableComponent do
           onKeydown(e) {
             const cell = this.cellOf(e.target)
             if (!cell || e.altKey) return
+            if (this.editing && this.editing.list && this.editing.root.contains(e.target)) return this.onListKeydown(e)
             if (this.editing && e.target === this.editing.input) return this.onEditorKeydown(e)
             const control = this.controlOf(e.target)
             if (control) return this.onControlKeydown(e, control)
@@ -2528,6 +2575,7 @@ defmodule AshTable.Live.TableComponent do
               return key === null
             }
             const root = template.content.firstElementChild.cloneNode(true)
+            if (type === "choices" || type === "list") return this.startList(cell, template, root, key)
             const input = CONTROL(root)
             const current = this.valueOf(cell)
             const saved = Array.from(cell.childNodes)
@@ -2590,6 +2638,203 @@ defmodule AshTable.Live.TableComponent do
               handled = key === null
             }
             return handled
+          },
+
+          // The editor of an array: several controls in one cell. For an
+          // array of enum values, one box per value of the enum (multiple
+          // choice); for any other array, one control per value with a
+          // button that takes the value away, and a button that adds one.
+          //
+          // It is one editor all the same. Enter saves what all of its
+          // controls hold and Escape gives all of it up, from wherever in
+          // it the focus is; leaving it saves. Tab goes through its
+          // controls, and from the last of them out of the grid, as it
+          // does from a filter. Nothing is saved while a person is still
+          // in it: a box that is ticked or a value that is taken away is a
+          // step on the way to the list they want, which the action may
+          // not accept half done.
+          startList(cell, template, root, key) {
+            const choices = template.dataset.editor === "choices"
+            // an enum without values has nothing to tick
+            if (!root.querySelector("input,[data-add]")) return key === null
+            const current = LIST(this.valueOf(cell))
+            const saved = Array.from(cell.childNodes)
+            cell.setAttribute("phx-update", "ignore")
+            cell.replaceChildren(root)
+            const boxes = () => Array.from(root.querySelectorAll("input[type=checkbox]"))
+            const load = values => {
+              if (choices) for (const box of boxes()) box.checked = values.includes(box.value)
+              else this.fill(root, values)
+            }
+            const read = () => choices
+              ? boxes().filter(box => box.checked).map(box => box.value)
+              : this.values(root)
+            // what the cell shows of a list until the server has answered:
+            // the labels of the choices, and values as they were typed
+            const shown = () => choices
+              ? boxes().filter(box => box.checked).map(box => box.parentElement.textContent.trim()).join(", ")
+              : read().join(", ")
+            // What "unchanged" means: the list the record has, as these
+            // controls hold it. A failed cell shows what was typed instead.
+            load(cell.dataset.saved !== undefined ? LIST(cell.dataset.saved) : current)
+            const old = read()
+            load(current)
+            const ed = {cell, root, input: root, type: template.dataset.editor, saved, old, read, shown, list: true, confirm: template.dataset.confirm, lastKey: null}
+            this.editing = ed
+            cell.tabIndex = -1
+            // the control the focus is in, or was in last: where it goes
+            // back to when the column's question is answered with Cancel
+            root.addEventListener("focusin", e => { ed.input = e.target })
+            // Leaving the editor saves; going from one of its controls to
+            // another is not leaving it.
+            root.addEventListener("focusout", () => {
+              if (!document.hasFocus()) return
+              setTimeout(() => { if (!root.contains(document.activeElement)) this.finish(ed, true, false) }, 0)
+            })
+            // A click in the editor leaves the focus in it: on the box or
+            // the button that was clicked, which not every browser gives
+            // the focus by itself, and where it was for a click beside the
+            // controls. A control that is typed into takes the click as it is.
+            root.addEventListener("mousedown", e => {
+              if (e.target.closest(TYPED) || e.target.closest("input:not([type=checkbox])")) return
+              e.preventDefault()
+              const label = e.target.closest("label")
+              const control = e.target.closest("input,button") || (label && label.querySelector("input"))
+              if (control) control.focus()
+            })
+            root.addEventListener("click", e => {
+              if (e.target.closest("[data-add]")) this.addValue(root, "").focus()
+              else if (e.target.closest("[data-remove]")) this.removeValue(root, e.target.closest("[data-item]"))
+            })
+            root.addEventListener("input", e => { if (e.target.tagName === "TEXTAREA") this.fit(e.target) })
+            const controls = Array.from(root.querySelectorAll("input,textarea"))
+            // into the first value, or to the button that adds one when
+            // there is none yet
+            const first = controls[0] || root.querySelector("[data-add]")
+            if (key === null) {
+              first.focus()
+              if (first.matches(TYPED)) first.select()
+              return true
+            }
+            if (choices) {
+              // a typed character goes to the first choice that starts with
+              // it, as it does in a menu; nothing is ticked by that alone
+              const letter = key.toLowerCase()
+              const box = controls.find(box => box.parentElement.textContent.trim().toLowerCase().startsWith(letter))
+              ;(box || first).focus()
+              return true
+            }
+            // Typing on the cell starts a new value with what is typed: the
+            // values the cell holds stay. The character itself is typed by
+            // the browser. Only where a value is typed, though: on a list
+            // of dates or of boxes a key opens the editor, as Enter does.
+            const added = this.addValue(root, "")
+            if (!added.matches(TYPED)) {
+              added.closest("[data-item]").remove()
+              first.focus()
+              return true
+            }
+            added.focus()
+            if (added.type === "number") {
+              // a character a number does not take adds nothing
+              setTimeout(() => {
+                if (this.editing === ed && added.isConnected && added.value === "" && !added.validity.badInput) {
+                  this.removeValue(root, added.closest("[data-item]"))
+                }
+              }, 0)
+            }
+            return false
+          },
+
+          // In the editor of an array the keys belong to its controls: the
+          // arrow keys move in a text and step a number, Space ticks a box,
+          // Enter on a button uses it. The grid keeps two, and among the
+          // boxes of a multiple choice the arrow keys go from box to box.
+          onListKeydown(e) {
+            const ed = this.editing
+            switch (e.key) {
+              case "Escape":
+                e.preventDefault()
+                this.finish(ed, false, true)
+                break
+              case "Enter":
+                if (e.target.tagName === "BUTTON") return
+                // a new line in text
+                if (e.target.tagName === "TEXTAREA" && e.shiftKey) return
+                e.preventDefault()
+                this.finish(ed, true, true)
+                break
+              case "ArrowDown":
+              case "ArrowUp": {
+                if (ed.type !== "choices") return
+                const boxes = Array.from(ed.root.querySelectorAll("input[type=checkbox]"))
+                const next = boxes[boxes.indexOf(e.target) + (e.key === "ArrowDown" ? 1 : -1)]
+                if (next) next.focus()
+                e.preventDefault()
+                break
+              }
+            }
+          },
+
+          // ---- the values of an array ----------------------------------------
+
+          // A list editor (`[data-list]`), in a cell or in the action
+          // panel: its rows, one per value, each with the control that
+          // holds the value. The panel's hook uses these too.
+          items(list) { return Array.from(list.querySelectorAll("[data-item]")) },
+
+          controlIn(item) { return item.querySelector("textarea,input:not([type=hidden])") },
+
+          valueIn(item) {
+            const control = this.controlIn(item)
+            return control.type === "checkbox" ? String(control.checked) : control.value
+          },
+
+          values(list) { return this.items(list).map(item => this.valueIn(item)) },
+
+          // Adds a row for a value after the others, and returns its control.
+          addValue(list, value) {
+            const item = list.querySelector("template").content.firstElementChild.cloneNode(true)
+            const control = this.controlIn(item)
+            if (control.type === "checkbox") control.checked = value === "true"
+            else control.value = value
+            list.querySelector("[data-add]").before(item)
+            this.hold(item)
+            this.number(list)
+            if (control.tagName === "TEXTAREA" && list.closest("td")) this.fit(control)
+            return control
+          },
+
+          // Takes a row away. Focus goes to the value after it, else to the
+          // one before it, else to the button that adds one.
+          removeValue(list, item) {
+            const items = this.items(list)
+            const at = items.indexOf(item)
+            const next = items[at + 1] || items[at - 1]
+            item.remove()
+            this.number(list)
+            ;(next ? this.controlIn(next) : list.querySelector("[data-add]")).focus()
+          },
+
+          fill(list, values) {
+            for (const item of this.items(list)) item.remove()
+            for (const value of values) this.addValue(list, value)
+          },
+
+          // A box sends nothing while it is not ticked: in the panel, what
+          // it holds is sent by the input beside it.
+          hold(item) {
+            const held = item.querySelector("input[type=hidden]")
+            if (held) held.value = this.valueIn(item)
+          },
+
+          // What the controls of a row are called says the row's place.
+          number(list) {
+            this.items(list).forEach((item, index) => {
+              const place = String(index + 1)
+              this.controlIn(item).setAttribute("aria-label", list.dataset.valueLabel.replace("{n}", place))
+              item.querySelector("[data-remove]").setAttribute("aria-label", list.dataset.removeLabel.replace("{n}", place))
+            })
           },
 
           // The editor of a column's component. What the table does for it
@@ -2754,6 +2999,10 @@ defmodule AshTable.Live.TableComponent do
             setTimeout(() => this.finish(ed, true, false), 0)
           },
 
+          // What an editor holds: the value of its control, or the list of
+          // the values of its controls.
+          held(ed) { return ed.read ? ed.read() : ed.input.value },
+
           // Ends an edit: saves the value if it has changed, after asking
           // when the column has a question, or gives it up. `refocus` puts
           // focus on the cell, for Enter and Escape; after a blur it is left
@@ -2761,7 +3010,7 @@ defmodule AshTable.Live.TableComponent do
           finish(ed, save, refocus) {
             if (this.editing !== ed || ed.asking) return
             if (!ed.cell.isConnected) { this.editing = null; return }
-            if (save && ed.input.value !== ed.old && ed.confirm) {
+            if (save && !SAME(this.held(ed), ed.old) && ed.confirm) {
               ed.asking = true
               this.ask(ed.confirm).then(confirmed => {
                 ed.asking = false
@@ -2790,18 +3039,16 @@ defmodule AshTable.Live.TableComponent do
 
           close(ed, save, refocus) {
             const {cell, input} = ed
-            const value = input.value
+            const value = this.held(ed)
             // The cell as the server last sent it: as it was when the
             // editor opened, or as a patch of its row has brought it since.
             const restore = () => cell.replaceChildren(...ed.saved)
+            // shows what was typed until the server has answered
+            const text = ed.shown ? ed.shown() : (input.tagName === "SELECT" && input.selectedOptions[0] ? input.selectedOptions[0].textContent : value)
             this.detach(ed)
             const failed = cell.hasAttribute("aria-invalid")
-            // shows what was typed until the server has answered
-            const typed = () => {
-              const option = input.tagName === "SELECT" && input.selectedOptions[0]
-              cell.replaceChildren(document.createTextNode(option ? option.textContent : value))
-            }
-            if (save && value !== ed.old) {
+            const typed = () => cell.replaceChildren(document.createTextNode(text))
+            if (save && !SAME(value, ed.old)) {
               typed()
               this.save(cell, value, ed.old, restore)
             } else if (ed.pending) {
@@ -2864,8 +3111,8 @@ defmodule AshTable.Live.TableComponent do
           // that is gone.
           mark(cell, value, old, message, restore) {
             this.fail(cell, message, restore)
-            cell.dataset.value = value
-            cell.dataset.saved = old
+            cell.dataset.value = TEXT(value)
+            cell.dataset.saved = TEXT(old)
           },
 
           // Marks a cell with a message, as the server marks one whose save
@@ -3161,14 +3408,15 @@ defmodule AshTable.Live.TableComponent do
     assigns =
       assign(assigns,
         value: field_value(assigns.input, assigns.field.value, assigns.default?),
-        described: assigns.errors != [] && "#{assigns.id}-error"
+        described: assigns.errors != [] && "#{assigns.id}-error",
+        array?: assigns.input.editor in [:choices, :list]
       )
 
     ~H"""
     <div class="fieldset mb-2" data-field={@input.name}>
       <%!-- an unchecked box sends nothing: this says "false" for it --%>
       <input :if={@input.editor == :boolean} type="hidden" name={@field.name} value="false" />
-      <label for={@id} class="label mb-1 text-base-content">
+      <label :if={not @array?} for={@id} class="label mb-1 text-base-content">
         <input
           :if={@input.editor == :boolean}
           type="checkbox"
@@ -3183,6 +3431,55 @@ defmodule AshTable.Live.TableComponent do
         <span data-label>{@input.label}</span>
         <span :if={@input.required? and @input.editor != :boolean} aria-hidden="true">*</span>
       </label>
+      <%!-- An array has several controls, and its label is for none of them
+      alone: they are a group, which the label names. It has no mark of a
+      required field: the field always gives a list, with or without values,
+      and how many it has to have is the action's to say. --%>
+      <span :if={@array?} id={"#{@id}-label"} class="label mb-1 text-base-content">
+        <span data-label>{@input.label}</span>
+      </span>
+      <div
+        :if={@array?}
+        id={@id}
+        role="group"
+        aria-labelledby={"#{@id}-label"}
+        aria-describedby={@described}
+        class="flex flex-col gap-1"
+      >
+        <%!-- A form sends nothing for a list without values. This entry is
+        sent before the values in every case, and is left out where they are
+        taken (`AshTable.Act`). It is not of the type `hidden`: LiveView then
+        says of the field whether a person has used it, as of any other. --%>
+        <input type="text" name={@field.name <> "[]"} value="" hidden data-own />
+        <%!-- multiple choice: one box per value of the enum --%>
+        <label
+          :for={{choice, label} <- (@input.editor == :choices && @input.values) || []}
+          class="label text-base-content"
+        >
+          <input
+            type="checkbox"
+            name={@field.name <> "[]"}
+            value={choice}
+            checked={to_string(choice) in @value}
+            aria-invalid={@errors != [] && "true"}
+            class={["checkbox checkbox-sm", box_edge()]}
+          />
+          {label}
+        </label>
+        <%!-- The rows are the hook's from here on: a patch leaves them alone,
+        so that a value a person has added is not taken away by the answer
+        to an earlier change. --%>
+        <.list
+          :if={@input.editor == :list}
+          id={"#{@id}-values"}
+          phx-update="ignore"
+          label={@input.label}
+          item={elem(@input.cell_type, 1)}
+          place={:panel}
+          values={@value}
+          name={@field.name <> "[]"}
+        />
+      </div>
 
       <%!-- an attribute whose column has a component that edits: its editor --%>
       {if @input.editor == :component, do: field_editor(assigns)}
@@ -3281,6 +3578,18 @@ defmodule AshTable.Live.TableComponent do
   # from (an argument, an attribute of a record that is being created), its
   # default. Written as the editor of its type writes it. An attribute that
   # is empty on a record is empty in the field, whatever its default.
+  #
+  # The field of an array holds a list: the values as they were typed, else
+  # those of the record or of the default, each written as the editor of
+  # its type writes it. Without any it is empty.
+  defp field_value(%{cell_type: {:array, _item}} = input, values, default?) do
+    cond do
+      is_list(values) -> Format.input(input, values)
+      default? and is_list(input.default) -> Format.input(input, input.default)
+      true -> []
+    end
+  end
+
   defp field_value(_input, typed, _default?) when is_binary(typed), do: typed
 
   defp field_value(%{default: default} = input, nil, true) when not is_nil(default),
@@ -3636,6 +3945,35 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # An array of enum values is edited as multiple choice: one box per value
+  # of the enum, in declared order. The boxes are a group, which the column
+  # names; each is named by the label of its value.
+  defp editor(%{column: %{editor: :choices}} = assigns) do
+    ~H"""
+    <div role="group" aria-label={@column.label} class="flex flex-col items-start gap-1 py-0.5">
+      <label :for={{choice, label} <- @column.values} class="flex items-center gap-2">
+        <input type="checkbox" value={choice} class={["checkbox checkbox-xs", box_edge()]} />
+        {label}
+      </label>
+    </div>
+    """
+  end
+
+  # Any other array is edited value by value.
+  defp editor(%{column: %{editor: :list, cell_type: {:array, item}}} = assigns) do
+    assigns = assign(assigns, item: item)
+
+    ~H"""
+    <.list
+      role="group"
+      aria-label={@column.label}
+      label={@column.label}
+      item={@item}
+      place={:grid}
+    />
+    """
+  end
+
   defp editor(assigns) do
     ~H"""
     <input
@@ -3644,6 +3982,131 @@ defmodule AshTable.Live.TableComponent do
       aria-label={@column.label}
       class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"
     />
+    """
+  end
+
+  # The editor of an array whose values each have a control of their own:
+  # one row per value, with the control of the values' cell type and a button
+  # that takes the value away, and after the rows a button that adds a value.
+  #
+  # The rows are the hook's. In a cell it makes them all, from the row in the
+  # `<template>`, for the values the cell holds. In the action panel the
+  # server renders the rows the field starts with, and the hook those a
+  # person adds; there each row is sent with the form, under `name`.
+  #
+  # Unlike the editor of one value, which stands in the place of the cell's
+  # text, these controls have their edges: there are several in the cell, and
+  # the cell's focus ring does not say which of them has the focus.
+  #
+  # What a control is called says its place ("Tags 2"), which changes as
+  # values are added and taken away: the hook numbers them, from the two
+  # texts given here with `{n}` where the number goes.
+  attr :label, :string, required: true
+  attr :item, :atom, required: true
+  attr :place, :atom, required: true
+  attr :values, :list, default: []
+  attr :name, :string, default: nil
+  attr :rest, :global
+
+  defp list(assigns) do
+    ~H"""
+    <div
+      data-list
+      data-value-label={Text.t(:value_position, column: @label, position: "{n}")}
+      data-remove-label={Text.t(:remove_value, column: @label, position: "{n}")}
+      class={[
+        "flex flex-col gap-1",
+        if(@place == :grid, do: "items-start py-0.5", else: "items-stretch")
+      ]}
+      {@rest}
+    >
+      <template><.list_item
+        label={@label}
+        item={@item}
+        place={@place}
+        name={@name}
+        value=""
+        position={nil}
+      /></template>
+      <.list_item
+        :for={{value, position} <- Enum.with_index(@values, 1)}
+        label={@label}
+        item={@item}
+        place={@place}
+        name={@name}
+        value={value}
+        position={position}
+      />
+      <button
+        type="button"
+        data-add
+        class={["btn self-start", if(@place == :grid, do: "btn-xs", else: "btn-sm")]}
+      >
+        {Text.t(:add_value)}
+      </button>
+    </div>
+    """
+  end
+
+  # One value of such an array. A box sends nothing while it is not checked,
+  # so in the panel what it holds is sent by an input beside it, which the
+  # hook keeps at the box's state.
+  defp list_item(assigns) do
+    assigns =
+      assign(assigns,
+        value_label:
+          assigns.position &&
+            Text.t(:value_position, column: assigns.label, position: assigns.position),
+        remove_label:
+          assigns.position &&
+            Text.t(:remove_value, column: assigns.label, position: assigns.position),
+        grid?: assigns.place == :grid
+      )
+
+    ~H"""
+    <div data-item class="flex items-center gap-1">
+      <input
+        :if={@item == :boolean and @name}
+        type="hidden"
+        name={@name}
+        value={to_string(@value == "true")}
+      />
+      <input
+        :if={@item == :boolean}
+        type="checkbox"
+        checked={@value == "true"}
+        aria-label={@value_label}
+        class={["checkbox", if(@grid?, do: "checkbox-xs", else: "checkbox-sm"), box_edge()]}
+      />
+      <textarea
+        :if={@item == :text}
+        rows="1"
+        name={@name}
+        aria-label={@value_label}
+        class={[
+          "textarea min-h-0",
+          if(@grid?, do: "textarea-xs w-48 resize-none", else: "flex-1"),
+          control_edge()
+        ]}
+      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      <input
+        :if={@item in [:number, :date, :datetime]}
+        type={input_type(@item)}
+        step={input_step(@item)}
+        name={@name}
+        value={@value}
+        aria-label={@value_label}
+        class={["input", if(@grid?, do: "input-xs w-48", else: "flex-1"), control_edge()]}
+      />
+      <button
+        type="button"
+        data-remove
+        aria-label={@remove_label}
+        class="btn btn-ghost btn-xs"
+      >
+        <span aria-hidden="true">✕</span>
+      </button>
+    </div>
     """
   end
 
@@ -3718,19 +4181,28 @@ defmodule AshTable.Live.TableComponent do
         [
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
-          {"data-value", typed},
-          {"data-saved", Format.input(column, value)}
+          {"data-value", held(typed)},
+          {"data-saved", held(Format.input(column, value))}
         ]
 
       {true, nil} ->
-        if own_value?(column), do: [{"data-value", Format.input(column, value)}], else: []
+        if own_value?(column),
+          do: [{"data-value", held(Format.input(column, value))}],
+          else: []
     end
   end
 
+  # What an editor holds, as a cell says it: the text, and for an array the
+  # texts of its values, as JSON.
+  defp held(texts) when is_list(texts), do: Phoenix.json_library().encode!(texts)
+  defp held(text), do: text
+
   # Whether what a column's editor holds is something else than the text its
-  # cells show: a choice, which shows its label; a boolean; and a column
-  # whose component shows the value in a way of its own.
+  # cells show: a choice, which shows its label; a boolean; an array, whose
+  # editor holds each value apart; and a column whose component shows the
+  # value in a way of its own.
   defp own_value?(%{cell_type: cell_type}) when cell_type in [:boolean, :enum], do: true
+  defp own_value?(%{cell_type: {:array, _item}}), do: true
   defp own_value?(%{component: %{cell?: true}}), do: true
   defp own_value?(_column), do: false
 
@@ -3803,7 +4275,20 @@ defmodule AshTable.Live.TableComponent do
     Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
   end
 
+  # the values of an array, each as its cell shows it
+  defp typed(typed, %{cell_type: {:array, item}} = column) when is_list(typed),
+    do: Enum.map_join(typed, ", ", &typed_value(&1, item, column))
+
   defp typed(typed, _column), do: typed
+
+  defp typed_value("true", :boolean, _column), do: Text.t(:yes)
+  defp typed_value("false", :boolean, _column), do: Text.t(:no)
+
+  defp typed_value(typed, :enum, %{values: values}) do
+    Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
+  end
+
+  defp typed_value(typed, _item, _column), do: typed
 
   # Whether a person can edit this cell: its column is editable, and the
   # field is not hidden from them on this row.

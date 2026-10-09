@@ -185,6 +185,8 @@ The rule for a cell is narrow:
 | date | `:date` | A date input. |
 | datetime | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | A datetime input, in UTC, to the second. |
 | enum | an `Ash.Type.Enum`, `:atom` with `one_of` | A menu of the values, with an empty choice when the attribute can be nil. |
+| array of enum values | `{:array, type}` of an enum | Multiple choice: a list of boxes in the cell, one per value of the enum. See [Arrays](#arrays). |
+| array of text, numbers, booleans, dates or datetimes | `{:array, type}` of one of the types above | One control per value, with a button that takes the value away and a button that adds one. See [Arrays](#arrays). |
 
 Every other type is read-only text; see
 [Columns and defaults](columns-and-defaults.md#types-shown-as-read-only-text).
@@ -199,6 +201,95 @@ action. See [Custom components](custom-components.md).
 **Try it:** `/specimens` in the demo has an editable cell of every type with
 an editor, beside the read-only ones.
 
+## Arrays
+
+An array is edited as a whole. Its editor holds all of its values, and one
+save sends all of them, as the one input of the column's action. The demo's
+tasks have two
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+# An array of text: at most five tags, each of two to twenty characters.
+attribute :tags, {:array, :string} do
+  allow_nil? false
+  default []
+  public? true
+  constraints max_length: 5, items: [min_length: 2, max_length: 20]
+end
+
+# An array of enum values.
+attribute :checks, {:array, Demo.Tracker.TaskCheck} do
+  allow_nil? false
+  default []
+  public? true
+end
+```
+
+Both are columns of `/tasks`, and `update` accepts both. Nothing else is
+declared for them: an array is editable on the conditions of
+[What makes a cell editable](#what-makes-a-cell-editable), as any column.
+
+**An array of enum values is multiple choice.** The editor is a list of
+boxes that opens in the cell: one per value of the enum, in the order the
+enum declares them, each with the value's label. The boxes of the record's
+values are ticked.
+
+**Any other array is edited value by value.** The editor is a list that
+opens in the cell: one control per value, which is the editor the value's
+type has in the table above (a box for a boolean), each followed by a button
+that takes the value away; and under them the button "Add value". Values are
+not typed as one text with commas.
+
+The row is as high as its editor needs while the editor is open, and one
+line high again when it closes.
+
+| Gesture | Effect |
+| --- | --- |
+| Ticking a box, adding a value, taking one away, typing into one | Changes the editor only. Nothing is sent. |
+| Enter, in a value or on a box | Saves the list. Focus stays on the cell. |
+| Leaving the editor: a click elsewhere, Tab from its last control | Saves the list. |
+| Escape | Gives up everything done since the editor opened. |
+
+An array's editor saves when the person is done with it, never at each
+step: a list with one value ticked or one value taken away is on the way to
+the list they want, and the action may not accept it half done.
+
+What is sent, and what becomes of it:
+
+- **The values as typed, in their order.** Of a multiple choice, the values
+  that are ticked, in the order the enum declares them. Casting each value is
+  Ash's.
+- **No values is the empty array**, not nil. A record whose array is nil and
+  one whose array is empty both have an empty cell and an editor without
+  values, and closing that editor as it opened saves nothing.
+- **A value left empty is left out.** `AshPhoenix.Form`, which the save goes
+  through, takes out of an array what the array's `empty_values` constraint
+  names, and that is the empty text unless the attribute says otherwise
+  (`constraints empty_values: []`). This is `ash_phoenix` from 2.3.22 on;
+  an earlier one gives the empty value to the action, which refuses it with
+  "no nil values" unless the array takes nil.
+- **The constraints are the action's.** `min_length`, `max_length`,
+  `nil_items?` and the constraints of the values (`items`) are checked by
+  Ash when the action runs. The table checks none of them, and shows what
+  the action says: "must have 5 or fewer items" for a sixth tag, "length
+  must be greater than or equal to 2" for a tag of one character. A message
+  about one value does not say which value it is about.
+- **The same values in another order are another value**, and are saved.
+
+An array column is never sorted or filtered by, whatever it holds: see
+[Reading, sorting and pagination](reading-sorting-and-pagination.md#sorting)
+and [Filtering](filtering.md#a-column-without-a-filter).
+
+An array of anything else (maps, embedded resources, unions, UUIDs, times,
+arrays) stays read-only text.
+
+**Try it:** on `/tasks`, as Ada Admin, move to a cell of "Tags", press
+Enter, Tab to "Add value", press Enter, type a tag and press Enter again.
+Then add a tag of one character. On a cell of "Checks", press Enter, tick
+with Space, move with the arrow keys, and press Enter. `/specimens` has
+"Strings", "Integers" (which has to keep one value) and "Shades".
+
 ## Saving and cancelling
 
 | Gesture | Effect |
@@ -207,6 +298,7 @@ an editor, beside the read-only ones.
 | Leaving the cell: a click elsewhere, Tab | Saves. Focus goes where the person sent it. |
 | Escape | Gives the edit up. The cell shows its value again. |
 | Toggling a boolean, choosing from a menu | Saves at once. |
+| Ticking a box of a multiple choice; adding, changing or taking away a value of an array | Nothing yet: the list is saved by Enter or by leaving its editor. See [Arrays](#arrays). |
 | Letting go of a slider, or changing any other editor of a component that saves on change | Saves at once. The editor stays open; Enter or leaving the cell closes it. |
 
 Two rules keep the table from doing more than was asked:
@@ -347,6 +439,15 @@ only runs actions.
   a changed value stores that second; saving nothing leaves the microseconds.
 - **A number cell and a letter.** A key the number input does not take starts
   the edit without replacing the number.
+- **A multiple choice whose record holds a value the enum no longer has.**
+  The value has no box. It stays as long as the cell is not saved, and is
+  gone with the first save of that cell.
+- **An array whose values may be nil** (`nil_items?: true`). A value left
+  empty is left out before the action sees it, so nil is not given through
+  the table unless the attribute also says `empty_values: []`.
+- **A column's `component` on an array column** shows its cells, and its
+  editor is not used: see
+  [Custom components](custom-components.md#what-cannot-have-a-component).
 - **Somebody else's change.** The table does not show changes made
   elsewhere until it reads again. The action still runs on the record as it
   is in the database, not on what the row shows.
@@ -382,9 +483,9 @@ only runs actions.
 
 ## Not in the first version
 
-No editing of arrays, maps, embedded resources or related records in a
-cell, no validation display before a cell is saved, no bulk edits and no
-undo. A column's own editor is built: see
+No editing of maps, embedded resources or related records in a cell, nor of
+arrays of them; no sorting or filtering by an array; no validation display
+before a cell is saved, no bulk edits and no undo. A column's own editor is built: see
 [Custom components](custom-components.md). They are later slices in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).
 Creating and deleting records, and actions with several inputs, are not

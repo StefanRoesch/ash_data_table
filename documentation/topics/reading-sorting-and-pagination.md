@@ -225,7 +225,7 @@ returns to the first page; the filters stay.
 
 | Column | Offset or no pagination | Keyset |
 | --- | --- | --- |
-| An attribute | yes, unless it is declared `sortable?: false` or is an array or a map | the same |
+| An attribute | yes, unless it is declared `sortable?: false` or is an array or a map. An array is never sorted by, whatever it holds: Ash says no for every array, as `ash_json_api` and `ash_graphql` do. | the same |
 | A calculation with an expression | yes | no |
 | A calculation computed in Elixir | no | no |
 | An aggregate | yes | no |

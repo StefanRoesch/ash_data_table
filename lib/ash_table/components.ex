@@ -12,5 +12,6 @@ defmodule AshTable.Components do
   def shown_as(:date), do: "a date"
   def shown_as(:datetime), do: "a date and time"
   def shown_as(:enum), do: "a choice"
+  def shown_as({:array, _item}), do: "a list of values"
   def shown_as(:other), do: "read-only text"
 end

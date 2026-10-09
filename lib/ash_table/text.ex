@@ -83,6 +83,9 @@ defmodule AshTable.Text do
           | :action_not_done
           | :action_not_allowed
           | :action_failed
+          | :add_value
+          | :value_position
+          | :remove_value
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
@@ -233,4 +236,10 @@ defmodule AshTable.Text do
     do: dgettext_noop("ash_table", "You are not allowed to do this.")
 
   defp msgid(:action_failed), do: dgettext_noop("ash_table", "This could not be done.")
+
+  # the editor of an array: its button that adds a value, what each value's
+  # control is called ("Tags 2"), and what the button that takes it away is
+  defp msgid(:add_value), do: dgettext_noop("ash_table", "Add value")
+  defp msgid(:value_position), do: dgettext_noop("ash_table", "%{column} %{position}")
+  defp msgid(:remove_value), do: dgettext_noop("ash_table", "Remove %{column} %{position}")
 end

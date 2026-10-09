@@ -483,12 +483,12 @@ defmodule AshTable.TableBlockTest do
             uuid_primary_key :id
             attribute :title, :string, public?: true
             attribute :owner_id, :uuid, public?: true
-            attribute :tags, {:array, :string}, public?: true
+            attribute :keys, {:array, :uuid}, public?: true
             attribute :locked, :string, public?: true, writable?: false
           end
 
           actions do
-            defaults [:read, update: [:title, :owner_id, :tags]]
+            defaults [:read, update: [:title, :owner_id, :keys]]
           end
 
           table do
@@ -496,7 +496,7 @@ defmodule AshTable.TableBlockTest do
 
             column :title
             column :owner_id
-            column :tags
+            column :keys
             column :locked
           end
         end
@@ -807,15 +807,87 @@ defmodule AshTable.TableBlockTest do
       assert error.module == AshTable.TableBlockTest.ColumnActionWithoutEditor
 
       assert error.message ==
-               "`owner_id` has the type `Ash.Type.UUID`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums. Remove `update_action` from this column."
+               "`owner_id` has the type `Ash.Type.UUID`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, and arrays of those. Remove `update_action` from this column."
     end
 
-    test "on an array column is the same error" do
+    test "on an array of values without an editor is the same error" do
       error =
-        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :tags, :update_action]} do
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :keys, :update_action]} do
           defmodule Elixir.AshTable.TableBlockTest.ColumnActionOnArray do
             use Ash.Resource,
               domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :keys, {:array, :uuid}, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:keys]]
+            end
+
+            table do
+              column :keys do
+                update_action :update
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "`keys` has the type `{:array, Ash.Type.UUID}`, which a table has no editor for"
+    end
+
+    test "on an array of values that have an editor is fine, and the column is edited through it" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ColumnActionOnEditableArray do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :tags, {:array, :string}, public?: true
+            attribute :stages, {:array, AshTable.Test.Status}, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:tags]]
+
+            update :restage do
+              accept [:stages]
+            end
+          end
+
+          table do
+            column :tags do
+              update_action :update
+            end
+
+            column :stages do
+              update_action :restage
+              confirm "Change the stages?"
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.ColumnActionOnEditableArray
+
+      assert for(
+               c <- AshTable.Model.build(ColumnActionOnEditableArray).columns,
+               do: {c.name, c.editor, c.update_action}
+             ) == [{:tags, :list, :update}, {:stages, :choices, :restage}]
+    end
+
+    test "`sortable? true` and `filterable? true` on an array column are errors: Ash sorts and filters by none" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.ArrangedByArray do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
               extensions: [AshTable.Resource]
 
             attributes do
@@ -824,19 +896,26 @@ defmodule AshTable.TableBlockTest do
             end
 
             actions do
-              defaults [:read, update: [:tags]]
+              defaults [:read]
             end
 
             table do
               column :tags do
-                update_action :update
+                sortable? true
+                filterable? true
               end
             end
           end
         end
 
-      assert error.message =~
-               "`tags` has the type `{:array, Ash.Type.String}`, which a table has no editor for"
+      assert [{AshTable.TableBlockTest.ArrangedByArray, errors}] = errors
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :column, :tags, :sortable?],
+                "`tags` cannot be sorted, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`."},
+               {[:table, :column, :tags, :filterable?],
+                "`tags` cannot be filtered, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`."}
+             ]
     end
 
     test "on a column whose attribute is not writable is an error that says so" do
@@ -4498,9 +4577,9 @@ defmodule AshTable.TableBlockTest do
 
       assert Enum.map(errors, &{&1.path, &1.message}) == [
                {[:table, :action, :configure],
-                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key."},
+                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, and for values written as one line of text, such as a key."},
                {[:table, :action, :retag],
-                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key."}
+                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, and for values written as one line of text, such as a key."}
              ]
 
       # compiled despite the finding, the table has no button for them
@@ -4796,7 +4875,7 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, and for values written as one line of text, such as a key."
+               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, and for values written as one line of text, such as a key."
 
       assert AshTable.Model.build(AshTable.TableBlockTest.NoFieldForCreate).create == nil
     end

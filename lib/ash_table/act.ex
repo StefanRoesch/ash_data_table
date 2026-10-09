@@ -196,12 +196,23 @@ defmodule AshTable.Act do
   # The values of the inputs, by name, as they were typed, and what the table
   # gives itself, which nothing from the browser replaces.
   defp taken(inputs, params, given) when is_map(params) do
-    params
-    |> Map.take(Enum.map(inputs, &Atom.to_string(&1.name)))
+    for input <- inputs,
+        name = Atom.to_string(input.name),
+        is_map_key(params, name),
+        into: %{} do
+      {name, typed(input, params[name])}
+    end
     |> Map.merge(given)
   end
 
   defp taken(_inputs, _params, given), do: given
+
+  # What a field of the panel holds. A form cannot send a list without
+  # values, so the field of an array sends one entry of its own before its
+  # values (see the panel's `field/1`), which is left out here: what remains
+  # is the values as they were typed, and the empty list when there are none.
+  defp typed(%{cell_type: {:array, _item}}, [_own | values]), do: values
+  defp typed(_input, typed), do: typed
 
   @doc """
   What a form's errors say to a person: by input, for the errors about one
@@ -213,8 +224,7 @@ defmodule AshTable.Act do
     names = Enum.map(inputs, & &1.name)
 
     at_fields =
-      for {field, {message, vars}} <- AshPhoenix.Form.errors(form, format: :raw),
-          is_binary(message) do
+      for {field, {message, vars}} <- Errors.at_fields(form) do
         if field in names,
           do: {field, Text.error({message, vars})},
           else: {nil, Errors.at_field(model, nil, field, {message, vars})}

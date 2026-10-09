@@ -25,7 +25,7 @@ const MOUNTED: Mounted[] = [
     path: "/tasks",
     id: "task",
     title: "Tasks",
-    shows: "a `table` block: chosen columns, a relabelled one, an aggregate, two calculations, three reference cells",
+    shows: "a `table` block: chosen columns, a relabelled one, an aggregate, two calculations, two arrays, three reference cells",
     headers: [
       "Title",
       "State",
@@ -40,6 +40,8 @@ const MOUNTED: Mounted[] = [
       "Headline",
       "External ref",
       "Description",
+      "Tags",
+      "Checks",
       "Inserted at",
       "Project",
       "Assignee",
@@ -208,7 +210,14 @@ test.describe("/specimens: one column per built-in type", () => {
         `${column} has a filter`,
       ).not.toHaveCount(0)
     }
-    for (const column of ["a_map", "strings", "an_address", "a_union", "a_tuple", "a_binary"]) {
+    // an array of values that have an editor is editable, and has no filter
+    for (const column of ["strings", "integers", "shades"]) {
+      await expect(specimens.cell(first, column), column).not.toHaveAttribute("aria-readonly")
+      await expect(specimens.cell(first, column), column).not.toHaveText("")
+      await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)
+      await expect(specimens.header(column), column).not.toHaveAttribute("aria-sort")
+    }
+    for (const column of ["a_map", "addresses", "an_address", "a_union", "a_tuple", "a_binary"]) {
       await expect(specimens.cell(first, column), column).toHaveAttribute("aria-readonly", "true")
       await expect(specimens.cell(first, column), column).not.toHaveText("")
       await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)

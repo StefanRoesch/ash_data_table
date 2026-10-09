@@ -111,6 +111,9 @@ cell's type:
 | date, datetime | Opens the editor with its value. | Opens the editor and keeps the value; a digit goes into the input's first part. |
 | enum | Opens the menu at the cell's value. | Opens the menu at the first value that starts with the character. Nothing is saved by that alone. |
 | boolean | Toggles the value and saves. | Nothing. |
+| array of enum values (multiple choice) | Opens the list of boxes, with focus on the first. | Opens the list, with focus on the first choice that starts with the character. Nothing is ticked by that alone. |
+| array of text or of numbers | Opens the list of values, with focus in the first and its text selected; on the button "Add value" when there is none. | Opens the list and starts a new value with the character, after the others. A character a number does not take adds nothing. |
+| array of dates, datetimes or booleans | As above. | Opens the list, as Enter does. |
 | The editor of a column's component, with a control that is typed into (text, a number) | Opens the editor with its value selected. | As text and number above. |
 | The editor of a column's component, with any other control (a slider, a menu, a date) | Opens the editor with its value. | Opens the editor and keeps the value; the key goes on to the control, which does with it what it does. A slider takes no characters. |
 
@@ -123,6 +126,25 @@ While a cell is being edited:
 | Escape | Gives the edit up. In an open menu, Escape closes the menu first. |
 | Tab, Shift+Tab | Save and leave the grid, forwards or backwards. Tab does not move to the next cell. |
 | Arrow keys, Home, End, Page Up, Page Down | Belong to the editor: in a slider they move it. |
+
+**The editor of an array** has several controls in one cell: the boxes of a
+multiple choice, or a control and a button per value and the button that
+adds one. It is one editor all the same, and the two keys of the grid work
+from wherever in it the focus is:
+
+| Key | In the editor of an array |
+| --- | --- |
+| Enter | Saves the whole list. Focus goes back to the cell. On a button it uses the button: "Add value" adds a value and puts focus in it, a value's button takes the value away. |
+| Shift+Enter, in a value that is text | A new line. |
+| Escape | Gives up everything done since the editor opened. Focus goes back to the cell. |
+| Space | Ticks or unticks the box that has focus; uses the button that has focus. Nothing is saved by it. |
+| Down Arrow, Up Arrow | In a multiple choice, move from box to box, and stop at the first and the last. In a list of values they belong to the value's control. |
+| Tab, Shift+Tab | Move through the controls of the editor. Tab from the last one, and Shift+Tab from the first, save and leave the grid, as from any editor. |
+
+When a value is taken away, focus goes to the value after it, else to the
+one before it, else to "Add value". The controls are named by their place:
+"Tags 1", "Tags 2", "Remove Tags 2". The names follow when a value is added
+or taken away.
 
 An editor of a component that saves when its value changes, such as the
 slider of "Progress" on `/tasks`, saves a change made with the pointer at
@@ -262,6 +284,8 @@ page and keeps the focus.
 | A rejected filter value | `aria-invalid` on the input, described by "Not a valid value". |
 | The result of a filter change | A polite live region: "12 results", or "Results updated" when the table has no total. |
 | A boolean cell | A mark that is hidden from assistive technology, and the text "Yes" or "No". |
+| An array cell | Its values as text, separated by commas. |
+| The editor of an array, in a cell and in the action panel | A group (`role="group"`) named by the column. In a multiple choice each box is named by its choice; in a list each value's control is named by the column and its place ("Tags 2"), and its button "Remove Tags 2". The button that adds a value says "Add value". |
 | A cell hidden from the person by a field policy | The text "Not available", for screen readers only. |
 | The expander of a row, and the button of a line | `aria-expanded`. The expanders, and the heading of their column, are named "Related records"; a line is named by its relationship. The expanders are a column of the grid, counted in `aria-colcount` and `aria-colindex`. |
 | A nested table | A grid of its own, named by its line and by the first cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
@@ -395,8 +419,8 @@ The behaviour described in this guide is covered by the demo's browser tests
 ([`demo/e2e`](https://github.com/StefanRoesch/ash_table/tree/main/demo/e2e)):
 scripted keyboard tests in Playwright, and automated checks with axe-core on
 every demo table and in every state a table can be in (sorted, filtered,
-empty, failed, with each editor open, with the dialog open, with a failed
-cell, as each actor; with rows expanded and nested tables open to the
+empty, failed, with each editor open, the two editors of an array among
+them, with the dialog open, with a failed cell, as each actor; with rows expanded and nested tables open to the
 deepest level, on a page limited to the records of one parent, with
 reference cells; with the actions column, a failed actions cell, the action
 panel open, with errors and with the dialog on top of it, and with the
@@ -414,6 +438,12 @@ Two things about the action panel are covered more thinly than the rest: no
 panel of the demo has a datetime field, and no action of the demo has both a
 question and a panel, so that path is tested with a question put onto an
 open panel by the test.
+
+The editor of an array is tested in the browser for text, for numbers and
+for enum values, which is what the demo's tasks and specimens have. The
+lists of dates, datetimes and booleans are made of the same rows with
+another control, and are covered by the demo's LiveView tests, which do not
+run the hook.
 
 That is the whole of the verification, and its limits should be plain:
 
@@ -464,7 +494,12 @@ technology, a report of what you find is welcome in the
 - **Expecting Tab to move to the next cell.** Tab leaves the grid; this is
   the ARIA grid pattern. Arrow keys move between cells.
 - **Expecting Space to toggle a boolean.** Enter and F2 do. Space is held
-  back for row selection.
+  back for row selection. In the open editor of an array Space does tick a
+  box, as it does anywhere.
+- **Expecting a tick in a multiple choice to be saved at once.** The list is
+  saved by Enter or by leaving it.
+- **Pressing Enter on "Add value" to save.** Enter on a button uses the
+  button. Enter in a value saves; so does Tab from the last control.
 - **Expecting Tab to reach a row's buttons.** Move to the row's last cell
   and press Enter.
 - **Expecting Enter on a relationship line to reach its create button.**

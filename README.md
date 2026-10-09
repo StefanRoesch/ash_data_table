@@ -297,8 +297,10 @@ field that can be nil, and never for a boolean or an enum column.
 
 A column has no filter when
 
-- its type is shown as read-only text (arrays, maps, embedded resources,
-  uuids, times and so on);
+- its type is shown as read-only text (maps, embedded resources, uuids,
+  times and so on);
+- it is an array: Ash's interface extensions filter by none, and neither is
+  an array sorted by;
 - the resource declares the field `filterable?: false`; with
   `filterable?: :simple_equality` only "equals" is offered;
 - it is a calculation computed in Elixir, without an expression: the data
@@ -414,9 +416,14 @@ table is read-only.
   | `:date` | date input |
   | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input, UTC, to the second |
   | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice of the values, and of none when the attribute can be nil |
+  | an array of enum values | multiple choice: a list of boxes in the cell, one per value |
+  | an array of any other type above | one control per value, with a button that takes the value away and one that adds a value |
 
-  Everything else (arrays, maps, embedded resources, uuids, times and so on)
-  is read-only. A NewType is edited as the type it is made of;
+  Everything else (maps, embedded resources, uuids, times and so on, and
+  arrays of those) is read-only. A NewType is edited as the type it is made
+  of. An array is shown as its values, as plain text separated by commas,
+  and saved as a whole: on Enter or on leaving its editor, with the values
+  as they were typed;
 - the field is not hidden from the person on that row by a field policy;
 - the person is not someone who can never run the action (see "Who is
   reading, and what they may see and do").
@@ -526,7 +533,11 @@ end
   input that points at another record is such a key field until there is a
   picker. Attributes start with the record's values, arguments with their
   defaults. A field is marked as required when the action requires it.
-- **Inputs without a field** (arrays, maps, embedded resources, unions): an
+- **An array** is a field too: multiple choice for enum values, and a row
+  per value for text, numbers, booleans, dates and datetimes. It gives the
+  action a list, which is empty when there are no values.
+- **Inputs without a field** (maps, embedded resources, unions, and arrays
+  of them): an
   optional one is left out of the panel; an action that requires one cannot
   be run from a table, which the compiler reports.
 - **Errors.** The action's messages are shown at their fields as the person

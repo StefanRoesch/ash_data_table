@@ -56,7 +56,7 @@ defmodule AshTable.Component do
 
   | Assign | |
   | --- | --- |
-  | `value` | The value as the record holds it: an integer, a `Decimal`, an atom of an enum, a `Date`. |
+  | `value` | The value as the record holds it: an integer, a `Decimal`, an atom of an enum, a `Date`; a list of them for an array. |
   | `text` | What the table itself would show for it, as text: the label of an enum's value in the language of the person reading, a date as it is written. A component that only decorates shows this. |
   | `column` | An `AshTable.Component.Column`: the field's name, type and constraints, the column's label, the values of an enum with their labels, and whether this person can edit the column. |
 
@@ -111,6 +111,9 @@ defmodule AshTable.Component do
       in the panel: the number beside a slider.
     * A checkbox is not supported as the control: its `value` does not say
       whether it is checked.
+    * An array is not edited with a component's editor: its control holds
+      one value. The table's own editor of an array is used, and the
+      component's `cell/1` shows the cells.
     * A `phx-hook` on something in the editor does not run in a cell, where
       the editor is a copy of a template.
 

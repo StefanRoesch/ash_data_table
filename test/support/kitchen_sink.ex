@@ -62,8 +62,32 @@ defmodule AshTable.Test.KitchenSink do
     attribute :term, :term, public?: true
     attribute :module, :module, public?: true
     attribute :address, AshTable.Test.Address, public?: true
+    # arrays of values that have a cell type of their own
     attribute :strings, {:array, :string}, public?: true
+    attribute :slugs, {:array, AshTable.Test.Slug}, public?: true
+    attribute :integers, {:array, :integer}, public?: true
+    attribute :decimals, {:array, :decimal}, public?: true
+    attribute :booleans, {:array, :boolean}, public?: true
+    attribute :dates, {:array, :date}, public?: true
+    attribute :datetimes, {:array, :utc_datetime}, public?: true
     attribute :statuses, {:array, AshTable.Test.Status}, public?: true
+
+    attribute :sizes, {:array, :atom},
+      public?: true,
+      constraints: [items: [one_of: [:small, :extra_large]]]
+
+    attribute :priorities, {:array, AshTable.Test.Priority}, public?: true
+    # arrays of everything else
+    attribute :atoms, {:array, :atom}, public?: true
+    attribute :uuids, {:array, :uuid}, public?: true
+    attribute :times, {:array, :time}, public?: true
+    attribute :maps, {:array, :map}, public?: true
+    attribute :addresses, {:array, AshTable.Test.Address}, public?: true
+    attribute :lists, {:array, {:array, :string}}, public?: true
+
+    attribute :unions, {:array, :union},
+      public?: true,
+      constraints: [items: [types: [text: [type: :string], number: [type: :integer]]]]
 
     attribute :union, :union,
       public?: true,

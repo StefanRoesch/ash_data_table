@@ -115,6 +115,7 @@ These are all the messages of the template
 | Filter row | "Any", "Filter %{column}", "How to filter %{column}", "Not a valid value", "Clear the %{column} filter", "Clear filters" |
 | Announcements | "1 result" with the plural "%{count} results", "Results updated", "%{column} was not saved: %{message}" |
 | Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
+| The editor of an array | "Add value" (the button that adds one), "%{column} %{position}" (what the control of a value is called: "Tags 2"), "Remove %{column} %{position}" (what its button is called) |
 | Dialog | "Cancel", "Confirm" |
 | Row actions | "Actions" (the heading of their column), "You are not allowed to do this.", "This could not be done.", and what is read out: "%{action}: done", "%{action} failed: %{message}" |
 | The action panel | "%{action}: %{record}" (the heading of a row action's panel), "Run", "Create"; "Cancel" is the dialog's |
