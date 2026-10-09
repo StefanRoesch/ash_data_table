@@ -1594,6 +1594,15 @@ defmodule AshTable.ModelTest do
       assert nested(:friends).create == nil
       assert nested(:all_cards).create == nil
     end
+
+    # Ash marks a relationship through a path as one without attributes, so
+    # there is no field a new record could be linked by
+    test "is not offered through a path, though the create action accepts a field named like the link" do
+      assert %{through: [:cards, :board, :cards], no_attributes?: true} =
+               Ash.Resource.Info.relationship(AshTable.Test.Acting.Board, :cards_by_path)
+
+      assert nested(:cards_by_path).create == nil
+    end
   end
 
   describe "for_actor/2: what a person can run" do

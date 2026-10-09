@@ -145,6 +145,12 @@ defmodule AshTable.Test.Acting.Board do
     has_one :cover, AshTable.Test.Acting.Card, public?: true
     # without attributes
     has_many :all_cards, AshTable.Test.Acting.Card, no_attributes?: true, public?: true
+    # through a path: Ash reads these, and writes none
+    has_many :cards_by_path, AshTable.Test.Acting.Card do
+      through [:cards, :board, :cards]
+      public? true
+    end
+
     # a has-many whose create action does not accept the linking field
     has_many :stickers, AshTable.Test.Acting.Sticker, public?: true
 
