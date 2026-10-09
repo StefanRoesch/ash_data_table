@@ -320,7 +320,7 @@ test.describe("saving", () => {
     await expect(completed).toHaveText("2031-02-03T04:05:06")
   })
 
-  test("a checkbox cell toggles with Enter or F2 and saves at once; Space and typing do nothing", async ({
+  test("a checkbox cell toggles with Enter or F2 and saves at once; typing does nothing, and Space selects the row", async ({
     tasks,
     frames,
   }) => {
@@ -333,6 +333,8 @@ test.describe("saving", () => {
     await tasks.press("Space", "x")
     await expect(billable).toHaveAttribute("data-value", "true")
     await expect(tasks.openEditors).toHaveCount(0)
+    // Space is the key of row selection on a cell, which is the hook's alone
+    expect(await tasks.selectedKeys()).toEqual([FIRST])
     expect(await frames.all()).toEqual([])
 
     await tasks.saves(billable, () => tasks.press("Enter"))
@@ -1002,8 +1004,8 @@ test("after editing, the grid is still one tab stop and the arrow keys are still
 
   await frames.clear()
   await tasks.press("ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "End", "Home")
-  // Home is the first cell of the row, its expander: the title is beside it
-  await expect(tasks.expanderCell(FIRST)).toBeFocused()
+  // Home is the first cell of the row, its box: the expander and the title are beside it
+  await expect(tasks.boxCell(FIRST)).toBeFocused()
   await title.focus()
   await tasks.press("PageDown", "PageUp")
   await expect(title).toBeFocused()

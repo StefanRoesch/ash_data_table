@@ -98,7 +98,7 @@ test.describe("with the pointer", () => {
 })
 
 test.describe("with the keyboard", () => {
-  test("Tab enters the grid at the first data cell, with the expander one cell to its left", async ({
+  test("Tab enters the grid at the first data cell, with the expander one cell to its left and the box before it", async ({
     page,
     tasks,
   }) => {
@@ -108,8 +108,11 @@ test.describe("with the keyboard", () => {
 
     await tasks.press("ArrowLeft")
     await expect(tasks.expanderCell(FIRST)).toBeFocused()
+    // the row is not expanded, so Left goes on: to the box that selects the row
     await tasks.press("ArrowLeft")
-    await expect(tasks.expanderCell(FIRST), "the first cell of a row is where Left ends").toBeFocused()
+    await expect(tasks.boxCell(FIRST)).toBeFocused()
+    await tasks.press("ArrowLeft")
+    await expect(tasks.boxCell(FIRST), "the first cell of a row is where Left ends").toBeFocused()
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
   })
 
@@ -283,7 +286,7 @@ test.describe("with the keyboard", () => {
     expect(await tasks.tabStops()).toHaveLength(1)
   })
 
-  test("Space and a character do nothing on an expander, a line and the cell of a nested table", async ({
+  test("a character does nothing on an expander, a line and the cell of a nested table; Space selects the row from its expander, and nothing from the others", async ({
     page,
     tasks,
     frames,
@@ -305,6 +308,8 @@ test.describe("with the keyboard", () => {
 
     // F2 on the cell of the nested table went into it; nothing else happened
     expect(await frames.all()).toEqual([])
+    // the expander is a cell of the row; a line and what is under it are not
+    expect(await tasks.selectedKeys()).toEqual([FIRST])
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
     await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "true")
   })
@@ -328,10 +333,10 @@ test.describe("three levels down", () => {
     const comments = await projectTasks.openLine(taskKey, "comments")
     expect(await tasks.tabStops()).toHaveLength(1)
     // at depth 3 of 3: the same table as one level up, without expanders:
-    // its five columns and the one of its actions
+    // the boxes that select a row, its five columns and the one of its actions
     await expect(comments.expanders).toHaveCount(0)
-    await expect(comments.headerCells).toHaveCount(6)
-    await expect(comments.grid).toHaveAttribute("aria-colcount", "6")
+    await expect(comments.headerCells).toHaveCount(7)
+    await expect(comments.grid).toHaveAttribute("aria-colcount", "7")
 
     // by keyboard all the way in, and all the way out again
     await projectTasks.cell(taskKey, "title").focus()

@@ -275,3 +275,72 @@ defmodule AshTable.Test.Acting.Plain do
     defaults [:read, :destroy, create: [:title], update: [:title]]
   end
 end
+
+defmodule AshTable.Test.Acting.Sheet do
+  @moduledoc """
+  Row actions that run on several rows at once, and ones that do not: one
+  that the block keeps to one row, and ones that accept a value no two
+  records can share.
+  """
+  use Ash.Resource,
+    domain: AshTable.Test.Domain,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource]
+
+  attributes do
+    uuid_primary_key :id, writable?: true
+    attribute :title, :string, public?: true
+    attribute :kind, :string, public?: true
+    # an identity by itself
+    attribute :code, :string, public?: true
+  end
+
+  identities do
+    identity :unique_code, [:code], pre_check_with: AshTable.Test.Domain
+    # an identity of two: either can be the same on many records
+    identity :unique_title_of_a_kind, [:title, :kind], pre_check_with: AshTable.Test.Domain
+  end
+
+  actions do
+    defaults [:read, :destroy]
+
+    update :archive do
+      accept []
+    end
+
+    update :retitle do
+      accept [:title, :kind]
+    end
+
+    update :recode do
+      accept [:title, :code]
+    end
+
+    update :rekey do
+      accept [:id]
+    end
+
+    update :hide do
+      accept []
+    end
+  end
+
+  table do
+    action :archive
+    action :retitle
+
+    # each accepts a value that no two records can share
+    action :recode
+    action :rekey
+
+    # kept to one row by the block
+    action :hide do
+      bulk? false
+    end
+
+    action :destroy do
+      confirm "Delete this sheet?"
+      bulk? true
+    end
+  end
+end

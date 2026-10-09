@@ -4263,6 +4263,153 @@ defmodule AshTable.TableBlockTest do
              ] = AshTable.Resource.Info.actions(AshTable.TableBlockTest.RowActions)
     end
 
+    test "`bulk?` is accepted on an action, and is nil unless it is given" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.BulkRowActions do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          actions do
+            defaults [:read, :destroy]
+
+            update :archive do
+              accept []
+            end
+
+            update :retitle do
+              accept [:title]
+            end
+          end
+
+          table do
+            action :archive
+
+            action :retitle do
+              bulk? true
+            end
+
+            action :destroy do
+              confirm false
+              bulk? false
+            end
+          end
+        end
+      end
+
+      assert [
+               %AshTable.Resource.Action{name: :archive, bulk?: nil},
+               %AshTable.Resource.Action{name: :retitle, bulk?: true},
+               %AshTable.Resource.Action{name: :destroy, bulk?: false}
+             ] = AshTable.Resource.Info.actions(AshTable.TableBlockTest.BulkRowActions)
+
+      assert [archive: true, retitle: true, destroy: false] ==
+               for(
+                 action <- AshTable.Model.build(AshTable.TableBlockTest.BulkRowActions).actions,
+                 do: {action.name, action.bulk?}
+               )
+    end
+
+    test "`bulk? true` on an action that accepts a value no two records can share is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :recode]} do
+          defmodule Elixir.AshTable.TableBlockTest.BulkUnrepeatable do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+              attribute :code, :string, public?: true
+            end
+
+            identities do
+              identity :unique_code, [:code], pre_check_with: AshTable.Test.Domain
+            end
+
+            actions do
+              defaults [:read]
+
+              update :recode do
+                accept [:title, :code]
+              end
+            end
+
+            table do
+              action :recode do
+                bulk? true
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The row action `recode` says `bulk? true`, and cannot run on several records at once: " <>
+                 "it accepts `code`, of which no two records can hold the same value (an attribute of " <>
+                 "the primary key, or an identity by itself), and the inputs of an action that runs on " <>
+                 "the selected rows are given once for all of them. Leave `bulk?` out: the action stays " <>
+                 "an action of one row."
+
+      # compiled despite the finding, the option is without effect: the
+      # action is a row action, and none of several rows
+      assert [%{name: :recode, bulk?: false}] =
+               AshTable.Model.build(AshTable.TableBlockTest.BulkUnrepeatable).actions
+    end
+
+    test "an action that accepts such a value is no error without `bulk? true`, nor with `bulk? false`" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.BulkLeftOut do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id, writable?: true
+            attribute :code, :string, public?: true
+          end
+
+          identities do
+            identity :unique_code, [:code], pre_check_with: AshTable.Test.Domain
+          end
+
+          actions do
+            defaults [:read]
+
+            update :recode do
+              accept [:code]
+            end
+
+            update :rekey do
+              accept [:id]
+            end
+          end
+
+          table do
+            action :recode
+
+            action :rekey do
+              bulk? false
+            end
+          end
+        end
+      end
+
+      assert [recode: false, rekey: false] ==
+               for(
+                 action <- AshTable.Model.build(AshTable.TableBlockTest.BulkLeftOut).actions,
+                 do: {action.name, action.bulk?}
+               )
+    end
+
     test "naming an action that does not exist is an error" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :archive]} do

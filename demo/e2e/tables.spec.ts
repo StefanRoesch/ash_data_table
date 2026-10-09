@@ -91,16 +91,20 @@ for (const mounted of MOUNTED) {
     await expect(page).toHaveTitle(`${mounted.title} · ash_table demo`)
     await expect(page.getByRole("grid", { name: mounted.title })).toHaveId(`${mounted.id}-table`)
 
-    // each of these tables has relationships to offer: before its columns
+    // Each of these tables has relationships to offer: before its columns
     // is the one of the expanders, named for those who cannot see it. And
     // each has row actions the admin can run: after its columns is the one
-    // of their buttons (actions.spec.ts)
+    // of their buttons (actions.spec.ts), and before everything the one of
+    // the boxes that select a row (selection.spec.ts), whose header holds
+    // the box of the page and no text.
     await expect(table.headers).toHaveText(mounted.headers)
-    await expect(table.headerCells).toHaveText(["Related records", ...mounted.headers, "Actions"])
-    await expect(table.grid).toHaveAttribute("aria-colcount", String(mounted.headers.length + 2))
+    await expect(table.headerCells).toHaveText(["", "Related records", ...mounted.headers, "Actions"])
+    await expect(table.pageBox).toHaveAccessibleName("Select all rows of this page")
+    await expect(table.grid).toHaveAttribute("aria-colcount", String(mounted.headers.length + 3))
     await expect(table.rows).toHaveCount(mounted.rows)
     await expect(table.expanders).toHaveCount(mounted.rows)
-    await expect(table.rows.locator("td")).toHaveCount(mounted.rows * (mounted.headers.length + 2))
+    await expect(table.boxes).toHaveCount(mounted.rows)
+    await expect(table.rows.locator("td")).toHaveCount(mounted.rows * (mounted.headers.length + 3))
 
     await expect(table.pagination).toHaveCount(mounted.pagination === "none" ? 0 : 1)
     if (mounted.pagination !== "none") {

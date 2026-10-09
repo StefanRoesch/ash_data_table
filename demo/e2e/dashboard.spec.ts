@@ -223,9 +223,9 @@ test.describe("two grids on one page", () => {
     await tasks.tabStop.focus()
     await tasks.press("ArrowRight", "ArrowDown", "ArrowDown")
     await expect(tasks.cell(taskKeys[2], "status")).toBeFocused()
-    // the first cell of the first data row: its expander
+    // the first cell of the first data row: the box that selects it
     await tasks.press("Control+Home")
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
+    await expect(tasks.boxCell(FIRST)).toBeFocused()
     await tasks.cell(FIRST, "title").focus()
     await tasks.press("ArrowUp", "ArrowUp")
     await expect(tasks.header("title")).toBeFocused()

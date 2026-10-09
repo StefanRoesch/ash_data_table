@@ -253,9 +253,11 @@ export class Table {
     return cell.locator("textarea, input, select")
   }
 
-  /** Every editor open in the grid: one at most. */
+  /** Every editor open in the grid: one at most. The box that selects a row is no editor. */
   get openEditors(): Locator {
-    return this.grid.locator(":scope > tbody > tr > td:not([colspan]) :is(textarea, input, select)")
+    return this.grid.locator(
+      ":scope > tbody > tr > td:not([colspan], [data-selector]) :is(textarea, input, select)",
+    )
   }
 
   /** The templates the hook copies a column's editor from: one per column the person can edit. */
@@ -339,6 +341,79 @@ export class Table {
     return this.rows.evaluateAll((rows) =>
       rows.map((row) => Number((row as HTMLTableSectionElement).rows[0].getAttribute("aria-rowindex"))),
     )
+  }
+
+  // ---- selecting rows, and acting on the selection ---------------------------
+
+  /** The first cell of a row, where rows can be selected: it holds the row's box. */
+  boxCell(key: string): Locator {
+    return this.byId(`${this.id}-row-${key}-s`)
+  }
+
+  /** The box that selects a row. */
+  box(key: string): Locator {
+    return this.boxCell(key).locator("input[type=checkbox]")
+  }
+
+  /** The boxes of the rows of the page, top to bottom. */
+  get boxes(): Locator {
+    return this.grid.locator(":scope > tbody > tr > td[data-selector] > input[type=checkbox]")
+  }
+
+  /** The cell of the header above the boxes. */
+  get pageBoxCell(): Locator {
+    return this.byId(`${this.id}-select-head`)
+  }
+
+  /** The box in the header, which stands for the rows of the page. */
+  get pageBox(): Locator {
+    return this.pageBoxCell.locator("input[type=checkbox]")
+  }
+
+  /** The keys of the rows of the page that say they are selected, top to bottom. */
+  async selectedKeys(): Promise<string[]> {
+    const prefix = `${this.id}-row-`
+    return this.rows.evaluateAll(
+      (rows, prefix) =>
+        rows
+          .filter((row) => (row as HTMLTableSectionElement).rows[0].getAttribute("aria-selected") === "true")
+          .map((row) => row.id.slice(prefix.length)),
+      prefix,
+    )
+  }
+
+  /** The line above the grid: what is selected, and what can be done with it. */
+  get selectionLine(): Locator {
+    return this.byId(`${this.id}-selection`)
+  }
+
+  /** "3 selected": the live region of that line. Empty while nothing is selected. */
+  get selectedCount(): Locator {
+    return this.byId(`${this.id}-selected`)
+  }
+
+  /** "Select all 320 that match". */
+  get selectAll(): Locator {
+    return this.byId(`${this.id}-select-all`)
+  }
+
+  get clearSelection(): Locator {
+    return this.byId(`${this.id}-clear-selection`)
+  }
+
+  /** The button of one action on the selected rows. */
+  bulk(name: string): Locator {
+    return this.byId(`${this.id}-bulk-${name}`)
+  }
+
+  /** The buttons of the actions on the selected rows, left to right. */
+  get bulkButtons(): Locator {
+    return this.selectionLine.locator("button[data-bulk]")
+  }
+
+  /** What the last action on the selected rows came to. */
+  get result(): Locator {
+    return this.byId(`${this.id}-result`)
   }
 
   // ---- the action panel ---------------------------------------------------
@@ -527,13 +602,16 @@ export class Table {
   async tabStops(): Promise<string[]> {
     return this.hookRoot.evaluate((root) =>
       Array.from(root.querySelectorAll<HTMLElement>("*"))
-        // the buttons of a nested table's dialog are in the grid around it,
-        // and are nothing Tab can reach while the dialog is closed
+        // The buttons of a nested table's dialog are in the grid around it,
+        // and are nothing Tab can reach while the dialog is closed. Nor are
+        // the buttons of a nested table's line above its grid, which are not
+        // shown while none of its rows is selected.
         .filter(
           (element) =>
             element.tabIndex >= 0 &&
             !(element as HTMLButtonElement).disabled &&
-            !element.closest("dialog:not([open])"),
+            !element.closest("dialog:not([open])") &&
+            element.getClientRects().length > 0,
         )
         .map((element) => element.id || element.tagName),
     )

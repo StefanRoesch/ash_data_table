@@ -135,6 +135,98 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc """
+  Uses a button of the line above the grid as the table's hook does, with
+  what a person has selected: the rows as the hook names them (the key of a
+  row; for a key of several attributes the list of its values), or `:all`
+  for every record the filters match. Nothing runs yet. Returns the page,
+  with the action's panel in it when it has one; the question the hook asks
+  otherwise is the event's reply:
+
+      bulk(view, "archive", [task.id, other.id])
+      assert_reply view, %{ask: "Run “Archive” on 2 records?"}
+  """
+  def bulk(view, id \\ "task", action, selection) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("bulk", Map.put(selected(selection), "action", action))
+  end
+
+  @doc """
+  Runs an action on what a person has selected, as the table's hook does
+  once they have answered its question with Confirm: one `bulk_run` event.
+  Returns the page once the action has run and the table has read again.
+  """
+  def run_bulk(view, id \\ "task", action, selection) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("bulk_run", Map.put(selected(selection), "action", action))
+
+    ran(view)
+  end
+
+  @doc """
+  The page once an action on the selected rows has run and the table has
+  read again: after `run_bulk/4`, and after the panel of such an action.
+  """
+  def ran(view) do
+    render_async(view, 5000)
+    render_async(view, 5000)
+  end
+
+  defp selected(:all), do: %{"all" => true}
+  defp selected(rows) when is_list(rows), do: %{"rows" => rows}
+
+  @doc """
+  The line above the grid of the table `id` as the server renders it: what
+  its buttons say, left to right, the one that selects all that match
+  first; whether that one can be offered (`more?`); and the two texts the
+  hook shows the count with. Nil for a table whose rows are not selected.
+  """
+  def selection(html, id \\ "task") do
+    line = "[id='#{id}-selection']"
+
+    case Enum.to_list(query(html, line)) do
+      [] ->
+        nil
+
+      [_line] ->
+        %{
+          buttons:
+            html
+            |> query("#{line} button")
+            |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())),
+          more?: attribute(html, line, "data-more") != [],
+          selected: List.first(attribute(html, line, "data-selected")),
+          all: List.first(attribute(html, line, "data-all"))
+        }
+    end
+  end
+
+  @doc """
+  What the table says the last action on the selected rows came to: the
+  summary, and each message of a failure with its count. Nil when it says
+  nothing.
+  """
+  def bulk_result(html, id \\ "task") do
+    case text(html, "[id='#{id}-result'] [data-summary]") do
+      nil ->
+        nil
+
+      summary ->
+        %{
+          summary: summary,
+          failures:
+            html
+            |> query("[id='#{id}-result'] [data-failure]")
+            |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+        }
+    end
+  end
+
+  @doc "The selector of the box of the record with primary key `key` in the table `id`."
+  def box(id \\ "task", key), do: "[id='#{id}-row-#{key}-s'] > input[type=checkbox]"
+
+  @doc """
   Gives up the failure of a row's actions cell, as the table's hook does
   when a person presses Escape on it. Returns the page.
   """

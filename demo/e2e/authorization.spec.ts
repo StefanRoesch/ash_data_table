@@ -46,9 +46,10 @@ for (const actor of ACTOR_KEYS) {
       const columns = await tasks.columns()
 
       expect(columns).toHaveLength(expected.columns)
-      // the columns, before them the one of the expanders, and after them
-      // the one of the actions, for a person who can run any
-      const all = expected.columns + 1 + (expected.actions ? 1 : 0)
+      // The columns, before them the one of the expanders, and for a person
+      // who can run any action two more: the boxes that select a row in
+      // front of everything, and the actions after everything.
+      const all = expected.columns + 1 + (expected.actions ? 2 : 0)
       await expect(tasks.grid).toHaveAttribute("aria-colcount", String(all))
       await expect(tasks.headerCells).toHaveCount(all)
       await expect(tasks.actionsHeader).toHaveCount(expected.actions ? 1 : 0)
@@ -98,7 +99,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: the expanders, 18 columns and the actions, numbered 1 to 20, walked without a gap", async ({
+  test("the smaller grid is whole: the boxes, the expanders, 18 columns and the actions, numbered 1 to 21, walked without a gap", async ({
     tasks,
     frames,
   }) => {
@@ -113,11 +114,11 @@ test.describe("the member, whose rights depend on the record", () => {
             Number(cell.getAttribute("aria-colindex")),
           ]),
         )
-    const oneToTwenty = Array.from({ length: 20 }, (_, index) => [index + 1, index + 1])
+    const oneToTwentyOne = Array.from({ length: 21 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwenty)
-    expect(await numbering("#task-head-row th")).toEqual(oneToTwenty)
-    expect(await numbering("#task-filter-row td")).toEqual(oneToTwenty)
+    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwentyOne)
+    expect(await numbering("#task-head-row th")).toEqual(oneToTwentyOne)
+    expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyOne)
 
     await tasks.cell(first, "title").focus()
     await frames.clear()

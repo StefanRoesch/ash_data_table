@@ -7,12 +7,13 @@ defmodule AshTable.Resource.Action do
   in when the table is rendered.
   """
 
-  defstruct [:name, :label, :confirm, :__identifier__, :__spark_metadata__]
+  defstruct [:name, :label, :confirm, :bulk?, :__identifier__, :__spark_metadata__]
 
   @type t :: %__MODULE__{
           name: atom,
           label: String.t() | nil,
-          confirm: String.t() | false | nil
+          confirm: String.t() | false | nil,
+          bulk?: boolean | nil
         }
 
   @schema [
@@ -30,6 +31,11 @@ defmodule AshTable.Resource.Action do
       type: {:or, [{:literal, false}, :string]},
       doc:
         "A question asked before the action runs. `false` says that the action runs without one on purpose, which silences the warning the compiler gives about a destroy action without `confirm`."
+    ],
+    bulk?: [
+      type: :boolean,
+      doc:
+        "Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off."
     ]
   ]
 

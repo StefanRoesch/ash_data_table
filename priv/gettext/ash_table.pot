@@ -258,3 +258,81 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Remove %{column} %{position}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action}: 1 record"
+msgid_plural "%{action}: %{count} records"
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action}: all records that match"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{count} selected"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{message} (%{count})"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{question} 1 record is selected."
+msgid_plural "%{question} %{count} records are selected."
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "%{question} All records that match are selected."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "All %{count} that match are selected"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "All that match are selected"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Clear selection"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Run “%{action}” on 1 record?"
+msgid_plural "Run “%{action}” on %{count} records?"
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "Run “%{action}” on all records that match?"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Select all %{count} that match"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Select all rows of this page"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Select all that match"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Select row"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Selected rows"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action}: %{done} done, %{failed} not done."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{action}: %{done} done."
+msgstr ""

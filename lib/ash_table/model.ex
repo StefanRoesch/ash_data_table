@@ -116,6 +116,13 @@ defmodule AshTable.Model do
   # and always for the create action. An action without inputs, or with
   # optional arguments only, runs straight away.
   #
+  # `bulk?` says whether a row action is also offered for the rows a person
+  # has selected, to run on all of them at once: every one is, unless its
+  # declaration says `bulk? false`, or it accepts an attribute of which no
+  # two records can hold the same value
+  # (`AshTable.Resource.Acting.unrepeatable/2`). Its inputs are then given
+  # once and applied to every record.
+  #
   # ## Nested
   #
   # The table of the records related to one row is the destination's table,
@@ -315,7 +322,9 @@ defmodule AshTable.Model do
       create action (`Ash.can/3`, once per action). One they may run on some
       records only stays: whether it runs on one record is the action's to
       say when it is run. An input of a field the person can never see is
-      left out of an action's inputs.
+      left out of an action's inputs, and one of a field they see on some
+      records only is marked `partly_hidden?`: it is no input of theirs
+      when the action runs on several records at once (`bulk_inputs/1`).
 
   A question Ash cannot answer is taken as "never".
   """
@@ -407,6 +416,9 @@ defmodule AshTable.Model do
 
     hidden = Access.hidden_fields(model.resource, model.read_action, attributes, opts)
 
+    partly_hidden =
+      Access.partly_hidden_fields(model.resource, model.read_action, attributes -- hidden, opts)
+
     [create | actions] =
       for action <- [model.create | model.actions] do
         cond do
@@ -420,6 +432,11 @@ defmodule AshTable.Model do
             inputs =
               for input <- action.inputs,
                   not (input.kind == :attribute and input.name in hidden) do
+                input = %{
+                  input
+                  | partly_hidden?: input.kind == :attribute and input.name in partly_hidden
+                }
+
                 # the component of its column, as this person's column has it
                 if input.component, do: with_component(input, model.columns), else: input
               end
@@ -503,6 +520,22 @@ defmodule AshTable.Model do
             %{column.component | column: %{column.component.column | editable?: false}}
     }
   end
+
+  @doc """
+  The row actions that are also offered for the rows a person has selected,
+  in the declared order.
+  """
+  @spec bulk_actions(t) :: [Action.t()]
+  def bulk_actions(%__MODULE__{actions: actions}), do: Enum.filter(actions, & &1.bulk?)
+
+  @doc """
+  The inputs of a row action when it runs on several records at once:
+  without the attributes the person sees on some records only. On one
+  record the table leaves such an input out where it is hidden
+  (`AshTable.Act.inputs/2`); over many it cannot tell, so it is never given.
+  """
+  @spec bulk_inputs(Action.t()) :: [Input.t()]
+  def bulk_inputs(%Action{inputs: inputs}), do: Enum.reject(inputs, & &1.partly_hidden?)
 
   @doc """
   What the table's columns show that is not on a record unless asked for,
@@ -878,7 +911,10 @@ defmodule AshTable.Model do
         found != :unusable do
       case found do
         {:ok, action} ->
-          action(resource, action, columns, declaration.label, declaration.confirm || nil)
+          %{
+            action(resource, action, columns, declaration.label, declaration.confirm || nil)
+            | bulk?: Acting.bulk?(resource, action, declaration.bulk?)
+          }
 
         {:error, reason} ->
           raise ArgumentError,

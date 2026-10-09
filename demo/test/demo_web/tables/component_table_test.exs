@@ -72,7 +72,8 @@ defmodule DemoWeb.Tables.ComponentTableTest do
 
       assert {"id", "gauge-row-#{gauge.id}-c-level"} in attributes
       assert {"role", "gridcell"} in attributes
-      assert {"aria-colindex", "2"} in attributes
+      # after the boxes of the rows and the first column
+      assert {"aria-colindex", "3"} in attributes
       assert {"tabindex", "-1"} in attributes
       assert {"data-probe", "level"} in probe
     end

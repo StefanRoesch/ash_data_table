@@ -50,8 +50,11 @@ defmodule Demo.Tracker.Project do
     # one input, a choice: the panel shows it with the project's state in it
     action :set_status
 
+    # A project is deleted with all its tasks: one at a time, from its own
+    # row. `bulk? false` keeps the action off the line of the selected rows.
     action :destroy do
       confirm "Delete this project, with all its tasks?"
+      bulk? false
     end
 
     # "New project"; and "New task" on the Tasks line of a project, where

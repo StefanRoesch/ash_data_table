@@ -32,8 +32,9 @@ the address of the page.
 
 Three words, as this guide uses them:
 
-- The **expander** is the first cell of a row. It opens and closes what is
-  under the row.
+- The **expander** is the first cell of a row, after the box that selects
+  the row where rows can be selected. It opens and closes what is under the
+  row.
 - A **relationship line** is one relationship of the row, under the expanded
   row. It opens and closes the nested table.
 - A **nested table** is the table of the destination resource, as that
@@ -165,6 +166,12 @@ end
 A nested table has the actions column of the destination's table, and its
 buttons do there what they do on the destination's own page: under a task
 on `/tasks`, a comment has "Destroy", and a label has it for an admin.
+
+It has that table's boxes too, where the destination's table has a row
+action that runs on several rows. A nested table's selection is its own:
+it has its own line above its own grid, and an action on it runs on the
+records under its row and on no others. See
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#nested-tables).
 
 Creating is narrower, because a record created under a row has to be joined
 to that row, and the table has to be the one that says how. A nested table

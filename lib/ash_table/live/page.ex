@@ -43,6 +43,15 @@ defmodule AshTable.Live.Page do
       depends on the record keeps its button on every row, and a refusal is
       shown when it runs: on the row's actions cell, or above the fields of
       the action panel, as "You are not allowed to do this."
+    * **A row action on the rows a person has selected** is the same
+      action, run on each record as the person. It is offered where the
+      person can ever run it; if that is none, the table has no boxes to
+      select rows with. Each selected record is read first, through the
+      table's read action and as the person, and the action's policies are
+      asked for each by itself: a record they refuse is not changed, is
+      counted as not done, and stays selected. An input of a field the
+      person sees on some records only is no field of such an action's
+      panel.
     * **A create action the person can never run** leaves the table without
       its create button.
     * **An input of a field the person can never see** is no field of an
@@ -83,7 +92,10 @@ defmodule AshTable.Live.Page do
   Before a cell is saved, before a row action runs and before its panel
   opens, the record is read again by its primary key, as the person. An
   event that names a row that is not on the person's page, or an action the
-  table does not offer them, runs nothing.
+  table does not offer them, runs nothing. The rows a person has selected
+  need not be on the page, as a selection outlives its page: each is read
+  by its primary key, as the person, before the action runs on it, and a
+  key that names nothing they may read through the table runs nothing.
 
   ## The heading
 

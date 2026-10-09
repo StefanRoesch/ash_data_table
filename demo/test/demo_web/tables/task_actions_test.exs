@@ -60,26 +60,26 @@ defmodule DemoWeb.Tables.TaskActionsTest do
          %{conn: conn, world: world, task: task} do
       {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
-      # the expanders, the nineteen columns of the table, the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
+      # the boxes, the expanders, the nineteen columns of the table, the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["22"]
 
       assert text(html, "#task-actions-head") == "Actions"
       assert attribute(html, "#task-actions-head", "role") == ["columnheader"]
-      assert attribute(html, "#task-actions-head", "aria-colindex") == ["21"]
+      assert attribute(html, "#task-actions-head", "aria-colindex") == ["22"]
       assert attribute(html, "#task-head-row > th:last-child", "id") == ["task-actions-head"]
 
       assert text(html, "#task-actions-filter") == ""
-      assert attribute(html, "#task-actions-filter", "aria-colindex") == ["21"]
+      assert attribute(html, "#task-actions-filter", "aria-colindex") == ["22"]
       assert attribute(html, "#task-filter-row > td:last-child", "id") == ["task-actions-filter"]
 
       assert attribute(html, actions_cell(task.id), "role") == ["gridcell"]
-      assert attribute(html, actions_cell(task.id), "aria-colindex") == ["21"]
+      assert attribute(html, actions_cell(task.id), "aria-colindex") == ["22"]
 
       assert attribute(html, "[id='task-row-#{task.id}-r'] > td:last-child", "id") ==
                ["task-row-#{task.id}-a"]
 
       # the columns before it are where they were
-      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["20"]
+      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["21"]
 
       assert actions(html, task.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
     end

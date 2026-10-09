@@ -13,7 +13,7 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
 
     errors =
       for declaration <- AshTable.Resource.Info.actions(dsl),
-          {:error, reason} <- [usable(dsl, declaration.name)] do
+          {:error, reason} <- [usable(dsl, declaration)] do
         DslError.exception(
           module: module,
           path: [:table, :action, declaration.name],
@@ -119,12 +119,24 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
 
   # A public update or destroy action, with a field in the action panel for
   # everything it does not run without.
-  defp usable(dsl, name) do
+  defp usable(dsl, %{name: name} = declaration) do
     with {:ok, action} <- Acting.row_action(dsl, name),
+         {:ok, _action} <- bulk(dsl, action, declaration),
          [input | _] <- Acting.unusable(dsl, action) do
       {:error, {:no_field, :row, name, input}}
     end
   end
+
+  # `bulk?` can only switch off: an action that cannot run on several
+  # records at once is not made to by saying so.
+  defp bulk(dsl, action, %{bulk?: true}) do
+    case Acting.unrepeatable(dsl, action) do
+      [] -> {:ok, action}
+      attributes -> {:error, {:not_bulk, action.name, attributes}}
+    end
+  end
+
+  defp bulk(_dsl, action, _declaration), do: {:ok, action}
 
   # A destroy action that runs at one click is a choice the block has to
   # make visibly: with a question, or with `confirm false`.

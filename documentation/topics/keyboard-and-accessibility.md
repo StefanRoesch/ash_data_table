@@ -3,7 +3,7 @@
 Every table is an ARIA grid that can be used from the keyboard alone. After
 reading this guide you know every key the table handles, how focus moves
 through the filter row, the editors, the row actions and the action panel,
-what is announced to assistive technology, how focus and the other states
+how rows are selected, what is announced to assistive technology, how focus and the other states
 are shown and what contrast they were measured at, and what has and has not
 been tested.
 
@@ -40,13 +40,17 @@ order, not 425.
   cell of the first row of records.
 - The cell a person moved to is the one Tab returns to.
 - The controls around the grid are ordinary tab stops: the create button on
-  the line of the table's name, where the table has one, the "Clear
-  filters" button above the grid, while a filter applies, and the
+  the line of the table's name, where the table has one, the buttons of the
+  line above the grid ("Clear selection" and the bulk actions, while rows
+  are selected, and "Clear filters", while a filter applies), and the
   pagination buttons below it.
-- Moving about never contacts the server.
-- Where rows expand into nested tables, the first cell of a row is its
-  expander, and a nested table is a grid of its own inside a cell: the whole
-  tree of grids is one tab stop. See [Rows that expand](#rows-that-expand).
+- Moving about never contacts the server. Neither does selecting rows.
+- Where rows can be selected, the first cell of a row holds its box; where
+  rows expand into nested tables, the next cell is the row's expander. Tab
+  enters the grid on the first column of the table, to the right of both.
+  A nested table is a grid of its own inside a cell: the whole tree of grids
+  is one tab stop. See [Selecting rows](#selecting-rows) and
+  [Rows that expand](#rows-that-expand).
 
 ## Keys on a cell
 
@@ -66,7 +70,8 @@ order, not 425.
 | A character, on a filter cell or a cell that can be edited | Goes into the filter or starts editing, with that character typed. |
 | Escape, on a cell whose save failed | Gives the failed edit up: the cell shows the saved value again. |
 | Escape, on an actions cell that shows the message of a failed action | Gives the message up. |
-| Space | Nothing. It is reserved for row selection, and it does not scroll the page. |
+| Space, on a cell of a row of records | Where rows can be selected: selects the row, or takes it out of the selection. Anywhere else nothing, and it does not scroll the page. |
+| Shift+Down Arrow, Shift+Up Arrow, on a cell of a row of records | Where rows can be selected: move to the next or previous row and select as they go. See [Selecting rows](#selecting-rows). |
 
 On macOS, Cmd works where the table says Ctrl. Key combinations with Alt are
 left to the browser.
@@ -74,8 +79,8 @@ left to the browser.
 The header row and the filter row are rows of the grid. Both have a cell for
 every column, including the columns that cannot be sorted or filtered, so
 the arrow keys never skip a position. That includes the column of the
-expanders and the "Actions" column, where a table has them: their filter
-cells are empty.
+boxes that select a row, the column of the expanders and the "Actions"
+column, where a table has them: their filter cells are empty.
 
 With the pointer: a click moves focus to a cell, a click on a sortable
 heading sorts, and a double click on an editable cell starts editing.
@@ -174,7 +179,7 @@ are reached from the cell, as a filter's controls are.
 | Escape | On an actions cell that shows a failure | Gives the message up. |
 
 Space uses a button, as it does anywhere. On a **cell**, the actions cell
-included, Space stays reserved for row selection and does nothing.
+included, Space selects the row.
 
 The **action panel** is a native `<dialog>` opened with `showModal()`, at
 the right edge of the window. While it is open the rest of the page cannot
@@ -203,10 +208,46 @@ relationship line: see the next section.
 What each action does is in
 [Row actions and create](row-actions-and-create.md).
 
+## Selecting rows
+
+A table with a row action that runs on several rows has a first column of
+boxes, one per row and one in the header for the rows of the page. The
+boxes are not tab stops; their cells are cells of the grid.
+
+| Key | Where | Effect |
+| --- | --- | --- |
+| Space | On any cell of a row of records | Selects the row, or takes it out of the selection. |
+| Space | On the cell of the box in the header | Selects every row of the page; when all are selected, takes them out. |
+| Shift+Down Arrow, Shift+Up Arrow | On a cell of a row of records | Move to the next or the previous row of records, in the same column, and select the rows from where the key was first pressed to where focus is. Going back takes rows out again. What is open under a row is passed over. |
+| Shift+Tab | On a cell | Leaves the grid backwards. While rows are selected, the buttons of the line above the grid are what comes before it: the bulk actions, "Clear selection", and "Select all … that match" when it is offered. |
+| Enter, Space | On a button of that line | Uses it. |
+
+Space belongs to the grid while focus is on a cell, and to a control once
+focus is in one: on a button it uses the button, in an editor or a filter
+it types. A boolean cell is toggled with Enter or F2, never with Space,
+which selects its row.
+
+With the pointer: a click on a box, or beside it in its cell, selects the
+row or takes it out; Shift and a click anywhere on a row selects from the
+row that was selected or clicked last to this one.
+
+Where focus goes afterwards:
+
+| After | Focus is |
+| --- | --- |
+| The question of a bulk action answered with Cancel or Escape | On the button that asked. |
+| A bulk action that left rows selected | On the button that was used. |
+| A bulk action that left nothing selected, and "Clear selection" | On the grid's current cell: the buttons are gone. |
+| "Select all … that match" | On "Clear selection": the button that was used is gone. |
+
+What a selection is, how long it lasts and what runs on it is in
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md).
+
 ## Rows that expand
 
 In a table whose rows expand, the first cell of every row holds the
-expander: a button that says whether the row is expanded
+expander, after the row's box where rows can be selected: a button that
+says whether the row is expanded
 (`aria-expanded`). An expanded row has, under it, one row per relationship
 line, each a cell that spans the grid with a button of its own, and under an
 open line a row whose one cell holds the nested table. All of them are cells
@@ -216,7 +257,7 @@ comment".
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Left Arrow | On the first data cell of a row | Moves to the row's expander. Tab enters the grid one cell to its right. |
+| Left Arrow | On the first data cell of a row | Moves to the row's expander, and from there to the row's box, where rows can be selected. Tab enters the grid on the first data cell. |
 | Right Arrow | On an expander or a line that is closed | Opens it. On one that is open, moves on as on any cell. |
 | Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
 | Enter | On an expander or a line | Opens or closes it. |
@@ -235,6 +276,10 @@ from a table of its own, so that the whole tree stays one tab stop:
 - Its link to the full view is a row of its grid.
 - Its "Clear filters" button is not in the tab order and not reached from
   the keyboard. Each filter is cleared from its own cell.
+
+One thing is a tab stop inside the tree all the same: the buttons of a
+nested table's line above its grid, while that nested table has rows
+selected. They are there only then, and have to be reached.
 
 On the page a nested table's link leads to, the heading that says what the
 table is limited to and the control "Show all records" are ordinary content
@@ -289,7 +334,7 @@ page and keeps the focus.
 | The editor of an array, in a cell and in the action panel | A group (`role="group"`) named by the column. In a multiple choice each box is named by its choice; in a list each value's control is named by the column and its place ("Tags 2"), and its button "Remove Tags 2". The button that adds a value says "Add value". |
 | A cell hidden from the person by a field policy | The text "Not available", for screen readers only. |
 | The expander of a row, and the button of a line | `aria-expanded`. The expanders, and the heading of their column, are named "Related records"; a line is named by its relationship. The expanders are a column of the grid, counted in `aria-colcount` and `aria-colindex`. |
-| A nested table | A grid of its own, named by its line and by the first cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
+| A nested table | A grid of its own, named by its line and by the first data cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
 | A nested table whose first rows are on their way | The text "Loading…", and `aria-busy` on its grid. |
 | The pages of a nested table | A group (`role="group"`) named "Pagination: Comments", in place of the landmark. |
 | The link to the full view | A link named "Open in full view: Comments": its text and the nested table's name. |
@@ -298,6 +343,11 @@ page and keeps the focus.
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
+| That rows can be selected | `aria-multiselectable="true"` on the grid, and `aria-selected`, `true` or `false`, on every row of records. Neither is there on a table without the boxes. |
+| The box of a row, and the one in the header | Checkboxes named "Select row" and "Select all rows of this page", in a first column of the grid that is counted in `aria-colcount` and `aria-colindex`. The one in the header is mixed when some rows of the page are selected. |
+| What is selected | A group above the grid (`role="group"`) named "Selected rows", with a live region (`role="status"`) that says the number when it changes: "3 selected", "All 320 that match are selected". |
+| A bulk action in progress | `aria-busy` on the grid, and `aria-disabled` on the buttons of the line, which keep the focus. |
+| What a bulk action came to | The live region: "Archive: 2 done, 1 not done. You are not allowed to do this. (1)". The same is text above the grid. |
 | An action in progress | `aria-busy` on the row's actions cell. |
 | An action that ran | The live region: "Archive: done"; after a create, "Task created". |
 | An action that failed | The live region: "Archive failed: …". For an action that ran straight away, also `aria-invalid` on the row's actions cell, described by the message. |
@@ -344,6 +394,7 @@ follows the theme, light or dark.
 | A cell whose save or action failed | A ring of 2px in the error colour mixed with the text colour, and a "!" at the end of the cell. The "!" is the mark that does not depend on a colour. Both are drawn by the cell's style: they do not change the row's height or the cell's width, and the cell's text stays where it is. The message is in a popover under the cell, in the text colour. |
 | A failed cell that has focus | Both rings: the focus ring at the edge of the cell and the ring of the failure inside it, with the "!". |
 | A cell whose save or action is on its way | Its text at 70% opacity. |
+| A selected row | The box at its start is ticked. A row has no other mark of being selected and no colour of its own; the box has an edge in the text colour at half strength, as the other boxes of a table have. |
 | A table that is reading | Its rows at 70% opacity. The header and the filters are not dimmed: they can be used meanwhile, and their text is muted already. |
 | An input or a menu | An edge in the text colour at half strength, on the filters and on the fields of the action panel. daisyUI's own edge, at a fifth, does not show where an empty input is. |
 | A rejected filter value, and a field of the panel with an error | The edge in the colour of a failed cell's ring, and the message under the control, in the text colour. The message is what says so without a colour. |
@@ -425,7 +476,9 @@ them, with the dialog open, with a failed cell, as each actor; with rows expande
 deepest level, on a page limited to the records of one parent, with
 reference cells; with the actions column, a failed actions cell, the action
 panel open, with errors and with the dialog on top of it, and with the
-create button of a table and of a line).
+create button of a table and of a line; with rows selected, with all that
+match selected, with the question of a bulk action open, and with what a
+bulk action came to, in the light and in the dark theme).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
@@ -494,9 +547,10 @@ technology, a report of what you find is welcome in the
   [tutorial](../tutorials/get-started-with-ash-table.md#1-install).
 - **Expecting Tab to move to the next cell.** Tab leaves the grid; this is
   the ARIA grid pattern. Arrow keys move between cells.
-- **Expecting Space to toggle a boolean.** Enter and F2 do. Space is held
-  back for row selection. In the open editor of an array Space does tick a
-  box, as it does anywhere.
+- **Expecting Space to toggle a boolean.** Enter and F2 do. Space selects
+  the row, where rows can be selected, and does nothing where they cannot.
+  In the open editor of an array Space does tick a box, as it does
+  anywhere.
 - **Expecting a tick in a multiple choice to be saved at once.** The list is
   saved by Enter or by leaving it.
 - **Pressing Enter on "Add value" to save.** Enter on a button uses the
@@ -514,6 +568,6 @@ technology, a report of what you find is welcome in the
 
 ## Not in the first version
 
-No row selection, no keyboard shortcuts of the host's choosing, and no
+No keyboard shortcuts of the host's choosing, and no
 tested screen reader support. The roadmap is in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

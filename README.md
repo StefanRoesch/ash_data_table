@@ -15,10 +15,10 @@ no HEEx.
 > on a page of its own, and a cell can show a related record by its label.
 > A row has buttons for the update and destroy actions the table declares,
 > and a button above the table creates a record; an action with inputs asks
-> for them in a panel. A column can name a component of its own for how its
-> cells look and what they are edited with; a badge, a progress bar and a
-> slider are shipped. A picker for related records and actions on several
-> rows are later slices.
+> for them in a panel. Rows can be selected, and a row action runs on all
+> the selected rows at once. A column can name a component of its own for
+> how its cells look and what they are edited with; a badge, a progress bar
+> and a slider are shipped. A picker for related records is a later slice.
 
 - [Install](#install)
 - [A first table](#a-first-table)
@@ -26,6 +26,7 @@ no HEEx.
 - [Reading](#reading): page size and sort, [filtering](#filtering), [the URL](#the-url), [when a read fails](#when-a-read-fails)
 - [Inline editing](#inline-editing)
 - [Row actions and create](#row-actions-and-create)
+- [Selecting rows and bulk actions](#selecting-rows-and-bulk-actions)
 - [Nested tables](#nested-tables)
 - [Custom components](#custom-components)
 - [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
@@ -52,6 +53,7 @@ examples from the demo app and each topic's edge cases.
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
+- [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Custom components](documentation/topics/custom-components.md)
 - [Authorization](documentation/topics/authorization.md)
@@ -563,10 +565,68 @@ end
 The guide [Row actions and create](documentation/topics/row-actions-and-create.md)
 has all of this in detail.
 
+## Selecting rows and bulk actions
+
+A table with a row action has a box at the start of every row, and one in
+the header for the rows of the page. A person selects rows and runs a row
+action on all of them at once. There is nothing to declare: every row
+action is offered for a selection unless it says otherwise.
+
+```elixir
+table do
+  action :archive                  # in every row, and for the selected rows
+
+  action :destroy do
+    confirm "Delete this project, with all its tasks?"
+    bulk? false                    # in the rows only
+  end
+end
+```
+
+- **Selecting.** A click on a box, Space on any cell of a row, Shift and a
+  click or Shift with Down or Up Arrow for a range. It happens in the
+  browser alone: nothing is sent, and no row comes back. A selection lasts
+  through a sort and a change of page and is given up when a filter
+  changes. It is not in the URL.
+- **All that match.** Once the whole page is selected and the filters match
+  more, "Select all 320 that match" selects every record the read action
+  returns for this person under the filters. That is "whatever matches",
+  worked out on the server when an action runs, and no list of rows.
+- **The line above the grid** says how many records are selected, which is
+  read out when it changes, and has "Clear selection" and one button per
+  bulk action.
+- **Which actions.** The table's row actions that this person can ever run.
+  Not one that says `bulk? false`, and not one that accepts a value only
+  one record can hold: an attribute of the primary key, or an identity by
+  itself.
+- **A question, always**, with the number of records: "Run “Archive” on 3
+  records?", or the action's own `confirm` with the number after it.
+- **Inputs once.** An action with inputs opens the action panel once for
+  the whole selection. Its fields start empty, and what they hold is given
+  to the action on every record: an empty field is an empty value.
+- **What runs.** Each selected record is read as the person, through the
+  table's read action, and the action is run on it as the person, through
+  `Ash.bulk_update/4` or `Ash.bulk_destroy/4` with `strategy: :stream`, one
+  record and one transaction at a time, with notifications. It is what the
+  row's button does, once per record: a policy or a validation that refuses
+  one record does not stop the others, and nobody changes in bulk what
+  they could not change from its row, or cannot read.
+- **Afterwards** the table reads again and says "Archive: 2 done, 1 not
+  done.", with each of the action's messages and the number of records it is
+  about. The rows it did not run on stay selected. A record that is gone,
+  or not the person's to read, counts as not done.
+- **A nested table** has its own boxes and its own selection, and an action
+  on it runs on the records under its row.
+
+The guide
+[Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
+has all of this in detail.
+
 ## Nested tables
 
 A row expands into the tables of its related records. The first cell of a
-row holds the expander; an expanded row shows one line per relationship, and
+row, after its box where rows can be selected, holds the expander; an
+expanded row shows one line per relationship, and
 a line opens the nested table: the table of the destination resource, as that
 resource declares it, limited to the records related to the row. A nested
 table sorts, filters, pages and edits by itself, and its rows expand again.
@@ -770,7 +830,10 @@ A relationship of the default set that leads to a private read action is
 quietly not offered. Make the action public, name a public one, or do not
 offer what leads to it. The record of a row, and the row a nested table
 belongs to, are read again through the read action of the table that shows
-them, so a key reaches no record that the table would not show.
+them, so a key reaches no record that the table would not show. The same
+holds for the rows a person has selected: an action on them is one of the
+block's public row actions, and each record is read through the table's
+read action, as the person, before the action runs on it.
 
 **What each restriction looks like.**
 
@@ -785,6 +848,8 @@ them, so a key reaches no record that the table would not show.
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. |
 | The person can **never run a row action**, or the create action | The action has no button for them; with no row action left, the table has no actions column. |
 | The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the actions cell or the action panel says "You are not allowed to do this." |
+| The person can **never run any row action** on several rows | The table has no boxes to select rows with. |
+| The person may run a row action on **some of the selected records only** | It runs on those. The table says how many it did not run on and why, "You are not allowed to do this. (2)", and those rows stay selected. |
 
 "No records" is only ever shown for a read that succeeded and found nothing.
 
@@ -836,9 +901,14 @@ then the header. Nothing of this talks to the server.
 | Page Up, Page Down | Move by a screenful of rows |
 | Tab, Shift+Tab | Leave the grid |
 | Enter, on a header | Sort by the column |
-| Space | Nothing; reserved for row selection |
+| Space, on a cell of a row | Where rows can be selected: select the row, or take it out. Nothing anywhere else |
+| Shift+Down Arrow, Shift+Up Arrow | Where rows can be selected: move a row and select as they go |
 
-Where rows expand, the expander is the first cell of a row, one cell to the
+Where rows can be selected, the first cell of a row holds its box, and the
+box in the header stands for the rows of the page. While rows are selected,
+the buttons of the line above the grid are ordinary tab stops before it.
+
+Where rows expand, the expander is the next cell of a row, one cell to the
 left of where Tab enters the grid. The lines under an expanded row, and the
 cell that holds a nested table, are cells of the grid that the arrow keys
 stop at:
@@ -876,12 +946,12 @@ On a cell that can be edited:
 | Enter, while editing | Save; focus stays on the cell. In text, Shift+Enter makes a new line |
 | Tab, Shift+Tab, while editing | Save and leave the grid, forwards or backwards |
 | Arrow keys, Home, End, while editing | Belong to the editor |
-| Space | Nothing; reserved for row selection |
+| Space | Selects the row where rows can be selected; a boolean is toggled with Enter or F2 |
 
 On the actions cell of a row, the last cell, Enter or F2 goes to its first
 button. Left and Right Arrow move between the buttons, Enter or Space uses
 one, Escape returns to the cell, and Tab moves on through the buttons and
-out of the grid after the last. Space on the cell itself stays reserved.
+out of the grid after the last. Space on the cell itself selects the row.
 The action panel is a modal dialog: focus moves into it and stays, and
 Escape is Cancel. A relationship line with a create button is entered with
 F2; Enter on the line opens and closes it as before.
@@ -1090,6 +1160,13 @@ nothing at all, unless the resource says `on_forbidden :message`.
   `confirm false`.
 - **A related record is given by its key in the action panel.** There is no
   picker yet.
+- **A bulk action is one statement per record, not one for all.** That is
+  what lets a policy or a validation refuse one record and not the others.
+  A run on thousands of records takes as long as that many updates.
+- **An empty field in the panel of a bulk action is an empty value** for
+  every selected record, not "leave as it is". Its fields start empty.
+- **A filter change gives the selection up.** A sort and a change of page
+  keep it.
 - **A component was renamed, and the table says it cannot be found.** The
   resource that names it was not compiled again, as it does not depend on
   the component. `mix compile --force` reports it; so does a build from

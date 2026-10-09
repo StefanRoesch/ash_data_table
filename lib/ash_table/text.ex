@@ -86,6 +86,23 @@ defmodule AshTable.Text do
           | :add_value
           | :value_position
           | :remove_value
+          | :select_row
+          | :select_page
+          | :selected_rows
+          | :selected
+          | :all_selected
+          | :all_selected_uncounted
+          | :select_all
+          | :select_all_uncounted
+          | :clear_selection
+          | :bulk_question_all
+          | :bulk_confirm_all
+          | :bulk_on_all
+          | :bulk_done
+          | :bulk_not_done
+          | :bulk_failure
+
+  @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
@@ -93,17 +110,42 @@ defmodule AshTable.Text do
     Gettext.dgettext(backend(), @domain, msgid(key), Map.new(bindings))
   end
 
-  @doc "The text for `key` in the plural form of `count`, which is bound as `%{count}`."
-  @spec n(:results | :records, non_neg_integer) :: String.t()
-  def n(key, count) do
+  @doc """
+  The text for `key` in the plural form of `count`, which is bound as
+  `%{count}`, with the other placeholders filled from `bindings`.
+  """
+  @spec n(plural, non_neg_integer, keyword) :: String.t()
+  def n(key, count, bindings \\ []) do
     {singular, plural} = msgids(key)
-    Gettext.dngettext(backend(), @domain, singular, plural, count)
+    Gettext.dngettext(backend(), @domain, singular, plural, count, Map.new(bindings))
   end
 
   # what a filter change found, for the live region
   defp msgids(:results), do: dngettext_noop("ash_table", "1 result", "%{count} results")
   # the total of a table that does not know where its page lies in it
   defp msgids(:records), do: dngettext_noop("ash_table", "1 record", "%{count} records")
+
+  # what is asked before an action runs on the selected rows
+  defp msgids(:bulk_question),
+    do:
+      dngettext_noop(
+        "ash_table",
+        "Run “%{action}” on 1 record?",
+        "Run “%{action}” on %{count} records?"
+      )
+
+  # the same for an action with a question of its own, which comes first
+  defp msgids(:bulk_confirm),
+    do:
+      dngettext_noop(
+        "ash_table",
+        "%{question} 1 record is selected.",
+        "%{question} %{count} records are selected."
+      )
+
+  # the heading of the panel of an action that runs on the selected rows
+  defp msgids(:bulk_on),
+    do: dngettext_noop("ash_table", "%{action}: 1 record", "%{action}: %{count} records")
 
   @doc """
   A text of the resource's as the table shows it: translated when the
@@ -242,4 +284,48 @@ defmodule AshTable.Text do
   defp msgid(:add_value), do: dgettext_noop("ash_table", "Add value")
   defp msgid(:value_position), do: dgettext_noop("ash_table", "%{column} %{position}")
   defp msgid(:remove_value), do: dgettext_noop("ash_table", "Remove %{column} %{position}")
+
+  # what the box of a row is called, and the one in the header that stands
+  # for the rows of the page
+  defp msgid(:select_row), do: dgettext_noop("ash_table", "Select row")
+  defp msgid(:select_page), do: dgettext_noop("ash_table", "Select all rows of this page")
+  # names the line above the grid that says what is selected
+  defp msgid(:selected_rows), do: dgettext_noop("ash_table", "Selected rows")
+  # on that line: how many rows are selected. The count is put in by the
+  # table's hook, which is why it has no plural forms.
+  defp msgid(:selected), do: dgettext_noop("ash_table", "%{count} selected")
+
+  # every record the filters match is selected, on this page and on the
+  # others; without a number where the read action does not count
+  defp msgid(:all_selected),
+    do: dgettext_noop("ash_table", "All %{count} that match are selected")
+
+  defp msgid(:all_selected_uncounted),
+    do: dgettext_noop("ash_table", "All that match are selected")
+
+  # the button that selects them, once every row of the page is selected
+  defp msgid(:select_all), do: dgettext_noop("ash_table", "Select all %{count} that match")
+  defp msgid(:select_all_uncounted), do: dgettext_noop("ash_table", "Select all that match")
+  defp msgid(:clear_selection), do: dgettext_noop("ash_table", "Clear selection")
+
+  # an action on every record that matches, where the table has no number:
+  # the question, the same after a question of the action's own, and the
+  # heading of the panel
+  defp msgid(:bulk_question_all),
+    do: dgettext_noop("ash_table", "Run “%{action}” on all records that match?")
+
+  defp msgid(:bulk_confirm_all),
+    do: dgettext_noop("ash_table", "%{question} All records that match are selected.")
+
+  defp msgid(:bulk_on_all), do: dgettext_noop("ash_table", "%{action}: all records that match")
+
+  # what became of an action that ran on the selected rows: on how many
+  # records it ran and on how many it did not, and each message of the
+  # action with the number of records it is about
+  defp msgid(:bulk_done), do: dgettext_noop("ash_table", "%{action}: %{done} done.")
+
+  defp msgid(:bulk_not_done),
+    do: dgettext_noop("ash_table", "%{action}: %{done} done, %{failed} not done.")
+
+  defp msgid(:bulk_failure), do: dgettext_noop("ash_table", "%{message} (%{count})")
 end

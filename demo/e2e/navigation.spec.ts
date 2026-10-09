@@ -49,11 +49,14 @@ test("arrow keys move one cell and do not wrap", async ({ tasks }) => {
   await expect(tasks.cell(first, SECOND)).toBeFocused()
   await tasks.press("ArrowLeft")
   await expect(tasks.cell(first, FIRST)).toBeFocused()
-  // one more reaches the row's expander, which is the first cell of the row
+  // one more reaches the row's expander, and one more the box that selects
+  // the row, which is the first cell of the row
   await tasks.press("ArrowLeft")
   await expect(tasks.expanderCell(first)).toBeFocused()
   await tasks.press("ArrowLeft")
-  await expect(tasks.expanderCell(first), "the first cell of a row is where Left ends").toBeFocused()
+  await expect(tasks.boxCell(first)).toBeFocused()
+  await tasks.press("ArrowLeft")
+  await expect(tasks.boxCell(first), "the first cell of a row is where Left ends").toBeFocused()
 
   await tasks.cell(first, FIRST).focus()
   await tasks.press("ArrowDown")
@@ -85,14 +88,14 @@ test("Home and End go to the ends of the row, with Ctrl to the corners of the da
   // the last cell of a row holds its actions
   await tasks.press("End")
   await expect(tasks.actionsCell(third)).toBeFocused()
-  // the first cell of a row is its expander
+  // the first cell of a row is the box that selects it
   await tasks.press("Home")
-  await expect(tasks.expanderCell(third)).toBeFocused()
+  await expect(tasks.boxCell(third)).toBeFocused()
 
   await tasks.press("Control+End")
   await expect(tasks.actionsCell(last)).toBeFocused()
   await tasks.press("Control+Home")
-  await expect(tasks.expanderCell(first), "the first data row, not the header").toBeFocused()
+  await expect(tasks.boxCell(first), "the first data row, not the header").toBeFocused()
 })
 
 test("Page Down and Page Up move by a screenful and stay in the data rows", async ({ tasks }) => {
@@ -170,7 +173,7 @@ test("a click on a cell moves focus and the tab stop to it", async ({ tasks }) =
   await expect(tasks.cell(second, "comment_count")).toBeFocused()
 })
 
-test("Space does nothing on a cell", async ({ page, tasks, frames }) => {
+test("Space on a cell selects its row, and does nothing else", async ({ page, tasks, frames }) => {
   const first = await tasks.rowKey(1)
   const cell = tasks.cell(first, FIRST)
   const text = await cell.textContent()
@@ -179,11 +182,38 @@ test("Space does nothing on a cell", async ({ page, tasks, frames }) => {
   await frames.clear()
   await page.keyboard.press("Space")
 
+  // what selecting is and lasts through is in selection.spec.ts
+  expect(await tasks.selectedKeys()).toEqual([first])
   await expect(cell).toBeFocused()
   await expect(cell).toHaveText(text!)
   await expect(tasks.openEditors).toHaveCount(0)
   expect(await page.evaluate(() => window.scrollY), "the page does not scroll").toBe(0)
   expect(await frames.all()).toEqual([])
+})
+
+test.describe(() => {
+  test.use({ actor: "viewer" })
+
+  test("Space does nothing on a cell of a table whose rows cannot be selected", async ({
+    page,
+    tasks,
+    frames,
+  }) => {
+    const first = await tasks.rowKey(1)
+    const cell = tasks.cell(first, FIRST)
+    const text = await cell.textContent()
+
+    await cell.focus()
+    await frames.clear()
+    await page.keyboard.press("Space")
+
+    await expect(tasks.grid.locator("[aria-selected]")).toHaveCount(0)
+    await expect(cell).toBeFocused()
+    await expect(cell).toHaveText(text!)
+    await expect(tasks.openEditors).toHaveCount(0)
+    expect(await page.evaluate(() => window.scrollY), "the page does not scroll").toBe(0)
+    expect(await frames.all()).toEqual([])
+  })
 })
 
 test.describe("focus after a patch", () => {

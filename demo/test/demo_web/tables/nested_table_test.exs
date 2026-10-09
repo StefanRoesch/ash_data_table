@@ -52,14 +52,25 @@ defmodule DemoWeb.Tables.NestedTableTest do
   end
 
   describe "the expander" do
-    test "is the first cell of every row of a table with relationships to offer", %{conn: conn} do
+    test "is the first cell of every row of a table with relationships to offer, after the box of a row that can be selected",
+         %{conn: conn} do
       world = world(tasks: 0)
       task = task(world, "Write the report")
 
-      {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
+      # a viewer has nothing to select a row for
+      {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
 
       assert attribute(html, "[id='task-row-#{task.id}-r'] > td:first-child", "id") ==
                ["task-row-#{task.id}-e"]
+
+      assert text(html, "#task-head-row > th:first-child") == "Related records"
+      assert attribute(html, "#task-expander-head", "aria-colindex") == ["1"]
+      assert attribute(html, "#task-head-title", "aria-colindex") == ["2"]
+
+      {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
+
+      assert attribute(html, "[id='task-row-#{task.id}-r'] > td", "id") |> Enum.take(3) ==
+               ["task-row-#{task.id}-s", "task-row-#{task.id}-e", "task-row-#{task.id}-c-title"]
 
       assert attribute(html, "[id='task-row-#{task.id}-e'] > button", "aria-expanded") == [
                "false"
@@ -70,14 +81,19 @@ defmodule DemoWeb.Tables.NestedTableTest do
              ]
 
       # a column of its own: counted, with a header that names it
-      assert text(html, "#task-head-row > th:first-child") == "Related records"
-      assert attribute(html, "#task-head-row > th:first-child", "aria-colindex") == ["1"]
-      assert attribute(html, "#task-head-title", "aria-colindex") == ["2"]
-      assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["2"]
-      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["17"]
-      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["20"]
-      # the expanders, the 19 columns and the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
+      assert text(html, "#task-expander-head") == "Related records"
+
+      assert attribute(html, "#task-head-row > th", "id") |> Enum.take(3) ==
+               ["task-select-head", "task-expander-head", "task-head-title"]
+
+      assert attribute(html, "#task-expander-head", "aria-colindex") == ["2"]
+      assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["2"]
+      assert attribute(html, "#task-head-title", "aria-colindex") == ["3"]
+      assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["3"]
+      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["18"]
+      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["21"]
+      # the boxes, the expanders, the 19 columns and the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["22"]
       # and not one of the table's columns
       assert hd(headers(html, "task")) == "Title"
     end
@@ -258,8 +274,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='task-row-#{task.id}-l-comments-b']") =~ "Comments"
       assert text(html, "[id='task-row-#{task.id}-c-title']") == "Write the report"
 
-      # the expanders, 19 columns and the actions
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["21"]
+      # the boxes, the expanders, 19 columns and the actions
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["22"]
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
     end
 
@@ -870,11 +886,11 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # at the limit: no expander, no column for one, and the columns counted without it
       assert attribute(html, "[id='#{third}-table'] [data-expander]", "id") == []
       assert attribute(html, "[id='#{third}-expander-head']", "id") == []
-      # the comments' five columns and their actions
-      assert attribute(html, "[id='#{third}-table']", "aria-colcount") == ["6"]
-      assert attribute(html, "[id='#{third}-head-id']", "aria-colindex") == ["1"]
+      # the comments' boxes, their five columns and their actions
+      assert attribute(html, "[id='#{third}-table']", "aria-colcount") == ["7"]
+      assert attribute(html, "[id='#{third}-head-id']", "aria-colindex") == ["2"]
       # where the same table one level up has it
-      assert attribute(html, "[id='#{first}-table']", "aria-colcount") == ["7"]
+      assert attribute(html, "[id='#{first}-table']", "aria-colcount") == ["8"]
     end
 
     test "an event for a table at the limit, which that table never offers, opens nothing",
@@ -1325,7 +1341,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       {:ok, view, html} = conn |> log_in(world.admin) |> in_locale("de") |> live("/tasks")
 
-      assert text(html, "#task-head-row > th:first-child") == "Zugehörige Einträge"
+      assert text(html, "#task-expander-head") == "Zugehörige Einträge"
 
       assert attribute(html, "[id='task-row-#{task.id}-e'] > button", "aria-label") ==
                ["Zugehörige Einträge"]

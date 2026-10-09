@@ -32,6 +32,7 @@ defmodule AshTable.Resource.Acting do
           | {:not_public, atom}
           | {:not_a_row_action, atom, atom}
           | {:declared_twice, atom}
+          | {:not_bulk, atom, [atom]}
           | {:no_field, :row | :create, atom, input}
           | {:not_a_create_action, atom, atom}
           | {:result_read_not_public, atom}
@@ -157,6 +158,31 @@ defmodule AshTable.Resource.Acting do
   end
 
   @doc """
+  The attributes an action accepts of which no two records can hold the
+  same value: those of the primary key, and those that are an identity by
+  themselves. An action that accepts one cannot run on several records at
+  once: its inputs are given once and applied to every record, and such a
+  value can be given to one record only.
+  """
+  @spec unrepeatable(Ash.Resource.t() | Spark.Dsl.t(), struct) :: [atom]
+  def unrepeatable(resource, action) do
+    unique =
+      Info.primary_key(resource) ++
+        for(%{keys: [key]} <- Info.identities(resource), do: key)
+
+    for name <- Map.get(action, :accept) || [], name in unique, do: name
+  end
+
+  @doc """
+  Whether a row action is also offered for the rows a person has selected:
+  unless its declaration says `bulk? false`, and unless it accepts an
+  attribute that is `unrepeatable/2`.
+  """
+  @spec bulk?(Ash.Resource.t() | Spark.Dsl.t(), struct, boolean | nil) :: boolean
+  def bulk?(resource, action, declared),
+    do: declared != false and unrepeatable(resource, action) == []
+
+  @doc """
   The calculation, aggregate and reference columns that a row could not be
   shown with after an action: those of a table with row actions or a create
   action whose resource has no primary read action, which is what Ash loads
@@ -242,6 +268,14 @@ defmodule AshTable.Resource.Acting do
         "has to be an update or a destroy action." <> hint(type, name)
 
   def message({:declared_twice, name}), do: "`#{name}` is declared more than once."
+
+  def message({:not_bulk, name, attributes}),
+    do:
+      "The row action `#{name}` says `bulk? true`, and cannot run on several records at once: " <>
+        "it accepts #{Enum.map_join(attributes, ", ", &"`#{&1}`")}, of which no two records can " <>
+        "hold the same value (an attribute of the primary key, or an identity by itself), and the " <>
+        "inputs of an action that runs on the selected rows are given once for all of them. " <>
+        "Leave `bulk?` out: the action stays an action of one row."
 
   def message({:no_field, what, name, %{name: input, type: {type, _constraints}}}),
     do:

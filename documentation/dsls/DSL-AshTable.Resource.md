@@ -214,6 +214,43 @@ A person who can never run an action has no button for it. An input of a
 field they can never see, or do not see on the record, is no field of
 their panel. See `AshTable.Live.Page`.
 
+## Selecting rows and bulk actions
+
+A table with a row action has a box at the start of every row. A person
+selects rows, with the pointer or with Space, and runs a row action on
+all of them at once from the line above the grid. Nothing is declared for
+it: every row action is offered for the selected rows, unless it says
+otherwise.
+
+    table do
+      action :archive
+
+      action :destroy do
+        confirm "Delete this project, with all its tasks?"
+        bulk? false
+      end
+    end
+
+`bulk? false` keeps an action to one row. An action that accepts an
+attribute of the primary key, or one that is an identity by itself, is not
+offered for a selection either: its inputs would be given once for every
+record, and no two records can hold that value. `bulk? true` on such an
+action is reported.
+
+Every such action asks first, with the number of records, and an action
+with inputs asks for them once, in the action panel, with empty fields.
+It then runs on each selected record as the row's button would: the
+record is read as the person through the table's read action, and the
+action is run on it as the person, through `Ash.bulk_update/4` or
+`Ash.bulk_destroy/4`, one record and one transaction at a time. The table
+says on how many records it ran and on how many it did not, with the
+action's messages, and the rows it did not run on stay selected.
+
+Which rows are selected is kept in the browser. It lasts through a sort
+and a change of page, and is given up when a filter changes. Once a whole
+page is selected, "Select all that match" selects every record the
+filters match.
+
 ## Custom components
 
 A column can name a module that says how its cells look, what they are
@@ -425,6 +462,8 @@ A row action: an update or destroy action of the resource that a person runs on 
 
 An action without inputs, or with optional arguments only, runs when its button is used. One that accepts attributes or has a required argument without a default opens the action panel first, where the person gives its inputs.
 
+A row action is also offered for the rows a person has selected, to run on all of them at once, unless it says `bulk? false`.
+
 
 
 
@@ -447,6 +486,14 @@ end
 
 ```
 
+```
+action :destroy do
+  confirm "Delete this project, with all its tasks?"
+  bulk? false
+end
+
+```
+
 
 
 ### Arguments
@@ -460,6 +507,7 @@ end
 |------|------|---------|------|
 | [`label`](#table-action-label){: #table-action-label } | `String.t` |  | What the action's button says. Defaults to the humanised action name. |
 | [`confirm`](#table-action-confirm){: #table-action-confirm } | `false \| String.t` |  | A question asked before the action runs. `false` says that the action runs without one on purpose, which silences the warning the compiler gives about a destroy action without `confirm`. |
+| [`bulk?`](#table-action-bulk?){: #table-action-bulk? } | `boolean` |  | Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off. |
 
 
 

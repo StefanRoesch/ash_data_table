@@ -26,8 +26,9 @@ defmodule AshTable.Live.TableComponent do
   #     (its controls end in `-operator`, `-value` and `-clear`), `ID-row-KEY`
   #     for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
   #   * `aria-colindex` is computed through `colindex/2`, which counts the
-  #     leading expander column in when the table has one; the actions
-  #     column goes after the last data column;
+  #     leading columns in when the table has them: the boxes that select a
+  #     row, then the expanders; the actions column goes after the last
+  #     data column;
   #   * a column's component renders inside the cell, never the cell: the
   #     `<td>`, its id and what it says of itself are the table's. The
   #     component is called for a value that is there and that the person
@@ -41,11 +42,37 @@ defmodule AshTable.Live.TableComponent do
   #     click: `phoenix_html`, which a Phoenix application loads, asks the
   #     browser's own `confirm` for every click inside such an element.
   #
+  # ## Selecting rows
+  #
+  # A table whose rows can be selected has a first column of boxes, before
+  # the expanders: `ID-row-KEY-s` in a row, `ID-select-head` in the header
+  # with the box that stands for the rows of the page, `ID-select-filter` in
+  # the filter row. Rows can be selected where the table has a row action
+  # that runs on several rows for this person, and where it is told so
+  # (`select`: `:multi` or `:single`), which is how a table is shown for a
+  # person to choose from, with nothing to run.
+  #
+  # Which rows are selected is the hook's alone: the server renders the
+  # boxes and never hears of a selection until a person does something
+  # with it. The hook says of each row whether it is selected
+  # (`aria-selected`, and the box), tells whoever listens
+  # (`ash_table:selection` on `ID-grid`, with what `selected()` of the hook
+  # gives), and names a row to the server by its primary key: the key in the
+  # row's id, or what the row says in `data-key`.
+  #
+  # Above the grid, `ID-selection` holds the number of selected rows
+  # (`ID-selected`, a live region the hook fills) and, in
+  # `ID-selection-controls`, `ID-select-all`, `ID-clear-selection` and a
+  # button per action on the selected rows (`ID-bulk-ACTION`). Such an
+  # action is run by `AshTable.Bulk`, beside the process; what it came to
+  # is in `ID-result`, and the hook is told the rows it did not run on
+  # (`ash_table:bulk`), which stay selected.
+  #
   # ## Nested tables
   #
   # A table whose rows offer relationships, to this person and at this depth,
-  # has a first column of expanders. The stream then holds two items per
-  # record, both `<tbody>`s: the row (`ID-row-KEY`) and, right after it, its
+  # has a column of expanders, the first unless its rows can be selected.
+  # The stream then holds two items per record, both `<tbody>`s: the row (`ID-row-KEY`) and, right after it, its
   # detail (`ID-row-KEY-x`), which is empty and hidden until the row is
   # expanded. Expanded, the detail holds one line per relationship
   # (`ID-row-KEY-l-NAME`, with its cell `…-c` and its button `…-b`) and, under
@@ -88,6 +115,7 @@ defmodule AshTable.Live.TableComponent do
   require Logger
 
   alias AshTable.Act
+  alias AshTable.Bulk
   alias AshTable.Edit
   alias AshTable.Errors
   alias AshTable.Format
@@ -155,7 +183,16 @@ defmodule AshTable.Live.TableComponent do
      # The action panel, while it is open: the one action a person is giving
      # the inputs of, with its form. At most one per table; a new read
      # closes it.
-     |> assign(panel: nil)}
+     |> assign(panel: nil)
+     # Whether rows can be selected, and how. `select` is what the table was
+     # told (`:multi` or `:single`), and `selecting` what it does: what it
+     # was told, else `:multi` while it has an action that runs on several
+     # rows (`bulk`), else nil. Which rows are selected is the hook's alone.
+     # `lead` is the number of columns before the first data column.
+     |> assign(select: nil, selecting: nil, bulk: [], lead: 0)
+     # The action that is running on the selected rows, while it does, and
+     # what the last one came to, until the person selects something else.
+     |> assign(running: nil, result: nil)}
   end
 
   @impl true
@@ -166,7 +203,8 @@ defmodule AshTable.Live.TableComponent do
         Map.take(
           assigns,
           [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
-            [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby]
+            [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
+            [:select]
         )
       )
 
@@ -199,16 +237,32 @@ defmodule AshTable.Live.TableComponent do
     # everything beneath it.
     depth_limit = socket.assigns.depth_limit || model.max_depth
 
+    expandable? = expandable?(model, socket.assigns.depth, depth_limit)
+    selecting = selecting(socket.assigns.select, model)
+
     {:ok,
      socket
      |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
      # whether the rows have an actions cell: the last column of the grid
      |> assign(acting?: model.actions != [])
      |> assign(depth_limit: depth_limit)
-     |> assign(expandable?: expandable?(model, socket.assigns.depth, depth_limit))
+     |> assign(expandable?: expandable?)
+     # the actions offered for the selected rows are this person's row
+     # actions that run on several records
+     |> assign(selecting: selecting, lead: lead(selecting, expandable?))
+     |> assign(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
      |> creates()
      |> read()}
   end
+
+  # Whether the rows of the table can be selected, and how many at a time.
+  # They can where the table was told so, and where it has something to do
+  # with a selection: an action that runs on several rows. Never in a table
+  # whose records have no primary key: a row that cannot be named cannot be
+  # told from another.
+  defp selecting(_select, %{primary_key: []}), do: nil
+  defp selecting(select, _model) when select in [:multi, :single], do: select
+  defp selecting(_select, model), do: if(Model.bulk_actions(model) != [], do: :multi)
 
   # What makes the table one of related records. A nested table is told by
   # the table around it, and is given where its records are shown in the
@@ -470,6 +524,56 @@ defmodule AshTable.Live.TableComponent do
     {:noreply, socket |> assign(busy?: false, loading?: false) |> show({:error, reason}, :later)}
   end
 
+  # What became of an action that ran on the selected rows: said above the
+  # grid and read out, and the hook is told on which rows it did not run,
+  # by their keys and by what it names them by: those stay selected. The
+  # table is read again, as the page may hold any of the records.
+  def handle_async(:bulk, {:ok, outcome}, socket) do
+    %{id: id, model: model, running: action} = socket.assigns
+    not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
+
+    summary =
+      if not_done == 0,
+        do: Text.t(:bulk_done, action: action.label, done: outcome.done),
+        else: Text.t(:bulk_not_done, action: action.label, done: outcome.done, failed: not_done)
+
+    failures =
+      for {message, count} <- outcome.failures,
+          do: Text.t(:bulk_failure, message: message, count: count)
+
+    failed =
+      for key <- outcome.failed, row_key = row_key(model, key, 0) do
+        [row_key, names(model, key, row_key)]
+      end
+
+    {:noreply,
+     socket
+     |> assign(running: nil, result: %{summary: summary, failures: failures})
+     |> say(Enum.join([summary | failures], " "))
+     |> push_event("ash_table:bulk", %{table: id, failed: failed})
+     |> reread()}
+  end
+
+  # The run itself went down. What it had done by then is not known: the
+  # rows stay selected, and the table is read again.
+  def handle_async(:bulk, {:exit, reason}, socket) do
+    %{id: id, model: model, running: action} = socket.assigns
+
+    Logger.error(
+      "ash_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
+        "failed: #{inspect(reason)}"
+    )
+
+    summary = Text.t(:action_not_done, action: action.label, message: Text.t(:action_failed))
+
+    {:noreply,
+     socket
+     |> assign(running: nil, result: %{summary: summary, failures: []})
+     |> say(summary)
+     |> push_event("ash_table:bulk", %{table: id})
+     |> reread()}
+  end
+
   # Shows what a read gave. `read` says which one it was: the `:first` of
   # this table, done while it is mounted, or a `:later` one.
   defp show(socket, {:ok, %Query.Page{} = page}, _read) do
@@ -479,9 +583,12 @@ defmodule AshTable.Live.TableComponent do
       page.records
       |> Enum.with_index()
       |> Enum.map(fn {record, index} ->
+        key = row_key(model, record, index)
+
         %{
-          key: row_key(model, record, index),
+          key: key,
           record: record,
+          names: names(model, record, key),
           # 1-based, the header rows counted. Under offset pagination it
           # runs through all pages; a keyset page does not know how many
           # records lie before it, and counts from its own top.
@@ -492,7 +599,7 @@ defmodule AshTable.Live.TableComponent do
     # each row, and after it its detail when rows can be expanded: closed
     items =
       Enum.flat_map(rows, fn row ->
-        [item(id, row.key, row.record, row.rowindex, %{}, false)] ++
+        [item(id, row.key, row.record, row.rowindex, %{}, false, row.names)] ++
           if(socket.assigns.expandable?, do: [detail(id, row.key, nil, nil)], else: [])
       end)
 
@@ -580,17 +687,34 @@ defmodule AshTable.Live.TableComponent do
   # A row as the stream holds it. `failed` holds what has failed in the row:
   # under `cells`, by column name, what was typed into a cell whose save
   # failed and the action's message, and under `action` the message of a row
-  # action that failed. `open?` says whether the row is expanded.
-  defp item(id, key, record, rowindex, failed, open?) do
+  # action that failed. `open?` says whether the row is expanded, and `names`
+  # what the hook names the row by where the key in its id does not (see
+  # `names/3`).
+  defp item(id, key, record, rowindex, failed, open?, names) do
     %{
       dom_id: "#{id}-row-#{key}",
       record: record,
       rowindex: rowindex,
       failed: Map.get(failed, :cells, %{}),
       acted: Map.get(failed, :action),
-      open?: open?
+      open?: open?,
+      names: names
     }
   end
+
+  # What the hook tells the server of a selected row is the row's primary
+  # key. Where that is one value and the key in the row's DOM id is that
+  # value as it is written, the hook reads it there, and this is nil. For
+  # every other row (a key of several attributes, a value that had to be
+  # encoded for an id) the values are said on the row itself, in the order
+  # of the primary key, as they are written.
+  defp names(%{primary_key: [field]}, key, row_key) do
+    value = key |> Map.get(field) |> to_string()
+    if value != row_key, do: [value]
+  end
+
+  defp names(%{primary_key: fields}, key, _row_key),
+    do: Enum.map(fields, &(key |> Map.get(&1) |> to_string()))
 
   # The detail of a row as the stream holds it: what is under an expanded
   # row. `lines` are the names of its open lines, nil while the row is not
@@ -605,12 +729,13 @@ defmodule AshTable.Live.TableComponent do
   # edits of the row that have failed. Its detail is another item and stays
   # as it is: what is open under the row stays open.
   defp put_row(socket, key, record) do
-    %{id: id, rows: rows, failed: failed, open: open} = socket.assigns
+    %{id: id, model: model, rows: rows, failed: failed, open: open} = socket.assigns
+    names = names(model, record, key)
 
     stream_insert(
       socket,
       :rows,
-      item(id, key, record, rows[key].rowindex, failed[key] || %{}, is_map_key(open, key))
+      item(id, key, record, rows[key].rowindex, failed[key] || %{}, is_map_key(open, key), names)
     )
   end
 
@@ -675,9 +800,17 @@ defmodule AshTable.Live.TableComponent do
       |> assign(page: %{page | total: page.total && max(page.total - 1, 0)})
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}")
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}-x")
+      |> unselect(key)
 
     if rows == %{}, do: reread(socket), else: socket
   end
+
+  # A row that is gone is selected no longer: the hook, which alone knows
+  # what is selected, is told.
+  defp unselect(%{assigns: %{selecting: nil}} = socket, _key), do: socket
+
+  defp unselect(socket, key),
+    do: push_event(socket, "ash_table:unselect", %{table: socket.assigns.id, row: key})
 
   # Reads the page again as it is asked for now, beside the process.
   defp reread(socket), do: socket |> assign(read: :again) |> read()
@@ -901,6 +1034,45 @@ defmodule AshTable.Live.TableComponent do
 
   def handle_event("act", _params, socket), do: {:reply, %{ok: false}, socket}
 
+  # Sent by the hook when a person uses a button of the line above the grid,
+  # with what they have selected: `rows`, each as the hook names it (its
+  # primary key), or `all` for every record the filters match. Nothing runs
+  # yet: an action with inputs opens its panel, and for any other the answer
+  # is the question to ask first, which says how many records it is about.
+  #
+  # The action has to be one this table offers this person for a selection.
+  # The rows are not looked up among those of the page, as a selection
+  # outlives its page: they are claims, and the run reads each as the
+  # person before anything is done to it (`AshTable.Bulk`).
+  def handle_event("bulk", params, socket) do
+    with {:ok, action, selection} <- bulk(params, socket.assigns) do
+      question = question(action, selected(selection, socket.assigns))
+
+      if action.panel?,
+        do: {:reply, %{panel: true}, open_bulk(socket, action, selection, question)},
+        else: {:reply, %{ask: question}, socket}
+    else
+      :error -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  # Sent by the hook once the person has answered that question with
+  # Confirm, for an action without a panel: the action runs on what is
+  # selected. Whether it has a panel is the table's to say, not the event's.
+  def handle_event("bulk_run", params, socket) do
+    case bulk(params, socket.assigns) do
+      {:ok, %Model.Action{panel?: false} = action, selection} ->
+        {:noreply, run_bulk(socket, action, selection, %{})}
+
+      _other ->
+        {:noreply, socket}
+    end
+  end
+
+  # Sent by the hook when the person changes the selection while the table
+  # still says what the last run came to: that is said no longer.
+  def handle_event("bulk_seen", _params, socket), do: {:noreply, assign(socket, result: nil)}
+
   # Sent by the panel's form as the person types: what its fields hold. The
   # action is given it, as `AshPhoenix.Form.validate/3` does, and says what
   # it makes of it; nothing runs.
@@ -1075,8 +1247,116 @@ defmodule AshTable.Live.TableComponent do
   # and which values of its arrays they are about
   defp errors(panel, model) do
     panel
-    |> Map.put(:errors, Act.errors(panel.form, model, panel.inputs))
+    |> Map.put(:errors, own(Act.errors(panel.form, model, panel.inputs), panel))
     |> Map.put(:places, Act.places(panel.form, panel.inputs))
+  end
+
+  # The form of a selection's panel is of the action on a record that holds
+  # nothing (`AshTable.Act.open_bulk/4`). What it says about a field of the
+  # panel is about what was typed; what it says about anything else is
+  # about that record, which is nobody's, and is not shown.
+  defp own(errors, %{kind: :bulk}), do: Map.delete(errors, nil)
+  defp own(errors, _panel), do: errors
+
+  # An action and a selection as an event names them: the action among those
+  # this table offers this person for a selection, by its name as text, and
+  # the selection as far as it is one. None while another run is on its way.
+  defp bulk(params, %{running: nil, bulk: bulk} = assigns) when is_map(params) do
+    with name when is_binary(name) <- params["action"],
+         %Model.Action{} = action <- Enum.find(bulk, &(Atom.to_string(&1.name) == name)),
+         selection when not is_nil(selection) <- selection(params, assigns) do
+      {:ok, action, selection}
+    else
+      _ -> :error
+    end
+  end
+
+  defp bulk(_params, _assigns), do: :error
+
+  # "All that match" is of a table that has read; rows are at least one.
+  defp selection(%{"all" => true}, %{page: %Query.Page{}}), do: :all
+  defp selection(%{"rows" => [_ | _] = rows}, _assigns), do: {:rows, rows}
+  defp selection(_params, _assigns), do: nil
+
+  # How many records a selection is: the rows that were named, or what the
+  # last read counted, nil where the read action does not count.
+  defp selected(:all, %{page: page}), do: page.total
+  defp selected({:rows, rows}, _assigns), do: length(Enum.uniq(rows))
+
+  # What is asked before an action runs on the selected rows: always
+  # something, with the number of records. An action with a question of
+  # its own asks that, and the number follows it.
+  defp question(%Model.Action{confirm: nil, label: label}, nil),
+    do: Text.t(:bulk_question_all, action: label)
+
+  defp question(%Model.Action{confirm: nil, label: label}, count),
+    do: Text.n(:bulk_question, count, action: label)
+
+  defp question(%Model.Action{confirm: question}, nil),
+    do: Text.t(:bulk_confirm_all, question: question)
+
+  defp question(%Model.Action{confirm: question}, count),
+    do: Text.n(:bulk_confirm, count, question: question)
+
+  # The panel of an action that is to run on the selected rows. Its fields
+  # start empty, but for an argument's default: there is no one record to
+  # take a value from. What they hold is given to the action on every
+  # record. The selection is kept with the panel, as a row's key is with
+  # the panel of a row.
+  defp open_bulk(socket, action, selection, question) do
+    %{id: id, model: model} = socket.assigns
+
+    title =
+      case selected(selection, socket.assigns) do
+        nil -> Text.t(:bulk_on_all, action: action.label)
+        count -> Text.n(:bulk_on, count, action: action.label)
+      end
+
+    panel = %{
+      kind: :bulk,
+      action: action,
+      key: nil,
+      selection: selection,
+      question: question,
+      form: Act.open_bulk(model, action, "#{id}-panel", reader(socket.assigns)),
+      inputs: Model.bulk_inputs(action),
+      title: title,
+      submit: Text.t(:run),
+      errors: %{},
+      submitted?: false,
+      used: MapSet.new()
+    }
+
+    assign(socket, panel: panel)
+  end
+
+  # Runs an action on the selected rows, beside the process: a run takes as
+  # long as its records are many, and the page stays in use meanwhile. The
+  # grid is marked busy until `handle_async/3` has the outcome.
+  defp run_bulk(socket, action, selection, input) do
+    %{model: model, state: state, parent_key: key, parent_authorize?: authorize?} =
+      socket.assigns
+
+    opts =
+      [state: state, parent_key: key, parent_authorize?: authorize?] ++ reader(socket.assigns)
+
+    socket
+    |> assign(running: action, result: nil, panel: nil)
+    |> start_async(:bulk, fn -> Bulk.run(model, action, selection, input, opts) end)
+  end
+
+  # Runs the action of the panel of a selection. What the action makes of a
+  # value as such is known without a record, and is shown at its field
+  # with the panel left open, as for a row. Everything else an action says
+  # depends on the record, and is said when it has run.
+  defp submit(socket, %{kind: :bulk, action: action, selection: selection} = panel, params) do
+    form = Act.validate(panel.form, panel.inputs, params)
+    panel = errors(%{panel | form: form}, socket.assigns.model)
+
+    # a panel is never open beside a run: the run that starts closes it
+    if Enum.any?(panel.inputs, &is_map_key(panel.errors, &1.name)),
+      do: {:noreply, failed_panel(socket, panel, nil)},
+      else: {:noreply, run_bulk(socket, action, selection, Act.values(panel.inputs, params))}
   end
 
   # Runs the action of a row's panel. The row has to be one of the page
@@ -1197,7 +1477,9 @@ defmodule AshTable.Live.TableComponent do
           do: stream_insert(socket, :rows, detail(id, key, nil, nil), at: 0),
           else: socket
       end)
-      |> stream_insert(:rows, item(id, key, record, first, %{}, false), at: 0)
+      |> stream_insert(:rows, item(id, key, record, first, %{}, false, names(model, record, key)),
+        at: 0
+      )
       |> push_event("ash_table:focus", %{table: id, cell: first_cell(id, key, model)})
     end
   end
@@ -1289,7 +1571,10 @@ defmodule AshTable.Live.TableComponent do
 
   # A change of the filters is announced once its rows have been read.
   defp refilter(%{assigns: %{state: state}} = socket, state), do: socket
-  defp refilter(socket, state), do: socket |> assign(announce?: true) |> go(state)
+  # The hook gives the selection up with the filters it was made under, and
+  # with it goes what the last run on a selection came to.
+  defp refilter(socket, state),
+    do: socket |> assign(announce?: true, result: nil) |> go(state)
 
   # With the state in the URL the change is a patch, and the new state comes
   # back through `update/2`. Otherwise the component holds it.
@@ -1384,19 +1669,30 @@ defmodule AshTable.Live.TableComponent do
         phx-target={@myself}
       >
       </form>
-      <%!-- as high as its button, so that the table does not move when it appears;
-      a nested table keeps no room free for it --%>
+      <%!-- The line above the grid: what is selected and what can be done with
+      it at one end, "Clear filters" at the other. As high as a button, so that
+      the table does not move when either appears; a nested table keeps no room
+      free for it. --%>
       <div class={[
-        "flex items-center",
-        if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-end")
+        "flex flex-wrap items-center gap-2",
+        if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-between")
       ]}>
+        <.selection
+          :if={@selecting == :multi}
+          id={@id}
+          page={@page}
+          row_count={@row_count}
+          scope={{@state.filters, @related && @related.param}}
+          bulk={@bulk}
+          running?={not is_nil(@running)}
+        />
         <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
         <button
           :if={@state.filters != %{}}
           type="button"
           id={"#{@id}-clear-filters"}
           tabindex={@nested? && "-1"}
-          class="btn btn-sm"
+          class={["btn btn-sm", not @nested? && "ms-auto"]}
           phx-click={
             JS.push("clear_filters", target: @myself)
             |> JS.focus(to: "##{@id}-table [tabindex='0']")
@@ -1409,15 +1705,24 @@ defmodule AshTable.Live.TableComponent do
       is only read when its content changes, so every other announcement ends in a
       no-break space. --%>
       <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{@announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
+      <%!-- What the last action on the selected rows came to: on how many records
+      it ran, on how many it did not, and why not. It is read out through the live
+      region above, and stays until the selection changes. In the text colour. --%>
+      <p :if={@result} id={"#{@id}-result"} class="mb-2 text-sm">
+        <span data-summary>{@result.summary}</span>
+        <span :for={failure <- @result.failures} data-failure>{failure}</span>
+      </p>
       <%!-- `data-ash-table` marks the element a grid's hook is on, for the hooks
       of the tables nested in it and around it; `data-lead` is the number of
-      columns before the first data column. --%>
+      columns before the first data column; `data-select` says whether rows can
+      be selected, and how many at a time. --%>
       <div
         id={"#{@id}-grid"}
         phx-hook=".Grid"
         phx-target={@myself}
         data-ash-table
-        data-lead={lead(@expandable?)}
+        data-lead={@lead}
+        data-select={@selecting}
         class={not @nested? && "overflow-x-auto"}
       >
         <table
@@ -1426,8 +1731,9 @@ defmodule AshTable.Live.TableComponent do
           aria-label={is_nil(@labelledby) && @label}
           aria-labelledby={@labelledby}
           aria-rowcount={aria_rowcount(@page)}
-          aria-colcount={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
-          aria-busy={@busy? && "true"}
+          aria-colcount={length(@model.columns) + @lead + trail(@acting?)}
+          aria-multiselectable={@selecting == :multi && "true"}
+          aria-busy={(@busy? or not is_nil(@running)) && "true"}
           data-first-row={first_row(@page)}
           class={
             [
@@ -1465,6 +1771,9 @@ defmodule AshTable.Live.TableComponent do
               # triangle drawn in CSS, not a character: it turns about its own
               # centre, so it sits in the same place open and closed.
               "[&>tbody>tr>td>button[aria-expanded]]:cursor-pointer [&>tbody>tr>td[data-expander]]:w-0 [&>tbody>tr>td[data-expander]>button]:px-1",
+              # the box that selects a row: its cell as narrow as the box, and
+              # the box in the middle of it
+              "[&>tbody>tr>td[data-selector]]:w-0 [&>tbody>tr>td[data-selector]>input]:block",
               "[&>tbody>tr>td>button[aria-expanded]]:before:inline-block [&>tbody>tr>td>button[aria-expanded]]:before:size-0 [&>tbody>tr>td>button[aria-expanded]]:before:content-['']",
               "[&>tbody>tr>td>button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>td>button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>td>button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>td>button[aria-expanded]]:before:border-s-current",
               "[&>tbody>tr>td>button[aria-expanded]]:before:transition-transform [&>tbody>tr>td>button[aria-expanded=true]]:before:rotate-90",
@@ -1481,12 +1790,35 @@ defmodule AshTable.Live.TableComponent do
         >
           <thead id={"#{@id}-head"}>
             <tr id={"#{@id}-head-row"} role="row" aria-rowindex="1">
+              <%!-- The first column, where rows can be selected: a box per row,
+              and here the one that stands for the rows of the page. Its state
+              is the hook's, as is that of every box under it. Where one row at a
+              time is selected there is nothing to stand for. --%>
+              <th
+                :if={@selecting}
+                id={"#{@id}-select-head"}
+                role="columnheader"
+                scope="col"
+                aria-colindex="1"
+                tabindex="-1"
+                data-select-page={@selecting == :multi}
+                class="w-0"
+              >
+                <input
+                  :if={@selecting == :multi}
+                  type="checkbox"
+                  tabindex="-1"
+                  aria-label={Text.t(:select_page)}
+                  class={["checkbox checkbox-xs block", box_edge()]}
+                />
+                <span :if={@selecting == :single} class="sr-only">{Text.t(:select_row)}</span>
+              </th>
               <th
                 :if={@expandable?}
                 id={"#{@id}-expander-head"}
                 role="columnheader"
                 scope="col"
-                aria-colindex="1"
+                aria-colindex={@lead}
                 tabindex="-1"
                 class="w-0"
               >
@@ -1497,7 +1829,7 @@ defmodule AshTable.Live.TableComponent do
                 id={"#{@id}-head-#{column.name}"}
                 role="columnheader"
                 scope="col"
-                aria-colindex={colindex(index, @expandable?)}
+                aria-colindex={colindex(index, @lead)}
                 aria-sort={column.sortable? && aria_sort(@state.sort, column)}
                 tabindex="-1"
                 data-sort={column.sortable?}
@@ -1512,7 +1844,7 @@ defmodule AshTable.Live.TableComponent do
                 id={"#{@id}-actions-head"}
                 role="columnheader"
                 scope="col"
-                aria-colindex={length(@model.columns) + lead(@expandable?) + 1}
+                aria-colindex={length(@model.columns) + @lead + 1}
                 tabindex="-1"
                 class="whitespace-nowrap"
               >
@@ -1521,10 +1853,18 @@ defmodule AshTable.Live.TableComponent do
             </tr>
             <tr id={"#{@id}-filter-row"} role="row" aria-rowindex="2">
               <td
+                :if={@selecting}
+                id={"#{@id}-select-filter"}
+                role="gridcell"
+                aria-colindex="1"
+                tabindex="-1"
+              >
+              </td>
+              <td
                 :if={@expandable?}
                 id={"#{@id}-expander-filter"}
                 role="gridcell"
-                aria-colindex="1"
+                aria-colindex={@lead}
                 tabindex="-1"
               >
               </td>
@@ -1532,7 +1872,7 @@ defmodule AshTable.Live.TableComponent do
                 :for={{column, index} <- Enum.with_index(@model.columns)}
                 id={"#{@id}-filter-#{column.name}"}
                 role="gridcell"
-                aria-colindex={colindex(index, @expandable?)}
+                aria-colindex={colindex(index, @lead)}
                 tabindex="-1"
                 data-filter={column.operators != []}
               >
@@ -1550,7 +1890,7 @@ defmodule AshTable.Live.TableComponent do
                 :if={@acting?}
                 id={"#{@id}-actions-filter"}
                 role="gridcell"
-                aria-colindex={length(@model.columns) + lead(@expandable?) + 1}
+                aria-colindex={length(@model.columns) + @lead + 1}
                 tabindex="-1"
               >
               </td>
@@ -1566,13 +1906,14 @@ defmodule AshTable.Live.TableComponent do
             hidden={row[:detail?] && is_nil(row.lines)}
             data-detail={row[:detail?]}
             data-row={row[:detail?] && row.key}
+            data-key={@selecting && !row[:detail?] && row.names && held(row.names)}
             phx-no-format
           ><.lines
             :if={row[:detail?] && row.lines}
             id={@id}
             row={row}
             model={@model}
-            colspan={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
+            colspan={length(@model.columns) + @lead + trail(@acting?)}
             creates={@creates}
             reader={nested_reader(assigns)}
           /><tr
@@ -1581,24 +1922,31 @@ defmodule AshTable.Live.TableComponent do
             role="row"
             aria-rowindex={row.rowindex}
           ><td
+            :if={@selecting}
+            id={"#{dom_id}-s"}
+            role="gridcell"
+            aria-colindex="1"
+            tabindex="-1"
+            data-selector
+          ><input type="checkbox" tabindex="-1" aria-label={Text.t(:select_row)} class="checkbox checkbox-xs border-base-content/50" /></td><td
             :if={@expandable?}
             id={"#{dom_id}-e"}
             role="gridcell"
-            aria-colindex="1"
+            aria-colindex={@lead}
             tabindex="-1"
             data-expander
           ><button type="button" tabindex="-1" aria-expanded={to_string(row.open?)} aria-label={Text.t(:related_records)}></button></td><td
             :for={{column, index} <- Enum.with_index(@model.columns)}
             id={"#{dom_id}-c-#{column.name}"}
             role="gridcell"
-            aria-colindex={colindex(index, @expandable?)}
+            aria-colindex={colindex(index, @lead)}
             tabindex="-1"
             {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row)}
           >{cell_content("#{dom_id}-c-#{column.name}", column, row)}</td><td
             :if={@acting?}
             id={"#{dom_id}-a"}
             role="gridcell"
-            aria-colindex={length(@model.columns) + lead(@expandable?) + 1}
+            aria-colindex={length(@model.columns) + @lead + 1}
             tabindex="-1"
             data-actions
             {action_attributes("#{dom_id}-a", row)}
@@ -1628,7 +1976,7 @@ defmodule AshTable.Live.TableComponent do
               <td
                 id={"#{@id}-pager"}
                 role="gridcell"
-                colspan={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
+                colspan={length(@model.columns) + @lead + trail(@acting?)}
                 aria-colindex="1"
                 tabindex="-1"
                 data-pager
@@ -1651,7 +1999,7 @@ defmodule AshTable.Live.TableComponent do
               <td
                 id={"#{@id}-view"}
                 role="gridcell"
-                colspan={length(@model.columns) + lead(@expandable?) + trail(@acting?)}
+                colspan={length(@model.columns) + @lead + trail(@acting?)}
                 aria-colindex="1"
                 tabindex="-1"
                 data-view
@@ -1687,9 +2035,10 @@ defmodule AshTable.Live.TableComponent do
         <template :if={@editing? or @acting?} id={"#{@id}-failure"}>{failure_message(nil, "")}</template>
       </div>
       <%!-- The one dialog of the table: it asks the question of a column with
-      `confirm` before the cell is saved. The hook opens it and puts the question
-      in, so patches leave it alone. --%>
-      <div :if={asks?(@model)} id={"#{@id}-dialogs"} phx-update="ignore">
+      `confirm` before the cell is saved, that of a row action, and the one that
+      comes before every action on the selected rows. The hook opens it and puts
+      the question in, so patches leave it alone. --%>
+      <div :if={asks?(@model, @bulk)} id={"#{@id}-dialogs"} phx-update="ignore">
         <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
         a dialog that is not visible yet when it opens cannot take the focus. Its
         edge is its shadow, which forced colours take away: there it has a border. --%>
@@ -1906,6 +2255,8 @@ defmodule AshTable.Live.TableComponent do
               const cell = opener && opener.closest("td,th")
               if (active && active !== document.body && active !== cell) return
               if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
+              // a button of the line above the grid went with the selection
+              else if (this.grid && this.grid.el.isConnected && opener && opener.closest("[data-selection]")) this.grid.toTabStop()
               else if (this.grid && this.grid.el.isConnected) this.grid.refocus()
             })
           }
@@ -1937,6 +2288,21 @@ defmodule AshTable.Live.TableComponent do
         // The editor of an array is several controls in one cell, and what
         // it holds is a list: the values as typed. A cell says a list as
         // JSON, as it says everything in text (`data-value`).
+        //
+        // Which rows are selected is known here alone, too (`data-select`
+        // on this element says whether rows can be selected: "multi" or
+        // "single"). The server renders a box in the first cell of every
+        // row and knows nothing of its state: after every patch the rows
+        // are marked again (`aria-selected`, and the box), so selecting
+        // sends nothing and brings no row back. A row is remembered by the
+        // key in its id, with what the server is told of it when an action
+        // runs on the selection: its primary key, which is that key, or
+        // what the row says in `data-key`. A selection outlives its page
+        // and the sort, and is given up when the filters change. The line
+        // above the grid (`ID-selection`) is rendered by the server and
+        // filled in here. Others learn of a selection from `selected()`
+        // and from the event `ash_table:selection`, which this element
+        // sends, with the same, whenever it changes.
 
         // a key that types a character
         const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -2010,6 +2376,32 @@ defmodule AshTable.Live.TableComponent do
             // the row action that was used last: where its cell stood, for
             // when its row is gone
             this.acted = null
+            // What is selected: `keys` holds the rows by the key in their
+            // id, each with what the server is told of it (see `named`);
+            // `all` says that every record the filters match is selected,
+            // on whatever page. `anchor` is the row a range starts from,
+            // and `range` the range that Shift and the arrow keys are
+            // drawing, with what was selected before it. `scope` is what
+            // the selection was made under.
+            this.selection = {keys: new Map(), all: false, anchor: null, range: null, scope: null}
+            // the line above the grid is outside this element: its buttons
+            // are heard at the table's own element
+            this.root = document.getElementById(this.id)
+            this.onLine = e => this.onLineClick(e)
+            if (this.root) this.root.addEventListener("click", this.onLine)
+            // the server says on which rows an action on the selection did
+            // not run: those stay selected, and no others
+            this.handleEvent("ash_table:bulk", ({table, failed}) => {
+              if (table !== this.id) return
+              if (failed) this.select(new Map(failed), false, false)
+            })
+            // and when a row is gone, which is then selected no longer
+            this.handleEvent("ash_table:unselect", ({table, row}) => {
+              if (table !== this.id || !this.selection.keys.has(row)) return
+              const keys = new Map(this.selection.keys)
+              keys.delete(row)
+              this.select(keys, this.selection.all)
+            })
             // the server says where focus goes after something it did: to
             // the first cell of a row that was created
             this.handleEvent("ash_table:focus", ({table, cell}) => {
@@ -2023,6 +2415,7 @@ defmodule AshTable.Live.TableComponent do
             this.el.addEventListener("focusin", own(e => this.onFocusin(e)))
             this.el.addEventListener("focusout", own(e => this.onFocusout(e)))
             this.el.addEventListener("click", own(e => this.onClick(e)))
+            this.el.addEventListener("mousedown", own(e => this.onMousedown(e)))
             this.el.addEventListener("dblclick", own(e => this.onDblclick(e)))
             this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
             this.el.addEventListener("mouseleave", () => this.onPointer(null))
@@ -2030,12 +2423,15 @@ defmodule AshTable.Live.TableComponent do
             window.addEventListener("scroll", this.onScroll, true)
             // updated() only runs when this element itself is patched; a
             // stream insert or reset touches the rows alone.
-            this.observer = new MutationObserver(() => this.sync())
+            //
+            // A patch of a row also takes away what this hook has said of
+            // it: that it is selected. So that is watched for as well.
+            this.observer = new MutationObserver(records => this.sync(records))
             this.observer.observe(this.el, {
               subtree: true,
               childList: true,
               attributes: true,
-              attributeFilter: ["tabindex"]
+              attributeFilter: ["tabindex", "aria-selected"]
             })
             this.sync()
           },
@@ -2058,6 +2454,7 @@ defmodule AshTable.Live.TableComponent do
           destroyed() {
             this.observer && this.observer.disconnect()
             window.removeEventListener("scroll", this.onScroll, true)
+            if (this.root) this.root.removeEventListener("click", this.onLine)
           },
 
           // ---- the tree of grids -------------------------------------------
@@ -2168,7 +2565,12 @@ defmodule AshTable.Live.TableComponent do
           // that grid is gone too, the nearest cell that held it (a line
           // that was closed, a row that was closed); and at last the cell
           // the grid on the page had before.
-          sync() {
+          //
+          // `records` are the changes that were seen, when it was those
+          // that called. The rows are marked as selected again unless all
+          // that changed is the tab stop, which is every move of the focus.
+          sync(records) {
+            if (!records || records.some(record => record.attributeName !== "tabindex")) this.paint()
             const tree = this.tree()
             const top = this.top()
             const hook = top._ashTable
@@ -2256,6 +2658,16 @@ defmodule AshTable.Live.TableComponent do
             const cell = this.cellOf(e.target)
             if (!cell) return
             if (!this.spans(cell)) this.col = cell.cellIndex
+            this.selection.range = null
+            // the box of a row, and the one of the page: a click on it or
+            // beside it in its cell uses it, with focus on the cell
+            if (this.selects() && (is(cell, "selector") || is(cell, "selectPage"))) {
+              if (is(cell, "selectPage")) this.togglePage()
+              else if (e.shiftKey && this.selects() === "multi") this.selectTo(cell.closest("tbody"))
+              else this.toggleRow(cell.closest("tbody"))
+              if (document.activeElement !== cell) cell.focus()
+              return
+            }
             // the expander of a row and the button of a line: used, with
             // focus on their cell
             if (is(cell, "expander") || is(cell, "line")) {
@@ -2277,7 +2689,20 @@ defmodule AshTable.Live.TableComponent do
             // a click on a filter's control or in an editor leaves focus there
             if (this.controlOf(e.target)) return
             if (this.editing && this.editing.cell === cell) return
+            // with Shift, on a row of records: the rows from the one that
+            // was selected last to this one
+            if (e.shiftKey && this.selects() === "multi" && this.record(cell)) this.selectTo(this.record(cell))
             if (document.activeElement !== cell) cell.focus()
+          },
+
+          // A click with Shift selects rows, and is not to select the text
+          // between the two clicks as well.
+          onMousedown(e) {
+            const cell = this.cellOf(e.target)
+            if (!cell || !e.shiftKey || this.selects() !== "multi" || !this.record(cell)) return
+            if (this.controlOf(e.target) && !is(cell, "selector")) return
+            if (this.editing && this.editing.cell === cell) return
+            e.preventDefault()
           },
 
           onDblclick(e) {
@@ -2411,6 +2836,13 @@ defmodule AshTable.Live.TableComponent do
             let handled = true
             // the expander of a row, and a line under it
             const expands = is(cell, "expander") || is(cell, "line")
+            // with Shift, Down Arrow and Up Arrow select as they go
+            if (e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp") && this.selects() === "multi" && this.record(cell)) {
+              this.extend(cell, e.key === "ArrowDown" ? 1 : -1)
+              e.preventDefault()
+              return
+            }
+            if (e.key !== "Shift") this.selection.range = null
             switch (e.key) {
               // on an expander that is closed, Right Arrow opens it and Left
               // Arrow on one that is open closes it, as in a tree
@@ -2463,8 +2895,15 @@ defmodule AshTable.Live.TableComponent do
                 else if (this.holder()) this.holder().focus()
                 else handled = false
                 break
-              // reserved for row selection; swallowed so the page does not scroll
-              case " ": break
+              // Selects the row, or takes it out of the selection, from any
+              // of its cells; on the box of the page, all its rows. Anywhere
+              // else, and where rows are not selected, it does nothing, and
+              // is swallowed so that the page does not scroll.
+              case " ":
+                if (!this.selects()) break
+                if (is(cell, "selectPage")) this.togglePage()
+                else if (this.record(cell)) this.toggleRow(this.record(cell))
+                break
               default:
                 if (PRINTABLE(e) && cell.dataset.filter !== undefined) {
                   // Typing on a filter cell goes into the filter as Enter
@@ -2495,6 +2934,243 @@ defmodule AshTable.Live.TableComponent do
 
           pageRows(cell) {
             return Math.max(1, Math.floor(window.innerHeight / (cell.offsetHeight || 24)) - 2)
+          },
+
+          // ---- selecting ---------------------------------------------------
+
+          // Whether rows can be selected, and how many at a time: "multi",
+          // "single", or nothing.
+          selects() { return this.el.dataset.select },
+
+          // The rows of records of the page, top to bottom: not what is
+          // open under a row.
+          records() {
+            const table = this.el.querySelector("table")
+            return table ? Array.from(table.tBodies).filter(body => !is(body, "detail") && body.rows[0]) : []
+          },
+
+          // The row of records a cell is in, if it is in one.
+          record(cell) {
+            const body = cell.parentElement.parentElement
+            return body.tagName === "TBODY" && !is(body, "detail") ? body : null
+          },
+
+          keyOf(body) { return body.id.slice(this.id.length + 5) },
+
+          // What the server is told of a row: nothing more than its key,
+          // where that is its primary key, else what the row says itself.
+          named(body) { return body.dataset.key !== undefined ? LIST(body.dataset.key) : null },
+
+          // The line above the grid, and its parts.
+          line() { return document.getElementById(`${this.id}-selection`) },
+          part(name) { return document.getElementById(`${this.id}-${name}`) },
+
+          // What is selected, for whoever asks: every record the filters
+          // match (`all`), or `rows`, each by its primary key: one value,
+          // or the list of them for a key of several attributes.
+          selected() {
+            const {keys, all} = this.selection
+            return {
+              table: this.id,
+              mode: this.selects(),
+              all,
+              rows: all ? [] : Array.from(keys, ([key, named]) => named || key)
+            }
+          },
+
+          // Makes `keys` the selection, or every record that matches. This
+          // is where a selection changes: the rows and the line follow, and
+          // whoever listens is told. `seen` says that the person did it,
+          // which is when the outcome of the last action on a selection has
+          // been read and can go.
+          select(keys, all, seen = true) {
+            const selection = this.selection
+            selection.keys = keys
+            selection.all = all
+            if (!all && keys.size === 0) selection.anchor = null
+            this.paint()
+            this.el.dispatchEvent(new CustomEvent("ash_table:selection", {bubbles: true, detail: this.selected()}))
+            if (seen && this.part("result")) this.pushEventTo(this.el, "bulk_seen", {})
+          },
+
+          // The keys that are selected as a person sees them: with "all
+          // that match", the rows of the page are what there is to take
+          // one out of.
+          shown() {
+            const {keys, all} = this.selection
+            return all ? new Map(this.records().map(body => [this.keyOf(body), this.named(body)])) : new Map(keys)
+          },
+
+          toggleRow(body) {
+            const key = this.keyOf(body)
+            let keys = this.shown()
+            if (keys.has(key)) keys.delete(key)
+            else {
+              if (this.selects() === "single") keys = new Map()
+              keys.set(key, this.named(body))
+            }
+            this.selection.anchor = key
+            this.select(keys, false)
+          },
+
+          // The box of the page: all its rows, or none of them when all
+          // are selected already. The rows of other pages stay as they are.
+          togglePage() {
+            if (this.selects() !== "multi") return
+            const rows = this.records()
+            const keys = this.shown()
+            const every = rows.length > 0 && rows.every(body => keys.has(this.keyOf(body)))
+            for (const body of rows) {
+              if (every) keys.delete(this.keyOf(body))
+              else keys.set(this.keyOf(body), this.named(body))
+            }
+            this.select(keys, false)
+          },
+
+          // The rows from `from` to `to`, by their keys, as they stand in
+          // the page; only `to` when `from` is on another page.
+          between(from, to) {
+            const rows = this.records()
+            const end = rows.indexOf(to)
+            let start = rows.findIndex(body => this.keyOf(body) === from)
+            if (start < 0) start = end
+            return rows.slice(Math.min(start, end), Math.max(start, end) + 1)
+          },
+
+          // A click with Shift: the rows from the one that was selected or
+          // clicked last to this one are selected, with what was before.
+          selectTo(body) {
+            // with every record selected there is none to add
+            if (this.selection.all) return
+            const keys = this.shown()
+            for (const row of this.between(this.selection.anchor, body)) keys.set(this.keyOf(row), this.named(row))
+            if (this.selection.anchor === null) this.selection.anchor = this.keyOf(body)
+            this.select(keys, false)
+          },
+
+          // Shift with Down Arrow or Up Arrow: focus goes to the row of
+          // records after or before this one, and the rows from where the
+          // key was first pressed to there are selected, with what was
+          // selected before. Going back takes rows out of it again.
+          extend(cell, step) {
+            const selection = this.selection
+            const rows = this.records()
+            const from = this.record(cell)
+            const to = rows[rows.indexOf(from) + step]
+            if (!to) return
+            const target = to.rows[0].cells[Math.min(cell.cellIndex, to.rows[0].cells.length - 1)]
+            // with every record selected there is none to add
+            if (selection.all) return target.focus()
+            if (!selection.range) selection.range = {anchor: this.keyOf(from), before: this.shown()}
+            const keys = new Map(selection.range.before)
+            for (const row of this.between(selection.range.anchor, to)) keys.set(this.keyOf(row), this.named(row))
+            selection.anchor = selection.range.anchor
+            target.focus()
+            this.select(keys, false)
+          },
+
+          // Says of every row whether it is selected, on the row and in
+          // its box, and fills in the line above the grid. After every
+          // change of the selection, and after every patch: the server
+          // sends rows that say nothing of it.
+          paint() {
+            const mode = this.selects()
+            if (!mode) return
+            const selection = this.selection
+            const line = this.line()
+            // made under other filters: given up
+            const scope = line ? line.dataset.scope : null
+            if (selection.scope !== null && scope !== selection.scope && (selection.all || selection.keys.size > 0)) {
+              selection.scope = scope
+              return this.select(new Map(), false, false)
+            }
+            selection.scope = scope
+            const rows = this.records()
+            let onPage = 0
+            for (const body of rows) {
+              const on = selection.all || selection.keys.has(this.keyOf(body))
+              if (on) onPage++
+              const row = body.rows[0]
+              if (row.getAttribute("aria-selected") !== String(on)) row.setAttribute("aria-selected", String(on))
+              const box = row.cells[0].querySelector("input")
+              if (box && box.checked !== on) box.checked = on
+            }
+            const every = rows.length > 0 && onPage === rows.length
+            // this table's own header: not that of a table nested in it,
+            // which may stand before it in the page
+            const table = this.el.querySelector("table")
+            const page = table && table.tHead && table.tHead.querySelector("th[data-select-page] input")
+            if (page) {
+              if (page.checked !== every) page.checked = every
+              const some = onPage > 0 && !every
+              if (page.indeterminate !== some) page.indeterminate = some
+            }
+            if (!line) return
+            const count = selection.all ? null : selection.keys.size
+            const text = selection.all ? line.dataset.all : (count > 0 ? line.dataset.selected.replace("{n}", String(count)) : "")
+            // a live region: it is read out when its text changes
+            const status = this.part("selected")
+            if (status && status.textContent !== text) status.textContent = text
+            const controls = this.part("selection-controls")
+            const any = selection.all || count > 0
+            // "all that match" is offered once the whole page is selected
+            // and there is more than the page
+            const offer = this.part("select-all")
+            const offered = any && !selection.all && every && line.dataset.more !== undefined
+            if (offer && offer.hidden === offered) {
+              const focused = offer === document.activeElement
+              offer.hidden = !offered
+              if (focused) this.part("clear-selection").focus({preventScroll: true})
+            }
+            if (controls && controls.hidden === any) {
+              // the buttons go with the selection: focus is sent on to the grid
+              const focused = controls.contains(document.activeElement)
+              controls.hidden = !any
+              if (focused) this.toTabStop()
+            }
+          },
+
+          // To the cell that is the tab stop of the tree of grids.
+          toTabStop() {
+            const tree = this.tree()
+            const cell = tree.activeId && document.getElementById(tree.activeId)
+            if (cell) cell.focus({preventScroll: true})
+          },
+
+          // A button of the line above the grid. The line of a table nested
+          // in this one is inside this table's element too, and is that
+          // table's.
+          onLineClick(e) {
+            const line = e.target.closest && e.target.closest("[data-selection]")
+            if (!line || line !== this.line()) return
+            const button = e.target.closest("button")
+            if (!button) return
+            if (button.dataset.selectAll !== undefined) this.select(new Map(), true)
+            else if (button.dataset.clear !== undefined) this.select(new Map(), false)
+            else if (button.dataset.bulk !== undefined) this.bulk(button)
+          },
+
+          // Uses the button of an action on the selected rows. The server
+          // is told the action and what is selected, and nothing runs: it
+          // opens the action's panel, or answers with the question to ask
+          // first, which says how many records it is about. Confirm then
+          // runs the action; what became of it comes back as a patch, and
+          // as the rows on which it did not run (`ash_table:bulk`).
+          bulk(button) {
+            if (button.getAttribute("aria-disabled") === "true" || this.asking) return
+            const {all, rows} = this.selected()
+            if (!all && rows.length === 0) return
+            const payload = all ? {action: button.dataset.bulk, all: true} : {action: button.dataset.bulk, rows}
+            // one question at a time
+            this.asking = true
+            this.pushEventTo(this.el, "bulk", payload, reply => {
+              if (!reply || !reply.ask) { this.asking = false; return }
+              // Cancel, and Escape: the browser puts focus back on the button
+              this.ask(reply.ask, button.dataset.destructive !== undefined).then(confirmed => {
+                this.asking = false
+                if (confirmed) this.pushEventTo(this.el, "bulk_run", payload)
+              })
+            })
           },
 
           // ---- row actions -------------------------------------------------
@@ -3384,7 +4060,7 @@ defmodule AshTable.Live.TableComponent do
       phx-hook=".Panel"
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
-      data-question={@panel.action.confirm}
+      data-question={Map.get(@panel, :question) || @panel.action.confirm}
       data-destructive={@panel.action.type == :destroy}
       aria-labelledby={"#{@id}-panel-title"}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
@@ -3736,6 +4412,107 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # What is selected, and what can be done with it: the number of selected
+  # rows, the button that selects every record the filters match, the one
+  # that clears the selection, and a button per action that runs on the
+  # selected rows.
+  #
+  # Which rows are selected is known to the hook alone, so what depends on
+  # it is the hook's to put in: the text of the count, which is a live
+  # region and is read out when it changes, and whether the controls and
+  # the button for "all that match" are shown. The server renders them
+  # hidden and leaves both alone afterwards. What it says for the hook:
+  #
+  #   * `data-scope` stands for the filters, and for what the table is
+  #     limited to: a selection is given up when it changes;
+  #   * `data-more` is there when the filters match more records than the
+  #     page shows, which is when "all that match" is offered;
+  #   * `data-selected` and `data-all` are the two texts of the count, the
+  #     first with `{n}` where the number goes.
+  #
+  # The buttons are ordinary tab stops while they are shown, in a nested
+  # table too: they are there only while rows are selected, and have to be
+  # reached then.
+  attr :id, :string, required: true
+  attr :page, :any, required: true
+  attr :row_count, :integer, required: true
+  attr :scope, :any, required: true
+  attr :bulk, :list, required: true
+  attr :running?, :boolean, required: true
+
+  defp selection(assigns) do
+    total = assigns.page && assigns.page.total
+
+    more? =
+      case assigns.page do
+        nil -> false
+        %{total: nil} = page -> not is_nil(page.next) or not is_nil(page.previous)
+        %{total: total} -> total > assigns.row_count
+      end
+
+    assigns = assign(assigns, total: total, more?: more?)
+
+    ~H"""
+    <div
+      id={"#{@id}-selection"}
+      role="group"
+      aria-label={Text.t(:selected_rows)}
+      data-selection
+      data-scope={:erlang.phash2(@scope)}
+      data-more={@more?}
+      data-selected={Text.t(:selected, count: "{n}")}
+      data-all={
+        if @total,
+          do: Text.t(:all_selected, count: @total),
+          else: Text.t(:all_selected_uncounted)
+      }
+      class="flex flex-wrap items-center gap-2"
+    >
+      <p id={"#{@id}-selected"} role="status" phx-update="ignore" class="text-sm"></p>
+      <div
+        id={"#{@id}-selection-controls"}
+        hidden
+        phx-mounted={JS.ignore_attributes(["hidden"])}
+        class="flex flex-wrap items-center gap-2"
+      >
+        <button
+          type="button"
+          id={"#{@id}-select-all"}
+          hidden
+          phx-mounted={JS.ignore_attributes(["hidden"])}
+          data-select-all
+          class="btn btn-sm"
+        >
+          {if @total,
+            do: Text.t(:select_all, count: @total),
+            else: Text.t(:select_all_uncounted)}
+        </button>
+        <button
+          type="button"
+          id={"#{@id}-clear-selection"}
+          data-clear
+          class="btn btn-sm"
+        >
+          {Text.t(:clear_selection)}
+        </button>
+        <%!-- While an action runs the buttons are not to be used, and say so
+        without being `disabled`: a button that is disabled drops the focus. --%>
+        <button
+          :for={action <- @bulk}
+          type="button"
+          id={"#{@id}-bulk-#{action.name}"}
+          aria-disabled={@running? && "true"}
+          data-bulk={action.name}
+          data-destructive={action.type == :destroy}
+          class={["btn btn-sm", @running? && "btn-disabled"]}
+        >
+          {action.label}
+        </button>
+      </div>
+    </div>
+    """
+  end
+
   # The create button of a table: it opens the action panel with the inputs
   # of the table's create action.
   attr :id, :string, required: true
@@ -3757,9 +4534,11 @@ defmodule AshTable.Live.TableComponent do
   end
 
   # Whether anything of the table asks a question before it runs: a column,
-  # a row action.
-  defp asks?(model),
-    do: Enum.any?(model.columns, & &1.confirm) or Enum.any?(model.actions, & &1.confirm)
+  # a row action, and every action on the selected rows.
+  defp asks?(model, bulk),
+    do:
+      bulk != [] or Enum.any?(model.columns, & &1.confirm) or
+        Enum.any?(model.actions, & &1.confirm)
 
   # Whether a nested table has its link to the full view: the router mounts
   # the destination's table, and the nested table has been read.
@@ -4200,10 +4979,11 @@ defmodule AshTable.Live.TableComponent do
   defp input_step(:datetime), do: "1"
   defp input_step(_cell_type), do: nil
 
-  # The columns before the first data column: the expanders, when the rows
+  # The columns before the first data column: the boxes that select a row,
+  # where rows can be selected, and after them the expanders, when the rows
   # have them.
-  defp lead(true), do: 1
-  defp lead(false), do: 0
+  defp lead(selecting, expandable?),
+    do: if(selecting, do: 1, else: 0) + if(expandable?, do: 1, else: 0)
 
   # The columns after the last data column: the actions, when the rows have
   # them.
@@ -4211,7 +4991,7 @@ defmodule AshTable.Live.TableComponent do
   defp trail(false), do: 0
 
   # 1-based position of a data column among all columns of the grid.
-  defp colindex(index, expandable?), do: lead(expandable?) + index + 1
+  defp colindex(index, lead), do: lead + index + 1
 
   # The row index of the first row of the page: the hook numbers the rows
   # from it, in the order they stand in, after a row was added or taken out.

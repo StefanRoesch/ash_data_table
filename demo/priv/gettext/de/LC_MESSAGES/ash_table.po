@@ -143,6 +143,66 @@ msgstr "%{column} %{position}"
 msgid "Remove %{column} %{position}"
 msgstr "%{column} %{position} entfernen"
 
+msgid "Select row"
+msgstr "Zeile auswählen"
+
+msgid "Select all rows of this page"
+msgstr "Alle Zeilen dieser Seite auswählen"
+
+msgid "Selected rows"
+msgstr "Ausgewählte Zeilen"
+
+msgid "%{count} selected"
+msgstr "%{count} ausgewählt"
+
+msgid "All %{count} that match are selected"
+msgstr "Alle %{count} passenden sind ausgewählt"
+
+msgid "All that match are selected"
+msgstr "Alle passenden sind ausgewählt"
+
+msgid "Select all %{count} that match"
+msgstr "Alle %{count} passenden auswählen"
+
+msgid "Select all that match"
+msgstr "Alle passenden auswählen"
+
+msgid "Clear selection"
+msgstr "Auswahl aufheben"
+
+msgid "Run “%{action}” on 1 record?"
+msgid_plural "Run “%{action}” on %{count} records?"
+msgstr[0] "„%{action}“ für 1 Eintrag ausführen?"
+msgstr[1] "„%{action}“ für %{count} Einträge ausführen?"
+
+msgid "Run “%{action}” on all records that match?"
+msgstr "„%{action}“ für alle passenden Einträge ausführen?"
+
+msgid "%{question} 1 record is selected."
+msgid_plural "%{question} %{count} records are selected."
+msgstr[0] "%{question} 1 Eintrag ist ausgewählt."
+msgstr[1] "%{question} %{count} Einträge sind ausgewählt."
+
+msgid "%{question} All records that match are selected."
+msgstr "%{question} Alle passenden Einträge sind ausgewählt."
+
+msgid "%{action}: 1 record"
+msgid_plural "%{action}: %{count} records"
+msgstr[0] "%{action}: 1 Eintrag"
+msgstr[1] "%{action}: %{count} Einträge"
+
+msgid "%{action}: all records that match"
+msgstr "%{action}: alle passenden Einträge"
+
+msgid "%{action}: %{done} done."
+msgstr "%{action}: %{done} erledigt."
+
+msgid "%{action}: %{done} done, %{failed} not done."
+msgstr "%{action}: %{done} erledigt, %{failed} nicht erledigt."
+
+msgid "%{message} (%{count})"
+msgstr "%{message} (%{count})"
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 

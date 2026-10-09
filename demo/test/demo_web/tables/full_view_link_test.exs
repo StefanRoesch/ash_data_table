@@ -146,8 +146,9 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
       assert attribute(html, "[id='#{id}-view-row'] > td", "id") == ["#{id}-view"]
       assert attribute(html, "[id='#{id}-view']", "role") == ["gridcell"]
       assert attribute(html, "[id='#{id}-view']", "tabindex") == ["-1"]
-      # as wide as the grid: the comments' expanders, their five columns and their actions
-      assert attribute(html, "[id='#{id}-view']", "colspan") == ["7"]
+      # as wide as the grid: the comments' boxes and expanders, their five
+      # columns and their actions
+      assert attribute(html, "[id='#{id}-view']", "colspan") == ["8"]
       assert attribute(html, "[id='#{id}-full-view']", "tabindex") == ["-1"]
       # a live navigation: the page is not loaded afresh
       assert attribute(html, "[id='#{id}-full-view']", "data-phx-link") == ["redirect"]

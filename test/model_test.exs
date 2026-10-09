@@ -1702,6 +1702,51 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "row actions on several rows at once" do
+    defp bulk(model), do: for(action <- Model.bulk_actions(model), do: action.name)
+
+    test "are the row actions of the block, unless it says otherwise" do
+      model = Model.build(AshTable.Test.Acting)
+
+      # every one of them: with and without inputs, updates and destroys,
+      # with a question and without
+      assert bulk(model) == Enum.map(model.actions, & &1.name)
+      assert Enum.all?(model.actions, & &1.bulk?)
+    end
+
+    test "are none in a table without row actions" do
+      assert Model.bulk_actions(Model.build(AshTable.Test.Acting.Plain)) == []
+    end
+
+    test "leave out an action the block keeps to one row, and one that accepts a value no two records can share" do
+      model = Model.build(AshTable.Test.Acting.Sheet)
+
+      assert for(action <- model.actions, do: {action.name, action.bulk?}) == [
+               archive: true,
+               # an identity of two attributes: either can be the same on many records
+               retitle: true,
+               # an identity by itself
+               recode: false,
+               # the primary key
+               rekey: false,
+               # `bulk? false`
+               hide: false,
+               destroy: true
+             ]
+
+      assert bulk(model) == [:archive, :retitle, :destroy]
+      # they stay row actions all the same
+      assert length(model.actions) == 6
+    end
+
+    test "the create action is never one of them" do
+      model = Model.build(AshTable.Test.Acting)
+
+      refute model.create.bulk?
+      refute model.create.name in bulk(model)
+    end
+  end
+
   describe "the create action" do
     test "is none unless the block names one" do
       assert Model.build(AshTable.Test.Acting.Plain).create == nil
@@ -1841,6 +1886,45 @@ defmodule AshTable.ModelTest do
       member = Model.for_actor(model, actor: @member)
       assert names.(Enum.find(member.actions, &(&1.name == :update))) == [:title, :salary]
       assert names.(member.create) == [:title, :salary]
+    end
+
+    test "marks the inputs of fields the person sees on some records only, which are no inputs of an action on several rows",
+         %{model: model} do
+      update = fn model -> Enum.find(model.actions, &(&1.name == :update)) end
+
+      partly = fn action ->
+        for %{partly_hidden?: true} = input <- action.inputs, do: input.name
+      end
+
+      bulk_inputs = fn action -> Enum.map(Model.bulk_inputs(action), & &1.name) end
+
+      # as the resource and its block say it, nothing is hidden from anybody
+      assert partly.(update.(model)) == []
+      assert bulk_inputs.(update.(model)) == [:title, :secret, :salary]
+
+      # an admin sees `salary` on every record
+      admin = Model.for_actor(model, actor: @admin)
+      assert partly.(update.(admin)) == []
+      assert bulk_inputs.(update.(admin)) == [:title, :secret, :salary]
+
+      # a member on their own records only: an input of one row, and of none of many
+      member = Model.for_actor(model, actor: @member)
+      assert partly.(update.(member)) == [:salary]
+      assert bulk_inputs.(update.(member)) == [:title]
+      # on one record it is known whether they see it
+      assert Enum.map(update.(member).inputs, & &1.name) == [:title, :salary]
+
+      # and nothing is asked without authorization
+      open = Model.for_actor(model, actor: @member, authorize?: false)
+      assert partly.(update.(open)) == []
+    end
+
+    test "offers for several rows what the person can ever run", %{model: model} do
+      bulk = fn model -> Enum.map(Model.bulk_actions(model), & &1.name) end
+
+      assert bulk.(Model.for_actor(model, actor: @admin)) == [:update, :rate, :flag, :destroy]
+      assert bulk.(Model.for_actor(model, actor: @member)) == [:update, :flag]
+      assert bulk.(Model.for_actor(model, actor: @viewer)) == [:flag]
     end
   end
 

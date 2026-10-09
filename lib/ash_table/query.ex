@@ -36,6 +36,9 @@ defmodule AshTable.Query do
   alias AshTable.Model.Operator
   alias AshTable.State
 
+  # how many records are read at a time where records are read to the end
+  @batch_size 100
+
   defmodule Page do
     @moduledoc false
     # One page of records and where a person can go from it.
@@ -164,6 +167,120 @@ defmodule AshTable.Query do
       {:error, error} -> {:error, error}
     end
   end
+
+  @doc """
+  The primary keys of every record `state` matches: what the table shows
+  through all of its pages, as `opts` say who is asking. For an action that
+  is run on "all that match".
+
+  They are read through the table's read action, with the person's
+  filters, in batches as the action pages (`Ash.stream!/2`), and nothing
+  but the keys is kept of them. The sort a person chose says nothing about
+  which records match, and is left out.
+
+  For a table of its own. Raises what the read raises.
+  """
+  @spec matching(Model.t(), State.t(), [option]) :: [map]
+  def matching(%Model{via: nil} = model, %State{} = state, opts \\ []) do
+    read_opts = reader_opts(opts)
+
+    model
+    |> query(%{state | sort: nil}, [], read_opts)
+    |> Ash.Query.select(model.primary_key)
+    |> stream(model, read_opts)
+    |> Enum.map(&Map.take(&1, model.primary_key))
+  end
+
+  @doc """
+  The records with the primary keys `keys`, as far as they are there and
+  `opts` say that the person asking may read them: through the table's read
+  action, as a page is read, and so with the same policies and field
+  policies. In no particular order; a key that names nothing the person may
+  read is not among them, and nothing says which of the two it is.
+
+  For a table of its own. Raises what the read raises.
+  """
+  @spec records(Model.t(), [map], [option]) :: [Ash.Resource.record()]
+  def records(%Model{via: nil}, [], _opts), do: []
+
+  def records(%Model{via: nil} = model, keys, opts) do
+    read_opts = reader_opts(opts)
+
+    model
+    |> query(%State{}, [], read_opts)
+    |> by_keys(model, keys)
+    |> stream(model, read_opts)
+    |> Enum.to_list()
+  end
+
+  @doc """
+  The same for a nested table: the records related to the record of
+  `model.via.source` with the primary key `key`, through the relationship
+  `model.via`. `keys` are the primary keys of the ones that are asked for,
+  or `:all` for every one that `state` matches.
+
+  The parent is read as `read_related/4` reads it, with the relationship
+  loaded through the nested table's query and without a page: whether a
+  record is related to that parent is Ash's loader's to say, and a record
+  that is not related is not among them, whoever may read it elsewhere.
+
+  Takes the options of `read_related/4`, and returns its errors.
+  """
+  @spec related_records(Model.t(), State.t(), map, [map] | :all, keyword) ::
+          {:ok, [Ash.Resource.record()]} | {:error, :parent_gone | :forbidden | Ash.Error.t()}
+  def related_records(%Model{via: %{}}, _state, _key, [], _opts), do: {:ok, []}
+
+  def related_records(%Model{via: %{} = via} = model, %State{} = state, key, keys, opts)
+      when is_map(key) do
+    read_opts = reader_opts(opts)
+
+    related =
+      case keys do
+        :all -> query(model, %{state | sort: nil}, [], read_opts)
+        keys -> model |> query(%State{}, [], read_opts) |> by_keys(model, keys)
+      end
+
+    parent_opts =
+      Keyword.put(
+        read_opts,
+        :authorize?,
+        read_opts[:authorize?] or Keyword.get(opts, :parent_authorize?, true)
+      )
+
+    with {:ok, %_{} = parent} <-
+           get(
+             via.source,
+             via.source_read_action,
+             key,
+             [load: [{via.name, related}]] ++ parent_opts
+           ),
+         {:ok, result} <- related(Map.get(parent, via.name)) do
+      {:ok, result}
+    else
+      {:ok, nil} -> {:error, :parent_gone}
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  # The records of a query, read to the end in batches: by keyset or by
+  # offset as the action pages, and in one read when it does not page. No
+  # batch is larger than a page of the action may be.
+  defp stream(query, model, read_opts) do
+    batch =
+      case Ash.Resource.Info.action(model.resource, model.read_action).pagination do
+        %{max_page_size: max} when is_integer(max) -> min(max, @batch_size)
+        _none -> @batch_size
+      end
+
+    Ash.stream!(query, [allow_stream_with: :full_read, batch_size: batch] ++ read_opts)
+  end
+
+  # Limited to the records with these primary keys: one of them, whichever.
+  defp by_keys(query, %Model{primary_key: [field]}, keys),
+    do: Ash.Query.do_filter(query, [{field, [in: Enum.map(keys, &Map.fetch!(&1, field))]}])
+
+  defp by_keys(query, %Model{primary_key: fields}, keys),
+    do: Ash.Query.do_filter(query, or: Enum.map(keys, &Map.to_list(Map.take(&1, fields))))
 
   # What Ash put at the relationship: the records, as a page, a list, one
   # record or none; or its refusal.

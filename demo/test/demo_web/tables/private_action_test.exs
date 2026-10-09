@@ -923,6 +923,23 @@ defmodule DemoWeb.Tables.PrivateActionTest do
                Ecto.UUID.dump!(note.id)
              ]).rows == [[1]]
     end
+
+    test "nor by one that names it for selected rows, or for all that match",
+         %{conn: conn, notes: notes} do
+      note = notes["Open note"]
+      {:ok, view, _html} = live(conn, "/support/notes")
+
+      for selection <- [[note.id], :all] do
+        bulk(view, "note", "shred", selection)
+        assert_reply view, %{ok: false}
+        html = run_bulk(view, "note", "shred", selection)
+        assert bulk_result(html, "note") == nil
+      end
+
+      assert Demo.Repo.query!("SELECT count(*) FROM tasks WHERE id = $1", [
+               Ecto.UUID.dump!(note.id)
+             ]).rows == [[1]]
+    end
   end
 
   describe "a table whose resource has a private primary read action reads through its own" do
@@ -1039,6 +1056,52 @@ defmodule DemoWeb.Tables.PrivateActionTest do
                # row, loaded by the table in the same way
                {Folder, :read, :load}
              ]
+    end
+
+    test "runs an action on the selected rows on the records as the table reads them, and through no other read action",
+         %{view: view, open: open, sealed: sealed} do
+      reads()
+      Ran.forget()
+
+      # the sealed folder is a row of this table, and none of the primary read action
+      html = run_bulk(view, "folder", "file", [sealed.id, open.id])
+
+      assert bulk_result(html, "folder") == %{summary: "File: 2 done.", failures: []}
+      assert texts(html, "folder", "description") == ["filed", "filed"]
+
+      # the selected records, and the page again
+      assert Enum.uniq(reads()) == [{:folder, :every}]
+      assert Enum.filter(Ran.actions(), &match?({Folder, :read, :read}, &1)) == []
+    end
+
+    test "a record that the database refuses does not take the others with it, and what the database said is for the log",
+         %{view: view, open: open, sealed: sealed} do
+      {html, log} =
+        ExUnit.CaptureLog.with_log(fn ->
+          run_bulk(view, "folder", "merge", [sealed.id, open.id])
+        end)
+
+      # one of the two has the name now; the other could not have it too
+      assert bulk_result(html, "folder") == %{
+               summary: "Merge: 1 done, 1 not done.",
+               failures: ["This could not be done. (1)"]
+             }
+
+      assert [_merged, _other] = Enum.uniq(texts(html, "folder", "name"))
+      assert "Merged" in texts(html, "folder", "name")
+
+      refute html =~ "unique"
+      assert log =~ "running `merge` on the selected rows of Demo.Support.Vault.Folder failed"
+      assert log =~ "projects_unique_name_index"
+    end
+
+    test "and all that match likewise", %{view: view} do
+      reads()
+
+      html = run_bulk(view, "folder", "file", :all)
+
+      assert bulk_result(html, "folder") == %{summary: "File: 2 done.", failures: []}
+      assert Enum.uniq(reads()) == [{:folder, :every}]
     end
   end
 end

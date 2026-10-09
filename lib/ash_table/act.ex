@@ -98,6 +98,27 @@ defmodule AshTable.Act do
     end)
   end
 
+  @doc """
+  The form of a row action that is to run on several records at once, for
+  the action panel. `id` is the id of the form.
+
+  A form is of an action on one record, and here there is none to name: the
+  form is of the action on a record that holds nothing, not even the
+  defaults of its attributes. It is what the person types into, and what
+  tells them what the action makes of a value as such (a text that is no
+  number, an argument that is too short, a required input that is empty).
+  What the action makes of it on each record is known when it has run.
+  """
+  @spec open_bulk(Model.t(), Action.t(), String.t(), keyword) :: form
+  def open_bulk(%Model{resource: resource}, %Action{} = action, id, opts) do
+    blank =
+      resource
+      |> Ash.Resource.Info.attributes()
+      |> Enum.reduce(struct(resource), &Map.put(&2, &1.name, nil))
+
+    form(blank, action, id, Query.reader_opts(opts))
+  end
+
   @doc "The form of the table's create action. `id` is the id of the form."
   @spec open_create(Model.t(), Action.t(), String.t(), keyword) :: form
   def open_create(%Model{} = model, %Action{type: :create} = action, id, opts) do
@@ -163,6 +184,13 @@ defmodule AshTable.Act do
   def submit_create(%Model{} = model, %Action{type: :create} = action, params, given, id, opts) do
     submit(model, open_create(model, action, id, opts), taken(action.inputs, params, given), opts)
   end
+
+  @doc """
+  What an action is given of what a panel's form sent: the values of
+  `inputs`, by name, as they were typed, and no others.
+  """
+  @spec values([Model.Input.t()], map) :: map
+  def values(inputs, params), do: taken(inputs, params, %{})
 
   defp submit(model, form, params, opts) do
     opts = Query.reader_opts(opts)

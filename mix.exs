@@ -56,6 +56,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/inline-editing.md",
         "documentation/topics/confirm.md",
         "documentation/topics/row-actions-and-create.md",
+        "documentation/topics/selecting-rows-and-bulk-actions.md",
         "documentation/topics/nested-tables.md",
         "documentation/topics/custom-components.md",
         "documentation/topics/authorization.md",

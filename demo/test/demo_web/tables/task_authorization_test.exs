@@ -91,8 +91,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       assert headers(html, "task") == @headers
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1"]
-      # the 19 columns, before them the expanders, and after them the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["21"]
+      # the 19 columns, before them the boxes and the expanders, and after
+      # them the actions
+      assert attribute(html, "#task-table", "aria-colcount") == ["22"]
     end
 
     for actor <- [:member, :viewer, :outsider] do
@@ -107,17 +108,25 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        # the expanders, the columns that are left (18, and 16 for the viewer),
-        # and the actions, which a viewer can never run
-        actions = if unquote(actor) == :viewer, do: 0, else: 1
-        count = 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]]) + actions
+        # The expanders, the columns that are left (18, and 16 for the viewer),
+        # and the actions, which a viewer can never run: and so nothing on
+        # several rows either, which is what the boxes before the expanders
+        # are for.
+        acting = if unquote(actor) == :viewer, do: 0, else: 1
+
+        count =
+          acting + 1 + length(@headers -- ["External ref" | @unreadable[unquote(actor)]]) +
+            acting
+
         numbers = Enum.map(1..count, &Integer.to_string/1)
 
-        assert count == if(unquote(actor) == :viewer, do: 17, else: 20)
+        assert count == if(unquote(actor) == :viewer, do: 17, else: 21)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
         assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
-        assert attribute(html, "#task-head-description", "aria-colindex") == ["13"]
+
+        assert attribute(html, "#task-head-description", "aria-colindex") ==
+                 ["#{13 + acting}"]
       end
     end
 
@@ -155,9 +164,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "leaves the cells of a row numbered without a gap", %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
-      # the expander, the eighteen columns of a member, the actions
+      # the box, the expander, the eighteen columns of a member, the actions
       assert attribute(html, "#task-table tbody td", "aria-colindex") ==
-               Enum.map(1..20, &Integer.to_string/1)
+               Enum.map(1..21, &Integer.to_string/1)
     end
   end
 

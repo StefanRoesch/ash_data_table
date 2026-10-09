@@ -121,6 +121,14 @@ end
 
 A column takes a question only; `confirm false` is for actions.
 
+**On the selected rows** an action always asks, whatever it says about
+`confirm`: one click must not change a page of records. The question says
+how many records it is about. An action with a `confirm` asks its own
+question and the number follows it ("Delete this task? This cannot be
+undone. 3 records are selected."); any other is asked for by its name
+("Run “Archive” on 3 records?"). See
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#the-question).
+
 The demo has no action with both a question and a panel. Every question
 there belongs to a destroy action without inputs.
 
@@ -157,7 +165,8 @@ same file. See [Messages and translations](messages-and-translations.md).
 - **An action the person cannot run asks nothing either.** It has no button
   for them.
 - **A table without any `confirm`**, on a column or on an action, has no
-  dialog in its markup.
+  dialog in its markup, unless it offers an action for the selected rows:
+  that one always asks.
 - **An action that fails after Confirm** looks like any failed action: its
   message is on the row's actions cell, or in the panel. Using the button
   again asks again.
@@ -180,7 +189,8 @@ same file. See [Messages and translations](messages-and-translations.md).
 
 ## Not in the first version
 
-No question that depends on the value or on the record, no confirm for a
-whole table, and no type-to-confirm, where a person has to type a word
+No question of your own wording for an action on several rows (the number
+is added to the action's `confirm`), no question that depends on the value
+or on the record, no confirm for a whole table, and no type-to-confirm, where a person has to type a word
 before a delete. See the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

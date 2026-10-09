@@ -23,6 +23,11 @@ defmodule AshTable.Model.Input do
   #   * `default` is the value the field starts with where there is no
   #     record to take it from: the static default of the argument or of the
   #     attribute, nil when it has none or one that is computed.
+  #   * `partly_hidden?` is set for the person asking
+  #     (`AshTable.Model.for_actor/2`): the input is an attribute they see
+  #     on some records only. On one record the table knows whether they
+  #     see it there; on several at once it does not, and the input is not
+  #     offered.
 
   @enforce_keys [:name, :kind, :label, :cell_type, :editor]
   defstruct [
@@ -35,7 +40,8 @@ defmodule AshTable.Model.Input do
     :editor,
     :component,
     :default,
-    required?: false
+    required?: false,
+    partly_hidden?: false
   ]
 
   @type t :: %__MODULE__{
@@ -48,6 +54,7 @@ defmodule AshTable.Model.Input do
           editor: AshTable.Resource.Editing.editor() | :plain | :component,
           component: map | nil,
           default: term,
-          required?: boolean
+          required?: boolean,
+          partly_hidden?: boolean
         }
 end

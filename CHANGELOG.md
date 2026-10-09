@@ -309,6 +309,67 @@ declared in the resource and mounted with one line in the router.
   calculation, aggregate or reference columns without a primary read
   action.
 
+### Row selection and bulk actions
+
+- A table with a row action that a person can run on several rows has a
+  first column of boxes: one per row, and one in the header that stands for
+  the rows of the page and is mixed when some are selected. It counts as a
+  column (`aria-colindex`, `aria-colcount`); where rows expand, the
+  expander is the second cell of a row. The grid is
+  `aria-multiselectable`, and every row of records says `aria-selected`.
+  The mark of a selected row is its ticked box.
+- Selecting is the browser's alone: a click on a box, Space on any cell of
+  a row, Shift and a click or Shift with Down or Up Arrow for a range. It
+  sends nothing and brings no row back. A selection lasts through a sort
+  and a change of page, is given up when a filter changes, and is in no
+  URL. Each table has its own; a nested table's is apart from that of the
+  table around it.
+- "Select all N that match", offered once every row of the page is selected
+  and the filters match more: every record the read action returns for the
+  person under the filters, worked out on the server when an action runs.
+  Without a number where the read action does not count.
+- A line above the grid, beside "Clear filters": the number of selected
+  records in a live region, "Clear selection", and a button per bulk
+  action.
+- The bulk actions are the table's row actions. `bulk? false` on an
+  `action` keeps it to one row. An action that accepts an attribute of the
+  primary key, or one that is an identity by itself, is not offered either;
+  `bulk? true` on such an action is reported when the resource is compiled.
+- Every bulk action asks first, in the table's dialog, with the number of
+  records: "Run “Archive” on 3 records?", or the action's own `confirm` and
+  the number after it.
+- An action with inputs opens the action panel once for the selection,
+  headed by the action and the number. Its fields start empty; what they
+  hold is given to the action on every record. An input of a field the
+  person sees on some records only is no field of it.
+- A bulk action runs through `Ash.bulk_update/4` or `Ash.bulk_destroy/4`,
+  as the person and with authorization, on records that were read as the
+  person through the table's read action: `strategy: :stream`,
+  `batch_size: 1`, `transaction: :batch`, `return_errors?: true`,
+  `stop_on_error?: false`, `return_records?: true`, `notify?: true`. One
+  record and one transaction at a time, as the row's button does it: any
+  update or destroy action can run so, a record that a policy, a validation
+  or the database refuses does not take the others with it, and nobody
+  changes in bulk what they could not change from its row or cannot read.
+  In a nested table the records are read through the row it belongs to.
+- Afterwards the table reads again and says how many records were done and
+  how many were not, with each message of the action and the number of
+  records it is about, above the grid and to screen readers. The rows the
+  action did not run on stay selected. A record that is gone, or not the
+  person's to read, counts as not done.
+- The run is beside the page's process: the page stays in use, its rows are
+  dimmed and the buttons of the line are `aria-disabled` until it is over.
+- New messages in the Gettext template: "Select row", "Select all rows of
+  this page", "Selected rows", "%{count} selected", "All %{count} that
+  match are selected", "All that match are selected", "Select all %{count}
+  that match", "Select all that match", "Clear selection", the questions
+  ("Run “%{action}” on 1 record?" and its plural, "Run “%{action}” on all
+  records that match?", "%{question} 1 record is selected." and its plural,
+  "%{question} All records that match are selected."), the panel's headings
+  ("%{action}: 1 record" and its plural, "%{action}: all records that
+  match") and the result ("%{action}: %{done} done.", "%{action}: %{done}
+  done, %{failed} not done.", "%{message} (%{count})").
+
 ### Custom components
 
 - `component` on a `column`: a module that says how the cells of the column
@@ -412,6 +473,20 @@ declared in the resource and mounted with one line in the router.
   announced.
 - The create button in a table's header is not rendered beside a read that
   failed or was refused.
+
+### Changed since arrays were added
+
+- **Space on a cell selects its row**, in a table that has the boxes. It
+  did nothing, and was held back for this.
+- **The columns of a table with a row action stand one further.** The boxes
+  are its first column, so `aria-colindex` of every other cell, and
+  `aria-colcount`, are one more; the expander is the second cell of a row.
+  A table without a row action that runs on several rows is as it was.
+- **A table with a row action has the table's dialog in its markup**, also
+  when nothing of it has a `confirm`: an action on the selected rows always
+  asks.
+- "Clear filters" is at the right end of the line above the grid as before;
+  the line now also holds what is selected, at its left end.
 
 ### Tooling
 

@@ -203,6 +203,26 @@ defmodule AshTable.Errors do
     end
   end
 
+  @doc """
+  What an action that did not run on a record says to a person, where it
+  was not run through a form: the messages of the errors it returned on
+  purpose, each one once, a refusal among them as `refusal`. Empty when
+  there is none that a person should read.
+  """
+  @spec of_action(term, Model.t(), String.t()) :: [String.t()]
+  def of_action(error, %Model{} = model, refusal) do
+    case Ash.Error.to_error_class(error) do
+      %Ash.Error.Forbidden{} ->
+        [refusal]
+
+      %Ash.Error.Invalid{errors: errors} ->
+        errors |> Enum.flat_map(&texts(&1, model)) |> Enum.uniq()
+
+      _other ->
+        []
+    end
+  end
+
   # As `AshPhoenix.Form` reads an error for a form: through the protocol
   # that says which field an error is about, with its message and variables.
   defp texts(%{class: :invalid} = error, model) do

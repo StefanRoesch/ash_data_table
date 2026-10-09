@@ -17,9 +17,11 @@ defmodule AshTable.Model.Action do
   #     The table fills it in itself, so it is no input.
   #   * `panel?` says whether using the action opens the action panel, where
   #     the person gives the inputs, or runs it straight away.
+  #   * `bulk?` says whether a row action is also offered for the rows a
+  #     person has selected, to run on all of them at once.
 
   @enforce_keys [:name, :type, :label]
-  defstruct [:name, :type, :label, :confirm, :link, inputs: [], panel?: false]
+  defstruct [:name, :type, :label, :confirm, :link, inputs: [], panel?: false, bulk?: false]
 
   @type t :: %__MODULE__{
           name: atom,
@@ -28,6 +30,7 @@ defmodule AshTable.Model.Action do
           confirm: String.t() | nil,
           link: {atom, atom} | nil,
           inputs: [AshTable.Model.Input.t()],
-          panel?: boolean
+          panel?: boolean,
+          bulk?: boolean
         }
 end

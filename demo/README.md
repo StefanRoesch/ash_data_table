@@ -55,7 +55,7 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below) |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. A box at the start of every row selects it, and the four row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below) |
 | http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Its block also says what a project is called in other tables (`label_field :name`). Two row actions: "Set status", whose one input is a choice, and "Destroy", which asks first; and "New project". Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
 | http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a plain field for the task's key. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button |
@@ -132,8 +132,8 @@ Things to try:
   destination's own table, so it edits what that table edits on its own
   page. Under "Assignee" and "Reported by" no cell opens: the table of the
   people names no `update_action`, as the demo's one read-only table.
-- With the keyboard: Left Arrow from the first cell of a row reaches its
-  expander; Right Arrow opens it and Left Arrow closes it; Down Arrow goes
+- With the keyboard: Left Arrow from the first data cell of a row reaches
+  its expander; Right Arrow opens it and Left Arrow closes it; Down Arrow goes
   through the lines; on the cell of a nested table Enter goes in and Escape
   comes back out. Tab leaves the whole tree.
 - As **Vera Viewer**, the lines "Assignee" and "Reported by" are not there
@@ -188,6 +188,9 @@ in a nested table in `nested_create_test.exs`, both on the other pages, in
 the dashboard and in German in `actions_elsewhere_test.exs`, and what the
 action panel does with hidden fields and with every kind of failure in
 `action_fields_test.exs`, on a resource of `test/support/plain_tables.ex`.
+Row selection and bulk actions are in `task_bulk_test.exs` and, for the
+other tables, a nested table and the resources of
+`test/support/bulk_tables.ex`, in `bulk_elsewhere_test.exs`.
 Languages are in `translation_test.exs` and `translation_settings_test.exs`,
 tables placed in a LiveView in `embedded_table_test.exs`, the key of two
 attributes in `task_label_table_test.exs`, a read that fails in
@@ -318,6 +321,54 @@ Things to try, on `/tasks`:
   field "External ref".
 - With the keyboard: End moves to the actions cell, Enter to its first
   button, Left and Right Arrow between the buttons, Escape back to the cell.
+
+### Selecting rows and bulk actions
+
+A table with a row action has a box at the start of every row and one in
+its header. Selected rows are counted on a line above the grid, which has a
+button per action that runs on several rows: the table's row actions,
+unless one says `bulk? false`, as "Destroy" on `/projects` does.
+
+| Table | For the selected rows | Kept to one row |
+| --- | --- | --- |
+| `/tasks` | "Archive", "Reassign", "Set progress", "Destroy" | |
+| `/projects` | "Set status" | "Destroy" (`bulk? false`) |
+| `/comments`, `/labels` | "Destroy" | |
+| `/task_labels` | "Remove", which asks here though it does not in a row | |
+| `/specimens` | no boxes: the table has no row action | |
+
+Things to try, on `/tasks`:
+
+- **All rows succeed.** As Ada Admin, tick three boxes and use "Archive".
+  A dialog asks "Run “Archive” on 3 records?"; Confirm, and the table says
+  above the grid: "Archive: 3 done."
+- **Some rows are refused by a policy.** As Max Member, tick the box in the
+  header and use "Archive". He may change the tasks he is assigned to or
+  reported: "Archive: … done, … not done.", "You are not allowed to do
+  this. (…)", and the rows that were refused are still selected.
+- **Some rows are refused by a validation.** As Ada Admin, select a task
+  that is "Done" and one that is not, and use "Set progress". The panel
+  asks once for the progress, with nothing in it: there is no one task to
+  take it from. Choose 50: "Set progress: 1 done, 1 not done.", "Progress:
+  must be 100 when the task is done (1)".
+- **An action with inputs.** Select two tasks, "Reassign". The panel is
+  headed "Reassign: 2 records". A reason of two characters is refused at
+  the field before anything runs; with a reason, "Run" asks "Run
+  “Reassign” on 2 records?" and both tasks get it. "Assignee ID" left
+  empty unassigns both: an empty field is an empty value.
+- **A question of its own.** "Destroy" asks "Delete this task? This cannot
+  be undone. 3 records are selected."
+- **All that match.** Tick the box in the header: "25 selected", and
+  "Select all 320 that match" appears. Use it, then filter "Title" by
+  `email`: the selection is given up, as it was made under other filters.
+  Sorting and paging keep it.
+- **With the keyboard.** Space on any cell of a row selects the row. Shift
+  with Down or Up Arrow selects as it goes. Shift+Tab from the grid reaches
+  the buttons of the line.
+- **A nested table has its own.** Expand a task, open "Comments", tick two
+  comments and use "Destroy" on the line above them. The tasks around them
+  are not selected.
+- As **Vera Viewer** there are no boxes: she can run no action.
 
 | Actor | Row actions | Create |
 | --- | --- | --- |
@@ -560,6 +611,7 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `nesting.spec.ts` | nested tables: the expander and the lines by pointer and by keyboard; Right and Left Arrow; into a nested table and back out; one tab stop for the whole tree at every depth, and Tab out of it; that moving sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or a row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
 | `full_view.spec.ts` | the link of a nested table to the full view, by pointer and by keyboard, and where it is not there; the page it leads to: its heading, the limit in the address through sort, filter and page and after a reload, the way back to all records, editing and expanding under the limit; the browser's back button; the page as the member, the viewer and the outsider; axe on it |
 | `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort, filter or edit, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
+| `selection.spec.ts` | row selection and bulk actions: the boxes by pointer and by keyboard, Space on a cell, ranges with Shift, the box of the page and its mixed state; that selecting sends nothing and that the arrow keys still send nothing; the selection through a sort, a page and a filter change; "all that match"; the line above the grid and what is read out; the question, the panel of an action with inputs, and the result, as the admin and as the member, whose refused rows stay selected; where focus is afterwards; a nested table's own selection; a table told to let one row or several be selected with nothing to run on them; the height of a row with a box; axe with rows selected, with the question open and with a result, in the light and the dark theme |
 | `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
 | `arrays.spec.ts` | the array columns of `/tasks`: that their cells are plain text, with no sort and no filter; the list of an array of text (a named control per value, adding and taking away from the keyboard and with the pointer, where focus goes, Tab through its controls and out of the grid, typing on the cell) and the multiple choice of an array of enum values (Space, the arrow keys, a letter); that nothing is sent until Enter or leaving, and one save then; Escape; a save the action refuses, and what the cell opens with afterwards; the member's refusal; both as fields of "New task"; both in a nested table; the list of an array of numbers on `/specimens`; axe with each editor open, with a failed cell, in the dark theme and in the panel |
 | `components.spec.ts` | the components of `/tasks`: the slider by keyboard (its keys are its own; a step is saved by Enter or by leaving) and by pointer (nothing sent while it is dragged, one save on letting go, the number beside it following, the slider staying open); Escape after a save; a save through it that fails; the question of a column before a change is saved; the demo's own component, whose editor saves on Enter or on leaving; the slider as a field of the action panel; the height of a row with and without components; components in a nested table |
@@ -580,8 +632,9 @@ How they are built (`e2e/support`):
   whatever order. Seeding goes through `POST /e2e/seed`, a route that exists
   in the `e2e` environment only (`e2e/server`, mounted by
   `config :demo, e2e_routes: true`), as do the one that deletes a task behind
-  an open table's back and the two that make the reads of the comments fail
-  and work again. There is one database, so the tests run one at a time.
+  an open table's back, the two that make the reads of the comments fail
+  and work again, and the page `/e2e/select`, whose tables let their rows be
+  selected with nothing to run on them. There is one database, so the tests run one at a time.
 - **Language.** A test chooses German through the language switcher
   (`support/locale.ts`); the choice is in the session cookie, which every
   test has to itself.

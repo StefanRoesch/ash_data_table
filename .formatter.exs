@@ -3,6 +3,7 @@ spark_locals_without_parens = [
   action: 2,
   actor_assign: 1,
   authorize?: 1,
+  bulk?: 1,
   column: 1,
   column: 2,
   component: 1,

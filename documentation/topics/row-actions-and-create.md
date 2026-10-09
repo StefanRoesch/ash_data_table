@@ -9,7 +9,9 @@ comes from, and say what a person sees when an action succeeds, fails or is
 refused.
 
 The question an action can ask first is in [Confirm](confirm.md). Changing
-one value in place is [Inline editing](inline-editing.md). What depends on
+one value in place is [Inline editing](inline-editing.md). Running a row
+action on several rows at once is in
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md). What depends on
 who is acting is summed up here and explained in
 [Authorization](authorization.md).
 
@@ -76,6 +78,7 @@ end
 | --- | --- | --- |
 | `label` | The action's name in words: "Set progress" | What the button says. |
 | `confirm` | none | A question asked before the action runs, as a string; or `false`. See [`confirm`, and a destroy action without it](#confirm-and-a-destroy-action-without-it). |
+| `bulk?` | `true`, for an action that can run on several rows | Whether the action is also offered for the rows a person has selected. `false` keeps it to one row. See [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#which-actions-are-offered). |
 
 The demo's task labels use both
 ([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
@@ -97,6 +100,11 @@ end
 An action is declared once, and is the same in every row: there is no
 option that shows a button on some records only. Whether an action runs on
 one record is the action's own business, and its policy's.
+
+A table with a row action also has a box at the start of every row, and
+every row action is offered for the rows a person selects, unless it says
+`bulk? false`. That is the subject of
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md).
 
 ## Which actions can be row actions
 
@@ -626,7 +634,7 @@ as a filter's controls are.
 | Escape | On a button | Back to the cell. |
 | Tab | On a button | The next button; from the last one, out of the grid. |
 | Escape | On an actions cell that shows a failure | Gives the message up. |
-| Space | On the cell | Nothing: it stays reserved for row selection. |
+| Space | On the cell | Selects the row, or takes it out of the selection, as on any cell of a row. |
 
 The action panel is a modal dialog. Focus moves into it and stays there,
 Tab goes through its fields and buttons, and Escape is Cancel.
@@ -698,8 +706,8 @@ All keys of a table are in
 No picker for an input that points at another resource, no fields for
 maps, embedded resources and unions, nor for arrays of them, no actions
 that belong to the
-table and not to a row (generic actions), no running an action on several
-selected rows, no adding or linking through a many-to-many, no create under
-a has-one, no type-to-confirm, no custom buttons or icons, and no undo.
+table and not to a row (generic actions), no adding or linking through a
+many-to-many, no create under a has-one, no type-to-confirm, no custom
+buttons or icons, and no undo.
 The later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

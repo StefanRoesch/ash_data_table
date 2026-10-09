@@ -127,10 +127,10 @@ test.describe("reading", () => {
     // after the last column is the cell of the row's actions (actions.spec.ts)
     await table.press("ArrowRight", "ArrowRight")
     await expect(table.actionsCell(FIRST), "the last cell of a row is where Right ends").toBeFocused()
-    // Home is the first cell of the row: its expander, one to the left of the note
+    // Home is the first cell of the row: its box, two to the left of the note
     await table.press("ArrowDown", "ArrowDown", "Home")
-    await expect(table.expanderCell(THIRD)).toBeFocused()
-    expect(await table.tabStops()).toEqual([`task_label-row-${THIRD}-e`])
+    await expect(table.boxCell(THIRD)).toBeFocused()
+    expect(await table.tabStops()).toEqual([`task_label-row-${THIRD}-s`])
   })
 })
 

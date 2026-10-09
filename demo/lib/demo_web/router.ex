@@ -92,7 +92,12 @@ defmodule DemoWeb.Router do
         ash_table "/archives", Demo.Support.Exposed.Archive, layout: false
         ash_table "/racks", Demo.Support.Exposed.Rack, layout: false
         ash_table "/editors", Demo.Support.Exposed.Editor, layout: false
+        ash_table "/parcels", Demo.Support.Bulk.Parcel, layout: false
+        ash_table "/crates", Demo.Support.Bulk.Crate, layout: false
+        ash_table "/letters", Demo.Support.Bulk.Letter, layout: false
+        ash_table "/pouches", Demo.Support.Bulk.Pouch, layout: false
         live "/embedded", DemoWeb.Support.EmbeddedLive
+        live "/select", DemoWeb.Support.SelectLive
         live "/url", DemoWeb.Support.UrlLive
         live "/switch", DemoWeb.Support.SwitchLive
         live "/held-dockets", DemoWeb.Support.DocketsLive
@@ -109,13 +114,22 @@ defmodule DemoWeb.Router do
   # For the browser tests (`e2e/`), in the e2e environment only: seeds the
   # database again, so that a test that edits starts from known data,
   # deletes a task behind the table's back, and makes the reads of the
-  # comments fail.
+  # comments fail; and a page whose tables let their rows be selected with
+  # nothing to run on them.
   if Application.compile_env(:demo, :e2e_routes, false) do
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
       delete "/tasks/:id", DemoWeb.E2E.DataController, :delete_task
       post "/comments/break", DemoWeb.E2E.DataController, :break_comments
       post "/comments/mend", DemoWeb.E2E.DataController, :mend_comments
+    end
+
+    scope "/e2e", DemoWeb.E2E do
+      pipe_through :browser
+
+      live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale] do
+        live "/select", SelectLive
+      end
     end
   end
 

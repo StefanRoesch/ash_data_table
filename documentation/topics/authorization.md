@@ -148,6 +148,8 @@ as an admin area that the router already restricts.
 | The person may **not read one related record** | Its reference cell is empty, as for no related record. In a nested table its row is not there. | A task assigned to somebody of another organization. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. | `/tasks` as Vera Viewer. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. | `/tasks` as Max Member, on a task that is not his. |
+| The person can **never run any row action** on several rows | The table has no boxes to select rows with, and no line of buttons above the grid. | `/tasks` as Vera Viewer. |
+| The person may run a row action on **some of the selected records only** | It runs on those, and the table says of the others that it did not: "Archive: 2 done, 1 not done.", "You are not allowed to do this. (1)". The others stay selected. | `/tasks` as Max Member, with a task selected that is not his. |
 | The person can **never run a row action** | The action has no button for them. If that is every row action, the table has no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member has "Set status" and no "Destroy". |
 | The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the row's actions cell, or the action panel, says "You are not allowed to do this." | `/tasks` as Max Member: "Archive" on a task that is not his. |
 | The person can **never run the create action** | The table has no create button for them. | `/tasks` as Vera Viewer; `/projects` and `/labels` as Max Member. |
@@ -321,6 +323,13 @@ action that was looked at:
 - **The record of a row, before a cell of it is saved or a row action
   runs**: through the table's read action. A row the table shows is a row it
   can change, also where the primary read action would not return it.
+- **The records an action runs on that a person selected**: each through
+  the table's read action, by its primary key, before the action is run on
+  it; and for "all that match" the keys of everything the filters match,
+  through the same action. In a nested table both are read through the row
+  it belongs to. What the browser names is a claim: a key reaches no
+  record that the table would not show this person. See
+  [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-running-does).
 - **The row a nested table belongs to**: through the read action of the
   table that shows the row. For a row of the table on the page that is the
   table's read action; for a row of a nested table it is the action that
@@ -415,6 +424,14 @@ row's actions cell for an action that runs straight away, above the fields
 for one that runs from the action panel. See
 [Row actions and create](row-actions-and-create.md#who-may-run-what).
 
+So does an action on the rows a person has selected. Its button is on the
+line above the grid unless the person can never run it. When it runs, the
+action's policy answers for each record by itself, as it would from that
+record's row: a bulk action is never one statement in which the policy is
+turned into a filter. The records it refuses are counted and stay
+selected. See
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#who-may-run-what).
+
 The same reasoning applies to fields. Whether a field is visible on one
 record is known once the record is read; Ash puts an `Ash.ForbiddenField` in
 its place, and the table renders the placeholder.
@@ -441,6 +458,11 @@ attribute hidden from them on one record is no field of that record's
 panel, and a value sent for either all the same is dropped before the
 action is given its inputs. On `/tasks`, "New task" has the field "External
 ref" for Ada Admin only.
+
+The panel of an action on several selected rows goes one step further. An
+attribute the person sees on some records only is no field of it at all:
+over a selection the table cannot say on which records they see it, and it
+does not read them to find out.
 
 A field policy is about reading. The update action itself accepts the field
 from anyone its *policy* allows: the same action called through

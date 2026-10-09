@@ -51,6 +51,14 @@ _Avoid_: Detail page, drill-down, scoped page
 An action of the resource, declared for a table, that a person runs on one record from that record's row.
 _Avoid_: Button, command, operation
 
+**Selection**:
+The rows of one table that a person has marked to act on together: the records they picked, or every record their filters match.
+_Avoid_: Checked rows, multi-select, marked rows
+
+**Bulk action**:
+A row action run on every record of a selection at once, with its inputs given once for all of them.
+_Avoid_: Batch action, mass update, multi-row action
+
 **Action panel**:
 The panel in which a person supplies the inputs of a row action, or of a create, before running it.
 _Avoid_: Modal, drawer, form dialog

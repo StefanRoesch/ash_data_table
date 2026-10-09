@@ -308,6 +308,10 @@ defmodule Demo.Support.Vault.Folder do
     column :name
     column :description
     column :shouted
+
+    # row actions, which also run on the selected rows
+    action :file
+    action :merge
   end
 
   actions do
@@ -317,6 +321,20 @@ defmodule Demo.Support.Vault.Folder do
     update :update do
       accept [:name]
       atomic_upgrade_with :every
+    end
+
+    update :file do
+      accept []
+      atomic_upgrade_with :every
+      change set_attribute(:description, "filed")
+    end
+
+    # no two projects of an organization have the same name: the database
+    # refuses the second
+    update :merge do
+      accept []
+      atomic_upgrade_with :every
+      change set_attribute(:name, "Merged")
     end
 
     read :read do
