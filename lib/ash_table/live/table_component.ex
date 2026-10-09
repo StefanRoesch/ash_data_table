@@ -992,10 +992,10 @@ defmodule AshTable.Live.TableComponent do
         {:reply, %{ok: true},
          socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
 
-      {:error, %_{} = record, message} ->
+      {:error, %_{} = record, message, places} ->
         {:reply, %{ok: false},
          socket
-         |> put_failure(key, record, column.name, {typed, message})
+         |> put_failure(key, record, column.name, {typed, message, places})
          |> put_row(key, record)
          |> say(Text.t(:not_saved, column: column.label, message: message))}
 
@@ -1072,7 +1072,12 @@ defmodule AshTable.Live.TableComponent do
   defp given(panel), do: Map.get(panel, :given, %{})
 
   # The panel with what its form's errors say, by field.
-  defp errors(panel, model), do: %{panel | errors: Act.errors(panel.form, model, panel.inputs)}
+  # and which values of its arrays they are about
+  defp errors(panel, model) do
+    panel
+    |> Map.put(:errors, Act.errors(panel.form, model, panel.inputs))
+    |> Map.put(:places, Act.places(panel.form, panel.inputs))
+  end
 
   # Runs the action of a row's panel. The row has to be one of the page
   # still; its record is read again, as the person, before the action runs.
@@ -1834,6 +1839,7 @@ defmodule AshTable.Live.TableComponent do
             // are added and taken away here, as they are in a cell, by the
             // grid's hook. The server is told as it is of anything typed
             // into a field, by the entry the field sends before its values.
+            this.mark()
             const changed = list => {
               const own = list.parentElement.querySelector("input[data-own]")
               if (own) own.dispatchEvent(new Event("input", {bubbles: true}))
@@ -1871,6 +1877,20 @@ defmodule AshTable.Live.TableComponent do
           },
 
           cancel() { this.pushEventTo(this.el, "panel_cancel", {}) },
+
+          // The server says which values of an array the action refuses, on
+          // the group around the field's rows; the rows are this hook's, so
+          // their controls are marked here, after every answer.
+          updated() { this.mark() },
+
+          mark() {
+            if (!this.grid) return
+            for (const list of this.el.querySelectorAll("[data-list]")) {
+              let places = []
+              try { places = JSON.parse(list.parentElement.dataset.invalid || "[]") } catch (_error) { /* none */ }
+              this.grid.markValues(list, places)
+            }
+          },
 
           // Once the patch is done, and only while focus is nowhere: the
           // server may have sent it somewhere itself (to a new row). The
@@ -1923,7 +1943,7 @@ defmodule AshTable.Live.TableComponent do
 
         // What a cell says about itself besides its content, which a patch
         // does not bring to a cell that is being edited.
-        const KEPT = ["aria-readonly", "aria-invalid", "aria-describedby", "data-value", "data-saved"]
+        const KEPT = ["aria-readonly", "aria-invalid", "aria-describedby", "data-value", "data-saved", "data-invalid"]
 
         // keys that move through the options of a closed select
         const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]
@@ -2662,23 +2682,32 @@ defmodule AshTable.Live.TableComponent do
             cell.setAttribute("phx-update", "ignore")
             cell.replaceChildren(root)
             const boxes = () => Array.from(root.querySelectorAll("input[type=checkbox]"))
+            // What a multiple choice holds that is none of its choices: a
+            // value the record has and the enum no longer does. It has no
+            // box, so a person can neither see nor change it here, and it
+            // is sent with the ticked values, after them, as it is.
+            let boxless = []
             const load = values => {
-              if (choices) for (const box of boxes()) box.checked = values.includes(box.value)
-              else this.fill(root, values)
+              if (!choices) return this.fill(root, values)
+              const offered = boxes().map(box => box.value)
+              for (const box of boxes()) box.checked = values.includes(box.value)
+              boxless = values.filter(value => !offered.includes(value))
             }
             const read = () => choices
-              ? boxes().filter(box => box.checked).map(box => box.value)
+              ? boxes().filter(box => box.checked).map(box => box.value).concat(boxless)
               : this.values(root)
             // what the cell shows of a list until the server has answered:
             // the labels of the choices, and values as they were typed
             const shown = () => choices
-              ? boxes().filter(box => box.checked).map(box => box.parentElement.textContent.trim()).join(", ")
+              ? boxes().filter(box => box.checked).map(box => box.parentElement.textContent.trim()).concat(boxless).join(", ")
               : read().join(", ")
             // What "unchanged" means: the list the record has, as these
             // controls hold it. A failed cell shows what was typed instead.
             load(cell.dataset.saved !== undefined ? LIST(cell.dataset.saved) : current)
             const old = read()
             load(current)
+            // the values the action refused when this cell was saved last
+            if (!choices && cell.dataset.invalid !== undefined) this.markValues(root, LIST(cell.dataset.invalid))
             const ed = {cell, root, input: root, type: template.dataset.editor, saved, old, read, shown, list: true, confirm: template.dataset.confirm, lastKey: null}
             this.editing = ed
             cell.tabIndex = -1
@@ -2706,7 +2735,12 @@ defmodule AshTable.Live.TableComponent do
               if (e.target.closest("[data-add]")) this.addValue(root, "").focus()
               else if (e.target.closest("[data-remove]")) this.removeValue(root, e.target.closest("[data-item]"))
             })
-            root.addEventListener("input", e => { if (e.target.tagName === "TEXTAREA") this.fit(e.target) })
+            root.addEventListener("input", e => {
+              if (e.target.tagName === "TEXTAREA") this.fit(e.target)
+              // a value that was refused is another value now
+              e.target.removeAttribute("aria-invalid")
+            })
+            root.addEventListener("change", e => e.target.removeAttribute("aria-invalid"))
             const controls = Array.from(root.querySelectorAll("input,textarea"))
             // into the first value, or to the button that adds one when
             // there is none yet
@@ -2819,6 +2853,16 @@ defmodule AshTable.Live.TableComponent do
           fill(list, values) {
             for (const item of this.items(list)) item.remove()
             for (const value of values) this.addValue(list, value)
+          },
+
+          // Marks the controls of the values at `places`, counted from 0,
+          // as the ones an action refused, and no others.
+          markValues(list, places) {
+            this.items(list).forEach((item, index) => {
+              const control = this.controlIn(item)
+              if (places.includes(index)) control.setAttribute("aria-invalid", "true")
+              else control.removeAttribute("aria-invalid")
+            })
           },
 
           // A box sends nothing while it is not ticked: in the panel, what
@@ -3369,6 +3413,7 @@ defmodule AshTable.Live.TableComponent do
           field={@form[input.name]}
           default?={@panel.kind == :create or input.kind == :argument}
           errors={field_errors(@panel, input)}
+          places={field_places(@panel, input)}
         />
         <div class="mt-6 flex justify-end gap-2">
           <button type="button" id={"#{@id}-panel-cancel"} class="btn" data-cancel>
@@ -3395,6 +3440,14 @@ defmodule AshTable.Live.TableComponent do
       else: []
   end
 
+  # The values of an array field that the errors shown at it are about, by
+  # their places.
+  defp field_places(panel, input) do
+    if field_errors(panel, input) == [],
+      do: [],
+      else: panel |> Map.get(:places, %{}) |> Map.get(input.name, [])
+  end
+
   # One field of the action panel: its label, the control of its type, and
   # the action's errors about it. The controls are those of the cell
   # editors, at the size of a form's.
@@ -3402,6 +3455,7 @@ defmodule AshTable.Live.TableComponent do
   attr :input, :map, required: true
   attr :field, :any, required: true
   attr :errors, :list, required: true
+  attr :places, :list, default: []
   attr :default?, :boolean, required: true
 
   defp field(assigns) do
@@ -3444,6 +3498,7 @@ defmodule AshTable.Live.TableComponent do
         role="group"
         aria-labelledby={"#{@id}-label"}
         aria-describedby={@described}
+        data-invalid={@places != [] && held(@places)}
         class="flex flex-col gap-1"
       >
         <%!-- A form sends nothing for a list without values. This entry is
@@ -3466,9 +3521,20 @@ defmodule AshTable.Live.TableComponent do
           />
           {label}
         </label>
+        <%!-- What the field holds that is none of the enum's values, and so
+        has no box: sent with the ticked ones, after them, so that the
+        action is given back what a person could not see or change. --%>
+        <input
+          :for={value <- (@input.editor == :choices && boxless(@input, @value)) || []}
+          type="hidden"
+          name={@field.name <> "[]"}
+          value={value}
+        />
         <%!-- The rows are the hook's from here on: a patch leaves them alone,
         so that a value a person has added is not taken away by the answer
-        to an earlier change. --%>
+        to an earlier change. Which of them the action refuses is said on the
+        group around them (`data-invalid`: their places, counted from 0, as
+        JSON), and the hook marks their controls. --%>
         <.list
           :if={@input.editor == :list}
           id={"#{@id}-values"}
@@ -3597,6 +3663,12 @@ defmodule AshTable.Live.TableComponent do
 
   defp field_value(_input, nil, _default?), do: ""
   defp field_value(input, value, _default?), do: Format.input(input, value)
+
+  # The values of a multiple choice's field that are none of its choices.
+  defp boxless(%{values: values}, held) do
+    choices = Enum.map(values, fn {choice, _label} -> to_string(choice) end)
+    Enum.reject(held, &(&1 in choices))
+  end
 
   # What a nested table is given of the table it is in: who is asking, how
   # deep it is, and how the table around it authorizes. `authorize?` is passed
@@ -4167,7 +4239,10 @@ defmodule AshTable.Live.TableComponent do
   #     cell whose save failed, which shows what was typed;
   #   * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
   #     naming the action's message, and `data-saved`, the value the record
-  #     still has, which the hook compares with what is typed next.
+  #     still has, which the hook compares with what is typed next; and
+  #     where the action said which values of an array it refused,
+  #     `data-invalid`, their places counted from 0, as JSON. The hook marks
+  #     the controls of those values when the cell's editor is opened again.
   defp cell_attributes(false, _id, _column, _row), do: []
 
   defp cell_attributes(true, id, column, row) do
@@ -4177,13 +4252,13 @@ defmodule AshTable.Live.TableComponent do
       {false, _failure} ->
         [{"aria-readonly", "true"}]
 
-      {true, {typed, _message}} ->
+      {true, {typed, _message, places}} ->
         [
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
           {"data-value", held(typed)},
           {"data-saved", held(Format.input(column, value))}
-        ]
+        ] ++ if(places == [], do: [], else: [{"data-invalid", held(places)}])
 
       {true, nil} ->
         if own_value?(column),
@@ -4246,7 +4321,7 @@ defmodule AshTable.Live.TableComponent do
     value = value(column, row.record)
 
     case editable?(column, value) && row.failed[column.name] do
-      {typed, message} ->
+      {typed, message, _places} ->
         {:safe, shown} = typed |> typed(column) |> Phoenix.HTML.html_escape()
         {:safe, message} = failure_message("#{id}-error", message)
         {:safe, [shown, message]}

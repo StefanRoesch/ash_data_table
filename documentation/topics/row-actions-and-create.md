@@ -231,6 +231,10 @@ values, and "Checks", a multiple choice.
   field when the action says it.
 - A value left empty is left out, as in a cell: see
   [Inline editing](inline-editing.md#arrays).
+- A message about one value says which, as on a cell ("Tags 2: …"), and
+  the control of that value is marked while the message is shown.
+- A multiple choice keeps what the record holds that is none of its
+  choices: it is sent with the ticked values, after them, and not shown.
 - Nothing is sent to the action when a value is added or taken away, other
   than what typing in any field sends: the form as it stands, for the action
   to say what it makes of it.

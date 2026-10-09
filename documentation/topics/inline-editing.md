@@ -272,9 +272,16 @@ What is sent, and what becomes of it:
 - **The constraints are the action's.** `min_length`, `max_length`,
   `nil_items?` and the constraints of the values (`items`) are checked by
   Ash when the action runs. The table checks none of them, and shows what
-  the action says: "must have 5 or fewer items" for a sixth tag, "length
-  must be greater than or equal to 2" for a tag of one character. A message
-  about one value does not say which value it is about.
+  the action says: "must have 5 or fewer items" for a sixth tag, "Tags 2:
+  length must be greater than or equal to 2" for a second tag of one
+  character.
+- **A message about one value says which.** Ash says the place of the value
+  it refuses, and the table puts it in front of the message, as the value's
+  control is called in the editor: the column's label and the place,
+  counted from 1. When the cell is opened again, the control of that value
+  is marked (`aria-invalid`), until it is typed over. Of several values that
+  are none of the type, Ash names the first. A multiple choice names no
+  place, as its boxes have none: the message stands alone.
 - **The same values in another order are another value**, and are saved.
 
 An array column is never sorted or filtered by, whatever it holds: see
@@ -371,6 +378,7 @@ Nothing is saved, and the table shows what the action returned.
 | --- | --- |
 | The action rejects the value | The action's message: "length must be greater than or equal to 3" |
 | The value is not one of the type | Ash's message: "is invalid" |
+| One value of an array is refused | The value's name in the editor, then the message: "Tags 2: length must be greater than or equal to 2" |
 | A validation about another field fails | That field's column label, then the message: "Progress: must be 100 when the task is done" |
 | A policy refuses the action on this record | "You are not allowed to change this." |
 | The record was deleted, or the person can no longer read it | "This record is no longer available." |
@@ -439,9 +447,16 @@ only runs actions.
   a changed value stores that second; saving nothing leaves the microseconds.
 - **A number cell and a letter.** A key the number input does not take starts
   the edit without replacing the number.
-- **A multiple choice whose record holds a value the enum no longer has.**
-  The value has no box. It stays as long as the cell is not saved, and is
-  gone with the first save of that cell.
+- **A multiple choice whose record holds a value that is no longer one of
+  the choices.** The value is shown in the cell as it is, and has no box.
+  It is not lost: a save sends the ticked values, in the order the enum
+  declares them, and then every such value, in the order the record has
+  them, so that only what a person could see and change has changed. The
+  action then decides. Ash refuses a value that is not one of the type's,
+  so such a cell fails to save, with the action's message, until the record
+  is put right elsewhere. This can only happen to an array of `:atom`
+  limited by `one_of`: an `Ash.Type.Enum` fails the read of a value it does
+  not have, and the table says "The records could not be loaded."
 - **An array whose values may be nil** (`nil_items?: true`). A value left
   empty is left out before the action sees it, so nil is not given through
   the table unless the attribute also says `empty_values: []`.

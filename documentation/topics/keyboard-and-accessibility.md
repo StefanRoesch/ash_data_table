@@ -285,6 +285,7 @@ page and keeps the focus.
 | The result of a filter change | A polite live region: "12 results", or "Results updated" when the table has no total. |
 | A boolean cell | A mark that is hidden from assistive technology, and the text "Yes" or "No". |
 | An array cell | Its values as text, separated by commas. |
+| A value of an array that the action refused | The message names it as its control is named ("Tags 2: …"). In the list of values, in a cell that is opened again and in the action panel, that control has `aria-invalid`. |
 | The editor of an array, in a cell and in the action panel | A group (`role="group"`) named by the column. In a multiple choice each box is named by its choice; in a list each value's control is named by the column and its place ("Tags 2"), and its button "Remove Tags 2". The button that adds a value says "Add value". |
 | A cell hidden from the person by a field policy | The text "Not available", for screen readers only. |
 | The expander of a row, and the button of a line | `aria-expanded`. The expanders, and the heading of their column, are named "Related records"; a line is named by its relationship. The expanders are a column of the grid, counted in `aria-colcount` and `aria-colindex`. |

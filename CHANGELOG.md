@@ -74,7 +74,15 @@ declared in the resource and mounted with one line in the router.
   is not used for one. A component is told `cell_type: {:array, item}` for
   such a column, where it was told `:other`.
 - An error an action returns about one value of an array is shown, in a
-  cell and in the action panel.
+  cell and in the action panel, and says which value: "Tags 2: length must
+  be greater than or equal to 2". In the list of values the control of that
+  value is marked `aria-invalid`, when the cell is opened again and in the
+  panel.
+- A multiple choice keeps the values a record holds that are none of its
+  choices (possible for an array of `:atom` with `one_of`): they have no
+  box and are sent back after the ticked values, so a save changes only
+  what a person could see. Whether the list is accepted is the action's to
+  say.
 
 ### Authorization
 

@@ -152,10 +152,14 @@ defmodule DemoWeb.Tables.TaskArraysTest do
 
       assert failure(html, task.id, "tags") == %{
                shown: "api, x",
-               message: "length must be greater than or equal to 2"
+               message: "Tags 2: length must be greater than or equal to 2"
              }
 
-      assert announcement(html) == "Tags was not saved: length must be greater than or equal to 2"
+      assert announcement(html) ==
+               "Tags was not saved: Tags 2: length must be greater than or equal to 2"
+
+      # the cell says which value it was, for its editor to mark
+      assert attribute(html, cell(task.id, "tags"), "data-invalid") == ["[1]"]
 
       # and a task has five tags at most
       html = save(view, task.id, "tags", ~w(aa bb cc dd ee ff))
@@ -306,7 +310,7 @@ defmodule DemoWeb.Tables.TaskArraysTest do
         })
 
       assert Enum.find(panel(html).fields, &(&1.name == "tags")).errors ==
-               ["length must be greater than or equal to 2"]
+               ["Tags 1: length must be greater than or equal to 2"]
 
       refute Enum.any?(Ash.read!(Task, authorize?: false), &(&1.title == "Brand new"))
     end

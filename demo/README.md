@@ -244,8 +244,9 @@ Saves that fail, to try:
   the action's message on the cell, which keeps what was typed. Escape on the
   cell restores the saved value
 - a tag of one character, or a sixth tag: refused with the action's message
-  ("length must be greater than or equal to 2", "must have 5 or fewer
-  items"); the cell shows the list as it was typed, and opens with it again
+  ("Tags 2: length must be greater than or equal to 2", "must have 5 or
+  fewer items"); the cell shows the list as it was typed, and opens with it
+  again, the tag that was refused marked
 - move the progress of a task that is "Done" below 100: refused ("must be
   100 when the task is done"), the slider closes and the cell is marked
 - set the state of a task with progress below 100 to "Done": refused because

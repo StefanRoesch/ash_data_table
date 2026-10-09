@@ -171,7 +171,7 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
 
       assert failure(html, "specimen", specimen.id, "integers") == %{
                shown: "5, -1",
-               message: "must be greater than or equal to 0"
+               message: "Integers 2: must be greater than or equal to 0"
              }
 
       # `strings` takes five values at most

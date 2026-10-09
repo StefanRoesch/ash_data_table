@@ -8,6 +8,7 @@ defmodule Demo.Support.Lists do
 
   resources do
     resource Demo.Support.Lists.Roster
+    resource Demo.Support.Lists.Earlier
   end
 end
 
@@ -146,7 +147,7 @@ defmodule Demo.Support.Lists.Roster do
     end
 
     update :revise do
-      accept [:name, :words, :stages, :switches]
+      accept [:name, :words, :stages, :switches, :sizes]
       require_atomic? false
       argument :weights, {:array, :integer}, allow_nil?: false, constraints: [min_length: 1]
       change set_attribute(:trace, "revise")
@@ -204,5 +205,35 @@ defmodule Demo.Support.Lists.Roster do
     attribute :grid, {:array, {:array, :integer}}, allow_nil?: false, default: [], public?: true
     # which action changed the record last: private, never a column
     attribute :trace, :string
+  end
+end
+
+defmodule Demo.Support.Lists.Earlier do
+  @moduledoc """
+  The rosters as they were before `sizes` lost a value: the same records,
+  kept in the same table, with `:medium` still one of the sizes. A test
+  writes a roster through it that holds a size `Demo.Support.Lists.Roster`
+  no longer has.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Lists,
+    data_layer: Ash.DataLayer.Ets
+
+  ets do
+    table Demo.Support.Lists.Roster
+  end
+
+  actions do
+    defaults [:read, create: [:name, :sizes]]
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :name, :string, allow_nil?: false, public?: true
+
+    attribute :sizes, {:array, :atom} do
+      public? true
+      constraints items: [one_of: [:small, :medium, :extra_large]]
+    end
   end
 end

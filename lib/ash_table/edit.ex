@@ -21,13 +21,16 @@ defmodule AshTable.Edit do
     * `{:ok, record}` - saved, or left as it was because the value is the one
       the record already has. The record is as the action returned it, with
       the table's calculations and aggregates loaded;
-    * `{:error, record, message}` - not saved. The record is as it is stored;
+    * `{:error, record, message, places}` - not saved. The record is as it
+      is stored. `places` says which values of an array the action's errors
+      are about, counted from 0; empty for every other column;
     * `{:error, nil, message}` - not saved, and the record can no longer be
       read by this person.
   """
   @type result ::
           {:ok, Ash.Resource.record()}
-          | {:error, Ash.Resource.record() | nil, String.t()}
+          | {:error, Ash.Resource.record(), String.t(), [non_neg_integer]}
+          | {:error, nil, String.t()}
 
   @doc """
   Saves `typed`, what a cell's editor holds, as the value of `column` on the
@@ -82,9 +85,9 @@ defmodule AshTable.Edit do
   end
 
   # The row is shown again, with the cell marked: from the record as it is.
-  defp failed(model, record, message, opts) do
+  defp failed(model, record, message, opts, places \\ []) do
     case Record.load(model, record, opts) do
-      {:ok, record} -> {:error, record, message}
+      {:ok, record} -> {:error, record, message, places}
       :error -> {:error, nil, message}
     end
   end
@@ -107,7 +110,7 @@ defmodule AshTable.Edit do
         end
 
       {:error, form} ->
-        failed(model, record, message(form, column, model), opts)
+        failed(model, record, message(form, column, model), opts, Errors.places(form, column))
     end
   end
 

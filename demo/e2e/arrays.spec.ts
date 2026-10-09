@@ -420,9 +420,10 @@ test.describe("an array of text: a save the action refuses", () => {
     await expect(tags).toBeFocused()
     await expect(tags).toContainText("api, customer, quick-win, x")
     await expect(tasks.failure(tags)).toBeVisible()
-    await expect(tasks.failure(tags)).toHaveText(TOO_SHORT)
-    await expect(tags).toHaveAccessibleDescription(TOO_SHORT)
-    await expect(tasks.status).toContainText(`Tags was not saved: ${TOO_SHORT}`)
+    // the message says which value: by the name its control has in the editor
+    await expect(tasks.failure(tags)).toHaveText(`Tags 4: ${TOO_SHORT}`)
+    await expect(tags).toHaveAccessibleDescription(`Tags 4: ${TOO_SHORT}`)
+    await expect(tasks.status).toContainText(`Tags was not saved: Tags 4: ${TOO_SHORT}`)
     await expectNoAxeViolations(page)
 
     // nothing was saved
@@ -440,12 +441,25 @@ test.describe("an array of text: a save the action refuses", () => {
 
     await expect(values(tags)).toHaveCount(4)
     await expect(values(tags).nth(3)).toHaveValue("x")
+    // the control of the value the action refused is marked, and no other
+    await expect(values(tags).nth(3)).toHaveAttribute("aria-invalid", "true")
+    for (const index of [0, 1, 2]) await expect(values(tags).nth(index)).not.toHaveAttribute("aria-invalid")
     await expectNoAxeViolations(page)
 
-    await values(tags).nth(3).fill("xl")
+    // taking another value away leaves the mark on its value, under its new name
+    await tags.getByRole("button", { name: "Remove Tags 1" }).click()
+    const refused = tags.getByRole("textbox", { name: "Tags 3", exact: true })
+    await expect(refused).toHaveAttribute("aria-invalid", "true")
+    await expect(values(tags).nth(0)).not.toHaveAttribute("aria-invalid")
+    await expect(values(tags).nth(1)).not.toHaveAttribute("aria-invalid")
+
+    // typed over, it is another value, which nobody has refused
+    await refused.fill("xl")
+    await expect(refused).not.toHaveAttribute("aria-invalid")
     await tasks.saves(tags, () => tasks.press("Enter"))
-    await expect(tags).toHaveText("api, customer, quick-win, xl")
+    await expect(tags).toHaveText("customer, quick-win, xl")
     await expect(tags).not.toHaveAttribute("aria-invalid")
+    await expect(tags).not.toHaveAttribute("data-invalid")
   })
 
   test("Escape on the cell gives the edit up; so does going back to the values the task has", async ({
@@ -633,6 +647,61 @@ test.describe("an array of enum values: multiple choice", () => {
   })
 })
 
+// Only an array of atoms limited by `one_of` can hold a value its choices
+// no longer have and still be read, and the demo's tables have none (the
+// library's tests of it are `array_table_test.exs`). What the editor does
+// with such a value is the hook's, so it is told of one here: by the cell,
+// as the server would tell it.
+test.describe("a multiple choice whose cell holds a value that is none of its choices", () => {
+  test.beforeEach(async ({ tasks }) => {
+    await tasks.cell(FIRST, "checks").evaluate((cell) => {
+      cell.dataset.value = JSON.stringify(["legacy", "reviewed", "released"])
+    })
+  })
+
+  test("has no box for it, and sends it back after the ticked values: only what a person could change has changed", async ({
+    tasks,
+    frames,
+  }) => {
+    const checks = tasks.cell(FIRST, "checks")
+    await checks.focus()
+    await tasks.press("Enter")
+    expect(await ticks(checks)).toEqual(["x Reviewed", "  Tested", "  Documented", "x Released"])
+    await expect(checks.locator("input")).toHaveCount(4)
+
+    await tasks.press("ArrowDown")
+    await tasks.page.keyboard.press("Space")
+    await frames.clear()
+    await tasks.saves(checks, () => tasks.press("Enter"))
+
+    const [, , , , payload] = JSON.parse((await frames.all())[0])
+    expect(payload.value.value).toEqual(["reviewed", "tested", "released", "legacy"])
+
+    // whether the list is taken is the action's to say: this enum has no such value
+    await expect(checks).toHaveAttribute("aria-invalid", "true")
+    await expect(checks).toContainText("Reviewed, Tested, Released, legacy")
+    await expect(tasks.failure(checks)).toHaveText("is invalid")
+
+    // opened again, it is still held, and still has no box
+    await tasks.press("Enter")
+    expect(await ticks(checks)).toEqual(["x Reviewed", "x Tested", "  Documented", "x Released"])
+    await tasks.press("Escape")
+  })
+
+  test("saves nothing when the ticks end where they began", async ({ tasks, frames }) => {
+    const checks = tasks.cell(FIRST, "checks")
+    await checks.focus()
+    await frames.clear()
+    await tasks.press("Enter")
+    await tasks.page.keyboard.press("Space")
+    await tasks.page.keyboard.press("Space")
+    await tasks.press("Enter")
+
+    await expect(checks).toBeFocused()
+    expect(await frames.all()).toEqual([])
+  })
+})
+
 test.describe("the member, on a task that is not theirs", () => {
   test.use({ actor: "member" })
 
@@ -728,7 +797,7 @@ test.describe("an array of numbers, on /specimens", () => {
 
     await expect(integers).toHaveAttribute("aria-invalid", "true")
     await expect(integers).toContainText("-5")
-    await expect(integers).toHaveAccessibleDescription("must be greater than or equal to 0")
+    await expect(integers).toHaveAccessibleDescription("Integers 1: must be greater than or equal to 0")
     await page.mouse.move(5, 5)
     await expectNoAxeViolations(page)
 
@@ -902,6 +971,7 @@ test.describe("in the action panel: New task", () => {
     tasks,
   }) => {
     const tags = tasks.field("tags")
+    const first = tags.getByRole("textbox", { name: "Tags 1", exact: true })
 
     await tasks.field("title").fill("Made with arrays")
     await tasks.field("project_id").fill(SEED.project.mobileApp)
@@ -909,19 +979,32 @@ test.describe("in the action panel: New task", () => {
     await page.keyboard.type("x")
     await tasks.panelSettled()
 
-    await expect(tasks.fieldError("tags")).toHaveText(TOO_SHORT)
-    await expect(tags).toHaveAccessibleDescription(TOO_SHORT)
+    await expect(tasks.fieldError("tags")).toHaveText(`Tags 1: ${TOO_SHORT}`)
+    await expect(tags).toHaveAccessibleDescription(`Tags 1: ${TOO_SHORT}`)
+    await expect(first).toHaveAttribute("aria-invalid", "true")
     await expectNoAxeViolations(page)
+
+    // a value added after it is not marked, and the first stays so
+    await tags.getByRole("button", { name: "Add value" }).click()
+    await page.keyboard.type("fine")
+    await tasks.panelSettled()
+    await expect(tasks.fieldError("tags")).toHaveText(`Tags 1: ${TOO_SHORT}`)
+    await expect(tags.getByRole("textbox", { name: "Tags 2", exact: true })).not.toHaveAttribute("aria-invalid")
+    await expect(first).toHaveAttribute("aria-invalid", "true")
+    await tags.getByRole("button", { name: "Remove Tags 2" }).click()
+    await tasks.panelSettled()
 
     await tasks.panelSubmit.click()
     await tasks.panelSettled()
     await expect(tasks.panel).toBeVisible()
-    await expect(tasks.fieldError("tags")).toHaveText(TOO_SHORT)
-    await expect(tags.getByRole("textbox", { name: "Tags 1", exact: true })).toHaveValue("x")
+    await expect(tasks.fieldError("tags")).toHaveText(`Tags 1: ${TOO_SHORT}`)
+    await expect(first).toHaveValue("x")
+    await expect(first).toHaveAttribute("aria-invalid", "true")
 
-    await tags.getByRole("textbox", { name: "Tags 1", exact: true }).fill("xl")
+    await first.fill("xl")
     await tasks.panelSettled()
     await expect(tasks.fieldError("tags")).toHaveCount(0)
+    await expect(first).not.toHaveAttribute("aria-invalid")
   })
 
   test("accessibility: the panel with values added and boxes ticked", async ({ page, tasks }) => {

@@ -221,13 +221,12 @@ defmodule AshTable.Act do
   """
   @spec errors(form, Model.t(), [Model.Input.t()]) :: %{optional(atom | nil) => [String.t()]}
   def errors(form, %Model{} = model, inputs) do
-    names = Enum.map(inputs, & &1.name)
-
     at_fields =
-      for {field, {message, vars}} <- Errors.at_fields(form) do
-        if field in names,
-          do: {field, Text.error({message, vars})},
-          else: {nil, Errors.at_field(model, nil, field, {message, vars})}
+      for {field, error} <- Errors.at_fields(form) do
+        case Enum.find(inputs, &(&1.name == field)) do
+          nil -> {nil, Errors.at_field(model, nil, field, error)}
+          input -> {field, Errors.at_value(input, error)}
+        end
       end
 
     without_field =
@@ -235,6 +234,17 @@ defmodule AshTable.Act do
 
     grouped = Enum.group_by(at_fields ++ without_field, &elem(&1, 0), &elem(&1, 1))
     Map.new(grouped, fn {field, messages} -> {field, Enum.uniq(messages)} end)
+  end
+
+  @doc """
+  The values of the arrays among `inputs` that a form's errors are about:
+  by input, their places, counted from 0. Only the inputs that have any.
+  """
+  @spec places(form, [Model.Input.t()]) :: %{optional(atom) => [non_neg_integer]}
+  def places(form, inputs) do
+    for input <- inputs, places = Errors.places(form, input), places != [], into: %{} do
+      {input.name, places}
+    end
   end
 
   @doc "Everything a form's errors say, as the messages of an action that failed."
