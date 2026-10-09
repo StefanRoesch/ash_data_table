@@ -66,6 +66,25 @@ declared in the resource and mounted with one line in the router.
   hidden on some records show "Not available", and a read refused outright
   answers 404, or a message with `on_forbidden :message`.
 - An error names a field only when the person has a column for it.
+- Every action a table runs is `public?`, however the table came by it. A
+  private action is not meant for interfaces, and the policy Ash documents
+  for one lets everybody run it. Reported when the resource is compiled,
+  and refused when the table is built: a private primary read action that
+  the table falls back to; a private read action behind a relationship the
+  block declares (the relationship's own, else that of the destination's
+  table; that of the join resource of a many-to-many; that of a resource a
+  `through` path passes), behind a reference cell (the relationship's own,
+  else the destination's primary one), or behind an aggregate column or a
+  calculation column that holds an aggregate (along the aggregate's whole
+  path); and a private primary read action under a table that changes
+  records, since Ash loads what a create, an update or a destroy action
+  returns through it. A relationship of the default set that leads to a
+  private read action is not offered.
+- The record of a row is read again through the table's read action before
+  a cell is saved or a row action runs, and the row a nested table belongs
+  to through the read action of the table that shows it; the row a full
+  view is limited to through the read action of that row's own table. A key
+  reaches no record that the table would not show.
 
 ### Accessibility and keyboard
 
@@ -338,6 +357,36 @@ declared in the resource and mounted with one line in the router.
   as the cells of choices and booleans do.
 - A double click beside the control of an editor that is open no longer
   opens the editor a second time.
+
+### Changed since custom components were added
+
+- **A table that ran a private action is now refused.** A resource is
+  affected when an action is declared `public? false` and a table runs it
+  without the block naming it: as the primary read action of a table whose
+  block names no `read_action`; as a read action of a relationship (its
+  own, that of its destination's table, that of a many-to-many's join
+  resource, that of a resource on a `through` path), of a reference cell,
+  or of an aggregate column or a calculation column that holds an
+  aggregate; or as the primary read action of a table that has editable
+  columns, row actions or a create action. Each is reported when the
+  resource is compiled. A relationship of the default set that is read
+  through a private action is no longer offered, with nothing reported.
+- **The record of a row is read again through the table's read action**, no
+  longer through the primary one, and the row of a nested table through the
+  read action of the table that shows it. Where the two actions return different
+  records, a row that the table shows and the primary read action does not
+  return can now be saved and acted on, and one that the table does not
+  show can no longer be reached by a key in an address. Aggregates of a
+  page, and everything a nested table's columns show besides attributes,
+  are loaded through the table's read action as well.
+- A nested table whose relationship names an action that is no read action
+  of its resource is refused. It was read through the table's own read
+  action in its place.
+- "New …" on a relationship line whose row is gone makes the nested table
+  read again, which shows "This record is no longer available."; it was only
+  announced.
+- The create button in a table's header is not rendered beside a read that
+  failed or was refused.
 
 ### Tooling
 

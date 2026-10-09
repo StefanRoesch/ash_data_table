@@ -147,6 +147,121 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "every read a table runs" do
+    alias AshTable.Model.Relationship
+    alias AshTable.Test.Private.{Folder, Minute, Paper}
+
+    defp offered(model, name), do: Enum.find(model.relationships, &(&1.name == name))
+
+    test "of its own records goes through the read action the block names, whatever the primary one is" do
+      # the primary read action of the folders and of the minutes is private
+      assert Model.build(Folder).read_action == :open
+      assert Model.build(Minute).read_action == :open
+    end
+
+    test "of related records goes through the relationship's read action, else the one of the destination's table" do
+      model = Model.build(Folder)
+
+      # not `all_papers` and `all_minutes`, whose own read actions are private,
+      # and not `tags`, which Ash joins through the taggings' private one
+      assert Enum.map(model.relationships, &{&1.name, &1.read_action}) == [
+               papers: :read,
+               minutes: :open,
+               listed_minutes: :listed,
+               open_tags: :read
+             ]
+
+      assert Model.build(Minute, via: offered(model, :minutes)).read_action == :open
+      assert Model.build(Minute, via: offered(model, :listed_minutes)).read_action == :listed
+    end
+
+    test "of the row a nested table belongs to goes through the read action of the table that shows the row" do
+      model = Model.build(Folder)
+
+      assert Enum.map(model.relationships, &{&1.name, &1.source, &1.source_read_action}) == [
+               {:papers, Folder, :open},
+               {:minutes, Folder, :open},
+               {:listed_minutes, Folder, :open},
+               {:open_tags, Folder, :open}
+             ]
+
+      # a table of minutes nested under a folder shows its rows through the
+      # action its relationship names, and reads them again through that one
+      nested = Model.build(Minute, via: offered(model, :listed_minutes))
+
+      assert Enum.map(nested.relationships, &{&1.name, &1.source, &1.source_read_action}) == [
+               {:folder, Minute, :listed}
+             ]
+
+      # and through the one of its own table where the relationship names none
+      nested = Model.build(Minute, via: offered(model, :minutes))
+
+      assert Enum.map(nested.relationships, &{&1.name, &1.source, &1.source_read_action}) == [
+               {:folder, Minute, :open}
+             ]
+
+      assert offered(Model.build(AshTable.Test.Relating.Book), :notes).source_read_action ==
+               :read
+    end
+
+    test "of a reference cell's related record goes through the relationship's read action, as Ash loads it" do
+      folder = Enum.find(Model.build(Minute).columns, &(&1.name == :folder))
+
+      assert folder.reference == %{
+               relationship: :folder,
+               destination: Folder,
+               label_field: :name,
+               read_action: :open
+             }
+    end
+
+    defp via(overrides) do
+      struct!(
+        %Relationship{
+          name: :papers,
+          label: "Papers",
+          kind: :has_many,
+          cardinality: :many,
+          source: Folder,
+          source_read_action: :open,
+          destination: Paper,
+          read_action: :read
+        },
+        overrides
+      )
+    end
+
+    test "is refused for a nested table whose relationship names a private read action" do
+      assert %Model{read_action: :read} = Model.build(Paper, via: via([]))
+
+      assert_raise ArgumentError,
+                   "cannot build the nested table of AshTable.Test.Private.Paper: the relationship `all_papers` it is reached through reads through `internal`, which is not public. " <>
+                     "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies.",
+                   fn ->
+                     Model.build(Paper, via: via(name: :all_papers, read_action: :internal))
+                   end
+    end
+
+    test "is refused for a nested table whose relationship names no read action of the resource, and never falls back to another" do
+      for name <- [:redact, :nowhere] do
+        assert_raise ArgumentError,
+                     "cannot build the nested table of AshTable.Test.Private.Paper: the relationship `papers` it is reached through reads through `#{name}`, which is no read action of AshTable.Test.Private.Paper.",
+                     fn -> Model.build(Paper, via: via(read_action: name)) end
+      end
+    end
+
+    test "is refused for a nested table whose row would be read again through a private action" do
+      assert_raise ArgumentError,
+                   "cannot build the nested table of AshTable.Test.Private.Paper: the row it belongs to would be read through `read` of AshTable.Test.Private.Folder, which is not public. " <>
+                     "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies.",
+                   fn -> Model.build(Paper, via: via(source_read_action: :read)) end
+
+      assert_raise ArgumentError,
+                   "cannot build the nested table of AshTable.Test.Private.Paper: the row it belongs to would be read through `update` of AshTable.Test.Private.Folder, which is no read action of AshTable.Test.Private.Folder.",
+                   fn -> Model.build(Paper, via: via(source_read_action: :update)) end
+    end
+  end
+
   describe "pagination" do
     alias AshTable.Model.Pagination
 
@@ -1098,6 +1213,7 @@ defmodule AshTable.ModelTest do
         kind: :belongs_to,
         cardinality: :one,
         source: Person,
+        source_read_action: :read,
         destination: Letter,
         read_action: :read
       }

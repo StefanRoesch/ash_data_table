@@ -1495,6 +1495,82 @@ defmodule AshTable.TableBlockTest do
                    "cannot build the table of AshTable.TableBlockTest.NoPrimaryReadAction: no usable read action (:no_primary_read_action)",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.NoPrimaryReadAction) end
     end
+
+    test "is required when the primary read action is not public: a table runs no private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :read_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivatePrimaryRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              authorizers: [Ash.Policy.Authorizer],
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              read :read do
+                primary? true
+                public? false
+              end
+
+              read :open
+            end
+
+            policies do
+              bypass private_action?() do
+                authorize_if always()
+              end
+
+              policy action(:open) do
+                authorize_if actor_present()
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The primary read action `read` is not public, and the table names no `read_action`, so it would read through it. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `read` public, or name a public read action with `read_action`."
+
+      # compiled despite the finding, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.PrivatePrimaryRead: its read action cannot be used. " <>
+                     error.message,
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivatePrimaryRead) end
+    end
+
+    test "names a public read action beside a private primary one, and nothing is reported" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.PublicReadBesidePrivatePrimary do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            read :read do
+              primary? true
+              public? false
+            end
+
+            read :open
+          end
+
+          table do
+            read_action :open
+          end
+        end
+      end
+
+      assert AshTable.Model.build(AshTable.TableBlockTest.PublicReadBesidePrivatePrimary).read_action ==
+               :open
+    end
   end
 
   describe "paginate_with" do
@@ -1827,6 +1903,286 @@ defmodule AshTable.TableBlockTest do
       assert_raise ArgumentError,
                    "cannot build the table of AshTable.TableBlockTest.RelationshipTwice: it declares the relationship `author` more than once",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.RelationshipTwice) end
+    end
+
+    test "naming a relationship whose own read action is not public is an error: a table runs no private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :all_papers]} do
+          defmodule Elixir.AshTable.TableBlockTest.RelationshipThroughPrivateRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :papers, AshTable.Test.Private.Paper,
+                destination_attribute: :folder_id,
+                public?: true
+
+              has_many :all_papers, AshTable.Test.Private.Paper do
+                destination_attribute :folder_id
+                read_action :internal
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :papers
+              relationship :all_papers
+            end
+          end
+        end
+
+      assert error.message ==
+               "`all_papers` points to AshTable.Test.Private.Paper, whose read action `internal`, the relationship's own `read_action`, is not public. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `internal` public, give the relationship a public `read_action`, or do not offer `all_papers` in this table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.RelationshipThroughPrivateRead: its relationship `all_papers` cannot be offered. " <>
+                     error.message,
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.RelationshipThroughPrivateRead)
+                   end
+    end
+
+    test "naming a relationship whose destination's table reads through a private action is an error" do
+      # the destination's own table is refused for it, and says so itself
+      dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.TableOverPrivateRead do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :folder_id, :uuid, public?: true
+          end
+
+          actions do
+            read :read do
+              primary? true
+              public? false
+            end
+          end
+        end
+      end
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :entries]} do
+          defmodule Elixir.AshTable.TableBlockTest.RelationshipToTableOverPrivateRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :entries, AshTable.TableBlockTest.TableOverPrivateRead,
+                destination_attribute: :folder_id,
+                public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :entries
+            end
+          end
+        end
+
+      assert error.message ==
+               "`entries` points to AshTable.TableBlockTest.TableOverPrivateRead, whose read action `read`, the one behind its table, is not public. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `read` public, name a public `read_action` in the `table` block of AshTable.TableBlockTest.TableOverPrivateRead or on the relationship, or do not offer `entries` in this table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.RelationshipToTableOverPrivateRead: its relationship `entries` cannot be offered. " <>
+                     error.message,
+                   fn ->
+                     AshTable.Model.build(
+                       AshTable.TableBlockTest.RelationshipToTableOverPrivateRead
+                     )
+                   end
+    end
+
+    test "naming a many-to-many that Ash joins through a private read action of the join resource is an error" do
+      [{AshTable.TableBlockTest.JoinedThroughPrivateRead, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.JoinedThroughPrivateRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :taggings, AshTable.Test.Private.Tagging, destination_attribute: :folder_id
+
+              has_many :all_taggings, AshTable.Test.Private.Tagging do
+                destination_attribute :folder_id
+                read_action :read
+              end
+
+              has_many :open_taggings, AshTable.Test.Private.Tagging do
+                destination_attribute :folder_id
+                read_action :open
+              end
+
+              # the join relationship names no read action: the taggings'
+              # primary one, which is private
+              many_to_many :tags, AshTable.Test.Private.Tag do
+                through AshTable.Test.Private.Tagging
+                join_relationship :taggings
+                source_attribute_on_join_resource :folder_id
+                destination_attribute_on_join_resource :tag_id
+                public? true
+              end
+
+              # the join relationship names the private one
+              many_to_many :all_tags, AshTable.Test.Private.Tag do
+                through AshTable.Test.Private.Tagging
+                join_relationship :all_taggings
+                source_attribute_on_join_resource :folder_id
+                destination_attribute_on_join_resource :tag_id
+                public? true
+              end
+
+              # the join relationship names a public one
+              many_to_many :open_tags, AshTable.Test.Private.Tag do
+                through AshTable.Test.Private.Tagging
+                join_relationship :open_taggings
+                source_attribute_on_join_resource :folder_id
+                destination_attribute_on_join_resource :tag_id
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              relationship :open_tags
+              relationship :tags
+              relationship :all_tags
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :relationship, :tags],
+                "`tags` is read through the join resource AshTable.Test.Private.Tagging, whose read action `read`, its primary read action, is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `read` public, give the join relationship `taggings` a public `read_action`, or do not offer `tags` in this table."},
+               {[:table, :relationship, :all_tags],
+                "`all_tags` is read through the join resource AshTable.Test.Private.Tagging, whose read action `read`, the `read_action` of the join relationship `all_taggings`, is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `read` public, give `all_taggings` a public `read_action`, or do not offer `all_tags` in this table."}
+             ]
+
+      {_path, message} = errors |> Enum.map(&{&1.path, &1.message}) |> hd()
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.JoinedThroughPrivateRead: its relationship `tags` cannot be offered. " <>
+                     message,
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.JoinedThroughPrivateRead)
+                   end
+    end
+
+    test "a relationship through a private read action is quietly not offered by default, as one without a table is not" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.DefaultRelationshipsPastPrivateReads do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          relationships do
+            has_many :papers, AshTable.Test.Private.Paper,
+              destination_attribute: :folder_id,
+              public?: true
+
+            # its own read action is private
+            has_many :all_papers, AshTable.Test.Private.Paper do
+              destination_attribute :folder_id
+              read_action :internal
+              public? true
+            end
+
+            # the table of its destination names a public read action
+            has_many :minutes, AshTable.Test.Private.Minute,
+              destination_attribute: :folder_id,
+              public?: true
+
+            # and its own read action is the destination's private primary one
+            has_many :all_minutes, AshTable.Test.Private.Minute do
+              destination_attribute :folder_id
+              read_action :read
+              public? true
+            end
+
+            # joined through the taggings' private primary read action
+            has_many :taggings, AshTable.Test.Private.Tagging, destination_attribute: :folder_id
+
+            many_to_many :tags, AshTable.Test.Private.Tag do
+              through AshTable.Test.Private.Tagging
+              join_relationship :taggings
+              source_attribute_on_join_resource :folder_id
+              destination_attribute_on_join_resource :tag_id
+              public? true
+            end
+
+            # and through their public one
+            has_many :open_taggings, AshTable.Test.Private.Tagging do
+              destination_attribute :folder_id
+              read_action :open
+            end
+
+            many_to_many :open_tags, AshTable.Test.Private.Tag do
+              through AshTable.Test.Private.Tagging
+              join_relationship :open_taggings
+              source_attribute_on_join_resource :folder_id
+              destination_attribute_on_join_resource :tag_id
+              public? true
+            end
+
+            # no table
+            has_many :shelves, AshTable.Test.Relating.Shelf,
+              destination_attribute: :id,
+              public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+        end
+      end
+
+      model = AshTable.Model.build(AshTable.TableBlockTest.DefaultRelationshipsPastPrivateReads)
+
+      assert Enum.map(model.relationships, &{&1.name, &1.read_action}) == [
+               papers: :read,
+               minutes: :open,
+               open_tags: :read
+             ]
     end
 
     test "a relationship to the resource itself, and one in a cycle, compile" do
@@ -2347,6 +2703,98 @@ defmodule AshTable.TableBlockTest do
 
       assert error.message ==
                "The destination of `ledger`, AshTable.Test.Referencing.Ledger, has no primary read action, and the relationship names no `read_action`. The related record of a column is read as Ash loads the relationship, which needs one of the two."
+    end
+
+    test "naming a belongs-to whose own read action is not public is an error: a table runs no private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :paper]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceThroughPrivateRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :paper, AshTable.Test.Private.Paper do
+                read_action :internal
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :paper
+            end
+          end
+        end
+
+      assert error.message ==
+               "`paper` points to AshTable.Test.Private.Paper, whose read action `internal`, the relationship's own `read_action`, is not public. " <>
+                 "The related record of a column is read as Ash loads the relationship. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `internal` public, give the relationship a public `read_action`, or do not show `paper` as a column."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceThroughPrivateRead: its column `paper` cannot be shown. " <>
+                     error.message,
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.ReferenceThroughPrivateRead)
+                   end
+    end
+
+    test "naming a belongs-to whose destination's primary read action is not public is an error, whatever its table reads through" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :minute]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceThroughPrivatePrimaryRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              belongs_to :minute, AshTable.Test.Private.Minute, public?: true
+
+              # this one says which action reads it, and names a public one
+              belongs_to :open_minute, AshTable.Test.Private.Minute do
+                read_action :open
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :minute
+              column :open_minute
+            end
+          end
+        end
+
+      assert error.message ==
+               "`minute` points to AshTable.Test.Private.Minute, whose read action `read`, its primary read action, is not public. " <>
+                 "The related record of a column is read as Ash loads the relationship. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `read` public, give the relationship a public `read_action`, or do not show `minute` as a column."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ReferenceThroughPrivatePrimaryRead: its column `minute` cannot be shown. " <>
+                     error.message,
+                   fn ->
+                     AshTable.Model.build(
+                       AshTable.TableBlockTest.ReferenceThroughPrivatePrimaryRead
+                     )
+                   end
     end
 
     test "`sortable? true` is an error: a table does not sort by a related record's field" do
@@ -2875,6 +3323,351 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert messages(warnings, AshTable.TableBlockTest.ExposedButNoColumn) == []
+    end
+  end
+
+  describe "an aggregate or a calculation column that Ash computes through a private action" do
+    test "is an error for the related resource's private primary read action: a table runs no private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :minute_count]} do
+          defmodule Elixir.AshTable.TableBlockTest.AggregateThroughPrivatePrimaryRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :minutes, AshTable.Test.Private.Minute, destination_attribute: :folder_id
+            end
+
+            aggregates do
+              count :minute_count, :minutes, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :minute_count
+            end
+          end
+        end
+
+      assert error.message ==
+               "The aggregate `minute_count` reads AshTable.Test.Private.Minute through `read`, its primary read action, which is not public. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `read` public, give the aggregate a public `read_action`, or do not show `minute_count` as a column."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.AggregateThroughPrivatePrimaryRead: its column `minute_count` cannot be shown. " <>
+                     error.message,
+                   fn ->
+                     AshTable.Model.build(
+                       AshTable.TableBlockTest.AggregateThroughPrivatePrimaryRead
+                     )
+                   end
+    end
+
+    test "is an error for the aggregate's own private read action, and for that of the relationship it counts" do
+      [{AshTable.TableBlockTest.AggregateThroughPrivateRead, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.AggregateThroughPrivateRead do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :papers, AshTable.Test.Private.Paper, destination_attribute: :folder_id
+
+              has_many :all_papers, AshTable.Test.Private.Paper do
+                destination_attribute :folder_id
+                read_action :internal
+              end
+            end
+
+            aggregates do
+              count :every_paper, :papers do
+                read_action :internal
+                public? true
+              end
+
+              # the aggregate's own action is public; the relationship's
+              # filters what it counts
+              count :paper_total, :all_papers do
+                read_action :read
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :every_paper
+              column :paper_total
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :column, :every_paper],
+                "The aggregate `every_paper` reads AshTable.Test.Private.Paper through `internal`, the aggregate's own `read_action`, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `internal` public, give the aggregate a public `read_action`, or do not show `every_paper` as a column."},
+               {[:table, :column, :paper_total],
+                "The aggregate `paper_total` reads AshTable.Test.Private.Paper through `internal`, the `read_action` of the relationship `all_papers`, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `internal` public, give the relationship a public `read_action`, or do not show `paper_total` as a column."}
+             ]
+    end
+
+    test "is an error for a private read action anywhere on the aggregate's path, and for one Ash joins through" do
+      [{AshTable.TableBlockTest.AggregateAlongPrivateReads, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.AggregateAlongPrivateReads do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              # the folders' primary read action is private
+              has_many :folders, AshTable.Test.Private.Folder, destination_attribute: :id
+
+              has_many :open_folders, AshTable.Test.Private.Folder do
+                destination_attribute :id
+                read_action :open
+              end
+
+              has_many :taggings, AshTable.Test.Private.Tagging, destination_attribute: :folder_id
+
+              many_to_many :tags, AshTable.Test.Private.Tag do
+                through AshTable.Test.Private.Tagging
+                join_relationship :taggings
+                source_attribute_on_join_resource :folder_id
+                destination_attribute_on_join_resource :tag_id
+              end
+            end
+
+            aggregates do
+              # the papers are read through their public primary read action;
+              # the folders in between through their private one
+              count :paper_count, [:folders, :papers], public?: true
+              count :open_paper_count, [:open_folders, :papers], public?: true
+              count :tag_count, :tags, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :paper_count
+              column :open_paper_count
+              column :tag_count
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :column, :paper_count],
+                "The aggregate `paper_count` reads AshTable.Test.Private.Folder through `read`, its primary read action, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `read` public, give the relationship `folders` a public `read_action`, or do not show `paper_count` as a column."},
+               {[:table, :column, :tag_count],
+                "The aggregate `tag_count` reads AshTable.Test.Private.Tagging through `read`, its primary read action, as the join resource of `tags`, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `read` public, give the join relationship `taggings` a public `read_action`, or do not show `tag_count` as a column."}
+             ]
+
+      {_path, message} = errors |> Enum.map(&{&1.path, &1.message}) |> hd()
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.AggregateAlongPrivateReads: its column `paper_count` cannot be shown. " <>
+                     message,
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.AggregateAlongPrivateReads)
+                   end
+    end
+
+    test "is an error for a calculation whose expression holds such an aggregate: by name, written out, or in a calculation it references" do
+      [{AshTable.TableBlockTest.CalculationOverPrivateReads, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.CalculationOverPrivateReads do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :papers, AshTable.Test.Private.Paper, destination_attribute: :folder_id
+
+              has_many :all_papers, AshTable.Test.Private.Paper do
+                destination_attribute :folder_id
+                read_action :internal
+              end
+            end
+
+            aggregates do
+              # for the code of the application: no column, and private
+              count :every_paper, :papers do
+                read_action :internal
+              end
+
+              count :paper_count, :papers
+            end
+
+            calculations do
+              calculate :has_papers, :boolean, expr(every_paper > 0), public?: true
+              calculate :papers_written_out, :integer, expr(count(all_papers)), public?: true
+              calculate :no_papers, :boolean, expr(not has_papers), public?: true
+
+              # through the papers' public primary read action
+              calculate :has_open_papers, :boolean, expr(paper_count > 0), public?: true
+
+              # no aggregate: Ash applies no policy to what these reference,
+              # and runs no action for it
+              calculate :any_sealed, :boolean, expr(exists(all_papers, sealed == true)),
+                public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :has_papers
+              column :papers_written_out
+              column :no_papers
+              column :has_open_papers
+              column :any_sealed
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :column, :has_papers],
+                "The calculation `has_papers` is computed from the aggregate `every_paper`: it reads AshTable.Test.Private.Paper through `internal`, the aggregate's own `read_action`, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `internal` public, give the aggregate a public `read_action`, or do not show `has_papers` as a column."},
+               {[:table, :column, :papers_written_out],
+                "The calculation `papers_written_out` is computed from the aggregate `count(all_papers)`: it reads AshTable.Test.Private.Paper through `internal`, the `read_action` of the relationship `all_papers`, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `internal` public, give the relationship a public `read_action`, or do not show `papers_written_out` as a column."},
+               {[:table, :column, :no_papers],
+                "The calculation `no_papers` is computed from the aggregate `every_paper`: it reads AshTable.Test.Private.Paper through `internal`, the aggregate's own `read_action`, which is not public. " <>
+                  "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                  "Make `internal` public, give the aggregate a public `read_action`, or do not show `no_papers` as a column."}
+             ]
+
+      {_path, message} = errors |> Enum.map(&{&1.path, &1.message}) |> hd()
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.CalculationOverPrivateReads: its column `has_papers` cannot be shown. " <>
+                     message,
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.CalculationOverPrivateReads)
+                   end
+    end
+
+    test "is an error for an aggregate over a field that is itself computed through a private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :sealed_and_all]} do
+          defmodule Elixir.AshTable.TableBlockTest.AggregateOverPrivateAggregate do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :open_folders, AshTable.Test.Private.FolderOfPapers do
+                destination_attribute :id
+                read_action :open
+              end
+            end
+
+            aggregates do
+              sum :sealed_and_all, :open_folders, :every_paper, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :sealed_and_all
+            end
+          end
+        end
+
+      assert error.message ==
+               "The aggregate `sealed_and_all` is computed from the aggregate `every_paper`: it reads AshTable.Test.Private.Paper through `internal`, the aggregate's own `read_action`, which is not public. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                 "Make `internal` public, give the aggregate a public `read_action`, or do not show `sealed_and_all` as a column."
+    end
+
+    test "is not reported for an aggregate that names a public read action, nor for one that is no column" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.AggregateThroughPublicRead do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          relationships do
+            has_many :papers, AshTable.Test.Private.Paper, destination_attribute: :folder_id
+            has_many :minutes, AshTable.Test.Private.Minute, destination_attribute: :folder_id
+          end
+
+          aggregates do
+            count :paper_count, :papers, public?: true
+
+            count :open_minute_count, :minutes do
+              read_action :open
+              public? true
+            end
+
+            # for the code of the application: the table does not show it
+            count :minute_count, :minutes, public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :paper_count
+            column :open_minute_count
+          end
+        end
+      end
     end
   end
 
@@ -3455,6 +4248,54 @@ defmodule AshTable.TableBlockTest do
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateRowAction) end
     end
 
+    test "naming a destroy action that is not public is the same error, whatever the policies make of it" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :shred]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivateDestroyRowAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              authorizers: [Ash.Policy.Authorizer],
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              destroy :shred do
+                public? false
+              end
+            end
+
+            policies do
+              # the idiom of Ash's documentation for a private action
+              bypass private_action?() do
+                authorize_if always()
+              end
+
+              policy action_type(:read) do
+                authorize_if always()
+              end
+            end
+
+            table do
+              action :shred do
+                confirm "Shred it?"
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `shred` is not public. Only `public?` actions can be behind a table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.PrivateDestroyRowAction: its row action `shred` cannot be used. The action `shred` is not public. Only `public?` actions can be behind a table.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateDestroyRowAction) end
+    end
+
     test "naming a create, a read or a generic action is an error that says why" do
       [{AshTable.TableBlockTest.WrongKindOfRowAction, errors}] =
         dsl_errors do
@@ -3710,6 +4551,98 @@ defmodule AshTable.TableBlockTest do
                    fn ->
                      AshTable.Model.build(AshTable.TableBlockTest.ActingWithoutPrimaryRead)
                    end
+    end
+  end
+
+  describe "a table that changes records, over a private primary read action" do
+    # Ash loads what a create, an update or a destroy returns through the
+    # primary read action, whichever read action the table names.
+    for {what, block} <- [
+          {"an editable column", "update_action :update"},
+          {"a row action", "action :update"},
+          {"a create action", "create_action :create"}
+        ] do
+      module = Module.concat(AshTable.TableBlockTest, "Writes#{Macro.camelize(what)}")
+
+      test "is an error with #{what}: a table runs no private action" do
+        error =
+          assert_dsl_error %Spark.Error.DslError{path: [:table]} do
+            defmodule unquote(module) do
+              use Ash.Resource,
+                domain: AshTable.Test.Domain,
+                extensions: [AshTable.Resource]
+
+              attributes do
+                uuid_primary_key :id
+                attribute :title, :string, public?: true
+              end
+
+              actions do
+                defaults create: [:title], update: [:title]
+
+                read :read do
+                  primary? true
+                  public? false
+                end
+
+                read :open
+              end
+
+              table do
+                read_action :open
+                unquote(Code.string_to_quoted!(block))
+              end
+            end
+          end
+
+        assert error.message ==
+                 "The table changes records: it has editable columns, row actions or a create action. " <>
+                   "Ash loads what a create, an update or a destroy action returns through the primary read action, and the primary read action `read` is not public. " <>
+                   "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. " <>
+                   "Make `read` public, or leave the table read-only: without `update_action`, `action` and `create_action`."
+
+        assert_raise ArgumentError,
+                     "cannot build the table of #{inspect(unquote(module))}: " <> error.message,
+                     fn -> AshTable.Model.build(unquote(module)) end
+      end
+    end
+
+    test "is not reported for a table that only reads, nor for one whose update action nothing is edited through" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReadsOnlyOverPrivatePrimaryRead do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          actions do
+            defaults update: [:title]
+
+            read :read do
+              primary? true
+              public? false
+            end
+
+            read :open
+          end
+
+          table do
+            read_action :open
+            update_action :update
+
+            column :title do
+              update_action false
+            end
+          end
+        end
+      end
+
+      assert %{read_action: :open} =
+               AshTable.Model.build(AshTable.TableBlockTest.ReadsOnlyOverPrivatePrimaryRead)
     end
   end
 

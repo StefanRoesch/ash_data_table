@@ -109,7 +109,7 @@ A row action is a **public update or destroy action** of the resource.
 | A create action | Reported: a create action is offered with `create_action`. |
 | A read action | Reported. |
 | A generic action | Reported: a generic action takes no record, so there is no row to run it on. |
-| An action that is not `public?` | Reported. |
+| An action that is not `public?` | Reported, whatever its policies say: a table runs no private action. |
 | Nothing the resource has | Reported. |
 
 The reason is in the word: a row action runs on the record of its row. An
@@ -381,10 +381,10 @@ On the server, a row action is these steps:
 1. **The action is looked up among the ones this table offers this
    person**, by its name, and the row among the rows of the page. An event
    that names anything else runs nothing.
-2. **The record is read again** by its primary key, as the person and in
-   their tenant. The table keeps no records. For an action with a panel
-   this happens twice: when the panel opens, which shows the record's
-   values, and again when "Run" is used.
+2. **The record is read again** by its primary key, as the person, in their
+   tenant and through the table's read action. The table keeps no records.
+   For an action with a panel this happens twice: when the panel opens,
+   which shows the record's values, and again when "Run" is used.
 3. **The action runs** through `AshPhoenix.Form`: `for_update` or
    `for_destroy` on the record, then `submit` with the values of the
    panel's fields, or with nothing for an action that runs straight away.
@@ -407,6 +407,11 @@ Loading calculations, aggregates and reference cells onto an action's
 result goes through the resource's primary read action. A table with row
 actions or a create action and such columns needs one, as a table with
 editable columns does. The compiler reports it otherwise.
+
+That primary read action has to be `public?` for every table with a row
+action or a create action, whatever its columns are: Ash loads what a
+create, an update or a destroy action returns through it. See
+[Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 **Try it:** `/tasks` as Ada Admin. Create a task with a title that starts
 with "Z": it is the first row. Click the heading "Title": it is at the end.

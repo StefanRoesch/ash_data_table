@@ -216,7 +216,11 @@ end
   sorted or filtered by. The label is read as Ash loads the relationship, as
   the person, so a related record they may not read is an empty cell, and
   the column is left out for a person who can never read the destination.
-- Only `public?` fields and actions can appear.
+- Only `public?` fields and actions can appear. That holds for every
+  action a table runs, however it came by it: the primary read action it
+  falls back to, the read actions behind a relationship, a reference cell,
+  an aggregate column or a calculation column that holds an aggregate. See
+  [Who is reading](#who-is-reading-and-what-they-may-see-and-do).
 - `sortable?` can only switch sorting off. Whether a column can be sorted is
   the resource's decision; under keyset pagination, calculations and
   aggregates cannot.
@@ -447,6 +451,11 @@ A table with editable columns and calculation, aggregate or reference columns ne
 primary read action, which is what Ash loads them through. Without one the
 resource is reported when it is compiled, and its table refuses to render.
 
+Before a cell is saved the record is read again, as the person and through
+the table's read action. What the update returns is loaded by Ash through
+the primary read action, which therefore has to be `public?` for a table
+that edits.
+
 **When a save fails,** nothing is saved and the table shows what the action
 returned:
 
@@ -565,13 +574,17 @@ end
 
 - With no `relationship`, a row offers every public relationship whose
   destination resource has a table (lists `AshTable.Resource`), except manual
-  relationships. Once one `relationship` is declared, a row offers exactly
+  relationships and those that are read through a private action. Once one
+  `relationship` is declared, a row offers exactly
   the declared ones in the declared order. A table with nothing to offer has
   no expanders and no column for them.
 - A nested table is read through Ash's own loader, so the relationship means
   what the resource says it means: its filter, its `read_action` if it has
   one (else the read action of the destination's table), and its own `sort`,
-  which comes first while the person has chosen none.
+  which comes first while the person has chosen none. The read action has to
+  be `public?`, and so has the one of a many-to-many's join resource. The
+  row it belongs to is read again through the read action of the table that
+  shows it.
 - It has pages where Ash can page the relationship: one that holds many
   records, is joined by attributes, through an action that declares
   pagination. A relationship with `no_attributes?` and a manual one are shown
@@ -721,6 +734,32 @@ A domain without the extension behaves as one with these defaults. Add
 > whoever is asking and even when nobody is logged in: every record the read
 > reaches, every column, every declared edit. Use it only for a domain whose
 > tables sit behind a gate of your own, such as an admin area.
+
+**Every action a table runs is `public?`,** however the table came by it.
+Ash runs a private action for whoever its policies allow, and the policy
+its documentation gives for a private action allows everybody
+(`bypass private_action?() do authorize_if always() end`): what keeps such
+an action from a person is that no interface runs it. `ash_json_api` and
+`ash_typescript` refuse a public relationship whose read action is private
+for the same reason. So a table is reported when its resource is compiled,
+and refused when it is built, over a private
+
+- read action: the one the block names, or the primary one it falls back
+  to;
+- read action of a relationship its rows offer (the relationship's own,
+  else that of the destination's table; and that of the join resource of a
+  many-to-many), of a reference cell (the relationship's own, else the
+  destination's primary one), or of an aggregate column or a calculation
+  column that holds an aggregate (along the whole path of the aggregate);
+- update, destroy or create action that the block names;
+- primary read action, where the table changes records: Ash loads what a
+  create, an update or a destroy action returns through it.
+
+A relationship of the default set that leads to a private read action is
+quietly not offered. Make the action public, name a public one, or do not
+offer what leads to it. The record of a row, and the row a nested table
+belongs to, are read again through the read action of the table that shows
+them, so a key reaches no record that the table would not show.
 
 **What each restriction looks like.**
 
@@ -990,7 +1029,8 @@ nothing at all, unless the resource says `on_forbidden :message`.
   from clean there.
 - **What a table does when a finding was ignored depends on the finding.**
   It refuses to render (`ArgumentError`, "cannot build the table of …") for
-  a wrong `read_action`, a missing primary read action, an unsupported
+  a wrong `read_action`, a missing primary read action, an action it would
+  run that is not `public?`, an unsupported
   `paginate_with`, a column that is no public field or is a calculation that
   needs an argument, a column that names a relationship whose label cannot
   be shown, a `relationship` that cannot be offered, an `update_action` that

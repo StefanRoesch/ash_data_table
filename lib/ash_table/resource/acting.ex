@@ -34,6 +34,7 @@ defmodule AshTable.Resource.Acting do
           | {:declared_twice, atom}
           | {:no_field, :row | :create, atom, input}
           | {:not_a_create_action, atom, atom}
+          | {:result_read_not_public, atom}
 
   @doc "The action a row action of the block names, or what is wrong with it."
   @spec row_action(Ash.Resource.t() | Spark.Dsl.t(), atom) :: {:ok, struct} | {:error, reason}
@@ -186,6 +187,48 @@ defmodule AshTable.Resource.Acting do
        else: []
   end
 
+  @doc """
+  The primary read action of a resource whose table changes records, when
+  that action is private; nil when nothing is wrong.
+
+  Ash loads what a create, an update or a destroy action returns through
+  the primary read action (ash 3.34.4: `Ash.Actions.Create`, `Update` and
+  `Destroy` name it themselves), and asks its policies and field policies
+  what of the result the person may have. No option of a call says
+  otherwise, so a table that runs such an action runs the primary read
+  action with it, whichever read action its block names. A table that only
+  reads runs none of this.
+
+  The table changes records when it has an editable column, a row action
+  or a create action.
+  """
+  @spec private_result_read(Ash.Resource.t()) :: atom | nil
+  def private_result_read(resource) do
+    with %{public?: false, name: name} <- Info.primary_action(resource, :read),
+         true <- changes?(resource) do
+      name
+    else
+      _public_or_none_or_read_only -> nil
+    end
+  end
+
+  defp changes?(resource) do
+    columns =
+      case AshTable.Resource.Info.columns(resource) do
+        [] ->
+          Enum.map(Info.public_attributes(resource), &{&1, nil})
+
+        declared ->
+          for column <- declared, field = Info.field(resource, column.name), do: {field, column}
+      end
+
+    AshTable.Resource.Info.actions(resource) != [] or
+      AshTable.Resource.Info.table_create_action(resource) != :error or
+      Enum.any?(columns, fn {field, declared} ->
+        Editing.update_action(resource, field, declared) != :none
+      end)
+  end
+
   @doc "What is wrong with a declared action, for a diagnostic."
   @spec message(reason) :: String.t()
   def message({:not_found, name}), do: "The resource has no action named `#{name}`."
@@ -206,6 +249,14 @@ defmodule AshTable.Resource.Acting do
         "required, and a table has no field for its type (#{inspect(type)}). The action panel " <>
         "has fields for text, numbers, booleans, dates, datetimes, choices, and for values " <>
         "written as one line of text, such as a key."
+
+  def message({:result_read_not_public, name}),
+    do:
+      "The table changes records: it has editable columns, row actions or a create action. " <>
+        "Ash loads what a create, an update or a destroy action returns through the primary read action, " <>
+        "and the primary read action `#{name}` is not public. " <>
+        AshTable.Resource.Reading.private_action() <>
+        " Make `#{name}` public, or leave the table read-only: without `update_action`, `action` and `create_action`."
 
   def message({:not_a_create_action, name, type}),
     do: "`#{name}` is #{kind(type)} action, not a create action."

@@ -22,7 +22,10 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
         )
       end
 
-    errors = errors ++ create_errors(dsl, module) ++ row_refresh_errors(dsl, module)
+    errors =
+      errors ++
+        create_errors(dsl, module) ++
+        row_refresh_errors(dsl, module) ++ result_read_errors(dsl, module)
 
     case {errors, one_click_deletes(dsl)} do
       {[], []} -> :ok
@@ -88,6 +91,26 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
                 "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the resource has no primary read action. " <>
                 "After an action the row is shown with those fields, which Ash loads through the primary read action. " <>
                 "Mark a read action `primary? true`.",
+            location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
+          )
+        ]
+    end
+  end
+
+  # What an action returns is loaded by Ash through the primary read action,
+  # which the table then runs with the action. Here, and not with the
+  # editing, because it is the same for an edit, a row action and a create.
+  defp result_read_errors(dsl, module) do
+    case Acting.private_result_read(module) do
+      nil ->
+        []
+
+      name ->
+        [
+          DslError.exception(
+            module: module,
+            path: [:table],
+            message: Acting.message({:result_read_not_public, name}),
             location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
           )
         ]

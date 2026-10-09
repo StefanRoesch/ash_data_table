@@ -49,6 +49,19 @@ defmodule DemoWeb.Tables.FailedReadTest do
     assert text(html, "#report-empty") == nil
   end
 
+  test "the create button is there while the read succeeds, and not beside an error", %{
+    conn: conn
+  } do
+    {:ok, _view, html} = live(conn, "/support/reports")
+    assert text(html, "#report-create") == "New report"
+
+    Switch.set(:invalid)
+    {:ok, _view, html} = live(conn, "/support/reports")
+
+    assert text(html, "#report-error") == "is closed until Monday"
+    assert text(html, "#report-create") == nil
+  end
+
   test "an error about a field the table has a column for names the column", %{conn: conn} do
     Switch.set({:invalid_field, :title})
     {:ok, _view, html} = live(conn, "/support/reports")

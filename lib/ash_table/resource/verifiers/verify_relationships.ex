@@ -15,7 +15,7 @@ defmodule AshTable.Resource.Verifiers.VerifyRelationships do
 
     errors =
       for declaration <- AshTable.Resource.Info.relationships(dsl),
-          {:error, reason} <- [Relating.declared(dsl, declaration.name)] do
+          {:error, reason} <- [offerable(dsl, declaration.name)] do
         DslError.exception(
           module: module,
           path: [:table, :relationship, declaration.name],
@@ -27,6 +27,15 @@ defmodule AshTable.Resource.Verifiers.VerifyRelationships do
     case errors do
       [] -> :ok
       errors -> {:error, errors}
+    end
+  end
+
+  # A public relationship to a resource with a table, whose nested table
+  # runs a public read action. A relationship of the default set is not
+  # looked at here: one that cannot be offered is left out of it.
+  defp offerable(dsl, name) do
+    with {:ok, relationship} <- Relating.declared(dsl, name) do
+      Relating.public_read(relationship)
     end
   end
 end

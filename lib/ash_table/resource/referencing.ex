@@ -24,6 +24,7 @@ defmodule AshTable.Resource.Referencing do
           | {:no_label_field, atom, Ash.Resource.t()}
           | {:unusable_label_field, atom, Ash.Resource.t(), label_reason}
           | {:no_read_action, atom, Ash.Resource.t()}
+          | {:read_action_not_public, atom, Ash.Resource.t(), atom, :own | :primary}
 
   @typedoc """
   What a reference column shows: the `label` attribute of the record the
@@ -82,7 +83,9 @@ defmodule AshTable.Resource.Referencing do
 
   The related record is read as Ash loads the relationship: through the
   relationship's own `read_action` when it declares one, else through the
-  destination's primary read action.
+  destination's primary read action. Either has to be `public?`: a table
+  runs no private action, and the read action of the destination's table
+  does not come into it.
   """
   @spec reference(struct) :: {:ok, t} | {:error, reason}
   def reference(%{name: name, destination: destination} = relationship) do
@@ -111,12 +114,26 @@ defmodule AshTable.Resource.Referencing do
 
   defp read_action(%{read_action: nil, name: name, destination: destination}) do
     case Info.primary_action(destination, :read) do
-      nil -> {:error, {:no_read_action, name, destination}}
-      action -> {:ok, action.name}
+      nil ->
+        {:error, {:no_read_action, name, destination}}
+
+      %{public?: false} = action ->
+        {:error, {:read_action_not_public, name, destination, action.name, :primary}}
+
+      action ->
+        {:ok, action.name}
     end
   end
 
-  defp read_action(%{read_action: read_action}), do: {:ok, read_action}
+  defp read_action(%{read_action: read_action, name: name, destination: destination}) do
+    case Info.action(destination, read_action) do
+      %{public?: false} ->
+        {:error, {:read_action_not_public, name, destination, read_action, :own}}
+
+      _public_or_ash_reports_it ->
+        {:ok, read_action}
+    end
+  end
 
   @doc "What is wrong with a `label_field`, or with a column that names a relationship, for a diagnostic."
   @spec message(label_reason | reason) :: String.t()
@@ -153,6 +170,19 @@ defmodule AshTable.Resource.Referencing do
   def message({:no_read_action, name, destination}),
     do:
       "The destination of `#{name}`, #{inspect(destination)}, has no primary read action, and the relationship names no `read_action`. The related record of a column is read as Ash loads the relationship, which needs one of the two."
+
+  def message({:read_action_not_public, name, destination, action, whose}) do
+    whose =
+      case whose do
+        :own -> "the relationship's own `read_action`"
+        :primary -> "its primary read action"
+      end
+
+    "`#{name}` points to #{inspect(destination)}, whose read action `#{action}`, #{whose}, is not public. " <>
+      "The related record of a column is read as Ash loads the relationship. " <>
+      AshTable.Resource.Reading.private_action() <>
+      " Make `#{action}` public, give the relationship a public `read_action`, or do not show `#{name}` as a column."
+  end
 
   defp kind(:calculation), do: "a calculation"
   defp kind(:aggregate), do: "an aggregate"

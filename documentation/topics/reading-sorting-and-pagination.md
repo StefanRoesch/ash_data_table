@@ -126,7 +126,10 @@ table do
 end
 ```
 
-The action has to be a `public?` read action of the resource.
+The action has to be a `public?` read action of the resource. So has the
+primary read action, where the block names none: a table runs no private
+action, however it came by it. See
+[Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 ## Pagination
 
@@ -268,7 +271,9 @@ the query described above: the sort, the filters and the page.
 What differs from a table of its own:
 
 - The read action is the relationship's own `read_action` when it has one,
-  else the one of the destination's table.
+  else the one of the destination's table. Either has to be `public?`.
+- The parent record is read through the read action of the table that
+  shows it.
 - With no sort chosen by the person, the relationship's own `sort` comes
   first.
 - There are pages only where Ash can page the relationship. A single related
@@ -326,6 +331,11 @@ resource for it
   editable columns, row actions or a create action, and calculation,
   aggregate or reference columns, it needs a primary read action all the
   same; see [Inline editing](inline-editing.md).
+- **A resource whose primary read action is private** needs `read_action`
+  with a public one, and its table can then only read: Ash loads what a
+  create, an update or a destroy action returns through the primary read
+  action. See
+  [Authorization](authorization.md#every-action-a-table-runs-is-public).
 - **A row that a person creates or deletes in the table changes the total
   by one**, and a new row stands at the top of the page, without a read.
   The next read counts and orders afresh. See

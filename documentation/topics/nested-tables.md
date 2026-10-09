@@ -48,8 +48,14 @@ With no `relationship` in the `table` block, a row offers every relationship
 of the resource that
 
 - is `public?`,
-- leads to a resource that has a table (lists `AshTable.Resource`), and
-- is not a manual relationship.
+- leads to a resource that has a table (lists `AshTable.Resource`),
+- is not a manual relationship, and
+- is read through `public?` actions only: its own `read_action` when it
+  names one, else the read action of the destination's table; for a
+  many-to-many the read action of the join resource as well (the
+  `read_action` of the join relationship, else the join resource's primary
+  read action); and for a relationship `through` a path of others the
+  primary read action of every resource the path passes.
 
 They appear in the order in which the resource declares them, each under its
 name in words.
@@ -94,7 +100,12 @@ option.
 
 A `relationship` that names something that is no public relationship, or
 one whose destination has no table, is reported when the resource is
-compiled. See [Mistakes at compile time](mistakes-at-compile-time.md).
+compiled. So is one whose nested table would run a private read action: a
+table runs only `public?` actions, however it came by them. With no
+`relationship` in the block, such a relationship is quietly not offered,
+like one whose destination has no table. See
+[Mistakes at compile time](mistakes-at-compile-time.md#a-private-action) and
+[Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 ## What each kind of relationship looks like
 
@@ -216,6 +227,17 @@ its primary key, as the person**, with the relationship as a load that
 carries the nested table's query: its sort, its filters and its page. This
 happens when the line is opened and again at every change of the nested
 table's sort, filters or page.
+
+The parent is read through the read action of the table that shows it: the
+read action of the table on the page for one of its rows, and for a row of
+a nested table the action that nested table reads through. So a row a table
+shows is a row it can open, and a key reaches no record that the table keeps
+back. The related records are read through the relationship's own
+`read_action` when it names one, else through the read action of the
+destination's table. For a many-to-many Ash reads the join resource on the
+way, through the `read_action` of the join relationship, else the join
+resource's primary read action: its policies say which records are related
+at all.
 
 - If the parent is gone, or is no longer the person's to read, Ash returns
   nothing, and the nested table says so.
@@ -418,8 +440,13 @@ The parent in the address is looked up, never trusted.
   block declares any, from a table whose rows expand at all (not
   `max_depth 0`), to a destination the person is not refused.
 - **The key's values are cast to the types of the primary key.**
-- **The parent is read as the person on every read**, as for a nested table.
-  A key of a record that is not theirs gives them nothing.
+- **The parent is read as the person on every read**, as for a nested table,
+  and through the read action of the parent's own table: an address says
+  which record, not which table showed it. A key of a record that is not
+  theirs, or that the parent's table would not show, gives them nothing.
+  That includes a row that only a nested table showed, through a
+  relationship whose own `read_action` returns more than the table of its
+  destination: its full view says "This record is no longer available."
 
 A limit that fails the first three is no limit: the page shows the table as
 if nothing had been asked, with no word about it, and the next change the
@@ -557,6 +584,8 @@ What a reference cell is, and is not:
 - **Its column names a public belongs-to relationship** whose destination
   has a table with a `label_field`. `label_field` names a public attribute.
   Everything else is reported when the resource is compiled.
+- **The related record is read through a `public?` action.** A relationship
+  that leads to a private one is reported; see below.
 - **It is shown as the label's type is shown**: text as text, an enum by its
   labels.
 - **It is read-only.** Choosing another related record is a later slice.
@@ -575,6 +604,27 @@ related records, as the person. It is never an aggregate or a calculation
 over the relationship. Those would be one statement less, and would apply
 less than the destination's policies: see
 [Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
+
+Ash loads a relationship through the relationship's own `read_action` when
+it names one, else through the destination's **primary** read action. The
+read action that the destination's table names does not come into it: that
+one serves the destination's own table and a nested table of it, not a
+load. Whichever of the two it is has to be `public?`. A destination whose
+primary read action is private can still be shown in a reference cell: the
+relationship says which public action reads it. This one is from a
+resource of the demo's tests
+([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/private_tables.ex)):
+
+<!-- source: demo/test/support/private_tables.ex -->
+```elixir
+belongs_to :dossier, Demo.Support.Vault.Dossier do
+  source_attribute :project_id
+  read_action :open
+  public? true
+  attribute_public? true
+  attribute_writable? true
+end
+```
 
 So the destination decides what a person reads in the cell:
 
@@ -638,8 +688,9 @@ in a nested table for each of its rows.
 
 - **A relationship is missing under the row.** It is not `public?`, its
   destination does not list `AshTable.Resource`, it is manual and not
-  declared, or the block declares others. For one person only: they can
-  never read the destination.
+  declared, it is read through a private action (its own, or that of its
+  join resource) and not declared, or the block declares others. For one person only: they can never read the
+  destination.
 - **Declaring one `relationship` removes the defaults**, as declaring one
   `column` does.
 - **`max_depth` on the nested resource has no effect.** The table on the

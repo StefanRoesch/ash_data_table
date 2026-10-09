@@ -156,6 +156,15 @@ can do neither with a value computed in Elixir. On `/tasks`, the heading of
 The type of an aggregate follows from its kind and from the field it
 aggregates: `comment_count` is a count, so the column is a number.
 
+An aggregate reads the related records through read actions of the
+resources on its path: for each relationship its own `read_action`, else
+the primary read action of its destination, and for the last one the
+aggregate's own `read_action` in place of the primary one. Each has to be
+`public?` for the aggregate to be a column, as every action a table runs has
+to be. The same holds for a calculation whose expression holds an
+aggregate, by name or written out. See
+[Authorization](authorization.md#every-action-a-table-runs-is-public).
+
 ## Reference cells
 
 A column that names a belongs-to relationship shows the related record's
@@ -175,6 +184,9 @@ end
 The label is the attribute that the destination's `table` block names as
 `label_field`: `Project`'s block above, and `label_field :name` on the
 demo's people. The cell is read-only and is neither sorted nor filtered by.
+The related record is read through the relationship's own `read_action`,
+else the destination's primary read action, and that action has to be
+`public?`.
 A person who can never read the destination has no such column: on `/tasks`,
 Vera Viewer has "Project" and neither of the other two.
 
@@ -341,12 +353,15 @@ end
 | A calculation with a required argument that has no default | `Task.due_within?`, which needs `days` | Reported when the resource is compiled. A table has no place where a person could supply the argument. |
 | A relationship that is not a belongs-to | `Task.comments`, `Task.latest_comment` | Reported when the resource is compiled. Many records, or one of many, are a [nested table](nested-tables.md) under the row. |
 | A belongs-to whose destination has no table, or no `label_field` | | Reported when the resource is compiled: there is nothing to call the related record by. |
+| A belongs-to, an aggregate, or a calculation that holds an aggregate, that Ash reads through a private action | | Reported when the resource is compiled: a table runs no private action. |
 | A name the resource does not have | | Reported when the resource is compiled. |
 
 Only what the resource declares `public?` can appear. This is the same rule
 `ash_json_api` and `ash_graphql` follow, and it means that adding the
 extension to a resource cannot expose a field that its other interfaces keep
-back.
+back. The same holds for actions: every action a table runs is `public?`,
+the ones it reaches through a column among them. See
+[Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 The calculation the demo keeps for this case:
 

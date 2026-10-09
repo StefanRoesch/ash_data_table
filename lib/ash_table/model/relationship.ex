@@ -7,6 +7,11 @@ defmodule AshTable.Model.Relationship do
   #     table, and `label` what its line says.
   #   * `kind` is what the relationship is on the resource, and `cardinality`
   #     whether it holds `:one` record (belongs-to, has-one) or `:many`.
+  #   * `source_read_action` is the read action the row's record is read
+  #     again through, by its key and as the person, before its related
+  #     records are read or one is created under it: the one the table that
+  #     shows the row reads through, so a row it shows is a row it can open.
+  #     A key proves nothing.
   #   * `destination` is the resource whose table is nested. Its table model
   #     is built when the nested table opens, not with this one: resources
   #     that point at each other would never end.
@@ -33,6 +38,7 @@ defmodule AshTable.Model.Relationship do
     :kind,
     :cardinality,
     :source,
+    :source_read_action,
     :destination,
     :read_action,
     :sort,
@@ -48,6 +54,7 @@ defmodule AshTable.Model.Relationship do
           kind: :belongs_to | :has_one | :has_many | :many_to_many,
           cardinality: :one | :many,
           source: Ash.Resource.t(),
+          source_read_action: atom,
           destination: Ash.Resource.t(),
           read_action: atom,
           sort: term,

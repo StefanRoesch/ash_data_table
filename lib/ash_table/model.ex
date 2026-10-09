@@ -52,8 +52,46 @@ defmodule AshTable.Model do
   # ## Relationships
   #
   # With no `relationship` in the block, a row offers every public
-  # relationship whose destination resource has a table, except manual ones.
-  # Once one is declared, exactly the declared ones in the declared order.
+  # relationship whose destination resource has a table, except manual ones
+  # and those whose nested table would run a private read action, or be
+  # reached through one. Once one is declared, exactly the declared ones in
+  # the declared order.
+  #
+  # ## Public actions only
+  #
+  # Every action a table runs is `public?`, however the table came by it:
+  # named in the block, fallen back to, or reached through a relationship,
+  # an aggregate or a calculation. Ash itself runs a private action for
+  # whoever its policies allow, and the policy its documentation gives for
+  # one allows everybody; what keeps such an action from a person is that no
+  # interface runs it. So the model is not built over one:
+  #
+  #   * the read action behind the table, named or the primary one;
+  #   * the read action of a nested table: the relationship's own, else the
+  #     one of the destination's table; and what Ash runs on the way to the
+  #     related records: the read action of a many-to-many's join resource,
+  #     and of the resources a `through` path passes
+  #     (`AshTable.Resource.Relating.passed/1`);
+  #   * the read action a reference cell's related record is loaded through:
+  #     the relationship's own, else the destination's primary one;
+  #   * the read actions an aggregate column is read through, along its whole
+  #     path, and those of the aggregates an expression calculation column
+  #     holds (`AshTable.Resource.Reading.private_read/2`);
+  #   * the update, destroy and create actions of the block;
+  #   * and, for a table that changes records, the primary read action, which
+  #     Ash loads the result of every such action through.
+  #
+  # What the table reads for itself besides goes through the read action it
+  # shows its rows through: the record of a row before it is changed, the
+  # row a nested table belongs to, and what is loaded onto the records of a
+  # page (`AshTable.Query`). A row that is shown again after an action is
+  # loaded as Ash loads the action's result, through that primary read
+  # action.
+  #
+  # Not looked at is what a public action does while it runs (the read
+  # action an update is run over, `atomic_upgrade_with`; what a change
+  # calls), and what code of the resource does: a calculation computed in
+  # Elixir, a manual relationship.
   #
   # ## Acting
   #
@@ -160,6 +198,12 @@ defmodule AshTable.Model do
   `relationship` that is no public relationship, whose destination has no
   table, or that is declared twice. The other findings leave a column
   read-only or an option without effect.
+
+  And for a table that would run a private action (see "Public actions
+  only" above): the verifiers report each when the resource is compiled,
+  and a table is refused over one all the same, because a finding can be
+  overlooked and a model can be asked for with a relationship that no model
+  built.
   """
   @spec build(Ash.Resource.t(), keyword) :: t
   def build(resource, opts \\ []) do
@@ -167,6 +211,7 @@ defmodule AshTable.Model do
 
     via = via!(resource, opts[:via])
     read_action = read_action!(resource, via)
+    source_read_action!(resource, via)
     pagination = pagination(resource, read_action, via)
 
     update_actions!(resource)
@@ -199,7 +244,7 @@ defmodule AshTable.Model do
       read_action: read_action.name,
       pagination: pagination,
       columns: columns,
-      relationships: relationships!(resource),
+      relationships: relationships!(resource, read_action),
       actions: row_actions!(resource, columns),
       create: create!(resource, columns, via),
       name: name(resource),
@@ -565,6 +610,12 @@ defmodule AshTable.Model do
       {:ok, action} ->
         action
 
+      # the primary read action the table would fall back to is private
+      {:error, {:primary_not_public, _name} = reason} ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)}: its read action cannot be used. " <>
+                Reading.message(reason)
+
       {:error, reason} ->
         raise ArgumentError,
               "cannot build the table of #{inspect(resource)}: " <>
@@ -572,17 +623,49 @@ defmodule AshTable.Model do
     end
   end
 
-  # A nested table runs the action its relationship runs. The table's own is
-  # checked all the same: a table that cannot be built is refused wherever
-  # it is shown.
-  defp read_action!(resource, %Relationship{read_action: name}) do
-    own = read_action!(resource, nil)
+  # A nested table runs the action its relationship runs, which the model
+  # of the table around it has looked up. It is looked up once more: a
+  # relationship that was not built by that model, or was built before the
+  # resource was compiled again, is refused and never read through another
+  # action in its place. The table's own is checked all the same: a table
+  # that cannot be built is refused wherever it is shown.
+  defp read_action!(resource, %Relationship{read_action: name} = via) do
+    read_action!(resource, nil)
 
     case Info.action(resource, name) do
-      %{type: :read} = action -> action
-      _other -> own
+      %{type: :read, public?: true} = action ->
+        action
+
+      found ->
+        raise ArgumentError,
+              "cannot build the nested table of #{inspect(resource)}: the relationship " <>
+                "`#{via.name}` it is reached through reads through `#{name}`, " <>
+                unusable(found, resource)
     end
   end
+
+  # The row a nested table belongs to is read again through the read action
+  # of the table that shows it, which has to be a public read action too.
+  defp source_read_action!(_resource, nil), do: :ok
+
+  defp source_read_action!(resource, %Relationship{source: source, source_read_action: name}) do
+    case Info.action(source, name) do
+      %{type: :read, public?: true} ->
+        :ok
+
+      found ->
+        raise ArgumentError,
+              "cannot build the nested table of #{inspect(resource)}: the row it belongs to " <>
+                "would be read through `#{name}` of #{inspect(source)}, " <>
+                unusable(found, source)
+    end
+  end
+
+  defp unusable(%{type: :read, public?: false}, _resource),
+    do: "which is not public. " <> Reading.private_action()
+
+  defp unusable(_none_or_another_type, resource),
+    do: "which is no read action of #{inspect(resource)}."
 
   defp via!(_resource, nil), do: nil
 
@@ -638,7 +721,7 @@ defmodule AshTable.Model do
 
   # The relationships of the block, or the default set, each with what its
   # nested table can do. The destination is looked at, never built.
-  defp relationships!(resource) do
+  defp relationships!(resource, source_read_action) do
     case Relating.offered(resource) do
       {:ok, offered} ->
         for {relationship, declared} <- offered do
@@ -651,6 +734,8 @@ defmodule AshTable.Model do
             kind: relationship.type,
             cardinality: relationship.cardinality,
             source: resource,
+            # the row of a nested table is read again as this table reads it
+            source_read_action: source_read_action.name,
             destination: relationship.destination,
             read_action: read_action.name,
             sort: relationship.sort,
@@ -687,6 +772,11 @@ defmodule AshTable.Model do
 
   defp relationship_message({:declared_twice, name}),
     do: "it declares the relationship `#{name}` more than once"
+
+  defp relationship_message(
+         {:read_action_not_public, name, _destination, _action, _whose} = reason
+       ),
+       do: "its relationship `#{name}` cannot be offered. " <> Relating.message(reason)
 
   defp relationship_message({_not_found_or_not_public, name}),
     do:
@@ -727,6 +817,12 @@ defmodule AshTable.Model do
       raise ArgumentError,
             "cannot build the table of #{inspect(resource)}: its column `#{name}` cannot be shown. " <>
               Referencing.message(reason)
+    end
+
+    with {:column_read_not_public, _, _, _} = reason <- Reading.private_read(resource, field) do
+      raise ArgumentError,
+            "cannot build the table of #{inspect(resource)}: its column `#{name}` cannot be shown. " <>
+              Reading.message(reason)
     end
 
     case Reading.required_arguments(field) do
@@ -882,6 +978,12 @@ defmodule AshTable.Model do
   defp input_label(%{name: name}, _columns), do: humanize(name)
 
   defp row_refresh!(resource, fields) do
+    with name when not is_nil(name) <- Acting.private_result_read(resource) do
+      raise ArgumentError,
+            "cannot build the table of #{inspect(resource)}: " <>
+              Acting.message({:result_read_not_public, name})
+    end
+
     with [_ | _] = loaded <- Acting.unloadable_after_action(resource, fields) do
       raise ArgumentError,
             "cannot build the table of #{inspect(resource)}: it has row actions or a create action " <>

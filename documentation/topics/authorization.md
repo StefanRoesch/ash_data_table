@@ -237,6 +237,126 @@ table shows such a field as a column like any other, and warns when it is
 not protected. The rule, the warning and how to answer it are in
 [Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
 
+## Every action a table runs is public
+
+**A table runs only actions that the resource declares `public?`, however
+it came by them**: named in the block, fallen back to, or reached through a
+relationship, an aggregate or a calculation. Actions are public unless they say otherwise,
+so a resource that marks none of its actions private never meets this rule.
+
+The reason is what the option means in Ash. An action has had `public?`
+since Ash 3.20, with the default `true`, and its documentation speaks to
+interfaces: "When `false`, the action is internal-only and must not be
+exposed by API extensions". Ash itself does not hold anybody to that. It
+runs a private action for whoever the policies allow, and the policy that
+its documentation gives for a private action allows everybody. This one is
+from a resource of the demo's tests
+([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/private_tables.ex)):
+
+<!-- source: demo/test/support/private_tables.ex -->
+```elixir
+policies do
+  bypass private_action?() do
+    authorize_if always()
+  end
+
+  policy action(:open) do
+    authorize_if expr(description == "open")
+  end
+end
+```
+
+`open` is the public read action and returns the open dossiers. The primary
+read action of that resource is private, for the application's own code,
+and returns every dossier to anybody. What keeps the sealed dossiers from a
+person is that no interface runs the private action for them. A table is an
+interface, so it does not.
+
+The API extensions do the same. `ash_json_api`, `ash_graphql` and
+`ash_typescript` refuse a private action that a route, a query or an RPC
+action names, and `ash_json_api` and `ash_typescript` refuse a public
+relationship whose read action is private: "Public relationships on JSON:API
+resources must have `public?` read actions on their destination resources."
+
+### Which actions
+
+| How the table comes by it | The action | When it is private |
+| --- | --- | --- |
+| `read_action` in the block | That action. | Reported; the table is refused. |
+| No `read_action` | The primary read action. | The same. |
+| A relationship a row offers | The relationship's own `read_action`, else the read action of the destination's table. | A declared `relationship` is reported, and the table refused. One of the default set is not offered. |
+| A many-to-many a row offers | Besides: the read action of the join resource, which says which records are related at all. It is the `read_action` of the join relationship, else the join resource's primary read action. | The same. |
+| A relationship `through` a path of others | Besides: the primary read action of every resource the path passes. | The same. |
+| A [reference cell](nested-tables.md#the-reference-cell) | The relationship's own `read_action`, else the destination's primary read action: Ash loads the related record. | Reported; the table is refused. |
+| An aggregate column | For every relationship of the aggregate's path: its own `read_action`, else the primary read action of its destination, and the read action of the join resource of a many-to-many. For the last relationship the aggregate's own `read_action` stands in for the primary one. | The same. |
+| A calculation column that is an expression | The read actions of every aggregate the expression holds, by name or written out (`count(comments)`), also inside a calculation it references. | The same. |
+| `update_action`, `action`, `create_action` | That action. | The same. |
+| Any of those three: the table changes records | The primary read action. Ash loads what a create, an update or a destroy action returns through it, and asks its policies and field policies what of the result the person may have. | The same. A table that only reads is not affected. |
+
+"Reported" is a finding when the resource is compiled, with the path of the
+declaration that leads to the action; the messages are in
+[Mistakes at compile time](mistakes-at-compile-time.md#a-private-action).
+"Refused" is what happens when the resource is compiled all the same: the
+table raises when it is built, and reads nothing.
+
+Each finding names two ways out:
+
+- **Make the action public**, if a person may have what it returns. Its
+  policies then have to say who.
+- **Name a public action** in its place (`read_action` in the block, on the
+  relationship, on the join relationship or on the aggregate), or **do not
+  offer** what leads to the private one: leave the relationship or the
+  column out, or leave the table read-only.
+
+Only what a table offers is looked at: the relationships its rows expand
+into and its own columns, not every relationship of the resource. So a
+finding can always be settled in the `table` block, without a change to the
+resource.
+
+### What a table reads by itself
+
+A table reads more than its pages. Each of these reads goes through a read
+action that was looked at:
+
+- **The record of a row, before a cell of it is saved or a row action
+  runs**: through the table's read action. A row the table shows is a row it
+  can change, also where the primary read action would not return it.
+- **The row a nested table belongs to**: through the read action of the
+  table that shows the row. For a row of the table on the page that is the
+  table's read action; for a row of a nested table it is the action that
+  nested table reads through, the relationship's own where it names one. A
+  row a table shows is a row it can open.
+- **The row a [full view](nested-tables.md#the-full-view) is limited to**:
+  through the read action of that row's own table, since an address says
+  which record and not which table showed it. A key in an address reaches
+  no record that the table of that record would not show.
+- **What is loaded onto the records of a page in a further step**
+  (aggregates, and everything a nested table's columns show besides
+  attributes): through the table's read action.
+- **A row that is shown again after an action**: as Ash loads the action's
+  result, through the primary read action, which is public for every table
+  that changes records.
+
+### What it does not reach
+
+What a public action does while it runs is the action's own, as it is for
+an API extension. An update action may run its statement over another read
+action (`atomic_upgrade_with`; Ash asks no policy of it and shows nothing of
+it), manage a relationship through actions of the related resource, or call
+anything from a change. A table that named such an update action runs it as
+it is.
+
+Code of the resource is not looked into either: a calculation computed in
+Elixir may load what it likes, and a manual relationship fetches as its
+module says.
+
+And what an expression references without an aggregate runs no action at
+all: `exists(comments, …)` or `author.name` in a calculation is a join, to
+which Ash applies no policy of the related resource, whichever read action
+the relationship names. That is the subject of
+[the warning about protected fields](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields),
+not of this rule.
+
 ## `on_forbidden`
 
 By default a person whose read is refused outright is not told that the
@@ -345,8 +465,9 @@ does not accept the field, or a policy or validation on the one that does.
 - **A save cannot reach a record the person cannot read.** A `save` event
   names a row of the person's own page; an id that is not on it saves
   nothing. For a row that is on the page, the record is read again as the
-  person before the action runs, so a record that has left their reach since
-  says "This record is no longer available."
+  person, through the table's read action, before the action runs, so a
+  record that has left their reach since says "This record is no longer
+  available."
 - **An `act` or `create` event from a person who can never run the action
   is not run**, and opens no panel: the action is looked up among the ones
   the table offers that person.
@@ -354,6 +475,10 @@ does not accept the field, or a policy or validation on the one that does.
   save, the event names a row of the person's own page, and the record is
   read again as the person before the action runs, and for a panel before
   it opens.
+- **No event reaches a private action.** A table that would run one is not
+  built, so there is nothing to send an event to. A relationship of the
+  default set that leads to one has no line, and a `toggle` event that
+  names it opens nothing.
 - **A record created in a nested table is joined to the row above by the
   table**, from that row as it is read again for the person. A key sent
   with the form is not looked at.
@@ -389,6 +514,17 @@ does not accept the field, or a policy or validation on the one that does.
   for everybody.
 - **Relying on the table to protect a hidden field from being written.** See
   above.
+- **A private primary read action under a table that edits.** The table
+  names a public read action, and is refused all the same: Ash loads what
+  an update returns through the primary one. Make it public, or keep the
+  table read-only.
+- **A relationship that is not under the row, with nothing reported.** Its
+  read action is private, or that of its join resource is, and the block
+  declares no `relationship`: it is left out of the default set, as one
+  whose destination has no table is. Declare it to be told why.
+- **A join resource whose primary read action is private.** Nobody names a
+  join resource in a table, and Ash reads it for every many-to-many. Give
+  the join relationship a public `read_action`.
 
 ## Not in the first version
 

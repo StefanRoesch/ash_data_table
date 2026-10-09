@@ -258,6 +258,22 @@ defmodule DemoWeb.Tables.NestedCreateTest do
       assert panel(press(view, task.id, "comments"), comments) == nil
     end
 
+    test "under a row that is gone opens nothing, and the table says where its records were that the row is gone",
+         %{view: view, world: world, task: task, comments: comments} do
+      # the task moves to the other organization: no longer the member's to read
+      Demo.Repo.query!("UPDATE tasks SET organization_id = $1 WHERE id = $2", [
+        Ecto.UUID.dump!(world.other_organization.id),
+        Ecto.UUID.dump!(task.id)
+      ])
+
+      assert panel(press(view, task.id, "comments"), comments) == nil
+
+      html = render_async(view, 2000)
+
+      assert text(html, "[id='#{comments}-error']") == "This record is no longer available."
+      assert column(html, comments, "body") == []
+    end
+
     test "that the action refuses stays open with the error at its field", %{
       view: view,
       task: task,

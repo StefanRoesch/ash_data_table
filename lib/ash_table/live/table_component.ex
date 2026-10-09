@@ -945,8 +945,10 @@ defmodule AshTable.Live.TableComponent do
 
         {:noreply, assign(socket, panel: panel)}
 
+      # The row is gone, or no longer theirs: said to the live region, and
+      # shown by the table itself, which reads again and finds the same.
       :error ->
-        {:noreply, say(socket, Text.t(:record_gone))}
+        {:noreply, socket |> say(Text.t(:record_gone)) |> reread()}
     end
   end
 
@@ -1136,8 +1138,9 @@ defmodule AshTable.Live.TableComponent do
 
   # What a nested table gives its create action: the field that joins the
   # new record to the row the table belongs to, with that row's value. The
-  # row is read for it, as the person, with authorization when either table
-  # authorizes: a key proves nothing. A table of its own gives nothing.
+  # row is read for it, as the person and through the read action of the
+  # table that shows it, with authorization when either table authorizes: a
+  # key proves nothing. A table of its own gives nothing.
   defp parent_link(_assigns, %Model.Action{link: nil}), do: {:ok, %{}}
 
   defp parent_link(assigns, %Model.Action{link: {source, destination}}) do
@@ -1149,7 +1152,7 @@ defmodule AshTable.Live.TableComponent do
       |> Query.reader_opts()
       |> Keyword.update!(:authorize?, &(&1 or assigns.parent_authorize?))
 
-    case Query.get(via.source, key, opts) do
+    case Query.get(via.source, via.source_read_action, key, opts) do
       {:ok, %_{} = parent} ->
         case Map.get(parent, source) do
           hidden when is_struct(hidden, Ash.ForbiddenField) or is_nil(hidden) -> :error
@@ -1334,7 +1337,7 @@ defmodule AshTable.Live.TableComponent do
       the line that opens it, and a table limited to related records says what
       it shows on the line below. --%>
       <div
-        :if={not @nested? and (@heading || (@model.create && is_nil(@related)))}
+        :if={not @nested? and (@heading || (@page && @model.create && is_nil(@related)))}
         id={"#{@id}-header"}
         class="mb-4 flex min-h-8 items-center justify-between gap-2"
       >
@@ -1346,7 +1349,11 @@ defmodule AshTable.Live.TableComponent do
         >
           {@label}
         </.dynamic_tag>
-        <div :if={@model.create && is_nil(@related)} class="ms-auto flex items-center gap-2">
+        <%!-- not beside an error: a table that could not read offers nothing --%>
+        <div
+          :if={@page && @model.create && is_nil(@related)}
+          class="ms-auto flex items-center gap-2"
+        >
           <.create id={@id} action={@model.create} target={@myself} />
         </div>
       </div>

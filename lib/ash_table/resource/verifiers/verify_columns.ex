@@ -53,6 +53,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
 
   defp field_errors(column, field, module) do
     required_argument_errors(column, field, module) ++
+      private_read_errors(column, field, module) ++
       sortable_errors(column, module) ++
       filterable_errors(column, field, module) ++
       update_action_errors(column, field, module) ++
@@ -248,6 +249,17 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
         module,
         "The calculation `#{column.name}` requires the argument `#{name}`. A table cannot supply arguments, so a column can only show a calculation whose arguments are optional or have defaults."
       )
+    end
+  end
+
+  # An aggregate is read through actions of the related resources, which
+  # nothing in the block names, and so is one that a calculation holds.
+  # Those resources are looked at, which a verifier may do (see
+  # `VerifyRelationships`).
+  defp private_read_errors(column, field, module) do
+    case Reading.private_read(module, field) do
+      nil -> []
+      reason -> [error(column, module, Reading.message(reason))]
     end
   end
 

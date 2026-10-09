@@ -354,6 +354,111 @@ end
 `--warnings-as-errors` fails on this warning like on every other finding.
 An update action is never warned about.
 
+## A private action
+
+A table runs only actions that the resource declares `public?`, however it
+came by them. The reason, and the list of the actions a table runs, are in
+[Authorization](authorization.md#every-action-a-table-runs-is-public). An
+action that the block names itself gets one of the "is not public" messages
+of the sections above. The findings here are about an action that the
+block does not name, and that a table would run all the same.
+
+The example is a sketch again: a folder whose rows offer two relationships
+to its papers. The second reads through an action of the papers that is
+`public? false`.
+
+<!-- sketch -->
+```elixir
+defmodule Sketch.Folder do
+  use Ash.Resource,
+    domain: Sketch.Vault,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource]
+
+  table do
+    column :name
+
+    relationship :papers
+    relationship :all_papers
+  end
+
+  actions do
+    defaults [:read]
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :name, :string, public?: true
+  end
+
+  relationships do
+    has_many :papers, Sketch.Paper, public?: true
+
+    has_many :all_papers, Sketch.Paper do
+      read_action :internal
+      public? true
+    end
+  end
+end
+```
+
+Compiling it prints this (the output of the compiler for exactly this file,
+with the stack trace that follows the message left out):
+
+<!-- sketch -->
+```text
+warning: ** (Spark.Error.DslError) [Sketch.Folder]
+table -> relationship -> all_papers defined in lib/sketch/folder.ex:11::
+  `all_papers` points to Sketch.Paper, whose read action `internal`, the relationship's own `read_action`, is not public. A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies. Make `internal` public, give the relationship a public `read_action`, or do not offer `all_papers` in this table.
+
+    │
+ 11 │     relationship :all_papers
+    │     ~~~~~~~~~~~~~~~~~~~~~~~~
+    │
+    └─ lib/sketch/folder.ex:11: (file)
+```
+
+Every message of this section says in one sentence why, and then the ways
+out. `ACTION` is the private action and `DESTINATION` or `RESOURCE` the
+resource it is an action of: the destination of the relationship, or a
+resource Ash reads on the way to it.
+
+| Path | Message | Cause | Fix |
+| --- | --- | --- | --- |
+| `table -> read_action` | The primary read action \`ACTION\` is not public, and the table names no \`read_action\`, so it would read through it. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, or name a public read action with \`read_action\`. | The block names no read action, and the primary read action of the resource is `public? false`. This is reported for a resource with no `table` block as well. | Add `read_action` with a public read action, or make the primary one public. |
+| `table -> relationship -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, the relationship's own \`read_action\`, is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the relationship a public \`read_action\`, or do not offer \`NAME\` in this table. | A declared `relationship` whose `read_action` on the resource is private. A nested table runs that action. | One of the three the message names. |
+| `table -> relationship -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, the one behind its table, is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, name a public \`read_action\` in the \`table\` block of DESTINATION or on the relationship, or do not offer \`NAME\` in this table. | A declared `relationship` that names no `read_action`, to a destination whose own table would read through a private action. That table has the first finding of this section itself. | Settle the destination's finding, or one of the others the message names. |
+| `table -> column -> NAME` | \`NAME\` points to DESTINATION, whose read action \`ACTION\`, its primary read action, is not public. The related record of a column is read as Ash loads the relationship. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the relationship a public \`read_action\`, or do not show \`NAME\` as a column. | A reference cell whose relationship names no `read_action`, to a destination whose primary read action is private. The read action of the destination's table does not come into it. Where the relationship names a private action itself, the message says "the relationship's own \`read_action\`". | Give the relationship a `read_action` that is public, make the action public, or remove the column. |
+| `table -> relationship -> NAME` | \`NAME\` is read through the join resource RESOURCE, whose read action \`ACTION\`, its primary read action, is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the join relationship \`JOIN\` a public \`read_action\`, or do not offer \`NAME\` in this table. | A declared many-to-many. Ash reads the join resource on the way to the related records, through the `read_action` of the join relationship, else the join resource's primary read action, and its policies say which records are related at all. Where the join relationship names a private action itself, the message says "the \`read_action\` of the join relationship \`JOIN\`". | Give the join relationship a public `read_action`, make the action public, or leave the relationship out. |
+| `table -> relationship -> NAME` | \`NAME\` is read through RESOURCE, a resource on its \`through\` path, whose read action \`ACTION\`, the one Ash reads it through there, is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, or do not offer \`NAME\` in this table. | A declared relationship `through` a path of others. Ash reads every resource the path passes through its primary read action. | Make the action public, or leave the relationship out. |
+| `table -> column -> NAME` | The aggregate \`NAME\` reads DESTINATION through \`ACTION\`, its primary read action, which is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the aggregate a public \`read_action\`, or do not show \`NAME\` as a column. | An aggregate column over a resource whose primary read action is private, without a `read_action` of its own. For one that names a private action itself the message says "the aggregate's own \`read_action\`". | Give the aggregate a public `read_action`, make the action public, or remove the column. |
+| `table -> column -> NAME` | The aggregate \`NAME\` reads DESTINATION through \`ACTION\`, the \`read_action\` of the relationship \`RELATIONSHIP\`, which is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the relationship a public \`read_action\`, or do not show \`NAME\` as a column. | An aggregate column over a relationship that names a private `read_action`: Ash filters what the aggregate reads by that action's policies, also where the aggregate names a public action of its own. | Give the relationship a public `read_action`, make the action public, or remove the column. |
+| `table -> column -> NAME` | The aggregate \`NAME\` reads RESOURCE through \`ACTION\`, its primary read action, which is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the relationship \`RELATIONSHIP\` a public \`read_action\`, or do not show \`NAME\` as a column. | An aggregate column over a path of several relationships (`[:boxes, :papers]`), where a resource in between is read through its private primary read action. Ash applies the policies of every resource of the path. | Give that relationship a public `read_action`, make the action public, or remove the column. |
+| `table -> column -> NAME` | The aggregate \`NAME\` reads RESOURCE through \`ACTION\`, its primary read action, as the join resource of \`RELATIONSHIP\`, which is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the join relationship \`JOIN\` a public \`read_action\`, or do not show \`NAME\` as a column. | An aggregate column over a many-to-many whose join resource Ash reads through a private action. | Give the join relationship a public `read_action`, make the action public, or remove the column. |
+| `table -> column -> NAME` | The calculation \`NAME\` is computed from the aggregate \`AGGREGATE\`: it reads DESTINATION through \`ACTION\`, the aggregate's own \`read_action\`, which is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, give the aggregate a public \`read_action\`, or do not show \`NAME\` as a column. | A calculation column whose expression holds an aggregate that Ash reads through a private action: one of the resource by its name, one written out (`AGGREGATE` is then the expression, such as \`count(all_papers)\`), or one inside a calculation the expression references. What follows "through" is worded as for an aggregate column. The same wording is used for an aggregate column over a field that is itself such an aggregate. | Settle the aggregate as its part of the message says, or remove the column. |
+| `table` | The table changes records: it has editable columns, row actions or a create action. Ash loads what a create, an update or a destroy action returns through the primary read action, and the primary read action \`ACTION\` is not public. A table only runs \`public?\` actions: a private action is not meant for interfaces, and may be exempt from policies. Make \`ACTION\` public, or leave the table read-only: without \`update_action\`, \`action\` and \`create_action\`. | The table names a public `read_action`, the primary read action of the resource is private, and the table has an editable column, an `action` or a `create_action`. | Make the primary read action public, or take the three options out of the block. |
+
+A relationship that leads to a private read action is only reported when
+the block declares it. With no `relationship` in the block it is left out
+of the default set and nothing is reported, as for a relationship whose
+destination has no table. A reference cell, an aggregate column and a
+calculation column are always declared, and so always reported.
+
+A calculation is looked into as far as it is an expression. One computed in
+Elixir is not, and what an expression references without an aggregate
+(`exists(papers, …)`, `folder.name`) runs no action: Ash applies no policy
+to it. See
+[Authorization](authorization.md#what-it-does-not-reach).
+
+The last finding is about Ash and not about the table, as the one about a
+missing primary read action is. No option of a create, an update or a
+destroy says through which read action its result is loaded, so a table
+that runs such an action cannot keep Ash from the primary one. In one of
+the demo's tests the private primary read action is exempt from the
+resource's field policies as well, and its update action changes a field
+that the page hides: without this finding, the row that was saved shows
+that field's new value.
+
 ## Warnings about what a column shows
 
 Two more findings are not mistakes in the block. The resource may mean what
@@ -398,6 +503,9 @@ Some things look like they should be reported and are not, on purpose:
 | `sortable? false` or `filterable? false` on a column that could not be sorted or filtered anyway | Nothing. |
 | No `table` block | The default table. |
 | A public relationship whose destination has no table, in a block that declares no `relationship` | It is not offered. |
+| A public relationship whose read action is private, or whose join resource's is, in a block that declares no `relationship` | It is not offered. Declared, it is reported. |
+| An update action that is run over a private read action of its own (`atomic_upgrade_with`) | Nothing: what a public action does while it runs is the action's. |
+| A private action that no table would run: no column, relationship or option of the block leads to it | Nothing. A resource may have as many as it likes. |
 | `exposes_protected_field? true` on a column that exposes nothing | Nothing. |
 | An action, or the create action, with an optional input of a type the panel has no field for | The input is left out of the panel. |
 | A row action that accepts attributes that may all be empty | Its button opens the action panel. |
@@ -424,10 +532,14 @@ any LiveView does that raises in its first render.
 | --- | --- |
 | A wrong `read_action`: not there, not a read action, not public | The table refuses to render. |
 | No primary read action, and no `read_action` | The same. |
+| A private primary read action, and no `read_action` | The same: "its read action cannot be used." |
 | An unsupported `paginate_with` | The same. |
 | A column that does not exist or is not public | The same. |
 | A column that names a relationship whose label cannot be shown: not a belongs-to, a destination without a table or without a usable `label_field` | The same. |
 | A `relationship` that is no public relationship, or whose destination has no table | The same. |
+| A `relationship` whose nested table would run a private read action | The same: "its relationship \`NAME\` cannot be offered." |
+| A reference cell, an aggregate column, or a calculation column that holds an aggregate, that Ash reads through a private action | The same: "its column \`NAME\` cannot be shown." |
+| Editable columns, row actions or a create action, over a private primary read action | The same. |
 | A calculation column that requires an argument | The same. |
 | A wrong `update_action`, at the table or at a column: not there, not an update action, not public | The same. The block asked for editing through an action that cannot be run, and a table that silently offered none would hide that. |
 | Editable columns beside calculation, aggregate or reference columns, without a primary read action | The same. |
@@ -453,6 +565,13 @@ read-only, whoever named it. An action that cannot be run at all is refused.
 A table is also refused at runtime for a resource that does not list the
 extension at all: "… does not list \`AshTable.Resource\` in its extensions,
 so it has no table."
+
+A nested table is built from a relationship of the table around it, and
+looks the relationship's read action up once more. A relationship that no
+table built, or one built before the resource was compiled again, is
+refused where its action is private or no read action at all: "cannot
+build the nested table of …". No other action is read through in its
+place.
 
 ## Edge cases
 

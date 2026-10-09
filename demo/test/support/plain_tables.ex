@@ -357,6 +357,9 @@ defmodule Demo.Support.Plain.Report do
 
   table do
     column :title
+
+    # "New report", in the table's header while its read succeeds
+    create_action :create
   end
 
   actions do

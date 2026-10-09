@@ -226,10 +226,13 @@ cannot be opened again until the answer is there.
 
 On the server, a save is four steps:
 
-1. **The record is read again** by its primary key, as the person saving and
-   in their tenant. The table does not keep the records it shows, and reading
-   again means that policies and field policies apply to the save as they
-   applied to the page.
+1. **The record is read again** by its primary key, as the person saving, in
+   their tenant and through the table's read action. The table does not keep
+   the records it shows, and reading again the way the page was read means
+   that the same action, with its policies and field policies, applies to
+   the save as it applied to the page. A row the table shows is a row it can
+   read again, also where the resource's primary read action would not
+   return it.
 2. If the field is hidden from the person on this record, the save is
    refused here.
 3. **The column's action runs** through `AshPhoenix.Form`: `for_update` on
@@ -249,6 +252,15 @@ goes through the resource's primary read action, as it always does in Ash. A
 table that has both editable columns and calculation, aggregate or reference
 columns therefore needs a primary read action. The compiler reports it otherwise, and the table of a
 resource compiled all the same refuses to render.
+
+Ash goes through the primary read action for the result of every update,
+whatever the table shows: it loads what the action returns through it, and
+asks its policies and field policies what of the result the person may
+have. So the primary read action has to be `public?` for a table that
+edits, as every action a table runs has to be. A resource whose primary
+read action is private can have a table that names a public read action
+and only reads. See
+[Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 ## When a save fails
 
@@ -341,6 +353,14 @@ only runs actions.
 - **A table-level action with a required argument** makes nothing editable,
   and nothing reports it. Name such an action on a column to get the
   compiler's message.
+- **A table-level action that is not `public?`** is not one of the quiet
+  cases: it is reported, and the table is refused.
+- **An update action that runs its statement over a read action of its
+  own** (`atomic_upgrade_with`). The table reads the record again through
+  its own read action; the update then runs as the action says, which by
+  default is over the primary read action, filters included. A table that
+  shows records the primary read action filters out saves them only if the
+  update action names a read action that returns them.
 
 ## Things people trip over
 

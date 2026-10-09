@@ -49,7 +49,9 @@ defmodule DemoWeb.Router do
   # into tables that are refused or fail (`nested_tables.ex`), one with a
   # reference cell whose label is not always shown (`reference_tables.ex`),
   # two with aggregate columns under field policies (`ledger_tables.ex`),
-  # one whose columns have components (`component_tables.ex`);
+  # one whose columns have components (`component_tables.ex`), one whose
+  # resources have private actions (`private_tables.ex`, and the tables of
+  # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
   # in a layout that shows the assigns it is given, and a LiveView whose
   # tables keep their state in its URL.
@@ -73,6 +75,21 @@ defmodule DemoWeb.Router do
         ash_table "/tags", Demo.Support.Ledger.Tag, layout: false
         ash_table "/errands", Demo.Support.Ledger.Errand, layout: false
         ash_table "/gauges", Demo.Support.Styled.Gauge, layout: false
+        ash_table "/dossiers", Demo.Support.Vault.Dossier, layout: false
+        ash_table "/notes", Demo.Support.Vault.Note, layout: false
+        ash_table "/folders", Demo.Support.Vault.Folder, layout: false
+        ash_table "/shelves", Demo.Support.Exposed.Shelf, layout: false
+        ash_table "/cabinets", Demo.Support.Exposed.Cabinet, layout: false
+        ash_table "/receipts", Demo.Support.Exposed.Receipt, layout: false
+        ash_table "/vouchers", Demo.Support.Exposed.Voucher, layout: false
+        ash_table "/drawers", Demo.Support.Exposed.Drawer, layout: false
+        ash_table "/indexes", Demo.Support.Exposed.Index, layout: false
+        ash_table "/registers", Demo.Support.Exposed.Register, layout: false
+        ash_table "/trays", Demo.Support.Exposed.Tray, layout: false
+        ash_table "/tallies", Demo.Support.Exposed.Tally, layout: false
+        ash_table "/archives", Demo.Support.Exposed.Archive, layout: false
+        ash_table "/racks", Demo.Support.Exposed.Rack, layout: false
+        ash_table "/editors", Demo.Support.Exposed.Editor, layout: false
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/url", DemoWeb.Support.UrlLive
         live "/switch", DemoWeb.Support.SwitchLive

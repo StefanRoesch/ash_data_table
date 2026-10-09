@@ -34,7 +34,6 @@ defmodule AshTable.Query do
 
   alias AshTable.Model
   alias AshTable.Model.Operator
-  alias AshTable.Resource.Reading
   alias AshTable.State
 
   defmodule Page do
@@ -89,8 +88,14 @@ defmodule AshTable.Query do
              query(model, state, Model.loads(model), read_opts),
              [page: page_opts(model, state)] ++ read_opts
            ),
-         # internal tickets #35 and #32: see "In steps" above
-         {:ok, result} <- loaded(result, [Model.aggregates(model), Model.apart(model)], read_opts) do
+         # internal tickets #35 and #32: see "In steps" above; through the
+         # table's read action, which Ash would not take by itself
+         {:ok, result} <-
+           loaded(
+             result,
+             [Model.aggregates(model), Model.apart(model)],
+             [action: model.read_action] ++ read_opts
+           ) do
       {:ok, page(result, model, state)}
     end
   end
@@ -100,11 +105,13 @@ defmodule AshTable.Query do
   the record of `model.via.source` with the primary key `key`, through the
   relationship `model.via`.
 
-  The parent record is read again every time, by its primary key and as the
-  person asking, with the relationship loaded through the nested table's
-  query. A key is all a table keeps of a row, and a key proves nothing: only
-  this read says whether the person may see the record whose related records
-  they ask for. Ash's own loader then decides what "related" means, for
+  The parent record is read again every time, by its primary key, as the
+  person asking and through the read action of the table that shows it
+  (`via.source_read_action`), with the relationship loaded through the
+  nested table's query. A key is all a table keeps of a row, and a key
+  proves nothing: only this read says whether the person may see the record
+  whose related records they ask for, and it says so as the table that
+  shows the record does. Ash's own loader then decides what "related" means, for
   every kind of relationship.
 
   Takes the options of `read/3`, and `:parent_authorize?`: whether the table
@@ -143,9 +150,14 @@ defmodule AshTable.Query do
       )
 
     with {:ok, %_{} = parent} <-
-           get(via.source, key, [load: [{via.name, related}]] ++ parent_opts),
+           get(
+             via.source,
+             via.source_read_action,
+             key,
+             [load: [{via.name, related}]] ++ parent_opts
+           ),
          {:ok, result} <- related(Map.get(parent, via.name)),
-         {:ok, result} <- load(result, model, read_opts) do
+         {:ok, result} <- load(result, model, [action: model.read_action] ++ read_opts) do
       {:ok, %{page(result, model, state) | parent: parent}}
     else
       {:ok, nil} -> {:error, :parent_gone}
@@ -166,11 +178,19 @@ defmodule AshTable.Query do
   defp related(records) when is_list(records), do: {:ok, records}
 
   @doc """
-  Puts onto records that were read bare everything the table's columns show
-  besides attributes, as `opts` say who is asking: the calculations and the
-  related records' labels with the aggregates, and last the aggregates that
-  are read apart (internal ticket #32). Takes what a read gave: a page, a
-  list, or one record.
+  Puts onto records everything the table's columns show besides attributes,
+  as `opts` say who is asking: the calculations and the related records'
+  labels with the aggregates, and last the aggregates that are read apart
+  (internal ticket #32). Takes what a read gave: a page, a list, or one
+  record.
+
+  `opts` may name the read action to load through, with `:action`. Records
+  that the table has read are loaded onto through the table's read action:
+  the policies and field policies that say what the person may have of
+  what is loaded are then those of the action that read the records. Without
+  `:action` Ash loads through the primary read action, as it does itself
+  for what a create, an update or a destroy action returns: the way a row
+  is shown again after one (`AshTable.Record`).
   """
   @spec load(result, Model.t(), keyword) :: {:ok, result} | {:error, Ash.Error.t()}
         when result: Ash.Page.page() | [Ash.Resource.record()] | Ash.Resource.record()
@@ -202,25 +222,18 @@ defmodule AshTable.Query do
   defp step(records, loads, read_opts), do: Ash.load(records, loads, read_opts)
 
   @doc """
-  Reads one record by its primary key, as `opts` say who is asking: `nil`
-  when it is not there, or not theirs to read.
+  Reads one record by its primary key through the read action `action`, as
+  `opts` say who is asking: `nil` when it is not there, or not theirs to
+  read.
 
-  Through the primary read action, as `Ash.load/3` and the load of an
-  update's result go; through the read action of the resource's table when
-  it has none.
+  The action is the one the record's table reads through, which is
+  `public?`. Ash would take the primary read action, which nothing says is:
+  a table runs no action that it has not looked at.
   """
-  @spec get(Ash.Resource.t(), map, keyword) ::
+  @spec get(Ash.Resource.t(), atom, map, keyword) ::
           {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
-  def get(resource, key, opts) when is_map(key) do
-    action =
-      with nil <- Ash.Resource.Info.primary_action(resource, :read),
-           {:ok, %{name: name}} <- Reading.read_action(resource) do
-        [action: name]
-      else
-        _primary_or_none -> []
-      end
-
-    Ash.get(resource, key, [not_found_error?: false] ++ action ++ opts)
+  def get(resource, action, key, opts) when is_atom(action) and is_map(key) do
+    Ash.get(resource, key, [not_found_error?: false, action: action] ++ opts)
   end
 
   # The sort a person chose goes in before the action's preparations run, so
@@ -247,6 +260,12 @@ defmodule AshTable.Query do
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Keyword.put(:authorize?, Keyword.get(opts, :authorize?, true))
   end
+
+  # The two functions below look like a repetition of what `AshTable.State`
+  # already does, and they are meant to be one: they are the last guard for
+  # internal ticket #31, and must stay. Whatever a state holds, and however
+  # it came to hold it, nothing but a filter and a sort by one of the
+  # table's own columns for this person gets into a query.
 
   # The filters on columns the table has for this person. The state holds
   # no others (`AshTable.State` takes none from the outside, and the table

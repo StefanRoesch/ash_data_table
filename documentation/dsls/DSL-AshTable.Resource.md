@@ -38,6 +38,13 @@ The `table` block is optional: with the extension listed and no block, the
 table shows the resource's public attributes, read through its primary read
 action.
 
+Every action a table runs is `public?`, however the table came by it:
+named in the block, fallen back to, or reached through a relationship, a
+reference cell, or an aggregate or calculation column. An action that is `public? false`
+is not meant for interfaces, and its policies may let everybody run it,
+so a table that would run one is reported when the resource is compiled
+and refused when it is built. See the Authorization guide.
+
 With no `column`, the table shows the default set: the public attributes in
 the order `Ash.Resource.Info.public_attributes/1` returns them. Once one
 `column` is declared, the table is exactly the declared columns in the
@@ -98,9 +105,9 @@ pages and edits by itself, and its rows expand again.
 
 With no `relationship`, a row offers every public relationship whose
 destination resource has a table (lists this extension), except manual
-relationships. Once one `relationship` is declared, a row offers exactly
-the declared ones in the declared order. A resource with nothing to offer
-has no expanders.
+relationships and those that are read through a private action. Once one
+`relationship` is declared, a row offers exactly the declared ones in the
+declared order. A resource with nothing to offer has no expanders.
 
 What a nested table can do follows from the relationship, as Ash loads it:
 
@@ -281,7 +288,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`read_action`](#table-read_action){: #table-read_action } | `atom` |  | The read action behind the table. Defaults to the resource's primary read action. |
+| [`read_action`](#table-read_action){: #table-read_action } | `atom` |  | The read action behind the table: a `public?` read action. Defaults to the resource's primary read action, which then has to be `public?` too. |
 | [`paginate_with`](#table-paginate_with){: #table-paginate_with } | `:offset \| :keyset` |  | The pagination strategy. Defaults to `:offset` if the read action supports it, else `:keyset`. |
 | [`update_action`](#table-update_action){: #table-update_action } | `atom` |  | The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only. |
 | [`create_action`](#table-create_action){: #table-create_action } | `atom` |  | The create action behind the table's create button: a public create action of the resource. The button opens the action panel with the action's inputs, and the new record is shown as the first row of the page. Without it the table has no create button. |
@@ -368,7 +375,9 @@ relationship name
 
 A relationship a row of the table can be expanded into: its line under the row opens the nested table of the related records.
 
-With no `relationship` declared, a row offers every public relationship of the resource whose destination resource has a table, except manual relationships. Once one is declared, a row offers exactly the declared ones, in the declared order.
+With no `relationship` declared, a row offers every public relationship of the resource whose destination resource has a table, except manual relationships and those whose nested table would run a private read action. Once one is declared, a row offers exactly the declared ones, in the declared order.
+
+The nested table runs the relationship's own `read_action` when it names one, else the read action of the destination's table. That action has to be `public?`, and so has every read action Ash runs on the way to the related records: the one of a many-to-many's join resource, and of the resources a `through` path passes.
 
 
 
