@@ -18,8 +18,9 @@ defmodule Demo.Fixtures do
   `Demo.Generator.world/1` (see there for the options, such as `tasks: 30`).
 
   The data is the same on every run: the random state is seeded first
-  (`seed: 42` unless given). Ids and emails are fresh per test rather than the
-  fixed ones of `Demo.Actors`, so tests can run concurrently; pass
+  (`seed: 42` unless given). Ids and emails are the test's own rather than the
+  fixed ones of `Demo.Actors` (the test cases call
+  `Demo.Generator.distinct_ids/0`), so tests can run concurrently; pass
   `fixed?: true` to get the fixed ones.
 
   Returns a map with `:organization`, `:other_organization`, the actors

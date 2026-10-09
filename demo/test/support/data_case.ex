@@ -39,6 +39,10 @@ defmodule Demo.DataCase do
   def setup_sandbox(tags) do
     pid = Ecto.Adapters.SQL.Sandbox.start_owner!(Demo.Repo, shared: not tags[:async])
     on_exit(fn -> Ecto.Adapters.SQL.Sandbox.stop_owner(pid) end)
+    # Tests run at the same time, each in a transaction of its own: two that
+    # insert the same id wait for each other. The generators give the same
+    # data in every test, so their ids are made the test's own.
+    Demo.Generator.distinct_ids()
   end
 
   @doc """

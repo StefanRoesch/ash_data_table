@@ -13,7 +13,12 @@ config :demo, Demo.Repo,
   port: String.to_integer(System.get_env("POSTGRES_PORT", "5477")),
   database: "demo_test#{System.get_env("MIX_TEST_PARTITION")}",
   pool: Ecto.Adapters.SQL.Sandbox,
-  pool_size: System.schedulers_online() * 2
+  pool_size: System.schedulers_online() * 2,
+  # A test has one connection for everything it starts: a table that reads
+  # while another of its reads is running waits for it. On a busy machine
+  # that takes longer than the default of 50 ms allows.
+  queue_target: 5_000,
+  queue_interval: 10_000
 
 # We don't run a server during test. If one is required,
 # you can enable the server option below.

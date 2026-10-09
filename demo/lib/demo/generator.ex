@@ -24,8 +24,8 @@ defmodule Demo.Generator do
 
   Random values are drawn from a random state this module keeps per process,
   not from StreamData's own (time-seeded) one. Call `reseed/1` first and the
-  same calls produce the same records, ids included. Dates are relative to
-  today, so they move with the calendar.
+  same calls produce the same records, ids included (unless `distinct_ids/0`
+  was called). Dates are relative to today, so they move with the calendar.
 
   The values of a record are drawn in the order they are written in here, and
   then the overrides in the order they are given in, so pass those as a
@@ -41,6 +41,7 @@ defmodule Demo.Generator do
 
   @default_seed 42
   @state {__MODULE__, :random_state}
+  @salt {__MODULE__, :id_salt}
   @chunk 1000
 
   @verbs ~w(Fix Add Remove Review Refactor Document Design Test Investigate Migrate Rename Update
@@ -155,8 +156,31 @@ defmodule Demo.Generator do
 
   @doc "A random (version 4) UUID drawn from the generators' random state."
   def uuid do
-    <<a::48, _::4, b::12, _::2, c::62>> = bytes(16)
+    <<a::48, _::4, b::12, _::2, c::62>> = :crypto.exor(bytes(16), Process.get(@salt, <<0::128>>))
     Ecto.UUID.cast!(<<a::48, 4::4, b::12, 2::2, c::62>>)
+  end
+
+  @doc """
+  Makes the ids generated in the calling process differ from those of every
+  other process, and with them the slugs and emails, which are unique too.
+  Nothing else changes: the same seed still gives the same records, in the
+  same order by id. Tests that run at the same time call it, as two
+  transactions that insert the same id wait for each other.
+  """
+  def distinct_ids do
+    # only the end of an id: the ids of one process keep their order
+    Process.put(@salt, <<0::80, :crypto.strong_rand_bytes(6)::binary>>)
+    :ok
+  end
+
+  # A value that has to be unique in its table, made the process's own where
+  # its ids are. A sequence calls its function in a process of its own, so the
+  # mark is taken here, by the caller.
+  defp own(fun) do
+    case Process.get(@salt) do
+      nil -> fun
+      <<_::80, salt::binary>> -> &(fun.(&1) <> "-" <> Base.encode16(salt, case: :lower))
+    end
   end
 
   ## Records
@@ -194,20 +218,22 @@ defmodule Demo.Generator do
       id: rnd(&uuid/0),
       name: sequence(:organization_name, &"Organization #{&1 + 1}"),
       inserted_at: rnd(fn -> past(60, 365) end),
-      slug: sequence(:organization_slug, &"organization-#{&1 + 1}"),
+      slug: sequence(:organization_slug, own(&"organization-#{&1 + 1}")),
       updated_at: rnd(fn -> past(0, 60) end)
     )
   end
 
   @doc "A user. Needs `organization_id:`."
   def user(opts \\ []) do
+    local = own(&"user#{&1 + 1}")
+
     record(%User{}, opts,
       id: rnd(&uuid/0),
       name: rnd(fn -> "#{one(@first_names)} #{one(@last_names)}" end),
       role: :member,
       inserted_at: rnd(fn -> past(60, 365) end),
       updated_at: rnd(fn -> past(0, 60) end),
-      email: sequence(:user_email, &Ash.CiString.new("user#{&1 + 1}@example.test"))
+      email: sequence(:user_email, &Ash.CiString.new(local.(&1) <> "@example.test"))
     )
   end
 
