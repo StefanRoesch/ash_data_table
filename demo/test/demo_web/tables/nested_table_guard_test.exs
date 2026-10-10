@@ -74,12 +74,12 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
   # A `filter` event as the filter row's form sends it, with whatever in it.
   defp send_filter(view, id, filter) do
     view |> element("[id='#{id}-grid']") |> render_hook("filter", %{"filter" => filter})
-    render_async(view, 2000)
+    render_async(view)
   end
 
   defp send_sort(view, id, column) do
     view |> element("[id='#{id}-grid']") |> render_hook("sort", %{"column" => column})
-    render_async(view, 2000)
+    render_async(view)
   end
 
   # Everything a table shows that comes from a count.
@@ -176,7 +176,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
         assert attribute(html, "[id='#{id}-next']", "disabled") == []
 
         view |> element("[id='#{id}-next']") |> render_click()
-        html = render_async(view, 2000)
+        html = render_async(view)
 
         assert length(column(html, id, "title")) == unquote(visible) - 25
         assert text(html, "[id='#{id}-range']") == "26–30"
@@ -286,7 +286,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
       assert text(html, "[id='#{id}-range']") == "1–22 of 22"
 
       view |> element("#become") |> render_click(%{"id" => world.member.id})
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       # the member's table: every task, in the action's order, nothing filtered
       refute "External ref" in headers(html, "tasks")

@@ -55,11 +55,12 @@ A component is an interface and nothing more. With one or without:
   not there, a column they can never edit has no editor, and a value that is
   hidden from them on one record is not shown.
 
-## The three that are shipped
+## The four that are shipped
 
 | Component | Part | For | Looks like |
 | --- | --- | --- | --- |
 | `AshTable.Components.Badge` | `cell/1` | A choice: an `Ash.Type.Enum`, or an `:atom` with `one_of`. | The value's label in an outlined pill. Every value has the same badge: there is no colour per value. |
+| `AshTable.Components.Image` | `cell/1` | Text that holds where a picture is: an `http://` or `https://` address, or a path that starts with `/`. | The picture, as high as a line of text. Any other text is shown as text: a `javascript:` or `data:` address is never asked for. The picture's text alternative is the column's label. The component is not given the record, so the column has to hold the address itself, or be a calculation that makes one from a stored key. |
 | `AshTable.Components.Progress` | `cell/1` | A number with a minimum and a maximum. | A bar from the minimum to the maximum, filled up to the value, with the number beside it. |
 | `AshTable.Components.Slider` | `editor/1` | A number with a minimum and a maximum. | A slider between the two, with the number that is being chosen beside it. It saves when it is let go. |
 

@@ -489,10 +489,11 @@ No login is needed for that page.
 - **Both can be columns of one table**: the key, as the attribute, and the
   label, as the relationship. A person who may not read the related record
   then sees a key beside an empty cell.
-- **A public `sensitive?` attribute is a column like any other.**
-  `Task.external_ref` is sensitive and public. Sensitivity is about logs and
-  inspection, not about exposure. What keeps the column from most people in
-  the demo is its field policy.
+- **A public `sensitive?` attribute is a column, and its cells are masked.**
+  `Project.budget` is sensitive and public: its cells show `••••••` until a
+  person asks for one. Sensitivity is not about who may see the field. What
+  keeps the column from a viewer in the demo is its field policy. See
+  [Sensitive columns](sensitive-columns.md).
 - **A primary key of several attributes** needs nothing special. On
   `/task_labels` each row is identified by both parts of its key.
 - **An enum whose type has no label for a value** shows the value in words.

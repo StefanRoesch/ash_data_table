@@ -290,7 +290,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert action_failure(act(view, foreign.id, "archive"), foreign.id) != nil
 
       view |> element("#task-head-title") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert titles(html) == ["Mine", "Somebody else's"]
       assert action_failure(html, foreign.id) == nil
@@ -413,7 +413,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
     test "reads the page again when it took the last row of it", %{view: view} = context do
       for task <- [context.first, context.second], do: act(view, task.id, "destroy")
       html = act(view, context.third.id, "destroy")
-      html = if html =~ "task-empty", do: html, else: render_async(view, 2000)
+      html = if html =~ "task-empty", do: html, else: render_async(view)
 
       assert titles(html) == []
       assert text(html, "#task-empty") == "No records"
@@ -647,7 +647,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert panel(act(view, task.id, "reassign")) != nil
 
       view |> element("#task-head-title") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert titles(html) == ["File the report", "Write the report"]
       assert panel(html) == nil

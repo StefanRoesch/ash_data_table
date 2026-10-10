@@ -26,6 +26,26 @@ defmodule Demo.Support.Asked do
   def rate(assigns), do: Map.get(assigns, :rate, 5)
 end
 
+defmodule Demo.Support.Hold do
+  @moduledoc """
+  Holds the read of `Demo.Support.Asked.Stock` back while a test says so, so
+  that a test can do something while a read is on its way: the read waits
+  until it is let go.
+  """
+  def hold, do: :persistent_term.put(__MODULE__, true)
+  def release, do: :persistent_term.put(__MODULE__, false)
+
+  @doc "Waits while the reads are held back, a second at most."
+  def wait(tries \\ 200) do
+    if tries > 0 and :persistent_term.get(__MODULE__, false) do
+      Process.sleep(5)
+      wait(tries - 1)
+    end
+
+    :ok
+  end
+end
+
 defmodule Demo.Support.Asked.Kind do
   @moduledoc false
   use Ash.Type.Enum, values: [plain: [label: "Plain"], fancy: [label: "Fancy"]]
@@ -228,6 +248,14 @@ defmodule Demo.Support.Asked.Stock do
 
       pagination offset?: true, countable: true, default_limit: 2, required?: false
       prepare build(sort: [name: :asc])
+
+      # waits while a test holds the reads back (`Demo.Support.Hold`)
+      prepare fn query, _context ->
+        Ash.Query.before_action(query, fn query ->
+          Demo.Support.Hold.wait()
+          query
+        end)
+      end
     end
   end
 

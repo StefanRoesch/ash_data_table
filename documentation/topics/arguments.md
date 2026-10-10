@@ -344,6 +344,9 @@ a read action that requires an argument the line has no input for.
 
 ## Edge cases
 
+- **A `sensitive?` argument has no input on the line**, as what the line
+  holds is kept in the URL. A read action that requires one cannot be
+  behind a table. See [Sensitive columns](sensitive-columns.md).
 - **A page of related records through an action that requires an argument
   fails in Ash** (3.34.4): beside the load that is given the arguments, Ash
   runs the action once more without any, and that one's "is required" is the

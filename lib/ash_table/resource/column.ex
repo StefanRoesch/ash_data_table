@@ -84,7 +84,7 @@ defmodule AshTable.Resource.Column do
     component: [
       type: :module,
       doc:
-        "A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of the three that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship."
+        "A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of those that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Image`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship."
     ],
     exposes_protected_field?: [
       type: :boolean,

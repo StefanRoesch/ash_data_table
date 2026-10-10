@@ -59,7 +59,9 @@ defmodule DemoWeb.Router do
   # with generic actions (`action_tables.ex`), one whose actions hand their
   # arguments to relationships (`relation_tables.ex`), one whose columns are
   # unions (`union_tables.ex`), one whose actions take files
-  # (`file_tables.ex`), one whose
+  # (`file_tables.ex`), one with sensitive columns (`sensitive_tables.ex`),
+  # those of a domain whose policies allow nothing, mounted with and without
+  # authorization (`unchecked_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
   # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
@@ -85,6 +87,7 @@ defmodule DemoWeb.Router do
         ash_table "/tags", Demo.Support.Ledger.Tag, layout: false
         ash_table "/errands", Demo.Support.Ledger.Errand, layout: false
         ash_table "/gauges", Demo.Support.Styled.Gauge, layout: false
+        ash_table "/portraits", Demo.Support.Styled.Portrait, layout: false
         ash_table "/rosters", Demo.Support.Lists.Roster, layout: false
         ash_table "/sites", Demo.Support.Maps.Site, layout: false
         ash_table "/dossiers", Demo.Support.Vault.Dossier, layout: false
@@ -116,6 +119,17 @@ defmodule DemoWeb.Router do
         ash_table "/gigs", Demo.Support.Managed.Gig, layout: false
         ash_table "/gifts", Demo.Support.Unions.Gift, layout: false
         ash_table "/scans", Demo.Support.Files.Scan, layout: false
+        ash_table "/safes", Demo.Support.Secrets.Safe, layout: false
+
+        # The same tables twice: as their domain says, which authorizes, and
+        # mounted without authorization. Under `/support` and in the test
+        # environment only: no page of the demo itself is mounted so.
+        ash_table "/closed/cases", Demo.Support.Closed.Case, layout: false
+        ash_table "/closed/entries", Demo.Support.Closed.Entry, layout: false
+        ash_table "/open/cases", Demo.Support.Closed.Case, layout: false, authorize?: false
+        ash_table "/open/entries", Demo.Support.Closed.Entry, layout: false, authorize?: false
+        ash_table "/open/keepers", Demo.Support.Closed.Keeper, layout: false, authorize?: false
+        live "/unchecked", DemoWeb.Support.UncheckedLive
         live "/asked", DemoWeb.Support.AskedLive
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/select", DemoWeb.Support.SelectLive

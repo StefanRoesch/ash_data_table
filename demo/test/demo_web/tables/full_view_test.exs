@@ -218,7 +218,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       |> Ash.update!(authorize?: false)
 
       view |> element("#comment-head-body") |> render_click()
-      assert heading(render_async(view, 2000), "comment") == "Write the summary: Comments"
+      assert heading(render_async(view), "comment") == "Write the summary: Comments"
     end
 
     test "is beside the page's own heading, and the grid keeps its name", %{
@@ -257,7 +257,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       view |> element("#comment-related-clear") |> render_click()
 
       assert patched(view) == {"/comments", %{}}
-      html = plain(render_async(view, 2000), "comment")
+      html = plain(render_async(view), "comment")
       assert length(column(html, "comment", "body")) == 3
     end
 
@@ -276,7 +276,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       view |> element("#comment-related-clear") |> render_click()
 
       assert patched(view) == {"/comments", %{}}
-      assert length(column(render_async(view, 2000), "comment", "body")) == 3
+      assert length(column(render_async(view), "comment", "body")) == 3
     end
   end
 
@@ -319,7 +319,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       # a sort
       view |> element("#task-head-title") |> render_click()
       assert patched(view) == {"/tasks", %{"task" => Map.put(limit, "sort", "title")}}
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert hd(column(html, "task", "title")) == "Task 01"
       assert heading(html, "task") == "Aardvark: Tasks"
 
@@ -329,7 +329,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       assert patched(view) ==
                {"/tasks", %{"task" => Map.merge(limit, %{"sort" => "title", "page" => "2"})}}
 
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert column(html, "task", "title") == Enum.map(26..30, &"Task #{&1}")
       assert text(html, "#task-range") == "26–30 of 30"
 
@@ -353,7 +353,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       # clearing the filters leaves the limit and the sort
       view |> element("#task-clear-filters") |> render_click()
       assert patched(view) == {"/tasks", %{"task" => Map.put(limit, "sort", "title")}}
-      assert text(render_async(view, 2000), "#task-range") == "1–25 of 30"
+      assert text(render_async(view), "#task-range") == "1–25 of 30"
     end
 
     test "are read from a URL that is opened afresh, as a shared link is", %{
@@ -502,7 +502,7 @@ defmodule DemoWeb.Tables.FullViewTest do
 
       # nor after a change of the table, which reads again
       view |> element("#comment-head-body") |> render_click()
-      nothing_told(render_async(view, 2000))
+      nothing_told(render_async(view))
 
       # nor in the server's first response
       conn |> log_in(world.outsider) |> get(path) |> html_response(200) |> nothing_told()
@@ -529,7 +529,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       Ash.destroy!(task, authorize?: false)
       view |> element("#comment-head-body") |> render_click()
 
-      nothing_told(render_async(view, 2000))
+      nothing_told(render_async(view))
     end
 
     test "is read as the person on every read: one that stops being theirs stops being shown",
@@ -545,7 +545,7 @@ defmodule DemoWeb.Tables.FullViewTest do
 
       view |> element("#comment-head-body") |> render_click()
 
-      nothing_told(render_async(view, 2000))
+      nothing_told(render_async(view))
     end
 
     test "nobody, whose read of the comments is refused, is told that and no more", %{

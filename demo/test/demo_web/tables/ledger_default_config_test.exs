@@ -73,7 +73,7 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
     assert column(html, "job", "tag_count") == ["1", "0"]
 
     view |> element("#job-head-tag_count") |> render_click()
-    html = render_async(view, 2000)
+    html = render_async(view)
 
     assert text(html, "#job-error") == nil
     assert column(html, "job", "title") == ["B other", "A own"]
@@ -90,7 +90,7 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
     assert attribute(html, "[id='#{id}-head-tagging_count']", "data-sort") == []
 
     view |> element("[id='#{id}-grid']") |> render_hook("sort", %{"column" => "tagging_count"})
-    html = render_async(view, 2000)
+    html = render_async(view)
 
     assert text(html, "[id='#{id}-error']") == nil
     assert column(html, id, "body") == ["Not available", "Remark 2", "Not available"]

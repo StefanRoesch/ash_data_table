@@ -415,6 +415,26 @@ is about that option. `NAME` is the argument the `upload` names.
 A file argument needs no `upload`: without one its upload takes one file of
 any kind, of 8 MB at most. See [Files](files.md#what-the-upload-is-limited-to).
 
+## Sensitive fields
+
+A field the resource declares `sensitive? true` is masked in a table, and
+some things a block can say do not go with that. See
+[Sensitive columns](sensitive-columns.md).
+
+| Path | Message starts with | Cause | Fix |
+| --- | --- | --- | --- |
+| `table -> column -> NAME -> component` | \`NAME\` is declared \`sensitive?: true\`. A table masks the cells of a sensitive column … | A `component` on a sensitive column: it would be given the value to show. | Remove `component` from the column. |
+| `table -> label_field` | \`NAME\` is declared \`sensitive?: true\`. The label of a record is shown wherever a table names the record … | The `label_field` is sensitive. | Name another attribute. |
+| `table -> column -> NAME -> sortable?` and `filterable?` | \`NAME\` cannot be sorted … / cannot be filtered … | `sortable? true` or `filterable? true` on a sensitive column. | Remove the option. |
+| `table -> column -> NAME -> update_action` | \`NAME\` is declared \`sensitive?: true\` and has the type \`TYPE\`. A table hides what is typed for a sensitive field, which it can do for text and for a number only … | The column's own `update_action` on a sensitive column that is not text or a number. | Remove `update_action` from the column. A row action can still change the value. |
+| `table -> action -> NAME` | The … action \`NAME\` cannot be run from a table: its input \`INPUT\` is required and declared \`sensitive?: true\` … | The action requires a sensitive input that is not text or a number. | Give the input a default, or leave the action out of the block. |
+| `table -> read_action` | The read action \`NAME\` requires the argument \`ARGUMENT\`, which is declared \`sensitive?: true\` … | What is given on the argument line is kept in the URL, so the line has no input for a sensitive argument. | Give the argument a default, or name another read action. |
+| `table -> column -> NAME -> ask -> ARGUMENT` | The argument \`ARGUMENT\` of the calculation \`NAME\` cannot be asked: it is declared \`sensitive?: true\` … | An `ask` for a sensitive argument. | Fix its value with `arguments`. |
+
+A table-level `update_action` leaves a sensitive column that cannot be
+edited read-only, without a finding, as it does for every column it cannot
+save.
+
 ## A private action
 
 A table runs only actions that the resource declares `public?`, however it

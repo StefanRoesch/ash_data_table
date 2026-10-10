@@ -126,7 +126,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       {view, _html} = jobs(conn, world.member)
 
       view |> element("#job-head-assignee_role") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert titles(html) == ["B other", "A own", "C abroad", "D free"]
       assert column(html, "job", "assignee_name") == [world.admin.name, world.member.name, "", ""]
@@ -199,7 +199,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       # sorted by the aggregate: the name of the person of the other
       # organization, which comes first in the alphabet, moves nothing
       view |> element("#errand-head-assignee_name") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, "errand", "assignee_name") ==
                [world.member.name, world.admin.name, "", ""]
@@ -269,7 +269,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert titles(html) == ["A own", "B other", "C abroad", "D free", "E more 1"]
 
       view |> element("#job-next") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "#job-range") == "6–7 of 7"
       assert titles(html) == ["E more 2", "E more 3"]
@@ -288,7 +288,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
 
       view |> element("#job-head-tag_count") |> render_click()
       view |> element("#job-head-tag_count") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert attribute(html, "#job-head-tag_count", "aria-sort") == ["descending"]
       assert column(html, "job", "tag_count") == ["2", "1", "1", "0"]
@@ -344,7 +344,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
         # and the next page is found from the last of these records: its
         # place in the order, or its cursor, is as the read gave it
         view |> element("[id='#{id}-next']") |> render_click()
-        html = render_async(view, 2000)
+        html = render_async(view)
 
         assert column(html, id, "body") == ["Remark 4"]
         assert column(html, id, "tagging_count") == ["1"]
@@ -370,12 +370,12 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       |> element("[id='#{id}-grid']")
       |> render_hook("sort", %{"column" => "tagging_count"})
 
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
       assert length(column(html, id, "body")) == 3
 
       view |> element("[id='#{id}-head-tagged?']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
       assert attribute(html, "[id='#{id}-head-tagged?']", "aria-sort") == ["ascending"]
       assert length(column(html, id, "body")) == 3
@@ -392,7 +392,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       id = nested("job", other.id, "remarks")
 
       view |> element("[id='#{id}-head-tagging_count']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == ["ascending"]
       assert text(html, "[id='#{id}-error']") == nil
@@ -427,7 +427,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert attribute(html, "#job-head-remark_count", "aria-sort") == []
 
       view |> element("#job-grid") |> render_hook("sort", %{"column" => "remark_count"})
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert text(html, "#job-error") == nil
       assert titles(html) == ["A own", "B other", "C abroad", "D free"]
 

@@ -109,7 +109,7 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
 
         Gate.close()
         view |> element("#paper-head-title") |> render_click()
-        html = render_async(view, 2000)
+        html = render_async(view)
 
         assert text(html, "#paper-error") == "You are not allowed to see these records."
         assert column(html, "paper", "title") == []
@@ -210,11 +210,11 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
       assert assert_patch(view) ==
                "/support/held-dockets?held[of][clerk][dockets]=#{clerk.id}&held[sort]=title"
 
-      assert column(render_async(view, 2000), "held", "title") == ["Docket one", "Docket two"]
+      assert column(render_async(view), "held", "title") == ["Docket one", "Docket two"]
 
       view |> element("#held-related-clear") |> render_click()
       assert assert_patch(view) == "/support/held-dockets"
-      assert length(column(render_async(view, 2000), "held", "title")) == 3
+      assert length(column(render_async(view), "held", "title")) == 3
     end
 
     test "is not limited by the parameter of another table", %{conn: conn, clerk: clerk} do

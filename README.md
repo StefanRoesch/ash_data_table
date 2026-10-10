@@ -74,6 +74,7 @@ examples from the demo app and each topic's edge cases.
 - [Files](documentation/topics/files.md)
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Custom components](documentation/topics/custom-components.md)
+- [Sensitive columns](documentation/topics/sensitive-columns.md)
 - [Authorization](documentation/topics/authorization.md)
 - [Keyboard and accessibility](documentation/topics/keyboard-and-accessibility.md)
 - [Messages and translations](documentation/topics/messages-and-translations.md)
@@ -1106,8 +1107,9 @@ table do
 end
 ```
 
-Three are shipped: `AshTable.Components.Badge` shows an enum's value as a
-badge, `AshTable.Components.Progress` shows a number between its minimum and
+Four are shipped: `AshTable.Components.Badge` shows an enum's value as a
+badge, `AshTable.Components.Image` shows the picture at the address a text
+holds, `AshTable.Components.Progress` shows a number between its minimum and
 maximum as a bar with the number beside it, and `AshTable.Components.Slider`
 edits such a number with a slider. A component of your own is a module with
 two function components, either of which can be left out:
@@ -1192,6 +1194,26 @@ A domain without the extension behaves as one with these defaults. Add
 > whoever is asking and even when nobody is logged in: every record the read
 > reaches, every column, every declared edit. Use it only for a domain whose
 > tables sit behind a gate of your own, such as an admin area.
+
+One page can be mounted without authorization, whatever its domain says:
+
+    ash_table "/admin/tasks", MyApp.Tracker.Task, id: "admin-task", authorize?: false
+
+> **This page shows everything to whoever can open it.** Every read and
+> every action the table runs for it is given `authorize?: false`, the
+> tables nested in it and its pickers included. Put it behind your own
+> access control (a pipeline and an `on_mount` hook that let only
+> administrators in), and nowhere else. The option is the router's: nothing
+> a browser sends can set it.
+
+**A `sensitive?` field is masked.** Its cells show `••••••` and a "Show"
+button; the value is not sent to the browser until a person asks for that
+one cell (the button, or Shift+Enter), and it is hidden again when focus
+leaves the cell. The editor hides what is typed and starts empty, and an
+editor left empty saves nothing. A table neither sorts nor filters by such
+a column. Sensitive is not hidden: who may read the field is said by a
+field policy. See
+[Sensitive columns](documentation/topics/sensitive-columns.md).
 
 **Every action a table runs is `public?`,** however the table came by it.
 Ash runs a private action for whoever its policies allow, and the policy
@@ -1442,7 +1464,8 @@ given those too, under the names the domain gives them, each only when the
 socket has it. Without this setting the tables are rendered bare in the root
 layout. One table can differ:
 `ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
-`layout: {Module, :function}`.
+`layout: {Module, :function}`. The router line also takes `id:` and
+`authorize?:` (see "Who is reading, and what they may see and do").
 
 A mounted table's first line is the page's heading: its name as an `h1`,
 and its create button at the other end.

@@ -48,6 +48,12 @@ defmodule AshTable.Model.Input do
   #   * `default` is the value the field starts with where there is no
   #     record to take it from: the static default of the argument or of the
   #     attribute, nil when it has none or one that is computed.
+  #   * `sensitive?` is what the attribute or the argument says
+  #     (`AshTable.Sensitive`): what is typed into its field is hidden, the
+  #     field starts empty whatever the record holds, and left empty it
+  #     gives the action nothing. Only an input that is typed as text or as
+  #     a number is ever one: a sensitive input of any other type is no
+  #     input of the panel.
   #   * `partly_hidden?` is set for the person asking
   #     (`AshTable.Model.for_actor/2`): the input is an attribute they see
   #     on some records only. On one record the table knows whether they
@@ -70,7 +76,8 @@ defmodule AshTable.Model.Input do
     :reference,
     :default,
     required?: false,
-    partly_hidden?: false
+    partly_hidden?: false,
+    sensitive?: false
   ]
 
   @type t :: %__MODULE__{
@@ -105,6 +112,7 @@ defmodule AshTable.Model.Input do
             | nil,
           default: term,
           required?: boolean,
-          partly_hidden?: boolean
+          partly_hidden?: boolean,
+          sensitive?: boolean
         }
 end

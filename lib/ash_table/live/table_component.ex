@@ -190,6 +190,27 @@ defmodule AshTable.Live.TableComponent do
   # by LiveView's client when the panel's form is submitted, and the action
   # runs while LiveView holds it (see "Files" among the functions below).
   #
+  # ## Sensitive columns
+  #
+  # A cell of a column whose field is declared `sensitive?` shows a mask,
+  # the same for every value, and a button (`data-reveal`); an empty one is
+  # empty, as any cell is. The value is not in the page, and not in what the
+  # server keeps of a row: a record is given to the stream with its
+  # sensitive values replaced (`AshTable.Sensitive.scrub/2`).
+  #
+  # The hook asks for the value of one cell with one `reveal` event, with
+  # the row and the column, and the server answers with the value as text:
+  # the record is read again, as the person, and a value Ash hides from them
+  # is not given. The hook puts it into the cell (`data-secret`, a live
+  # region) and takes it out again when focus leaves the cell; a patch of
+  # the row takes it out by itself. Nothing of it is ever rendered by the
+  # server.
+  #
+  # The editor of such a column is a password input, and starts empty: what
+  # the hook sends for it is what was typed, and an editor nothing was typed
+  # into saves nothing. A save that failed leaves the cell with its mask and
+  # the action's message; what was typed is not kept.
+  #
   # ## Nested tables
   #
   # A table whose rows offer relationships, to this person and at this depth,
@@ -251,6 +272,7 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Routes
+  alias AshTable.Sensitive
   alias AshTable.State
   alias AshTable.Text
   alias Phoenix.LiveView.JS
@@ -432,7 +454,11 @@ defmodule AshTable.Live.TableComponent do
   # read as a nested table is: through the parent, read again as the person.
   # Any other table is not limited.
   defp relate(%{assigns: %{nested?: true, via: via, parent_key: key}} = socket) do
-    assign(socket, full_view: Related.path(socket.router, socket.endpoint, via, key))
+    # on a page that is mounted as this table was told to authorize
+    assign(socket,
+      full_view:
+        Related.path(socket.router, socket.endpoint, via, key, socket.assigns.authorize_given)
+    )
   end
 
   defp relate(%{assigns: %{url: url, id: id, resource: resource}} = socket)
@@ -804,7 +830,13 @@ defmodule AshTable.Live.TableComponent do
   # Who is reading and saving.
   defp reader(assigns), do: Map.to_list(Map.take(assigns, [:scope, :actor, :tenant, :authorize?]))
 
+  # A read that came back, or went down, while the table waits for an
+  # argument its read action requires: it was of other arguments, and
+  # nothing of it is shown (`unfilled/2`).
   @impl true
+  def handle_async(:read, _result, %{assigns: %{missing: [_ | _]}} = socket),
+    do: {:noreply, socket}
+
   def handle_async(:read, {:ok, result}, socket) do
     {:noreply, socket |> assign(busy?: false, loading?: false) |> show(result, :later)}
   end
@@ -868,7 +900,9 @@ defmodule AshTable.Live.TableComponent do
   # The read action is not run while an argument it requires is empty: the
   # table has no rows, and says in their place which argument to fill in.
   # That is no error and not "No records". A read that is on its way is of
-  # other arguments, and is given up.
+  # other arguments: it is left to finish, and what it brings is not shown
+  # (`handle_async/3`). It is not stopped: a process that is killed in the
+  # middle of a statement takes its database connection with it.
   #
   # A person who can never run the read action is not asked to fill in
   # anything: Ash says so without a read (`Ash.can/3`), and they are
@@ -877,7 +911,7 @@ defmodule AshTable.Live.TableComponent do
     %{model: model, missing: missing} = socket.assigns
     reader = reader(socket.assigns)
 
-    socket = socket |> cancel_async(:read) |> assign(busy?: false, loading?: false)
+    socket = assign(socket, busy?: false, loading?: false)
 
     if Keyword.get(reader, :authorize?, true) and
          Model.Access.forbidden_actions(model.resource, [model.read_action], reader) != [] do
@@ -920,8 +954,9 @@ defmodule AshTable.Live.TableComponent do
     items =
       Enum.flat_map(rows, fn row ->
         current? = current?(socket.assigns.choose, model, row.record)
+        record = Sensitive.scrub(row.record, model.columns)
 
-        [item(id, row.key, row.record, row.rowindex, %{}, false, row.names, current?)] ++
+        [item(id, row.key, record, row.rowindex, %{}, false, row.names, current?)] ++
           if(socket.assigns.expandable?, do: [detail(id, row.key, nil, nil)], else: [])
       end)
 
@@ -1025,6 +1060,10 @@ defmodule AshTable.Live.TableComponent do
   # what the hook names the row by where the key in its id does not (see
   # `names/3`). `current?` says, in a table to choose from, that this is the
   # record that is chosen now.
+  #
+  # `record` is the record without its sensitive values
+  # (`AshTable.Sensitive.scrub/2`): what a row is rendered from never holds
+  # one.
   defp item(id, key, record, rowindex, failed, open?, names, current? \\ false) do
     %{
       dom_id: "#{id}-row-#{key}",
@@ -1086,6 +1125,7 @@ defmodule AshTable.Live.TableComponent do
   defp put_row(socket, key, record) do
     %{id: id, model: model, rows: rows, failed: failed, open: open} = socket.assigns
     names = names(model, record, key)
+    record = Sensitive.scrub(record, model.columns)
 
     stream_insert(
       socket,
@@ -1125,7 +1165,10 @@ defmodule AshTable.Live.TableComponent do
   defp put_failed(socket, key, _record, %{cells: cells, action: nil}) when cells == %{},
     do: assign(socket, failed: Map.delete(socket.assigns.failed, key))
 
+  # the record is kept as a row holds it: without its sensitive values
   defp put_failed(socket, key, record, failures) do
+    record = Sensitive.scrub(record, socket.assigns.model.columns)
+
     assign(socket,
       failed: Map.put(socket.assigns.failed, key, Map.put(failures, :record, record))
     )
@@ -1435,6 +1478,32 @@ defmodule AshTable.Live.TableComponent do
   end
 
   def handle_event("save", _params, socket), do: {:reply, %{ok: false}, socket}
+
+  # Sent by the hook when a person asks for the value of a sensitive cell:
+  # the row by the key in its DOM id, and the column. The record is read
+  # again, as the person, through the table's read action, and the answer
+  # is the value as the cell would show it. It goes to the hook alone:
+  # nothing of it is rendered, kept or said.
+  #
+  # Only a cell of a sensitive column this person has, in a row of the page.
+  # A value Ash hides from them on this record is not given; whoever may
+  # see the field may ask (`sensitive?` is no access rule).
+  def handle_event("reveal", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+    %{model: model, rows: rows} = socket.assigns
+
+    with %{sensitive?: true} = column <- column(model, name),
+         %{} = row <- rows[key] do
+      case revealed(model, column, row.pk, reader(socket.assigns)) do
+        {:ok, text} -> {:reply, %{ok: true, value: text}, socket}
+        :hidden -> {:reply, %{ok: false}, socket}
+        :error -> {:reply, %{ok: false, error: Text.t(:record_gone)}, socket}
+      end
+    else
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("reveal", _params, socket), do: {:reply, %{ok: false}, socket}
 
   # Sent by the hook when a person uses a button of a row's actions cell,
   # once they have answered the question of an action that has one: the row
@@ -1892,6 +1961,29 @@ defmodule AshTable.Live.TableComponent do
 
   def handle_event("dismiss", _params, socket), do: {:noreply, socket}
 
+  # The value of one sensitive cell, as text: of the record as it is read
+  # now, for this person. A calculation or an aggregate is loaded onto it as
+  # the rows of a page have it, through the table's read action.
+  defp revealed(model, column, key, reader) do
+    opts = Query.reader_opts(reader)
+
+    with {:ok, record} <- Record.fetch(model, key, opts),
+         {:ok, record} <- with_column(model, column, record, opts) do
+      case value(column, record) do
+        %Ash.ForbiddenField{} -> :hidden
+        value -> {:ok, Format.format(column, value)}
+      end
+    else
+      _gone_or_refused -> :error
+    end
+  end
+
+  defp with_column(_model, %{kind: :attribute}, record, _opts), do: {:ok, record}
+
+  defp with_column(model, column, record, opts) do
+    Query.load(record, %{model | columns: [column]}, [action: model.read_action] ++ opts)
+  end
+
   # Either way the row is put back with what is true now: the action's
   # result, or the record as it is and the cell marked with what was typed.
   defp save(socket, key, row, column, typed) do
@@ -1901,6 +1993,9 @@ defmodule AshTable.Live.TableComponent do
          socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
 
       {:error, %_{} = record, message, places} ->
+        # what was typed into a sensitive cell is not kept, and not shown
+        typed = if column.sensitive?, do: "", else: typed
+
         {:reply, %{ok: false},
          socket
          |> put_failure(key, record, column.name, {typed, message, places})
@@ -3099,7 +3194,17 @@ defmodule AshTable.Live.TableComponent do
           do: stream_insert(socket, :rows, detail(id, key, nil, nil), at: 0),
           else: socket
       end)
-      |> stream_insert(:rows, item(id, key, record, first, %{}, false, names(model, record, key)),
+      |> stream_insert(
+        :rows,
+        item(
+          id,
+          key,
+          Sensitive.scrub(record, model.columns),
+          first,
+          %{},
+          false,
+          names(model, record, key)
+        ),
         at: 0
       )
       |> push_event("ash_table:focus", %{table: id, cell: first_cell(id, key, model)})
@@ -3436,7 +3541,7 @@ defmodule AshTable.Live.TableComponent do
         id={@id}
         via={@related.via}
         title={@related_title}
-        parent={Routes.table(@socket.router, @related.via.source)}
+        parent={Routes.table(@socket.router, @related.via.source, @authorize_given)}
         clear={path(@url, @id, %{})}
         create={@page && @model.create}
         actions={if @page, do: @offered, else: []}
@@ -3851,7 +3956,7 @@ defmodule AshTable.Live.TableComponent do
           :for={column <- @model.columns}
           :if={column.editable?}
           id={"#{@id}-editor-#{column.name}"}
-          data-editor={column.editor}
+          data-editor={if column.sensitive?, do: :secret, else: column.editor}
           data-commit={column.editor == :component && column.component.commit}
           data-confirm={column.confirm}
         >
@@ -4364,6 +4469,17 @@ defmodule AshTable.Live.TableComponent do
         // The cell is the panel's opener, and has the focus again when
         // the panel is gone.
         //
+        // A cell of a sensitive column holds a mask and a button, and
+        // not the value: Shift+Enter on the cell, or the button, asks
+        // the server for it (`reveal`), and the answer is put into the
+        // cell, which says it (a live region). It is taken out again
+        // when focus leaves the cell, with Escape, with the same key or
+        // button once more, and by every patch of the row, which brings
+        // the cell as the server renders it. One cell at a time. Its
+        // editor is a password input that opens empty; while its save
+        // is on its way the cell shows what it showed, never what was
+        // typed.
+        //
         // A grid in a dialog is the top of its own tree
         // of grids, wherever the dialog stands in the page: nothing
         // outside a modal dialog can be reached while it is open.
@@ -4441,6 +4557,8 @@ defmodule AshTable.Live.TableComponent do
             // what the cell shows of it, and `input` is the one the focus
             // was in last.
             this.editing = null
+            // the sensitive cell whose value is shown: {cell}, or null
+            this.revealed = null
             // cells this hook has marked as failed itself, with what they showed before
             this.marked = new WeakMap()
             // the cell under the pointer, and the message that is showing
@@ -4674,6 +4792,9 @@ defmodule AshTable.Live.TableComponent do
           // that changed is the tab stop, which is every move of the focus.
           sync(records) {
             if (!records || records.some(record => record.attributeName !== "tabindex")) this.paint()
+            // a patch has brought the cell whose value was shown as the
+            // server renders it, or taken it away: nothing is shown any more
+            if (this.revealed && !this.shows(this.revealed.cell)) this.revealed = null
             const tree = this.tree()
             const top = this.top()
             const hook = top._ashTable
@@ -4744,6 +4865,9 @@ defmodule AshTable.Live.TableComponent do
           onFocusout(e) {
             const tree = this.tree()
             const top = this.top()
+            // focus leaves the cell whose value is shown: it is hidden again
+            const shown = this.revealed && this.revealed.cell
+            if (shown && shown.contains(e.target) && !(e.relatedTarget && shown.contains(e.relatedTarget))) this.hide()
             if (e.relatedTarget) {
               if (!top.contains(e.relatedTarget)) tree.hadFocus = false
             } else {
@@ -4788,6 +4912,14 @@ defmodule AshTable.Live.TableComponent do
             if (is(cell, "actions")) {
               const button = e.target.closest("button[data-action]")
               if (button) return this.act(button)
+            }
+            // the button of a sensitive cell: shows the value, or hides it
+            // again, with focus on the cell, which the value is shown for
+            // as long as it has
+            if (e.target.closest("button[data-reveal]")) {
+              if (document.activeElement !== cell) cell.focus()
+              this.reveal(cell)
+              return
             }
             // a click on a filter's control or in an editor leaves focus there
             if (this.controlOf(e.target)) return
@@ -4956,6 +5088,13 @@ defmodule AshTable.Live.TableComponent do
               return
             }
             if (e.key !== "Shift") this.selection.range = null
+            // Shift+Enter on a sensitive cell shows its value, and hides
+            // it again; Enter alone is the cell's editor, as everywhere
+            if (e.key === "Enter" && e.shiftKey && this.secretOf(cell)) {
+              this.reveal(cell)
+              e.preventDefault()
+              return
+            }
             switch (e.key) {
               // on an expander that is closed, Right Arrow opens it and Left
               // Arrow on one that is open closes it, as in a tree
@@ -5006,7 +5145,9 @@ defmodule AshTable.Live.TableComponent do
               // gives up the edit of a cell whose save failed; in a nested
               // table, goes back out to the cell that holds it
               case "Escape":
-                if (cell.hasAttribute("aria-invalid")) this.discard(cell)
+                // first of all, a value that is shown is hidden again
+                if (this.revealed && this.revealed.cell === cell) this.hide()
+                else if (cell.hasAttribute("aria-invalid")) this.discard(cell)
                 else if (this.holder()) this.holder().focus()
                 else handled = false
                 break
@@ -5427,6 +5568,9 @@ defmodule AshTable.Live.TableComponent do
           // the browser goes on to type it into the editor, which has the
           // focus by then.
           startEdit(cell, key) {
+            // a value that is shown is hidden before anything else is
+            // put into its cell, or kept of it
+            this.hide()
             const template = this.editorOf(cell)
             const type = template.dataset.editor
             // a boolean has no edit mode: Enter and F2 toggle it, typing does nothing
@@ -5478,6 +5622,12 @@ defmodule AshTable.Live.TableComponent do
               }
               input.focus()
               try { input.showPicker() } catch (_error) { /* the closed menu works too */ }
+            } else if (type === "secret") {
+              // A sensitive cell: nothing of its value is in the page, so
+              // the editor opens empty, and what is typed is typed into
+              // it by the browser, hidden. Left empty it saves nothing.
+              input.focus()
+              handled = key === null
             } else if (type === "text") {
               input.addEventListener("input", () => this.fit(input))
               // typing replaces the text; the character itself is typed by the browser
@@ -5978,7 +6128,9 @@ defmodule AshTable.Live.TableComponent do
             const text = ed.shown ? ed.shown() : (input.tagName === "SELECT" && input.selectedOptions[0] ? input.selectedOptions[0].textContent : value)
             this.detach(ed)
             const failed = cell.hasAttribute("aria-invalid")
-            const typed = () => cell.replaceChildren(document.createTextNode(text))
+            // what was typed into a sensitive cell is never shown: until
+            // the server has answered, the cell shows what it showed
+            const typed = () => ed.type === "secret" ? restore() : cell.replaceChildren(document.createTextNode(text))
             if (save && !SAME(value, ed.old)) {
               typed()
               this.save(cell, value, ed.old, restore)
@@ -6042,8 +6194,88 @@ defmodule AshTable.Live.TableComponent do
           // that is gone.
           mark(cell, value, old, message, restore) {
             this.fail(cell, message, restore)
-            cell.dataset.value = TEXT(value)
+            // what was typed into a sensitive cell is not kept in the page
+            const template = this.editorOf(cell)
+            const secret = template && template.dataset.editor === "secret"
+            cell.dataset.value = secret ? "" : TEXT(value)
             cell.dataset.saved = TEXT(old)
+          },
+
+          // ---- sensitive cells -------------------------------------------
+
+          // What a sensitive cell holds besides its mask: the button that
+          // asks for the value, what says "hidden" to a screen reader, and
+          // the live region the value is put into. Null for every other
+          // cell, and for a sensitive cell without a value, which is empty.
+          secretOf(cell) {
+            const button = cell.querySelector(":scope > span > button[data-reveal]")
+            if (!button) return null
+            const within = button.parentElement
+            return {
+              button,
+              mask: within.querySelector("[data-mask]"),
+              masked: within.querySelector("[data-masked]"),
+              value: within.querySelector("[data-secret]")
+            }
+          },
+
+          // Whether a cell shows its value now: a patch brings it back as
+          // the server renders it, with its mask.
+          shows(cell) {
+            const secret = cell.isConnected && this.secretOf(cell)
+            return !!secret && secret.mask.hidden
+          },
+
+          // Asks the server for the value of a sensitive cell and shows it
+          // in the cell, where a screen reader says it; on a cell that
+          // shows its value, hides it again. The value is shown only while
+          // the person is still at the cell when the answer comes.
+          reveal(cell) {
+            const secret = this.secretOf(cell)
+            if (!secret) return
+            if (this.revealed && this.revealed.cell === cell) return this.hide()
+            this.hide()
+            if (this.revealing) return
+            this.revealing = true
+            const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
+            this.pushEventTo(this.el, "reveal", payload, reply => {
+              this.revealing = false
+              // a patch may have brought the cell anew meanwhile
+              const now = cell.isConnected && this.secretOf(cell)
+              if (!now) return
+              if (!reply || !reply.ok) {
+                // the record is gone: the cell is marked here, as it is
+                // when the picker cannot be opened for it
+                if (reply && reply.error) {
+                  this.fail(cell, reply.error, () => {
+                    const message = document.getElementById(`${cell.id}-error`)
+                    if (message) message.remove()
+                  })
+                }
+                return
+              }
+              if (!cell.contains(document.activeElement) || (this.editing && this.editing.cell === cell)) return
+              now.value.textContent = reply.value
+              now.mask.hidden = true
+              now.masked.hidden = true
+              now.button.textContent = now.button.dataset.hide
+              now.button.setAttribute("aria-label", now.button.dataset.hideLabel)
+              this.revealed = {cell}
+            })
+          },
+
+          // Takes the value that is shown out of its cell again.
+          hide() {
+            const shown = this.revealed
+            if (!shown) return
+            this.revealed = null
+            const secret = shown.cell.isConnected && this.secretOf(shown.cell)
+            if (!secret) return
+            secret.value.textContent = ""
+            secret.mask.hidden = false
+            secret.masked.hidden = false
+            secret.button.textContent = secret.button.dataset.show
+            secret.button.setAttribute("aria-label", secret.button.dataset.showLabel)
           },
 
           // Marks a cell with a message, as the server marks one whose save
@@ -6605,8 +6837,9 @@ defmodule AshTable.Live.TableComponent do
   # What a field of the panel holds, as its control holds it: a field made
   # of groups as its form sends it; the field of an argument that is given
   # by choosing related records their keys, as the panel keeps them (a list
-  # for several, one key or "" for one); and any other what the action's
-  # form holds for it (`field_value/3`).
+  # for several, one key or "" for one); a sensitive field what was typed
+  # into it; and any other what the action's form holds for it
+  # (`field_value/3`).
   defp panel_value(panel, form, input) do
     name = Atom.to_string(input.name)
 
@@ -6619,6 +6852,14 @@ defmodule AshTable.Live.TableComponent do
 
       is_map_key(panel.refs, name) ->
         List.first(panel.refs[name], "")
+
+      # A sensitive field holds what was typed into it, and nothing else:
+      # never what the record has, nor a default. It starts empty.
+      Sensitive.sensitive?(input) ->
+        case panel.typed do
+          %{^name => typed} when is_binary(typed) -> typed
+          _nothing_typed -> ""
+        end
 
       true ->
         field_value(
@@ -6709,6 +6950,8 @@ defmodule AshTable.Live.TableComponent do
         described: assigns.errors != [] && "#{assigns.id}-error",
         array?: assigns.input.editor in [:choices, :list],
         group?: group?(assigns.input),
+        # typed hidden: a password input in place of the control of its type
+        secret?: Sensitive.sensitive?(assigns.input),
         file?: assigns.input.editor == :file and not is_nil(assigns.upload),
         reference?: assigns.input.editor == :reference,
         references?: assigns.input.editor == :references,
@@ -6964,8 +7207,24 @@ defmodule AshTable.Live.TableComponent do
       </progress>
       <%!-- an attribute whose column has a component that edits: its editor --%>
       {if @input.editor == :component, do: field_editor(assigns)}
+      <%!-- A sensitive input, which is text or a number: typed hidden. It
+      starts empty whatever the record holds, and left empty it gives the
+      action nothing (`AshTable.Act`). What it holds here is what was typed
+      into it, which a patch has to bring back as it does for any field. --%>
+      <input
+        :if={@secret?}
+        type="password"
+        autocomplete="off"
+        id={@id}
+        name={@name}
+        value={@value}
+        aria-required={@input.required? && "true"}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@described}
+        class={["input w-full", control_edge()]}
+      />
       <textarea
-        :if={@input.editor == :text}
+        :if={@input.editor == :text and not @secret?}
         id={@id}
         name={@name}
         rows="3"
@@ -6993,7 +7252,7 @@ defmodule AshTable.Live.TableComponent do
         </option>
       </select>
       <input
-        :if={@input.editor in [:number, :date, :datetime, :plain]}
+        :if={@input.editor in [:number, :date, :datetime, :plain] and not @secret?}
         type={field_type(@input.editor)}
         step={input_step(@input.editor)}
         id={@id}
@@ -7903,6 +8162,19 @@ defmodule AshTable.Live.TableComponent do
     })
   end
 
+  # A sensitive column, which is text or a number: a password input, so that
+  # what is typed is not shown. The hook opens it empty.
+  defp editor(%{column: %{sensitive?: true}} = assigns) do
+    ~H"""
+    <input
+      type="password"
+      autocomplete="off"
+      aria-label={@column.label}
+      class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"
+    />
+    """
+  end
+
   # Text is edited in a textarea, so that text of several lines keeps its
   # lines. It is one line high until the text needs more.
   defp editor(%{column: %{editor: :text}} = assigns) do
@@ -8165,6 +8437,10 @@ defmodule AshTable.Live.TableComponent do
   #     where the action said which values of an array it refused,
   #     `data-invalid`, their places counted from 0, as JSON. The hook marks
   #     the controls of those values when the cell's editor is opened again.
+  #
+  # A cell of a sensitive column says that its editor holds nothing
+  # (`data-value=""`), and nothing else: what was typed into it is never
+  # sent back.
   defp cell_attributes(false, _id, _column, _row), do: []
 
   defp cell_attributes(true, id, column, row) do
@@ -8181,6 +8457,19 @@ defmodule AshTable.Live.TableComponent do
 
       {true, nil} when column.kind == :reference ->
         []
+
+      # The editor of a sensitive cell starts empty, and holds nothing of
+      # the record: neither does the cell.
+      {true, {_typed, _message, _places}} when column.sensitive? ->
+        [
+          {"aria-invalid", "true"},
+          {"aria-describedby", "#{id}-error"},
+          {"data-value", ""},
+          {"data-saved", ""}
+        ]
+
+      {true, nil} when column.sensitive? ->
+        [{"data-value", ""}]
 
       {true, {typed, _message, places}} ->
         [
@@ -8262,6 +8551,12 @@ defmodule AshTable.Live.TableComponent do
     value = value(column, row.record)
 
     case editable?(column, value, row.record) && row.failed[column.name] do
+      # a sensitive cell shows what it shows at rest, never what was typed
+      {_typed, message, _places} when column.sensitive? ->
+        {:safe, shown} = column |> cell(value) |> Phoenix.HTML.html_escape()
+        {:safe, message} = failure_message("#{id}-error", message)
+        {:safe, [shown, message]}
+
       {typed, message, _places} ->
         {:safe, shown} = typed |> typed(column) |> Phoenix.HTML.html_escape()
         {:safe, message} = failure_message("#{id}-error", message)
@@ -8332,6 +8627,43 @@ defmodule AshTable.Live.TableComponent do
   # "empty" looks like is the table's to say, in one way for all columns.
   defp cell(_column, nil), do: ""
   defp cell(_column, %Ash.NotLoaded{}), do: ""
+
+  # A sensitive value is not shown: the cell holds a mask, the same for
+  # every value and for the eye only, what a screen reader says in its
+  # place, an empty live region the hook puts the value into when a person
+  # asks for it, and the button that asks. The button is named with the
+  # column, as every row has one. A cell without a value is empty, as any
+  # cell is: that there is nothing is all it says.
+  #
+  # What is rendered is the same whatever the value is; the value itself is
+  # not in the record a row is rendered from (`AshTable.Sensitive.scrub/2`).
+  defp cell(%{sensitive?: true} = column, value) do
+    if Sensitive.empty?(value) do
+      ""
+    else
+      {:safe,
+       [
+         ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
+         Sensitive.mask(),
+         ~s(</span><span data-masked class="sr-only">),
+         escape(Text.t(:hidden_value)),
+         ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),
+         ~s(<button type="button" tabindex="-1" data-reveal data-show="),
+         escape(Text.t(:show)),
+         ~s(" data-hide="),
+         escape(Text.t(:hide)),
+         ~s(" data-show-label="),
+         escape(Text.t(:show_value, column: column.label)),
+         ~s(" data-hide-label="),
+         escape(Text.t(:hide_value, column: column.label)),
+         ~s(" aria-label="),
+         escape(Text.t(:show_value, column: column.label)),
+         ~s(" class="btn btn-xs -my-1 ms-2 shrink-0">),
+         escape(Text.t(:show)),
+         "</button></span>"
+       ]}
+    end
+  end
 
   # A column whose component shows: the cell's content is the component's,
   # which is given the value and what the table itself would show for it.

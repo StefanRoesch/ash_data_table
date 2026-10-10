@@ -136,6 +136,60 @@ everything in its policies, and its table shows and saves everything. Use the
 setting only for a domain whose tables sit behind a gate of your own, such
 as an admin area that the router already restricts.
 
+### `authorize?: false` on one page
+
+The same can be said for one mounted page, in the router. The demo's test
+routes mount a table twice, once as its domain says and once without
+authorization
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
+
+<!-- source: demo/lib/demo_web/router.ex -->
+```elixir
+ash_table "/closed/cases", Demo.Support.Closed.Case, layout: false
+ash_table "/closed/entries", Demo.Support.Closed.Entry, layout: false
+ash_table "/open/cases", Demo.Support.Closed.Case, layout: false, authorize?: false
+```
+
+Every read and every action the table runs for that page is given
+`authorize?: false`, as the same option does in `Ash.read/2`. That covers
+the tables nested in its rows, its pickers, the actions on selected rows,
+and what the table offers: with no check, every public column and every
+declared action is there.
+
+> **Warning: this page shows everything to whoever can open it.** No policy
+> and no field policy is applied. Use it only for a page that your own code
+> already protects, such as an admin area behind a pipeline and an
+> `on_mount` hook that let only administrators in. Never use it for a page
+> that anybody can reach.
+
+What does not change:
+
+- Only `public?` fields are columns, and only `public?` actions run.
+- The actor and the tenant are still passed to Ash. A change that reads the
+  actor still finds it, and a multitenant resource still needs its tenant.
+- A sensitive column is still masked.
+
+The option is written in the router and comes from nowhere else: nothing in
+a URL, a session or an event can switch authorization off.
+
+| Said where | Applies to |
+| --- | --- |
+| `authorize? false` in the domain's `table` block | every table of the domain's resources |
+| `authorize?: false` on an `ash_table` line | that page, and the tables nested in it |
+| `authorize?={false}` on `<AshTable.table>` | that table, and the tables nested in it |
+
+The route and the attribute win over the domain, in both directions:
+`authorize?: true` authorizes a table of a domain that says `false`.
+
+A nested table links to its full view only on a page that is mounted the
+same way. A table without authorization never sends a person to a page that
+authorizes, and a table that authorizes never links to a page without.
+
+**Try it:** the routes above exist in the demo's test environment only. Run
+`mix test test/demo_web/tables/unchecked_table_test.exs` in `demo/`: the
+resources behind them forbid everything, the "closed" pages answer "not
+found", and the "open" pages read, save and run every action.
+
 ## What each restriction looks like
 
 | The resource says | The table shows | In the demo |
@@ -556,9 +610,10 @@ does not accept the field, or a policy or validation on the one that does.
   with the form is not looked at.
 - **A record the person creates and may not read** is created, and is no
   row of their table.
-- **A public `sensitive?` field is a column.** Sensitivity is not an
-  exposure rule, here or in the API extensions. Hide a field with a field
-  policy or make it private.
+- **A public `sensitive?` field is a column, with masked cells.**
+  Sensitivity is not an access rule, here or in the API extensions: whoever
+  may read the field can ask for a cell's value. Hide a field with a field
+  policy or make it private. See [Sensitive columns](sensitive-columns.md).
 - **An error names a field only if the person has a column for it.** An
   error about a field whose column was left out for them is shown without
   the field's name.

@@ -349,13 +349,18 @@ defmodule AshTable.Resource.Reading do
   Nor by a union. Ash stores one as a map of its kind and its value, and
   `Ash.Resource.Info.sortable?/3` does not say no; `ash_json_api` and
   `ash_graphql` both leave unions out of what they sort and filter by.
+
+  Nor by a field that is declared `sensitive?`: a table shows a mask in
+  place of its values, and the order of the rows would say what the mask
+  hides (`AshTable.Sensitive`).
   """
   @spec sortable?(Ash.Resource.t() | Spark.Dsl.t(), atom, strategy) :: boolean
   def sortable?(resource, name, strategy) do
     pagination_type = if strategy == :keyset, do: :keyset, else: :offset
+    field = Info.field(resource, name)
 
     Info.sortable?(resource, name, pagination_type: pagination_type, include_private?: false) and
-      not made_of_fields?(Info.field(resource, name))
+      not made_of_fields?(field) and not AshTable.Sensitive.sensitive?(field)
   end
 
   defp made_of_fields?(%{type: type} = field) when not is_nil(type) and not is_tuple(type) do

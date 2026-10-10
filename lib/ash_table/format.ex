@@ -7,12 +7,15 @@ defmodule AshTable.Format do
   # A map cell (an embedded resource, a map) is its fields on one line,
   # `field: value, field: value`, each value as its own cell type shows it.
   # A union is the value it holds, shown as its kind's type is shown.
+  # A field of a map cell that its embedded resource declares `sensitive?`
+  # is a mask (`AshTable.Sensitive`).
   # Nothing is parsed here: what a person types goes to the resource's action
   # as typed.
 
   alias AshTable.Model
   alias AshTable.Model.Column
   alias AshTable.Resource.Embedding
+  alias AshTable.Sensitive
   alias AshTable.Text
 
   @doc """
@@ -27,6 +30,8 @@ defmodule AshTable.Format do
   # belongs to the component.
   def format(_column, %Ash.ForbiddenField{}), do: ""
   def format(_column, %Ash.NotLoaded{}), do: ""
+  # what a table keeps in place of a sensitive value: never the value
+  def format(_column, %Sensitive.Masked{}), do: Sensitive.mask()
 
   def format(%{cell_type: :text}, value), do: to_string(value)
 
@@ -67,7 +72,7 @@ defmodule AshTable.Format do
           # not the key Ash tells the values of an array apart by, when
           # nobody gives it: it says which value this is, not what it holds
           for %{name: name, label: label, key?: false} = inner <- fields,
-              text = format(inner, held(value, name)),
+              text = shown(inner, held(value, name)),
               text != "" do
             {label, text}
           end
@@ -182,6 +187,19 @@ defmodule AshTable.Format do
   def input(%{cell_type: :enum}, value) when is_binary(value), do: value
   def input(%{cell_type: cell_type}, _value) when cell_type in [:boolean, :enum], do: ""
   def input(%{cell_type: _} = column, value), do: format(column, value)
+
+  # A field of such a value that is declared `sensitive?` is a mask where it
+  # holds something, the same for every value, and nothing where it does
+  # not: the line says that there is a value, never which.
+  defp shown(%{sensitive?: true} = inner, held) do
+    cond do
+      is_struct(held, Ash.ForbiddenField) -> format(inner, held)
+      Sensitive.empty?(held) -> ""
+      true -> Sensitive.mask()
+    end
+  end
+
+  defp shown(inner, held), do: format(inner, held)
 
   # The fields of a map cell: those its column or field says, else those of
   # its type. An embedded resource that holds a value of its own type is

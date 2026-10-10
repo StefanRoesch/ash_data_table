@@ -19,7 +19,11 @@ defmodule AshTable.Live.Page do
       Neither assigned means nobody is logged in.
 
   Reads, saves, row actions and creates are authorized, unless the domain
-  says `authorize? false`.
+  says `authorize? false`, or the route of the page does
+  (`ash_table "/admin/tasks", Task, authorize?: false`: see "Without
+  authorization" in `AshTable.Router.ash_table/3`). The route wins over the
+  domain either way. Nothing a browser sends has a say in it: not the URL,
+  not the session, not an event.
   The table follows the person who mounted the page: a host that changes who
   is logged in mounts the page again, as a login or logout does.
 
@@ -34,6 +38,12 @@ defmodule AshTable.Live.Page do
       cells are empty, announced as "Not available", and cannot be edited.
       A column's component (`AshTable.Component`) is not called for such a
       cell, and is never given the record.
+    * **A field the resource declares `sensitive?`** has a column whose
+      cells show a mask, the same for every value, until the person asks
+      for the value of one cell: the record is then read again, as them, and
+      a value that is hidden from them on it is not given. `sensitive?` is
+      no access rule: whoever may read the field may ask. Such a column is
+      neither sorted nor filtered by, and its editor hides what is typed.
     * **An update action the person can never run** leaves its columns
       read-only for them; if that is every one, the table offers no editing.
       An action that depends on the record leaves cells looking editable, and
@@ -233,7 +243,7 @@ defmodule AshTable.Live.Page do
           url={@url}
           label={@page_title}
           heading={1}
-          authorize?={nil}
+          authorize?={@table.authorize?}
           mounted?={true}
           page_assigns={page_assigns(assigns)}
           {reader(@table.resource, assigns)}
@@ -291,7 +301,9 @@ defmodule AshTable.Live.Page do
 
     case Phoenix.Router.route_info(socket.router, "GET", uri.path || "/", uri.host || "") do
       %{ash_table: %{resource: _, id: _, layout: _} = table} ->
-        table
+        # what the route says about authorization, and nothing else does:
+        # nil where it says nothing, which leaves it to the domain
+        Map.put_new(table, :authorize?, nil)
 
       _other ->
         raise ArgumentError,

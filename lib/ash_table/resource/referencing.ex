@@ -16,6 +16,7 @@ defmodule AshTable.Resource.Referencing do
   @type label_reason ::
           {:label_not_found, atom}
           | {:label_not_public, atom}
+          | {:label_sensitive, atom}
           | {:label_relationship, atom}
           | {:label_not_an_attribute, atom, :calculation | :aggregate}
 
@@ -113,7 +114,12 @@ defmodule AshTable.Resource.Referencing do
     with {:ok, name} <- TableInfo.table_label_field(resource) do
       cond do
         attribute = Info.attribute(resource, name) ->
-          if attribute.public?, do: {:ok, attribute}, else: {:error, {:label_not_public, name}}
+          cond do
+            not attribute.public? -> {:error, {:label_not_public, name}}
+            # what a record is called is shown wherever the record is named
+            AshTable.Sensitive.sensitive?(attribute) -> {:error, {:label_sensitive, name}}
+            true -> {:ok, attribute}
+          end
 
         Info.relationship(resource, name) ->
           {:error, {:label_relationship, name}}
@@ -397,6 +403,10 @@ defmodule AshTable.Resource.Referencing do
 
   def message({:label_not_public, name}),
     do: "`#{name}` is not public. Only a `public?` attribute can be the label of a record."
+
+  def message({:label_sensitive, name}),
+    do:
+      "`#{name}` is declared `sensitive?: true`. The label of a record is shown wherever a table names the record: in a reference cell, in the picker, in the heading of the action panel. A table shows a sensitive value to nobody who has not asked for it, so it cannot be the label: name another attribute."
 
   def message({:label_relationship, name}),
     do:

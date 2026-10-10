@@ -38,22 +38,27 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
   defp messages(_column, %{public?: false}, _module), do: []
 
   defp messages(column, field, module) do
-    if Referencing.relationship?(field) do
-      [
-        "`#{column.name}` shows the label of a related record. A reference cell has no " <>
-          "component: remove `component` from this column."
-      ]
-    else
-      editable? = Editing.update_action(module, field, column) != :none
-      label = column.label || AshTable.Model.humanize(column.name)
+    cond do
+      Referencing.relationship?(field) ->
+        [
+          "`#{column.name}` shows the label of a related record. A reference cell has no " <>
+            "component: remove `component` from this column."
+        ]
 
-      case Presenting.component(
-             column.component,
-             Presenting.column(module, field, label, editable?)
-           ) do
-        {:ok, component} -> never_used(component, column, field, module)
-        {:error, reason} -> [Presenting.message(reason)]
-      end
+      AshTable.Sensitive.sensitive?(field) ->
+        [Presenting.message({:sensitive, column.name})]
+
+      true ->
+        editable? = Editing.update_action(module, field, column) != :none
+        label = column.label || AshTable.Model.humanize(column.name)
+
+        case Presenting.component(
+               column.component,
+               Presenting.column(module, field, label, editable?)
+             ) do
+          {:ok, component} -> never_used(component, column, field, module)
+          {:error, reason} -> [Presenting.message(reason)]
+        end
     end
   end
 

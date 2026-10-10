@@ -137,6 +137,7 @@ your plugs and your `on_mount` hooks like any LiveView of your own.
 | --- | --- | --- |
 | `id` | The last part of the resource's module name, underscored | The table's id: the prefix of its DOM ids and the name of its URL parameters. See [State in the URL](state-in-the-url.md). |
 | `layout` | The configuration's | See above. |
+| `authorize?` | What the resource's domain says | `false` mounts the page without authorization. Only for a page your own code protects: see [Authorization](authorization.md#authorize-false-on-one-page). |
 
 The resource is written in full. The alias of a surrounding
 `scope "/", MyAppWeb` is not applied to it. Any other option raises when the

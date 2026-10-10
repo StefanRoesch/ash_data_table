@@ -9,7 +9,7 @@ defmodule AshTable.Test.Embedding.Place do
     attribute :kind, :atom, public?: true, constraints: [one_of: [:office, :main_depot]]
     attribute :opens_at, :time, public?: true
     attribute :tags, {:array, :string}, public?: true
-    attribute :token, :string, public?: true, sensitive?: true
+    attribute :token, :string, public?: true
     attribute :memo, :string
   end
 end

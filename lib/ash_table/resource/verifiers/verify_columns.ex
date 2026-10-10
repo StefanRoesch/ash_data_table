@@ -224,6 +224,10 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
     "`#{column.name}` has the type `#{inspect(type)}`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, arrays of those, embedded resources and maps whose fields are of those, and unions whose kinds are. Remove `update_action` from this column."
   end
 
+  defp read_only(column, {:sensitive, type}) do
+    "`#{column.name}` is declared `sensitive?: true` and has the type `#{inspect(type)}`. A table hides what is typed for a sensitive field, which it can do for text and for a number only, so the column is read-only and its `update_action` has no effect. Remove `update_action` from this column; a row action can still change the value."
+  end
+
   defp read_only(column, {:no_fields, type, obstacle}) do
     "`#{column.name}` has the type `#{inspect(type)}`, which a table edits field by field, and here it cannot, so the column is read-only and its `update_action` has no effect. " <>
       obstacle <> " Remove `update_action` from this column."

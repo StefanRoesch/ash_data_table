@@ -648,3 +648,19 @@ msgstr "Erledigte auch?"
 msgid "Deadlines"
 msgstr "Fristen"
 
+
+# Sensitive columns
+msgid "Hidden"
+msgstr "Verborgen"
+
+msgid "Show"
+msgstr "Anzeigen"
+
+msgid "Hide"
+msgstr "Verbergen"
+
+msgid "Show %{column}"
+msgstr "%{column} anzeigen"
+
+msgid "Hide %{column}"
+msgstr "%{column} verbergen"

@@ -776,7 +776,15 @@ can be seen:
 - `organization_id` on every tenant resource
 
 `Task.inserted_at` is a timestamp made public. `Task.external_ref` is public
-and `sensitive?`: sensitivity is not an exposure rule, so it is a column.
+and an admin's alone by its field policy.
+
+`Project.budget` is public and `sensitive?`. Sensitive is not hidden, so it
+is a column, and its cells are masked: `••••••` and a "Show" button. Open
+http://localhost:4478/projects as Max Member, use "Show" on a row (or
+Shift+Enter on the cell), then click elsewhere: the number is gone again.
+Enter on the cell opens an editor that hides what is typed. As Vera Viewer
+the column is not there: a field policy keeps the budget to admins and
+members.
 
 **Policies on `Task`**
 

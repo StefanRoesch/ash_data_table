@@ -108,7 +108,7 @@ defmodule DemoWeb.Tables.TaskArgumentsTest do
 
       view |> element("#task-head-title") |> render_click()
       assert assert_patch(view) == "/tasks?task[a][search]=report&task[sort]=title"
-      assert titles(render_async(view, 2000)) == ["This week", "Write the report"]
+      assert titles(render_async(view)) == ["This week", "Write the report"]
 
       html = filter(view, "task", "title", v: "Write")
       assert titles(html) == ["Write the report"]
@@ -183,7 +183,7 @@ defmodule DemoWeb.Tables.TaskArgumentsTest do
 
       view |> element("#task-head-due_within") |> render_click()
       view |> element("#task-head-due_within") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       # within 30 days first: two tasks
       assert Enum.take(column(html, "task", "due_within"), 3) == ["✓Yes", "✓Yes", "–No"]
@@ -210,7 +210,7 @@ defmodule DemoWeb.Tables.TaskArgumentsTest do
           "filter" => %{"due_within" => %{"o" => "yes"}, "due_within?" => %{"o" => "no"}}
         })
         |> render_change()
-        |> then(fn _ -> render_async(view, 2000) end)
+        |> then(fn _ -> render_async(view) end)
 
       assert titles(html) == ["Next month"]
 

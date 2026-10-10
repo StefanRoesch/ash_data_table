@@ -538,9 +538,10 @@ defmodule AshTable.ModelTest do
       assert field(mapped(:settings), :mode).values == [fast: "Fast", extra_slow: "Extra slow"]
     end
 
-    test "say what the attribute says about being sensitive, which changes nothing else" do
-      assert %Field{sensitive?: true, editor: :text, input?: true} = field(mapped(:place), :token)
-      refute field(mapped(:place), :street).sensitive?
+    # what a table makes of a field that is: `test/sensitive_test.exs`
+    test "say what the attribute says about being sensitive" do
+      assert %Field{sensitive?: false, editor: :text, input?: true} =
+               field(mapped(:place), :token)
     end
 
     test "are the fields a map declares, in their order; none for a map that declares none" do

@@ -321,6 +321,9 @@ resource for it
 
 ## Edge cases
 
+- **A column of a `sensitive?` field is not sorted by.** The order of the
+  rows would say what its masked cells hide. See
+  [Sensitive columns](sensitive-columns.md).
 - **A page beyond the last** (`/tasks?task[page]=99`) shows "No records" and
   "Page 99". When the action is `countable`, the page numbers are the pages
   there are and the one the person is at (1, 13 and 99), and Previous leads

@@ -392,3 +392,23 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "This type of file is not accepted."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Hidden"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Hide"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Hide %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show %{column}"
+msgstr ""

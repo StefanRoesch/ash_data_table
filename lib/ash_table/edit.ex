@@ -290,13 +290,18 @@ defmodule AshTable.Edit do
       %Ash.ForbiddenField{} ->
         failed(model, record, Text.t(:edit_not_allowed), opts)
 
-      # A value that is the one the cell already holds calls nothing.
+      # A value that is the one the cell already holds calls nothing. The
+      # editor of a sensitive cell starts empty, whatever the cell holds: an
+      # empty one is an editor nothing was typed into, and calls nothing.
       value ->
-        if typed == Format.input(column, value),
+        if unchanged?(column, typed, value),
           do: unchanged(model, record, opts),
           else: submit(model, column, record, typed, opts)
     end
   end
+
+  defp unchanged?(%Column{sensitive?: true}, typed, _value), do: typed == ""
+  defp unchanged?(column, typed, value), do: typed == Format.input(column, value)
 
   defp unchanged(model, record, opts) do
     case Record.load(model, record, opts) do

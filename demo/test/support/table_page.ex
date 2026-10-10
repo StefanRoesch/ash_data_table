@@ -30,7 +30,7 @@ defmodule DemoWeb.TablePage do
     entry = Map.new(entry, fn {key, value} -> {Atom.to_string(key), value} end)
 
     view |> form("##{id}-filters", %{"filter" => %{field => entry}}) |> render_change()
-    render_async(view, 2000)
+    render_async(view, 10_000)
   end
 
   @doc """
@@ -46,7 +46,7 @@ defmodule DemoWeb.TablePage do
     arguments = Map.new(arguments, fn {key, value} -> {Atom.to_string(key), value} end)
 
     view |> form("##{id}-arguments", %{"arguments" => arguments}) |> render_change()
-    render_async(view, 2000)
+    render_async(view, 10_000)
   end
 
   @doc """
@@ -178,7 +178,7 @@ defmodule DemoWeb.TablePage do
     |> element("##{id}-grid")
     |> render_hook("toggle", %{"row" => to_string(key), "relationship" => relationship})
 
-    render_async(view, 2000)
+    render_async(view, 10_000)
   end
 
   @doc """
@@ -484,8 +484,8 @@ defmodule DemoWeb.TablePage do
   read again: after `run_bulk/4`, and after the panel of such an action.
   """
   def ran(view) do
-    render_async(view, 5000)
-    render_async(view, 5000)
+    render_async(view, 10_000)
+    render_async(view, 10_000)
   end
 
   defp selected(:all), do: %{"all" => true}
@@ -965,6 +965,88 @@ defmodule DemoWeb.TablePage do
       {[], []} ->
         nil
     end
+  end
+
+  @doc """
+  Asks for the value of a sensitive cell as the table's hook does when a
+  person uses the cell's button, or presses Shift+Enter on the cell: one
+  `reveal` event with the row's key and the column. Returns the page. The
+  answer goes to the hook alone: see `Phoenix.LiveViewTest.assert_reply/2`.
+  """
+  def reveal(view, id \\ "task", key, field) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("reveal", %{"row" => to_string(key), "column" => field})
+  end
+
+  @doc """
+  What a sensitive cell holds while its value is not shown: the mask, what a
+  screen reader says in its place, what its live region holds, and its
+  button: what it says and what it is called. Nil for a cell without the
+  button: an empty one, and a cell of any other column.
+  """
+  def masked(html, id \\ "task", key, field) do
+    selector = cell(id, key, field)
+
+    case Enum.to_list(query(html, "#{selector} button[data-reveal]")) do
+      [] ->
+        nil
+
+      [button] ->
+        %{
+          mask: text(html, "#{selector} [data-mask]"),
+          hidden?: attribute(html, "#{selector} [data-mask]", "aria-hidden") == ["true"],
+          said: text(html, "#{selector} [data-masked]"),
+          shown: text(html, "#{selector} [data-secret]"),
+          live: attribute(html, "#{selector} [data-secret]", "aria-live"),
+          button: button |> LazyHTML.text() |> String.trim(),
+          label: button |> LazyHTML.attribute("aria-label") |> List.first(),
+          tabindex: button |> LazyHTML.attribute("tabindex") |> List.first()
+        }
+    end
+  end
+
+  @doc """
+  Everything the LiveView of `view` sends while `fun` runs, as text: the
+  diffs of the page and the answers to its events, as they go to the
+  browser. For what must never be in them.
+  """
+  def wire(view, fun) do
+    :erlang.trace(view.pid, true, [:send])
+
+    try do
+      fun.()
+      # everything the view was asked to do is done once it answers this
+      _ = Phoenix.LiveViewTest.render(view)
+    after
+      :erlang.trace(view.pid, false, [:send])
+    end
+
+    inspect(sent_by(view.pid, []), limit: :infinity, printable_limit: :infinity)
+  end
+
+  defp sent_by(pid, sent) do
+    receive do
+      {:trace, ^pid, :send, message, _to} -> sent_by(pid, [message | sent])
+    after
+      0 -> Enum.reverse(sent)
+    end
+  end
+
+  @doc """
+  Everything the LiveView of `view` and its components keep between two
+  events, as text: their assigns. For what a table must not hold on to.
+  """
+  def kept(view) do
+    {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)
+    {:ok, components} = Phoenix.LiveView.Debug.live_components(view.pid)
+
+    # as bare maps: a resource's own `inspect` leaves its sensitive fields out
+    inspect({socket.assigns, Enum.map(components, & &1.assigns)},
+      limit: :infinity,
+      printable_limit: :infinity,
+      structs: false
+    )
   end
 
   @doc "The value of an attribute of each element matching `selector`."

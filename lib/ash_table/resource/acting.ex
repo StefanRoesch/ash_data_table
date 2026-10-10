@@ -31,6 +31,10 @@ defmodule AshTable.Resource.Acting do
   `:reference` for one key and `:references` for a list of them, and
   `reference` says what is chosen from (`managing/3`). Nil for every other
   input.
+
+  `sensitive?` is what the attribute or the argument says. Such an input
+  has a control only where what is typed can be hidden
+  (`hidden_as_typed/1`).
   """
   @type input :: %{
           name: atom,
@@ -43,6 +47,7 @@ defmodule AshTable.Resource.Acting do
           members: [AshTable.Model.Field.t()] | nil,
           reference: Referencing.managing() | nil,
           required?: boolean,
+          sensitive?: boolean,
           default: term
         }
 
@@ -174,8 +179,24 @@ defmodule AshTable.Resource.Acting do
           name != record_argument,
           do: argument |> argument() |> managing(resource, action)
 
-    attributes ++ arguments
+    Enum.map(attributes ++ arguments, &hidden_as_typed/1)
   end
+
+  @doc """
+  A sensitive input as a table offers it: with a control only where what is
+  typed can be hidden, which is text and a number (`AshTable.Sensitive`).
+  One of any other type has none, and so is no field of a form: it is left
+  out where it can be, and an action that requires it is no action of a
+  table.
+  """
+  @spec hidden_as_typed(input) :: input
+  def hidden_as_typed(%{sensitive?: true, editor: editor} = input) do
+    if AshTable.Sensitive.typed?(editor),
+      do: input,
+      else: %{input | editor: nil, reference: nil}
+  end
+
+  def hidden_as_typed(input), do: input
 
   @doc """
   An argument as the input it is where a change of the action hands it to a
@@ -258,6 +279,7 @@ defmodule AshTable.Resource.Acting do
       members: members(cell_type, type, constraints),
       reference: nil,
       required?: required?,
+      sensitive?: AshTable.Sensitive.sensitive?(field),
       default: if(computed?(field), do: nil, else: field.default)
     }
   end
@@ -553,6 +575,13 @@ defmodule AshTable.Resource.Acting do
       "The action `#{name}` says `record_argument :#{argument}`, and that argument is of the type " <>
         "#{inspect(type)}, which is not stored as the primary key `#{key}` is (#{inspect(key_type)}). " <>
         "The argument is given the primary key of the row as it is, so it has to be of the key's type."
+
+  def message({:no_field, what, name, %{name: input, sensitive?: true, type: {type, _}}}),
+    do:
+      "The #{what} action `#{name}` cannot be run from a table: its input `#{input}` is " <>
+        "required and declared `sensitive?: true`, and has the type #{inspect(type)}. The " <>
+        "action panel hides what is typed for a sensitive input, which it can do for text " <>
+        "and for a number only."
 
   def message({:no_field, what, name, %{name: input, type: {type, _constraints}}}),
     do:

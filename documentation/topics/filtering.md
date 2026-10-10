@@ -221,6 +221,9 @@ values.
 
 ## Edge cases
 
+- **A column of a `sensitive?` field has no filter.** Which rows a filter
+  leaves would say what its masked cells hide. See
+  [Sensitive columns](sensitive-columns.md).
 - **A hidden value counts as empty.** For a field that a field policy hides
   on some records, a filter by a value finds only records whose value the
   person sees, and "is empty" also finds every record whose value is hidden.

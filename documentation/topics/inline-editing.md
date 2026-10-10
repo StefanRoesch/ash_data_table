@@ -445,6 +445,9 @@ only runs actions.
 
 ## Edge cases
 
+- **A cell of a `sensitive?` field** has an editor that hides what is typed
+  and starts empty, and an editor left empty saves nothing. Only text and
+  numbers are edited so. See [Sensitive columns](sensitive-columns.md#editing).
 - **Several cells of one row.** A failed cell stays marked when another cell
   of its row is saved. A cell that is being edited is left alone when another
   cell's save puts its row back, so what is typed survives; if that edit is

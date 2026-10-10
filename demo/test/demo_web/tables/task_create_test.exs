@@ -229,7 +229,7 @@ defmodule DemoWeb.Tables.TaskCreateTest do
       assert titles(html) == ["Zebra crossing", "Older", "Oldest"]
 
       view |> element("#task-head-title") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert titles(html) == ["Older", "Oldest", "Zebra crossing"]
       assert text(html, "#task-range") == "1–3 of 3"

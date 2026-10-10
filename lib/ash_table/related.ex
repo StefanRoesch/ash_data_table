@@ -81,10 +81,15 @@ defmodule AshTable.Related do
   the router mounts the destination's table at, with the limit in the
   table's parameters. Nil when the router mounts no such page, and when that
   page could not tell which record is meant.
+
+  `authorize?` is what the nested table was told about authorization, nil
+  for nothing: the page is one that is mounted the same way
+  (`AshTable.Routes.table/3`).
   """
-  @spec path(module | nil, module | nil, Relationship.t(), map) :: String.t() | nil
-  def path(router, endpoint, %Relationship{} = via, key) do
-    with %{path: path, id: id} <- Routes.table(router, via.destination),
+  @spec path(module | nil, module | nil, Relationship.t(), map, boolean | nil) ::
+          String.t() | nil
+  def path(router, endpoint, %Relationship{} = via, key, authorize? \\ nil) do
+    with %{path: path, id: id} <- Routes.table(router, via.destination, authorize?),
          {:ok, param} <- to_param(via, key),
          # the page has to find the parent again by the name it is given
          [_one] <- named(via.destination, name(via.source), via.name, endpoint) do

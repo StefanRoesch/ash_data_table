@@ -695,6 +695,9 @@ All keys of a table are in
 
 ## Edge cases
 
+- **A `sensitive?` input** (an attribute or an argument) is a password
+  field that starts empty, and left empty it gives the action nothing. See
+  [Sensitive columns](sensitive-columns.md#in-the-action-panel).
 - **An update action after which the person may no longer read the
   record** takes the row away, as a destroy does: there is nothing of it
   left for them to see.

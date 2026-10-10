@@ -459,9 +459,9 @@ edited with, or both:
 
 The module implements `AshTable.Component`: `cell/1` shows a value and
 `editor/1` edits it, each a function component, and the table's own
-display or editor is used for the part a component does not have. Three
-are shipped: `AshTable.Components.Badge`, `AshTable.Components.Progress`
-and `AshTable.Components.Slider`.
+display or editor is used for the part a component does not have. Four
+are shipped: `AshTable.Components.Badge`, `AshTable.Components.Image`,
+`AshTable.Components.Progress` and `AshTable.Components.Slider`.
 
 A component changes the look and the control and nothing else. A cell is
 saved through the column's `update_action` as before, with what the
@@ -603,7 +603,7 @@ end
 | [`filterable?`](#table-column-filterable?){: #table-column-filterable? } | `boolean` |  | Set to `false` to leave this column without a filter. Defaults to what the resource allows; it cannot switch filtering on. |
 | [`update_action`](#table-column-update_action){: #table-column-update_action } | `false \| atom` |  | The update action an inline edit of this column runs, with the column's attribute as its only input; for a column that names a relationship, the relationship's foreign key. `false` makes the column read-only. Defaults to the table's `update_action`. |
 | [`confirm`](#table-column-confirm){: #table-column-confirm } | `String.t` |  | A question asked before an inline edit of this column is saved. |
-| [`component`](#table-column-component){: #table-column-component } | `module` |  | A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of the three that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship. |
+| [`component`](#table-column-component){: #table-column-component } | `module` |  | A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of those that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Image`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship. |
 | [`exposes_protected_field?`](#table-column-exposes_protected_field?){: #table-column-exposes_protected_field? } | `boolean` |  | Set to `true` on an aggregate or calculation column that is meant to show everyone who reads a row what a field policy protects elsewhere: a field of the related resource that the aggregate is over or filters by, or a field the calculation references. It silences the warning the compiler gives about such a column. Ash applies no field policy of what an aggregate or a calculation is made from; the column is protected by a field policy of its own on this resource. |
 | [`arguments`](#table-column-arguments){: #table-column-arguments } | `keyword` |  | The arguments the column's calculation is computed with, fixed here: `arguments currency: :eur`. For a column that names a calculation; each key an argument of it. An argument that a person is to give is declared with `ask` instead. |
 

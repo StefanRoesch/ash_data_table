@@ -41,6 +41,46 @@ defmodule AshTable.Router do
       naming a function component, such as `{MyAppWeb.Layouts, :app}`, or
       `false` for none. Defaults to `config :ash_table, layout: …`, and to
       none when that is not set. See `AshTable.Live.Page`.
+
+    * `:authorize?` - `false` mounts the table without authorization: every
+      read and every action it runs for this page is given
+      `authorize?: false`, as the same option does in `Ash.read/2`. `true`
+      authorizes whatever the domain says. Left out, the table authorizes as
+      the resource's domain says (`AshTable.Domain`), which is `true` unless
+      the domain says otherwise. Written in the router, and taken from
+      nowhere else. See "Without authorization" below.
+
+  ## Without authorization
+
+      scope "/admin", MyAppWeb do
+        pipe_through [:browser, :require_admin]
+
+        live_session :admin, on_mount: [{MyAppWeb.UserAuth, :require_admin}] do
+          ash_table "/tasks", MyApp.Tracker.Task, id: "admin-task", authorize?: false
+        end
+      end
+
+  > #### `authorize?: false` removes every check {: .warning}
+  >
+  > A page mounted this way asks Ash nothing: no policy and no field policy
+  > is applied. Whoever can open the page reads every record of the
+  > resource, sees every public field, and runs every action the table
+  > offers, on every record. So do the tables nested in its rows and its
+  > pickers.
+  >
+  > Use it only for a page that your own code already keeps people away
+  > from: an admin area behind a pipeline and an `on_mount` hook that let
+  > only administrators in. Never for a page that anybody can reach.
+
+  What stays as it is: only `public?` fields are columns and only `public?`
+  actions run, the actor and the tenant are still passed on (a change that
+  reads `actor` still finds it, and a multitenant resource still needs its
+  tenant), and a sensitive column is still masked.
+
+  A nested table links to its full view only on a page that is mounted the
+  same way: a table without authorization never sends a person to a page
+  that authorizes, where they would see other records, and a table that
+  authorizes never links to a page without.
   """
   defmacro ash_table(path, resource, opts \\ []) do
     # As Phoenix does for the modules named in routes: expanding the alias as
@@ -65,7 +105,7 @@ defmodule AshTable.Router do
             "ash_table expects a resource module as its second argument, got: #{inspect(resource)}"
     end
 
-    case Keyword.keys(opts) -- [:id, :layout] do
+    case Keyword.keys(opts) -- [:id, :layout, :authorize?] do
       [] -> :ok
       unknown -> raise ArgumentError, "unknown options for ash_table: #{inspect(unknown)}"
     end
@@ -89,10 +129,21 @@ defmodule AshTable.Router do
               "or false, got: #{inspect(layout)}"
     end
 
+    # nil leaves it to the resource's domain, which is asked when the page
+    # is rendered
+    authorize? = Keyword.get(opts, :authorize?)
+
+    if authorize? not in [nil, true, false] do
+      raise ArgumentError,
+            "the :authorize? of ash_table must be `true` or `false`, got: #{inspect(authorize?)}"
+    end
+
     [
       # only used by hosts that still generate route helpers
       as: String.to_atom("ash_table_" <> String.replace(id, "-", "_")),
-      metadata: %{ash_table: %{resource: resource, id: id, layout: layout}}
+      metadata: %{
+        ash_table: %{resource: resource, id: id, layout: layout, authorize?: authorize?}
+      }
     ]
   end
 

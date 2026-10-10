@@ -54,6 +54,10 @@ defmodule AshTable.Resource.Arguing do
     %{input | editor: control(input)}
   end
 
+  # What a person gives on the argument line is kept with the sort and the
+  # filters, in the URL where the table keeps its state there. A sensitive
+  # argument is never put there: the line has no input for one.
+  defp control(%{sensitive?: true}), do: nil
   # a list of boxes that are ticked or not says nothing of how many there are
   defp control(%{editor: :list, cell_type: {:array, :boolean}}), do: nil
   defp control(%{editor: editor}) when editor in @controls, do: editor
@@ -269,6 +273,20 @@ defmodule AshTable.Resource.Arguing do
 
   @doc "What is wrong, for a diagnostic."
   @spec message(reason) :: String.t()
+  def message({:no_input, :read, action, %{name: name, sensitive?: true}}),
+    do:
+      "The read action `#{action}` requires the argument `#{name}`, which is declared " <>
+        "`sensitive?: true`. What a person gives on the argument line is kept with the sort " <>
+        "and the filters, in the URL too, so the line has no input for a sensitive argument, " <>
+        "and the table could never read. Give the argument a default, or name another read " <>
+        "action with `read_action`."
+
+  def message({:no_input, :ask, calculation, %{name: name, sensitive?: true}}),
+    do:
+      "The argument `#{name}` of the calculation `#{calculation}` cannot be asked: it is " <>
+        "declared `sensitive?: true`, and what a person gives on the argument line is kept " <>
+        "with the sort and the filters, in the URL too. Fix its value with `arguments` instead."
+
   def message({:no_input, :read, action, %{name: name, type: {type, _constraints}}}),
     do:
       "The read action `#{action}` requires the argument `#{name}`, and a table has no input " <>

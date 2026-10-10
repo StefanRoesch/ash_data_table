@@ -179,13 +179,13 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       assert length(names) == 2
 
       view |> element("#roster-grid") |> render_hook("sort", %{"column" => "words"})
-      assert column(render_async(view, 2000), "roster", "name") == names
+      assert column(render_async(view), "roster", "name") == names
 
       view
       |> element("#roster-filters")
       |> render_change(%{"filter" => %{"words" => %{"o" => "has", "v" => "zz"}}})
 
-      assert column(render_async(view, 2000), "roster", "name") == names
+      assert column(render_async(view), "roster", "name") == names
     end
   end
 

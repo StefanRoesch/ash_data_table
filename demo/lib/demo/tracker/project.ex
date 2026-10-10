@@ -30,9 +30,19 @@ defmodule Demo.Tracker.Project do
   # `estimated_hours` adds up a field that a field policy protects on the
   # tasks, and Ash does not apply that policy to an aggregate: it is
   # protected here.
+  #
+  # `budget` is for those who work on the project: admins and members. A
+  # viewer has no "Budget" column. That is access. That the attribute is
+  # `sensitive?` is something else: those who may see it see a mask, until
+  # they ask for the value of one cell.
   field_policies do
     field_policy :estimated_hours do
       authorize_if actor_attribute_equals(:role, :admin)
+    end
+
+    field_policy :budget do
+      authorize_if actor_attribute_equals(:role, :admin)
+      authorize_if actor_attribute_equals(:role, :member)
     end
 
     field_policy :* do
@@ -135,8 +145,11 @@ defmodule Demo.Tracker.Project do
 
     attribute :starts_on, :date, public?: true
 
+    # Sensitive: its cells are masked ("••••••") until somebody asks for
+    # one, and the table neither sorts nor filters by it.
     attribute :budget, :decimal do
       public? true
+      sensitive? true
       constraints min: 0
     end
 

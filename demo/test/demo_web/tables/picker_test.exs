@@ -196,7 +196,7 @@ defmodule DemoWeb.Tables.PickerTest do
       assert picker(html).heading == "Assignee: choose user"
 
       html = view |> element("##{@people}-head-email") |> render_click()
-      render_async(view, 2000)
+      render_async(view)
       assert attribute(html, "##{@people}-head-email", "aria-sort") == ["ascending"]
 
       # nothing of it is in the page's URL

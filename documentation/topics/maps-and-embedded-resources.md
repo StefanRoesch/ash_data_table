@@ -155,8 +155,10 @@ shows only what is `public?`, in an embedded resource as in a resource.
   milestone holds, so the cell does not show it and the panel does not ask
   for it. A primary key that the embedded resource's actions accept is a
   field like any other.
-- `sensitive?` changes nothing, as for a column: a public sensitive
-  attribute is shown.
+- A `sensitive?` attribute is shown as a mask (`••••••`) on the value's
+  line, and a value with a sensitive attribute that a person would give is
+  not edited in a table. See
+  [Sensitive columns](sensitive-columns.md#inside-a-value-made-of-fields).
 
 ## What can be edited
 
@@ -516,8 +518,8 @@ translated once, for a column and for a field of a client alike.
   see [Unions](unions.md).
 - **Calculations of an embedded resource.**
 - **A filter by a field of the value**, and a sort.
-- **Masking of `sensitive?` fields**, which is planned for columns and will
-  cover the fields of these values.
+- **Editing a value that has a `sensitive?` input**, and a "Show" button
+  for a sensitive field inside a value. The field is masked on the line.
 - **Reordering the values of an array.** A value is added at the end.
 - **Showing constraints before saving**, as for every editor.
 

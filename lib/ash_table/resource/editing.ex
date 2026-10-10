@@ -10,6 +10,7 @@ defmodule AshTable.Resource.Editing do
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Managing
   alias AshTable.Resource.Referencing
+  alias AshTable.Sensitive
 
   # The cell types with an editor.
   @editors [:text, :number, :boolean, :date, :datetime, :enum]
@@ -217,6 +218,7 @@ defmodule AshTable.Resource.Editing do
           | {:no_editor, Ash.Type.t()}
           | {:no_fields, Ash.Type.t(), String.t()}
           | {:no_kinds, Ash.Type.t(), String.t()}
+          | {:sensitive, Ash.Type.t()}
           | {:no_picker, struct, Referencing.no_picker()}
 
   @doc """
@@ -224,7 +226,8 @@ defmodule AshTable.Resource.Editing do
   them, or nil when nothing does: an attribute is edited, which has to be
   writable and of a cell type that has an editor (a map cell where a person
   can give every one of its inputs, and a union where they can give every
-  kind: `AshTable.Resource.Embedding`); and a
+  kind: `AshTable.Resource.Embedding`), and where it is sensitive, of one
+  whose editor hides what is typed (`AshTable.Sensitive.typed?/1`); and a
   belongs-to
   relationship, whose cell is a reference cell, when a person can choose
   its related record in a picker (`AshTable.Resource.Referencing.choosing/1`).
@@ -251,6 +254,11 @@ defmodule AshTable.Resource.Editing do
           _no_map_cell ->
             {:no_editor, attribute.type}
         end
+
+      # what is typed for a sensitive field is hidden, which a table can do
+      # for text and for a number alone
+      Sensitive.sensitive?(attribute) and not Sensitive.typed?(editor(resource, attribute)) ->
+        {:sensitive, attribute.type}
 
       true ->
         nil
@@ -395,6 +403,11 @@ defmodule AshTable.Resource.Editing do
     do:
       "It has the type `#{inspect(type)}`, a union, which a table edits kind by kind, and here " <>
         "it cannot. " <> obstacle
+
+  def never_edited({:sensitive, type}),
+    do:
+      "It is declared `sensitive?: true` and has the type `#{inspect(type)}`. A table hides " <>
+        "what is typed for a sensitive field, which it can do for text and for a number only."
 
   def never_edited({:no_picker, relationship, reason}),
     do: Referencing.no_picker(relationship, reason)

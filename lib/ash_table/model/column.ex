@@ -89,6 +89,12 @@ defmodule AshTable.Model.Column do
   #   * `apart?` is `true` for an aggregate that is read in a step of its
   #     own, apart from everything else a row shows, and is then neither
   #     sorted nor filtered by: see `AshTable.Resource.Reading.apart/2`.
+  #   * `sensitive?` is `true` for a column of a field the resource declares
+  #     `sensitive?`: an attribute, a calculation or an aggregate. Its cells
+  #     show a mask, the same for every value, and the value of one cell
+  #     when a person asks for it; it is neither sorted nor filtered by,
+  #     has no component, and its editor hides what is typed. See
+  #     `AshTable.Sensitive`.
   #   * `partly_hidden?` is only ever `true` in a model from
   #     `AshTable.Model.for_actor/2`: the person sees the field on some records
   #     and not on others.
@@ -114,6 +120,7 @@ defmodule AshTable.Model.Column do
     editable?: false,
     apart?: false,
     partly_hidden?: false,
+    sensitive?: false,
     fixed: %{},
     arguments: %{}
   ]
@@ -152,6 +159,7 @@ defmodule AshTable.Model.Column do
             }
             | nil,
           apart?: boolean,
-          partly_hidden?: boolean
+          partly_hidden?: boolean,
+          sensitive?: boolean
         }
 end

@@ -11,7 +11,8 @@ defmodule AshTable.Resource.Presenting do
   alias AshTable.Model.CellType
 
   @type reason ::
-          {:not_found, module}
+          {:sensitive, atom}
+          | {:not_found, module}
           | {:not_a_component, module}
           | {:no_part, module}
           | {:unsuitable, module, atom, String.t()}
@@ -107,6 +108,10 @@ defmodule AshTable.Resource.Presenting do
 
   @doc "What is wrong with a column's component, for a diagnostic."
   @spec message(reason) :: String.t()
+  def message({:sensitive, name}),
+    do:
+      "`#{name}` is declared `sensitive?: true`. A table masks the cells of a sensitive column and hides what is typed into them itself; a component would be given the value to show. Remove `component` from this column."
+
   def message({:not_found, module}),
     do: "The component `#{inspect(module)}` cannot be found: there is no module of that name."
 

@@ -457,10 +457,11 @@ defmodule Demo.Tracker.Task do
     attribute :due_on, :date, public?: true
     attribute :completed_at, :utc_datetime, public?: true
 
-    # Public and sensitive: a column like any other, hidden from non-admins
-    # only by its field policy.
+    # Public, and an admin's alone by its field policy. Not `sensitive?`:
+    # a table masks the cells of a sensitive column and neither sorts nor
+    # filters by it (see `budget` on the project), and this column is here
+    # to be sorted and filtered by those who may see it.
     attribute :external_ref, :string do
-      sensitive? true
       public? true
       constraints max_length: 40
     end

@@ -456,9 +456,9 @@ defmodule AshTable.Resource do
 
   The module implements `AshTable.Component`: `cell/1` shows a value and
   `editor/1` edits it, each a function component, and the table's own
-  display or editor is used for the part a component does not have. Three
-  are shipped: `AshTable.Components.Badge`, `AshTable.Components.Progress`
-  and `AshTable.Components.Slider`.
+  display or editor is used for the part a component does not have. Four
+  are shipped: `AshTable.Components.Badge`, `AshTable.Components.Image`,
+  `AshTable.Components.Progress` and `AshTable.Components.Slider`.
 
   A component changes the look and the control and nothing else. A cell is
   saved through the column's `update_action` as before, with what the

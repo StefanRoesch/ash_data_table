@@ -62,6 +62,54 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
   defp stored!(stock), do: Ash.get!(Stock, stock.id, authorize?: false)
 
+  describe "a read that is on its way when the argument it requires is emptied" do
+    setup do
+      on_exit(&Demo.Support.Hold.release/0)
+    end
+
+    test "is not waited for, and what it brings is not shown: the table asks for the argument, and reports no failure",
+         %{conn: conn} do
+      {:ok, view, _html} = live(conn, "/support/stocks")
+      assert column(argue(view, "stock", a: %{"at_least" => "1"}), "stock", "name") != []
+
+      Demo.Support.Hold.hold()
+
+      # a read starts, and is held back
+      html =
+        view
+        |> form("#stock-arguments", %{"arguments" => %{"a" => %{"at_least" => "5"}}})
+        |> render_change()
+
+      assert attribute(html, "#stock-table", "aria-busy") == ["true"]
+
+      # the argument is emptied while it runs
+      html =
+        view
+        |> form("#stock-arguments", %{"arguments" => %{"a" => %{"at_least" => ""}}})
+        |> render_change()
+
+      assert text(html, "#stock-fill") == "Fill in At least to see records."
+      assert attribute(html, "#stock-table", "aria-busy") == []
+
+      {html, log} =
+        ExUnit.CaptureLog.with_log(fn ->
+          Demo.Support.Hold.release()
+          render_async(view)
+        end)
+
+      # the read came back, or was given up: either way nothing of it is shown
+      assert text(html, "#stock-fill") == "Fill in At least to see records."
+      assert text(html, "#stock-error") == nil
+      assert column(html, "stock", "name") == []
+      assert attribute(html, "#stock-table", "aria-busy") == []
+      refute log =~ "failed"
+
+      # and the table reads again when the argument is given
+      assert column(argue(view, "stock", a: %{"at_least" => "5"}), "stock", "name") ==
+               ["cherry", "date"]
+    end
+  end
+
   describe "the line" do
     setup %{conn: conn} do
       {:ok, view, html} = live(conn, "/support/stocks")
@@ -318,14 +366,14 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       assert argument(html, "names").value == ["date", "banana"]
 
       view |> element("#stock-arg-names-0-remove") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, "stock", "name") == ["banana"]
       assert argument(html, "names").value == ["banana"]
       assert_push_event view, "ash_table:focus", %{cell: "stock-arg-names-0"}
 
       view |> element("#stock-arg-names-0-remove") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, "stock", "name") == ["apple", "banana"]
       assert argument(html, "names").value == []
@@ -519,7 +567,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       argue(view, "stock", a: %{"any_kind?" => "true"})
       view |> element("#stock-head-amount_asked") |> render_click()
       view |> element("#stock-head-amount_asked") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, "stock", "name") == ["date", "cherry"]
       assert attribute(html, "#stock-head-amount_asked", "aria-sort") == ["descending"]
@@ -533,7 +581,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       assert column(html, "stock", "name") == ["cherry", "date"]
 
       argue(view, "stock", a: %{"any_kind?" => "true"}, c: %{"amount_asked" => %{"rate" => "6"}})
-      html = render_async(view, 2000)
+      html = render_async(view)
       # rate 6: 6, 30, 60, 120
       assert column(html, "stock", "name") == ["banana", "cherry"]
       assert text(html, "#stock-range") == "1–2 of 3"
@@ -861,7 +909,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       # through a change of its sort
       view |> element("#held-head-name") |> render_click()
       view |> element("#held-head-name") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, "held", "name") == ["date", "cherry"]
       assert argument(html, "held", "at_least").value == "0"

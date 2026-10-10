@@ -69,6 +69,7 @@ order, not 425.
 | Enter or F2, on a filter cell | Goes into the filter. |
 | Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. On a reference cell, opens the picker: see [Choosing a related record](choosing-a-related-record.md#the-keyboard). |
 | Enter or F2, on the actions cell of a row | Goes to its first button. See [Row actions and the action panel](#row-actions-and-the-action-panel). |
+| Shift+Enter, on a cell of a sensitive column | Shows the cell's value, and hides it again. Escape hides it too, and so does leaving the cell. See [Sensitive columns](sensitive-columns.md#showing-a-value). |
 | A character, on a filter cell or a cell that can be edited | Goes into the filter or starts editing, with that character typed. |
 | Escape, on a cell whose save failed | Gives the failed edit up: the cell shows the saved value again. |
 | Escape, on an actions cell that shows the message of a failed action | Gives the message up. |
@@ -460,7 +461,7 @@ follows the theme, light or dark.
 | A table that is reading | Its rows at 70% opacity. The header and the filters are not dimmed: they can be used meanwhile, and their text is muted already. |
 | An input or a menu | An edge in the text colour at half strength, on the filters and on the fields of the action panel. daisyUI's own edge, at a fifth, does not show where an empty input is. |
 | A rejected filter value, and a field of the panel with an error | The edge in the colour of a failed cell's ring, and the message under the control, in the text colour. The message is what says so without a colour. |
-| A badge, a progress bar and a slider (the three components that are shipped) | The badge has an edge in the text colour at half strength and its label in the text colour. The bar is filled in the text colour, on a track at a fifth of it, with the number beside it as text. The slider is filled in the text colour, with a track at half strength and the number beside it. None of them has a colour that means something. |
+| A badge, a progress bar and a slider (three of the components that are shipped) | The badge has an edge in the text colour at half strength and its label in the text colour. The bar is filled in the text colour, on a track at a fifth of it, with the number beside it as text. The slider is filled in the text colour, with a track at half strength and the number beside it. None of them has a colour that means something. |
 
 In **forced colours** (the contrast themes of Windows) the browser paints
 with the system's colours and drops every fill and every shadow. Outlines,

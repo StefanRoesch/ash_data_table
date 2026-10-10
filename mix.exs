@@ -66,6 +66,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/files.md",
         "documentation/topics/nested-tables.md",
         "documentation/topics/custom-components.md",
+        "documentation/topics/sensitive-columns.md",
         "documentation/topics/authorization.md",
         "documentation/topics/keyboard-and-accessibility.md",
         "documentation/topics/messages-and-translations.md",
@@ -88,6 +89,7 @@ defmodule AshTable.MixProject do
           AshTable.Component,
           AshTable.Component.Column,
           AshTable.Components.Badge,
+          AshTable.Components.Image,
           AshTable.Components.Progress,
           AshTable.Components.Slider
         ],

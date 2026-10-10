@@ -68,14 +68,17 @@ defmodule AshTable.Model.Operator do
       and none for a calculation or aggregate the data layer cannot filter by;
     * only those whose Ash operator or function accepts the field's type and
       is supported by the data layer;
-    * "is empty" only when the field can be nil.
+    * "is empty" only when the field can be nil;
+    * none for a field that is declared `sensitive?`: which rows a filter
+      leaves would say what the mask in its cells hides
+      (`AshTable.Sensitive`).
   """
   @spec available(Ash.Resource.t(), struct) :: [t]
   def available(resource, field) do
     {type, _constraints} = CellType.type(resource, field)
     {cell_type, _values} = CellType.of(resource, field)
 
-    if filterable?(resource, field) do
+    if filterable?(resource, field) and not AshTable.Sensitive.sensitive?(field) do
       @of_cell_type
       |> Map.get(cell_type, [])
       |> Enum.filter(fn operator ->

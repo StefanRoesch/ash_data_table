@@ -115,6 +115,11 @@ defmodule AshTable.Text do
           | :upload_too_large
           | :upload_not_accepted
           | :upload_failed
+          | :hidden_value
+          | :show
+          | :hide
+          | :show_value
+          | :hide_value
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -392,4 +397,13 @@ defmodule AshTable.Text do
     do: dgettext_noop("ash_table", "This type of file is not accepted.")
 
   defp msgid(:upload_failed), do: dgettext_noop("ash_table", "The file could not be uploaded.")
+
+  # In a cell of a sensitive column: what a screen reader says in place of
+  # the mask; what the cell's button says, and what it is called, with the
+  # column, before and after the value is shown.
+  defp msgid(:hidden_value), do: dgettext_noop("ash_table", "Hidden")
+  defp msgid(:show), do: dgettext_noop("ash_table", "Show")
+  defp msgid(:hide), do: dgettext_noop("ash_table", "Hide")
+  defp msgid(:show_value), do: dgettext_noop("ash_table", "Show %{column}")
+  defp msgid(:hide_value), do: dgettext_noop("ash_table", "Hide %{column}")
 end

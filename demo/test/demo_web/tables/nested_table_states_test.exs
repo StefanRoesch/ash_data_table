@@ -113,7 +113,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
 
       Gate.close()
       view |> element("[id='#{id}-head-title']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "[id='#{id}-error']") == "You are not allowed to see these records."
       assert column(html, id, "title") == []
@@ -210,7 +210,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
         |> element("[id='#{id}-grid']")
         |> render_hook("filter", %{"filter" => %{"amount" => unquote(Macro.escape(entry))}})
 
-        html = render_async(view, 2000)
+        html = render_async(view)
 
         assert length(column(html, id, "title")) == 5
         # no "8 records", and not the 16 or the 8 that a count without the policies gives
@@ -224,7 +224,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
         assert attribute(html, "[id='#{id}-next']", "disabled") == []
 
         view |> element("[id='#{id}-next']") |> render_click()
-        html = render_async(view, 2000)
+        html = render_async(view)
 
         assert length(column(html, id, "title")) == 3
         assert text(html, "[id='#{id}-range']") == ""
@@ -237,9 +237,9 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
       |> element("[id='#{id}-grid']")
       |> render_hook("filter", %{"filter" => %{"amount" => %{"o" => "at_least", "v" => "20"}}})
 
-      render_async(view, 2000)
+      render_async(view)
       view |> element("[id='#{id}-clear-filters']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "[id='#{id}-range']") == "16 records"
       assert text(html, "[id='#{id}-status']") == "16 results"

@@ -28,6 +28,12 @@ defmodule AshTable.Act do
   # An input that is a union is given as its kind and that kind's value, as
   # Ash takes a union from outside (`typed/2`).
   #
+  # An input that is sensitive (`AshTable.Sensitive`) is typed hidden, into a
+  # field that starts empty whatever the record holds. Left empty it is not
+  # given to the action at all: an update keeps what the record has, and a
+  # create or an argument is given nothing, which the action answers as it
+  # answers any input that is missing.
+  #
   # An input that takes a file is never taken from what the browser sent:
   # the table gives it, from the upload the panel holds, as what it gives
   # itself.
@@ -574,6 +580,13 @@ defmodule AshTable.Act do
   # A file is never taken from what the form sent: the table gives it, from
   # the upload (`given`).
   defp given?(%{editor: :file}, _params, _name), do: false
+
+  # A sensitive input starts empty whatever the record holds, so an empty
+  # one says nothing: it is given only once something is typed into it.
+  # Otherwise an action would empty what its panel never showed.
+  defp given?(%{sensitive?: true}, params, name),
+    do: is_binary(params[name]) and params[name] != ""
+
   defp given?(_input, params, name), do: is_map_key(params, name)
 
   @doc """

@@ -142,6 +142,18 @@ defmodule AshTable.Model do
   # block says for an argument of that name, else LiveView's own limits.
   # An action with such an argument always opens its panel.
   #
+  # ## Sensitive fields
+  #
+  # A column of a field the resource declares `sensitive?` is `sensitive?`
+  # (`AshTable.Sensitive`): its cells show a mask until a person asks for a
+  # value, it is neither sorted nor filtered by, it has no component, and it
+  # is edited only where what is typed can be hidden: text and a number.
+  # An input of an action that is sensitive is typed hidden likewise, and is
+  # no input at all where it could not be. A sensitive argument of the read
+  # action, or of a calculation, has no input on the argument line, whose
+  # values are kept in the URL. A sensitive attribute cannot be the
+  # `label_field`.
+  #
   # ## Components
   #
   # A column whose block names a `component` carries it: the module, which
@@ -263,6 +275,7 @@ defmodule AshTable.Model do
   alias AshTable.Resource.Reading
   alias AshTable.Resource.Referencing
   alias AshTable.Resource.Relating
+  alias AshTable.Sensitive
 
   @enforce_keys [:resource, :primary_key, :read_action, :pagination, :columns]
   defstruct [
@@ -879,8 +892,8 @@ defmodule AshTable.Model do
   @doc """
   The columns a record of the table's resource can be called by, the best
   first: the attribute its block names as `label_field`, then the table's
-  attribute columns in their order. Which of them holds something this
-  person may see is known once a record is read.
+  attribute columns in their order, without the sensitive ones. Which of
+  them holds something this person may see is known once a record is read.
   """
   @spec naming(t) :: [Column.t()]
   def naming(%__MODULE__{resource: resource, columns: columns, pagination: pagination}) do
@@ -890,7 +903,8 @@ defmodule AshTable.Model do
         _none_or_unusable -> []
       end
 
-    label ++ Enum.filter(columns, &(&1.kind == :attribute))
+    # never by a sensitive one: a name is shown to whoever sees the record
+    label ++ Enum.filter(columns, &(&1.kind == :attribute and not &1.sensitive?))
   end
 
   @doc """
@@ -1608,6 +1622,9 @@ defmodule AshTable.Model do
     fixed = Map.new((declared && declared.arguments) || [])
 
     %Column{
+      # a sensitive field is masked, and neither sorted nor filtered by:
+      # `Reading.sortable?/3` and `Operator.available/2` say so
+      sensitive?: Sensitive.sensitive?(field),
       fixed: fixed,
       arguments: fixed,
       editable?: not is_nil(update_action),
@@ -1738,6 +1755,12 @@ defmodule AshTable.Model do
        do: nil
 
   defp component!(_resource, _field, nil, _label, _editable?), do: nil
+
+  defp component!(resource, %{sensitive?: true} = field, _declared, _label, _editable?) do
+    raise ArgumentError,
+          "cannot build the table of #{inspect(resource)}: the `component` of its column " <>
+            "`#{field.name}` cannot be used. " <> Presenting.message({:sensitive, field.name})
+  end
 
   defp component!(resource, field, %{component: module}, label, editable?) do
     case Presenting.component(module, Presenting.column(resource, field, label, editable?)) do

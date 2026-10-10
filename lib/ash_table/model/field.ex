@@ -29,8 +29,9 @@ defmodule AshTable.Model.Field do
   #   * `key?` is set for an attribute of an embedded resource's primary key
   #     that is no input. Ash tells by it which value of an array is which,
   #     so it is sent back with the value it came with.
-  #   * `sensitive?` is what the attribute says. It changes nothing here: a
-  #     public sensitive field is a field like any other, as a column is.
+  #   * `sensitive?` is what the attribute says. Such a field is shown as a
+  #     mask on the value's one line, and a value with such an input is not
+  #     edited in a table (`AshTable.Sensitive`).
 
   @enforce_keys [:name, :label, :type, :cell_type]
   defstruct [

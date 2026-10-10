@@ -23,8 +23,9 @@ declared in the resource and mounted with one line in the router.
   finding that leaves it nothing sound to do (no usable read action,
   pagination, column or update action) refuses to render with an
   `ArgumentError`.
-- `AshTable.Router.ash_table/3` mounts a table as a page, with `id:` and
-  `layout:`; `<AshTable.table … />` places one in a LiveView of the host's,
+- `AshTable.Router.ash_table/3` mounts a table as a page, with `id:`,
+  `layout:` and `authorize?:` (`false` mounts the page without
+  authorization, for an admin area behind the host's own access control); `<AshTable.table … />` places one in a LiveView of the host's,
   several to a page if wanted.
 - `AshTable.Domain`, the extension with the domain's `table` section:
   `authorize?` and the socket assigns that hold scope, actor and tenant.
@@ -637,6 +638,38 @@ declared in the resource and mounted with one line in the router.
   files (`{:array, :file}`) cannot be run from a table, and a file is no
   input of the argument line.
 
+### Sensitive columns
+
+- A column of a field the resource declares `sensitive?` (an attribute, a
+  calculation or an aggregate) is masked: its cells show `••••••`, the same
+  for every value, and a "Show" button named with the column. The value is
+  not in the page and not in what the server keeps of a row. It is read
+  again, as the person, when they ask for one cell (the button, or
+  Shift+Enter), and hidden again when focus leaves the cell, with Escape,
+  and on every new read. An empty cell stays empty. `sensitive?` is no
+  access rule: whoever the field policies allow may ask.
+- Such a column is neither sorted nor filtered by, has no component, and
+  cannot be the `label_field`. It is edited where what is typed can be
+  hidden, which is text and a number: the editor is a password input that
+  starts empty, and an editor left empty saves nothing. A sensitive column
+  of another type is read-only.
+- A sensitive input of an action is a password field in the action panel,
+  starts empty, and left empty gives the action nothing. A sensitive
+  argument has no input on the argument line, whose values are kept in the
+  URL.
+- A sensitive attribute of an embedded resource is a mask on the value's
+  one line, and a value with such an input is not edited in a table.
+- New compile-time findings for all of the above: see "Sensitive fields" in
+  the guide to mistakes at compile time.
+
+### Fixed
+
+- A read that was on its way when the argument its read action requires was
+  emptied is no longer stopped. Stopping it killed a process that could be
+  in the middle of a statement, and its end was then shown as "The records
+  could not be loaded." in place of "Fill in … to see records.". It is now
+  left to finish, and what it brings is not shown.
+
 ### Custom components
 
 - `component` on a `column`: a module that says how the cells of the column
@@ -663,7 +696,10 @@ declared in the resource and mounted with one line in the router.
 - The editor of a column's component is the field of that attribute in the
   action panel, under the table's label and with the action's messages. In
   the panel a change saves nothing: the value goes with the form.
-- Three components are shipped: `AshTable.Components.Badge` shows an enum's
+- `AshTable.Components.Image` shows the picture at the address a text
+  column holds, at the height of a line: an `http://` or `https://`
+  address, or a path that starts with `/`. Anything else is shown as text.
+- Three more components are shipped: `AshTable.Components.Badge` shows an enum's
   value as a badge, `AshTable.Components.Progress` a number between its
   minimum and maximum as a bar with the number beside it, and
   `AshTable.Components.Slider` edits such a number with a native range

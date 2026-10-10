@@ -101,6 +101,44 @@ defmodule Demo.Support.Styled do
 
   resources do
     resource Demo.Support.Styled.Gauge
+    resource Demo.Support.Styled.Portrait
+  end
+end
+
+defmodule Demo.Support.Styled.Portrait do
+  @moduledoc """
+  A portrait: a text column that holds where a picture is, shown with
+  `AshTable.Components.Image`.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Styled,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource],
+    primary_read_warning?: false
+
+  table do
+    update_action :update
+
+    column :name
+
+    column :picture do
+      component AshTable.Components.Image
+    end
+  end
+
+  actions do
+    defaults create: [:name, :picture], update: [:name, :picture]
+
+    read :read do
+      primary? true
+      prepare build(sort: [name: :asc])
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :name, :string, public?: true
+    attribute :picture, :string, public?: true
   end
 end
 

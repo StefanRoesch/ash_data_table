@@ -142,7 +142,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
 
       become = fn user ->
         view |> element("#become") |> render_click(%{"id" => user.id})
-        render_async(view, 2000)
+        render_async(view)
       end
 
       assert text(open.(), button) == "New comment"
@@ -268,7 +268,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
 
       assert panel(press(view, task.id, "comments"), comments) == nil
 
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "[id='#{comments}-error']") == "This record is no longer available."
       assert column(html, comments, "body") == []

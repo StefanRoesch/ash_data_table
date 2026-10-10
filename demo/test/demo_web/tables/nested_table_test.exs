@@ -294,7 +294,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # not "No records": nothing is known yet
       assert text(html, "[id='#{id}-empty']") == nil
 
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "[id='#{id}-loading']") == nil
       assert attribute(html, "[id='#{id}-table']", "aria-busy") == []
@@ -458,7 +458,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       id = nested(task.id, "comments")
 
       view |> element("[id='#{id}-head-body']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, id, "body") == ["Apple", "Banana", "Cherry"]
       assert attribute(html, "[id='#{id}-head-body']", "aria-sort") == ["ascending"]
@@ -468,7 +468,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "#task-head-title", "aria-sort") == ["none"]
 
       view |> element("[id='#{id}-head-body']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, id, "body") == ["Cherry", "Banana", "Apple"]
     end
@@ -491,7 +491,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "#task-clear-filters", "id") == []
 
       view |> element("[id='#{id}-clear-filters']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, id, "body") == ["Cherry", "Apple", "Banana"]
     end
@@ -526,17 +526,17 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "[id='#{id}-pagination'] button", "tabindex") == ["-1", "-1"]
 
       view |> element("[id='#{id}-next']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert column(html, id, "body") == numbered.(25..6//-1)
       refute_patched()
 
       view |> element("[id='#{id}-next']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert column(html, id, "body") == numbered.(5..1//-1)
       assert attribute(html, "[id='#{id}-next']", "disabled") == [""]
 
       view |> element("[id='#{id}-previous']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
       assert column(html, id, "body") == numbered.(25..6//-1)
     end
 
@@ -565,7 +565,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["32"]
 
       view |> element("[id='#{id}-page-2']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert column(html, id, "title") == ["Task 05", "Task 04", "Task 03", "Task 02", "Task 01"]
       assert text(html, "[id='#{id}-range']") == "26–30 of 30"
@@ -838,7 +838,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       toggle(view, task.id, "comments")
 
       view |> element("#task-head-title") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert lines(html, task.id) == []
       assert attribute(html, "[id='task-row-#{task.id}-x']", "hidden") == [""]
@@ -1267,7 +1267,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       # with the filter gone, the total is back
       view |> element("[id='#{id}-filter-estimate_hours-clear']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "[id='#{id}-range']") == "1–4 of 4"
       assert text(html, "[id='#{id}-status']") == "4 results"
@@ -1326,7 +1326,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       ])
 
       view |> element("[id='#{id}-head-body']") |> render_click()
-      html = render_async(view, 2000)
+      html = render_async(view)
 
       assert text(html, "[id='#{id}-error']") == "This record is no longer available."
       assert column(html, id, "body") == []
@@ -1367,7 +1367,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       assert text(html, "[id='#{nested(task.id, "assignee")}-loading']") == "Lädt…"
 
-      html = render_async(view, 2000)
+      html = render_async(view)
       id = nested(task.id, "assignee")
       assert headers(html, id) == ["Name", "E-Mail", "Rolle", "Zugewiesene Stunden"]
       assert text(html, "[id='#{id}-empty']") == "Keine Einträge"
