@@ -1,6 +1,7 @@
 defmodule AshTable.Resource.Verifiers.VerifyActions do
   @moduledoc false
-  # The row actions of the block, and its `create_action`.
+  # The `action`s of the block, which are its row actions and its table
+  # actions, and its `create_action`.
   use Spark.Dsl.Verifier
 
   alias AshTable.Resource.Acting
@@ -124,32 +125,38 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
     end
   end
 
-  # A public update or destroy action, with a field in the action panel for
-  # everything it does not run without.
+  # A public update or destroy action, or a public generic action, with a
+  # field in the action panel for everything it does not run without. The
+  # argument that takes a row's primary key is given by the table, and
+  # needs none.
   defp usable(dsl, %{name: name} = declaration) do
-    with {:ok, action} <- Acting.row_action(dsl, name),
-         {:ok, _action} <- bulk(dsl, action, declaration),
-         [input | _] <- Acting.unusable(dsl, action) do
-      {:error, {:no_field, :row, name, input}}
+    with {:ok, kind, action} <- Acting.offered(dsl, declaration),
+         {:ok, _action} <- bulk(dsl, kind, action, declaration),
+         [input | _] <- Acting.unusable(dsl, action, declaration.record_argument) do
+      {:error, {:no_field, kind, name, input}}
     end
   end
 
   # `bulk?` can only switch off: an action that cannot run on several
-  # records at once is not made to by saying so.
-  defp bulk(dsl, action, %{bulk?: true}) do
+  # records at once is not made to by saying so. A table action runs on no
+  # record at all.
+  defp bulk(_dsl, :table, action, %{bulk?: true}),
+    do: {:error, {:table_action_not_bulk, action.name}}
+
+  defp bulk(dsl, :row, action, %{bulk?: true}) do
     case Acting.unrepeatable(dsl, action) do
       [] -> {:ok, action}
       attributes -> {:error, {:not_bulk, action.name, attributes}}
     end
   end
 
-  defp bulk(_dsl, action, _declaration), do: {:ok, action}
+  defp bulk(_dsl, _kind, action, _declaration), do: {:ok, action}
 
   # A destroy action that runs at one click is a choice the block has to
   # make visibly: with a question, or with `confirm false`.
   defp one_click_deletes(dsl) do
     for %{confirm: nil} = declaration <- AshTable.Resource.Info.actions(dsl),
-        match?({:ok, %{type: :destroy}}, Acting.row_action(dsl, declaration.name)) do
+        match?({:ok, :row, %{type: :destroy}}, Acting.offered(dsl, declaration)) do
       message =
         "The row action `#{declaration.name}` is a destroy action without `confirm`: one click " <>
           "on its button deletes the record, and nothing asks first. Give it a question " <>

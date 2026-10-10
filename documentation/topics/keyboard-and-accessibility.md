@@ -40,7 +40,8 @@ order, not 425.
   cell of the first row of records.
 - The cell a person moved to is the one Tab returns to.
 - The controls around the grid are ordinary tab stops: the create button on
-  the line of the table's name, where the table has one, the inputs of the
+  the line of the table's name, where the table has one, and the buttons of
+  its [table actions](table-actions.md) after it, the inputs of the
   [argument line](arguments.md), where the table has arguments, the buttons
   of the line above the grid ("Clear selection" and the bulk actions, while rows
   are selected, and "Clear filters", while a filter applies), and the
@@ -240,8 +241,11 @@ Where focus goes afterwards:
 | A question answered with Cancel or Escape | On the button that asked. |
 
 The **create button** is an ordinary button and a tab stop, before the
-grid in the page's tab order. The create button of a nested table is on its
-relationship line: see the next section.
+grid in the page's tab order. So are the buttons of a table's **table
+actions**, which stand after it: Enter and Space use one, focus stays on it
+when its action has run, and comes back to it from its question and from
+its panel. The create button of a nested table, and the buttons of its
+table actions, are on its relationship line: see the next section.
 
 What each action does is in
 [Row actions and create](row-actions-and-create.md).
@@ -299,7 +303,7 @@ comment".
 | Right Arrow | On an expander or a line that is closed | Opens it. On one that is open, moves on as on any cell. |
 | Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
 | Enter | On an expander or a line | Opens or closes it. |
-| F2 | On a line that has a create button | Goes to the line's controls: the button that opens and closes it, and the create button. Left Arrow and Right Arrow move between them; Enter uses one; Escape returns to the line. |
+| F2 | On a line that has a create button, or the buttons of table actions | Goes to the line's controls: the button that opens and closes it, the create button, and the buttons of the nested table's table actions. Left Arrow and Right Arrow move between them; Enter uses one; Escape returns to the line. |
 | Down Arrow, Up Arrow | | Go through the lines and the nested tables' cells as through rows, keeping the column for the rows below them. |
 | Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first data cell. |
 | Escape | On a cell of a nested table | Comes back out, to the cell that holds it. |
@@ -391,13 +395,15 @@ page and keeps the focus.
 | What a bulk action came to | The live region: "Archive: 2 done, 1 not done. You are not allowed to do this. (1)". The same is text above the grid. |
 | An action in progress | `aria-busy` on the row's actions cell. |
 | An action that ran | The live region: "Archive: done"; after a create, "Task created". |
+| A table action, or a generic action in a row, that ran | The live region, and the same words above the grid: the action and what it returned, "Count unused: 3", or "Remove unused: done". |
+| A table action without a panel that failed | The live region, and the same words above the grid: "Count unused failed: …". |
 | An action that failed | The live region: "Archive failed: …". For an action that ran straight away, also `aria-invalid` on the row's actions cell, described by the message. |
 | The action panel | A modal dialog named by its heading (`aria-labelledby`): "Reassign: Write the report", "New task". |
 | A field of the panel | A label. A required field has `aria-required`, and the mark " \*" beside its label is hidden from assistive technology. A field with an error has `aria-invalid` and is described by the message. |
 | A field of the panel that holds the key of a related record | A group (`role="group"`) named by the field's label, with what the record is called as text and the button "Choose", which is described by that text. A group cannot say `aria-required`, so the label of a required one ends in the word "required", for screen readers only. Its errors describe the group. |
 | The picker | A modal dialog named by its heading: "Assignee: choose user". Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
 | What an action says that is about no field of its panel | An alert (`role="alert"`) above the fields. |
-| The name of a table and its create button | Above the grid: the name as a heading of the page (`h1` on a mounted page), or as text where an embedded table is not told a heading level; the button named "New task". |
+| The name of a table, its create button and the buttons of its table actions | Above the grid: the name as a heading of the page (`h1` on a mounted page), or as text where an embedded table is not told a heading level; the buttons named by what they say, "New task", "Count unused". |
 | A row that was added or taken away | The total (`aria-rowcount`) is one more or one less, and the rows after it are numbered again (`aria-rowindex`). |
 | A failed or refused read | An alert (`role="alert"`) in place of the rows. |
 | The pagination | A navigation landmark named after the table ("Pagination: Tasks"), buttons named "Go to page 3", and `aria-current="page"` on the current one. |
@@ -519,7 +525,9 @@ them, with the dialog open, with a failed cell, as each actor; with rows expande
 deepest level, on a page limited to the records of one parent, with
 reference cells; with the actions column, a failed actions cell, the action
 panel open, with errors and with the dialog on top of it, and with the
-create button of a table and of a line; with rows selected, with all that
+create button of a table and of a line; with what a table action
+returned, with its question and its panel open, with an error at a field
+of it, and with the buttons of table actions on a line; with rows selected, with all that
 match selected, with the question of a bulk action open, and with what a
 bulk action came to, in the light and in the dark theme; with the picker
 open, with a row selected in it, with a choice that was not taken, with a
@@ -617,7 +625,8 @@ technology, a report of what you find is welcome in the
   button. Enter in a value saves; so does Tab from the last control.
 - **Expecting Tab to reach a row's buttons.** Move to the row's last cell
   and press Enter.
-- **Expecting Enter on a relationship line to reach its create button.**
+- **Expecting Enter on a relationship line to reach its create button, or
+  the buttons of its table actions.**
   Enter opens and closes the line. F2 goes to its controls.
 - **Expecting a filter to be a tab stop.** Move to its cell and press Enter.
 - **Treating "axe reports no violations" as "accessible".** See the table

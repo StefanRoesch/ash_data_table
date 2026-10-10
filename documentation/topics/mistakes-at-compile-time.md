@@ -324,20 +324,28 @@ table is simply not offered: nothing is reported.
 
 ## Row actions and the create action
 
-The path is `table -> action -> NAME` for a row action,
-`table -> create_action` for the create action, and `table` for the last
-one. `INPUT` is an attribute the action accepts or one of its arguments.
+The path is `table -> action -> NAME` for an `action`, which is a row
+action or a table action, `table -> create_action` for the create action,
+and `table` for the last two. `INPUT` is an attribute the action accepts
+or one of its arguments, and `ARG` the argument `record_argument` names.
 
 | Message | Cause | Fix |
 | --- | --- | --- |
 | The resource has no action named \`NAME\`. | An `action`, or `create_action`, names an action the resource does not have. | Correct the name, or define the action. |
 | The action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | The action is declared `public? false`. | Make it public, or leave it out. |
-| \`NAME\` is a create action. A row action runs on the record of its row, so it has to be an update or a destroy action. A create action is offered with \`create_action :NAME\` in the \`table\` block. | An `action` names a create action. | Name it with `create_action`. |
-| \`NAME\` is a read action. A row action runs on the record of its row, so it has to be an update or a destroy action. | An `action` names a read action. | Remove it. |
-| \`NAME\` is a generic action. A row action runs on the record of its row, so it has to be an update or a destroy action. A generic action takes no record. | An `action` names a generic action. | Remove it. A table has no place for an action without a record. |
+| \`NAME\` is a create action. An \`action\` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole. A create action is offered with \`create_action :NAME\` in the \`table\` block. | An `action` names a create action. | Name it with `create_action`. |
+| \`NAME\` is a read action. An \`action\` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole. | An `action` names a read action. | Remove it. |
 | Got duplicate AshTable.Resource.Action: NAME | The block declares the same `action` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
 | The row action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these. | The action accepts an attribute it requires, or has an argument with `allow_nil? false`, of a type the action panel has no field for: a map that declares no fields, an embedded resource a table cannot edit, a union, a binary, or an array of anything but text, numbers, booleans, dates, datetimes and choices. `TYPE` is the Ash type, such as `Ash.Type.Map` or `{:array, Ash.Type.UUID}`. | Use an action that does not require the input, or leave the action out. |
 | The row action \`NAME\` says \`bulk? true\`, and cannot run on several records at once: it accepts \`INPUT\`, of which no two records can hold the same value (an attribute of the primary key, or an identity by itself), and the inputs of an action that runs on the selected rows are given once for all of them. Leave \`bulk?\` out: the action stays an action of one row. | An `action` says `bulk? true` and accepts an attribute of the primary key, or one that is the only key of an identity. `bulk?` can only switch off. | Remove `bulk? true`. The action is a row action, and is not offered for a selection. |
+| The table action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for … | As for a row action, for a generic action: one of its arguments is `allow_nil? false` and of a type without a field. The argument `record_argument` names is given by the table and needs none. | Use an action that does not require the argument, or leave the action out. |
+| The table action \`NAME\` says \`bulk? true\`, and runs on the table as a whole: a generic action takes no record, so there are no selected rows to run it on. Leave \`bulk?\` out, or name the argument that takes a row's primary key with \`record_argument\`: the action is then a row action. | An `action` that names a generic action says `bulk? true` and no `record_argument`. | Remove `bulk? true`, or add `record_argument`. |
+| The action \`NAME\` says \`record_argument :ARG\`, and is an update action, which runs on the record of its row already. \`record_argument\` is for a generic action, which takes no record: it names the argument that is given the row's primary key. Leave it out. | `record_argument` on an update or a destroy action: the message says "an update" or "a destroy". | Remove `record_argument`. |
+| The action \`NAME\` says \`record_argument :ARG\`, and has no argument named \`ARG\`. | The generic action has no such argument. | Correct the name, or give the action the argument. |
+| The action \`NAME\` says \`record_argument :ARG\`, and its argument \`ARG\` is not public. A private argument is not given from the outside, and a table is the outside. | The argument is declared `public? false`. | Make the argument public. |
+| The action \`NAME\` says \`record_argument :ARG\`, and that argument is of the type TYPE, which is not stored as the primary key \`KEY\` is (KEY_TYPE). The argument is given the primary key of the row as it is, so it has to be of the key's type. | The argument's type is stored differently from the primary key: an integer for a UUID key, text, an array. Two types that are stored alike (`:uuid` and `:uuid_v7`) are accepted. | Give the argument the key's type. |
+| The action \`NAME\` says \`record_argument :ARG\`, and the primary key of the resource is \`A\`, \`B\`: several attributes. One argument takes the primary key of a row only where that is one attribute. | The resource has a primary key of several attributes. | Leave the action out of the table, or declare it without `record_argument`, as a table action whose panel asks for the keys. |
+| The action \`NAME\` says \`record_argument :ARG\`, and the resource has no primary key: there is nothing of a row to give the argument. | The resource has no primary key. | The same. |
 | \`NAME\` is an update action, not a create action. | `create_action` names an action of another type: the message says "an update", "a destroy", "a read" or "a generic". | Name a create action. |
 | The create action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for … | As for a row action. An attribute whose default is computed does not count as required in a create. | Name a create action that does not require the input. |
 | The table changes records: it has editable columns, row actions or a create action. Ash loads what a create, an update or a destroy action returns through the primary read action, without arguments, and the primary read action \`NAME\` requires the argument \`ARG\`, so a row could not be shown again after one. Give the argument a default, make another read action the primary one, or leave the table read-only. | The primary read action has an argument with `allow_nil? false` and no default, the table edits, acts or creates, and one of its columns is a calculation, an aggregate or a reference cell. | Put the argument on a read action of its own and name it with `read_action`, or give it a default. |
@@ -544,6 +552,9 @@ Some things look like they should be reported and are not, on purpose:
 | A row action that accepts an attribute of the primary key, or one that is an identity by itself, without `bulk? true` | It is a row action, and is not offered for the selected rows. |
 | `bulk? false` on an action that would not be offered for the selected rows anyway | Nothing. |
 | `bulk? true` on an action that is offered anyway | Nothing: it is the default. |
+| `bulk? false` on a table action | Nothing. A table action runs on no record. |
+| A table whose only actions are generic, over a resource with a private primary read action, or with none beside loaded columns | Nothing. Ash loads no result of a generic action through it, and the table reads again through its own read action. |
+| A generic action under a policy that has a check on a record | Nothing when the resource is compiled. Ash cannot run such an action, and the table has no button for it. See [Table actions](table-actions.md#edge-cases). |
 | A `create_action` that does not accept the attribute joining its records to a parent | The table has its create button on a page of its own, and none where it is nested under that parent. |
 
 The table-level action is a blanket statement, "edit what this action can
@@ -581,10 +592,12 @@ any LiveView does that raises in its first render.
 | A primary read action that requires an argument, under a table that changes records | The table renders. After a save or an action the row cannot be loaded again, and is taken out of the page as a record that is no longer the person's to read. |
 | A wrong `update_action`, at the table or at a column: not there, not an update action, not public | The same. The block asked for editing through an action that cannot be run, and a table that silently offered none would hide that. |
 | Editable columns beside calculation, aggregate or reference columns, without a primary read action | The same. |
-| An `action` that names no public update or destroy action, or one that is declared twice | The same: "its row action \`NAME\` cannot be used." |
+| An `action` that names no public update, destroy or generic action, or one that is declared twice | The same: "its action \`NAME\` cannot be used." |
+| A `record_argument` that cannot take a row's key, or one on an update or a destroy action | The same. |
+| `bulk? true` on a table action | The table renders. The action is a table action, and is not offered for the selected rows. |
 | A `create_action` that names no public create action | The same: "its \`create_action\` cannot be used." |
 | Row actions or a create action beside calculation, aggregate or reference columns, without a primary read action | The same. |
-| A row action with a required input the panel has no field for | The table renders, and has no button for that action. |
+| A row action or a table action with a required input the panel has no field for | The table renders, and has no button for that action. |
 | A create action with a required input the panel has no field for | The table renders, and has no create button. |
 | A destroy action without `confirm` | The table renders, and the button deletes at one click. |
 | A `label_field` that names no public attribute | The table itself renders. A table that shows this resource in a reference cell refuses, and a heading that would call a record by it calls it by a column instead. |

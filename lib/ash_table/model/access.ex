@@ -64,7 +64,13 @@ defmodule AshTable.Model.Access do
   An action the person may run on some records only is not among them:
   whether it runs on one record is the action's to say when it is run.
 
-  A question Ash cannot answer counts as "never".
+  A generic action is asked about without its arguments: a check that looks
+  at one answers for none.
+
+  A question Ash cannot answer counts as "never". Ash raises for one about
+  a generic action whose policy holds a check on a record (ash 3.34.4:
+  "Cannot use filter or runtime checks with generic actions"), which such
+  an action has none of; it would raise the same when the action is run.
   """
   @spec forbidden_actions(Ash.Resource.t(), [atom], reader) :: [atom]
   def forbidden_actions(resource, actions, reader) do
@@ -77,16 +83,28 @@ defmodule AshTable.Model.Access do
       # Ash says `:maybe`, where a pre-flight check would try it on an empty
       # record and say no. `run_queries?: false` keeps it to what is known
       # without the database.
-      case Ash.can(
-             {resource, action},
-             actor,
-             [pre_flight?: false, run_queries?: false, maybe_is: :maybe] ++ opts
-           ) do
+      case can(resource, action, actor, opts) do
         {:ok, true} -> false
         {:ok, :maybe} -> false
         _never_or_unknown -> true
       end
     end)
+  end
+
+  defp can(resource, action, actor, opts) do
+    opts = [pre_flight?: false, run_queries?: false, maybe_is: :maybe] ++ opts
+
+    case Ash.Resource.Info.action(resource, action) do
+      %{type: :action} ->
+        try do
+          Ash.can({resource, action}, actor, opts)
+        rescue
+          _unanswerable -> :error
+        end
+
+      _action_on_records ->
+        Ash.can({resource, action}, actor, opts)
+    end
   end
 
   # `Ash.can_see_fields/4` asks each authorizer of the resource only if its

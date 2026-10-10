@@ -55,7 +55,8 @@ defmodule DemoWeb.Router do
   # one whose columns have components (`component_tables.ex`), one whose
   # columns are arrays (`array_tables.ex`), one whose reference cells are
   # chosen by keys that are no UUID (`picker_tables.ex`), those whose read
-  # actions and calculations take arguments (`argument_tables.ex`), one whose
+  # actions and calculations take arguments (`argument_tables.ex`), those
+  # with generic actions (`action_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
   # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
@@ -106,6 +107,9 @@ defmodule DemoWeb.Router do
         ash_table "/stocks", Demo.Support.Asked.Stock, layout: false
         ash_table "/lots", Demo.Support.Asked.Lot, layout: false
         ash_table "/vaults", Demo.Support.Asked.Vault, layout: false
+        ash_table "/chores", Demo.Support.Generic.Chore, layout: false
+        ash_table "/rotas", Demo.Support.Generic.Rota, layout: false
+        ash_table "/shifts", Demo.Support.Generic.Shift, layout: false
         live "/asked", DemoWeb.Support.AskedLive
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/select", DemoWeb.Support.SelectLive

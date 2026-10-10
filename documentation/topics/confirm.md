@@ -97,6 +97,12 @@ button is in the error colour.
 
 Confirm runs the action as it would have run without the question.
 
+A [table action](table-actions.md) takes the option too, and asks in the
+same dialog: when its button on the line of the table's name is used, or,
+for one with a panel, when "Run" is used. The server decides what such a
+button does, so it is the server that has the dialog opened; Cancel and
+Escape put focus back on the button.
+
 Three things differ from a column's `confirm`:
 
 - **The Confirm button of a destroy action is in the error colour**, so the

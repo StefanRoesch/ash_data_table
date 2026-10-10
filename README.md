@@ -62,6 +62,7 @@ examples from the demo app and each topic's edge cases.
 - [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
+- [Table actions](documentation/topics/table-actions.md)
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Custom components](documentation/topics/custom-components.md)
 - [Authorization](documentation/topics/authorization.md)
@@ -674,8 +675,10 @@ end
 ```
 
 - **Which actions.** Public update and destroy actions. A generic action
-  takes no record, so it is no row action; a create action is named with
-  `create_action`. Anything else is reported when the resource is compiled.
+  takes no record: named with `action` it is a
+  [table action](#table-actions), unless it says which argument takes the
+  row's key. A create action is named with `create_action`. Anything else
+  is reported when the resource is compiled.
 - **Straight away, or the action panel.** An action without inputs, or with
   optional arguments only, runs when its button is used. One that accepts
   attributes or has a required argument without a default opens the **action panel** first: a
@@ -786,6 +789,78 @@ end
 The guide
 [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
 has all of this in detail.
+
+## Table actions
+
+A table action is an action a person runs on the table as a whole and not
+on one record. On the resource it is a generic action: it takes arguments
+and returns a value, and is given no record. It is declared like a row
+action, and is a button on the line of the table's name, after "New …".
+
+```elixir
+actions do
+  action :count_unused, :integer do
+    run fn _input, context -> MyApp.Labels.count_unused(context) end
+  end
+
+  action :recolour, :integer do
+    argument :from, :string, allow_nil?: false
+    argument :to, :string, allow_nil?: false
+    run MyApp.Labels.Recolour
+  end
+
+  action :copy do
+    argument :label_id, :uuid, allow_nil?: false
+    argument :name, :string, allow_nil?: false
+    run MyApp.Labels.Copy
+  end
+end
+
+table do
+  action :count_unused             # runs at once: "Count unused: 3"
+
+  action :recolour do              # two required arguments: the action panel
+    confirm "Recolour these labels?"
+  end
+
+  action :copy do
+    record_argument :label_id      # a row action: the table gives the row's key
+  end
+end
+```
+
+- **At once, after a question, or the action panel.** An action without
+  arguments, or with optional ones only, runs when its button is used,
+  after its `confirm` question if it has one. A required argument without
+  a default opens the action panel, with a field per public argument, as
+  for a row action.
+- **Afterwards** the table says one line above the grid, which is read out:
+  the action and what it returned when that is text, a number, yes or no,
+  a date or a name ("Count unused: 3"), else that it is done ("Remove
+  unused: done"). Then it reads its records again. Returned records are not
+  shown as a table.
+- **`record_argument`** names the argument of a generic action that takes
+  a record's primary key. The action is then a row action: its button is in
+  every row, the table fills that argument with the row's key and does not
+  ask for it, and the other arguments are asked for in the panel. The
+  argument has to be public and of the type of the primary key, which has
+  to be one attribute. Such an action is offered for the selected rows like
+  any row action, and runs once per record; `bulk? false` keeps it to one
+  row.
+- **It runs as the person**, in their tenant and with authorization,
+  through `AshPhoenix.Form.for_action/3` and so `Ash.run_action/2`. A
+  person who can never run it has no button. Ash is asked once per action
+  and without arguments: a policy of a generic action can look at the
+  actor and at the arguments, never at a record.
+- **Failures** are shown as those of a row action: at the fields of the
+  panel, above them, on the row's actions cell, and for a table action
+  without a panel on the line above the grid.
+- **In a nested table** the buttons are on its relationship line, after
+  the create button. A table action is the same there as on the table's
+  own page: it is not given the row the nested table is under.
+
+The guide [Table actions](documentation/topics/table-actions.md) has all of
+this in detail.
 
 ## Nested tables
 
@@ -1017,7 +1092,7 @@ read action, as the person, before the action runs on it.
 | The person may **not read one related record** | It is not among the records to choose from in the picker, and its key cannot be saved by them, by whatever event. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. |
-| The person can **never run a row action**, or the create action | The action has no button for them; with no row action left, the table has no actions column. |
+| The person can **never run a row action**, a table action, or the create action | The action has no button for them; with no row action left, the table has no actions column. |
 | The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the actions cell or the action panel says "You are not allowed to do this." |
 | The person can **never run any row action** on several rows | The table has no boxes to select rows with. |
 | The person may run a row action on **some of the selected records only** | It runs on those. The table says how many it did not run on and why, "You are not allowed to do this. (2)", and those rows stay selected. |

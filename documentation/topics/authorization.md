@@ -154,6 +154,8 @@ as an admin area that the router already restricts.
 | The person can **never run a row action** | The action has no button for them. If that is every row action, the table has no "Actions" column. | `/tasks` as Vera Viewer; `/projects` as Max Member has "Set status" and no "Destroy". |
 | The person may run a row action on **some records only** | The button is on every row. On a record the action refuses, the row's actions cell, or the action panel, says "You are not allowed to do this." | `/tasks` as Max Member: "Archive" on a task that is not his. |
 | The person can **never run the create action** | The table has no create button for them. | `/tasks` as Vera Viewer; `/projects` and `/labels` as Max Member. |
+| The person can **never run a table action** | The action has no button for them, on the line of the table's name or on the line of a nested table. | `/labels` as Max Member: "Count unused", and neither "Recolour" nor "Remove unused". |
+| A table action, or a generic action in a row, is **refused when it runs** (a check on an argument) | The button is there. The refusal is shown as any failure of the action: "You are not allowed to do this." | (none in the demo) |
 | The person may create **some records only** | The button is there. A record the action refuses says "You are not allowed to do this." in the panel, and nothing is created. | (none in the demo) |
 
 "No records" is only ever shown for a read that succeeded and found nothing.
@@ -300,8 +302,8 @@ resources must have `public?` read actions on their destination resources."
 | The [picker](choosing-a-related-record.md) of a reference cell, or of a field of the action panel | The relationship's own `read_action`, else the read action of the destination's table: the records to choose from, and the record that was chosen. | Nothing is offered: the cell is read-only, and the field is a typed key. The destination's own table is what is reported. |
 | An aggregate column | For every relationship of the aggregate's path: its own `read_action`, else the primary read action of its destination, and the read action of the join resource of a many-to-many. For the last relationship the aggregate's own `read_action` stands in for the primary one. | The same. |
 | A calculation column that is an expression | The read actions of every aggregate the expression holds, by name or written out (`count(comments)`), also inside a calculation it references. | The same. |
-| `update_action`, `action`, `create_action` | That action. | The same. |
-| Any of those three: the table changes records | The primary read action. Ash loads what a create, an update or a destroy action returns through it, and asks its policies and field policies what of the result the person may have. | The same. A table that only reads is not affected. |
+| `update_action`, `action`, `create_action` | That action: an update, a destroy, a generic or a create action. | The same. |
+| Any of those three, where it names an update, a destroy or a create action: the table changes records | The primary read action. Ash loads what a create, an update or a destroy action returns through it, and asks its policies and field policies what of the result the person may have. | The same. A table that only reads is not affected, nor is one whose only actions are generic: Ash loads nothing for those. |
 
 "Reported" is a finding when the resource is compiled, with the path of the
 declaration that leads to the action; the messages are in
@@ -448,6 +450,13 @@ the person can never run it, and a refusal appears when it runs: on the
 row's actions cell for an action that runs straight away, above the fields
 for one that runs from the action panel. See
 [Row actions and create](row-actions-and-create.md#who-may-run-what).
+
+A table action, and a generic action in a row, are asked about once too,
+and without their arguments: before a button is used there are none. A
+generic action is given no record, so Ash allows its policy no check on
+one. It can look at the actor, which Ash answers ahead, and at an
+argument, which answers when the action runs. See
+[Table actions](table-actions.md#who-may-run-what).
 
 So does an action on the rows a person has selected. Its button is on the
 line above the grid unless the person can never run it. When it runs, the

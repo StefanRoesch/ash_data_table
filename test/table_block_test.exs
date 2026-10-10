@@ -4963,7 +4963,7 @@ defmodule AshTable.TableBlockTest do
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.MissingRowAction: its row action `archive` cannot be used. The resource has no action named `archive`.",
+                   "cannot build the table of AshTable.TableBlockTest.MissingRowAction: its action `archive` cannot be used. The resource has no action named `archive`.",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.MissingRowAction) end
     end
 
@@ -4997,7 +4997,7 @@ defmodule AshTable.TableBlockTest do
                "The action `internal` is not public. Only `public?` actions can be behind a table."
 
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.PrivateRowAction: its row action `internal` cannot be used. The action `internal` is not public. Only `public?` actions can be behind a table.",
+                   "cannot build the table of AshTable.TableBlockTest.PrivateRowAction: its action `internal` cannot be used. The action `internal` is not public. Only `public?` actions can be behind a table.",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateRowAction) end
     end
 
@@ -5045,11 +5045,11 @@ defmodule AshTable.TableBlockTest do
                "The action `shred` is not public. Only `public?` actions can be behind a table."
 
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.PrivateDestroyRowAction: its row action `shred` cannot be used. The action `shred` is not public. Only `public?` actions can be behind a table.",
+                   "cannot build the table of AshTable.TableBlockTest.PrivateDestroyRowAction: its action `shred` cannot be used. The action `shred` is not public. Only `public?` actions can be behind a table.",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateDestroyRowAction) end
     end
 
-    test "naming a create, a read or a generic action is an error that says why" do
+    test "naming a create or a read action is an error that says why" do
       [{AshTable.TableBlockTest.WrongKindOfRowAction, errors}] =
         dsl_errors do
           defmodule Elixir.AshTable.TableBlockTest.WrongKindOfRowAction do
@@ -5063,34 +5063,27 @@ defmodule AshTable.TableBlockTest do
 
             actions do
               defaults [:read, create: []]
-
-              action :sweep, :integer do
-                run fn _input, _context -> {:ok, 0} end
-              end
             end
 
             table do
               action :create
               action :read
-              action :sweep
             end
           end
         end
 
       assert Enum.map(errors, & &1.path) == [
                [:table, :action, :create],
-               [:table, :action, :read],
-               [:table, :action, :sweep]
+               [:table, :action, :read]
              ]
 
       assert Enum.map(errors, & &1.message) == [
-               "`create` is a create action. A row action runs on the record of its row, so it has to be an update or a destroy action. A create action is offered with `create_action :create` in the `table` block.",
-               "`read` is a read action. A row action runs on the record of its row, so it has to be an update or a destroy action.",
-               "`sweep` is a generic action. A row action runs on the record of its row, so it has to be an update or a destroy action. A generic action takes no record."
+               "`create` is a create action. An `action` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole. A create action is offered with `create_action :create` in the `table` block.",
+               "`read` is a read action. An `action` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole."
              ]
 
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.WrongKindOfRowAction: its row action `create` cannot be used. `create` is a create action. A row action runs on the record of its row, so it has to be an update or a destroy action. A create action is offered with `create_action :create` in the `table` block.",
+                   "cannot build the table of AshTable.TableBlockTest.WrongKindOfRowAction: its action `create` cannot be used. `create` is a create action. An `action` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole. A create action is offered with `create_action :create` in the `table` block.",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.WrongKindOfRowAction) end
     end
 
@@ -5127,7 +5120,7 @@ defmodule AshTable.TableBlockTest do
       assert error.message =~ "Got duplicate AshTable.Resource.Action: archive"
 
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.RowActionTwice: its row action `archive` cannot be used. `archive` is declared more than once.",
+                   "cannot build the table of AshTable.TableBlockTest.RowActionTwice: its action `archive` cannot be used. `archive` is declared more than once.",
                    fn -> AshTable.Model.build(AshTable.TableBlockTest.RowActionTwice) end
     end
 
@@ -5552,6 +5545,595 @@ defmodule AshTable.TableBlockTest do
                "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."
 
       assert AshTable.Model.build(AshTable.TableBlockTest.NoFieldForCreate).create == nil
+    end
+  end
+
+  describe "table actions" do
+    test "a generic action is accepted as an `action`: a table action, or with `record_argument` a row action" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.TableActions do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            update :archive do
+              accept []
+            end
+
+            action :count, :integer do
+              run fn _input, _context -> {:ok, 0} end
+            end
+
+            action :import do
+              argument :url, :string, allow_nil?: false
+              run fn _input, _context -> :ok end
+            end
+
+            action :copy do
+              argument :record_id, :uuid, allow_nil?: false
+              argument :times, :integer, allow_nil?: false
+              run fn _input, _context -> :ok end
+            end
+          end
+
+          table do
+            action :count
+
+            action :archive
+
+            action :import do
+              label "Import from"
+              confirm "Import now?"
+            end
+
+            action :copy do
+              record_argument :record_id
+            end
+          end
+        end
+      end
+
+      assert [
+               %AshTable.Resource.Action{name: :count, record_argument: nil},
+               %AshTable.Resource.Action{name: :archive, record_argument: nil},
+               %AshTable.Resource.Action{
+                 name: :import,
+                 label: "Import from",
+                 confirm: "Import now?",
+                 record_argument: nil
+               },
+               %AshTable.Resource.Action{name: :copy, record_argument: :record_id}
+             ] = AshTable.Resource.Info.actions(AshTable.TableBlockTest.TableActions)
+
+      model = AshTable.Model.build(AshTable.TableBlockTest.TableActions)
+
+      # in the declared order, each among its own kind
+      assert Enum.map(model.table_actions, & &1.name) == [:count, :import]
+      assert Enum.map(model.actions, & &1.name) == [:archive, :copy]
+    end
+
+    test "a generic action that is not public is an error: a table runs no private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :sweep]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivateTableAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :sweep do
+                public? false
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :sweep
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `sweep` is not public. Only `public?` actions can be behind a table."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.PrivateTableAction: its action `sweep` cannot be used. The action `sweep` is not public. Only `public?` actions can be behind a table.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.PrivateTableAction) end
+    end
+
+    test "`record_argument` on an update or a destroy action is an error: those are given their record" do
+      [{AshTable.TableBlockTest.RecordArgumentOnRowAction, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.RecordArgumentOnRowAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read, :destroy]
+
+              update :archive do
+                accept []
+                argument :record_id, :uuid
+              end
+            end
+
+            table do
+              action :archive do
+                record_argument :record_id
+              end
+
+              action :destroy do
+                confirm false
+                record_argument :id
+              end
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :archive],
+                "The action `archive` says `record_argument :record_id`, and is an update action, which runs on the record of its row already. `record_argument` is for a generic action, which takes no record: it names the argument that is given the row's primary key. Leave it out."},
+               {[:table, :action, :destroy],
+                "The action `destroy` says `record_argument :id`, and is a destroy action, which runs on the record of its row already. `record_argument` is for a generic action, which takes no record: it names the argument that is given the row's primary key. Leave it out."}
+             ]
+
+      assert_raise ArgumentError,
+                   ~r/its action `archive` cannot be used. The action `archive` says `record_argument :record_id`, and is an update action/,
+                   fn ->
+                     AshTable.Model.build(AshTable.TableBlockTest.RecordArgumentOnRowAction)
+                   end
+    end
+
+    test "`record_argument` has to name a public argument of the action, of the type of the primary key" do
+      [{AshTable.TableBlockTest.RecordArguments, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.RecordArguments do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :unknown do
+                argument :record_id, :uuid
+                run fn _input, _context -> :ok end
+              end
+
+              action :hidden do
+                argument :record_id, :uuid, public?: false
+                run fn _input, _context -> :ok end
+              end
+
+              action :numbered do
+                argument :record_id, :integer
+                run fn _input, _context -> :ok end
+              end
+
+              action :listed do
+                argument :record_ids, {:array, :uuid}
+                run fn _input, _context -> :ok end
+              end
+
+              # stored as the key is, under another type: accepted
+              action :newer do
+                argument :record_id, :uuid_v7
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :unknown do
+                record_argument :record
+              end
+
+              action :hidden do
+                record_argument :record_id
+              end
+
+              action :numbered do
+                record_argument :record_id
+              end
+
+              action :listed do
+                record_argument :record_ids
+              end
+
+              action :newer do
+                record_argument :record_id
+              end
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :unknown],
+                "The action `unknown` says `record_argument :record`, and has no argument named `record`."},
+               {[:table, :action, :hidden],
+                "The action `hidden` says `record_argument :record_id`, and its argument `record_id` is not public. A private argument is not given from the outside, and a table is the outside."},
+               {[:table, :action, :numbered],
+                "The action `numbered` says `record_argument :record_id`, and that argument is of the type Ash.Type.Integer, which is not stored as the primary key `id` is (Ash.Type.UUID). The argument is given the primary key of the row as it is, so it has to be of the key's type."},
+               {[:table, :action, :listed],
+                "The action `listed` says `record_argument :record_ids`, and that argument is of the type {:array, Ash.Type.UUID}, which is not stored as the primary key `id` is (Ash.Type.UUID). The argument is given the primary key of the row as it is, so it has to be of the key's type."}
+             ]
+
+      # compiled despite the findings, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.RecordArguments: its action `unknown` cannot be used. The action `unknown` says `record_argument :record`, and has no argument named `record`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.RecordArguments) end
+    end
+
+    test "`record_argument` is an error where the primary key is several attributes, or none" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :stamp]} do
+          defmodule Elixir.AshTable.TableBlockTest.RecordArgumentTwoKeys do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              attribute :shelf, :integer, primary_key?: true, allow_nil?: false, public?: true
+              attribute :place, :integer, primary_key?: true, allow_nil?: false, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              action :stamp do
+                argument :shelf, :integer
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :stamp do
+                record_argument :shelf
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `stamp` says `record_argument :shelf`, and the primary key of the resource is `shelf`, `place`: several attributes. One argument takes the primary key of a row only where that is one attribute."
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :stamp]} do
+          defmodule Elixir.AshTable.TableBlockTest.RecordArgumentNoKey do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            resource do
+              require_primary_key? false
+            end
+
+            attributes do
+              attribute :title, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              action :stamp do
+                argument :title, :string
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :stamp do
+                record_argument :title
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The action `stamp` says `record_argument :title`, and the resource has no primary key: there is nothing of a row to give the argument."
+    end
+
+    test "`bulk? true` on a table action is an error: it runs on no record" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :count]} do
+          defmodule Elixir.AshTable.TableBlockTest.BulkTableAction do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :count, :integer do
+                run fn _input, _context -> {:ok, 0} end
+              end
+            end
+
+            table do
+              action :count do
+                bulk? true
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The table action `count` says `bulk? true`, and runs on the table as a whole: a generic action takes no record, so there are no selected rows to run it on. Leave `bulk?` out, or name the argument that takes a row's primary key with `record_argument`: the action is then a row action."
+
+      # compiled despite the finding, the option is without effect
+      model = AshTable.Model.build(AshTable.TableBlockTest.BulkTableAction)
+      assert [%{name: :count, bulk?: false}] = model.table_actions
+      assert model.actions == []
+    end
+
+    test "`bulk?` on a generic action with `record_argument` is accepted, and switches it off" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.BulkRecordActions do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            defaults [:read]
+
+            action :copy do
+              argument :record_id, :uuid, allow_nil?: false
+              run fn _input, _context -> :ok end
+            end
+
+            action :stamp do
+              argument :record_id, :uuid, allow_nil?: false
+              run fn _input, _context -> :ok end
+            end
+
+            action :seal do
+              argument :record_id, :uuid, allow_nil?: false
+              run fn _input, _context -> :ok end
+            end
+          end
+
+          table do
+            action :copy do
+              record_argument :record_id
+            end
+
+            action :stamp do
+              record_argument :record_id
+              bulk? true
+            end
+
+            action :seal do
+              record_argument :record_id
+              bulk? false
+            end
+          end
+        end
+      end
+
+      assert [copy: true, stamp: true, seal: false] ==
+               for(
+                 action <- AshTable.Model.build(AshTable.TableBlockTest.BulkRecordActions).actions,
+                 do: {action.name, action.bulk?}
+               )
+    end
+
+    test "a generic action with a required argument a table has no field for is an error, and has no button" do
+      [{AshTable.TableBlockTest.NoFieldForArgument, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.NoFieldForArgument do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :configure do
+                argument :settings, :map, allow_nil?: false
+                run fn _input, _context -> :ok end
+              end
+
+              action :retag do
+                argument :record_id, :uuid, allow_nil?: false
+                argument :ids, {:array, :uuid}, allow_nil?: false
+                run fn _input, _context -> :ok end
+              end
+
+              # nothing required among what has no field: accepted
+              action :touch do
+                argument :settings, :map
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :configure
+
+              action :retag do
+                record_argument :record_id
+              end
+
+              action :touch
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :configure],
+                "The table action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."},
+               {[:table, :action, :retag],
+                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."}
+             ]
+
+      # compiled despite the finding, the table has no button for them
+      model = AshTable.Model.build(AshTable.TableBlockTest.NoFieldForArgument)
+      assert [%{name: :touch, inputs: []}] = model.table_actions
+      assert model.actions == []
+    end
+
+    test "declaring a generic action twice is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :count]} do
+          defmodule Elixir.AshTable.TableBlockTest.TableActionTwice do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :count, :integer do
+                argument :record_id, :uuid
+                run fn _input, _context -> {:ok, 0} end
+              end
+            end
+
+            table do
+              action :count
+
+              action :count do
+                record_argument :record_id
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "Got duplicate AshTable.Resource.Action: count"
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.TableActionTwice: its action `count` cannot be used. `count` is declared more than once.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.TableActionTwice) end
+    end
+
+    test "a table whose only actions are generic changes no records: it needs no primary read action, and none that is public" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.TableActionsOverPrivateRead do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          calculations do
+            calculate :shouted, :string, expr(title <> "!"), public?: true
+          end
+
+          actions do
+            read :read do
+              primary? true
+              public? false
+            end
+
+            read :open
+
+            action :count, :integer do
+              run fn _input, _context -> {:ok, 0} end
+            end
+
+            action :stamp do
+              argument :record_id, :uuid, allow_nil?: false
+              run fn _input, _context -> :ok end
+            end
+          end
+
+          table do
+            read_action :open
+
+            column :title
+            column :shouted
+
+            action :count
+
+            action :stamp do
+              record_argument :record_id
+            end
+          end
+        end
+      end
+
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.TableActionsWithoutPrimaryRead do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          calculations do
+            calculate :shouted, :string, expr(title <> "!"), public?: true
+          end
+
+          actions do
+            read :open
+
+            action :count, :integer do
+              run fn _input, _context -> {:ok, 0} end
+            end
+          end
+
+          table do
+            read_action :open
+
+            column :title
+            column :shouted
+
+            action :count
+          end
+        end
+      end
+
+      assert [%{name: :count}] =
+               AshTable.Model.build(AshTable.TableBlockTest.TableActionsOverPrivateRead).table_actions
+
+      assert [%{name: :count}] =
+               AshTable.Model.build(AshTable.TableBlockTest.TableActionsWithoutPrimaryRead).table_actions
     end
   end
 

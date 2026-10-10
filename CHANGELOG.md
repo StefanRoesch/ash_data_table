@@ -474,6 +474,46 @@ declared in the resource and mounted with one line in the router.
   match") and the result ("%{action}: %{done} done.", "%{action}: %{done}
   done, %{failed} not done.", "%{message} (%{count})").
 
+### Table actions
+
+- An `action` that names a public generic action is a table action: a
+  button on the line of the table's name, after the create button, in the
+  declared order. In a nested table the buttons are on the relationship
+  line, after its create button, and in a full view on the line that names
+  the parent. A table that could not read has none.
+- An action that runs without arguments runs when its button is used,
+  after its `confirm` question when it has one. One with a required
+  argument without a default opens the action panel, with a field per
+  public argument: the fields a row action's arguments have.
+- It runs as the person, in their tenant and with authorization, through
+  `AshPhoenix.Form.for_action/3` and `Ash.run_action/2`. A person who can
+  never run it has no button (`Ash.can/3`, once per action and without
+  arguments).
+- Afterwards the table says one line above the grid, which is read out:
+  the action and what it returned, when that is text, a number, a boolean,
+  a date, a datetime or an atom (a value of an enum by its label), else
+  that it is done. Then it reads again. Returned records are not shown.
+- `record_argument` on an `action`: the argument of a generic action that
+  is given the primary key of a row. The action is then a row action: its
+  button is in every row, the argument is no field of its panel, and the
+  record is read as the person before it runs. It is offered for the
+  selected rows like any row action, runs once per record there, and
+  `bulk? false` keeps it to one row.
+- A failure is shown at the fields of the panel or above them, on the
+  row's actions cell for a generic action in a row, and above the grid for
+  a table action without a panel. An exception inside a generic action,
+  which Ash raises, is logged and reads "This could not be done."
+- A table whose only actions are generic is not held to the rules about the
+  resource's primary read action: Ash loads nothing of a generic action's
+  result through it.
+- New message in the Gettext template: "%{action}: %{result}".
+- Reported when the resource is compiled: a `record_argument` on an update
+  or a destroy action, one that names no argument of the action, a private
+  one, one that is not stored as the primary key is, one on a resource
+  whose primary key is several attributes or none, `bulk? true` on a table
+  action, and a generic action with a required argument the panel has no
+  field for.
+
 ### Custom components
 
 - `component` on a `column`: a module that says how the cells of the column
@@ -591,6 +631,22 @@ declared in the resource and mounted with one line in the router.
   asks.
 - "Clear filters" is at the right end of the line above the grid as before;
   the line now also holds what is selected, at its left end.
+
+### Changed since the argument line was added
+
+- **An `action` that names a generic action is no longer reported.** It is
+  a table action now.
+- The message for an `action` that names a create or a read action reads
+  "An `action` of a table is an update or a destroy action, which runs on
+  the record of a row, or a generic action, which runs on the table as a
+  whole."
+- A table that is refused over an `action` says "its action `NAME` cannot
+  be used", no longer "its row action".
+- **A table with a table action that asks first has the table's dialog in
+  its markup.**
+- The create button of a relationship line is told apart from the buttons
+  of table actions beside it by `data-create`; those have
+  `data-table-action`.
 
 ### Tooling
 

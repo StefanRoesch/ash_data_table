@@ -24,6 +24,7 @@ spark_locals_without_parens = [
   on_forbidden: 1,
   paginate_with: 1,
   read_action: 1,
+  record_argument: 1,
   relationship: 1,
   relationship: 2,
   scope_assign: 1,

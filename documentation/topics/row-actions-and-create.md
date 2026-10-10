@@ -11,7 +11,9 @@ refused.
 The question an action can ask first is in [Confirm](confirm.md). Changing
 one value in place is [Inline editing](inline-editing.md). Running a row
 action on several rows at once is in
-[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md). What depends on
+[Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md). An
+action that belongs to the table as a whole, and a generic action in a row,
+are in [Table actions](table-actions.md). What depends on
 who is acting is summed up here and explained in
 [Authorization](authorization.md).
 
@@ -79,6 +81,7 @@ end
 | `label` | The action's name in words: "Set progress" | What the button says. |
 | `confirm` | none | A question asked before the action runs, as a string; or `false`. See [`confirm`, and a destroy action without it](#confirm-and-a-destroy-action-without-it). |
 | `bulk?` | `true`, for an action that can run on several rows | Whether the action is also offered for the rows a person has selected. `false` keeps it to one row. See [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#which-actions-are-offered). |
+| `record_argument` | none | For a generic action alone: the argument that is given the row's primary key. See [Table actions](table-actions.md#a-generic-action-in-a-row). |
 
 The demo's task labels use both
 ([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
@@ -116,14 +119,15 @@ A row action is a **public update or destroy action** of the resource.
 | A public destroy action | A row action. The compiler warns when it has no `confirm`. |
 | A create action | Reported: a create action is offered with `create_action`. |
 | A read action | Reported. |
-| A generic action | Reported: a generic action takes no record, so there is no row to run it on. |
+| A generic action | No row action: a table action, with its button on the line of the table's name. With `record_argument` it is a row action. |
 | An action that is not `public?` | Reported, whatever its policies say: a table runs no private action. |
 | Nothing the resource has | Reported. |
 
 The reason is in the word: a row action runs on the record of its row. An
 update and a destroy action are given a record; a generic action is given
-arguments and nothing else. Actions that belong to a table as a whole, and
-not to one of its rows, are not built.
+arguments and nothing else. So a generic action belongs to the table as a
+whole, unless its declaration says which of its arguments takes the row's
+key. Both are in [Table actions](table-actions.md).
 
 The messages are in
 [Mistakes at compile time](mistakes-at-compile-time.md#row-actions-and-the-create-action).
@@ -728,9 +732,7 @@ All keys of a table are in
 ## Not in the first version
 
 No picker for an argument that manages a relationship, no fields for
-maps, embedded resources and unions, nor for arrays of them, no actions
-that belong to the
-table and not to a row (generic actions), no adding or linking through a
+unions, nor for arrays of them, no adding or linking through a
 many-to-many, no create under a has-one, no type-to-confirm, no custom
 buttons or icons, and no undo.
 The later slices are listed in the

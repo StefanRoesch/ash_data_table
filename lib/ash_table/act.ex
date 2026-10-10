@@ -31,6 +31,17 @@ defmodule AshTable.Act do
   # the person, through the read action the picker offers its records
   # through (`unchosen/4`). One that names nothing they could have chosen
   # runs nothing.
+  #
+  # A generic action is given no record: it is run through the same form
+  # (`AshPhoenix.Form.for_action/3`, which builds an `Ash.ActionInput` and
+  # runs it with `Ash.run_action/2`), with the values of its arguments. One
+  # that is a row action (`record_argument`) is given the primary key of its
+  # row as that argument, by the table: the record is read first, as the
+  # person, as for any row action, and the key is the one the table holds,
+  # never one the browser sent. What such an action returns is no row: the
+  # table says it (`said/2`) and reads again.
+
+  require Logger
 
   alias AshTable.Errors
   alias AshTable.Format
@@ -49,6 +60,8 @@ defmodule AshTable.Act do
 
     * `{:ok, record}` - it ran. The record is as the action returned it, with
       everything the table's columns show loaded;
+    * `{:done, value}` - a generic action ran, and returned `value` (nil
+      when it returns nothing);
     * `:destroyed` - it ran, and the record is no more;
     * `:gone` - it ran, and the record is no longer this person's to read;
     * `{:error, record, message}` - it did not run. The record is as it is
@@ -56,6 +69,7 @@ defmodule AshTable.Act do
   """
   @type result ::
           {:ok, Ash.Resource.record()}
+          | {:done, term}
           | :destroyed
           | :gone
           | {:error, Ash.Resource.record() | nil, String.t()}
@@ -66,6 +80,25 @@ defmodule AshTable.Act do
   who is asking.
   """
   @spec run(Model.t(), Action.t(), map, keyword) :: result
+  def run(%Model{} = model, %Action{type: :action} = action, key, opts) when is_map(key) do
+    opts = Query.reader_opts(opts)
+
+    with {:ok, record} <- Record.fetch(model, key, opts) do
+      case run_generic(model, action, given(action, key), opts) do
+        {:done, value} ->
+          {:done, value}
+
+        {:error, message} ->
+          case Record.load(model, record, opts) do
+            {:ok, record} -> {:error, record, message}
+            :error -> {:error, nil, message}
+          end
+      end
+    else
+      :error -> {:error, nil, Text.t(:record_gone)}
+    end
+  end
+
   def run(%Model{} = model, %Action{} = action, key, opts) when is_map(key) do
     opts = Query.reader_opts(opts)
 
@@ -94,6 +127,12 @@ defmodule AshTable.Act do
   """
   @spec open(Model.t(), Action.t(), map, String.t(), keyword) ::
           {:ok, Ash.Resource.record(), form, [Model.Input.t()]} | :error
+  def open(%Model{} = model, %Action{type: :action} = action, key, id, opts) when is_map(key) do
+    with {:ok, record} <- Record.fetch(model, key, Query.reader_opts(opts)) do
+      {:ok, record, open_generic(model, action, id, opts), action.inputs}
+    end
+  end
+
   def open(%Model{} = model, %Action{} = action, key, id, opts) when is_map(key) do
     opts = Query.reader_opts(opts)
 
@@ -101,6 +140,110 @@ defmodule AshTable.Act do
       {:ok, record, form(record, action, id, opts), inputs(action, record)}
     end
   end
+
+  @doc """
+  The form of a generic action, for the action panel: of a table action,
+  and of a generic action that is to run on several records at once, whose
+  form is of the action without the argument a row gives. `id` is the id of
+  the form.
+  """
+  @spec open_generic(Model.t(), Action.t(), String.t(), keyword) :: form
+  def open_generic(%Model{resource: resource}, %Action{type: :action, name: name}, id, opts),
+    do: AshPhoenix.Form.for_action(resource, name, form_opts(id) ++ Query.reader_opts(opts))
+
+  @doc """
+  What the table itself gives a generic action that runs on the record
+  with the primary key `key`: that key, as the argument the action's
+  declaration names. Nothing for any other action.
+  """
+  @spec given(Action.t(), map) :: map
+  def given(%Action{type: :action, record_argument: name}, key)
+      when not is_nil(name) and map_size(key) == 1 do
+    [value] = Map.values(key)
+    %{Atom.to_string(name) => value}
+  end
+
+  def given(%Action{}, _key), do: %{}
+
+  @doc """
+  Runs a generic action straight away, with `given` as its arguments: what
+  the table gives itself, and for an action that runs on several records
+  what its panel held.
+
+  Returns `{:done, value}` with what the action returned (nil when it
+  returns nothing), or `{:error, message}` with what it said.
+  """
+  @spec run_generic(Model.t(), Action.t(), map, keyword) :: {:done, term} | {:error, String.t()}
+  def run_generic(%Model{} = model, %Action{type: :action} = action, given, opts)
+      when is_map(given) do
+    case submit_generic(model, action, %{}, given, "action", opts) do
+      {:done, value} -> {:done, value}
+      {:error, %AshPhoenix.Form{} = form} -> {:error, Enum.join(messages(form, model), "; ")}
+      {:error, nil, message} -> {:error, message}
+    end
+  end
+
+  @doc """
+  Runs a generic action with the inputs a person gave in its panel, and
+  with `given`, what the table itself gives it.
+
+  Returns `{:done, value}`, `{:error, form}` with the action's errors, or
+  `{:error, nil, message}` for a failure that is not of the action's
+  saying: Ash raises what goes wrong inside a generic action, where it
+  returns it for the others. That is for whoever runs the application, in
+  the log.
+  """
+  @spec submit_generic(Model.t(), Action.t(), map, map, String.t(), keyword) ::
+          {:done, term} | {:error, form} | {:error, nil, String.t()}
+  def submit_generic(%Model{} = model, %Action{type: :action} = action, params, given, id, opts) do
+    form = open_generic(model, action, id, opts)
+
+    case AshPhoenix.Form.submit(form, params: taken(action.inputs, params, given)) do
+      :ok -> {:done, nil}
+      {:ok, value} -> {:done, value}
+      {:error, form} -> {:error, form}
+    end
+  rescue
+    error ->
+      Logger.error(
+        "ash_table: the action `#{action.name}` of #{inspect(model.resource)} failed: " <>
+          Exception.message(error)
+      )
+
+      {:error, nil, Text.t(:action_failed)}
+  end
+
+  @doc """
+  What a generic action returned, as a person is told it: a value that can
+  be said in a word or a line. That is text, a number, yes or no, a date, a
+  datetime, and a name (an atom: a value of an enum by its label). Nil for
+  everything else, and for nothing: the table then says no more than that
+  the action is done.
+
+  The value is looked at, not the type the action declares: Ash does not
+  cast what a generic action returns.
+  """
+  @spec said(Action.t(), term) :: String.t() | nil
+  def said(%Action{} = action, value) do
+    text =
+      case value do
+        nil -> nil
+        value when is_boolean(value) -> Format.format(%{cell_type: :boolean}, value)
+        value when is_binary(value) -> if String.valid?(value), do: value
+        value when is_number(value) -> Format.format(%{cell_type: :number}, value)
+        %Decimal{} -> Format.format(%{cell_type: :number}, value)
+        %Date{} -> Format.format(%{cell_type: :date}, value)
+        %DateTime{} -> Format.format(%{cell_type: :datetime}, value)
+        %NaiveDateTime{} -> Format.format(%{cell_type: :datetime}, value)
+        value when is_atom(value) -> by_name(action.returns, value)
+        _records_and_everything_else -> nil
+      end
+
+    if is_binary(text) and String.trim(text) != "", do: text
+  end
+
+  defp by_name(%{cell_type: :enum} = returns, value), do: Format.format(returns, value)
+  defp by_name(_returns, value), do: Format.format(%{cell_type: :other}, value)
 
   @doc """
   The inputs of a row action that the person has on this record: without
@@ -128,6 +271,9 @@ defmodule AshTable.Act do
   What the action makes of it on each record is known when it has run.
   """
   @spec open_bulk(Model.t(), Action.t(), String.t(), keyword) :: form
+  def open_bulk(%Model{} = model, %Action{type: :action} = action, id, opts),
+    do: open_generic(model, action, id, opts)
+
   def open_bulk(%Model{resource: resource}, %Action{} = action, id, opts) do
     blank =
       resource
@@ -169,11 +315,19 @@ defmodule AshTable.Act do
   """
   @spec submit_row(Model.t(), Action.t(), map, map, String.t(), keyword) ::
           {:ok, Ash.Resource.record()}
+          | {:done, term}
           | :destroyed
           | :gone
           | {:error, form}
           | {:unchosen, [Model.Input.t()]}
           | {:error, nil, String.t()}
+  def submit_row(%Model{} = model, %Action{type: :action} = action, key, params, id, opts) do
+    case Record.fetch(model, key, Query.reader_opts(opts)) do
+      {:ok, _record} -> submit_generic(model, action, params, given(action, key), id, opts)
+      :error -> {:error, nil, Text.t(:record_gone)}
+    end
+  end
+
   def submit_row(%Model{} = model, %Action{} = action, key, params, id, opts) do
     chooser = opts
     opts = Query.reader_opts(opts)

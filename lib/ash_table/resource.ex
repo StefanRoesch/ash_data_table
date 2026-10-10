@@ -237,8 +237,9 @@ defmodule AshTable.Resource do
   Both are opt-in. An `action` names a public update or destroy action of
   the resource: a row action. Its button stands in the last column of the
   table, "Actions", in the declared order, and says the action's name in
-  words unless `label` says otherwise. A generic action takes no record and
-  cannot be a row action; a create action is named with `create_action`.
+  words unless `label` says otherwise. A generic action takes no record: it
+  is a table action (see below), unless it says which of its arguments
+  takes the row's key. A create action is named with `create_action`.
 
   Using a button runs the action straight away when the action has no
   inputs, or optional arguments only, which keep their defaults. An action
@@ -339,6 +340,57 @@ defmodule AshTable.Resource do
   and a change of page, and is given up when a filter changes. Once a whole
   page is selected, "Select all that match" selects every record the
   filters match.
+
+  ## Table actions
+
+  An `action` that names a generic action of the resource is a table
+  action: one a person runs on the table as a whole, and not on one record.
+
+      actions do
+        action :count_unused, :integer do
+          run MyApp.Labels.CountUnused
+        end
+
+        action :copy do
+          argument :label_id, :uuid, allow_nil?: false
+          argument :name, :string, allow_nil?: false
+          run MyApp.Labels.Copy
+        end
+      end
+
+      table do
+        action :count_unused
+
+        action :copy do
+          record_argument :label_id
+        end
+      end
+
+  Its button is on the line of the table's name, after the create button,
+  and for a nested table on the relationship's line. An action that runs
+  without arguments runs when its button is used, after its `confirm`
+  question if it has one; a required argument without a default opens the
+  action panel, with a field per public argument.
+
+  The action is run as the person, in their tenant and with authorization,
+  through `AshPhoenix.Form.for_action/3` and so `Ash.run_action/2`.
+  Afterwards the table says one line above the grid, which is read out: the
+  action and what it returned, when that is text, a number, a boolean, a
+  date, a datetime or an atom, else that it is done. Then it reads its
+  records again. Returned records are not shown.
+
+  `record_argument` names the argument of a generic action that takes the
+  primary key of a record, and makes the action a row action: its button is
+  in every row, the table gives the argument the row's key and does not
+  ask for it, and the other arguments are asked for in the panel. The
+  argument has to be `public?` and stored as the primary key is, which has
+  to be one attribute. Such an action is offered for the selected rows as
+  every row action is, and runs once per record.
+
+  A person who can never run a generic action has no button for it. Ash is
+  asked once per action and without arguments: a policy of a generic action
+  has no record to look at. In a nested table a table action is the same
+  action as on the table's own page: it is not given the row above.
 
   ## Custom components
 
@@ -501,11 +553,15 @@ defmodule AshTable.Resource do
   @action %Spark.Dsl.Entity{
     name: :action,
     describe: """
-    A row action: an update or destroy action of the resource that a person runs on the record of a row, from a button in the last column of the table. The buttons stand in the declared order.
+    An action a person runs from the table: a row action, or a table action.
+
+    An update or destroy action of the resource is a row action: a person runs it on the record of a row, from a button in the last column of the table. A generic action is a table action: a person runs it on the table as a whole, from a button on the line of the table's name. The buttons of each kind stand in the declared order.
 
     An action without inputs, or with optional arguments only, runs when its button is used. One that accepts attributes or has a required argument without a default opens the action panel first, where the person gives its inputs.
 
     A row action is also offered for the rows a person has selected, to run on all of them at once, unless it says `bulk? false`.
+
+    A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
     """,
     examples: [
       "action :archive",
@@ -523,6 +579,12 @@ defmodule AshTable.Resource do
       action :destroy do
         confirm "Delete this project, with all its tasks?"
         bulk? false
+      end
+      """,
+      "action :count_unused",
+      """
+      action :copy do
+        record_argument :label_id
       end
       """
     ],

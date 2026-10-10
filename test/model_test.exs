@@ -2373,6 +2373,417 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "table actions" do
+    alias AshTable.Test.TableActing
+
+    defp table_action(model, name),
+      do: Enum.find(model.table_actions ++ model.actions, &(&1.name == name))
+
+    test "are none unless the block declares a generic action" do
+      assert Model.build(AshTable.Test.Acting).table_actions == []
+      assert Model.build(AshTable.Test.Acting.Plain).table_actions == []
+    end
+
+    test "are the generic actions of the block in the declared order, each with its label and its question" do
+      actions =
+        for action <- Model.build(TableActing).table_actions,
+            do: {action.name, action.type, action.label, action.confirm}
+
+      assert actions == [
+               {:count, :action, "Count", nil},
+               {:sweep, :action, "Sweep", "Remove every finished one?"},
+               {:greet, :action, "Say hello", nil},
+               {:ping, :action, "Ping", nil},
+               {:settle, :action, "Settle", nil},
+               {:level, :action, "Level", nil},
+               {:mood, :action, "Mood", nil},
+               {:today, :action, "Today", nil},
+               {:everything, :action, "Everything", nil},
+               {:nothing, :action, "Nothing", nil},
+               {:audit, :action, "Audit", nil},
+               {:refuse, :action, "Refuse", nil},
+               {:decline, :action, "Decline", nil},
+               {:explode, :action, "Explode", nil}
+             ]
+    end
+
+    test "a generic action with `record_argument` is a row action, among the others in the declared order" do
+      actions =
+        for action <- Model.build(TableActing).actions,
+            do: {action.name, action.type, action.record_argument, action.confirm}
+
+      assert actions == [
+               {:finish, :update, nil, nil},
+               {:copy, :action, :record_id, nil},
+               {:rename, :action, :record_id, "Rename it?"},
+               {:stamp, :action, :record_id, nil},
+               {:guard, :action, :record_id, nil}
+             ]
+    end
+
+    test "take the public arguments of the action, in its order, and never the one a row gives" do
+      model = Model.build(TableActing)
+
+      inputs = fn name ->
+        for input <- table_action(model, name).inputs,
+            do: {input.name, input.kind, input.editor, input.required?, input.default}
+      end
+
+      assert inputs.(:count) == []
+
+      # the private argument is no input
+      assert inputs.(:greet) == [
+               {:to, :argument, :text, true, nil},
+               {:loud, :argument, :boolean, true, false}
+             ]
+
+      # an optional argument a table has no field for is left out
+      assert inputs.(:settle) == []
+
+      # `record_id` is the table's to give
+      assert inputs.(:copy) == []
+      assert inputs.(:rename) == [{:title, :argument, :text, true, nil}]
+    end
+
+    test "open the panel for an argument they do not run without, and run straight away otherwise" do
+      model = Model.build(TableActing)
+
+      panel? =
+        for action <- model.table_actions ++ model.actions, into: %{} do
+          {action.name, action.panel?}
+        end
+
+      assert %{count: false, sweep: false, greet: true, ping: false, settle: false} = panel?
+      assert %{refuse: true, copy: false, rename: true, stamp: false} = panel?
+    end
+
+    test "a table action is never offered for the selected rows, and a row action is, unless it says `bulk? false`" do
+      model = Model.build(TableActing)
+
+      assert Enum.all?(model.table_actions, &(not &1.bulk?))
+      assert Enum.map(Model.bulk_actions(model), & &1.name) == [:finish, :copy, :rename, :guard]
+    end
+
+    test "say what an action that returns an enum value returns, by which the value is said" do
+      model = Model.build(TableActing)
+
+      assert %{cell_type: :enum, values: values} = table_action(model, :level).returns
+      assert {:in_progress, "Being worked on"} in values
+
+      for name <- [:count, :sweep, :greet, :mood, :today, :everything, :copy] do
+        assert table_action(model, name).returns == nil
+      end
+    end
+
+    test "are not in the table a picker shows" do
+      model = Model.build(TableActing, choose: :read)
+
+      assert model.table_actions == []
+      assert model.actions == []
+    end
+  end
+
+  describe "for_actor/2: the table actions a person can run" do
+    alias AshTable.Test.TableActing
+
+    test "are those they can ever run, asked once per action and without arguments" do
+      model = Model.build(TableActing)
+      names = fn model -> Enum.map(model.table_actions, & &1.name) end
+
+      assert :audit in names.(model)
+      assert :audit in names.(Model.for_actor(model, actor: %{role: :admin}))
+      refute :audit in names.(Model.for_actor(model, actor: %{role: :member}))
+      refute :audit in names.(Model.for_actor(model, actor: nil))
+
+      # the others are everybody's
+      assert names.(Model.for_actor(model, actor: nil)) == names.(model) -- [:audit]
+
+      # and nothing is asked without authorization
+      assert names.(Model.for_actor(model, actor: nil, authorize?: false)) == names.(model)
+    end
+
+    test "a row action whose policy looks at the row's key stays: what it makes of a row is known when it runs" do
+      model = Model.for_actor(Model.build(TableActing), actor: %{role: :member, keys: []})
+
+      assert :guard in Enum.map(model.actions, & &1.name)
+    end
+
+    test "a generic action Ash cannot be asked about counts as one the person can never run" do
+      model = Model.build(TableActing.Unanswerable)
+      assert Enum.map(model.table_actions, & &1.name) == [:count]
+      assert Enum.map(model.actions, & &1.name) == [:stamp]
+
+      for_actor = Model.for_actor(model, actor: %{role: :admin})
+      assert for_actor.table_actions == []
+      assert for_actor.actions == []
+    end
+
+    test "nested_table_actions/2 gives the ones a person can ever run in a nested table" do
+      [items] = Model.build(TableActing.Shelf).relationships
+      nested = Model.build(TableActing.Item, via: items)
+
+      names = fn opts -> Enum.map(Model.nested_table_actions(nested, opts), & &1.name) end
+
+      assert names.(actor: %{role: :admin}) == [:count, :purge]
+      assert names.(actor: %{role: :member}) == [:count]
+      assert names.(actor: nil) == [:count]
+      assert names.(actor: nil, authorize?: false) == [:count, :purge]
+
+      # a table without table actions has none in a nested table either
+      [cards | _] = Model.build(AshTable.Test.Acting.Board).relationships
+
+      assert Model.nested_table_actions(
+               Model.build(cards.destination, via: cards),
+               actor: nil
+             ) == []
+    end
+  end
+
+  describe "running a generic action" do
+    alias AshTable.Act
+    alias AshTable.Bulk
+    alias AshTable.Test.TableActing
+
+    @opts [actor: %{role: :member}]
+
+    setup do
+      %{model: Model.build(TableActing)}
+    end
+
+    defp record(title, done \\ false),
+      do: Ash.create!(TableActing, %{title: title, done: done}, authorize?: false)
+
+    defp titles,
+      do: TableActing |> Ash.read!(authorize?: false) |> Enum.map(& &1.title) |> Enum.sort()
+
+    test "gives what the action returned, and nil for one that returns nothing", %{model: model} do
+      record("One")
+      record("Two", true)
+
+      assert Act.run_generic(model, table_action(model, :count), %{}, @opts) == {:done, 2}
+      assert Act.run_generic(model, table_action(model, :sweep), %{}, @opts) == {:done, nil}
+      assert titles() == ["One"]
+    end
+
+    test "gives the action its arguments as they were typed, by the names of its inputs alone",
+         %{model: model} do
+      greet = table_action(model, :greet)
+
+      assert Act.run_generic(model, greet, %{"to" => "World"}, @opts) == {:done, "Hello World"}
+
+      assert Act.run_generic(model, greet, %{"to" => "World", "loud" => "true"}, @opts) ==
+               {:done, "HELLO WORLD"}
+
+      # what is no input of the panel is not given, whatever was sent: a
+      # private argument, and a name the action does not know
+      assert Act.submit_generic(
+               model,
+               greet,
+               %{"to" => "World", "audit" => "typed", "unheard_of" => "typed"},
+               %{},
+               "panel",
+               @opts
+             ) == {:done, "Hello World"}
+    end
+
+    test "says what the action said when it did not run", %{model: model} do
+      assert Act.run_generic(model, table_action(model, :greet), %{"to" => "x"}, @opts) ==
+               {:error, "length must be greater than or equal to 2"}
+
+      assert Act.run_generic(model, table_action(model, :refuse), %{"amount" => "3"}, @opts) ==
+               {:error, "is more than there is"}
+
+      assert Act.run_generic(model, table_action(model, :decline), %{}, @opts) ==
+               {:error, "not today"}
+
+      # a refusal reads as one, not as Ash's breakdown of the policies
+      assert Act.run_generic(model, table_action(model, :audit), %{}, @opts) ==
+               {:error, "You are not allowed to do this."}
+
+      assert Act.run_generic(model, table_action(model, :audit), %{}, actor: %{role: :admin}) ==
+               {:done, 1}
+    end
+
+    test "puts the action's errors at the fields of its panel", %{model: model} do
+      refuse = table_action(model, :refuse)
+
+      assert {:error, %AshPhoenix.Form{} = form} =
+               Act.submit_generic(model, refuse, %{"amount" => "3"}, %{}, "panel", @opts)
+
+      assert Act.errors(form, model, refuse.inputs) == %{amount: ["is more than there is"]}
+
+      assert {:error, %AshPhoenix.Form{} = form} =
+               Act.submit_generic(model, refuse, %{"amount" => ""}, %{}, "panel", @opts)
+
+      assert Act.errors(form, model, refuse.inputs) == %{amount: ["is required"]}
+    end
+
+    test "a failure underneath is logged, and reads as one a person can do nothing about",
+         %{model: model} do
+      log =
+        ExUnit.CaptureLog.capture_log(fn ->
+          assert Act.run_generic(model, table_action(model, :explode), %{}, @opts) ==
+                   {:error, "This could not be done."}
+        end)
+
+      assert log =~ "the action `explode` of AshTable.Test.TableActing failed"
+      assert log =~ "something underneath"
+    end
+
+    test "a row action is given the primary key of its row, once the record is read for the person",
+         %{model: model} do
+      one = record("One")
+
+      assert Act.run(model, table_action(model, :copy), %{id: one.id}, @opts) == {:done, nil}
+      assert titles() == ["Copy of One", "One"]
+
+      assert Act.run(model, table_action(model, :stamp), %{id: one.id}, @opts) ==
+               {:done, "stamped One"}
+    end
+
+    test "a row action on a record that is gone runs nothing", %{model: model} do
+      assert Act.run(model, table_action(model, :copy), %{id: Ash.UUID.generate()}, @opts) ==
+               {:error, nil, "This record is no longer available."}
+
+      assert titles() == []
+    end
+
+    test "a row action that did not run gives the record as it is, and what the action said",
+         %{model: model} do
+      two = record("Two", true)
+
+      assert {:error, %TableActing{title: "Two"}, "is finished"} =
+               Act.run(model, table_action(model, :stamp), %{id: two.id}, @opts)
+    end
+
+    test "a row action whose policy refuses this row says so", %{model: model} do
+      one = record("One")
+      guard = table_action(model, :guard)
+
+      assert {:error, %TableActing{}, "You are not allowed to do this."} =
+               Act.run(model, guard, %{id: one.id}, actor: %{keys: []})
+
+      assert Act.run(model, guard, %{id: one.id}, actor: %{keys: [one.id]}) == {:done, "guarded"}
+    end
+
+    test "the key a panel's form sends for the row's argument is not taken: the row's own is given",
+         %{model: model} do
+      one = record("One")
+      two = record("Two")
+      rename = table_action(model, :rename)
+
+      assert Act.given(rename, %{id: one.id}) == %{"record_id" => one.id}
+      assert Act.given(table_action(model, :count), %{id: one.id}) == %{}
+      assert Act.given(table_action(model, :finish), %{id: one.id}) == %{}
+
+      assert Act.submit_row(
+               model,
+               rename,
+               %{id: one.id},
+               %{"title" => "Uno", "record_id" => two.id},
+               "panel",
+               @opts
+             ) == {:done, "Uno"}
+
+      assert titles() == ["Two", "Uno"]
+
+      assert {:error, %AshPhoenix.Form{} = form} =
+               Act.submit_row(model, rename, %{id: one.id}, %{"title" => "ab"}, "panel", @opts)
+
+      assert Act.errors(form, model, rename.inputs) ==
+               %{title: ["length must be greater than or equal to 3"]}
+
+      assert Act.submit_row(
+               model,
+               rename,
+               %{id: Ash.UUID.generate()},
+               %{"title" => "Nobody"},
+               "panel",
+               @opts
+             ) == {:error, nil, "This record is no longer available."}
+    end
+
+    test "on the selected rows, runs once per record a person may read, with the inputs given once",
+         %{model: model} do
+      one = record("One")
+      two = record("Two", true)
+      gone = Ash.UUID.generate()
+      opts = @opts ++ [state: %AshTable.State{}]
+
+      assert %{done: 2, failed: [%{id: ^gone}], failures: failures} =
+               Bulk.run(
+                 model,
+                 table_action(model, :copy),
+                 {:rows, [one.id, two.id, gone, "no key"]},
+                 %{},
+                 opts
+               )
+
+      assert failures == [{"This record is no longer available.", 2}]
+      assert titles() == ["Copy of One", "Copy of Two", "One", "Two"]
+
+      # every record that matches, and what the action says of the ones it refuses
+      assert %{done: 3, failed: [%{id: failed}], failures: [{message, 1}]} =
+               Bulk.run(model, table_action(model, :rename), :all, %{"title" => "Same"}, opts)
+
+      assert failed == two.id
+      assert message =~ "cannot change once it is finished"
+      assert titles() == ["Same", "Same", "Same", "Two"]
+    end
+
+    test "on the selected rows, a table action and a row action that says `bulk? false` are not run",
+         %{model: model} do
+      one = record("One")
+      opts = @opts ++ [state: %AshTable.State{}]
+
+      for name <- [:count, :stamp] do
+        assert_raise FunctionClauseError, fn ->
+          Bulk.run(model, table_action(model, name), {:rows, [one.id]}, %{}, opts)
+        end
+      end
+    end
+  end
+
+  describe "what a generic action returned, as a person is told it" do
+    alias AshTable.Act
+    alias AshTable.Model.Action
+
+    @plain %Action{name: :any, type: :action, label: "Any"}
+
+    test "is the value where it can be said in a word or a line" do
+      assert Act.said(@plain, "Hello World") == "Hello World"
+      assert Act.said(@plain, 12) == "12"
+      assert Act.said(@plain, 1.5) == "1.5"
+      assert Act.said(@plain, Decimal.new("12.50")) == "12.50"
+      assert Act.said(@plain, true) == "Yes"
+      assert Act.said(@plain, false) == "No"
+      assert Act.said(@plain, ~D[2026-10-10]) == "2026-10-10"
+      assert Act.said(@plain, ~U[2026-10-10 08:30:00Z]) == "2026-10-10T08:30:00"
+      assert Act.said(@plain, ~N[2026-10-10 08:30:00]) == "2026-10-10T08:30:00"
+      assert Act.said(@plain, :cheerful) == "cheerful"
+    end
+
+    test "is the label of a value of an enum the action says it returns" do
+      level = table_action(Model.build(AshTable.Test.TableActing), :level)
+
+      assert Act.said(level, :in_progress) == "Being worked on"
+      # a value the enum does not have is said as it is
+      assert Act.said(level, :unheard_of) == "unheard_of"
+    end
+
+    test "is nothing for no value, for an empty one, and for everything else" do
+      assert Act.said(@plain, nil) == nil
+      assert Act.said(@plain, "") == nil
+      assert Act.said(@plain, "  ") == nil
+      assert Act.said(@plain, <<255>>) == nil
+      assert Act.said(@plain, [1, 2]) == nil
+      assert Act.said(@plain, %{a: 1}) == nil
+      assert Act.said(@plain, {:ok, 1}) == nil
+      assert Act.said(@plain, %AshTable.Test.TableActing{title: "A record"}) == nil
+      assert Act.said(@plain, [%AshTable.Test.TableActing{title: "A record"}]) == nil
+    end
+  end
+
   describe "the create action" do
     test "is none unless the block names one" do
       assert Model.build(AshTable.Test.Acting.Plain).create == nil

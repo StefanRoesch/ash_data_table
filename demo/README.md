@@ -58,7 +58,7 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, with no sort and no filter; the first two are edited by choosing another record from that resource's own table, in the picker, see below; the third is read-only); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. "Repeats", a map that declares its fields, shown on one line and edited in the side panel (see below). A box at the start of every row selects it, and the four row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below). Above the grid, the argument line: "Search", an argument of the read action that may be left empty, finds tasks by a text in their title or description, and "Due within: Days" is the argument of the column "Due within", which shows the calculation `due_within?` with the days a person gives it (30 to start with); the column beside it, "Due within 7 days", shows the same calculation with its argument fixed (see below) |
 | http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Two of them are made of fields and edited in the side panel: "Client", an embedded resource with an address inside it, and "Milestones", an array of embedded resources (see below). Its block also says what a project is called in other tables (`label_field :name`). Two row actions: "Set status", whose one input is a choice, and "Destroy", which asks first; and "New project". Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
 | http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a field for the task that opens the picker: the table of the tasks to choose one from. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
-| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button |
+| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button. Three table actions, generic actions with their buttons after "New label": "Count unused" for everybody, "Recolour" and "Remove unused" for an admin; and "Copy" in every row, a generic action that is given the row's key (see below) |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25. One row action, a destroy relabelled "Remove", which runs at one click and says so (`confirm false`); "New task label", whose panel has a field for the task and one for the label, each of which opens the picker |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; and the values made of fields, edited in the side panel: "An address" (an embedded resource), "Addresses" (an array of them, without a primary key) and "A typed map" (a map that declares its fields). "A map", which declares none, is shown from whatever it holds and is read-only; "A keyword", "A tuple" and "A struct" stay read-only text. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
@@ -223,6 +223,10 @@ action panel does with hidden fields and with every kind of failure in
 Row selection and bulk actions are in `task_bulk_test.exs` and, for the
 other tables, a nested table and the resources of
 `test/support/bulk_tables.ex`, in `bulk_elsewhere_test.exs`.
+Table actions are in `label_actions_test.exs`, on `/labels`, and in
+`table_actions_test.exs`, on the resources of
+`test/support/action_tables.ex`: every kind of generic action, in a row, on
+the selected rows and in a nested table.
 Languages are in `translation_test.exs` and `translation_settings_test.exs`,
 tables placed in a LiveView in `embedded_table_test.exs`, the key of two
 attributes in `task_label_table_test.exs`, a read that fails in
@@ -390,7 +394,7 @@ the window first.
 | `/tasks` | "Archive" (no inputs: runs at once), "Reassign" (the assignee, chosen in the picker, and a required reason: opens the panel), "Set progress" (one number, with the task's progress in it), "Destroy" (asks "Delete this task? This cannot be undone.") | "New task": thirteen fields, among them "Project" and "Assignee", each with a button that opens the picker, "Tags" as a list of values and "Checks" as a multiple choice |
 | `/projects` | "Set status" (a choice), "Destroy" (asks) | "New project" |
 | `/comments` | "Destroy" (asks) | "New comment": the body, and the task, chosen in the picker |
-| `/labels` | "Destroy" (asks) | "New label": the colour starts with the attribute's default |
+| `/labels` | "Destroy" (asks), "Copy" (a generic action, see "Table actions" below) | "New label": the colour starts with the attribute's default |
 | `/task_labels` | "Remove": a destroy that runs at one click, declared with `confirm false` | "New task label": the task and the label, each chosen in the picker, and a note |
 
 Things to try, on `/tasks`:
@@ -414,6 +418,46 @@ Things to try, on `/tasks`:
 - With the keyboard: End moves to the actions cell, Enter to its first
   button, Left and Right Arrow between the buttons, Escape back to the cell.
 
+### Table actions
+
+A table action runs on the table as a whole: a generic action of the
+resource, named with `action` like a row action. Its button is on the line
+of the table's name, after the create button. The demo's labels have three,
+and one generic action in the rows.
+
+| On `/labels` | The action | What its button does |
+| --- | --- | --- |
+| "Count unused" | no argument, returns a number | runs at once; the table says "Count unused: 0" above the grid |
+| "Recolour" | two required arguments, returns how many labels it changed | opens the action panel with "From" and "To" |
+| "Remove unused" | no argument, returns nothing, declared with `confirm` | asks "Delete every label that no task carries?", then says "Remove unused: done" |
+| "Copy", in every row | takes the label's key (`record_argument :label_id`) and a name | opens the panel with "Name" alone; the table gives the key |
+
+Things to try, on `/labels` as **Ada Admin**:
+
+- "Count unused": "Count unused: 0". In the seed every label is on some
+  task. Make one with "New label" and count again: 1.
+- "Remove unused": Cancel changes nothing; Confirm deletes the label you
+  made, and the table reads again.
+- "Recolour": type `red` into "From" and use "Run": the action's message is
+  at the field. With the colour of a label and `#123456`, the table says how
+  many labels it changed, and shows them.
+- "Copy" on a row: the panel is headed "Copy:" and the label's name. The
+  name of another label is refused at the field, "has already been taken";
+  a new name makes a label of the same colour.
+- As **Max Member** or **Vera Viewer**: "Count unused" alone, and no
+  "Copy". The actions that change labels are for admins.
+- As **Olga Outsider**: the same buttons as her role in Globex has, and
+  every action counts and changes Globex's labels alone.
+- On `/tasks`, expand a row and open "Labels": the three buttons are on
+  that line, after "Labels". A table action is the same there as on
+  `/labels`: it is not told which task the line is under, so "Count unused"
+  still counts the labels of the whole organization.
+- With the keyboard: Tab reaches the buttons before the grid; on the
+  "Labels" line of a task, F2 goes into the line's buttons, and Left and
+  Right Arrow move between them.
+- In German (the language switcher): "Unbenutzte zählen", "Umfärben",
+  "Unbenutzte entfernen", "Kopieren".
+
 ### Selecting rows and bulk actions
 
 A table with a row action has a box at the start of every row and one in
@@ -425,7 +469,8 @@ unless one says `bulk? false`, as "Destroy" on `/projects` does.
 | --- | --- | --- |
 | `/tasks` | "Archive", "Reassign", "Set progress", "Destroy" | |
 | `/projects` | "Set status" | "Destroy" (`bulk? false`) |
-| `/comments`, `/labels` | "Destroy" | |
+| `/comments` | "Destroy" | |
+| `/labels` | "Destroy" | "Copy" (`bulk? false`: a name can be given to one label only) |
 | `/task_labels` | "Remove", which asks here though it does not in a row | |
 | `/specimens` | no boxes: the table has no row action | |
 
@@ -721,6 +766,7 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort or filter, and nothing to edit where no action accepts their key, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
 | `selection.spec.ts` | row selection and bulk actions: the boxes by pointer and by keyboard, Space on a cell, ranges with Shift, the box of the page and its mixed state; that selecting sends nothing and that the arrow keys still send nothing; the selection through a sort, a page and a filter change; "all that match"; the line above the grid and what is read out; the question, the panel of an action with inputs, and the result, as the admin and as the member, whose refused rows stay selected; where focus is afterwards; a nested table's own selection; a table told to let one row or several be selected with nothing to run on them; the height of a row with a box; axe with rows selected, with the question open and with a result, in the light and the dark theme |
 | `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
+| `table_actions.spec.ts` | table actions on `/labels`: their buttons on the line of the table's name, as tab stops before the grid, and what each actor has of them; an action that runs at once, by pointer and by keyboard, what the table says and reads out, and that focus stays on its button; one that asks first, with Cancel and Confirm; one with arguments, its panel opened from the keyboard, the action's message at a field, and focus back on the button; a generic action in a row, whose panel asks for what the row does not give; the buttons on the line of a nested table, with the keyboard, the nested table's own dialog and panel; axe-core in these states, in both themes |
 | `arrays.spec.ts` | the array columns of `/tasks`: that their cells are plain text, with no sort and no filter; the list of an array of text (a named control per value, adding and taking away from the keyboard and with the pointer, where focus goes, Tab through its controls and out of the grid, typing on the cell) and the multiple choice of an array of enum values (Space, the arrow keys, a letter); that nothing is sent until Enter or leaving, and one save then; Escape; a save the action refuses, and what the cell opens with afterwards; the member's refusal; both as fields of "New task"; both in a nested table; the list of an array of numbers on `/specimens`; axe with each editor open, with a failed cell, in the dark theme and in the panel |
 | `maps.spec.ts` | the values made of fields: that their cells are one line of plain text, with no sort and no filter; the side panel of a project's client, opened by Enter, F2 and a double click, with focus in its first field and back on the cell when it closes; its groups, the address as a group in the group, and that a group is marked by nothing but its label; saving from the keyboard; what the embedded resources refuse, at their fields, with the other entries kept; taking a value away and adding it again, and where focus goes; a project without a client; "Save" without a change; the list of groups of the milestones (adding, typing, taking away from the keyboard, the last and the only value, a value that is refused); the map "Repeats" of a task, its column's question when "Save" is used and only for a change; both in "New project" and "New task"; the member's refusal in the panel; axe with the panel open, with errors shown and with the list of an array, in the light and the dark theme |
 | `components.spec.ts` | the components of `/tasks`: the slider by keyboard (its keys are its own; a step is saved by Enter or by leaving) and by pointer (nothing sent while it is dragged, one save on letting go, the number beside it following, the slider staying open); Escape after a save; a save through it that fails; the question of a column before a change is saved; the demo's own component, whose editor saves on Enter or on leaving; the slider as a field of the action panel; the height of a row with and without components; components in a nested table |

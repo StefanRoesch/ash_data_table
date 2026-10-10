@@ -60,6 +60,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/maps-and-embedded-resources.md",
         "documentation/topics/row-actions-and-create.md",
         "documentation/topics/selecting-rows-and-bulk-actions.md",
+        "documentation/topics/table-actions.md",
         "documentation/topics/nested-tables.md",
         "documentation/topics/custom-components.md",
         "documentation/topics/authorization.md",

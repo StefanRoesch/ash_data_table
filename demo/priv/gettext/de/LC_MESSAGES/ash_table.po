@@ -122,6 +122,9 @@ msgstr "%{action}: %{record}"
 msgid "%{action}: done"
 msgstr "%{action}: erledigt"
 
+msgid "%{action}: %{result}"
+msgstr "%{action}: %{result}"
+
 msgid "%{name} created"
 msgstr "%{name} angelegt"
 
@@ -525,6 +528,31 @@ msgstr "Dieses Projekt mit allen seinen Aufgaben löschen?"
 
 msgid "Reason"
 msgstr "Begründung"
+
+## Table actions, and a generic action that is a row action, on the labels:
+## what their buttons say, the question one of them asks first, and the
+## fields of their panels.
+
+msgid "Count unused"
+msgstr "Unbenutzte zählen"
+
+msgid "Recolour"
+msgstr "Umfärben"
+
+msgid "Remove unused"
+msgstr "Unbenutzte entfernen"
+
+msgid "Delete every label that no task carries?"
+msgstr "Alle Labels löschen, die keine Aufgabe trägt?"
+
+msgid "Copy"
+msgstr "Kopieren"
+
+msgid "From"
+msgstr "Von"
+
+msgid "To"
+msgstr "Nach"
 
 ## The fields of the keys of a task's project and assignee are called what
 ## the columns of those relationships are called, "Projekt" and "Zugewiesen

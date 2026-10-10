@@ -49,6 +49,18 @@ defmodule AshTable.Bulk do
   # Ash runs neither rule of its own about `public?` here, and no check of
   # the action's type. Both are the model's: `AshTable.Model` is built over
   # public actions only, and an action of it says what it is.
+  #
+  # ## A generic action
+  #
+  # A generic action that is a row action (`record_argument`) takes no
+  # record, so Ash has no bulk call for it. It is run once per record, as
+  # its row's button runs it (`AshTable.Act.run_generic/4`): the records are
+  # read as the person, as above, and each one's primary key is given to
+  # the action as the argument its declaration names, with the inputs of
+  # the panel. Whether it runs in a transaction is the action's own to say
+  # (`transaction?`).
+
+  alias AshTable.Act
 
   alias AshTable.Errors
   alias AshTable.Model
@@ -104,7 +116,7 @@ defmodule AshTable.Bulk do
   """
   @spec run(Model.t(), Action.t(), selection, map, keyword) :: outcome
   def run(%Model{} = model, %Action{bulk?: true, type: type} = action, selection, input, opts)
-      when type in [:update, :destroy] and is_map(input) do
+      when type in [:update, :destroy, :action] and is_map(input) do
     {keys, unnamed} = named(model, selection, opts)
     reader = Query.reader_opts(opts)
 
@@ -179,6 +191,30 @@ defmodule AshTable.Bulk do
 
   # Runs the action on some records, and counts what became of them.
   defp act(_model, _action, [], _input, _reader, outcome), do: outcome
+
+  # A generic action, once per record: see "A generic action" above.
+  defp act(model, %Action{type: :action} = action, records, input, reader, outcome) do
+    Enum.reduce(records, outcome, fn record, outcome ->
+      given = Map.merge(input, Act.given(action, Map.take(record, model.primary_key)))
+
+      ran =
+        rescued(model, {:error, Text.t(:action_failed)}, fn ->
+          Act.run_generic(model, action, given, reader)
+        end)
+
+      case ran do
+        {:done, _value} ->
+          %{
+            outcome
+            | done: outcome.done + 1,
+              ran: MapSet.put(outcome.ran, written(model, record))
+          }
+
+        {:error, message} ->
+          %{outcome | failures: count(outcome.failures, message, 1)}
+      end
+    end)
+  end
 
   defp act(model, action, records, input, reader, outcome) do
     opts =

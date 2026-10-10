@@ -92,6 +92,22 @@ defmodule AshTable.Live.TableComponent do
   # is in `ID-result`, and the hook is told the rows it did not run on
   # (`ash_table:bulk`), which stay selected.
   #
+  # ## Table actions
+  #
+  # A table action is a button: `ID-do-ACTION`, on the line of the table's
+  # name beside the create button, and for a nested table on the line that
+  # names it, in the table around it (`…-l-NAME-do-ACTION`). Either sends
+  # `table_act` to the table the action is of. An action with inputs opens
+  # the action panel; one with a question is asked in the table's dialog,
+  # which the hook opens when the server tells it to (`ash_table:ask`), and
+  # runs when the hook answers `table_run`; any other runs at once.
+  #
+  # A generic action returns no row. What it came to is said where the
+  # outcome of an action on the selected rows is said, in `ID-result`, and
+  # read out; then the table reads again. A generic action that is a row
+  # action has its button in the actions cell, and is used as the others
+  # there are (`act`).
+  #
   # ## Choosing a related record
   #
   # A reference cell is edited in the picker: a second panel, `ID-picker`,
@@ -349,6 +365,8 @@ defmodule AshTable.Live.TableComponent do
      |> assign(lines: lines(socket.assigns.lines, model, state, refused))
      # whether the rows have an actions cell: the last column of the grid
      |> assign(acting?: model.actions != [])
+     # the table actions are offered once the table has read, as create is
+     |> assign(offered: model.table_actions)
      |> assign(depth_limit: depth_limit)
      |> assign(expandable?: expandable?)
      # the actions offered for the selected rows are this person's row
@@ -452,14 +470,16 @@ defmodule AshTable.Live.TableComponent do
     end
   end
 
-  # What the nested tables of this table's rows let the person create: by
-  # relationship, what the create button on its line says. The button is on
-  # the line, which is this table's, and opens the panel of the nested
-  # table, which decides everything about it once more.
+  # What the nested tables of this table's rows let the person create, and
+  # which table actions they offer: by relationship, what the create button
+  # on its line says (`create`), and the table actions with what their
+  # buttons say (`actions`). The buttons are on the line, which is this
+  # table's, and each is used on the nested table, which decides everything
+  # about it once more.
   #
-  # Whether a nested table has a create action is its model's to say, and
-  # is the same for everybody. Whether this person may run it is asked of
-  # Ash here, on every update.
+  # Whether a nested table has a create action, and which table actions, is
+  # its model's to say, and is the same for everybody. Whether this person
+  # may run them is asked of Ash here, on every update.
   defp creates(%{assigns: %{expandable?: true, model: model}} = socket) do
     reader = nested_reader(socket.assigns)
 
@@ -477,12 +497,19 @@ defmodule AshTable.Live.TableComponent do
         opts =
           [authorize?: authorize?] ++ Map.to_list(Map.take(reader, [:scope, :actor, :tenant]))
 
-        if Model.nested_create(nested, opts) do
-          label = Text.t(:new_record, name: Text.label(nested.name))
-          {Map.put(creates, relationship.name, label), socket}
-        else
-          {creates, socket}
-        end
+        # the table actions of the nested table, on the same line: what
+        # each button says, and which action it is
+        actions =
+          for action <- Model.nested_table_actions(nested, opts),
+              do: %{name: action.name, label: Text.label(action.label)}
+
+        create =
+          if Model.nested_create(nested, opts),
+            do: Text.t(:new_record, name: Text.label(nested.name))
+
+        if create || actions != [],
+          do: {Map.put(creates, relationship.name, %{create: create, actions: actions}), socket},
+          else: {creates, socket}
       end)
 
     assign(socket, creates: creates)
@@ -570,11 +597,21 @@ defmodule AshTable.Live.TableComponent do
           }
         end
 
+      # the values a generic action returns are said by their labels
+      returns =
+        with %{values: values} = returns <- action.returns do
+          %{
+            returns
+            | values: Enum.map(values, fn {value, label} -> {value, Text.label(label)} end)
+          }
+        end
+
       %{
         action
         | label: Text.label(action.label),
           confirm: action.confirm && Text.label(action.confirm),
-          inputs: inputs
+          inputs: inputs,
+          returns: returns
       }
     end
 
@@ -589,6 +626,7 @@ defmodule AshTable.Live.TableComponent do
         arguments: arguments,
         relationships: relationships,
         actions: Enum.map(model.actions, action),
+        table_actions: Enum.map(model.table_actions, action),
         create: create
     }
   end
@@ -1365,6 +1403,56 @@ defmodule AshTable.Live.TableComponent do
 
   def handle_event("act", _params, socket), do: {:reply, %{ok: false}, socket}
 
+  # Sent by the button of a table action: the action by name. It has to be
+  # one this table offers this person, and the table has to have read: a
+  # table that could not read offers nothing.
+  #
+  # An action with inputs opens the action panel, and nothing runs. One
+  # with a question has the hook ask it, and runs when the answer comes
+  # (`table_run`). Any other runs now.
+  def handle_event("table_act", %{"action" => name}, socket) do
+    %{id: id, model: model} = socket.assigns
+
+    case table_action(socket.assigns, name) do
+      %Model.Action{panel?: true} = action ->
+        panel =
+          panel(socket.assigns, & &1.default, %{
+            kind: :table,
+            action: action,
+            key: nil,
+            form: Act.open_generic(model, action, "#{id}-panel", reader(socket.assigns)),
+            inputs: action.inputs,
+            title: action.label,
+            submit: Text.t(:run)
+          })
+
+        {:noreply, assign(socket, panel: panel)}
+
+      %Model.Action{confirm: question} = action when is_binary(question) ->
+        {:noreply,
+         push_event(socket, "ash_table:ask", %{table: id, action: action.name, question: question})}
+
+      %Model.Action{} = action ->
+        {:noreply, run_table(socket, action)}
+
+      nil ->
+        {:noreply, socket}
+    end
+  end
+
+  # Sent by the hook once the person has answered the question of a table
+  # action with Confirm: the action runs. Whether it has a panel is the
+  # table's to say, not the event's.
+  def handle_event("table_run", %{"action" => name}, socket) do
+    case table_action(socket.assigns, name) do
+      %Model.Action{panel?: false} = action -> {:noreply, run_table(socket, action)}
+      _none_or_with_inputs -> {:noreply, socket}
+    end
+  end
+
+  def handle_event(event, _params, socket) when event in ["table_act", "table_run"],
+    do: {:noreply, socket}
+
   # Sent by the hook when a person uses a button of the line above the grid,
   # with what they have selected: `rows`, each as the hook names it (its
   # primary key), or `all` for every record the filters match. Nothing runs
@@ -2025,15 +2113,25 @@ defmodule AshTable.Live.TableComponent do
             name -> Text.t(:action_on, action: action.label, record: name)
           end
 
+        # A field of a row action starts with the record's value. A
+        # generic action accepts no attribute of the record: its arguments
+        # start with their defaults, and it is given the row's key.
+        {held, given} =
+          case action.type do
+            :action -> {& &1.default, Act.given(action, row.pk)}
+            _update_or_destroy -> {&Map.get(record, &1.name), %{}}
+          end
+
         panel =
-          panel(socket.assigns, &Map.get(record, &1.name), %{
+          panel(socket.assigns, held, %{
             kind: :row,
             action: action,
             key: key,
             form: form,
             inputs: inputs,
             title: title,
-            submit: Text.t(:run)
+            submit: Text.t(:run),
+            given: given
           })
 
         {:reply, %{ok: true, panel: true}, assign(socket, panel: panel)}
@@ -2256,6 +2354,31 @@ defmodule AshTable.Live.TableComponent do
     end
   end
 
+  # Runs the table action of a panel, with what its fields hold. What the
+  # action says about a field is shown at the field, and the panel stays
+  # open; done, the panel closes and the table says what came of it.
+  defp submit(socket, %{kind: :table, action: action} = panel, params) do
+    %{id: id, model: model} = socket.assigns
+
+    case table_action(socket.assigns, Atom.to_string(action.name)) do
+      %Model.Action{} = action ->
+        case Act.submit_generic(model, action, params, %{}, "#{id}-panel", reader(socket.assigns)) do
+          {:done, value} ->
+            {:noreply, socket |> assign(panel: nil) |> done(action, value)}
+
+          {:error, %AshPhoenix.Form{} = form} ->
+            {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
+
+          {:error, nil, message} ->
+            {:noreply, failed_panel(socket, panel, message)}
+        end
+
+      # no longer an action of this person's
+      nil ->
+        {:noreply, assign(socket, panel: nil)}
+    end
+  end
+
   # Runs the table's create action. In a nested table the new record is
   # joined to the row the table belongs to: by that row's own value, read
   # again now, as the person. Nothing the form sends can say otherwise.
@@ -2433,6 +2556,11 @@ defmodule AshTable.Live.TableComponent do
      |> say(Text.t(:action_done, action: action.label))}
   end
 
+  # A generic action returns no row: the table says what it returned and
+  # reads again, as any record may be another by now.
+  defp ran({:done, value}, socket, _key, action),
+    do: {:reply, %{ok: true}, done(socket, action, value)}
+
   # destroyed, or no longer this person's to read: the row is not theirs to
   # see any more
   defp ran(removed, socket, key, action) when removed in [:destroyed, :gone] do
@@ -2455,6 +2583,39 @@ defmodule AshTable.Live.TableComponent do
     {:reply, %{ok: false, error: message},
      say(socket, Text.t(:action_not_done, action: action.label, message: message))}
   end
+
+  # A table action that runs straight away. What came of it is said above
+  # the grid, where the outcome of an action on the selected rows is said:
+  # there is no row to say it on.
+  defp run_table(socket, action) do
+    case Act.run_generic(socket.assigns.model, action, %{}, reader(socket.assigns)) do
+      {:done, value} ->
+        done(socket, action, value)
+
+      {:error, message} ->
+        text = Text.t(:action_not_done, action: action.label, message: message)
+        socket |> assign(result: %{summary: text, failures: []}) |> say(text)
+    end
+  end
+
+  # A generic action has run: the table says what it returned, when that
+  # can be said in a word or a line, else that it is done, and reads again.
+  defp done(socket, action, value) do
+    text =
+      case Act.said(action, value) do
+        nil -> Text.t(:action_done, action: action.label)
+        said -> Text.t(:action_result, action: action.label, result: said)
+      end
+
+    socket |> assign(result: %{summary: text, failures: []}) |> say(text) |> reread()
+  end
+
+  # The table action an event names, among those this table offers this
+  # person, and only once the table has read.
+  defp table_action(%{page: %Query.Page{}, offered: offered}, name) when is_binary(name),
+    do: Enum.find(offered, &(Atom.to_string(&1.name) == name))
+
+  defp table_action(_assigns, _name), do: nil
 
   # Looked up by its name as text, so that text from the outside is never
   # turned into an atom.
@@ -2608,7 +2769,10 @@ defmodule AshTable.Live.TableComponent do
       the line that opens it, and a table limited to related records says what
       it shows on the line below. --%>
       <div
-        :if={not @nested? and (@heading || (@page && @model.create && is_nil(@related)))}
+        :if={
+          not @nested? and
+            (@heading || (@page && (@model.create || @offered != []) && is_nil(@related)))
+        }
         id={"#{@id}-header"}
         class="mb-4 flex min-h-8 items-center justify-between gap-2"
       >
@@ -2622,10 +2786,11 @@ defmodule AshTable.Live.TableComponent do
         </.dynamic_tag>
         <%!-- not beside an error: a table that could not read offers nothing --%>
         <div
-          :if={@page && @model.create && is_nil(@related)}
-          class="ms-auto flex items-center gap-2"
+          :if={@page && (@model.create || @offered != []) && is_nil(@related)}
+          class="ms-auto flex flex-wrap items-center justify-end gap-2"
         >
-          <.create id={@id} action={@model.create} target={@myself} />
+          <.create :if={@model.create} id={@id} action={@model.create} target={@myself} />
+          <.table_actions id={@id} actions={@offered} target={@myself} />
         </div>
       </div>
       <.related
@@ -2636,6 +2801,7 @@ defmodule AshTable.Live.TableComponent do
         parent={Routes.table(@socket.router, @related.via.source)}
         clear={path(@url, @id, %{})}
         create={@page && @model.create}
+        actions={if @page, do: @offered, else: []}
         target={@myself}
       />
       <%!-- The argument line: what the read action is given, and what the
@@ -2794,8 +2960,10 @@ defmodule AshTable.Live.TableComponent do
               "[&>tbody>tr>td>button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&>tbody>tr>td>button[aria-expanded]]:before:border-s-[CanvasText]",
               # a line's mark stands under its row's
               "[&>tbody>tr>td[data-line]>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>button[aria-expanded]]:before:me-2",
-              # the create button on a line, once the nested table under it has read
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>[data-read])>td[data-line]>button[data-create]]:inline-flex"
+              # the create button on a line, and the buttons of the nested table's
+              # table actions, once the nested table under it has read
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>[data-read])>td[data-line]>button[data-create]]:inline-flex",
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>[data-read])>td[data-line]>button[data-table-action]]:inline-flex"
             ]
           }
           phx-update="stream"
@@ -3660,6 +3828,17 @@ defmodule AshTable.Live.TableComponent do
               const line = this.part("arguments")
               if (target && (this.el.contains(target) || (line && line.contains(target)))) target.focus({preventScroll: true})
             })
+            // The server says that a table action asks first: its question is
+            // asked in the table's dialog, and Confirm runs the action.
+            // Cancel, and Escape: the browser puts focus back on the button.
+            this.handleEvent("ash_table:ask", ({table, action, question}) => {
+              if (table !== this.id || this.asking) return
+              this.asking = true
+              this.ask(question, false).then(confirmed => {
+                this.asking = false
+                if (confirmed) this.pushEventTo(this.el, "table_run", {action})
+              })
+            })
             // what happens in a grid nested in this one is that grid's
             const own = handle => e => { if (this.owns(e.target)) handle(e) }
             this.el.addEventListener("keydown", own(e => this.onKeydown(e)))
@@ -4151,7 +4330,7 @@ defmodule AshTable.Live.TableComponent do
                 // into a cell that holds controls; a line among them, when
                 // it holds more than the button that opens it
                 if (cell.dataset.filter !== undefined || is(cell, "pager") || is(cell, "actions")) this.enter(cell)
-                else if (is(cell, "line") && cell.querySelector("button[data-create]")) this.enter(cell)
+                else if (is(cell, "line") && cell.querySelector("button[data-create],button[data-table-action]")) this.enter(cell)
                 else if (is(cell, "nested")) this.enterNested(cell)
                 else if (this.canEdit(cell)) this.startEdit(cell, null)
                 else handled = false
@@ -5330,7 +5509,7 @@ defmodule AshTable.Live.TableComponent do
           table has read (the rule is with the table's classes), and as high as
           the line's text, so the line is as high with it as without. --%>
           <button
-            :if={relationship.name in @row.lines and @creates[relationship.name]}
+            :if={relationship.name in @row.lines and @creates[relationship.name][:create]}
             type="button"
             id={"#{@row_id}-l-#{relationship.name}-create"}
             tabindex="-1"
@@ -5339,7 +5518,25 @@ defmodule AshTable.Live.TableComponent do
             phx-click="create"
             phx-target={"##{@row_id}-t-#{relationship.name}"}
           >
-            {@creates[relationship.name]}
+            {@creates[relationship.name].create}
+          </button>
+          <%!-- The table actions of the nested table, after it and looking as
+          it does: shown with it, and used on the nested table. --%>
+          <button
+            :for={
+              action <-
+                (relationship.name in @row.lines && @creates[relationship.name][:actions]) || []
+            }
+            type="button"
+            id={"#{@row_id}-l-#{relationship.name}-do-#{action.name}"}
+            tabindex="-1"
+            data-table-action={action.name}
+            class="btn btn-xs ms-2 hidden h-5 align-top"
+            phx-click="table_act"
+            phx-value-action={action.name}
+            phx-target={"##{@row_id}-t-#{relationship.name}"}
+          >
+            {action.label}
           </button>
         </td>
       </tr>
@@ -6324,6 +6521,7 @@ defmodule AshTable.Live.TableComponent do
   attr :parent, :map, default: nil
   attr :clear, :string, required: true
   attr :create, :map, default: nil
+  attr :actions, :list, default: []
   attr :target, :any, default: nil
 
   defp related(assigns) do
@@ -6353,6 +6551,7 @@ defmodule AshTable.Live.TableComponent do
           >{@title}</.link><span :if={!@parent} id={"#{@id}-related-parent"}>{@title}</span>{List.last(@parts)}<% else %>{@label}<% end %></h2>
       <div class="flex items-center gap-2">
         <.create :if={@create} id={@id} action={@create} target={@target} />
+        <.table_actions id={@id} actions={@actions} target={@target} />
         <.link id={"#{@id}-related-clear"} patch={@clear} class="btn btn-sm">
           {Text.t(:show_all_records)}
         </.link>
@@ -6482,12 +6681,36 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # The buttons of a table's table actions, beside its create button and
+  # looking as it does. Each sends its action to the table; what happens
+  # then is the table's to say.
+  attr :id, :string, required: true
+  attr :actions, :list, required: true
+  attr :target, :any, required: true
+
+  defp table_actions(assigns) do
+    ~H"""
+    <button
+      :for={action <- @actions}
+      type="button"
+      id={"#{@id}-do-#{action.name}"}
+      class="btn btn-sm"
+      data-table-action={action.name}
+      phx-click="table_act"
+      phx-value-action={action.name}
+      phx-target={@target}
+    >
+      {action.label}
+    </button>
+    """
+  end
+
   # Whether anything of the table asks a question before it runs: a column,
-  # a row action, and every action on the selected rows.
+  # a row action, a table action, and every action on the selected rows.
   defp asks?(model, bulk),
     do:
       bulk != [] or Enum.any?(model.columns, & &1.confirm) or
-        Enum.any?(model.actions, & &1.confirm)
+        Enum.any?(model.actions ++ model.table_actions, & &1.confirm)
 
   # Whether a nested table has its link to the full view: the router mounts
   # the destination's table, and the nested table has been read.

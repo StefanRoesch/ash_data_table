@@ -362,6 +362,57 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc """
+  What the buttons of the table actions of the table `id` say, left to
+  right: those on the line of the table's name.
+  """
+  def table_actions(html, id \\ "task") do
+    html
+    |> query("[id='#{id}'] > div button[data-table-action][id^='#{id}-do-']")
+    |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+  end
+
+  @doc """
+  What the buttons on a relationship line under the row `key` of the table
+  `id` say, left to right, after the one that opens the line: the create
+  button and the table actions of the nested table.
+  """
+  def line_buttons(html, id \\ "task", key, relationship) do
+    html
+    |> query("[id='#{id}-row-#{key}-l-#{relationship}-c'] > button:not([aria-expanded])")
+    |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+  end
+
+  @doc """
+  Uses the button of a table action of the table `id`, as a click does: on
+  the line of the table's name, or, for a nested table, on the line that
+  names it (`on:` the id of that button). Returns the page: with the
+  action's panel, or once the action has run and the table has read again.
+  An action that asks first sends the hook its question, and runs with
+  `confirm_table_action/3`:
+
+      table_act(view, "label", "remove_unused")
+      assert_push_event view, "ash_table:ask", %{question: "Delete every label that no task carries?"}
+  """
+  def table_act(view, id \\ "task", action, opts \\ []) do
+    button = opts[:on] || "#{id}-do-#{action}"
+    view |> element("[id='#{button}']") |> render_click()
+    ran(view)
+  end
+
+  @doc """
+  Answers the question of a table action with Confirm, as the table's hook
+  does: one `table_run` event. Returns the page once the action has run
+  and the table has read again.
+  """
+  def confirm_table_action(view, id \\ "task", action) do
+    view |> element("##{id}-grid") |> render_hook("table_run", %{"action" => action})
+    ran(view)
+  end
+
+  @doc "What the table says the last table action came to, nil when it says nothing."
+  def result(html, id \\ "task"), do: text(html, "[id='#{id}-result'] [data-summary]")
+
+  @doc """
   Uses a button of the line above the grid as the table's hook does, with
   what a person has selected: the rows as the hook names them (the key of a
   row; for a key of several attributes the list of its values), or `:all`

@@ -17,7 +17,8 @@ defmodule AshTable do
   action its column names, with the cell's value as the only input, and the
   table shows what the action returns. A row has buttons for the update and
   destroy actions the block declares, and the table a button for its create
-  action; an action with inputs asks for them in the action panel. A row
+  action and one for each generic action the block declares; an action with
+  inputs asks for them in the action panel. A row
   expands into the tables of its related records, each the table of its own
   resource, and a column can show a related record by its label: see
   `AshTable.Resource`.
@@ -93,7 +94,8 @@ defmodule AshTable do
 
   Above its grid the table has one line: its name at one end, and at the
   other the create button, when the resource's `table` block names a
-  `create_action` that the person may run. The name is `label`.
+  `create_action` that the person may run, and the buttons of its table
+  actions. The name is `label`.
 
   A table cannot know the outline of the page it is placed in, so by default
   the name is text that is no heading. `heading` says otherwise:
@@ -103,8 +105,7 @@ defmodule AshTable do
     * `true` (the default) - the name as text;
     * a number from 1 to 6 - the name as a heading of that level;
     * `false` - no name, for a page that names the table itself. The line
-      then holds the create button alone, and is left out when there is
-      none.
+      then holds the buttons alone, and is left out when there are none.
 
   The element of the name has the id of the table followed by `-name`, for a
   page that labels a region by it (`aria-labelledby="tasks-name"`). A table
@@ -139,7 +140,7 @@ defmodule AshTable do
   attr :heading, :any,
     default: true,
     doc:
-      "How the table's name is shown on the line above it, with the create button at the other end. `true` shows it as text that is no heading, since a table cannot know the outline of the page it is in; a number from 1 to 6 makes it a heading of that level; `false` leaves it out, for a page that names the table itself."
+      "How the table's name is shown on the line above it, with the create button and the buttons of the table actions at the other end. `true` shows it as text that is no heading, since a table cannot know the outline of the page it is in; a number from 1 to 6 makes it a heading of that level; `false` leaves it out, for a page that names the table itself."
 
   attr :assigns, :map,
     default: %{},

@@ -94,7 +94,8 @@ recompiling the dependency. `mix ash_table.install` sets it when your app has
 Inside the layout the page is the table, and the first line of the table is
 the page's heading: the table's name as an `h1` at the left and, where the
 table has a create action that the person may run, its create button at the
-right. The name is the resource's `plural_name`, or its short name, in
+right, followed by the buttons of its
+[table actions](table-actions.md). The name is the resource's `plural_name`, or its short name, in
 words: "Tasks", "Task labels". It is also the page title and the accessible
 name of the table.
 
@@ -183,9 +184,9 @@ says what the name is:
 
 | `heading` | The name is | The line |
 | --- | --- | --- |
-| `true`, the default | Text that is no heading. | The name, and the create button where there is one. |
+| `true`, the default | Text that is no heading. | The name, and the create button and the buttons of the table actions, where there are any. |
 | A number from 1 to 6 | A heading of that level: `heading={2}` renders an `h2`. | The same. |
-| `false` | Left out, for a page that names the table itself. | The create button alone, where there is one; else no line at all. |
+| `false` | Left out, for a page that names the table itself. | The buttons alone, where there are any; else no line at all. |
 
 The element of the name has the id of the table followed by `-name`. The
 dashboard uses it to name each section by its table
@@ -287,7 +288,8 @@ table show the message in place of the rows.
   is given, which is no HTML heading.
 - **The full view in an embedded table.** A table with `url` that is limited
   to the records of one parent has a second line under its name, which says
-  what it is limited to. The create button is then on that line.
+  what it is limited to. The create button is then on that line, and so
+  are the buttons of the table actions.
 - **A domain that names its own assigns** changes where the mounted table
   finds the actor, and adds those assigns to what the layout is given. The
   layout still receives `current_scope`, and `current_user` and

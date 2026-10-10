@@ -186,6 +186,8 @@ exceptions.
 | The action | For a selection |
 | --- | --- |
 | A public update or destroy action declared with `action` | Offered. |
+| A generic action declared with `record_argument` | Offered. It runs once per selected record, each time given that record's key. See [Table actions](table-actions.md#a-generic-action-in-a-row). |
+| A generic action without it: a table action | Never. It runs on no record. `bulk? true` on it is reported. |
 | The same, declared with `bulk? false` | Not offered. It stays a row action. |
 | One that accepts an attribute of the primary key, or an attribute that is an identity by itself | Not offered. It stays a row action. |
 | One the person can never run | Not offered, and no button in the rows either. |
@@ -299,7 +301,9 @@ On the server, a bulk action is these steps:
    read by their primary keys. For "all that match", the keys of everything
    the filters match are read first, before anything is changed.
 3. **The action runs on each record that was read**, as the person, with
-   authorization, through `Ash.bulk_update/4` or `Ash.bulk_destroy/4`.
+   authorization, through `Ash.bulk_update/4` or `Ash.bulk_destroy/4`. A
+   generic action that takes a row's key has no bulk call in Ash: it is run
+   once per record, as its row's button runs it.
 4. **The table is read again**, and says what became of the run.
 
 The rows are not looked up among those of the page, since a selection

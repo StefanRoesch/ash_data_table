@@ -79,6 +79,7 @@ defmodule AshTable.Text do
           | :create
           | :action_on
           | :action_done
+          | :action_result
           | :created
           | :action_not_done
           | :action_not_allowed
@@ -279,6 +280,9 @@ defmodule AshTable.Text do
   defp msgid(:action_on), do: dgettext_noop("ash_table", "%{action}: %{record}")
   # read out when an action has run, and when a record was created
   defp msgid(:action_done), do: dgettext_noop("ash_table", "%{action}: done")
+  # shown, and read out, when a generic action has run and returned a value
+  # that can be said in a word or a line: the action, and the value
+  defp msgid(:action_result), do: dgettext_noop("ash_table", "%{action}: %{result}")
   defp msgid(:created), do: dgettext_noop("ash_table", "%{name} created")
   # read out when an action failed, with the action's message
   defp msgid(:action_not_done), do: dgettext_noop("ash_table", "%{action} failed: %{message}")

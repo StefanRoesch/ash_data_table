@@ -16,7 +16,8 @@ defmodule AshTable.Model do
   #   * `relationships`, the ordered list of `AshTable.Model.Relationship`: what
   #     a row can be expanded into;
   #   * `actions`, the ordered list of `AshTable.Model.Action`: the row
-  #     actions, and `create`, the table's create action or nil;
+  #     actions; `table_actions`, the table actions, likewise; and `create`,
+  #     the table's create action or nil;
   #   * `name`, what one record of the resource is called: its short name in
   #     words ("task label");
   #   * `max_depth`, how deep a person can expand from this table when it is
@@ -138,7 +139,7 @@ defmodule AshTable.Model do
   #   * the read actions an aggregate column is read through, along its whole
   #     path, and those of the aggregates an expression calculation column
   #     holds (`AshTable.Resource.Reading.private_read/2`);
-  #   * the update, destroy and create actions of the block;
+  #   * the update, destroy, generic and create actions of the block;
   #   * and, for a table that changes records, the primary read action, which
   #     Ash loads the result of every such action through.
   #
@@ -158,12 +159,18 @@ defmodule AshTable.Model do
   #
   # ## Acting
   #
-  # The row actions are the `action`s of the block, in the declared order:
-  # public update and destroy actions. The create action is the one the block
+  # The row actions are the `action`s of the block that run on the record of
+  # a row, in the declared order: public update and destroy actions, and a
+  # public generic action whose declaration names the argument that takes
+  # the row's primary key (`record_argument`). The table actions are the
+  # other `action`s, in the declared order: public generic actions, which
+  # run on the table as a whole. The create action is the one the block
   # names with `create_action`. Each carries its inputs, the attributes it
   # accepts and then its arguments, as far as a table has a field for their
   # type (`AshTable.Model.Input`): an optional input without a field is left
   # out, and an action that requires one is no action of the model at all.
+  # The argument that takes a row's primary key is no input: the table
+  # gives it.
   #
   # `panel?` says whether using an action opens the action panel first: it
   # does when the action accepts an attribute or has a required argument,
@@ -228,6 +235,7 @@ defmodule AshTable.Model do
     :create,
     relationships: [],
     actions: [],
+    table_actions: [],
     arguments: [],
     read_arguments: %{},
     max_depth: 3
@@ -243,6 +251,7 @@ defmodule AshTable.Model do
           read_arguments: %{optional(atom) => term},
           relationships: [Relationship.t()],
           actions: [Action.t()],
+          table_actions: [Action.t()],
           create: Action.t() | nil,
           name: String.t(),
           max_depth: non_neg_integer,
@@ -331,6 +340,8 @@ defmodule AshTable.Model do
         |> apart(field.name in apart)
       end)
 
+    offered = actions!(resource, columns)
+
     model = %__MODULE__{
       resource: resource,
       primary_key: Info.primary_key(resource),
@@ -339,7 +350,8 @@ defmodule AshTable.Model do
       columns: columns,
       arguments: arguments(resource, read_action, fields),
       relationships: relationships!(resource, read_action),
-      actions: row_actions!(resource, columns),
+      actions: for({:row, action} <- offered, do: action),
+      table_actions: for({:table, action} <- offered, do: action),
       create: create!(resource, columns, via),
       name: name(resource),
       max_depth: TableInfo.table_max_depth!(resource),
@@ -350,14 +362,15 @@ defmodule AshTable.Model do
   end
 
   # The table as a picker shows it: for choosing a record, and for nothing
-  # else. No cell of it is edited, it has no row actions and no create
-  # action, and its rows do not expand.
+  # else. No cell of it is edited, it has no row actions, no table actions
+  # and no create action, and its rows do not expand.
   defp chooser(%__MODULE__{} = model) do
     %{
       model
       | columns: Enum.map(model.columns, &read_only_if(&1, true)),
         relationships: [],
         actions: [],
+        table_actions: [],
         create: nil
     }
   end
@@ -415,10 +428,12 @@ defmodule AshTable.Model do
       (`Ash.can/3`). One whose records the person may read in part stays: Ash
       filters them when the nested table is read.
 
-    * A row action the person can **never** run is left out, and so is the
-      create action (`Ash.can/3`, once per action). One they may run on some
-      records only stays: whether it runs on one record is the action's to
-      say when it is run. An input of a field the person can never see is
+    * A row action the person can **never** run is left out, and so are a
+      table action and the create action (`Ash.can/3`, once per action). One
+      they may run on some records only stays: whether it runs on one record
+      is the action's to say when it is run. A generic action is asked about
+      without its arguments, the one that takes a row's primary key among
+      them: what its policy makes of an argument is known when it is run. An input of a field the person can never see is
       left out of an action's inputs, and one of a field they see on some
       records only is marked `partly_hidden?`: it is no input of theirs
       when the action runs on several records at once (`bulk_inputs/1`).
@@ -511,13 +526,30 @@ defmodule AshTable.Model do
     end
   end
 
-  # The row actions and the create action as this person meets them:
-  # without an action they can never run, and without the inputs of fields
-  # they can never see. A field policy is about reading; the table takes it
-  # to mean that what a person never sees is not theirs to write through a
-  # table either, as it does for a cell.
+  @doc """
+  The table actions a nested table offers this person, without working out
+  everything else of it for them: those of its model that they can ever
+  run. `nested`, `opts` and what is asked are as for `nested_create/2`.
+  """
+  @spec nested_table_actions(%__MODULE__{}, keyword) :: [Action.t()]
+  def nested_table_actions(%__MODULE__{table_actions: []}, _opts), do: []
+
+  def nested_table_actions(%__MODULE__{resource: resource, table_actions: actions}, opts) do
+    if Keyword.get(opts, :authorize?, true) do
+      forbidden = Access.forbidden_actions(resource, Enum.map(actions, & &1.name), opts)
+      Enum.reject(actions, &(&1.name in forbidden))
+    else
+      actions
+    end
+  end
+
+  # The row actions, the table actions and the create action as this person
+  # meets them: without an action they can never run, and without the
+  # inputs of fields they can never see. A field policy is about reading;
+  # the table takes it to mean that what a person never sees is not theirs
+  # to write through a table either, as it does for a cell.
   defp runnable(model, opts) do
-    offered = model.actions ++ List.wrap(model.create)
+    offered = model.actions ++ model.table_actions ++ List.wrap(model.create)
 
     forbidden = Access.forbidden_actions(model.resource, Enum.map(offered, & &1.name), opts)
 
@@ -531,33 +563,37 @@ defmodule AshTable.Model do
     partly_hidden =
       Access.partly_hidden_fields(model.resource, model.read_action, attributes -- hidden, opts)
 
-    [create | actions] =
-      for action <- [model.create | model.actions] do
-        cond do
-          is_nil(action) ->
-            nil
+    met = fn action ->
+      cond do
+        is_nil(action) ->
+          nil
 
-          action.name in forbidden ->
-            nil
+        action.name in forbidden ->
+          nil
 
-          true ->
-            inputs =
-              for input <- action.inputs,
-                  not (input.kind == :attribute and input.name in hidden) do
-                input = %{
-                  input
-                  | partly_hidden?: input.kind == :attribute and input.name in partly_hidden
-                }
+        true ->
+          inputs =
+            for input <- action.inputs,
+                not (input.kind == :attribute and input.name in hidden) do
+              input = %{
+                input
+                | partly_hidden?: input.kind == :attribute and input.name in partly_hidden
+              }
 
-                # the component of its column, as this person's column has it
-                if input.component, do: with_component(input, model.columns), else: input
-              end
+              # the component of its column, as this person's column has it
+              if input.component, do: with_component(input, model.columns), else: input
+            end
 
-            %{action | inputs: inputs}
-        end
+          %{action | inputs: inputs}
       end
+    end
 
-    %{model | actions: Enum.reject(actions, &is_nil/1), create: create}
+    %{
+      model
+      | actions: model.actions |> Enum.map(met) |> Enum.reject(&is_nil/1),
+        table_actions: model.table_actions |> Enum.map(met) |> Enum.reject(&is_nil/1),
+        create: met.(model.create)
+    }
   end
 
   # The aggregate columns this person cannot sort by, though the resource
@@ -1149,37 +1185,51 @@ defmodule AshTable.Model do
     :ok
   end
 
-  # An `action` that names no public update or destroy action of the resource.
-  defp row_actions!(resource, columns) do
+  # The `action`s of the block, each with what it is: a row action or a
+  # table action. One that names no public update, destroy or generic action
+  # of the resource is refused, and so is a `record_argument` that cannot
+  # take a row's primary key.
+  defp actions!(resource, columns) do
     declared = TableInfo.actions(resource)
     names = Enum.map(declared, & &1.name)
 
     for %{name: name} = declaration <- declared,
-        found = row_action(resource, name, names),
+        found = offered(resource, declaration, names),
         # an action with a required input that a table has no field for
         # cannot be run from one: it has no button
         found != :unusable do
       case found do
-        {:ok, action} ->
-          %{
-            action(resource, action, columns, declaration.label, declaration.confirm || nil)
-            | bulk?: Acting.bulk?(resource, action, declaration.bulk?)
-          }
+        {:ok, kind, action} ->
+          built =
+            action(
+              resource,
+              action,
+              columns,
+              declaration.label,
+              declaration.confirm || nil,
+              declaration.record_argument
+            )
+
+          # a table action runs on no record, and so on no selection of them
+          {kind,
+           %{built | bulk?: kind == :row and Acting.bulk?(resource, action, declaration.bulk?)}}
 
         {:error, reason} ->
           raise ArgumentError,
-                "cannot build the table of #{inspect(resource)}: its row action `#{name}` cannot " <>
+                "cannot build the table of #{inspect(resource)}: its action `#{name}` cannot " <>
                   "be used. " <> Acting.message(reason)
       end
     end
   end
 
-  defp row_action(resource, name, names) do
+  defp offered(resource, %{name: name} = declaration, names) do
     if name in (names -- Enum.uniq(names)) do
       {:error, {:declared_twice, name}}
     else
-      with {:ok, action} <- Acting.row_action(resource, name) do
-        if Acting.unusable(resource, action) == [], do: {:ok, action}, else: :unusable
+      with {:ok, kind, action} <- Acting.offered(resource, declaration) do
+        if Acting.unusable(resource, action, declaration.record_argument) == [],
+          do: {:ok, kind, action},
+          else: :unusable
       end
     end
   end
@@ -1199,7 +1249,7 @@ defmodule AshTable.Model do
                 Acting.message(reason)
 
       {:ok, action} ->
-        create = action(resource, action, columns, "New #{name(resource)}", nil)
+        create = action(resource, action, columns, "New #{name(resource)}", nil, nil)
 
         cond do
           Acting.unusable(resource, action) != [] ->
@@ -1282,9 +1332,12 @@ defmodule AshTable.Model do
   end
 
   # An action as a table offers it, with the inputs a table has a field for.
-  defp action(resource, action, columns, label, confirm) do
+  # `record_argument` is the argument of a generic action that the table
+  # gives itself, which is no input.
+  defp action(resource, action, columns, label, confirm, record_argument) do
     inputs =
-      for %{editor: editor} = input when not is_nil(editor) <- Acting.inputs(resource, action) do
+      for %{editor: editor} = input when not is_nil(editor) <-
+            Acting.inputs(resource, action, record_argument) do
         Input
         |> struct!(Map.put(input, :label, input_label(input, columns)))
         |> with_reference(resource, columns)
@@ -1297,9 +1350,22 @@ defmodule AshTable.Model do
       label: label || humanize(action.name),
       confirm: confirm,
       inputs: inputs,
-      panel?: Acting.panel?(inputs)
+      panel?: Acting.panel?(inputs),
+      record_argument: record_argument,
+      returns: returns(action)
     }
   end
+
+  # What a generic action says it returns, where that is an enum value: the
+  # value is then said by its label.
+  defp returns(%{type: :action, returns: type} = action) when not is_nil(type) do
+    case CellType.classify(type, action.constraints || []) do
+      {:enum, values} -> %{cell_type: :enum, values: values}
+      _other -> nil
+    end
+  end
+
+  defp returns(_action), do: nil
 
   # An attribute that is the foreign key of a public belongs-to relationship
   # whose related record can be chosen is given by choosing: its field shows

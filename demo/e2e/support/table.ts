@@ -325,6 +325,23 @@ export class Table {
     return this.byId(`${this.id}-create`)
   }
 
+  // ---- table actions ------------------------------------------------------
+
+  /** The button of one table action, on the line of the table's name. */
+  tableAction(name: string): Locator {
+    return this.byId(`${this.id}-do-${name}`)
+  }
+
+  /** The buttons of the table actions on the line of the table's name, left to right. */
+  get tableActions(): Locator {
+    return this.root.locator(`:scope > div button[data-table-action][id^="${this.id}-do-"]`)
+  }
+
+  /** The button of a table action of a line's nested table: on the line, after its label. */
+  lineAction(key: string, relationship: string, name: string): Locator {
+    return this.byId(`${this.id}-row-${key}-l-${relationship}-do-${name}`)
+  }
+
   // ---- row actions --------------------------------------------------------
 
   /** The header of the actions column, the last of the grid. */

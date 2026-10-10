@@ -10,7 +10,7 @@ them is missing.
 | Kind | Examples | Owner | Translated by |
 | --- | --- | --- | --- |
 | The table's own texts | "No records", "Clear filters", "12 results", the operators of the filters, "You are not allowed to change this.", "Actions", "Run" | The library | `gettext_backend`: the Gettext domain `ash_table` in your backend |
-| Your resources' wording, as the table shows it | Column labels, the labels of enum values, the questions of `confirm`, the names of the tables, the labels of row actions and of the fields of the action panel, what one record is called | Your resources | `gettext_backend`: the same domain of the same backend |
+| Your resources' wording, as the table shows it | Column labels, the labels of enum values, the questions of `confirm`, the names of the tables, the labels of row actions and table actions and of the fields of the action panel, what one record is called | Your resources | `gettext_backend`: the same domain of the same backend |
 | The messages of your actions | "length must be greater than or equal to %{min}", "is required", the `message` of your own validation | Ash and your resources | `translate_error`: your app's error translator |
 
 ## The smallest example
@@ -120,6 +120,7 @@ These are all the messages of the template
 | A value made of fields | "%{field}: %{value}" (one field of an embedded resource or a map, as its cell shows it: "City: Kiel"), "Save" (the button of the panel such a cell is edited in), "Remove %{column}" (what the button is called that takes such a value away: "Remove Address"). The button that adds one is the array's "Add value", and a value of an array is called by "%{column} %{position}" |
 | Dialog | "Cancel", "Confirm" |
 | Row actions | "Actions" (the heading of their column), "You are not allowed to do this.", "This could not be done.", and what is read out: "%{action}: done", "%{action} failed: %{message}" |
+| Table actions | "%{action}: %{result}" (what is shown above the grid, and read out, when a generic action returned a value: "Count unused: 3"). One that returned nothing is said with "%{action}: done", and a failure with "%{action} failed: %{message}" |
 | The action panel | "%{action}: %{record}" (the heading of a row action's panel), "Run", "Create"; "Cancel" is the dialog's |
 | Selecting rows | "Select row" and "Select all rows of this page" (what the boxes are called), "Selected rows" (the name of the line above the grid), "%{count} selected", "All %{count} that match are selected", "All that match are selected", "Select all %{count} that match", "Select all that match", "Clear selection". "%{count} selected" has no plural forms: the number is put in by the browser, which alone knows it |
 | Bulk actions | The question: "Run “%{action}” on 1 record?" with the plural "Run “%{action}” on %{count} records?", "Run “%{action}” on all records that match?"; after an action's own question, "%{question} 1 record is selected." with the plural "%{question} %{count} records are selected.", and "%{question} All records that match are selected.". The heading of the panel: "%{action}: 1 record" with the plural "%{action}: %{count} records", "%{action}: all records that match". The result: "%{action}: %{done} done.", "%{action}: %{done} done, %{failed} not done.", and "%{message} (%{count})" for each message of the action with the number of records it is about |
@@ -158,11 +159,12 @@ the side panel: each is called by its name in words, as a column of that
 name would be, and looked up the same way. See
 [Maps and embedded resources](maps-and-embedded-resources.md#translating-the-fields).
 
-Row actions and create add four more of the same kind:
+Row actions, table actions and create add five more of the same kind:
 
 | Wording | The message id |
 | --- | --- |
-| What a row action's button says | Its `label`, or the action's name in words: "Archive", "Set progress", "Remove". |
+| What a row action's button says, and a table action's | Its `label`, or the action's name in words: "Archive", "Set progress", "Remove", "Count unused". |
+| A value of an enum that a generic action returned | The label of the value, as in a cell. |
 | The question of an action's `confirm` | The question as written: "Delete this task? This cannot be undone." |
 | What a field of the action panel is called | The label of the column, for an attribute the table has a column for: the entry that translates the heading translates the field. Else the input's name in words: "Reason", "Assignee ID". |
 | What one record is called | The resource's short name in words, in lower case: "task", "task label". It fills the table's own message "New %{name}". |

@@ -72,7 +72,7 @@ A row action run on every record of a selection at once, with its inputs given o
 _Avoid_: Batch action, mass update, multi-row action
 
 **Action panel**:
-The panel in which a person supplies the inputs of a row action, or of a create, before running it.
+The panel in which a person supplies the inputs of a row action, of a table action, or of a create, before running it.
 _Avoid_: Modal, drawer, form dialog
 
 **Table action**:

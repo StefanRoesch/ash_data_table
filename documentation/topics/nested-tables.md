@@ -279,6 +279,7 @@ which a page of related records always is. The steps go when it is fixed.
 | The person can never run an update action of the destination | Its columns are read-only in the nested table. |
 | The person can never run a row action of the destination | The nested table has no button for it, and no actions column when that is every one. |
 | The person can never run the destination's create action | The line has no create button. |
+| The person can never run a table action of the destination | The line has no button for it. |
 | The parent row is gone, or no longer theirs to read | "This record is no longer available." in place of the nested rows. |
 | The destination's read comes to be refused while the line is open | "You are not allowed to see these records." when the destination's table says `on_forbidden :message`, else "These records are not available." |
 
@@ -342,7 +343,7 @@ own in a cell of the grid around it.
 | Right Arrow | On an expander or a line that is closed | Opens it. |
 | Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
 | Enter | On an expander or a line | Opens or closes it. |
-| F2 | On a line that has a create button | Goes to the line's controls: the button that opens and closes it, and the create button. Left Arrow and Right Arrow move between them, Enter uses one, Escape returns to the line. |
+| F2 | On a line that has a create button, or the buttons of the nested table's [table actions](table-actions.md#nested-tables) | Goes to the line's controls: the button that opens and closes it, the create button, and the buttons of the table actions. Left Arrow and Right Arrow move between them, Enter uses one, Escape returns to the line. |
 | Down Arrow, Up Arrow | In the grid | Go through the lines of an expanded row and the cell of each open nested table, as through rows. |
 | Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first. |
 | Escape | In a nested table | Comes back out, to the cell that holds it. |
@@ -355,7 +356,7 @@ sort, filter cells are entered, cells are edited, the buttons of a row's
 actions cell are reached with Enter. The pages and the link of
 a nested table are rows of its grid and no tab stops of their own, so that
 Tab from anywhere in the tree leaves it. Its create button is on its line
-for the same reason. The "Clear filters" button of a
+for the same reason, and so are the buttons of its table actions. The "Clear filters" button of a
 nested table is not reached from the keyboard; each filter is cleared from
 its own cell.
 
@@ -476,7 +477,8 @@ Above the grid, the table says what it is limited to: the record, a colon,
 and the relationship as its line is labelled. "Show all records" is beside
 it, and before that the create button, where the nested table would have
 one on its line: a record created there is created under the same parent.
-The line of the page's own name, above this one, then has no create button.
+The buttons of the table's [table actions](table-actions.md) stand between
+the two. The line of the page's own name, above this one, then has neither.
 
 The record is called by the first of these that the person sees on it:
 

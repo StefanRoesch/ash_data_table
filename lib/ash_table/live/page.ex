@@ -54,6 +54,10 @@ defmodule AshTable.Live.Page do
       panel.
     * **A create action the person can never run** leaves the table without
       its create button.
+    * **A table action the person can never run** has no button for them.
+      A generic action is asked about without its arguments: what its
+      policy makes of an argument, the key of a row among them, is shown
+      as a refusal when the action runs.
     * **An input of a field the person can never see** is no field of an
       action panel for them, in a row action or in a create; one hidden from
       them on a record is left out of that record's panel. A value sent for

@@ -1,8 +1,16 @@
 defmodule AshTable.Resource.Acting do
   @moduledoc false
-  # What a table lets a person run: its row actions and its create action,
-  # and what each asks of the person. Shared by the verifiers (which report a
-  # mistake) and the table model (which builds on the answer).
+  # What a table lets a person run: its row actions, its table actions and
+  # its create action, and what each asks of the person. Shared by the
+  # verifiers (which report a mistake) and the table model (which builds on
+  # the answer).
+  #
+  # An `action` of the block is one of two things, by what the action is on
+  # the resource. An update or a destroy action is given a record: it is a
+  # row action. A generic action is given arguments and nothing else: it is
+  # a table action, run on the table as a whole, unless the block names the
+  # argument that takes a row's primary key (`record_argument`), which makes
+  # it a row action too.
 
   alias Ash.Resource.Info
   alias AshTable.Model.CellType
@@ -34,28 +42,84 @@ defmodule AshTable.Resource.Acting do
           | {:not_a_row_action, atom, atom}
           | {:declared_twice, atom}
           | {:not_bulk, atom, [atom]}
-          | {:no_field, :row | :create, atom, input}
+          | {:table_action_not_bulk, atom}
+          | {:record_argument_not_generic, atom, atom, atom}
+          | {:record_argument_not_found, atom, atom}
+          | {:record_argument_not_public, atom, atom}
+          | {:record_argument_no_single_key, atom, atom, [atom]}
+          | {:record_argument_not_a_key, atom, atom, term, atom, term}
+          | {:no_field, :row | :table | :create, atom, input}
           | {:not_a_create_action, atom, atom}
           | {:result_read_not_public, atom}
           | {:result_read_needs_argument, atom, atom}
 
-  @doc "The action a row action of the block names, or what is wrong with it."
-  @spec row_action(Ash.Resource.t() | Spark.Dsl.t(), atom) :: {:ok, struct} | {:error, reason}
-  def row_action(resource, name) do
+  @doc """
+  What an `action` of the block is, with the action it names, or what is
+  wrong with it: `:row` for a row action, which runs on the record of a
+  row, and `:table` for a table action, which runs on the table as a whole.
+
+  `declaration` is the `action` as written in the block
+  (`AshTable.Resource.Action`).
+  """
+  @spec offered(Ash.Resource.t() | Spark.Dsl.t(), struct) ::
+          {:ok, :row | :table, struct} | {:error, reason}
+  def offered(resource, %{name: name} = declaration) do
+    record_argument = Map.get(declaration, :record_argument)
+
     case Info.action(resource, name) do
       nil ->
         {:error, {:not_found, name}}
 
-      %{type: type} when type not in [:update, :destroy] ->
+      %{type: type} when type not in [:update, :destroy, :action] ->
         {:error, {:not_a_row_action, name, type}}
 
       %{public?: false} ->
         {:error, {:not_public, name}}
 
+      %{type: :action} = action when is_nil(record_argument) ->
+        {:ok, :table, action}
+
+      %{type: :action} = action ->
+        with :ok <- record_argument(resource, action, record_argument), do: {:ok, :row, action}
+
+      %{type: type} when not is_nil(record_argument) ->
+        {:error, {:record_argument_not_generic, name, type, record_argument}}
+
       action ->
-        {:ok, action}
+        {:ok, :row, action}
     end
   end
+
+  @doc """
+  Whether an argument of a generic action can be given the primary key of
+  a row: it is one of the action's arguments, public, and stored as the
+  resource's primary key is, which has to be one attribute.
+  """
+  @spec record_argument(Ash.Resource.t() | Spark.Dsl.t(), struct, atom) :: :ok | {:error, reason}
+  def record_argument(resource, %{name: action, arguments: arguments}, name) do
+    case {Enum.find(arguments, &(&1.name == name)), Info.primary_key(resource)} do
+      {nil, _key} ->
+        {:error, {:record_argument_not_found, action, name}}
+
+      {%{public?: false}, _key} ->
+        {:error, {:record_argument_not_public, action, name}}
+
+      {argument, [key]} ->
+        attribute = Info.attribute(resource, key)
+
+        if stored_as(argument) == stored_as(attribute),
+          do: :ok,
+          else:
+            {:error,
+             {:record_argument_not_a_key, action, name, argument.type, key, attribute.type}}
+
+      {_argument, keys} ->
+        {:error, {:record_argument_no_single_key, action, name, keys}}
+    end
+  end
+
+  defp stored_as(%{type: type, constraints: constraints}),
+    do: Ash.Type.storage_type(type, constraints || [])
 
   @doc "The create action of the table: `:none` when the block names none."
   @spec create_action(Ash.Resource.t() | Spark.Dsl.t()) ::
@@ -78,10 +142,11 @@ defmodule AshTable.Resource.Acting do
   @doc """
   The inputs of an action, in its own order: the public attributes it
   accepts, then its public arguments. A private attribute or argument is
-  never given from the outside.
+  never given from the outside. Nor is the argument that takes a row's
+  primary key (`record_argument`): the table gives it.
   """
-  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct) :: [input]
-  def inputs(resource, action) do
+  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil) :: [input]
+  def inputs(resource, action, record_argument \\ nil) do
     attributes =
       for name <- Map.get(action, :accept) || [],
           attribute = Info.attribute(resource, name),
@@ -89,7 +154,10 @@ defmodule AshTable.Resource.Acting do
         input(:attribute, attribute, required?(action, attribute))
       end
 
-    arguments = for %{public?: true} = argument <- action.arguments, do: argument(argument)
+    arguments =
+      for %{public?: true, name: name} = argument <- action.arguments,
+          name != record_argument,
+          do: argument(argument)
 
     attributes ++ arguments
   end
@@ -164,9 +232,10 @@ defmodule AshTable.Resource.Acting do
   The required inputs of an action that a table has no field for. An action
   with one cannot be run from a table.
   """
-  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct) :: [input]
-  def unusable(resource, action) do
-    for %{editor: nil, required?: true} = input <- inputs(resource, action), do: input
+  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil) :: [input]
+  def unusable(resource, action, record_argument \\ nil) do
+    for %{editor: nil, required?: true} = input <- inputs(resource, action, record_argument),
+        do: input
   end
 
   @doc """
@@ -230,7 +299,7 @@ defmodule AshTable.Resource.Acting do
           do: name
 
     acting? =
-      AshTable.Resource.Info.actions(resource) != [] or
+      record_actions?(resource) or
         AshTable.Resource.Info.table_create_action(resource) != :error
 
     if acting? and is_nil(Info.primary_action(resource, :read)) and
@@ -310,11 +379,20 @@ defmodule AshTable.Resource.Acting do
   defp changes?(resource) do
     columns = columns(resource)
 
-    AshTable.Resource.Info.actions(resource) != [] or
+    record_actions?(resource) or
       AshTable.Resource.Info.table_create_action(resource) != :error or
       Enum.any?(columns, fn {field, declared} ->
         Editing.update_action(resource, field, declared) != :none
       end)
+  end
+
+  # Whether the block names an action that returns a record, which the row
+  # is then shown from: an update or a destroy action. A generic action
+  # returns no row: the table reads again after it.
+  defp record_actions?(resource) do
+    Enum.any?(AshTable.Resource.Info.actions(resource), fn %{name: name} ->
+      not match?(%{type: :action}, Info.action(resource, name))
+    end)
   end
 
   @doc "What is wrong with a declared action, for a diagnostic."
@@ -326,8 +404,9 @@ defmodule AshTable.Resource.Acting do
 
   def message({:not_a_row_action, name, type}),
     do:
-      "`#{name}` is #{kind(type)} action. A row action runs on the record of its row, so it " <>
-        "has to be an update or a destroy action." <> hint(type, name)
+      "`#{name}` is #{kind(type)} action. An `action` of a table is an update or a destroy " <>
+        "action, which runs on the record of a row, or a generic action, which runs on the " <>
+        "table as a whole." <> hint(type, name)
 
   def message({:declared_twice, name}), do: "`#{name}` is declared more than once."
 
@@ -338,6 +417,47 @@ defmodule AshTable.Resource.Acting do
         "hold the same value (an attribute of the primary key, or an identity by itself), and the " <>
         "inputs of an action that runs on the selected rows are given once for all of them. " <>
         "Leave `bulk?` out: the action stays an action of one row."
+
+  def message({:table_action_not_bulk, name}),
+    do:
+      "The table action `#{name}` says `bulk? true`, and runs on the table as a whole: a generic " <>
+        "action takes no record, so there are no selected rows to run it on. Leave `bulk?` out, or " <>
+        "name the argument that takes a row's primary key with `record_argument`: the action is " <>
+        "then a row action."
+
+  def message({:record_argument_not_generic, name, type, argument}),
+    do:
+      "The action `#{name}` says `record_argument :#{argument}`, and is #{kind(type)} action, " <>
+        "which runs on the record of its row already. `record_argument` is for a generic action, " <>
+        "which takes no record: it names the argument that is given the row's primary key. " <>
+        "Leave it out."
+
+  def message({:record_argument_not_found, name, argument}),
+    do:
+      "The action `#{name}` says `record_argument :#{argument}`, and has no argument named " <>
+        "`#{argument}`."
+
+  def message({:record_argument_not_public, name, argument}),
+    do:
+      "The action `#{name}` says `record_argument :#{argument}`, and its argument `#{argument}` " <>
+        "is not public. A private argument is not given from the outside, and a table is the outside."
+
+  def message({:record_argument_no_single_key, name, argument, []}),
+    do:
+      "The action `#{name}` says `record_argument :#{argument}`, and the resource has no primary " <>
+        "key: there is nothing of a row to give the argument."
+
+  def message({:record_argument_no_single_key, name, argument, keys}),
+    do:
+      "The action `#{name}` says `record_argument :#{argument}`, and the primary key of the " <>
+        "resource is #{Enum.map_join(keys, ", ", &"`#{&1}`")}: several attributes. One argument " <>
+        "takes the primary key of a row only where that is one attribute."
+
+  def message({:record_argument_not_a_key, name, argument, type, key, key_type}),
+    do:
+      "The action `#{name}` says `record_argument :#{argument}`, and that argument is of the type " <>
+        "#{inspect(type)}, which is not stored as the primary key `#{key}` is (#{inspect(key_type)}). " <>
+        "The argument is given the primary key of the row as it is, so it has to be of the key's type."
 
   def message({:no_field, what, name, %{name: input, type: {type, _constraints}}}),
     do:
@@ -373,6 +493,5 @@ defmodule AshTable.Resource.Acting do
   defp hint(:create, name),
     do: " A create action is offered with `create_action :#{name}` in the `table` block."
 
-  defp hint(:action, _name), do: " A generic action takes no record."
   defp hint(_type, _name), do: ""
 end
