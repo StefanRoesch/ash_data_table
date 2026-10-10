@@ -10,6 +10,9 @@ defmodule AshTable.Model do
   #   * `read_action`, the name of the read action behind the table;
   #   * `pagination`, an `AshTable.Model.Pagination`;
   #   * `columns`, the ordered list of `AshTable.Model.Column`;
+  #   * `arguments`, the ordered list of `AshTable.Model.Argument`: the
+  #     inputs of the argument line, and `read_arguments`, what the read
+  #     action is given for its own once a person has had their say;
   #   * `relationships`, the ordered list of `AshTable.Model.Relationship`: what
   #     a row can be expanded into;
   #   * `actions`, the ordered list of `AshTable.Model.Action`: the row
@@ -30,6 +33,27 @@ defmodule AshTable.Model do
   # named. A column that names a belongs-to relationship is a reference cell:
   # it shows the related record's label, the `label_field` of the
   # destination's table.
+  #
+  # ## Arguments
+  #
+  # A table reads through an action, and an action may take arguments. Every
+  # public argument of the read action is the person's to give, on the
+  # argument line above the rows: nothing is declared for it, and whether it
+  # can be left empty is the action's to say. An `argument` of the block
+  # gives one a label.
+  #
+  # A calculation column gives its calculation's arguments itself: fixed in
+  # the block (`arguments`), or asked from the person (`ask`), which puts
+  # them on the argument line after the read action's. A calculation can be
+  # a column more than once, with other arguments: the second column says
+  # `as`, and is called that everywhere a column is named (`name`), while
+  # `field` stays the calculation.
+  #
+  # The model is built without anybody's values. `defaults/2` works out the
+  # defaults that are functions of the page's assigns, and `supply/2` puts
+  # in what a person chose: after it, `read_arguments` holds what the read
+  # action is given and each column's `arguments` what its calculation is
+  # computed with, and every read of the table uses them.
   #
   # ## Editing
   #
@@ -175,6 +199,7 @@ defmodule AshTable.Model do
   alias Ash.Resource.Info
   alias AshTable.Model.Access
   alias AshTable.Model.Action
+  alias AshTable.Model.Argument
   alias AshTable.Model.CellType
   alias AshTable.Model.Column
   alias AshTable.Model.Input
@@ -182,6 +207,7 @@ defmodule AshTable.Model do
   alias AshTable.Model.Pagination
   alias AshTable.Model.Relationship
   alias AshTable.Resource.Acting
+  alias AshTable.Resource.Arguing
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
@@ -202,6 +228,8 @@ defmodule AshTable.Model do
     :create,
     relationships: [],
     actions: [],
+    arguments: [],
+    read_arguments: %{},
     max_depth: 3
   ]
 
@@ -211,6 +239,8 @@ defmodule AshTable.Model do
           read_action: atom,
           pagination: Pagination.t(),
           columns: [Column.t()],
+          arguments: [Argument.t()],
+          read_arguments: %{optional(atom) => term},
           relationships: [Relationship.t()],
           actions: [Action.t()],
           create: Action.t() | nil,
@@ -240,7 +270,9 @@ defmodule AshTable.Model do
   Raises `ArgumentError` for a resource without the extension, and for a
   `table` block with a mistake of the compile-time checks that leaves the
   table nothing sound to do: no usable read action or pagination, a column
-  that is no public field or a calculation that needs an argument, a column
+  that is no public field, a calculation column whose arguments are not
+  given soundly (`AshTable.Resource.Arguing`), a read action that requires
+  an argument the argument line has no input for, a column
   that names a relationship whose related record's label cannot be shown, an
   `update_action` that names no public update action, editing beside
   calculations, aggregates or reference columns without a primary read
@@ -283,6 +315,8 @@ defmodule AshTable.Model do
         declared -> Enum.map(declared, &{field!(resource, &1.name), &1})
       end
 
+    for {field, declared} <- fields, do: arguments!(resource, field, declared)
+
     row_refresh!(resource, fields)
 
     apart =
@@ -303,6 +337,7 @@ defmodule AshTable.Model do
       read_action: read_action.name,
       pagination: pagination,
       columns: columns,
+      arguments: arguments(resource, read_action, fields),
       relationships: relationships!(resource, read_action),
       actions: row_actions!(resource, columns),
       create: create!(resource, columns, via),
@@ -393,12 +428,21 @@ defmodule AshTable.Model do
   @spec for_actor(%__MODULE__{}, keyword) :: t
   def for_actor(%__MODULE__{} = model, opts) do
     if Keyword.get(opts, :authorize?, true) do
-      # a reference column is no field of the resource: Ash has no field
-      # policy for a relationship, and is asked about its destination instead
-      names = for %{kind: kind, name: name} <- model.columns, kind != :reference, do: name
+      # A reference column is no field of the resource: Ash has no field
+      # policy for a relationship, and is asked about its destination
+      # instead. A column is asked about by the field it shows, whatever it
+      # is called here.
+      names =
+        Enum.uniq(for %{kind: kind, field: field} <- model.columns, kind != :reference, do: field)
+
+      never = Access.hidden_fields(model.resource, model.read_action, names, opts)
 
       hidden =
-        Access.hidden_fields(model.resource, model.read_action, names, opts) ++
+        for(
+          %{kind: kind, field: field, name: name} <- model.columns,
+          kind != :reference and field in never,
+          do: name
+        ) ++
           for(
             %{kind: :reference, name: name, reference: reference} <- model.columns,
             unreadable?(reference, opts),
@@ -408,7 +452,7 @@ defmodule AshTable.Model do
       columns = Enum.reject(model.columns, &(&1.name in hidden))
 
       partly_hidden =
-        Access.partly_hidden_fields(model.resource, model.read_action, names -- hidden, opts)
+        Access.partly_hidden_fields(model.resource, model.read_action, names -- never, opts)
 
       forbidden =
         Access.forbidden_actions(
@@ -425,7 +469,7 @@ defmodule AshTable.Model do
         for column <- columns do
           column
           |> read_only_if(column.update_action in forbidden or column.name in unchosen)
-          |> Map.put(:partly_hidden?, column.name in partly_hidden)
+          |> Map.put(:partly_hidden?, column.kind != :reference and column.field in partly_hidden)
           |> Map.update!(:sortable?, &(&1 and column.name not in unsortable))
         end
 
@@ -435,7 +479,11 @@ defmodule AshTable.Model do
             []
         end)
 
-      %{model | columns: columns, relationships: relationships}
+      # an argument that is asked for a column goes with its column
+      arguments =
+        Enum.filter(model.arguments, &(is_nil(&1.column) or &1.column not in hidden))
+
+      %{model | columns: columns, relationships: relationships, arguments: arguments}
       |> runnable(opts)
     else
       model
@@ -551,7 +599,7 @@ defmodule AshTable.Model do
     fields =
       Enum.uniq(
         Enum.map(Info.attributes(model.resource), & &1.name) ++
-          for(%{kind: kind, name: name} <- model.columns, kind != :reference, do: name)
+          for(%{kind: kind, field: field} <- model.columns, kind != :reference, do: field)
       )
 
     seen = fields -- Access.hidden_fields(model.resource, model.read_action, fields, opts)
@@ -607,6 +655,66 @@ defmodule AshTable.Model do
   end
 
   @doc """
+  The model with the defaults of its asked arguments worked out: one that is
+  a function is called with `assigns`, the assigns of the page the table is
+  on, and its value is the argument's default from then on.
+  """
+  @spec defaults(t, map) :: t
+  def defaults(%__MODULE__{arguments: arguments} = model, assigns) when is_map(assigns) do
+    arguments =
+      for argument <- arguments do
+        case argument.default_fun do
+          nil -> argument
+          fun -> %{argument | default: fun.(assigns)}
+        end
+      end
+
+    %{model | arguments: arguments}
+  end
+
+  @doc """
+  The model with what a person chose for its arguments: `chosen` holds, by
+  the key of an argument (`AshTable.Model.Argument.key/1`), what they typed
+  or picked for it. Whatever else it holds is not looked at.
+
+  `read_arguments` is then what the read action is given, by name: what the
+  person chose for its arguments on the line, and nothing for the others,
+  which keep the defaults Ash applies. Each column's `arguments` is what
+  its calculation is computed with: what the block fixes, and for each asked
+  argument what the person chose, else its default.
+  """
+  @spec supply(t, %{optional(Argument.key()) => Argument.typed()}) :: t
+  def supply(%__MODULE__{arguments: arguments, columns: columns} = model, chosen)
+      when is_map(chosen) do
+    given =
+      for argument <- arguments,
+          {:ok, value} <- [Argument.given(argument, chosen)],
+          do: {argument, value}
+
+    read = for {%{column: nil, name: name}, value} <- given, into: %{}, do: {name, value}
+
+    columns =
+      for column <- columns do
+        asked =
+          for {%{column: of, name: name}, value} <- given, of == column.name, into: %{} do
+            {name, value}
+          end
+
+        %{column | arguments: Map.merge(column.fixed, asked)}
+      end
+
+    %{model | read_arguments: read, columns: columns}
+  end
+
+  @doc """
+  The argument of the line that a key names, or nil: an argument of the read
+  action (`{nil, name}`) or one asked for a column (`{column, name}`).
+  """
+  @spec argument(t, Argument.key()) :: Argument.t() | nil
+  def argument(%__MODULE__{arguments: arguments}, key),
+    do: Enum.find(arguments, &(Argument.key(&1) == key))
+
+  @doc """
   The row actions that are also offered for the rows a person has selected,
   in the declared order.
   """
@@ -624,7 +732,8 @@ defmodule AshTable.Model do
 
   @doc """
   What the table's columns show that is not on a record unless asked for,
-  and that is read with the records: its calculations, by name, and for each
+  and that is read with the records: its calculations, by name and with the
+  arguments their columns give them, and for each
   reference column the relationship with the query that reads the related
   record's label. The aggregates are read after them: see `aggregates/1`.
 
@@ -634,11 +743,20 @@ defmodule AshTable.Model do
   column for a whole page. It is never an aggregate or a calculation over
   the relationship, which would apply none of the two.
   """
-  @spec loads(t) :: [atom | {atom, Ash.Query.t()}]
+  @spec loads(t) :: [atom | {atom, Ash.Query.t() | map}]
   def loads(%__MODULE__{columns: columns}) do
     Enum.flat_map(columns, fn
-      %{kind: :calculation, name: name} ->
+      # Under another name where the column has one: Ash then puts the value
+      # among the record's `calculations`, under that name. With the
+      # arguments the column gives, as Ash takes them for a load.
+      %{kind: :calculation, name: name, field: field, arguments: arguments} when name != field ->
+        [{field, Map.put(arguments, :as, name)}]
+
+      %{kind: :calculation, name: name, arguments: arguments} when arguments == %{} ->
         [name]
+
+      %{kind: :calculation, name: name, arguments: arguments} ->
+        [{name, arguments}]
 
       %{kind: :reference, name: name, reference: reference} ->
         [
@@ -735,6 +853,12 @@ defmodule AshTable.Model do
   defp read_action!(resource, nil) do
     case Reading.read_action(resource) do
       {:ok, action} ->
+        with [input | _] <- Arguing.unanswerable(action) do
+          raise ArgumentError,
+                "cannot build the table of #{inspect(resource)}: its read action cannot be used. " <>
+                  Arguing.message({:no_input, :read, action.name, input})
+        end
+
         action
 
       # the primary read action the table would fall back to is private
@@ -986,15 +1110,22 @@ defmodule AshTable.Model do
               Reading.message(reason)
     end
 
-    case Reading.required_arguments(field) do
-      [] ->
-        field
+    field
+  end
 
-      [argument | _] ->
-        raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: its column `#{name}` is a calculation " <>
-                "that requires the argument `#{argument}`, and a table cannot supply arguments."
+  # A column that does not give its calculation's arguments soundly: one it
+  # cannot be computed without is missing, one is named that it does not
+  # have, a value is not one of its type. And a column of anything else that
+  # gives arguments at all.
+  defp arguments!(resource, field, declared) do
+    with [{_option, reason} | _] <- Arguing.mistakes(resource, field, declared) do
+      raise ArgumentError,
+            "cannot build the table of #{inspect(resource)}: its column " <>
+              "`#{(declared && declared.key) || field.name}` cannot be shown. " <>
+              Arguing.message(reason)
     end
+
+    :ok
   end
 
   # An `update_action` that names no public update action of the resource,
@@ -1091,6 +1222,54 @@ defmodule AshTable.Model do
             nil
         end
     end
+  end
+
+  # The inputs of the argument line: the public arguments of the action the
+  # table reads through, in the action's order, then the arguments the
+  # columns ask for, in the order of the columns. An argument the line has
+  # no input for is not on it.
+  defp arguments(resource, read_action, fields) do
+    labels = Map.new(TableInfo.arguments(resource), &{&1.name, &1.label})
+
+    read =
+      for %{editor: editor} = input when not is_nil(editor) <- Arguing.inputs(read_action) do
+        on_line(input, %{label: labels[input.name] || humanize(input.name)})
+      end
+
+    asked =
+      for {%Ash.Resource.Calculation{} = calculation, %{asks: [_ | _] = asks} = declared} <-
+            fields,
+          ask <- asks do
+        argument = Arguing.argument(calculation, ask.name)
+
+        {default, default_fun} =
+          case Arguing.default(argument, ask) do
+            {:value, value} -> {value, nil}
+            {:function, fun} -> {nil, fun}
+            :none -> {nil, nil}
+          end
+
+        argument
+        |> Arguing.input()
+        |> on_line(%{
+          column: declared.key,
+          label: ask.label || humanize(ask.name),
+          column_label: if(is_nil(ask.label), do: declared.label || humanize(declared.key)),
+          default: default,
+          default_fun: default_fun
+        })
+      end
+
+    read ++ asked
+  end
+
+  defp on_line(input, more) do
+    struct!(
+      Argument,
+      input
+      |> Map.take([:name, :type, :cell_type, :values, :editor, :default, :required?])
+      |> Map.merge(more)
+    )
   end
 
   @doc """
@@ -1257,6 +1436,7 @@ defmodule AshTable.Model do
       editor: update_action && :reference,
       confirm: update_action && declared && declared.confirm,
       name: relationship.name,
+      field: relationship.name,
       kind: :reference,
       label: (declared && declared.label) || humanize(relationship.name),
       type: {type, constraints},
@@ -1289,17 +1469,23 @@ defmodule AshTable.Model do
         :none -> nil
       end
 
-    label = (declared && declared.label) || humanize(field.name)
+    # what the column is called, where the block gives it another name
+    name = (declared && declared.as) || field.name
+    label = (declared && declared.label) || humanize(name)
     component = component!(resource, field, declared, label, not is_nil(update_action))
+    fixed = Map.new((declared && declared.arguments) || [])
 
     %Column{
+      fixed: fixed,
+      arguments: fixed,
       editable?: not is_nil(update_action),
       update_action: update_action,
       editor: update_action && editor(cell_type, component, type, constraints),
       fields: fields(cell_type, type, constraints),
       confirm: update_action && declared && declared.confirm,
       component: component,
-      name: field.name,
+      name: name,
+      field: field.name,
       kind: kind(field),
       label: label,
       type: {type, constraints},

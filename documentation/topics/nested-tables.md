@@ -121,6 +121,7 @@ relationship.
 | has-many, many-to-many, through a read action without `pagination` | Every related record, with sort and filters. | Labels. |
 | belongs-to, has-one | At most one row. No sort, no filters, no pages. | Project, Assignee, Reported by; First comment and Newest comment. |
 | A relationship with `no_attributes?` | Every related record, with sort and filters, also when the action has `pagination`: Ash cannot page it. | (none) |
+| has-many, many-to-many, through a read action that requires an argument | Every related record, with sort and filters, once the argument is given in the nested table's [argument line](arguments.md#nested-tables-the-full-view-and-the-picker): Ash cannot page related records through such an action. | (none) |
 | A manual relationship | Every related record. No sort, no filters, no pages: whether its module honours a sort or a filter is not something a table can know. Offered only when declared. | (none) |
 
 Three rules decide which records and in which order:
@@ -235,9 +236,10 @@ carries the nested table's query: its sort, its filters and its page. This
 happens when the line is opened and again at every change of the nested
 table's sort, filters or page.
 
-The parent is read through the read action of the table that shows it: the
-read action of the table on the page for one of its rows, and for a row of
-a nested table the action that nested table reads through. So a row a table
+The parent is read through the read action of the table that shows it, with
+the [arguments](arguments.md) that table was given: the read action of the
+table on the page for one of its rows, and for a row of a nested table the
+action that nested table reads through. So a row a table
 shows is a row it can open, and a key reaches no record that the table keeps
 back. The related records are read through the relationship's own
 `read_action` when it names one, else through the read action of the
@@ -465,6 +467,7 @@ person makes writes a clean address.
 | `comment[of][task][labels]=…` (a relationship to another resource), `task_label[of][task][task_labels]=…` (a private one) | The table, not limited. |
 | `comment[of][task][comments]=not-a-key` | The table, not limited. |
 | `task[of][user][assigned_tasks]=…` (the people's table says `max_depth 0`) | The table, not limited. |
+| `comment[of][deadline][comments]=…` (the parent's table reads through an action that requires an argument, which an address cannot give it) | The table, not limited. Such a table has no "Open in full view" under its nested tables either. |
 | The key of a task that does not exist, or of one in another organization | "This record is no longer available.", no rows, and a heading that names no record. |
 
 ### The heading
@@ -666,6 +669,10 @@ in a nested table for each of its rows.
 
 ## Edge cases
 
+- **A nested table has the argument line of the action it reads through**,
+  whichever table's it is, and keeps what a person gave there itself, as its
+  sort and filters: see
+  [Arguments](arguments.md#nested-tables-the-full-view-and-the-picker).
 - **A record that no longer matches the relationship stays in place** until
   the nested table reads again. Editing a comment or a task under a row
   saves, and the row is shown from what the action returns, as on a page.

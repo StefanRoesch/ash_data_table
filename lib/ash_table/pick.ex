@@ -24,9 +24,12 @@ defmodule AshTable.Pick do
   # `choose_action` its records are read through, and the
   # `destination_attribute` whose value is the foreign key.
 
-  #
   # Both read as the picker's table does: for the person asking, in their
-  # tenant, and with authorization as that table has it (`reader/2`).
+  # tenant, and with authorization as that table has it (`reader/2`). Where
+  # the picker's read action takes arguments, a record is read with those
+  # the picker's table held when it was chosen (`:arguments`: the
+  # `read_arguments` of that table's model); without any, the action runs
+  # with its defaults.
 
   alias AshTable.Query
   alias AshTable.Record
@@ -74,12 +77,14 @@ defmodule AshTable.Pick do
   as `opts` say who is asking. `:error` when it names nothing they may read
   through the picker's read action.
 
-  Takes the options of `reader/2`.
+  Takes the options of `reader/2`, and `:arguments`: what the picker's read
+  action is given.
   """
   @spec chosen(referred, term, keyword) :: {:ok, Ash.Resource.record()} | :error
   def chosen(%{destination: destination, choose_action: action} = reference, named, opts) do
     with %{} = key <- Record.key(destination, named),
-         {:ok, %_{} = record} <- Query.get(destination, action, key, reader(reference, opts)) do
+         {:ok, %_{} = record} <-
+           Query.get(destination, action, key, arguments(opts), reader(reference, opts)) do
       {:ok, record}
     else
       _not_a_key_or_not_theirs -> :error
@@ -105,12 +110,14 @@ defmodule AshTable.Pick do
   The record a foreign key points at, as the person may read it through the
   picker's read action: the one of the destination whose destination
   attribute is `value`. `:error` when there is none for them, and when
-  `value` is nothing that attribute can hold.
+  `value` is nothing that attribute can hold. Takes the options of
+  `chosen/3`.
   """
   @spec current(referred, term, keyword) :: {:ok, Ash.Resource.record()} | :error
   def current(_reference, nil, _opts), do: :error
 
   def current(%{destination: destination, choose_action: action} = reference, value, opts) do
+    arguments = arguments(opts)
     opts = reader(reference, opts)
     attribute = Ash.Resource.Info.attribute(destination, reference.destination_attribute)
 
@@ -119,13 +126,15 @@ defmodule AshTable.Pick do
          {:ok, %_{} = record} <-
            destination
            |> Ash.Query.filter(^ref(attribute.name) == ^value)
-           |> Ash.Query.for_read(action, %{}, opts)
+           |> Ash.Query.for_read(action, arguments, opts)
            |> Ash.read_one(opts) do
       {:ok, record}
     else
       _none_or_not_theirs -> :error
     end
   end
+
+  defp arguments(opts), do: Keyword.get(opts, :arguments) || %{}
 
   @doc """
   Whether the records of a page are the one a foreign key points at: for

@@ -357,7 +357,7 @@ end
 | Field | Example in the demo | What happens |
 | --- | --- | --- |
 | A private attribute, calculation or aggregate | `Task.internal_note`, `Task.stale?` | Not in the default set. Named as a `column`, it is reported when the resource is compiled. |
-| A calculation with a required argument that has no default | `Task.due_within?`, which needs `days` | Reported when the resource is compiled. A table has no place where a person could supply the argument. |
+| A calculation with a required argument that the column gives neither way | `Task.due_within?`, which needs `days`, named as a bare `column` | Reported when the resource is compiled. The column fixes the argument with `arguments`, or asks the person for it with `ask`: see [Arguments](arguments.md#the-arguments-of-a-calculation). |
 | A relationship that is not a belongs-to | `Task.comments`, `Task.latest_comment` | Reported when the resource is compiled. Many records, or one of many, are a [nested table](nested-tables.md) under the row. |
 | A belongs-to whose destination has no table, or no `label_field` | | Reported when the resource is compiled: there is nothing to call the related record by. |
 | A belongs-to, an aggregate, or a calculation that holds an aggregate, that Ash reads through a private action | | Reported when the resource is compiled: a table runs no private action. |
@@ -370,11 +370,12 @@ back. The same holds for actions: every action a table runs is `public?`,
 the ones it reaches through a column among them. See
 [Authorization](authorization.md#every-action-a-table-runs-is-public).
 
-The calculation the demo keeps for this case:
+The calculation the demo has of this kind:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
-# A calculation with a required argument: it cannot be a column.
+# A calculation with a required argument: a column of it has to say what
+# the argument is, or ask for it.
 calculate :due_within?,
           :boolean,
           expr(not is_nil(due_on) and due_on <= date_add(today(), ^arg(:days), :day)) do
@@ -388,7 +389,24 @@ end
 ```
 
 A calculation whose arguments are all optional or have defaults can be a
-column. The exact messages are in
+column as it is. One that needs an argument is a column that gives it: the
+demo shows this one twice, once with seven days fixed and once asking the
+person for the days, under a name of its own.
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+column :due_within? do
+  label "Due within 7 days"
+  arguments days: 7
+end
+
+column :due_within? do
+  as :due_within
+  ask :days, default: 30
+end
+```
+
+[Arguments](arguments.md) has the rest, and the exact messages are in
 [Mistakes at compile time](mistakes-at-compile-time.md).
 
 A column that the block declares can still be missing for one person: a field

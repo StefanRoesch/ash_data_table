@@ -21,7 +21,7 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
           message <- messages(column, field(dsl, column.name), module) do
         DslError.exception(
           module: module,
-          path: [:table, :column, column.name, :component],
+          path: [:table, :column, column.key, :component],
           message: message,
           location: Spark.Dsl.Entity.property_anno(column, :component)
         )

@@ -26,6 +26,7 @@ sorted.
 | --- | --- |
 | The sorted column and its direction | Which cell has focus |
 | Every filter that applies: column, operator, value | A filter value that was rejected as invalid |
+| What the person gave the arguments of the read action, and those a column asks for | An argument's value that Ash refused; an argument that is as its input shows it with nothing chosen |
 | The page number (offset) or the cursor (keyset) | An open editor, an open action panel, and what is typed in them |
 | The parent a table is limited to: the full view of a nested table | Cells whose save failed |
 | | Which rows are expanded, and the sort, filters and page of the tables nested in them |
@@ -54,9 +55,14 @@ cannot collide with the page's own parameters or with another table's.
 | A filter whose operator takes no value | `ID[f][COLUMN][OPERATOR]=` | `task[f][due_on][is_empty]=` |
 | A yes-or-no choice | `ID[f][COLUMN]=yes` or `=no` | `task[f][billable%3F]=yes` |
 | A choice of an enum value | `ID[f][COLUMN]=VALUE` | `task[f][status]=in_review` |
+| An argument of the read action | `ID[a][ARGUMENT]=VALUE` | `task[a][search]=login` |
+| An argument a column asks for | `ID[c][COLUMN][ARGUMENT]=VALUE` | `task[c][due_within][days]=14` |
+| An argument that is a list | `ID[a][ARGUMENT][]=VALUE`, once per value | `deadline[a][tags][]=api` |
 | Limited to the records related to one record | `ID[of][PARENT][RELATIONSHIP]=KEY` | `comment[of][task][comments]=3f649715-…` |
 
-`COLUMN` is the field's name. The operators are named `contains`, `equals`,
+`COLUMN` is the field's name, or the name its column gives itself with `as`;
+[Arguments](arguments.md) has what an argument's value is and when it is
+applied. The operators are named `contains`, `equals`,
 `starts_with`, `is_empty`, `greater_than`, `less_than`, `at_least`,
 `at_most`, `on`, `before` and `after`; [Filtering](filtering.md) says which
 column offers which, and which one is the default. A cursor is the opaque
@@ -134,6 +140,8 @@ person meets it is dropped silently, and the rest is applied.
 | A value that is not one of the column's type | `task[f][progress]=abc` | No filter |
 | Two operators for one column | `task[f][title][contains]=a&task[f][title][equals]=b` | No filter |
 | A column the person can never see | `task[f][external_ref]=EXT`, as Max Member | No filter |
+| An argument the read action does not take from the outside, or a column does not ask for | `task[a][secret]=x`, `task[c][due_within%3F][days]=1` | Not given |
+| An argument's value that Ash refuses | `task[c][due_within][days]=-1` | Not applied; shown in its input with Ash's message |
 | A limit that names no relationship the person is offered to this table: an unknown resource, a relationship to another table, a private one, a key that is not one | `comment[of][task][labels]=…` | The table, not limited |
 | Parameters that are not the table's | `utm=mail` | Left as they are, and kept when the table patches the URL |
 
@@ -142,8 +150,8 @@ person makes writes a clean address.
 
 ## Shared links
 
-A link carries the sort, the filters and the page. It does not carry the
-person. Whoever opens it sees the table as the resource lets them see it:
+A link carries the sort, the filters, the arguments and the page. It does
+not carry the person. Whoever opens it sees the table as the resource lets them see it:
 their records, their columns. A link that sorts or filters by a column the
 receiver has no access to shows them the table without that sort or filter.
 [Authorization](authorization.md) has the details.

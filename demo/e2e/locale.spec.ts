@@ -114,6 +114,8 @@ test.describe("in German", () => {
       "Überfällig?",
       "Kommentare",
       "Überschrift",
+      "Fällig binnen 7 Tagen",
+      "Fällig binnen",
       "Externe Referenz",
       "Beschreibung",
       "Schlagwörter",
@@ -128,6 +130,7 @@ test.describe("in German", () => {
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText([
       "ash_table demo",
       "Tasks",
+      "Deadlines",
       "Projects",
       "Comments",
       "Labels",

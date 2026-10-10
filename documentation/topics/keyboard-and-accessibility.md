@@ -40,8 +40,9 @@ order, not 425.
   cell of the first row of records.
 - The cell a person moved to is the one Tab returns to.
 - The controls around the grid are ordinary tab stops: the create button on
-  the line of the table's name, where the table has one, the buttons of the
-  line above the grid ("Clear selection" and the bulk actions, while rows
+  the line of the table's name, where the table has one, the inputs of the
+  [argument line](arguments.md), where the table has arguments, the buttons
+  of the line above the grid ("Clear selection" and the bulk actions, while rows
   are selected, and "Clear filters", while a filter applies), and the
   pagination buttons below it.
 - Moving about never contacts the server. Neither does selecting rows.
@@ -103,6 +104,29 @@ After a filter is cleared with its own button, focus goes to its cell. After
 button that had focus is gone, and focus is not left on nothing.
 
 When a filter applies and what it matches is in [Filtering](filtering.md).
+
+## The argument line from the keyboard
+
+The inputs of the [argument line](arguments.md) stand before the grid and
+are ordinary tab stops, each with its label. The keys in them are the
+browser's.
+
+| Key | Where | Effect |
+| --- | --- | --- |
+| Tab, Shift+Tab | Anywhere on the line | To the next and the previous input, and from the last one into the grid. Leaving an input applies what was typed in it. |
+| Enter | In an input | Applies what the line holds now. Focus stays in the input. |
+| Space | On a box | Ticks it, which applies at once. So does a choice from a menu. |
+| Enter, Space | On "Add value" of a list | Adds a row for one more value, and focus goes into it. |
+| Enter, Space | On the button after a value of a list | Takes the value away. Focus goes to the value that stands in its place, else to the one before it, else to "Add value". |
+
+Typing sends nothing, and neither do the arrow keys in the grid afterwards.
+
+A nested table's argument line is inside the cell that holds the nested
+table, above its grid, and its inputs are ordinary tab stops as well: Tab
+from a cell of the grid around it passes through them on its way out of the
+grid, where they come after that cell in the page. They are the one thing
+inside a grid, besides the buttons of a nested table's selected rows, that
+Tab stops at. In a picker the line is above the picker's table.
 
 ## Editors from the keyboard
 
@@ -341,6 +365,9 @@ page and keeps the focus.
 | A read in progress | `aria-busy` on the grid. The previous rows stay. |
 | A filter's controls | An accessible name each: "Filter Title", "How to filter Title", "Clear the Title filter". |
 | A rejected filter value | `aria-invalid` on the input, described by "Not a valid value". |
+| An argument's input | A `<label>` for it: the argument's name, and for one a column asks for the column's label before it ("Due within: Days"). An argument of several controls (a multiple choice, a list) is a `role="group"` named by that label, and each value of a list is called by its place ("Tags 2"). `aria-required` where the argument cannot be empty. |
+| An argument's value that Ash refused | `aria-invalid` on the input, described by the action's message, which is also read out through the live region with the input's label. |
+| An argument the read action requires, while it is empty | "Fill in Due by to see records." in place of the rows, read out through the live region. The grid has its header rows only. |
 | The result of a filter change | A polite live region: "12 results", or "Results updated" when the table has no total. |
 | A boolean cell | A mark that is hidden from assistive technology, and the text "Yes" or "No". |
 | An array cell | Its values as text, separated by commas. |
@@ -500,7 +527,11 @@ column's question on top of it, with a cell whose choice was refused, and
 with the picker on top of the action panel, in both themes; with the side
 panel of an embedded resource open, with a value inside it taken away, with
 errors at its fields, and with the list of groups of an array of embedded
-resources with a value added and one refused, in both themes).
+resources with a value added and one refused, in both themes; with the
+argument line, with a value Ash refused at one of its inputs and with "Fill
+in … to see records." in place of the rows, in both themes, and with a list
+of values in it, in German, and with the line of a nested table and of a
+picker).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
@@ -515,6 +546,11 @@ panel of the demo has a datetime field, and no action of the demo has both a
 question and a panel, so that path is tested with a question put onto an
 open panel by the test. The side panel of a cell with a question is tested
 as it is: "Repeats" on `/tasks` asks when "Save" is used.
+
+The argument line is tested in the browser with what the demo's tables
+have: a text, a number, a date, a box and a list of text. A menu, a multiple
+choice and a datetime in the line are the controls of the action panel at
+another size, and are covered by the page tests on the server only.
 
 The editor of an array is tested in the browser for text, for numbers and
 for enum values, which is what the demo's tasks and specimens have. The
@@ -545,7 +581,8 @@ technology, a report of what you find is welcome in the
 ## Edge cases
 
 - **A table without records** still has its two header rows. The tab stop is
-  then the filter cell of the first column.
+  then the filter cell of the first column. So it is while an argument the
+  read action requires is empty.
 - **A closed choice menu.** In an enum editor whose menu is closed, the arrow
   keys change the value step by step without saving. Enter, or leaving the
   cell, saves the value reached.

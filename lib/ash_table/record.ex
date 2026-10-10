@@ -3,8 +3,10 @@ defmodule AshTable.Record do
   # One record of a table, read for the person asking. The table does not
   # keep the records it shows, so the record of a row is read again before
   # anything is done with it, by primary key, as that person and through
-  # the read action the table reads its pages through: the same action, the
-  # same policies and field policies as when the page was read.
+  # the read action the table reads its pages through: the same action, with
+  # the same arguments, and so the same policies and field policies as when
+  # the page was read. A record that the action no longer returns for those
+  # arguments is, for this table, not there.
 
   alias AshTable.Model
   alias AshTable.Query
@@ -15,7 +17,7 @@ defmodule AshTable.Record do
   """
   @spec fetch(Model.t(), map, keyword) :: {:ok, Ash.Resource.record()} | :error
   def fetch(%Model{} = model, key, opts) when is_map(key) do
-    case Query.get(model.resource, model.read_action, key, opts) do
+    case Query.get(model.resource, model.read_action, key, model.read_arguments, opts) do
       {:ok, %_{} = record} -> {:ok, record}
       _not_found_or_refused -> :error
     end

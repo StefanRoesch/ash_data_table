@@ -203,6 +203,31 @@ export class Table {
     return this.byId(`${this.id}-clear-filters`)
   }
 
+  // ---- the argument line ---------------------------------------------------
+
+  /** The line of inputs above the grid: the form of the table's arguments. */
+  get argumentLine(): Locator {
+    return this.byId(`${this.id}-arguments`)
+  }
+
+  /**
+   * The input of an argument: of the read action by its name ("search"), of
+   * one a column asks for by the column and its name ("due_within-days").
+   */
+  argument(name: string): Locator {
+    return this.byId(`${this.id}-arg-${name}`)
+  }
+
+  /** What Ash says of a value it refuses, under the argument's input. */
+  argumentError(name: string): Locator {
+    return this.byId(`${this.id}-arg-${name}-error`)
+  }
+
+  /** "Fill in … to see records.", in place of the rows. */
+  get fill(): Locator {
+    return this.byId(`${this.id}-fill`)
+  }
+
   /** The live region: what is read out after a filter change or a failed save. */
   get status(): Locator {
     return this.byId(`${this.id}-status`)
@@ -686,12 +711,15 @@ export class Table {
         // The buttons of a nested table's dialog are in the grid around it,
         // and are nothing Tab can reach while the dialog is closed. Nor are
         // the buttons of a nested table's line above its grid, which are not
-        // shown while none of its rows is selected.
+        // shown while none of its rows is selected. The inputs of a nested
+        // table's argument line are tab stops of their own, on purpose
+        // (arguments.spec.ts), and are no part of the grid's one.
         .filter(
           (element) =>
             element.tabIndex >= 0 &&
             !(element as HTMLButtonElement).disabled &&
             !element.closest("dialog:not([open])") &&
+            !element.closest("form[data-arguments]") &&
             element.getClientRects().length > 0,
         )
         .map((element) => element.id || element.tagName),

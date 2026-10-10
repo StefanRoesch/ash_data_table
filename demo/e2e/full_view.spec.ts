@@ -196,9 +196,14 @@ test.describe("the page a link leads to", () => {
     await expect(tasks.relatedClear).toHaveRole("link")
     await expect(tasks.relatedClear).toHaveText("Show all records")
 
-    // from the grid backwards: "Show all records", the create button
-    // before it on the same line (actions.spec.ts), then the parent
+    // from the grid backwards: the two inputs of the argument line
+    // (arguments.spec.ts), "Show all records", the create button before it
+    // on the same line (actions.spec.ts), then the parent
     await tasks.cell(await tasks.rowKey(1), "title").focus()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.argument("due_within-days")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.relatedClear).toBeFocused()
     await page.keyboard.press("Shift+Tab")

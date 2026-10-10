@@ -146,6 +146,7 @@ as an admin area that the router already restricts.
 | The person sees a field on **some records only**: a field policy with a check on the record | The column stays. Hidden cells are empty, announced as "Not available", and cannot be edited. | "Estimate hours" on `/tasks` as Max Member. |
 | The person can **never read a related resource** that a column or a row leads to | A [reference cell](nested-tables.md#the-reference-cell) of that relationship has no column for them, and the relationship has no line under an expanded row. | `/tasks` as Vera Viewer: no "Assignee" column, and no "Assignee" line under a task. |
 | The person may **not read one related record** | Its reference cell is empty, as for no related record. In a nested table its row is not there. | A task assigned to somebody of another organization. |
+| An **argument** of the read action, or of a calculation, is `public? false`, or is not asked for by a column | It is never on the [argument line](arguments.md), and nothing a person sends reaches it. What they give the public ones is given to Ash as they typed it, and Ash casts it. | `/tasks`: "Search", and the days of "Due within". |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. | `/tasks` as Vera Viewer. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. | `/tasks` as Max Member, on a task that is not his. |
 | The person can **never run any row action** on several rows | The table has no boxes to select rows with, and no line of buttons above the grid. | `/tasks` as Vera Viewer. |
@@ -325,7 +326,9 @@ resource.
 ### What a table reads by itself
 
 A table reads more than its pages. Each of these reads goes through a read
-action that was looked at:
+action that was looked at, and each read through the table's own read
+action is given the [arguments](arguments.md#where-the-arguments-are-given)
+the person gave it on the page:
 
 - **The record of a row, before a cell of it is saved or a row action
   runs**: through the table's read action. A row the table shows is a row it

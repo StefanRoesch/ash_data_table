@@ -60,7 +60,7 @@ test.describe("the page", () => {
     ])
     await expect(projects.rows).toHaveCount(SEED.projects.acme)
     await expect(projects.range).toHaveText("1–6 of 6")
-    await expect(tasks.headers).toHaveCount(20)
+    await expect(tasks.headers).toHaveCount(22)
     await expect(tasks.rows).toHaveCount(25)
     await expect(tasks.range).toHaveText(`1–25 of ${SEED.tasks.acme}`)
     expect((await tasks.rowKeys()).slice(0, 2)).toEqual([FIRST, SECOND])
@@ -179,6 +179,11 @@ test.describe("two grids on one page", () => {
     // above the second grid, on the line of its name: its create button
     await page.keyboard.press("Tab")
     await expect(tasks.create).toBeFocused()
+    // then the inputs of its argument line
+    await page.keyboard.press("Tab")
+    await expect(tasks.argument("search")).toBeFocused()
+    await page.keyboard.press("Tab")
+    await expect(tasks.argument("due_within-days")).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
     await page.keyboard.press("Tab")
@@ -186,6 +191,10 @@ test.describe("two grids on one page", () => {
 
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.argument("due_within-days")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Shift+Tab")
@@ -239,14 +248,11 @@ test.describe("two grids on one page", () => {
     // Tab from the one comes to the cell the other was left on
     await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
     await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
-    // between the two grids: the pages of the first, and the create button of the second
-    await page.keyboard.press("Shift+Tab")
-    await page.keyboard.press("Shift+Tab")
-    await page.keyboard.press("Shift+Tab")
+    // between the two grids: the pages of the first, and the create button
+    // and the two inputs of the argument line of the second
+    for (let stops = 0; stops < 5; stops++) await page.keyboard.press("Shift+Tab")
     await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
-    await page.keyboard.press("Tab")
-    await page.keyboard.press("Tab")
-    await page.keyboard.press("Tab")
+    for (let stops = 0; stops < 5; stops++) await page.keyboard.press("Tab")
     await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
     expect(await projects.tabStops()).toHaveLength(1)
     expect(await tasks.tabStops()).toHaveLength(1)
@@ -425,7 +431,7 @@ test.describe("as another actor", () => {
 
     test("each table is this person's: the tasks without the column they may never see", async () => {
       expect(await tasks.columns()).not.toContain("external_ref")
-      await expect(tasks.headers).toHaveCount(19)
+      await expect(tasks.headers).toHaveCount(21)
       await expect(tasks.cell(FIRST, "estimate_hours")).toHaveText("Not available")
       await expect(projects.rows).toHaveCount(SEED.projects.acme)
     })

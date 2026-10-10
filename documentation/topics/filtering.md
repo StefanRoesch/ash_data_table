@@ -37,6 +37,12 @@ Filters are combined with AND: a row has to match all of them. They combine
 with the sort. Any change of a filter returns to the first page; the sort
 stays.
 
+A calculation column that gives its calculation arguments is filtered by
+with them, and two columns of one calculation each by their own: see
+[Arguments](arguments.md#the-arguments-of-a-calculation). What a person
+gives the read action itself is not a filter of the row, though it is
+applied like one: it is on the argument line above the grid.
+
 ## Operators per type
 
 Each filter has a short list of operators. The first one applies when a value

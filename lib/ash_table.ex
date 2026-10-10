@@ -12,7 +12,8 @@ defmodule AshTable do
 
   The table offers only what the resource offers. Sorting, filtering and
   pagination run on the server through the read action; page size and default
-  sort live on that action. A cell is edited in place through the update
+  sort live on that action, and a person gives its arguments in a line of
+  inputs above the rows. A cell is edited in place through the update
   action its column names, with the cell's value as the only input, and the
   table shows what the action returns. A row has buttons for the update and
   destroy actions the block declares, and the table a button for its create
@@ -79,6 +80,11 @@ defmodule AshTable do
   reads the parameter that limits it to the records related to one record
   (`tasks[of][project][tasks]=KEY`): see `AshTable.Live.Page`.
 
+  The arguments of the table's read action, and those its columns ask for
+  (see "Arguments" in `AshTable.Resource`), are kept with the sort and the
+  filters: by the table itself, or in the `url`. A default of an asked
+  argument that is a function is given `assigns`.
+
   A nested table links to its full view wherever the host's router mounts
   the destination's table with `AshTable.Router.ash_table/3`, also from a
   table placed here.
@@ -135,6 +141,11 @@ defmodule AshTable do
     doc:
       "How the table's name is shown on the line above it, with the create button at the other end. `true` shows it as text that is no heading, since a table cannot know the outline of the page it is in; a number from 1 to 6 makes it a heading of that level; `false` leaves it out, for a page that names the table itself."
 
+  attr :assigns, :map,
+    default: %{},
+    doc:
+      "What a default of an asked argument is given when it is a function (`ask :currency, default: &MyApp.Defaults.currency/1`): the assigns of the page that it looks at, such as `%{current_user: @current_user}`. A mounted table gives such a function the assigns of its socket."
+
   def table(assigns) do
     assigns = assign_new(assigns, :grid_label, fn -> assigns.label || label(assigns.resource) end)
 
@@ -157,6 +168,7 @@ defmodule AshTable do
       label={@grid_label}
       heading={@heading}
       mounted?={false}
+      page_assigns={@assigns}
     />
     """
   end

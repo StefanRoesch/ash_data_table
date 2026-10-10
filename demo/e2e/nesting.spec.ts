@@ -253,6 +253,13 @@ test.describe("with the keyboard", () => {
     await page.keyboard.press("Shift+Tab")
     await expect(nestedTasks.cell(inner, "title")).toBeFocused()
 
+    // Backwards, the inputs of the nested table's argument line come first:
+    // they stand before its grid, and are tab stops of their own
+    // (arguments.spec.ts). Then the tree is left.
+    await page.keyboard.press("Shift+Tab")
+    await expect(nestedTasks.argument("due_within-days")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(nestedTasks.argument("search")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     expect(await tasks.hasFocus()).toBe(false)
   })

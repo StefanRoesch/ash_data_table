@@ -137,7 +137,9 @@ table does not go looking for the page that record is on.
 ## The table in the picker
 
 It is the table of the destination resource as that resource declares it:
-its columns and their labels, its filter row, its sorting and its pages. A
+its columns and their labels, its filter row, its sorting and its pages,
+and its [argument line](arguments.md) where the action it reads through
+takes arguments: in the demo the tasks to choose from can be searched. A
 person filters and sorts it as they would on its own page. Its state is its
 own: nothing of it is in the address, and closing the picker forgets it.
 

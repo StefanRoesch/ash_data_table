@@ -84,6 +84,55 @@ about what a person may not see or do.
 Page size and default sort are not part of the block. They live on the read
 action (`pagination default_limit: …` and `prepare build(sort: …)`).
 
+## Arguments
+
+A read action may take arguments, and so may a calculation. A table over
+a read action with arguments needs nothing in its block: every `public?`
+argument of the action has an input in the argument line, the line of
+inputs above the table's rows, with the control of its type and its name
+in words as its label. An `argument` gives one another label.
+
+    table do
+      read_action :search
+
+      argument :term do
+        label "Search for"
+      end
+    end
+
+What a person gives is applied as a filter is, when the input is left or
+Enter is used, and is kept where the table's sort and filters are: in the
+URL of a mounted table. It is given to Ash as it was typed, wherever the
+table runs its read action for that person. Whether an argument can be
+left empty is the action's to say: while one it requires is empty, the
+action is not run, and the table says which argument to fill in, in place
+of its rows. A value Ash refuses is shown at its input with the action's
+message, and the rows stay as they are.
+
+A column that names a calculation with arguments says what they are:
+
+    column :price_in do
+      arguments currency: :eur
+    end
+
+    column :price_in do
+      as :price_in_any
+      ask :currency, default: :usd
+    end
+
+`arguments` fixes them. `ask` leaves one to the person, who gives it in
+the argument line, after the arguments of the read action. Until they do,
+it is the `default` of the `ask`, a value or a function of the assigns of
+the page (`default: &MyApp.Defaults.currency/1`), else the default the
+argument has in the resource; an asked argument that cannot be empty has
+to have one of them. A calculation can be a column more than once: the
+second column names itself with `as`, and is called that wherever a
+column is named. Each column is loaded, sorted and filtered by with its
+own arguments.
+
+A nested table and the table in a picker read through an action of their
+own, and have the argument line of that action.
+
 ## Choosing a related record
 
 A reference cell is edited like any other cell: through an update action,
@@ -337,8 +386,10 @@ How the resource is presented to people as a table.
 
 ### Nested DSLs
  * [column](#table-column)
+   * ask
  * [relationship](#table-relationship)
  * [action](#table-action)
+ * [argument](#table-argument)
 
 
 ### Examples
@@ -386,6 +437,8 @@ column name
 
 A column of the table, showing one field of the resource, or the label of the record a belongs-to relationship leads to.
 
+### Nested DSLs
+ * [ask](#table-column-ask)
 
 
 ### Examples
@@ -420,6 +473,21 @@ end
 
 ```
 
+```
+column :price_in do
+  arguments currency: :eur
+end
+
+```
+
+```
+column :price_in do
+  as :price_in_any
+  ask :currency, default: :usd
+end
+
+```
+
 
 
 ### Arguments
@@ -431,14 +499,72 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`label`](#table-column-label){: #table-column-label } | `String.t` |  | The column header. Defaults to the humanised field name (`:id` becomes "ID"). |
+| [`as`](#table-column-as){: #table-column-as } | `atom` |  | Another name for the column, for a calculation that the table shows more than once, with other arguments: the second column of it needs a name of its own, as a calculation that is loaded twice does in Ash (`as:`). The column is sorted, filtered and kept in the URL under this name, and its header defaults to it, humanised. Not the name of a field of the resource, nor of another column. |
+| [`label`](#table-column-label){: #table-column-label } | `String.t` |  | The column header. Defaults to the humanised field name (`:id` becomes "ID"), or to the humanised `as`. |
 | [`sortable?`](#table-column-sortable?){: #table-column-sortable? } | `boolean` |  | Set to `false` to switch sorting off for this column. Defaults to what the resource allows; it cannot switch sorting on. |
 | [`filterable?`](#table-column-filterable?){: #table-column-filterable? } | `boolean` |  | Set to `false` to leave this column without a filter. Defaults to what the resource allows; it cannot switch filtering on. |
 | [`update_action`](#table-column-update_action){: #table-column-update_action } | `false \| atom` |  | The update action an inline edit of this column runs, with the column's attribute as its only input; for a column that names a relationship, the relationship's foreign key. `false` makes the column read-only. Defaults to the table's `update_action`. |
 | [`confirm`](#table-column-confirm){: #table-column-confirm } | `String.t` |  | A question asked before an inline edit of this column is saved. |
 | [`component`](#table-column-component){: #table-column-component } | `module` |  | A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of the three that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship. |
 | [`exposes_protected_field?`](#table-column-exposes_protected_field?){: #table-column-exposes_protected_field? } | `boolean` |  | Set to `true` on an aggregate or calculation column that is meant to show everyone who reads a row what a field policy protects elsewhere: a field of the related resource that the aggregate is over or filters by, or a field the calculation references. It silences the warning the compiler gives about such a column. Ash applies no field policy of what an aggregate or a calculation is made from; the column is protected by a field policy of its own on this resource. |
+| [`arguments`](#table-column-arguments){: #table-column-arguments } | `keyword` |  | The arguments the column's calculation is computed with, fixed here: `arguments currency: :eur`. For a column that names a calculation; each key an argument of it. An argument that a person is to give is declared with `ask` instead. |
 
+
+### table.column.ask
+```elixir
+ask name
+```
+
+
+An argument of the column's calculation that a person gives: it has an input in the argument line, above the table's rows, after the arguments of the read action.
+
+What the person chose is kept where the table's sort and filters are. While they have chosen nothing, the argument is the `default` of this declaration, else the default it has in the resource; a column never starts without a value for an argument that needs one.
+
+
+
+
+### Examples
+```
+ask :currency
+```
+
+```
+ask :currency, default: :eur
+```
+
+```
+ask :currency, default: &MyApp.Defaults.currency/1
+```
+
+```
+ask :days do
+  default 7
+  label "Due within (days)"
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#table-column-ask-name){: #table-column-ask-name .spark-required} | `atom` |  | The argument a person gives: an argument of the column's calculation. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`default`](#table-column-ask-default){: #table-column-ask-default } | `(any -> any) \| mfa \| any` |  | What the argument is while the person has chosen nothing: a value, or a function that is given the assigns of the page and returns one (`&MyApp.Defaults.currency/1`, or `{MyApp.Defaults, :currency, []}`, which is called with the assigns before its own arguments). Defaults to the default the argument has in the resource. An argument that cannot be empty has to have one of the two. |
+| [`label`](#table-column-ask-label){: #table-column-ask-label } | `String.t` |  | What the argument's input is called in the argument line. Defaults to the column's label and the humanised argument name ("Price in: Currency"). |
+
+
+
+
+
+### Introspection
+
+Target: `AshTable.Resource.Ask`
 
 
 
@@ -559,6 +685,48 @@ end
 ### Introspection
 
 Target: `AshTable.Resource.Action`
+
+### table.argument
+```elixir
+argument name
+```
+
+
+What an argument of the table's read action is called in the argument line: the line of inputs above the table's rows.
+
+Nothing has to be declared for an argument to be there: every public argument of the read action has an input, in the action's order, with the control of its type. A declaration gives one of them another label.
+
+
+
+
+### Examples
+```
+argument :search do
+  label "Search for"
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#table-argument-name){: #table-argument-name .spark-required} | `atom` |  | The argument: a public argument of the read action behind the table. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`label`](#table-argument-label){: #table-argument-label } | `String.t` |  | What the argument's input is called in the argument line. Defaults to the humanised argument name. |
+
+
+
+
+
+### Introspection
+
+Target: `AshTable.Resource.Argument`
 
 
 

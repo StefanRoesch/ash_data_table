@@ -52,6 +52,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/columns-and-defaults.md",
         "documentation/topics/reading-sorting-and-pagination.md",
         "documentation/topics/filtering.md",
+        "documentation/topics/arguments.md",
         "documentation/topics/state-in-the-url.md",
         "documentation/topics/inline-editing.md",
         "documentation/topics/confirm.md",
@@ -92,6 +93,8 @@ defmodule AshTable.MixProject do
           AshTable.Resource.Column,
           AshTable.Resource.Relationship,
           AshTable.Resource.Action,
+          AshTable.Resource.Argument,
+          AshTable.Resource.Ask,
           AshTable.Domain.Info
         ]
       ]

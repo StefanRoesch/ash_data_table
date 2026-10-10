@@ -90,10 +90,10 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["2"]
       assert attribute(html, "#task-head-title", "aria-colindex") == ["3"]
       assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["3"]
-      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["19"]
-      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["22"]
+      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["21"]
+      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["24"]
       # the boxes, the expanders, the 19 columns and the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["23"]
+      assert attribute(html, "#task-table", "aria-colcount") == ["25"]
       # and not one of the table's columns
       assert hd(headers(html, "task")) == "Title"
     end
@@ -275,7 +275,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='task-row-#{task.id}-c-title']") == "Write the report"
 
       # the boxes, the expanders, 19 columns and the actions
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["23"]
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["25"]
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
     end
 

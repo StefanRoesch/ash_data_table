@@ -81,6 +81,55 @@ defmodule AshTable.Resource do
   Page size and default sort are not part of the block. They live on the read
   action (`pagination default_limit: …` and `prepare build(sort: …)`).
 
+  ## Arguments
+
+  A read action may take arguments, and so may a calculation. A table over
+  a read action with arguments needs nothing in its block: every `public?`
+  argument of the action has an input in the argument line, the line of
+  inputs above the table's rows, with the control of its type and its name
+  in words as its label. An `argument` gives one another label.
+
+      table do
+        read_action :search
+
+        argument :term do
+          label "Search for"
+        end
+      end
+
+  What a person gives is applied as a filter is, when the input is left or
+  Enter is used, and is kept where the table's sort and filters are: in the
+  URL of a mounted table. It is given to Ash as it was typed, wherever the
+  table runs its read action for that person. Whether an argument can be
+  left empty is the action's to say: while one it requires is empty, the
+  action is not run, and the table says which argument to fill in, in place
+  of its rows. A value Ash refuses is shown at its input with the action's
+  message, and the rows stay as they are.
+
+  A column that names a calculation with arguments says what they are:
+
+      column :price_in do
+        arguments currency: :eur
+      end
+
+      column :price_in do
+        as :price_in_any
+        ask :currency, default: :usd
+      end
+
+  `arguments` fixes them. `ask` leaves one to the person, who gives it in
+  the argument line, after the arguments of the read action. Until they do,
+  it is the `default` of the `ask`, a value or a function of the assigns of
+  the page (`default: &MyApp.Defaults.currency/1`), else the default the
+  argument has in the resource; an asked argument that cannot be empty has
+  to have one of them. A calculation can be a column more than once: the
+  second column names itself with `as`, and is called that wherever a
+  column is named. Each column is loaded, sorted and filtered by with its
+  own arguments.
+
+  A nested table and the table in a picker read through an action of their
+  own, and have the argument line of that action.
+
   ## Choosing a related record
 
   A reference cell is edited like any other cell: through an update action,
@@ -329,6 +378,33 @@ defmodule AshTable.Resource do
   built with it. A column that names a relationship has no component.
   """
 
+  @ask %Spark.Dsl.Entity{
+    name: :ask,
+    describe: """
+    An argument of the column's calculation that a person gives: it has an input in the argument line, above the table's rows, after the arguments of the read action.
+
+    What the person chose is kept where the table's sort and filters are. While they have chosen nothing, the argument is the `default` of this declaration, else the default it has in the resource; a column never starts without a value for an argument that needs one.
+    """,
+    examples: [
+      "ask :currency",
+      "ask :currency, default: :eur",
+      "ask :currency, default: &MyApp.Defaults.currency/1",
+      """
+      ask :days do
+        default 7
+        label "Due within (days)"
+      end
+      """
+    ],
+    target: AshTable.Resource.Ask,
+    args: [:name],
+    # No `identifier`: Spark (2.7.6) looks for the identifier of an entity
+    # nested in another among the entities around it, and would take two
+    # columns of one calculation for one. That an argument is asked once is
+    # checked with the column (`AshTable.Resource.Arguing`).
+    schema: AshTable.Resource.Ask.schema()
+  }
+
   @column %Spark.Dsl.Entity{
     name: :column,
     describe:
@@ -352,11 +428,26 @@ defmodule AshTable.Resource do
       column :progress do
         component AshTable.Components.Slider
       end
+      """,
+      """
+      column :price_in do
+        arguments currency: :eur
+      end
+      """,
+      """
+      column :price_in do
+        as :price_in_any
+        ask :currency, default: :usd
+      end
       """
     ],
     target: AshTable.Resource.Column,
     args: [:name],
-    identifier: :name,
+    # `as` where the block gives one, else the name: see
+    # `AshTable.Resource.Column.transform/1`
+    identifier: :key,
+    transform: {AshTable.Resource.Column, :transform, []},
+    entities: [asks: [@ask]],
     # named without a dependency of the resource on the module: a component
     # is a module of the web layer, and is looked at once everything is
     # compiled (`VerifyComponents`)
@@ -385,6 +476,26 @@ defmodule AshTable.Resource do
     args: [:name],
     identifier: :name,
     schema: AshTable.Resource.Relationship.schema()
+  }
+
+  @argument %Spark.Dsl.Entity{
+    name: :argument,
+    describe: """
+    What an argument of the table's read action is called in the argument line: the line of inputs above the table's rows.
+
+    Nothing has to be declared for an argument to be there: every public argument of the read action has an input, in the action's order, with the control of its type. A declaration gives one of them another label.
+    """,
+    examples: [
+      """
+      argument :search do
+        label "Search for"
+      end
+      """
+    ],
+    target: AshTable.Resource.Argument,
+    args: [:name],
+    identifier: :name,
+    schema: AshTable.Resource.Argument.schema()
   }
 
   @action %Spark.Dsl.Entity{
@@ -480,7 +591,7 @@ defmodule AshTable.Resource do
           "How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown."
       ]
     ],
-    entities: [@column, @relationship, @action]
+    entities: [@column, @relationship, @action, @argument]
   }
 
   use Spark.Dsl.Extension,

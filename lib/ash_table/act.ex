@@ -229,7 +229,8 @@ defmodule AshTable.Act do
   nobody chose, and one whose value is no key at all, which the action
   says itself.
 
-  `opts` are those of `AshTable.Pick.reader/2`.
+  `opts` are those of `AshTable.Pick.reader/2`, and `:picked_with`: what the
+  picker's read action was given for a key that was chosen there.
   """
   @spec unchosen([Model.Input.t()], map, Ash.Resource.record() | nil, keyword) ::
           [Model.Input.t()]
@@ -239,12 +240,23 @@ defmodule AshTable.Act do
         typed not in [nil, ""],
         {:ok, value} when not is_nil(value) <- [Ash.Type.cast_input(type, typed, constraints)],
         is_nil(record) or not held?(record, input.name, value),
-        Pick.current(reference, value, opts) == :error do
+        Pick.current(reference, value, chosen_with(opts, input, typed)) == :error do
       input
     end
   end
 
   def unchosen(_inputs, _params, _record, _opts), do: []
+
+  # A key that was chosen in the picker is looked up as it was found there:
+  # with what the picker's read action was given then (`:picked_with`: by
+  # input, the key as it was written and those arguments). Any other key
+  # through the action as it is.
+  defp chosen_with(opts, %{name: name}, typed) do
+    case Keyword.get(opts, :picked_with, %{}) do
+      %{^name => {^typed, arguments}} -> Keyword.put(opts, :arguments, arguments)
+      _typed_or_none -> Keyword.delete(opts, :arguments)
+    end
+  end
 
   # two keys that are written alike are the same key
   defp held?(record, name, value) do

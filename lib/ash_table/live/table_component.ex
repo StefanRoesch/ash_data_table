@@ -42,6 +42,30 @@ defmodule AshTable.Live.TableComponent do
   #     click: `phoenix_html`, which a Phoenix application loads, asks the
   #     browser's own `confirm` for every click inside such an element.
   #
+  # ## The argument line
+  #
+  # A table whose read action takes arguments from a person, or whose
+  # columns ask for arguments of their calculations, has a line of inputs
+  # above its grid: the form `ID-arguments`, with one control per argument
+  # (`ID-arg-NAME` for an argument of the read action, `ID-arg-COLUMN-NAME`
+  # for one a column asks for), each with its label, and under it what Ash
+  # says of a value it refuses (`…-error`). The controls are ordinary tab
+  # stops, in a nested table too.
+  #
+  # The form sends everything it holds when a control changes or loses the
+  # focus, and on Enter, as the filter row does. What a person chose is part
+  # of the state (`AshTable.State`), and so lives where the sort and the
+  # filters live. A value Ash refuses is not taken into the state: it stays
+  # in its input, marked, with Ash's message (`refused`), and the rows stay
+  # as they are. While an argument the read action requires is empty the
+  # action is not run: `ID-fill` says which argument to fill in, in place of
+  # the rows.
+  #
+  # The values of an array that is given value by value are rows the server
+  # renders, with a button each that takes the value away and one that adds
+  # a row (`argument_remove`, `argument_add`); what the rows hold, the empty
+  # ones among them, is kept beside the state (`lines`).
+  #
   # ## Selecting rows
   #
   # A table whose rows can be selected has a first column of boxes, before
@@ -191,6 +215,16 @@ defmodule AshTable.Live.TableComponent do
      # a nested table is rendered before its first read has come back
      |> stream(:rows, [])
      |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)
+     # The argument line. `missing` are the arguments the read action does
+     # not run without and that are empty, and `fill` what the table says in
+     # place of its rows while there are any. `refused` holds, by argument,
+     # what a person typed that Ash does not take, with Ash's messages, and
+     # `lines` the rows of the arguments that are given value by value.
+     # `page_assigns` are the assigns of the page, which a default of an
+     # asked argument may be a function of, and `parent_arguments` what the
+     # read action of the table around a nested one is given.
+     |> assign(missing: [], fill: nil, refused: %{}, lines: %{})
+     |> assign(page_assigns: %{}, parent_arguments: %{})
      # Whether the table is a page of its own, which a refused read can turn
      # into "not found", and whether a refused read has left it with nothing
      # to show at all.
@@ -260,7 +294,7 @@ defmodule AshTable.Live.TableComponent do
           assigns,
           [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
-            [:select, :choose]
+            [:select, :choose, :page_assigns, :parent_arguments]
         )
       )
 
@@ -286,8 +320,20 @@ defmodule AshTable.Live.TableComponent do
       socket.assigns.built.model
       |> Model.for_actor(reader(socket.assigns))
       |> in_words()
+      |> Model.defaults(socket.assigns.page_assigns)
 
-    state = current_state(socket.assigns, model)
+    # What the person chose for the arguments is given to Ash to look at,
+    # here and before every read: the model then holds what the read action
+    # and the calculations are given. What Ash refuses is not kept.
+    {state, model, missing, refused} =
+      settle(model, current_state(socket.assigns, model), reader(socket.assigns))
+
+    # what was refused before is shown for as long as nothing else has
+    # taken its place
+    refused =
+      socket.assigns.refused
+      |> Map.filter(fn {key, %{held: held}} -> Map.get(state.arguments, key) == held end)
+      |> Map.merge(refused)
 
     # How deep a person can expand is said by the table on the page, for
     # everything beneath it.
@@ -299,6 +345,8 @@ defmodule AshTable.Live.TableComponent do
     {:ok,
      socket
      |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     |> assign(missing: missing, refused: refused)
+     |> assign(lines: lines(socket.assigns.lines, model, state, refused))
      # whether the rows have an actions cell: the last column of the grid
      |> assign(acting?: model.actions != [])
      |> assign(depth_limit: depth_limit)
@@ -486,6 +534,26 @@ defmodule AshTable.Live.TableComponent do
 
     relationships = Enum.map(model.relationships, &%{&1 | label: Text.label(&1.label)})
 
+    # An argument is called by its label; one that a column asks for, and
+    # that has no label of its own, by the column's label and its own name,
+    # so that it says which column it belongs to.
+    arguments =
+      for argument <- model.arguments do
+        label = Text.label(argument.label)
+
+        label =
+          case argument.column_label do
+            nil -> label
+            column -> Text.t(:argument_of, column: Text.label(column), argument: label)
+          end
+
+        values =
+          argument.values &&
+            Enum.map(argument.values, fn {value, label} -> {value, Text.label(label)} end)
+
+        %{argument | label: label, column_label: nil, values: values}
+      end
+
     # an input of an attribute the table has a column for is called what
     # that column is; the others by their own names
     action = fn action ->
@@ -518,6 +586,7 @@ defmodule AshTable.Live.TableComponent do
     %{
       model
       | columns: columns,
+        arguments: arguments,
         relationships: relationships,
         actions: Enum.map(model.actions, action),
         create: create
@@ -550,6 +619,53 @@ defmodule AshTable.Live.TableComponent do
   # What it kept is fitted to the model of the person who is asking now.
   defp current_state(%{state: state}, model), do: State.fit(state, model)
 
+  # What the arguments of a state come to for this person: the model with
+  # them (`AshTable.Model.supply/2`), the arguments the read action
+  # requires that are empty, and what Ash refuses of what the person chose,
+  # by argument, with what they typed. A value Ash refuses is taken out of
+  # the state, and the rest is asked about again without it. Nothing is
+  # read for it.
+  defp settle(model, state, reader, refused \\ %{}) do
+    supplied = Model.supply(model, state.arguments)
+    %{missing: missing, refused: said} = Query.arguments(supplied, reader)
+    # only what a person chose is theirs to be refused
+    said = Map.take(said, Map.keys(state.arguments))
+
+    if said == %{} do
+      {state, supplied, missing, refused}
+    else
+      refused =
+        for {key, messages} <- said, into: refused do
+          {key, %{typed: Map.fetch!(state.arguments, key), messages: messages, held: nil}}
+        end
+
+      settle(model, State.withdraw(state, Map.keys(said)), reader, refused)
+    end
+  end
+
+  # What an argument's input shows: what was typed and refused, else what
+  # the person chose, else what it holds with nothing chosen.
+  defp shown(argument, state, refused) do
+    key = Model.Argument.key(argument)
+
+    case refused do
+      %{^key => %{typed: typed}} -> typed
+      _not_refused -> Map.get(state.arguments, key, Model.Argument.rest(argument))
+    end
+  end
+
+  # The rows of the arguments that are given value by value, as far as
+  # they still say what their argument shows: an empty row holds no value,
+  # so rows that differ in more than those are of another time.
+  defp lines(lines, model, state, refused) do
+    Map.filter(lines, fn {key, rows} ->
+      case Model.argument(model, key) do
+        nil -> false
+        argument -> Enum.reject(rows, &(&1 == "")) == shown(argument, state, refused)
+      end
+    end)
+  end
+
   # Reads again only when something a read depends on has changed. The first
   # read is done in place, so that the first render has rows; later ones run
   # beside the process, with the previous rows left in view and the grid
@@ -559,16 +675,19 @@ defmodule AshTable.Live.TableComponent do
   # once, and several that are opened together read side by side. Until its
   # first rows are there it says that it is loading.
   defp read(socket) do
-    %{model: model, state: state, parent_key: key} = socket.assigns
+    %{model: model, state: state, parent_key: key, parent_arguments: arguments} = socket.assigns
     opts = reader(socket.assigns)
-    read = {model, state, opts, key}
+    read = {model, state, opts, key, arguments}
 
     # The records related to one record are read through that record: those
     # of a nested table, and those a URL limits a table of its own to.
     fetch =
       case model.via do
         %Relationship{} ->
-          opts = [parent_authorize?: socket.assigns.parent_authorize?] ++ opts
+          opts =
+            [parent_authorize?: socket.assigns.parent_authorize?, parent_arguments: arguments] ++
+              opts
+
           fn -> Query.read_related(model, state, key, opts) end
 
         nil ->
@@ -578,6 +697,11 @@ defmodule AshTable.Live.TableComponent do
     cond do
       read == socket.assigns.read ->
         socket
+
+      # an argument the read action requires is empty: it is not run
+      socket.assigns.missing != [] ->
+        first_or_later = if is_nil(socket.assigns.read), do: :first, else: :later
+        socket |> assign(read: read) |> unfilled(first_or_later)
 
       socket.assigns.read == :again ->
         socket |> assign(read: read, busy?: true) |> start_async(:read, fetch)
@@ -657,6 +781,35 @@ defmodule AshTable.Live.TableComponent do
      |> reread()}
   end
 
+  # The read action is not run while an argument it requires is empty: the
+  # table has no rows, and says in their place which argument to fill in.
+  # That is no error and not "No records". A read that is on its way is of
+  # other arguments, and is given up.
+  #
+  # A person who can never run the read action is not asked to fill in
+  # anything: Ash says so without a read (`Ash.can/3`), and they are
+  # answered as they are when the read itself is refused.
+  defp unfilled(socket, first_or_later) do
+    %{model: model, missing: missing} = socket.assigns
+    reader = reader(socket.assigns)
+
+    socket = socket |> cancel_async(:read) |> assign(busy?: false, loading?: false)
+
+    if Keyword.get(reader, :authorize?, true) and
+         Model.Access.forbidden_actions(model.resource, [model.read_action], reader) != [] do
+      show(socket, {:error, Ash.Error.Forbidden.exception([])}, first_or_later)
+    else
+      text = Text.t(:fill_in, argument: Enum.map_join(missing, ", ", & &1.label))
+
+      socket
+      |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
+      |> assign(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
+      |> assign(fill: text)
+      |> stream(:rows, [], reset: true)
+      |> say(text)
+    end
+  end
+
   # Shows what a read gave. `read` says which one it was: the `:first` of
   # this table, done while it is mounted, or a `:later` one.
   defp show(socket, {:ok, %Query.Page{} = page}, _read) do
@@ -691,6 +844,7 @@ defmodule AshTable.Live.TableComponent do
     socket
     |> assign(page: %{page | records: [], parent: nil}, row_count: length(rows))
     |> assign(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
+    |> assign(fill: nil)
     # the rows are other rows now: a panel never acts on a record that the
     # table no longer shows, and neither does a picker
     |> assign(panel: nil, picker: nil)
@@ -760,6 +914,7 @@ defmodule AshTable.Live.TableComponent do
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     # nothing is said of a record that was not read for this person
     |> assign(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
+    |> assign(fill: nil)
     |> stream(:rows, [], reset: true)
   end
 
@@ -1049,6 +1204,73 @@ defmodule AshTable.Live.TableComponent do
 
     {:noreply, socket |> assign(rejected: %{}) |> refilter(state)}
   end
+
+  # Sent by the form of the argument line when one of its controls changes
+  # or is left, and on Enter, with everything the line holds.
+  def handle_event("arguments", params, socket) do
+    %{state: state, model: model} = socket.assigns
+
+    form =
+      case params do
+        %{"arguments" => %{} = form} -> form
+        _other -> %{}
+      end
+
+    # the rows of the arguments that are given value by value, as they stand
+    lines =
+      for %{editor: :list} = argument <- model.arguments,
+          rows = State.rows(argument, form),
+          into: %{},
+          do: {Model.Argument.key(argument), rows}
+
+    {:noreply, socket |> assign(lines: lines) |> reargue(State.argue(state, model, form))}
+  end
+
+  # Sent by the button of an argument that is given value by value: a row
+  # is added for one more value. An empty row holds no value, so nothing is
+  # read for it; focus goes into it.
+  def handle_event("argument_add", %{"argument" => named}, socket) do
+    %{id: id, lines: lines} = socket.assigns
+
+    case listed(socket.assigns, named) do
+      nil ->
+        {:noreply, socket}
+
+      {key, rows} ->
+        {:noreply,
+         socket
+         |> assign(lines: Map.put(lines, key, rows ++ [""]))
+         |> push_event("ash_table:focus", %{
+           table: id,
+           cell: "#{id}-arg-#{named}-#{length(rows)}"
+         })}
+    end
+  end
+
+  # And by the button of one of its rows: the value is taken away. Focus
+  # goes to the row that stands in its place, else to the one before it,
+  # else to the button that adds one.
+  def handle_event("argument_remove", %{"argument" => named, "at" => at}, socket)
+      when is_binary(at) do
+    %{id: id, state: state, model: model, lines: lines} = socket.assigns
+
+    with {key, rows} <- listed(socket.assigns, named),
+         {at, ""} when at >= 0 and at < length(rows) <- Integer.parse(at) do
+      rows = List.delete_at(rows, at)
+      focus = if rows == [], do: "add", else: min(at, length(rows) - 1)
+
+      {:noreply,
+       socket
+       |> assign(lines: Map.put(lines, key, rows))
+       |> reargue(State.put_argument(state, model, key, rows))
+       |> push_event("ash_table:focus", %{table: id, cell: "#{id}-arg-#{named}-#{focus}"})}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  def handle_event(event, _params, socket) when event in ["argument_add", "argument_remove"],
+    do: {:noreply, socket}
 
   def handle_event("page", %{"to" => to}, socket) when is_binary(to) do
     {:noreply, go(socket, target(socket.assigns, to))}
@@ -1375,20 +1597,22 @@ defmodule AshTable.Live.TableComponent do
       when is_map(params) do
     %{model: model, rows: rows, panel: panel} = socket.assigns
     named = params["row"]
+    # what the picker's read action is given: what its argument line holds
+    arguments = picked_with(socket.assigns, picker.reference, params["arguments"])
 
     case picker.for do
       {:cell, key, name} ->
         with %{editable?: true, kind: :reference} = column <-
                Enum.find(model.columns, &(&1.name == name)),
              %{} = row <- rows[key] do
-          refer(socket, key, row, column, named, params["confirmed"] == true)
+          refer(socket, key, row, column, named, params["confirmed"] == true, arguments)
         else
           _ -> {:reply, %{ok: false}, assign(socket, picker: nil)}
         end
 
       {:input, name} ->
         case panel && reference_input(panel, Atom.to_string(name)) do
-          %{} = input -> choose_input(socket, panel, input, named)
+          %{} = input -> choose_input(socket, panel, input, named, arguments)
           _ -> {:reply, %{ok: false}, assign(socket, picker: nil)}
         end
     end
@@ -1492,8 +1716,10 @@ defmodule AshTable.Live.TableComponent do
   # Then, as for any cell, the row is put back with what is true now: the
   # action's result, or the record as it is and the cell marked, with what
   # the chosen record is called in it.
-  defp refer(socket, key, row, column, named, confirmed?) do
-    opts = [ask?: not is_nil(column.confirm) and not confirmed?] ++ chooser(socket.assigns)
+  defp refer(socket, key, row, column, named, confirmed?, arguments) do
+    opts =
+      [ask?: not is_nil(column.confirm) and not confirmed?, arguments: arguments] ++
+        chooser(socket.assigns)
 
     case Edit.refer(socket.assigns.model, column, row.pk, named, opts) do
       :changed ->
@@ -1535,10 +1761,15 @@ defmodule AshTable.Live.TableComponent do
   # The choice of a related record for a field of the action panel: its key
   # goes into the panel's form, as if it had been typed there, with what the
   # record is called beside it. Nothing runs.
-  defp choose_input(socket, panel, input, named) do
+  defp choose_input(socket, panel, input, named, arguments) do
     chosen =
       with false <- is_nil(named),
-           {:ok, record} <- Pick.chosen(input.reference, named, chooser(socket.assigns)),
+           {:ok, record} <-
+             Pick.chosen(
+               input.reference,
+               named,
+               [arguments: arguments] ++ chooser(socket.assigns)
+             ),
            {:ok, value} <- Pick.value(input.reference, record) do
         {Format.input(input, value), called(input.reference, record)}
       else
@@ -1561,7 +1792,10 @@ defmodule AshTable.Live.TableComponent do
             typed: typed,
             picked: picked,
             used: MapSet.union(panel.used, picked),
-            chosen: Map.put(panel.chosen, input.name, chosen)
+            chosen: Map.put(panel.chosen, input.name, chosen),
+            # the key is looked up once more when the action runs: through
+            # the picker's read action as it was given when it was chosen
+            picked_with: Map.put(panel.picked_with, input.name, {text, arguments})
         }
 
         {:reply, %{ok: true},
@@ -1598,6 +1832,43 @@ defmodule AshTable.Live.TableComponent do
   # picker's table is told too (`AshTable.Pick.reader/2`).
   defp chooser(assigns), do: [authorize_given: assigns.authorize_given] ++ reader(assigns)
 
+  # The same for the keys a panel holds: with what the picker's read action
+  # was given when each was chosen.
+  defp chooser(assigns, panel), do: [picked_with: panel.picked_with] ++ chooser(assigns)
+
+  # What the read action of a picker is given, from what the picker's hook
+  # says its argument line holds: the line's form, as a form sends it. It
+  # comes from the browser, and is taken as the form's event is: by the
+  # arguments the picker's table has for this person, and as Ash takes it.
+  defp picked_with(assigns, reference, sent) when is_binary(sent) do
+    reader = Pick.reader(reference, chooser(assigns))
+
+    model =
+      reference.destination
+      |> Model.build(choose: reference.choose_action)
+      |> Model.for_actor(reader)
+      |> Model.defaults(assigns.page_assigns)
+
+    form =
+      case decoded(sent) do
+        %{"arguments" => %{} = form} -> form
+        _other -> %{}
+      end
+
+    {_state, model, _missing, _refused} =
+      settle(model, State.argue(%State{}, model, form), reader)
+
+    model.read_arguments
+  end
+
+  defp picked_with(_assigns, _reference, _sent), do: %{}
+
+  defp decoded(sent) do
+    Plug.Conn.Query.decode(sent)
+  rescue
+    Plug.Conn.InvalidQueryError -> %{}
+  end
+
   # An action panel as the table keeps it while it is open. Besides what it
   # is given: `typed` is what its form sent last, `picked` the fields whose
   # record the person has chosen in the picker, and `chosen` what the
@@ -1632,6 +1903,7 @@ defmodule AshTable.Live.TableComponent do
         used: MapSet.new(),
         typed: %{},
         picked: MapSet.new(),
+        picked_with: %{},
         chosen: chosen,
         groups: groups,
         touched: MapSet.new()
@@ -1887,7 +2159,12 @@ defmodule AshTable.Live.TableComponent do
       socket.assigns
 
     opts =
-      [state: state, parent_key: key, parent_authorize?: authorize?] ++ reader(socket.assigns)
+      [
+        state: state,
+        parent_key: key,
+        parent_authorize?: authorize?,
+        parent_arguments: socket.assigns.parent_arguments
+      ] ++ reader(socket.assigns)
 
     socket
     |> assign(running: action, result: nil, panel: nil)
@@ -1908,7 +2185,7 @@ defmodule AshTable.Live.TableComponent do
       Enum.any?(Map.keys(panel.errors), &(not is_nil(&1))) ->
         {:noreply, failed_panel(socket, panel, nil)}
 
-      (unchosen = Act.unchosen(panel.inputs, params, nil, chooser(socket.assigns))) != [] ->
+      (unchosen = Act.unchosen(panel.inputs, params, nil, chooser(socket.assigns, panel))) != [] ->
         {:noreply, failed_panel(socket, panel, unchosen(unchosen))}
 
       true ->
@@ -1954,7 +2231,14 @@ defmodule AshTable.Live.TableComponent do
         {:noreply, assign(socket, panel: nil)}
 
       row ->
-        case Act.submit_row(model, action, row.pk, params, "#{id}-panel", chooser(socket.assigns)) do
+        case Act.submit_row(
+               model,
+               action,
+               row.pk,
+               params,
+               "#{id}-panel",
+               chooser(socket.assigns, panel)
+             ) do
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
 
@@ -1986,7 +2270,7 @@ defmodule AshTable.Live.TableComponent do
                params,
                given,
                "#{id}-panel",
-               chooser(socket.assigns)
+               chooser(socket.assigns, panel)
              ) do
           {:ok, record} ->
             {:noreply,
@@ -2026,8 +2310,9 @@ defmodule AshTable.Live.TableComponent do
   # What a nested table gives its create action: the field that joins the
   # new record to the row the table belongs to, with that row's value. The
   # row is read for it, as the person and through the read action of the
-  # table that shows it, with authorization when either table authorizes: a
-  # key proves nothing. A table of its own gives nothing.
+  # table that shows it, with that table's arguments, and with authorization
+  # when either table authorizes: a key proves nothing. A table of its own
+  # gives nothing.
   defp parent_link(_assigns, %Model.Action{link: nil}), do: {:ok, %{}}
 
   defp parent_link(assigns, %Model.Action{link: {source, destination}}) do
@@ -2039,7 +2324,7 @@ defmodule AshTable.Live.TableComponent do
       |> Query.reader_opts()
       |> Keyword.update!(:authorize?, &(&1 or assigns.parent_authorize?))
 
-    case Query.get(via.source, via.source_read_action, key, opts) do
+    case Query.get(via.source, via.source_read_action, key, assigns.parent_arguments, opts) do
       {:ok, %_{} = parent} ->
         case Map.get(parent, source) do
           hidden when is_struct(hidden, Ash.ForbiddenField) or is_nil(hidden) -> :error
@@ -2198,6 +2483,70 @@ defmodule AshTable.Live.TableComponent do
 
   defp target(%{state: state}, _to), do: state
 
+  # A change of the arguments, by the line's form or by one of its buttons:
+  # `chosen` is the state as the person would have it. Ash is asked what it
+  # makes of the arguments first. What it refuses is not taken: that
+  # argument stays as it was, and its input keeps what was typed, marked,
+  # with Ash's message, which is read out. What is left is a change like
+  # one of the filters.
+  defp reargue(socket, chosen) do
+    %{model: model, state: state} = socket.assigns
+    reader = reader(socket.assigns)
+
+    {next, model, missing, refused} =
+      case settle(model, chosen, reader) do
+        {_next, _model, _missing, refused} when refused != %{} ->
+          {next, model, missing, _none} =
+            settle(model, State.restore(chosen, state, Map.keys(refused)), reader)
+
+          {next, model, missing, refused}
+
+        settled ->
+          settled
+      end
+
+    refused =
+      Map.new(refused, fn {key, refusal} ->
+        {key, %{refusal | held: Map.get(next.arguments, key)}}
+      end)
+
+    said =
+      for argument <- model.arguments,
+          %{messages: messages} <- [refused[Model.Argument.key(argument)]],
+          message <- messages,
+          do: Text.t(:error_on_field, field: argument.label, message: message)
+
+    socket
+    |> assign(model: model, missing: missing, refused: refused)
+    |> then(&if(said == [], do: &1, else: say(&1, Enum.join(said, "; "))))
+    |> refilter(next)
+  end
+
+  # The argument of the line that an event names, when it is one that is
+  # given value by value: its key, and its rows as they stand. Looked up by
+  # the name it has in the page, as text.
+  defp listed(%{model: model, state: state, refused: refused, lines: lines}, named)
+       when is_binary(named) do
+    case Enum.find(model.arguments, &(&1.editor == :list and argument_id(&1) == named)) do
+      nil ->
+        nil
+
+      argument ->
+        key = Model.Argument.key(argument)
+        {key, Map.get(lines, key) || shown(argument, state, refused)}
+    end
+  end
+
+  defp listed(_assigns, _named), do: nil
+
+  # What an argument is called in the ids of the page, and what its control
+  # is sent under.
+  defp argument_id(%{column: nil, name: name}), do: Atom.to_string(name)
+  defp argument_id(%{column: column, name: name}), do: "#{column}-#{name}"
+
+  defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
+  defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
+
   # A change of the filters is announced once its rows have been read.
   defp refilter(%{assigns: %{state: state}} = socket, state), do: socket
   # The hook gives the selection up with the filters it was made under, and
@@ -2289,6 +2638,38 @@ defmodule AshTable.Live.TableComponent do
         create={@page && @model.create}
         target={@myself}
       />
+      <%!-- The argument line: what the read action is given, and what the
+      columns ask for of their calculations' arguments. A line of its own, which
+      is there whenever the table has arguments, so that nothing moves when the
+      line under it fills. A table without arguments has none. --%>
+      <form
+        :if={@model.arguments != []}
+        id={"#{@id}-arguments"}
+        phx-change="arguments"
+        phx-submit="arguments"
+        phx-target={@myself}
+        data-arguments
+        class={[
+          "flex flex-wrap items-start gap-x-4 gap-y-2",
+          if(@nested?, do: "px-4 py-2", else: "mb-2")
+        ]}
+      >
+        <.argument
+          :for={argument <- @model.arguments}
+          id={"#{@id}-arg-#{argument_id(argument)}"}
+          named={argument_id(argument)}
+          name={argument_name(argument)}
+          argument={argument}
+          value={Map.get(@lines, Model.Argument.key(argument)) || shown(argument, @state, @refused)}
+          errors={
+            case @refused[Model.Argument.key(argument)] do
+              nil -> []
+              %{messages: messages} -> messages
+            end
+          }
+          target={@myself}
+        />
+      </form>
       <%!-- The form of the filter row. A form cannot sit inside a table around
       its cells, so the controls name it instead. --%>
       <form
@@ -2311,7 +2692,7 @@ defmodule AshTable.Live.TableComponent do
           id={@id}
           page={@page}
           row_count={@row_count}
-          scope={{@state.filters, @related && @related.param}}
+          scope={{@state.filters, @state.arguments, @related && @related.param}}
           bulk={@bulk}
           running?={not is_nil(@running)}
         />
@@ -2719,8 +3100,18 @@ defmodule AshTable.Live.TableComponent do
       <p :if={@loading?} id={"#{@id}-loading"} class="py-4 text-center text-sm opacity-70">
         {Text.t(:loading)}
       </p>
+      <%!-- In place of the rows while an argument that the read action requires
+      is empty: no read is run, and this is neither an error nor "No records".
+      It is read out through the live region above. --%>
       <p
-        :if={is_nil(@error) and @row_count == 0 and not @loading?}
+        :if={@fill}
+        id={"#{@id}-fill"}
+        class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
+      >
+        {@fill}
+      </p>
+      <p
+        :if={is_nil(@error) and is_nil(@fill) and @row_count == 0 and not @loading?}
         id={"#{@id}-empty"}
         class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
       >
@@ -3032,7 +3423,11 @@ defmodule AshTable.Live.TableComponent do
             this.busy = true
             const cell = this.cell()
             if (cell) cell.setAttribute("aria-busy", "true")
-            this.pushEventTo(this.el, "picked", {row, confirmed: !!confirmed}, reply => {
+            // What the argument line of the picker's table holds: the
+            // record is read through the same action, given the same.
+            const line = this.el.querySelector("form[data-arguments]")
+            const held = line ? new URLSearchParams(new FormData(line)).toString() : null
+            this.pushEventTo(this.el, "picked", {row, confirmed: !!confirmed, arguments: held}, reply => {
               this.busy = false
               if (cell) cell.removeAttribute("aria-busy")
               if (reply && reply.ask && this.grid) {
@@ -3237,6 +3632,11 @@ defmodule AshTable.Live.TableComponent do
             this.root = document.getElementById(this.id)
             this.onLine = e => this.onLineClick(e)
             if (this.root) this.root.addEventListener("click", this.onLine)
+            // so is the argument line: Enter in one of its inputs applies
+            // what the line holds now, as it does in a filter. A form of
+            // several inputs without a button is not sent by Enter itself.
+            this.onArgument = e => this.onArgumentKeydown(e)
+            if (this.root) this.root.addEventListener("keydown", this.onArgument)
             // the server says on which rows an action on the selection did
             // not run: those stay selected, and no others
             this.handleEvent("ash_table:bulk", ({table, failed}) => {
@@ -3252,10 +3652,13 @@ defmodule AshTable.Live.TableComponent do
             })
             // the server says where focus goes after something it did: to
             // the first cell of a row that was created
+            // and into a row of the argument line that was added, or to
+            // what stands where one that was taken away stood
             this.handleEvent("ash_table:focus", ({table, cell}) => {
               if (table !== this.id) return
               const target = document.getElementById(cell)
-              if (target && this.el.contains(target)) target.focus({preventScroll: true})
+              const line = this.part("arguments")
+              if (target && (this.el.contains(target) || (line && line.contains(target)))) target.focus({preventScroll: true})
             })
             // what happens in a grid nested in this one is that grid's
             const own = handle => e => { if (this.owns(e.target)) handle(e) }
@@ -3303,6 +3706,20 @@ defmodule AshTable.Live.TableComponent do
             this.observer && this.observer.disconnect()
             window.removeEventListener("scroll", this.onScroll, true)
             if (this.root) this.root.removeEventListener("click", this.onLine)
+            if (this.root) this.root.removeEventListener("keydown", this.onArgument)
+          },
+
+          // Enter in an input of this table's argument line: the line's form
+          // is sent, with everything it holds. Not from a button, which
+          // Enter uses, and not from the line of a table nested in this one.
+          onArgumentKeydown(e) {
+            if (e.key !== "Enter" || e.isComposing) return
+            const control = e.target
+            if (!control || !control.matches || !control.matches("input,select")) return
+            const form = control.form
+            if (!form || form.id !== `${this.id}-arguments`) return
+            e.preventDefault()
+            if (form.reportValidity()) form.requestSubmit()
           },
 
           // ---- the tree of grids -------------------------------------------
@@ -4974,6 +5391,170 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # One input of the argument line: its label, the control of its type, and
+  # under it what Ash says of a value it refuses. The controls are those of
+  # a field of the action panel, at the size of the line's buttons, and
+  # ordinary tab stops. Text is one line here: the line is no place for a
+  # text of several.
+  #
+  # `named` is what the argument is called in the ids of the page, `name`
+  # what its control is sent under, and `value` what it holds: text, or for
+  # an array the list of its values; for one that is given value by value,
+  # its rows. A typed value is sent when its control is left or Enter is
+  # used, as a filter's is; a choice at once.
+  attr :id, :string, required: true
+  attr :named, :string, required: true
+  attr :name, :string, required: true
+  attr :argument, :map, required: true
+  attr :value, :any, required: true
+  attr :errors, :list, required: true
+  attr :target, :any, required: true
+
+  defp argument(assigns) do
+    assigns =
+      assign(assigns,
+        described: assigns.errors != [] && "#{assigns.id}-error",
+        array?: assigns.argument.editor in [:choices, :list]
+      )
+
+    ~H"""
+    <div class="flex flex-col" data-argument={@named}>
+      <div class="flex min-h-8 flex-wrap items-center gap-2">
+        <%!-- an unchecked box sends nothing: this says "false" for it --%>
+        <input :if={@argument.editor == :boolean} type="hidden" name={@name} value="false" />
+        <label :if={not @array?} for={@id} class="label text-sm text-base-content">
+          <input
+            :if={@argument.editor == :boolean}
+            type="checkbox"
+            id={@id}
+            name={@name}
+            value="true"
+            checked={@value == "true"}
+            aria-invalid={@errors != [] && "true"}
+            aria-describedby={@described}
+            class={["checkbox checkbox-sm", box_edge()]}
+          />
+          <span data-label>{@argument.label}</span>
+          <span :if={@argument.required? and @argument.editor != :boolean} aria-hidden="true">*</span>
+        </label>
+        <select
+          :if={@argument.editor == :enum}
+          id={@id}
+          name={@name}
+          aria-required={@argument.required? && "true"}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@described}
+          class={["select select-sm w-auto", control_edge()]}
+        >
+          <option :if={not @argument.required? or @value == ""} value=""></option>
+          <option
+            :for={{choice, label} <- @argument.values}
+            value={choice}
+            selected={to_string(choice) == @value}
+          >
+            {label}
+          </option>
+        </select>
+        <input
+          :if={@argument.editor in [:text, :number, :date, :datetime, :plain]}
+          type={argument_type(@argument.editor)}
+          step={input_step(@argument.editor)}
+          id={@id}
+          name={@name}
+          value={@value}
+          phx-debounce="blur"
+          aria-required={@argument.required? && "true"}
+          aria-invalid={@errors != [] && "true"}
+          aria-describedby={@described}
+          class={["input input-sm w-40", control_edge()]}
+        />
+        <%!-- An array has several controls, and its label is for none of them
+        alone: they are a group, which the label names. --%>
+        <span :if={@array?} id={"#{@id}-label"} class="label text-sm text-base-content">
+          <span data-label>{@argument.label}</span>
+        </span>
+        <div
+          :if={@array?}
+          id={@id}
+          role="group"
+          aria-labelledby={"#{@id}-label"}
+          aria-describedby={@described}
+          class="flex flex-wrap items-center gap-2"
+        >
+          <%!-- a form sends nothing for a list without values: this entry is
+          sent before the values in every case --%>
+          <input type="hidden" name={@name <> "[]"} value="" />
+          <%!-- multiple choice: one box per value of the enum --%>
+          <label
+            :for={{choice, label} <- (@argument.editor == :choices && @argument.values) || []}
+            class="label text-sm text-base-content"
+          >
+            <input
+              type="checkbox"
+              name={@name <> "[]"}
+              value={choice}
+              checked={to_string(choice) in @value}
+              aria-invalid={@errors != [] && "true"}
+              class={["checkbox checkbox-sm", box_edge()]}
+            />
+            {label}
+          </label>
+          <%!-- value by value: a row each, with the button that takes it away,
+          and after them the one that adds a row --%>
+          <span
+            :for={{value, at} <- (@argument.editor == :list && Enum.with_index(@value)) || []}
+            class="flex items-center gap-1"
+          >
+            <input
+              type={argument_type(elem(@argument.cell_type, 1))}
+              step={input_step(elem(@argument.cell_type, 1))}
+              id={"#{@id}-#{at}"}
+              name={@name <> "[]"}
+              value={value}
+              phx-debounce="blur"
+              aria-label={Text.t(:value_position, column: @argument.label, position: at + 1)}
+              aria-invalid={@errors != [] && "true"}
+              class={["input input-sm w-40", control_edge()]}
+            />
+            <button
+              type="button"
+              id={"#{@id}-#{at}-remove"}
+              aria-label={Text.t(:remove_value, column: @argument.label, position: at + 1)}
+              class="btn btn-ghost btn-xs"
+              phx-click="argument_remove"
+              phx-value-argument={@named}
+              phx-value-at={at}
+              phx-target={@target}
+            >
+              <span aria-hidden="true">✕</span>
+            </button>
+          </span>
+          <button
+            :if={@argument.editor == :list}
+            type="button"
+            id={"#{@id}-add"}
+            class="btn btn-sm"
+            phx-click="argument_add"
+            phx-value-argument={@named}
+            phx-target={@target}
+          >
+            {Text.t(:add_value)}
+          </button>
+        </div>
+      </div>
+      <%!-- in the text colour: the error colour is too faint for small text --%>
+      <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-xs">
+        <p :for={message <- @errors} data-error>{message}</p>
+      </div>
+    </div>
+    """
+  end
+
+  # the native input of an argument that is typed: text for what is written
+  # as one line, whatever it is
+  defp argument_type(editor) when editor in [:text, :plain], do: "text"
+  defp argument_type(editor), do: input_type(editor)
+
   # The action panel: where a person gives the inputs of a row action, or of
   # the create action, before it runs. A modal dialog at the right edge of
   # the window, which its hook opens when it is put into the page and which
@@ -5706,14 +6287,16 @@ defmodule AshTable.Live.TableComponent do
       scope: assigns.scope,
       actor: assigns.actor,
       tenant: assigns.tenant,
-      authorize?: assigns.authorize_given
+      authorize?: assigns.authorize_given,
+      page_assigns: assigns.page_assigns
     }
   end
 
   # What a nested table is given of the table it is in: who is asking, how
-  # deep it is, and how the table around it authorizes. `authorize?` is passed
-  # on only as this table was told it; untold, a nested table authorizes as
-  # its own resource's domain says.
+  # deep it is, how the table around it authorizes, and what its read action
+  # is given, with which the row the nested table belongs to is read again.
+  # `authorize?` is passed on only as this table was told it; untold, a
+  # nested table authorizes as its own resource's domain says.
   defp nested_reader(assigns) do
     %{
       scope: assigns.scope,
@@ -5721,6 +6304,8 @@ defmodule AshTable.Live.TableComponent do
       tenant: assigns.tenant,
       authorize?: assigns.authorize_given,
       parent_authorize?: assigns.authorize?,
+      parent_arguments: assigns.model.read_arguments,
+      page_assigns: assigns.page_assigns,
       depth: assigns.depth + 1,
       depth_limit: assigns.depth_limit
     }
@@ -6463,6 +7048,12 @@ defmodule AshTable.Live.TableComponent do
       nil -> nil
     end
   end
+
+  # The second column of a calculation is loaded under its own name, and
+  # Ash puts what is loaded so among the record's `calculations`: the value,
+  # or what stands for one the person may not see.
+  defp value(%{kind: :calculation, name: name, field: field}, record) when name != field,
+    do: Map.get(record.calculations, name, %Ash.NotLoaded{field: field, type: :calculation})
 
   defp value(column, record), do: Map.get(record, column.name)
 

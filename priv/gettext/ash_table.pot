@@ -364,3 +364,11 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Save"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{column}: %{argument}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Fill in %{argument} to see records."
+msgstr ""

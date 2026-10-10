@@ -107,8 +107,9 @@ test("a column that cannot be sorted has no sort state and ignores click and Ent
     expect(params(page)).toEqual({})
   }
 
-  // every other column says whether it is sorted
-  await expect(tasks.grid.locator("th[aria-sort]")).toHaveCount(12)
+  // every other column says whether it is sorted, the two of the
+  // calculation with arguments among them
+  await expect(tasks.grid.locator("th[aria-sort]")).toHaveCount(14)
 })
 
 test("the sort is in the URL: a link and a reload show it", async ({ page, tasks }) => {

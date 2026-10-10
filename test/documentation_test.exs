@@ -41,14 +41,15 @@ defmodule AshTable.DocumentationTest do
   @elisions ["# ...", "// ...", "/* ... */", "<%!-- ... --%>"]
 
   describe "the set of guides" do
-    test "is the tutorial and the seventeen topic guides" do
+    test "is the tutorial and the eighteen topic guides" do
       assert Enum.filter(@guides, &String.starts_with?(&1, "documentation/tutorials/")) ==
                ["documentation/tutorials/get-started-with-ash-table.md"]
 
       assert @guides
              |> Enum.filter(&String.starts_with?(&1, "documentation/topics/"))
              |> Enum.map(&Path.basename(&1, ".md")) ==
-               ~w(authorization choosing-a-related-record columns-and-defaults confirm custom-components
+               ~w(arguments authorization choosing-a-related-record columns-and-defaults confirm
+                  custom-components
                   filtering inline-editing
                   keyboard-and-accessibility layout-and-embedding maps-and-embedded-resources
                   messages-and-translations

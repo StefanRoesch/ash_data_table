@@ -28,4 +28,10 @@ defmodule AshTable.Resource.Info do
   def actions(resource) do
     for %AshTable.Resource.Action{} = action <- table(resource), do: action
   end
+
+  @doc "The `argument`s declared in the `table` block, in the declared order."
+  @spec arguments(Ash.Resource.t() | Spark.Dsl.t()) :: [AshTable.Resource.Argument.t()]
+  def arguments(resource) do
+    for %AshTable.Resource.Argument{} = argument <- table(resource), do: argument
+  end
 end

@@ -249,12 +249,20 @@ defmodule AshTable.Resource.Relating do
   @doc """
   Whether Ash can page through the related records: several of them, joined
   by attributes (a manual relationship and one with `no_attributes?` come
-  back in full), through a read action that declares pagination.
+  back in full), through a read action that declares pagination and runs
+  without being given an argument.
+
+  A page of related records whose read action requires an argument fails
+  (ash 3.34.4: beside the load that is given the arguments, Ash runs the
+  action once more without any, and that one's "is required" is the
+  answer). Without a page the same load is read with them, so such a
+  nested table is shown in full.
   """
   @spec pageable?(struct, Ash.Resource.Actions.Read.t()) :: boolean
   def pageable?(relationship, read_action) do
     arrangeable?(relationship) and not Map.get(relationship, :no_attributes?, false) and
-      Reading.supported_strategies(read_action.pagination) != []
+      Reading.supported_strategies(read_action.pagination) != [] and
+      not Enum.any?(read_action.arguments, &AshTable.Resource.Arguing.needed?/1)
   end
 
   @doc """

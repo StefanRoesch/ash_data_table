@@ -36,6 +36,9 @@ defmodule DemoWeb.Router do
       ash_table "/labels", Demo.Tracker.Label
       ash_table "/task_labels", Demo.Tracker.TaskLabel
       ash_table "/specimens", Demo.KitchenSink.Specimen
+      # The tasks that are due by a day: the read action behind this table
+      # requires the day, which a person gives in the argument line.
+      ash_table "/deadlines", Demo.Tracker.Deadline
 
       # The labels once more, without the app layout that the configuration
       # (`config :ash_table, layout: …`) puts around the tables above.
@@ -51,7 +54,8 @@ defmodule DemoWeb.Router do
   # two with aggregate columns under field policies (`ledger_tables.ex`),
   # one whose columns have components (`component_tables.ex`), one whose
   # columns are arrays (`array_tables.ex`), one whose reference cells are
-  # chosen by keys that are no UUID (`picker_tables.ex`), one whose
+  # chosen by keys that are no UUID (`picker_tables.ex`), those whose read
+  # actions and calculations take arguments (`argument_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
   # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
@@ -99,6 +103,10 @@ defmodule DemoWeb.Router do
         ash_table "/letters", Demo.Support.Bulk.Letter, layout: false
         ash_table "/pouches", Demo.Support.Bulk.Pouch, layout: false
         ash_table "/stops", Demo.Support.Route.Stop, layout: false
+        ash_table "/stocks", Demo.Support.Asked.Stock, layout: false
+        ash_table "/lots", Demo.Support.Asked.Lot, layout: false
+        ash_table "/vaults", Demo.Support.Asked.Vault, layout: false
+        live "/asked", DemoWeb.Support.AskedLive
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/select", DemoWeb.Support.SelectLive
         live "/url", DemoWeb.Support.UrlLive

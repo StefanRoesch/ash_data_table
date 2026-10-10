@@ -554,3 +554,32 @@ msgstr "Projekt"
 
 msgid "task label"
 msgstr "Label einer Aufgabe"
+
+# The argument line
+msgid "Fill in %{argument} to see records."
+msgstr "%{argument} ausfüllen, um Datensätze zu sehen."
+
+msgid "%{column}: %{argument}"
+msgstr "%{column}: %{argument}"
+
+msgid "Search"
+msgstr "Suche"
+
+msgid "Days"
+msgstr "Tage"
+
+msgid "Due within"
+msgstr "Fällig binnen"
+
+msgid "Due within 7 days"
+msgstr "Fällig binnen 7 Tagen"
+
+msgid "Due by"
+msgstr "Fällig bis"
+
+msgid "Include done?"
+msgstr "Erledigte auch?"
+
+msgid "Deadlines"
+msgstr "Fristen"
+

@@ -141,9 +141,9 @@ rejected by Spark while the module is being compiled. That stops any build:
 
 ## The read action
 
-The path of these findings is `table -> read_action` or
-`table -> paginate_with`. In the messages, capitals stand for a name from
-your block.
+The path of these findings is `table -> read_action`,
+`table -> paginate_with`, or `table -> argument -> NAME` for the last one.
+In the messages, capitals stand for a name from your block.
 
 | Message | Cause | Fix |
 | --- | --- | --- |
@@ -152,6 +152,12 @@ your block.
 | The read action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | The action is declared `public? false`. | Make it public, or name another. |
 | The resource has no primary read action. Name the read action behind the table with \`read_action\`. | The block names no read action and the resource has no primary one. This is reported for a resource with no `table` block as well. | Add `read_action`, or mark a read action `primary? true`. |
 | The read action \`NAME\` does not support keyset pagination. It supports: offset. | `paginate_with` names a strategy the action's `pagination` does not switch on. The end of the message says what the action supports, or "It has no pagination." | Change `paginate_with`, or add `keyset?: true` (or `offset?: true`) to the action's `pagination`. |
+| The read action \`NAME\` requires the argument \`ARG\`, and a table has no input for its type (TYPE), so it could never read. The argument line has inputs for … Give the argument a default, or name another read action with \`read_action\`. | A public argument of the read action is `allow_nil? false`, has no default, and is a map, an embedded resource, a union or an array of such: nothing a person could give it with. | Give the argument a default, or put the table over another read action. |
+| The read action \`NAME\` has no public argument named \`ARG\`. An \`argument\` says what an argument of the read action behind the table is called. | An `argument` of the block names something the read action does not take from the outside: no argument of it, or a private one. | Correct the name, or remove the `argument`. |
+
+An argument of the read action needs no declaration to be on the
+[argument line](arguments.md), and an optional one without an input is left
+out without a finding.
 
 ## The table's update action
 
@@ -177,13 +183,24 @@ not try: a resource compiled despite this finding has no table (see
 ## Columns
 
 The path is `table -> column -> NAME`, followed by the option when the
-finding is about one.
+finding is about one, and by `ask -> ARG` when it is about an `ask`. For a
+column with `as`, `NAME` is that name.
 
 | Message | Cause | Fix |
 | --- | --- | --- |
 | The resource has no attribute, calculation, aggregate or belongs-to relationship named \`NAME\`. | A `column` names something the resource does not have: usually a typo. | Correct the name. |
 | \`NAME\` is not public. Only \`public?\` fields can be columns of a table. | The field is private. | Make the field `public? true` if it may be shown, or leave the column out. |
-| The calculation \`NAME\` requires the argument \`ARG\`. A table cannot supply arguments, so a column can only show a calculation whose arguments are optional or have defaults. | The calculation has an argument with `allow_nil? false` and no default. | Give the argument a default, or define a calculation without the argument for the table. |
+| The calculation \`NAME\` requires the argument \`ARG\`, and the column gives it neither way. Fix it with \`arguments ARG: …\`, or let the person give it with \`ask :ARG, default: …\`. | The calculation has an argument with `allow_nil? false` and no default, and the column neither fixes nor asks for it. | Add `arguments` or `ask` to the column: see [Arguments](arguments.md#the-arguments-of-a-calculation). |
+| The calculation \`NAME\` has no argument named \`ARG\`. | `arguments` or `ask` names an argument the calculation does not have. The path ends in `arguments`, or in `ask -> ARG`. | Correct the name. |
+| \`VALUE\` is not a value of the argument \`ARG\` of the calculation \`NAME\`. | A value fixed with `arguments` is none of the argument's type, is refused by its constraints, or is `nil` for an argument that cannot be empty. | Give a value the argument takes. |
+| \`VALUE\`, the default of \`ask :ARG\`, is not a value of the argument \`ARG\` of the calculation \`NAME\`. | The same for the `default` of an `ask`, when it is a value. A function is not looked at. | Give a value the argument takes. |
+| The argument \`ARG\` of \`NAME\` is fixed with \`arguments\` and asked with \`ask\`. It is one or the other: to ask it and start with a value, say \`ask :ARG, default: …\`. | One argument is in both. | Keep one. |
+| The argument \`ARG\` of \`NAME\` is asked more than once. | Two `ask` of one argument in one column. | Remove one. |
+| The argument \`ARG\` of \`NAME\` is asked and cannot be empty, and has no default: neither on its \`ask\` nor in the resource. A column never starts without a value: say \`ask :ARG, default: …\`. | `ask` of an argument with `allow_nil? false` that has no `default`, on the `ask` or in the resource. | Give the `ask` a `default`: a value, or a function of the page's assigns. |
+| The argument \`ARG\` of the calculation \`NAME\` cannot be asked: a table has no input for its type (TYPE). … Fix its value with \`arguments\` instead. | `ask` of an argument that is a map, an embedded resource, a union, or an array of such. | Fix it with `arguments`. |
+| \`NAME\` is not a calculation. Only a calculation takes arguments. | `arguments` on a column of an attribute, an aggregate or a relationship. For `ask` the message ends "Only an argument of a calculation can be asked; an argument of the read action is on the argument line without a declaration.", and for `as` it reads "\`NAME\` is not a calculation, so \`as\` has no effect. …" | Remove the option. |
+| \`AS\` is a field of the resource, so the column of \`NAME\` cannot be called that. \`as\` gives a column a name that nothing else has. | `as` is the name of an attribute, a calculation, an aggregate or a relationship of the resource. | Choose another name. |
+| Got duplicate AshTable.Resource.Column: NAME | Two columns of one field without `as`, or two columns with the same `as`. | Give the second column of a calculation a name of its own with `as`. |
 | \`NAME\` cannot be sorted, so \`sortable? true\` has no effect. \`sortable?\` can only switch sorting off; remove it or set it to \`false\`. | `sortable? true` on a field the resource does not allow to be sorted. Under keyset pagination the message says "cannot be sorted with keyset pagination". | Remove the option. To sort by a calculation or an aggregate, page by offset. |
 | \`NAME\` cannot be filtered, so \`filterable? true\` has no effect. \`filterable?\` can only switch filtering off; remove it or set it to \`false\`. | `filterable? true` on a field no filter is offered for. | Remove the option. |
 | \`NAME\` is a calculation. Only an attribute can be edited, so a calculation column cannot have an \`update_action\`. | `update_action` on a calculation column. The same message exists for an aggregate. | Remove the option. |
@@ -323,6 +340,7 @@ one. `INPUT` is an attribute the action accepts or one of its arguments.
 | The row action \`NAME\` says \`bulk? true\`, and cannot run on several records at once: it accepts \`INPUT\`, of which no two records can hold the same value (an attribute of the primary key, or an identity by itself), and the inputs of an action that runs on the selected rows are given once for all of them. Leave \`bulk?\` out: the action stays an action of one row. | An `action` says `bulk? true` and accepts an attribute of the primary key, or one that is the only key of an identity. `bulk?` can only switch off. | Remove `bulk? true`. The action is a row action, and is not offered for a selection. |
 | \`NAME\` is an update action, not a create action. | `create_action` names an action of another type: the message says "an update", "a destroy", "a read" or "a generic". | Name a create action. |
 | The create action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for … | As for a row action. An attribute whose default is computed does not count as required in a create. | Name a create action that does not require the input. |
+| The table changes records: it has editable columns, row actions or a create action. Ash loads what a create, an update or a destroy action returns through the primary read action, without arguments, and the primary read action \`NAME\` requires the argument \`ARG\`, so a row could not be shown again after one. Give the argument a default, make another read action the primary one, or leave the table read-only. | The primary read action has an argument with `allow_nil? false` and no default, the table edits, acts or creates, and one of its columns is a calculation, an aggregate or a reference cell. | Put the argument on a read action of its own and name it with `read_action`, or give it a default. |
 | The table has row actions or a create action and shows calculations, aggregates or reference columns (\`NAME\`), but the resource has no primary read action. After an action the row is shown with those fields, which Ash loads through the primary read action. Mark a read action \`primary? true\`. | The table reads through a non-primary action named with `read_action`, has an `action` or a `create_action`, and at least one column is a calculation, an aggregate or a reference cell. A table that has editable columns as well gets the finding about those instead. | Mark a read action `primary? true`. |
 
 An input of a type without a field that the action does **not** require is
@@ -556,7 +574,11 @@ any LiveView does that raises in its first render.
 | A `relationship` whose nested table would run a private read action | The same: "its relationship \`NAME\` cannot be offered." |
 | A reference cell, an aggregate column, or a calculation column that holds an aggregate, that Ash reads through a private action | The same: "its column \`NAME\` cannot be shown." |
 | Editable columns, row actions or a create action, over a private primary read action | The same. |
-| A calculation column that requires an argument | The same. |
+| A calculation column whose arguments are not given soundly: one it requires is missing, one is named that it does not have, a value is none of its type, one is fixed and asked, asked twice, or asked without a default it needs | The same: "its column \`NAME\` cannot be shown." |
+| `arguments`, `ask` or `as` on a column that is no calculation | The same. |
+| A read action that requires an argument the argument line has no input for | The same: "its read action cannot be used." |
+| An `argument` that names no public argument of the read action | The table renders; the declaration has no effect. |
+| A primary read action that requires an argument, under a table that changes records | The table renders. After a save or an action the row cannot be loaded again, and is taken out of the page as a record that is no longer the person's to read. |
 | A wrong `update_action`, at the table or at a column: not there, not an update action, not public | The same. The block asked for editing through an action that cannot be run, and a table that silently offered none would hide that. |
 | Editable columns beside calculation, aggregate or reference columns, without a primary read action | The same. |
 | An `action` that names no public update or destroy action, or one that is declared twice | The same: "its row action \`NAME\` cannot be used." |

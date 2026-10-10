@@ -106,6 +106,17 @@ defmodule AshTable.Live.Page do
   by its primary key, as the person, before the action runs on it, and a
   key that names nothing they may read through the table runs nothing.
 
+  ## Arguments
+
+  The line of inputs above the grid holds the arguments of the table's read
+  action, and those its columns ask for. While an argument that the read
+  action requires is empty, the action is not run and the page says which
+  to fill in. A person who can never run the read action is not asked: Ash
+  says so without a read, and they are answered as when the read is refused
+  (see above). A default of an asked argument that is a function is given
+  the assigns of this page's socket, as the host's `on_mount` hooks set
+  them.
+
   ## The heading
 
   The first line of the page is the table's: its name as the page's `h1`,
@@ -149,7 +160,11 @@ defmodule AshTable.Live.Page do
   ## URL
 
   Sort, filters and page are kept in the URL, under the table's id:
-  `/tasks?task[sort]=-title&task[f][title]=report&task[page]=2`.
+  `/tasks?task[sort]=-title&task[f][title]=report&task[page]=2`. So is what
+  the person gave the arguments of the read action
+  (`task[a][search]=login`) and those a column asks for
+  (`task[c][price_in][currency]=usd`): see "Arguments" in
+  `AshTable.Resource`.
 
   Which rows are expanded, and the sort, filters and page of the tables
   nested in them, are not in the URL. A new read of the table (a change of
@@ -216,6 +231,7 @@ defmodule AshTable.Live.Page do
           heading={1}
           authorize?={nil}
           mounted?={true}
+          page_assigns={page_assigns(assigns)}
           {reader(@table.resource, assigns)}
         />
       </div>
@@ -248,6 +264,13 @@ defmodule AshTable.Live.Page do
     {render_slot(@inner_block)}
     """
   end
+
+  # The assigns of the page, as a default of an asked argument is given
+  # them (`ask :currency, default: &MyApp.Defaults.currency/1`): what the
+  # host's `on_mount` hooks have assigned, without what is LiveView's own
+  # and this page's.
+  defp page_assigns(assigns),
+    do: Map.drop(assigns, [:__changed__, :socket, :flash, :live_action, :table, :url, :layout])
 
   # Who is asking, from the assigns the resource's domain names.
   defp reader(resource, assigns) do

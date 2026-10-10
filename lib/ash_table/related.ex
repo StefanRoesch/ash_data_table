@@ -20,7 +20,9 @@ defmodule AshTable.Related do
   #
   # A parent's key in a URL proves nothing. The table reads the parent as
   # the person on every read (`AshTable.Query.read_related/4`), as a nested
-  # table does.
+  # table does, through the read action of the parent's table as it runs
+  # without arguments. So the table of a parent whose read action requires
+  # one has no full view of its nested tables.
 
   alias Ash.Resource.Info
   alias AshTable.Model
@@ -110,6 +112,10 @@ defmodule AshTable.Related do
   # The resources of that short name whose table has such a relationship to
   # this resource, and lets its rows expand at all: the models of their
   # tables, as they are for everybody.
+  #
+  # Not one whose read action requires an argument: the full view reads the
+  # parent through that action, and a URL that names a record says nothing
+  # of what the parent's table was given when the record was found.
   defp named(resource, parent_name, relationship_name, endpoint)
        when is_binary(parent_name) and
               (is_binary(relationship_name) or is_atom(relationship_name)) do
@@ -120,6 +126,7 @@ defmodule AshTable.Related do
         Relating.table?(parent),
         model = Model.build(parent),
         model.max_depth > 0,
+        not needs_argument?(parent, model.read_action),
         match?(
           %Relationship{destination: ^resource},
           Model.relationship(model, relationship_name)
@@ -129,6 +136,13 @@ defmodule AshTable.Related do
   end
 
   defp named(_resource, _parent_name, _relationship_name, _endpoint), do: []
+
+  defp needs_argument?(resource, read_action) do
+    resource
+    |> Info.action(read_action)
+    |> Map.fetch!(:arguments)
+    |> Enum.any?(&AshTable.Resource.Arguing.needed?/1)
+  end
 
   # The resources a parent is looked for among: those of the domains the
   # application lists (`config :my_app, ash_domains: […]`), and those of the

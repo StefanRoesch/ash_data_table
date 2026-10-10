@@ -3,6 +3,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   use Spark.Dsl.Verifier
 
   alias AshTable.Model.Operator
+  alias AshTable.Resource.Arguing
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Reading
   alias AshTable.Resource.Referencing
@@ -52,7 +53,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   end
 
   defp field_errors(column, field, module) do
-    required_argument_errors(column, field, module) ++
+    argument_errors(column, field, module) ++
       private_read_errors(column, field, module) ++
       sortable_errors(column, module) ++
       filterable_errors(column, field, module) ++
@@ -72,7 +73,8 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp reference_errors(column, relationship, module) do
     case Referencing.reference(relationship) do
       {:ok, _reference} ->
-        reference_option_errors(column, module) ++
+        argument_errors(column, relationship, module) ++
+          reference_option_errors(column, module) ++
           update_action_errors(column, relationship, module) ++
           confirm_errors(column, relationship, module)
 
@@ -238,7 +240,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
       [
         DslError.exception(
           module: module,
-          path: [:table, :column, column.name, :sortable?],
+          path: [:table, :column, column.key, :sortable?],
           message:
             "`#{column.name}` cannot be sorted#{strategy_note(strategy)}, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`.",
           location: Spark.Dsl.Entity.property_anno(column, :sortable?)
@@ -256,7 +258,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
       [
         DslError.exception(
           module: module,
-          path: [:table, :column, column.name, :filterable?],
+          path: [:table, :column, column.key, :filterable?],
           message:
             "`#{column.name}` cannot be filtered, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`.",
           location: Spark.Dsl.Entity.property_anno(column, :filterable?)
@@ -272,14 +274,39 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp strategy_note(:keyset), do: " with keyset pagination"
   defp strategy_note(_strategy), do: ""
 
-  defp required_argument_errors(column, field, module) do
-    for name <- Reading.required_arguments(field) do
-      error(
-        column,
-        module,
-        "The calculation `#{column.name}` requires the argument `#{name}`. A table cannot supply arguments, so a column can only show a calculation whose arguments are optional or have defaults."
-      )
+  # How the column gives the arguments of its calculation, and that a
+  # column of anything else gives none: see `AshTable.Resource.Arguing`.
+  defp argument_errors(column, field, module) do
+    for {option, reason} <- Arguing.mistakes(module, field, column) do
+      message = Arguing.message(reason)
+
+      case option do
+        option when option in [:as, :arguments] -> option_error(column, module, option, message)
+        :ask -> ask_error(column, module, reason, message)
+        nil -> error(column, module, message)
+      end
     end
+  end
+
+  # At the `ask` the mistake is about, when it is about one.
+  defp ask_error(column, module, reason, message) do
+    name =
+      case reason do
+        {:not_a_calculation, _field, :ask} -> nil
+        {:no_input, :ask, _calculation, %{name: name}} -> name
+        {_what, _calculation, name} -> name
+        {_what, _calculation, name, _more} -> name
+        {_what, _calculation, name, _value, _where} -> name
+      end
+
+    ask = Enum.find(column.asks || [], &(&1.name == name))
+
+    DslError.exception(
+      module: module,
+      path: [:table, :column, column.key, :ask] ++ List.wrap(name),
+      message: message,
+      location: (ask && Spark.Dsl.Entity.anno(ask)) || Spark.Dsl.Entity.anno(column)
+    )
   end
 
   # An aggregate is read through actions of the related resources, which
@@ -303,7 +330,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp option_error(column, module, option, message) do
     DslError.exception(
       module: module,
-      path: [:table, :column, column.name, option],
+      path: [:table, :column, column.key, option],
       message: message,
       location: Spark.Dsl.Entity.property_anno(column, option)
     )
@@ -312,7 +339,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp error(column, module, message) do
     DslError.exception(
       module: module,
-      path: [:table, :column, column.name],
+      path: [:table, :column, column.key],
       message: message,
       location: Spark.Dsl.Entity.anno(column)
     )

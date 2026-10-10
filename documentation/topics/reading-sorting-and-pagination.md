@@ -4,8 +4,9 @@ After reading this guide you can choose the read action behind a table, set
 its page size and default order, pick between offset and keyset pagination,
 and say which columns a person can sort by and why.
 
-Filtering has [its own guide](filtering.md), and so has
-[what is kept in the URL](state-in-the-url.md).
+Filtering has [its own guide](filtering.md), and so have
+[what is kept in the URL](state-in-the-url.md) and the
+[arguments](arguments.md) a read action takes.
 
 ## The smallest example
 
@@ -18,7 +19,7 @@ read is declared on that action. The primary read action of the demo's tasks
 ```elixir
 read :read do
   primary? true
-
+  # ...
   pagination offset?: true,
              keyset?: true,
              countable: true,
@@ -30,6 +31,9 @@ read :read do
 end
 ```
 
+(What is left out here is the action's argument, a search term:
+[Arguments](arguments.md).)
+
 **Try it:** `/tasks` in the demo, as Ada Admin. The page holds 25 tasks,
 newest first, and says "1–25 of 320" under the table. None of the three
 facts is in the `table` block.
@@ -39,9 +43,11 @@ facts is in the `table` block.
 For every page it shows, the table builds a query for the read action and
 runs it:
 
+- the arguments the person gave the action, with `Ash.Query.for_read/4`;
 - the sort the person chose, with `Ash.Query.sort_input/2`;
 - the filters the person set, with `Ash.Query.filter_input/2`;
-- the calculations among the columns, and the related records of its
+- the calculations among the columns, each with the arguments its column
+  gives it, and the related records of its
   [reference cells](columns-and-defaults.md#reference-cells), as loads;
 - the page, as the `page` option of the read;
 - the actor, the tenant and `authorize?`.

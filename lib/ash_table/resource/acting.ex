@@ -37,6 +37,7 @@ defmodule AshTable.Resource.Acting do
           | {:no_field, :row | :create, atom, input}
           | {:not_a_create_action, atom, atom}
           | {:result_read_not_public, atom}
+          | {:result_read_needs_argument, atom, atom}
 
   @doc "The action a row action of the block names, or what is wrong with it."
   @spec row_action(Ash.Resource.t() | Spark.Dsl.t(), atom) :: {:ok, struct} | {:error, reason}
@@ -88,13 +89,18 @@ defmodule AshTable.Resource.Acting do
         input(:attribute, attribute, required?(action, attribute))
       end
 
-    arguments =
-      for %{public?: true} = argument <- action.arguments do
-        input(:argument, argument, argument.allow_nil? == false and not computed?(argument))
-      end
+    arguments = for %{public?: true} = argument <- action.arguments, do: argument(argument)
 
     attributes ++ arguments
   end
+
+  @doc """
+  An argument as an input: one of an action, or of a calculation. It is
+  required when it cannot be empty, unless it has a default that is computed.
+  """
+  @spec argument(struct) :: input
+  def argument(argument),
+    do: input(:argument, argument, argument.allow_nil? == false and not computed?(argument))
 
   @doc """
   Whether the action takes the attribute empty. A create action fills in a
@@ -258,15 +264,51 @@ defmodule AshTable.Resource.Acting do
     end
   end
 
-  defp changes?(resource) do
-    columns =
-      case AshTable.Resource.Info.columns(resource) do
-        [] ->
-          Enum.map(Info.public_attributes(resource), &{&1, nil})
+  @doc """
+  The primary read action of a resource whose table changes records and
+  shows something that is loaded (a calculation, an aggregate, a reference
+  column), when that action cannot run without an argument: the action and
+  the argument. Nil when nothing is wrong.
 
-        declared ->
-          for column <- declared, field = Info.field(resource, column.name), do: {field, column}
-      end
+  Ash loads what a create, an update or a destroy action returns through
+  the primary read action, without arguments (`private_result_read/1`), so
+  a row could never be shown again after one.
+  """
+  @spec unanswered_result_read(Ash.Resource.t()) :: {atom, atom} | nil
+  def unanswered_result_read(resource) do
+    with %{name: name, arguments: arguments} <- Info.primary_action(resource, :read),
+         %{name: argument} <-
+           Enum.find(arguments, &(&1.allow_nil? == false and is_nil(&1.default))),
+         true <- changes?(resource),
+         true <- Enum.any?(columns(resource), fn {field, _declared} -> loaded?(field) end) do
+      {name, argument}
+    else
+      _nothing_wrong -> nil
+    end
+  end
+
+  defp loaded?(%struct{}),
+    do:
+      struct in [
+        Ash.Resource.Calculation,
+        Ash.Resource.Aggregate,
+        Ash.Resource.Relationships.BelongsTo
+      ]
+
+  # The fields of the table's columns, each with its column as written in
+  # the block (nil for a column of the default set).
+  defp columns(resource) do
+    case AshTable.Resource.Info.columns(resource) do
+      [] ->
+        Enum.map(Info.public_attributes(resource), &{&1, nil})
+
+      declared ->
+        for column <- declared, field = Info.field(resource, column.name), do: {field, column}
+    end
+  end
+
+  defp changes?(resource) do
+    columns = columns(resource)
 
     AshTable.Resource.Info.actions(resource) != [] or
       AshTable.Resource.Info.table_create_action(resource) != :error or
@@ -312,6 +354,14 @@ defmodule AshTable.Resource.Acting do
         "and the primary read action `#{name}` is not public. " <>
         AshTable.Resource.Reading.private_action() <>
         " Make `#{name}` public, or leave the table read-only: without `update_action`, `action` and `create_action`."
+
+  def message({:result_read_needs_argument, name, argument}),
+    do:
+      "The table changes records: it has editable columns, row actions or a create action. " <>
+        "Ash loads what a create, an update or a destroy action returns through the primary read action, " <>
+        "without arguments, and the primary read action `#{name}` requires the argument `#{argument}`, " <>
+        "so a row could not be shown again after one. Give the argument a default, make another " <>
+        "read action the primary one, or leave the table read-only."
 
   def message({:not_a_create_action, name, type}),
     do: "`#{name}` is #{kind(type)} action, not a create action."

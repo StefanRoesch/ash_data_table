@@ -53,8 +53,8 @@ test.describe("the boxes", () => {
   test("are the first column of the grid: one in every row, one in the header for the page, and an empty filter cell", async ({
     tasks,
   }) => {
-    // the boxes, the expanders, the nineteen columns of the table, the actions
-    await expect(tasks.grid).toHaveAttribute("aria-colcount", "23")
+    // the boxes, the expanders, the twenty-two columns of the table, the actions
+    await expect(tasks.grid).toHaveAttribute("aria-colcount", "25")
     await expect(tasks.grid).toHaveAttribute("aria-multiselectable", "true")
     await expect(tasks.headerCells.first()).toHaveId("task-select-head")
     await expect(tasks.pageBoxCell).toHaveRole("columnheader")

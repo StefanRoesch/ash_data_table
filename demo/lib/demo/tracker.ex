@@ -19,6 +19,7 @@ defmodule Demo.Tracker do
     resource Demo.Tracker.User
     resource Demo.Tracker.Project
     resource Demo.Tracker.Task
+    resource Demo.Tracker.Deadline
     resource Demo.Tracker.Comment
     resource Demo.Tracker.Label
     resource Demo.Tracker.TaskLabel

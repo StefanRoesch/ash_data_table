@@ -45,8 +45,33 @@ declared in the resource and mounted with one line in the router.
   the last of them.
 - A filter row with one filter per column and a short list of operators per
   type: text, number, date, datetime, boolean and enum.
-- Sort, filters and page in the URL of a mounted table, and of a table
-  placed in a LiveView that hands it the page's `url`.
+- **Arguments.** Every `public?` argument of the table's read action has an
+  input in the argument line, above the rows, with the control of its type:
+  text, number, boolean, date, datetime, enum, a multiple choice for an
+  array of enum values, a row per value for an array of text, numbers or
+  dates, and a line of text for a key. Nothing is declared for it; an
+  `argument` entity gives one a label. An argument is applied when its input
+  is left or Enter is used, and is part of the table's state with the sort
+  and the filters. While an argument the action requires is empty the
+  action is not run, and the table says "Fill in … to see records." in
+  place of its rows; a value Ash refuses is shown at its input with the
+  action's message, and the rows stay. The arguments are given wherever the
+  table runs its read action for the person: the page and its count, what
+  is loaded onto its rows, the record of a row before an edit or an action,
+  the selected records and "all that match", and the row a nested table
+  belongs to. A nested table, the full view and a picker have the line of
+  the action they read through.
+- **Calculations with arguments as columns.** A `column` fixes them
+  (`arguments currency: :eur`) or asks the person for them
+  (`ask :currency, default: :eur`, with a value or a function of the page's
+  assigns as its default), in the same line. `as` names the second column
+  of one calculation. Each column is loaded, sorted and filtered by with its
+  own arguments. A required argument that is given neither way, an unknown
+  one, a value of the wrong type, and an asked argument that cannot be
+  empty and has no default are reported when the resource is compiled.
+  `<AshTable.table>` takes `assigns` for a default that is a function.
+- Sort, filters, arguments and page in the URL of a mounted table, and of a
+  table placed in a LiveView that hands it the page's `url`.
 - Loading, empty and failed states. An error the read action returned on
   purpose is shown; any other failure is logged and shown as "The records
   could not be loaded."

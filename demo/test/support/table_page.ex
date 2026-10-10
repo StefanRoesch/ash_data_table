@@ -34,6 +34,101 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc """
+  Changes the argument line and leaves it, as a person does who types a value
+  or picks one: the arguments of the read action under `a:`, by name, and
+  those a column asks for under `c:`, by column and name. Returns the page
+  once the rows have been read again.
+
+      argue(view, "task", a: %{"search" => "report"})
+      argue(view, "task", c: %{"due_within" => %{"days" => "3"}})
+  """
+  def argue(view, id, arguments) do
+    arguments = Map.new(arguments, fn {key, value} -> {Atom.to_string(key), value} end)
+
+    view |> form("##{id}-arguments", %{"arguments" => arguments}) |> render_change()
+    render_async(view, 2000)
+  end
+
+  @doc """
+  The argument line of the table `id` as a person reads it, left to right:
+  each input with its label, its control (the type of an input, `"select"`,
+  `"choices"` for a multiple choice or `"list"` for one control per value),
+  what it holds, whether it is marked as required, and what is said under
+  it. Nil for a table without the line.
+  """
+  def arguments(html, id) do
+    case Enum.to_list(query(html, "[id='#{id}-arguments']")) do
+      [] ->
+        nil
+
+      [_line] ->
+        for argument <- query(html, "[id='#{id}-arguments'] > [data-argument]") do
+          [named] = LazyHTML.attribute(argument, "data-argument")
+          control_id = "#{id}-arg-#{named}"
+          {control, value, required?} = argument_control(argument, control_id)
+
+          %{
+            name: named,
+            label:
+              argument
+              |> LazyHTML.query("[data-label]")
+              |> LazyHTML.text()
+              |> String.trim(),
+            control: control,
+            value: value,
+            required?: required?,
+            errors:
+              argument
+              |> LazyHTML.query("[data-error]")
+              |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+          }
+        end
+    end
+  end
+
+  defp argument_control(argument, id) do
+    control = Enum.to_list(LazyHTML.query(argument, "[id='#{id}']"))
+
+    case control do
+      [element] ->
+        [{tag, attributes, _children}] = LazyHTML.to_tree(element)
+        attribute = &:proplists.get_value(&1, attributes, nil)
+        required? = attribute.("aria-required") == "true"
+
+        case tag do
+          "select" ->
+            selected =
+              element
+              |> LazyHTML.query("option[selected]")
+              |> Enum.flat_map(&LazyHTML.attribute(&1, "value"))
+              |> List.first()
+
+            {"select", selected || "", required?}
+
+          "input" ->
+            if attribute.("type") == "checkbox",
+              do: {"checkbox", to_string(not is_nil(attribute.("checked"))), required?},
+              else: {attribute.("type"), attribute.("value") || "", required?}
+
+          "div" ->
+            boxes = Enum.to_list(LazyHTML.query(element, "input[type=checkbox]"))
+
+            if boxes != [] do
+              {"choices",
+               element
+               |> LazyHTML.query("input[type=checkbox][checked]")
+               |> Enum.flat_map(&LazyHTML.attribute(&1, "value")), false}
+            else
+              {"list",
+               element
+               |> LazyHTML.query("input:not([type=hidden])")
+               |> Enum.map(&(&1 |> LazyHTML.attribute("value") |> List.first() || "")), false}
+            end
+        end
+    end
+  end
+
+  @doc """
   Saves a cell as the table's hook does once a person has typed a value and
   pressed Enter or left the cell: one `save` event with the row's key, the
   column and the value as typed. Returns the page.

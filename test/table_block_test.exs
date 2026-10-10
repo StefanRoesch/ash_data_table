@@ -1486,7 +1486,7 @@ defmodule AshTable.TableBlockTest do
       assert error.message =~ "`secret` is not public"
     end
 
-    test "naming a calculation with a required argument is an error" do
+    test "naming a calculation with a required argument, and giving it neither way, is an error" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :title_in]} do
           defmodule Elixir.AshTable.TableBlockTest.CalculationWithRequiredArgument do
@@ -1516,11 +1516,12 @@ defmodule AshTable.TableBlockTest do
           end
         end
 
-      assert error.message =~ "`title_in` requires the argument `language`"
+      assert error.message =~
+               "The calculation `title_in` requires the argument `language`, and the column gives it neither way. Fix it with `arguments language: …`, or let the person give it with `ask :language, default: …`."
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.TableBlockTest.CalculationWithRequiredArgument: its column `title_in` is a calculation that requires the argument `language`, and a table cannot supply arguments.",
+                   "cannot build the table of AshTable.TableBlockTest.CalculationWithRequiredArgument: its column `title_in` cannot be shown. The calculation `title_in` requires the argument `language`, and the column gives it neither way. Fix it with `arguments language: …`, or let the person give it with `ask :language, default: …`.",
                    fn ->
                      AshTable.Model.build(AshTable.TableBlockTest.CalculationWithRequiredArgument)
                    end
@@ -5984,6 +5985,698 @@ defmodule AshTable.TableBlockTest do
     defp keys(%Spark.Dsl.Entity{} = entity) do
       for({key, option} <- entity.schema, key != :*, do: option[:as] || key) ++
         Keyword.keys(entity.auto_set_fields || []) ++ Keyword.keys(entity.entities)
+    end
+  end
+
+  describe "the arguments of a calculation column" do
+    test "are fixed with `arguments` or asked with `ask`, and a second column of it has another name" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Argued do
+          use AshTable.Test.Arguing.Priced
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :name
+
+            column :amount_in do
+              arguments rate: 2, currency: :usd
+            end
+
+            column :amount_in do
+              as :amount_asked
+              label "Asked"
+              ask :rate, default: 3
+              ask :currency
+              ask :places
+            end
+
+            column :amount_in do
+              as :amount_fn
+              arguments places: nil
+
+              ask :rate do
+                default &AshTable.Test.Arguing.rate/1
+                label "Exchange rate"
+              end
+            end
+
+            column :amount_in do
+              as :amount_mfa
+              ask :rate, default: {AshTable.Test.Arguing, :rate, [1]}
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.Argued
+
+      assert [
+               %AshTable.Resource.Column{
+                 name: :name,
+                 as: nil,
+                 key: :name,
+                 arguments: nil,
+                 asks: []
+               },
+               %AshTable.Resource.Column{
+                 name: :amount_in,
+                 as: nil,
+                 key: :amount_in,
+                 arguments: [rate: 2, currency: :usd],
+                 asks: []
+               },
+               %AshTable.Resource.Column{
+                 name: :amount_in,
+                 as: :amount_asked,
+                 key: :amount_asked,
+                 arguments: nil,
+                 asks: [
+                   %AshTable.Resource.Ask{name: :rate, default: 3, label: nil},
+                   %AshTable.Resource.Ask{name: :currency, default: nil},
+                   %AshTable.Resource.Ask{name: :places, default: nil}
+                 ]
+               },
+               %AshTable.Resource.Column{
+                 as: :amount_fn,
+                 arguments: [places: nil],
+                 asks: [%AshTable.Resource.Ask{name: :rate, default: fun, label: "Exchange rate"}]
+               },
+               %AshTable.Resource.Column{
+                 as: :amount_mfa,
+                 asks: [%AshTable.Resource.Ask{default: {AshTable.Test.Arguing, :rate, [1]}}]
+               }
+             ] = AshTable.Resource.Info.columns(Argued)
+
+      assert is_function(fun, 1)
+
+      # an MFA is called with the assigns before its own arguments
+      model = AshTable.Model.defaults(AshTable.Model.build(Argued), %{rate: 10})
+      assert AshTable.Model.argument(model, {:amount_fn, :rate}).default == 10
+      assert AshTable.Model.argument(model, {:amount_mfa, :rate}).default == 11
+    end
+
+    test "an anonymous function is taken as a default too" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ArguedByFn do
+          use AshTable.Test.Arguing.Priced
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :amount_in do
+              ask :rate, default: fn assigns -> assigns.rate * 2 end
+            end
+          end
+        end
+      end
+
+      model =
+        AshTable.Model.defaults(
+          AshTable.Model.build(AshTable.TableBlockTest.ArguedByFn),
+          %{rate: 4}
+        )
+
+      assert AshTable.Model.argument(model, {:amount_in, :rate}).default == 8
+    end
+
+    test "an argument the calculation does not have is an error, fixed or asked" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :amount_in, :arguments]} do
+          defmodule Elixir.AshTable.TableBlockTest.UnknownFixedArgument do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 2, ratio: 3
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "The calculation `amount_in` has no argument named `ratio`."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.UnknownFixedArgument: its column `amount_in` cannot be shown. The calculation `amount_in` has no argument named `ratio`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.UnknownFixedArgument) end
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :amount_in, :ask, :ratio]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.UnknownAskedArgument do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 2
+                ask :ratio
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "The calculation `amount_in` has no argument named `ratio`."
+    end
+
+    test "a fixed value that is none of the argument's type is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :amount_in, :arguments]} do
+          defmodule Elixir.AshTable.TableBlockTest.FixedWrongType do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: "many"
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               ~s(`"many"` is not a value of the argument `rate` of the calculation `amount_in`.)
+
+      assert_raise ArgumentError,
+                   ~s(cannot build the table of AshTable.TableBlockTest.FixedWrongType: its column `amount_in` cannot be shown. `"many"` is not a value of the argument `rate` of the calculation `amount_in`.),
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.FixedWrongType) end
+    end
+
+    test "a fixed value that the argument's constraints refuse, or nothing for one that cannot be empty, is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :amount_in, :arguments]} do
+          defmodule Elixir.AshTable.TableBlockTest.FixedConstrained do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 0
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "`0` is not a value of the argument `rate`"
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :amount_in, :arguments]} do
+          defmodule Elixir.AshTable.TableBlockTest.FixedEmpty do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: nil
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "`nil` is not a value of the argument `rate`"
+    end
+
+    test "a default of an asked argument that is none of its type is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :amount_in, :ask, :currency]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.WrongAskDefault do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 2
+                ask :currency, default: :gbp
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "`:gbp`, the default of `ask :currency`, is not a value of the argument `currency` of the calculation `amount_in`."
+    end
+
+    test "an asked argument that cannot be empty has to have a default: the block's or the resource's" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :amount_in, :ask, :rate]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.AskedWithoutDefault do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                ask :rate
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "The argument `rate` of `amount_in` is asked and cannot be empty, and has no default: neither on its `ask` nor in the resource. A column never starts without a value: say `ask :rate, default: …`."
+
+      assert_raise ArgumentError,
+                   ~r/its column `amount_in` cannot be shown. The argument `rate` of `amount_in` is asked and cannot be empty/,
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.AskedWithoutDefault) end
+
+      # `currency` has one in the resource, and `places` may be empty
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.AskedWithResourceDefault do
+          use AshTable.Test.Arguing.Priced
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :amount_in do
+              arguments rate: 2
+              ask :currency
+              ask :places
+            end
+          end
+        end
+      end
+    end
+
+    test "an argument is fixed or asked, not both, and asked once" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :amount_in, :ask, :rate]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.FixedAndAsked do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 2
+                ask :rate
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "The argument `rate` of `amount_in` is fixed with `arguments` and asked with `ask`. It is one or the other: to ask it and start with a value, say `ask :rate, default: …`."
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :amount_in, :ask, :rate]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.AskedTwice do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                ask :rate, default: 1
+                ask :rate, default: 2
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "The argument `rate` of `amount_in` is asked more than once."
+    end
+
+    test "an argument of a type the argument line has no input for cannot be asked" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :amount_in, :ask, :shape]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.AskedWithoutInput do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 2
+                ask :shape
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "The argument `shape` of the calculation `amount_in` cannot be asked: a table has no input for its type (Ash.Type.Map). The argument line has inputs for text, numbers, booleans, dates, datetimes, choices, arrays of those, and values written as one line of text, such as a key. Fix its value with `arguments` instead."
+    end
+
+    test "`arguments` on a column that is no calculation is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :name, :arguments]} do
+          defmodule Elixir.AshTable.TableBlockTest.ArgumentsOfAnAttribute do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :name do
+                arguments rate: 2
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "`name` is not a calculation. Only a calculation takes arguments."
+
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.ArgumentsOfAnAttribute: its column `name` cannot be shown. `name` is not a calculation. Only a calculation takes arguments.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.ArgumentsOfAnAttribute) end
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :comment_count, :arguments]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ArgumentsOfAnAggregate do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :comment_count do
+                arguments rate: 2
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "`comment_count` is not a calculation."
+    end
+
+    test "`ask` and `as` on a column that is no calculation are errors" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :name, :ask]} do
+          defmodule Elixir.AshTable.TableBlockTest.AskOfAnAttribute do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :name do
+                ask :rate, default: 2
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "`name` is not a calculation. Only an argument of a calculation can be asked; an argument of the read action is on the argument line without a declaration."
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :other, :as]} do
+          defmodule Elixir.AshTable.TableBlockTest.AsOfAnAttribute do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :name do
+                as :other
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "`name` is not a calculation, so `as` has no effect. `as` names the second column of a calculation that the table shows more than once, with other arguments."
+    end
+
+    test "`as` is no name of a field of the resource" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :amount, :as]} do
+          defmodule Elixir.AshTable.TableBlockTest.AsAField do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                as :amount
+                arguments rate: 2
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "`amount` is a field of the resource, so the column of `amount_in` cannot be called that. `as` gives a column a name that nothing else has."
+    end
+
+    test "two columns of one calculation without another name, or with the same one, are an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{} do
+          defmodule Elixir.AshTable.TableBlockTest.SameColumnTwice do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                arguments rate: 2
+              end
+
+              column :amount_in do
+                arguments rate: 3
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "Got duplicate AshTable.Resource.Column: amount_in"
+
+      error =
+        assert_dsl_error %Spark.Error.DslError{} do
+          defmodule Elixir.AshTable.TableBlockTest.SameAsTwice do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :amount_in do
+                as :converted
+                arguments rate: 2
+              end
+
+              column :amount_in do
+                as :converted
+                arguments rate: 3
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "Got duplicate AshTable.Resource.Column: converted"
+    end
+  end
+
+  describe "the arguments of the read action" do
+    test "need no declaration, and an `argument` gives one a label" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReadArguments do
+          use AshTable.Test.Arguing.Priced
+
+          actions do
+            read :read do
+              primary? true
+              argument :term, :string
+              argument :at_least, :integer, allow_nil?: false
+              argument :where, :map
+            end
+          end
+
+          table do
+            argument :term do
+              label "Search for"
+            end
+          end
+        end
+      end
+
+      assert [%AshTable.Resource.Argument{name: :term, label: "Search for"}] =
+               AshTable.Resource.Info.arguments(AshTable.TableBlockTest.ReadArguments)
+    end
+
+    test "an `argument` that names no argument of the read action is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :argument, :nothing]} do
+          defmodule Elixir.AshTable.TableBlockTest.DeclaredUnknownArgument do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              read :read do
+                primary? true
+                argument :term, :string
+              end
+            end
+
+            table do
+              argument :nothing do
+                label "Something"
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "The read action `read` has no public argument named `nothing`. An `argument` says what an argument of the read action behind the table is called."
+    end
+
+    test "an `argument` that names a private argument of the read action is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :argument, :secret]} do
+          defmodule Elixir.AshTable.TableBlockTest.DeclaredPrivateArgument do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              read :read do
+                primary? true
+                argument :secret, :string, public?: false
+              end
+            end
+
+            table do
+              argument :secret do
+                label "Something"
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "The read action `read` has no public argument named `secret`."
+    end
+
+    test "a read action that requires an argument the argument line has no input for is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :read_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.UnanswerableRead do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              read :read do
+                primary? true
+              end
+
+              read :within do
+                argument :area, :map, allow_nil?: false
+              end
+            end
+
+            table do
+              read_action :within
+            end
+          end
+        end
+
+      assert error.message =~
+               "The read action `within` requires the argument `area`, and a table has no input for its type (Ash.Type.Map), so it could never read."
+
+      assert_raise ArgumentError,
+                   ~r/cannot build the table of AshTable.TableBlockTest.UnanswerableRead: its read action cannot be used. The read action `within` requires the argument `area`/,
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.UnanswerableRead) end
+    end
+
+    test "a table that changes records is not built over a primary read action that requires an argument" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table]} do
+          defmodule Elixir.AshTable.TableBlockTest.UnansweredResultRead do
+            use AshTable.Test.Arguing.Priced
+
+            actions do
+              read :read do
+                primary? true
+                argument :at_least, :integer, allow_nil?: false
+              end
+
+              update :update do
+                primary? true
+                accept [:name]
+              end
+            end
+
+            table do
+              update_action :update
+
+              column :name
+              column :comment_count
+            end
+          end
+        end
+
+      assert error.message =~
+               "Ash loads what a create, an update or a destroy action returns through the primary read action, without arguments, and the primary read action `read` requires the argument `at_least`, so a row could not be shown again after one."
+
+      # a table that only reads through it is what the argument line is for
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.AnsweredRead do
+          use AshTable.Test.Arguing.Priced
+
+          actions do
+            read :read do
+              primary? true
+              argument :at_least, :integer, allow_nil?: false
+            end
+          end
+
+          table do
+            column :name
+            column :comment_count
+          end
+        end
+      end
     end
   end
 end

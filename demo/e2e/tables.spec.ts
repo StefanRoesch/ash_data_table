@@ -25,7 +25,7 @@ const MOUNTED: Mounted[] = [
     path: "/tasks",
     id: "task",
     title: "Tasks",
-    shows: "a `table` block: chosen columns, a relabelled one, an aggregate, two calculations, two arrays, three reference cells",
+    shows: "a `table` block: chosen columns, a relabelled one, an aggregate, two calculations, one calculation twice over with other arguments, two arrays, three reference cells",
     headers: [
       "Title",
       "State",
@@ -38,6 +38,8 @@ const MOUNTED: Mounted[] = [
       "Overdue?",
       "Comments",
       "Headline",
+      "Due within 7 days",
+      "Due within",
       "External ref",
       "Description",
       "Tags",

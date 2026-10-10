@@ -32,7 +32,7 @@ defmodule DemoWeb.HomeLiveTest do
   test "the page and the header link to every mounted table", %{conn: conn, world: world} do
     {:ok, view, _html} = conn |> log_in(world.member) |> live(~p"/")
 
-    for path <- ~w(/tasks /projects /comments /labels /specimens) do
+    for path <- ~w(/tasks /deadlines /projects /comments /labels /specimens) do
       assert has_element?(view, "#resources a[href='#{path}']")
     end
 

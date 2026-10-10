@@ -108,6 +108,8 @@ defmodule AshTable.Text do
           | :field_value
           | :save
           | :remove_group
+          | :fill_in
+          | :argument_of
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -356,4 +358,12 @@ defmodule AshTable.Text do
   # in that panel, and in the action panel: what the button is called that
   # takes such a value away, where it is not one of a list
   defp msgid(:remove_group), do: dgettext_noop("ash_table", "Remove %{column}")
+
+  # in place of the rows, while an argument that the read action requires is
+  # empty: what the argument is called, or what they are called, with commas
+  defp msgid(:fill_in), do: dgettext_noop("ash_table", "Fill in %{argument} to see records.")
+
+  # what an argument is called that a column asks for: the column, and the
+  # argument ("Price in: Currency")
+  defp msgid(:argument_of), do: dgettext_noop("ash_table", "%{column}: %{argument}")
 end

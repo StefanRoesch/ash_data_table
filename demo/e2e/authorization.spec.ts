@@ -31,13 +31,13 @@ const EDITABLE = [
 // `actions` says whether the grid has the column of the row actions: the
 // person can run one of them on some record (actions.spec.ts).
 const TASKS: Record<Actor, { columns: number; editors: number; actions: boolean; range: string | null }> = {
-  admin: { columns: 20, editors: 14, actions: true, range: "1–25 of 320" },
-  member: { columns: 19, editors: 14, actions: true, range: "1–25 of 320" },
+  admin: { columns: 22, editors: 14, actions: true, range: "1–25 of 320" },
+  member: { columns: 21, editors: 14, actions: true, range: "1–25 of 320" },
   // may not read people: no assignee, no reporter
-  viewer: { columns: 17, editors: 0, actions: false, range: "1–25 of 320" },
-  outsider: { columns: 19, editors: 14, actions: true, range: "1–25 of 80" },
+  viewer: { columns: 19, editors: 0, actions: false, range: "1–25 of 320" },
+  outsider: { columns: 21, editors: 14, actions: true, range: "1–25 of 80" },
   // may not read projects, and sees no estimate
-  nobody: { columns: 17, editors: 0, actions: false, range: null },
+  nobody: { columns: 19, editors: 0, actions: false, range: null },
 }
 
 for (const actor of ACTOR_KEYS) {
@@ -103,7 +103,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: the boxes, the expanders, 19 columns and the actions, numbered 1 to 22, walked without a gap", async ({
+  test("the smaller grid is whole: the boxes, the expanders, 21 columns and the actions, numbered 1 to 24, walked without a gap", async ({
     tasks,
     frames,
   }) => {
@@ -118,16 +118,16 @@ test.describe("the member, whose rights depend on the record", () => {
             Number(cell.getAttribute("aria-colindex")),
           ]),
         )
-    const oneToTwentyTwo = Array.from({ length: 22 }, (_, index) => [index + 1, index + 1])
+    const oneToTwentyFour = Array.from({ length: 24 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwentyTwo)
-    expect(await numbering("#task-head-row th")).toEqual(oneToTwentyTwo)
-    expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyTwo)
+    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwentyFour)
+    expect(await numbering("#task-head-row th")).toEqual(oneToTwentyFour)
+    expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyFour)
 
     await tasks.cell(first, "title").focus()
     await frames.clear()
     const walked = [await tasks.focused()]
-    for (let step = 0; step < 23; step++) {
+    for (let step = 0; step < 25; step++) {
       await tasks.press("ArrowRight")
       const focused = await tasks.focused()
       if (focused === walked.at(-1)) break
@@ -142,6 +142,8 @@ test.describe("the member, whose rights depend on the record", () => {
     // where the admin has `external_ref` between these two
     expect(columns.slice(10)).toEqual([
       "headline",
+      "due_within?",
+      "due_within",
       "description",
       "tags",
       "checks",

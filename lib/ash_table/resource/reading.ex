@@ -143,18 +143,6 @@ defmodule AshTable.Resource.Reading do
 
   def supported_strategies(_none), do: []
 
-  @doc """
-  The arguments a field cannot be read without: those of a calculation that
-  are required and have no default. A table supplies no arguments, so a
-  calculation with one cannot be a column.
-  """
-  @spec required_arguments(struct) :: [atom]
-  def required_arguments(%Ash.Resource.Calculation{arguments: arguments}) do
-    for %{allow_nil?: false, default: nil, name: name} <- arguments, do: name
-  end
-
-  def required_arguments(_field), do: []
-
   @typedoc """
   A read action that Ash runs to compute a column, and that is private: of
   `resource`, named `action`. `how` says whose choice it is: the

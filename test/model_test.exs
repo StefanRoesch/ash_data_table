@@ -3069,4 +3069,565 @@ defmodule AshTable.ModelTest do
       assert chooser.actions == [] and chooser.create == nil
     end
   end
+
+  describe "the argument line" do
+    alias AshTable.Model.Argument
+    alias AshTable.Test.Arguing.Price
+
+    test "has the public arguments of the read action, in its order, then what the columns ask for" do
+      model = Model.build(Price)
+
+      assert Enum.map(model.arguments, &Argument.key/1) == [
+               {nil, :term},
+               {nil, :at_least},
+               {nil, :kind},
+               {nil, :strict?},
+               {nil, :on},
+               {nil, :names},
+               {nil, :kinds},
+               {:amount_asked, :rate},
+               {:amount_asked, :currency},
+               {:amount_fn, :rate}
+             ]
+    end
+
+    test "leaves out a private argument, and an optional one the line has no input for" do
+      names = for %{column: nil, name: name} <- Model.build(Price).arguments, do: name
+
+      refute :secret in names
+      refute :where in names
+    end
+
+    test "gives each the control of its type, and says whether it can be empty" do
+      controls =
+        for argument <- Model.build(Price).arguments do
+          {Argument.key(argument), argument.editor, argument.cell_type, argument.required?}
+        end
+
+      assert controls == [
+               {{nil, :term}, :text, :text, false},
+               {{nil, :at_least}, :number, :number, true},
+               {{nil, :kind}, :enum, :enum, false},
+               {{nil, :strict?}, :boolean, :boolean, false},
+               {{nil, :on}, :date, :date, false},
+               {{nil, :names}, :list, {:array, :text}, false},
+               {{nil, :kinds}, :choices, {:array, :enum}, false},
+               {{:amount_asked, :rate}, :number, :number, true},
+               {{:amount_asked, :currency}, :enum, :enum, false},
+               {{:amount_fn, :rate}, :number, :number, true}
+             ]
+
+      assert Model.argument(Model.build(Price), {nil, :kind}).values ==
+               [plain: "Plain", fancy: "Fancy"]
+    end
+
+    test "calls an argument of the read action by its name in words, or by what the block says" do
+      model = Model.build(Price)
+
+      assert %{label: "Search for", column_label: nil} = Model.argument(model, {nil, :term})
+      assert %{label: "At least", column_label: nil} = Model.argument(model, {nil, :at_least})
+    end
+
+    test "calls an asked argument by its name and its column's label, or by its own label alone" do
+      model = Model.build(Price)
+
+      assert %{label: "Rate", column_label: "Amount asked"} =
+               Model.argument(model, {:amount_asked, :rate})
+
+      assert %{label: "Exchange rate", column_label: nil} =
+               Model.argument(model, {:amount_fn, :rate})
+    end
+
+    test "an argument of the read action starts with the default it has there" do
+      model = Model.build(Price)
+
+      assert Model.argument(model, {nil, :kind}).default == :plain
+      assert Argument.rest(Model.argument(model, {nil, :kind})) == "plain"
+      assert Argument.rest(Model.argument(model, {nil, :term})) == ""
+      assert Argument.rest(Model.argument(model, {nil, :names})) == []
+      # a box that is not ticked says "false"
+      assert Argument.rest(Model.argument(model, {nil, :strict?})) == "false"
+    end
+
+    test "an asked argument starts with its block's default, else with the resource's" do
+      model = Model.build(Price)
+
+      assert %{default: 3, default_fun: nil} = Model.argument(model, {:amount_asked, :rate})
+
+      assert %{default: :eur, default_fun: nil} =
+               Model.argument(model, {:amount_asked, :currency})
+
+      assert Argument.rest(Model.argument(model, {:amount_asked, :rate})) == "3"
+    end
+
+    test "a default that is a function is given the assigns of the page" do
+      model = Model.build(Price)
+
+      assert %{default: nil, default_fun: fun} = Model.argument(model, {:amount_fn, :rate})
+      assert is_function(fun, 1)
+
+      assert Model.argument(Model.defaults(model, %{rate: 7}), {:amount_fn, :rate}).default == 7
+      assert Model.argument(Model.defaults(model, %{}), {:amount_fn, :rate}).default == 5
+      # the others are as they were
+      assert Model.argument(Model.defaults(model, %{rate: 7}), {:amount_asked, :rate}).default ==
+               3
+    end
+
+    test "a table without arguments has no line" do
+      assert Model.build(AshTable.Test.Guarded).arguments == []
+      assert Model.build(AshTable.Test.Guarded).read_arguments == %{}
+    end
+
+    test "a nested table and a picker have the arguments of the action they read through" do
+      assert [%Argument{name: :term} | _] = Model.build(Price, choose: :search).arguments
+      assert Model.build(Price, choose: :read).arguments |> Enum.filter(&is_nil(&1.column)) == []
+    end
+  end
+
+  describe "a calculation column and its arguments" do
+    alias AshTable.Test.Arguing.Price
+
+    test "a column is told apart by its `as`, and shows the field it names" do
+      model = Model.build(Price)
+
+      assert Enum.map(model.columns, &{&1.name, &1.field, &1.label}) == [
+               {:name, :name, "Name"},
+               {:amount, :amount, "Amount"},
+               {:amount_in, :amount_in, "Amount in"},
+               {:amount_asked, :amount_in, "Amount asked"},
+               {:amount_fn, :amount_in, "Converted"}
+             ]
+    end
+
+    test "holds what the block fixes" do
+      model = Model.build(Price)
+
+      assert Enum.map(model.columns, &{&1.name, &1.fixed}) == [
+               name: %{},
+               amount: %{},
+               amount_in: %{rate: 2},
+               amount_asked: %{},
+               amount_fn: %{currency: :usd}
+             ]
+    end
+
+    test "each column of the calculation sorts and filters as the calculation does" do
+      for column <- Model.build(Price).columns, column.kind == :calculation do
+        assert column.sortable?
+        assert :at_least in column.operators
+      end
+    end
+  end
+
+  describe "supply/2: the model with what a person chose" do
+    alias AshTable.Test.Arguing.Price
+
+    defp priced(assigns \\ %{}), do: Price |> Model.build() |> Model.defaults(assigns)
+
+    test "with nothing chosen the read action is given nothing, and an asked argument its default" do
+      model = Model.supply(priced(), %{})
+
+      # only a box says what it shows, as a form does
+      assert model.read_arguments == %{strict?: "false"}
+
+      assert Enum.map(model.columns, &{&1.name, &1.arguments}) == [
+               name: %{},
+               amount: %{},
+               amount_in: %{rate: 2},
+               amount_asked: %{rate: 3, currency: :eur},
+               amount_fn: %{currency: :usd, rate: 5}
+             ]
+    end
+
+    test "what a person chose is given as they typed it, for Ash to cast" do
+      model =
+        Model.supply(priced(), %{
+          {nil, :term} => "nut",
+          {nil, :at_least} => "10",
+          {nil, :names} => ["a", "b"],
+          {:amount_asked, :rate} => "4"
+        })
+
+      assert model.read_arguments ==
+               %{term: "nut", at_least: "10", names: ["a", "b"], strict?: "false"}
+
+      assert Enum.find(model.columns, &(&1.name == :amount_asked)).arguments ==
+               %{rate: "4", currency: :eur}
+    end
+
+    test "is taken by the arguments of the line, and by nothing else" do
+      model =
+        Model.supply(priced(), %{
+          {nil, :secret} => "x",
+          {nil, :nothing} => "x",
+          {:amount_in, :rate} => "9",
+          {:name, :rate} => "9"
+        })
+
+      assert model.read_arguments == %{strict?: "false"}
+      # what the block fixes is not a person's to give
+      assert Enum.find(model.columns, &(&1.name == :amount_in)).arguments == %{rate: 2}
+      assert Enum.find(model.columns, &(&1.name == :name)).arguments == %{}
+    end
+
+    test "can be done again with another choice" do
+      model = Model.supply(priced(), %{{:amount_asked, :rate} => "4"})
+      again = Model.supply(model, %{})
+
+      assert Enum.find(again.columns, &(&1.name == :amount_asked)).arguments ==
+               %{rate: 3, currency: :eur}
+    end
+
+    test "a calculation is loaded with its column's arguments, the second column under its name" do
+      assert Model.loads(Model.supply(priced(%{rate: 7}), %{{:amount_asked, :currency} => "usd"})) ==
+               [
+                 amount_in: %{rate: 2},
+                 amount_in: %{rate: 3, currency: "usd", as: :amount_asked},
+                 amount_in: %{rate: 7, currency: :usd, as: :amount_fn}
+               ]
+    end
+
+    test "a calculation without arguments is loaded by its name, as before" do
+      assert :secret_shouted in Model.loads(Model.build(AshTable.Test.Guarded))
+    end
+  end
+
+  describe "for_actor/2: the arguments of a column a person never sees" do
+    alias AshTable.Model.Argument
+    alias AshTable.Test.Arguing.Guarded
+
+    test "go with every column of that field, whatever the column is called" do
+      model = Model.build(Guarded)
+
+      admin = Model.for_actor(model, actor: %{role: :admin})
+      assert column_names(admin) == [:name, :amount_in, :amount_asked]
+      assert Enum.map(admin.arguments, &Argument.key/1) == [{:amount_asked, :rate}]
+
+      member = Model.for_actor(model, actor: %{role: :member})
+      assert column_names(member) == [:name]
+      assert member.arguments == []
+    end
+  end
+
+  describe "the arguments in the state" do
+    alias AshTable.State
+    alias AshTable.Test.Arguing.Price
+
+    defp line, do: Price |> Model.build() |> Model.defaults(%{})
+
+    test "are read from a URL by the arguments the line has, as they were typed" do
+      state =
+        State.from_params(line(), %{
+          "a" => %{
+            "term" => "nut",
+            "at_least" => "10",
+            "names" => ["a", "b"],
+            "secret" => "x",
+            "nothing" => "x"
+          },
+          "c" => %{
+            "amount_asked" => %{"rate" => "4"},
+            "amount_in" => %{"rate" => "9"},
+            "nothing" => %{"rate" => "9"}
+          }
+        })
+
+      assert state.arguments == %{
+               {nil, :term} => "nut",
+               {nil, :at_least} => "10",
+               {nil, :names} => ["a", "b"],
+               {:amount_asked, :rate} => "4"
+             }
+    end
+
+    test "nothing is kept of what is not text, or a list of text for an array" do
+      state =
+        State.from_params(line(), %{
+          "a" => %{"term" => %{"x" => "y"}, "at_least" => ["1"], "names" => %{"0" => "a"}},
+          "c" => "nonsense"
+        })
+
+      assert state.arguments == %{}
+      assert State.from_params(line(), %{"a" => "nonsense"}).arguments == %{}
+    end
+
+    test "an argument that is as its input shows it with nothing chosen is not a choice" do
+      state =
+        State.from_params(line(), %{
+          "a" => %{"kind" => "plain", "strict?" => "false", "term" => ""},
+          "c" => %{"amount_asked" => %{"rate" => "3", "currency" => "eur"}}
+        })
+
+      assert state.arguments == %{}
+    end
+
+    test "go into a URL as they came out of it; an array without values is the empty text" do
+      params = %{
+        "a" => %{"term" => "nut", "names" => ["a", "b"], "kind" => ""},
+        "c" => %{"amount_asked" => %{"rate" => "4"}, "amount_fn" => %{"rate" => "9"}}
+      }
+
+      state = State.from_params(line(), params)
+      assert State.to_params(state, line()) == params
+
+      # a choice that can be empty, emptied: not its default
+      assert state.arguments[{nil, :kind}] == ""
+    end
+
+    test "a state without arguments has none in its URL" do
+      assert State.to_params(%State{}, line()) == %{}
+    end
+
+    test "argue/3 takes what the line's form holds, and starts at the first page again" do
+      state = %State{page: 3, sort: {:name, :asc}, filters: %{name: {:contains, "a"}}}
+
+      form = %{
+        "a" => %{
+          "term" => "nut",
+          "at_least" => "",
+          "kind" => "plain",
+          "strict?" => "true",
+          # a list is sent with an entry of its own before its values
+          "names" => ["", "a", "", "b"],
+          "kinds" => ["", "fancy"]
+        },
+        "c" => %{"amount_asked" => %{"rate" => "3", "currency" => "usd"}}
+      }
+
+      argued = State.argue(state, line(), form)
+
+      assert argued.arguments == %{
+               {nil, :term} => "nut",
+               {nil, :strict?} => "true",
+               {nil, :names} => ["a", "b"],
+               {nil, :kinds} => ["fancy"],
+               {:amount_asked, :currency} => "usd"
+             }
+
+      assert %{page: 1, sort: {:name, :asc}, filters: %{name: {:contains, "a"}}} = argued
+    end
+
+    test "argue/3 with what the state holds already changes nothing" do
+      state = State.argue(%State{}, line(), %{"a" => %{"term" => "nut"}})
+      paged = %{state | page: 3}
+
+      assert State.argue(paged, line(), %{"a" => %{"term" => "nut"}}) == paged
+    end
+
+    test "rows/2 are the rows of a list as its form sends them, the empty ones too" do
+      names = Model.argument(line(), {nil, :names})
+
+      assert State.rows(names, %{"a" => %{"names" => ["", "a", "", "b"]}}) == ["a", "", "b"]
+      assert State.rows(names, %{"a" => %{"names" => [""]}}) == []
+      assert State.rows(names, %{"a" => %{}}) == nil
+    end
+
+    test "put_argument/4, withdraw/2 and restore/3 change one choice" do
+      state = State.put_argument(%State{page: 2}, line(), {nil, :names}, ["a", "", "b"])
+      assert %{arguments: %{{nil, :names} => ["a", "b"]}, page: 1} = state
+
+      assert State.put_argument(state, line(), {nil, :names}, []).arguments == %{}
+      assert State.put_argument(state, line(), {nil, :nothing}, "x") == state
+      assert State.withdraw(state, [{nil, :names}]).arguments == %{}
+
+      next = State.argue(state, line(), %{"a" => %{"names" => ["", "c"], "term" => "nut"}})
+
+      assert State.restore(next, state, [{nil, :names}]).arguments ==
+               %{{nil, :names} => ["a", "b"], {nil, :term} => "nut"}
+    end
+
+    test "fit/2 drops what the model's line does not have" do
+      state = %State{arguments: %{{nil, :term} => "nut", {:amount_asked, :rate} => "4"}, page: 2}
+      assert State.fit(state, line()) == state
+
+      without = %{line() | arguments: Enum.filter(line().arguments, &is_nil(&1.column))}
+
+      assert State.fit(state, without) ==
+               %State{arguments: %{{nil, :term} => "nut"}, page: 1}
+    end
+  end
+
+  describe "what Ash makes of the arguments" do
+    alias AshTable.Model.Argument
+    alias AshTable.Query
+    alias AshTable.Test.Arguing.Price
+
+    defp asked(chosen), do: Price |> Model.build() |> Model.defaults(%{}) |> Model.supply(chosen)
+
+    test "an argument the read action requires and that is empty is missing" do
+      assert %{missing: [%Argument{name: :at_least}], refused: refused} =
+               Query.arguments(asked(%{}), authorize?: false)
+
+      assert refused == %{}
+    end
+
+    test "nothing is missing once it is given" do
+      assert Query.arguments(asked(%{{nil, :at_least} => "0"}), authorize?: false) ==
+               %{missing: [], refused: %{}}
+    end
+
+    test "a value that is none of the argument's type, or that its constraints refuse, is refused with Ash's message" do
+      assert %{missing: [], refused: refused} =
+               Query.arguments(
+                 asked(%{
+                   {nil, :at_least} => "-1",
+                   {nil, :on} => "soon",
+                   {nil, :kind} => "neither",
+                   {:amount_fn, :rate} => "many"
+                 }),
+                 authorize?: false
+               )
+
+      assert refused == %{
+               {nil, :at_least} => ["must be greater than or equal to 0"],
+               {nil, :on} => ["is invalid"],
+               {nil, :kind} => ["is invalid"],
+               {:amount_fn, :rate} => ["is invalid"]
+             }
+    end
+
+    test "a value the constraints of a calculation's argument refuse is put at that argument" do
+      assert %{refused: refused} =
+               Query.arguments(
+                 asked(%{{nil, :at_least} => "0", {:amount_asked, :rate} => "0"}),
+                 authorize?: false
+               )
+
+      assert refused == %{{:amount_asked, :rate} => ["must be greater than or equal to 1"]}
+    end
+
+    test "an asked argument that cannot be empty is refused when it is emptied" do
+      assert %{refused: %{{:amount_asked, :rate} => ["is required"]}} =
+               Query.arguments(
+                 asked(%{{nil, :at_least} => "0", {:amount_asked, :rate} => ""}),
+                 authorize?: false
+               )
+    end
+
+    test "a table without arguments is asked nothing" do
+      assert Query.arguments(Model.build(AshTable.Test.Guarded), authorize?: false) ==
+               %{missing: [], refused: %{}}
+    end
+  end
+
+  describe "reading with arguments" do
+    alias AshTable.Query
+    alias AshTable.Record
+    alias AshTable.State
+    alias AshTable.Test.Arguing.Price
+
+    setup do
+      for {name, amount, kind} <- [
+            {"apple", 1, :plain},
+            {"banana", 5, :fancy},
+            {"cherry", 10, :plain}
+          ] do
+        Ash.create!(Price, %{name: name, amount: amount, kind: kind}, authorize?: false)
+      end
+
+      :ok
+    end
+
+    defp reading(chosen),
+      do: Price |> Model.build() |> Model.defaults(%{}) |> Model.supply(chosen)
+
+    test "the page is read through the action with what the person gave it" do
+      {:ok, page} = Query.read(reading(%{{nil, :at_least} => "5"}), %State{}, authorize?: false)
+
+      assert Enum.map(page.records, & &1.name) == ["banana", "cherry"]
+      assert page.total == 2
+
+      {:ok, page} =
+        Query.read(
+          reading(%{{nil, :at_least} => "0", {nil, :term} => "an", {nil, :kinds} => ["fancy"]}),
+          %State{},
+          authorize?: false
+        )
+
+      assert Enum.map(page.records, & &1.name) == ["banana"]
+    end
+
+    test "a calculation column is computed with its column's arguments, the second column under its own name" do
+      {:ok, page} =
+        Query.read(
+          reading(%{{nil, :at_least} => "5", {:amount_asked, :rate} => "4"}),
+          %State{},
+          authorize?: false
+        )
+
+      assert Enum.map(
+               page.records,
+               &{&1.name, &1.amount_in, &1.calculations.amount_asked, &1.calculations.amount_fn}
+             ) == [{"banana", 10, 20, 25}, {"cherry", 20, 40, 50}]
+    end
+
+    test "is sorted by a calculation column with that column's arguments" do
+      model = reading(%{{nil, :at_least} => "0"})
+
+      {:ok, page} = Query.read(model, %State{sort: {:amount_asked, :desc}}, authorize?: false)
+      assert Enum.map(page.records, & &1.name) == ["cherry", "banana", "apple"]
+    end
+
+    test "is filtered by a calculation column with that column's arguments, each column by its own" do
+      model = reading(%{{nil, :at_least} => "0"})
+
+      # rate 3: 3, 15, 30
+      {:ok, page} =
+        Query.read(model, %State{filters: %{amount_asked: {:at_least, "15"}}}, authorize?: false)
+
+      assert Enum.map(page.records, & &1.name) == ["banana", "cherry"]
+
+      # the column that fixes rate 2: 2, 10, 20
+      {:ok, page} =
+        Query.read(model, %State{filters: %{amount_in: {:at_least, "15"}}}, authorize?: false)
+
+      assert Enum.map(page.records, & &1.name) == ["cherry"]
+
+      # Both at once are two predicates on one calculation with different
+      # arguments, which a data layer that filters in memory, as the one of
+      # these tests does, gets wrong in ash 3.34.4 (so does
+      # `Ash.Query.filter(amount_in(rate: 3) >= 15 and amount_in(rate: 2) < 20)`).
+      # On Postgres they are tested with the demo's tasks.
+    end
+
+    test "every record that matches, and the records of a selection, are read the same way" do
+      model = reading(%{{nil, :at_least} => "5"})
+
+      keys = Query.matching(model, %State{}, authorize?: false)
+      assert length(keys) == 2
+
+      all = Price |> Ash.read!(authorize?: false) |> Enum.map(&Map.take(&1, [:id]))
+      assert length(all) == 3
+
+      # a record the arguments leave out is none of the table's
+      assert model |> Query.records(all, authorize?: false) |> Enum.map(& &1.name) |> Enum.sort() ==
+               ["banana", "cherry"]
+    end
+
+    test "the record of a row is read again through the action with its arguments" do
+      [apple] = Price |> Ash.read!(authorize?: false) |> Enum.filter(&(&1.name == "apple"))
+
+      assert {:ok, %{name: "apple"}} =
+               Record.fetch(reading(%{{nil, :at_least} => "0"}), %{id: apple.id},
+                 authorize?: false
+               )
+
+      # for these arguments it is not there
+      assert Record.fetch(reading(%{{nil, :at_least} => "5"}), %{id: apple.id}, authorize?: false) ==
+               :error
+
+      # and without what the action requires nothing is
+      assert Record.fetch(reading(%{}), %{id: apple.id}, authorize?: false) == :error
+    end
+
+    test "what an action returned is loaded through the primary read action, with the columns' arguments" do
+      [apple] = Price |> Ash.read!(authorize?: false) |> Enum.filter(&(&1.name == "apple"))
+
+      # whatever the table's own read action would make of the record
+      assert {:ok, loaded} =
+               Record.load(reading(%{{nil, :at_least} => "5"}), apple, authorize?: false)
+
+      assert {loaded.amount_in, loaded.calculations.amount_asked} == {2, 3}
+    end
+  end
 end

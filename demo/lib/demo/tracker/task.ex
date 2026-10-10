@@ -113,6 +113,21 @@ defmodule Demo.Tracker.Task do
     # filter by it
     column :headline
 
+    # A calculation that takes an argument, twice. The first column fixes
+    # the argument. The second asks the person for it, in the argument line
+    # above the rows, and starts with 30; being the second column of the same
+    # calculation, it has a name of its own (`as`). Each is sorted and
+    # filtered by with its own argument.
+    column :due_within? do
+      label "Due within 7 days"
+      arguments days: 7
+    end
+
+    column :due_within? do
+      as :due_within
+      ask :days, default: 30
+    end
+
     # `update` accepts it, the table does not offer it
     column :external_ref do
       update_action false
@@ -203,9 +218,19 @@ defmodule Demo.Tracker.Task do
   end
 
   actions do
-    # Offset AND keyset, countable.
+    # Offset AND keyset, countable. It takes an argument that may be left
+    # empty: a search term, which a table of the tasks asks for in its
+    # argument line, wherever it is shown.
     read :read do
       primary? true
+
+      # case-insensitive, as a `:ci_string` compares
+      argument :search, :ci_string
+
+      filter expr(
+               is_nil(^arg(:search)) or contains(title, ^arg(:search)) or
+                 contains(description, ^arg(:search))
+             )
 
       pagination offset?: true,
                  keyset?: true,
@@ -517,7 +542,8 @@ defmodule Demo.Tracker.Task do
     # A module calculation, computed in Elixir.
     calculate :headline, :string, Demo.Tracker.Calculations.Headline, public?: true
 
-    # A calculation with a required argument: it cannot be a column.
+    # A calculation with a required argument: a column of it has to say what
+    # the argument is, or ask for it.
     calculate :due_within?,
               :boolean,
               expr(not is_nil(due_on) and due_on <= date_add(today(), ^arg(:days), :day)) do

@@ -2,7 +2,15 @@ defmodule AshTable.Model.Column do
   @moduledoc false
   # One column of a table model: a field of the resource as the table shows it.
   #
-  #   * `name` is the field's name and `kind` says what it is on the resource.
+  #   * `name` is what the column is told apart by, and `field` the name of
+  #     the resource's field it shows. They are the same but for a column
+  #     with `as`: the second column of a calculation, whose values Ash puts
+  #     under that name among the record's `calculations`.
+  #   * `fixed` holds the arguments the block fixes for a calculation
+  #     column, and `arguments` everything the calculation is computed with:
+  #     those, and the asked ones once `AshTable.Model.supply/2` has put
+  #     them in. The column is loaded, sorted and filtered with them.
+  #   * `kind` says what the field is on the resource.
   #     A `:reference` column is named after a belongs-to relationship and
   #     shows the related record's label: `reference` then says which
   #     relationship, to which `destination`, which of its attributes is the
@@ -77,6 +85,7 @@ defmodule AshTable.Model.Column do
   @enforce_keys [:name, :kind, :label, :cell_type, :sortable?, :operators]
   defstruct [
     :name,
+    :field,
     :kind,
     :label,
     :type,
@@ -92,11 +101,16 @@ defmodule AshTable.Model.Column do
     :reference,
     editable?: false,
     apart?: false,
-    partly_hidden?: false
+    partly_hidden?: false,
+    fixed: %{},
+    arguments: %{}
   ]
 
   @type t :: %__MODULE__{
           name: atom,
+          field: atom,
+          fixed: %{optional(atom) => term},
+          arguments: %{optional(atom) => term},
           kind: :attribute | :calculation | :aggregate | :reference,
           label: String.t(),
           type: {Ash.Type.t() | nil, keyword},

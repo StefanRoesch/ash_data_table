@@ -28,6 +28,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     "Overdue?",
     "Comments",
     "Headline",
+    "Due within 7 days",
+    "Due within",
     "External ref",
     "Description",
     "Tags",
@@ -94,7 +96,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert column(html, "task", "external_ref") == ["EXT-SECRET-1"]
       # the 19 columns, before them the boxes and the expanders, and after
       # them the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["23"]
+      assert attribute(html, "#task-table", "aria-colcount") == ["25"]
     end
 
     for actor <- [:member, :viewer, :outsider] do
@@ -109,7 +111,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
            %{conn: conn, world: world} do
         {:ok, _view, html} = conn |> log_in(world[unquote(actor)]) |> live("/tasks")
 
-        # The expanders, the columns that are left (19, and 17 for the viewer),
+        # The expanders, the columns that are left (21, and 19 for the viewer),
         # and the actions, which a viewer can never run: and so nothing on
         # several rows either, which is what the boxes before the expanders
         # are for.
@@ -121,13 +123,13 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
         numbers = Enum.map(1..count, &Integer.to_string/1)
 
-        assert count == if(unquote(actor) == :viewer, do: 18, else: 22)
+        assert count == if(unquote(actor) == :viewer, do: 20, else: 24)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
         assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
         assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
 
         assert attribute(html, "#task-head-description", "aria-colindex") ==
-                 ["#{13 + acting}"]
+                 ["#{15 + acting}"]
       end
     end
 
@@ -139,11 +141,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       assert headers(html, "task") ==
                @headers -- ["External ref", "Estimate hours" | @unreadable.nobody]
 
-      # the expanders, and the 17 columns that are left
-      assert attribute(html, "#task-table", "aria-colcount") == ["18"]
+      # the expanders, and the 19 columns that are left
+      assert attribute(html, "#task-table", "aria-colcount") == ["20"]
 
       assert attribute(html, "#task-head-row th", "aria-colindex") ==
-               Enum.map(1..18, &Integer.to_string/1)
+               Enum.map(1..20, &Integer.to_string/1)
 
       refute html =~ "estimate_hours"
       refute html =~ "Estimate hours"
@@ -167,7 +169,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
       # the box, the expander, the eighteen columns of a member, the actions
       assert attribute(html, "#task-table tbody td", "aria-colindex") ==
-               Enum.map(1..22, &Integer.to_string/1)
+               Enum.map(1..24, &Integer.to_string/1)
     end
   end
 
@@ -488,14 +490,14 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
         end
 
       assert seen == [
-               admin: %{columns: 20, rows: 1, editors: 14},
-               member: %{columns: 19, rows: 1, editors: 14},
+               admin: %{columns: 22, rows: 1, editors: 14},
+               member: %{columns: 21, rows: 1, editors: 14},
                # may not read people: no assignee, no reporter
-               viewer: %{columns: 17, rows: 1, editors: 0},
+               viewer: %{columns: 19, rows: 1, editors: 0},
                # of the other organization: none of these tasks, and a member there
-               outsider: %{columns: 19, rows: 0, editors: 14},
+               outsider: %{columns: 21, rows: 0, editors: 14},
                # may not read projects
-               nobody: %{columns: 17, rows: 0, editors: 0}
+               nobody: %{columns: 19, rows: 0, editors: 0}
              ]
     end
   end

@@ -21,12 +21,13 @@ no HEEx.
 > and a slider are shipped. A cell that shows a related record is edited by
 > choosing another one from the related resource's own table. An embedded
 > resource and a map are shown on one line and edited in the side panel,
-> field by field.
+> field by field. A read action's arguments, and those of a calculation
+> column, are given in a line of inputs above the rows.
 
 - [Install](#install)
 - [A first table](#a-first-table)
 - [Describing the table](#describing-the-table): columns and defaults
-- [Reading](#reading): page size and sort, [filtering](#filtering), [the URL](#the-url), [when a read fails](#when-a-read-fails)
+- [Reading](#reading): page size and sort, [filtering](#filtering), [arguments](#arguments), [the URL](#the-url), [when a read fails](#when-a-read-fails)
 - [Inline editing](#inline-editing)
 - [Choosing a related record](#choosing-a-related-record)
 - [Row actions and create](#row-actions-and-create)
@@ -53,6 +54,7 @@ examples from the demo app and each topic's edge cases.
 - [Columns and defaults](documentation/topics/columns-and-defaults.md)
 - [Reading, sorting and pagination](documentation/topics/reading-sorting-and-pagination.md)
 - [Filtering](documentation/topics/filtering.md)
+- [Arguments](documentation/topics/arguments.md)
 - [State in the URL](documentation/topics/state-in-the-url.md)
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
@@ -334,10 +336,54 @@ After each filter change the result is announced to screen readers: the
 number of records when the read action is `countable`, under offset and
 under keyset pagination, otherwise only that the results have changed.
 
+### Arguments
+
+A read action that takes arguments needs nothing in the block. Every
+`public?` argument of the table's read action has an input in the argument
+line, above the rows, with the control of its type and its name as its
+label; `argument :search do label "Search for" end` gives another label.
+
+```elixir
+read :search do
+  argument :term, :string
+  argument :due_by, :date, allow_nil?: false
+  filter expr(due_on <= ^arg(:due_by) and (is_nil(^arg(:term)) or contains(title, ^arg(:term))))
+end
+```
+
+An argument is applied as a filter is, when its input is left or Enter is
+used, and is kept where the sort and the filters are. Whether it can be left
+empty is the action's to say. While one the action requires is empty, the
+action is not run, and the table says "Fill in Due by to see records." in
+place of its rows. A value Ash refuses is shown at its input with the
+action's message, and the rows stay.
+
+A calculation with arguments is a column that says what they are: fixed in
+the block, or asked from the person, who gives them in the same line.
+
+```elixir
+column :price_in do
+  arguments currency: :eur
+end
+
+column :price_in do
+  as :price_in_any
+  ask :currency, default: :usd
+end
+```
+
+`as` names the second column of a calculation, as a calculation that is
+loaded twice is named in Ash. An asked argument starts with the `default`
+of its `ask` (a value, or a function of the page's assigns), else with the
+default it has in the resource. Each column is loaded, sorted and filtered
+by with its own arguments. A nested table and a picker have the argument
+line of the action they read through. See the guide,
+[Arguments](documentation/topics/arguments.md).
+
 ### The URL
 
-Sort, filters and page are kept in the URL, under the table's id, so reload,
-the back button and shared links work:
+Sort, filters, arguments and page are kept in the URL, under the table's id,
+so reload, the back button and shared links work:
 
 ```
 /tasks?task[sort]=-title&task[page]=2
@@ -351,6 +397,10 @@ value (`task[f][due_on][is_empty]=`); a yes-or-no choice is `yes` or `no`.
 The operators are named `contains`, `equals`, `starts_with`, `is_empty`,
 `greater_than`, `less_than`, `at_least`, `at_most`, `on`, `before` and
 `after`. Parameters that mean nothing to the table are ignored.
+
+An argument of the read action is under `a`, by name
+(`task[a][search]=login`), and one a column asks for under `c`, by column
+and name (`task[c][due_within][days]=14`).
 
 One more parameter limits the table to the records related to one record,
 `task[of][project][tasks]=KEY`: the [full view](#nested-tables) of a nested

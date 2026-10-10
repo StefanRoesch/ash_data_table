@@ -121,6 +121,7 @@ A selection is a set of records, remembered by their primary keys.
 | Another page is opened | Stays. The rows of the page left behind are still selected, and the count says so. |
 | The table is sorted | Stays. |
 | A filter is set, changed or cleared | Is given up. What was selected under other filters may not be among the rows any more. |
+| An [argument](arguments.md) of the table is changed | Is given up, for the same reason. "All that match" is what the filters match of what the read action returns for its arguments. |
 | A cell is saved, a row action runs on one row | Stays. A row that the action took away is taken out of it. |
 | The page is reloaded, or left | Is gone. It is not in the URL, and the server does not keep it. |
 | An action ran on it | The rows it did not run on stay selected; the others are taken out. |

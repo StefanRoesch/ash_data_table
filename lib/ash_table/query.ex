@@ -5,6 +5,15 @@ defmodule AshTable.Query do
   # chose are applied with `Ash.Query.sort_input/2` and
   # `Ash.Query.filter_input/2`, the functions for outside input.
   #
+  # The action is given the arguments the model holds for it
+  # (`AshTable.Model.supply/2`): what a person typed into the argument line,
+  # as they typed it, for Ash to cast. Wherever the table runs its read
+  # action for them, it runs it with these: the page and its count, every
+  # record that matches, the records of a selection, the record of a row
+  # before something is done with it (`get/5`), and what is loaded onto
+  # records the action has read. A calculation column is loaded, sorted and
+  # filtered by with the arguments its column gives it.
+  #
   # A table of its own and a nested one build the same query and turn what
   # comes back into the same `Page`. They differ in the last step alone: the
   # one reads its query, the other reads the parent record by its key with
@@ -33,8 +42,10 @@ defmodule AshTable.Query do
   #     names are loaded last, in a step that holds nothing else.
 
   alias AshTable.Model
+  alias AshTable.Model.Argument
   alias AshTable.Model.Operator
   alias AshTable.State
+  alias AshTable.Text
 
   # how many records are read at a time where records are read to the end
   @batch_size 100
@@ -97,6 +108,7 @@ defmodule AshTable.Query do
            loaded(
              result,
              [Model.aggregates(model), Model.apart(model)],
+             model,
              [action: model.read_action] ++ read_opts
            ) do
       {:ok, page(result, model, state)}
@@ -117,9 +129,14 @@ defmodule AshTable.Query do
   shows the record does. Ash's own loader then decides what "related" means, for
   every kind of relationship.
 
-  Takes the options of `read/3`, and `:parent_authorize?`: whether the table
-  of the parent authorizes (defaults to `true`). The parent is read with
-  authorization when either table authorizes.
+  Takes the options of `read/3`, and
+
+    * `:parent_authorize?` - whether the table of the parent authorizes
+      (defaults to `true`). The parent is read with authorization when
+      either table authorizes;
+    * `:parent_arguments` - what the read action of the parent's table is
+      given: the `read_arguments` of that table's model. Without them the
+      action runs with its defaults.
 
   Returns, besides what `read/3` returns:
 
@@ -157,6 +174,7 @@ defmodule AshTable.Query do
              via.source,
              via.source_read_action,
              key,
+             Keyword.get(opts, :parent_arguments, %{}),
              [load: [{via.name, related}]] ++ parent_opts
            ),
          {:ok, result} <- related(Map.get(parent, via.name)),
@@ -252,6 +270,7 @@ defmodule AshTable.Query do
              via.source,
              via.source_read_action,
              key,
+             Keyword.get(opts, :parent_arguments, %{}),
              [load: [{via.name, related}]] ++ parent_opts
            ),
          {:ok, result} <- related(Map.get(parent, via.name)) do
@@ -308,35 +327,59 @@ defmodule AshTable.Query do
   `:action` Ash loads through the primary read action, as it does itself
   for what a create, an update or a destroy action returns: the way a row
   is shown again after one (`AshTable.Record`).
+
+  What is loaded through the table's read action is loaded with the
+  arguments that action was read with. The primary read action is given
+  none, as Ash gives it none after an action.
   """
   @spec load(result, Model.t(), keyword) :: {:ok, result} | {:error, Ash.Error.t()}
         when result: Ash.Page.page() | [Ash.Resource.record()] | Ash.Resource.record()
   def load(result, %Model{} = model, opts) do
-    loaded(result, [Model.loads(model) ++ Model.aggregates(model), Model.apart(model)], opts)
+    loaded(
+      result,
+      [Model.loads(model) ++ Model.aggregates(model), Model.apart(model)],
+      model,
+      opts
+    )
   end
 
   # Each of `steps` is loaded onto the records in a statement of its own, in
   # that order, as the person.
-  defp loaded(result, steps, read_opts) do
+  defp loaded(result, steps, model, read_opts) do
     Enum.reduce_while(steps, {:ok, result}, fn loads, {:ok, result} ->
-      case step(result, loads, read_opts) do
+      case step(result, loads, model, read_opts) do
         {:ok, result} -> {:cont, {:ok, result}}
         {:error, error} -> {:halt, {:error, error}}
       end
     end)
   end
 
-  defp step(result, [], _read_opts), do: {:ok, result}
-  defp step([], _loads, _read_opts), do: {:ok, []}
-  defp step(%{results: []} = page, _loads, _read_opts), do: {:ok, page}
+  defp step(result, [], _model, _read_opts), do: {:ok, result}
+  defp step([], _loads, _model, _read_opts), do: {:ok, []}
+  defp step(%{results: []} = page, _loads, _model, _read_opts), do: {:ok, page}
 
-  defp step(%struct{results: records} = page, loads, read_opts)
+  defp step(%struct{results: records} = page, loads, model, read_opts)
        when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
-    with {:ok, records} <- Ash.load(records, loads, read_opts),
+    with {:ok, records} <- Ash.load(records, through(loads, model, read_opts), read_opts),
          do: {:ok, %{page | results: records}}
   end
 
-  defp step(records, loads, read_opts), do: Ash.load(records, loads, read_opts)
+  defp step(records, loads, model, read_opts),
+    do: Ash.load(records, through(loads, model, read_opts), read_opts)
+
+  # What Ash is asked to load. Through the table's read action, where that
+  # takes arguments, it is a query of that action with them: Ash would
+  # otherwise run the action without any.
+  defp through(loads, %Model{read_action: action, read_arguments: arguments} = model, read_opts) do
+    if read_opts[:action] == action and arguments != %{} do
+      model.resource
+      |> Ash.Query.new()
+      |> Ash.Query.load(loads)
+      |> Ash.Query.for_read(action, arguments, Keyword.delete(read_opts, :action))
+    else
+      loads
+    end
+  end
 
   @doc """
   Reads one record by its primary key through the read action `action`, as
@@ -347,11 +390,127 @@ defmodule AshTable.Query do
   `public?`. Ash would take the primary read action, which nothing says is:
   a table runs no action that it has not looked at.
   """
-  @spec get(Ash.Resource.t(), atom, map, keyword) ::
+  @spec get(Ash.Resource.t(), atom, map, map, keyword) ::
           {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
-  def get(resource, action, key, opts) when is_atom(action) and is_map(key) do
+  def get(resource, action, key, arguments, opts)
+      when is_atom(action) and is_map(key) and arguments == %{} do
     Ash.get(resource, key, [not_found_error?: false, action: action] ++ opts)
   end
+
+  # `Ash.get/3` gives an action no arguments. With them the record is read
+  # as it does read it: the one record with that key, through the action.
+  def get(resource, action, key, arguments, opts)
+      when is_atom(action) and is_map(key) and is_map(arguments) do
+    resource
+    |> Ash.Query.new()
+    |> Ash.Query.do_filter(Map.to_list(key))
+    |> Ash.Query.for_read(action, arguments, Keyword.delete(opts, :load))
+    |> Ash.read_one([not_found_error?: false] ++ opts)
+  end
+
+  @doc """
+  What Ash makes of the arguments a model holds
+  (`AshTable.Model.supply/2`), asked without reading anything, as `opts` say
+  who is asking:
+
+    * `missing` - the arguments of the argument line that the read action
+      does not run without, and that are empty: in the line's order;
+    * `refused` - by the key of an argument of the line, what Ash says of
+      the value it holds: a text that is no value of its type, a value its
+      constraints do not take.
+
+  The read action's arguments are given to the action
+  (`Ash.Query.for_read/4`), and those a column asks for to a load of its
+  calculation, which is where Ash casts them. An argument that is no input
+  of the line is not looked at: what is wrong with it is said by the read.
+  """
+  @spec arguments(Model.t(), [option]) :: %{
+          missing: [Argument.t()],
+          refused: %{optional(Argument.key()) => [String.t()]}
+        }
+  def arguments(%Model{arguments: []}, _opts), do: %{missing: [], refused: %{}}
+
+  def arguments(%Model{} = model, opts) do
+    read = for %{column: nil} = argument <- model.arguments, do: argument
+
+    errors =
+      case read do
+        [] ->
+          []
+
+        _some ->
+          model.resource
+          |> Ash.Query.for_read(model.read_action, model.read_arguments, reader_opts(opts))
+          |> Map.fetch!(:errors)
+      end
+
+    required = for %Ash.Error.Query.Required{type: :argument, field: field} <- errors, do: field
+
+    refused =
+      for %Ash.Error.Query.InvalidArgument{field: field} = error <- errors,
+          Enum.any?(read, &(&1.name == field)) do
+        {{nil, field}, said(error)}
+      end
+
+    asked =
+      for column <- model.columns,
+          asks = Enum.filter(model.arguments, &(&1.column == column.name)),
+          asks != [],
+          refusal <- asked(model.resource, column, asks),
+          do: refusal
+
+    %{
+      missing: Enum.filter(read, &(&1.name in required)),
+      refused: Enum.group_by(refused ++ asked, &elem(&1, 0), &elem(&1, 1))
+    }
+  end
+
+  # What Ash says of the arguments a column's calculation is loaded with,
+  # by asked argument. It names the argument for a value that is none of
+  # its type. For one its constraints do not take it does not (ash 3.34.4),
+  # so that is put at the asked arguments whose own value their type does
+  # not take, and failing that at all of them.
+  defp asked(resource, column, asks) do
+    errors =
+      resource
+      |> Ash.Query.new()
+      |> Ash.Query.load([{column.field, column.arguments}])
+      |> Map.fetch!(:errors)
+
+    for error <- errors, argument <- about(error, asks, column.arguments) do
+      {Argument.key(argument), said(error)}
+    end
+  end
+
+  defp about(%Ash.Error.Query.InvalidCalculationArgument{field: field}, asks, _arguments),
+    do: Enum.filter(asks, &(&1.name == field))
+
+  defp about(_error, asks, arguments) do
+    case Enum.reject(asks, &value?(&1, Map.get(arguments, &1.name))) do
+      [] -> asks
+      not_values -> not_values
+    end
+  end
+
+  defp value?(%Argument{type: {type, constraints}}, value) do
+    with {:ok, cast} <- Ash.Type.cast_input(type, value, constraints),
+         {:ok, _cast} <- Ash.Type.apply_constraints(type, cast, constraints) do
+      true
+    else
+      _refused -> false
+    end
+  end
+
+  # The message of an error about an argument, as the host translates the
+  # messages of actions.
+  defp said(%{message: message} = error) when is_binary(message),
+    do: Text.error({message, Map.get(error, :vars) || []})
+
+  defp said(%Ash.Error.Unknown.UnknownError{error: message, value: vars})
+       when is_binary(message),
+       do: Text.error({message, if(Keyword.keyword?(vars), do: vars, else: [])})
+
+  defp said(_error), do: Text.t(:invalid_filter)
 
   # The sort a person chose goes in before the action's preparations run, so
   # that a sort of the action itself comes second, as a tie-breaker.
@@ -361,7 +520,7 @@ defmodule AshTable.Query do
     |> sort(known_sort(state.sort, model), model.via)
     |> filter(known(state.filters, model))
     |> Ash.Query.load(loads)
-    |> Ash.Query.for_read(model.read_action, %{}, read_opts)
+    |> Ash.Query.for_read(model.read_action, model.read_arguments, read_opts)
   end
 
   @doc "Who is asking, as the options of an Ash call: scope, or actor and tenant, and `authorize?`."
@@ -389,25 +548,31 @@ defmodule AshTable.Query do
   # fits a state it kept to the model it has now); this is the same rule once
   # more, where the query is built.
   defp known(filters, model) do
-    Map.filter(filters, fn {name, _filter} ->
-      Enum.any?(model.columns, &(&1.name == name and &1.operators != []))
-    end)
+    for {name, filter} <- filters,
+        column = Enum.find(model.columns, &(&1.name == name and &1.operators != [])),
+        do: {column, filter}
   end
 
   # Likewise the sort: by a column of the table that sorts, named by the
   # model's own atom. `Ash.Query.sort_input/2` would take the path through a
   # relationship ("assignee.name") from anybody and apply no policy of the
-  # related resource to it, so nothing but a column's name ever gets there
+  # related resource to it, so nothing but a column's field ever gets there
   # (internal ticket #31; a reference column, which is named after a
   # relationship, is never `sortable?` for the same reason).
-  defp known_sort({name, _direction} = sort, model) do
-    if Enum.any?(model.columns, &(&1.name == name and &1.sortable?)), do: sort
+  defp known_sort({name, direction}, model) do
+    with %{} = column <- Enum.find(model.columns, &(&1.name == name and &1.sortable?)),
+         do: {column, direction}
   end
 
   defp known_sort(nil, _model), do: nil
 
-  defp sort(query, {name, direction}, _via),
-    do: Ash.Query.sort_input(query, [{name, direction}])
+  defp sort(query, {%{field: field, arguments: arguments}, direction}, _via)
+       when arguments == %{},
+       do: Ash.Query.sort_input(query, [{field, direction}])
+
+  # by a calculation as its column computes it: with the column's arguments
+  defp sort(query, {%{field: field, arguments: arguments}, direction}, _via),
+    do: Ash.Query.sort_input(query, [{field, {arguments, direction}}])
 
   # While the person has chosen no sort, the relationship's own goes where
   # theirs would: in front of the action's. Ash puts it behind, where an
@@ -419,15 +584,37 @@ defmodule AshTable.Query do
   # One filter with a predicate per column, which Ash combines with AND. The
   # values go in as they were typed: casting them, and what they match, is
   # the resource's.
-  defp filter(query, filters) when filters == %{}, do: query
+  #
+  # A calculation column that gives arguments is filtered by with them, as
+  # the input of its calculation, and in a filter of its own: two columns
+  # can show one calculation, and a filter holds a field once.
+  defp filter(query, []), do: query
 
   defp filter(query, filters) do
-    Ash.Query.filter_input(
-      query,
-      Map.new(filters, fn {name, {operator, value}} ->
-        {name, Map.new([Operator.to_ash(operator, value)])}
+    {plain, argued} =
+      Enum.split_with(filters, fn {column, _filter} ->
+        column.arguments == %{} and column.field == column.name
       end)
-    )
+
+    query =
+      case plain do
+        [] ->
+          query
+
+        plain ->
+          Ash.Query.filter_input(
+            query,
+            Map.new(plain, fn {column, {operator, value}} ->
+              {column.field, Map.new([Operator.to_ash(operator, value)])}
+            end)
+          )
+      end
+
+    Enum.reduce(argued, query, fn {column, {operator, value}}, query ->
+      Ash.Query.filter_input(query, %{
+        column.field => Map.new([Operator.to_ash(operator, value), {"input", column.arguments}])
+      })
+    end)
   end
 
   defp page_opts(%{pagination: %{strategy: :none}}, _state), do: false

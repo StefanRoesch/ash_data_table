@@ -113,6 +113,7 @@ These are all the messages of the template
 | Cells | "Yes", "No", "Not available" |
 | Filter operators | "contains", "equals", "starts with", "is empty", "greater than", "less than", "at least", "at most", "on", "before", "after", "is" |
 | Filter row | "Any", "Filter %{column}", "How to filter %{column}", "Not a valid value", "Clear the %{column} filter", "Clear filters" |
+| The argument line | "Fill in %{argument} to see records." (in place of the rows while an argument the read action requires is empty; `argument` is what it is called, or what they are called, with commas between), "%{column}: %{argument}" (what the input of an argument is called that a column asks for: "Due within: Days"). The rows of a list are the array editor's: "Add value", "%{column} %{position}", "Remove %{column} %{position}" |
 | Announcements | "1 result" with the plural "%{count} results", "Results updated", "%{column} was not saved: %{message}" |
 | Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
 | The editor of an array | "Add value" (the button that adds one), "%{column} %{position}" (what the control of a value is called: "Tags 2"; a message about one value has it in front, through "%{field}: %{message}"), "Remove %{column} %{position}" (what its button is called) |
@@ -146,6 +147,11 @@ values of an enum, the question of a `confirm`, and the name of the table
 of each relationship line under an expanded row (declared with `label`, or
 the relationship's name in words). Each of them is looked up as a message in
 the same `ash_table` domain and shown as it is when the domain has no entry.
+
+So is what the inputs of the [argument line](arguments.md) are called: the
+`label` of an `argument` or an `ask`, or the argument's name in words
+("Search", "Days"), and the labels of the values of an argument that is a
+choice.
 
 So are the fields of an embedded resource and of a map, in a cell and in
 the side panel: each is called by its name in words, as a column of that

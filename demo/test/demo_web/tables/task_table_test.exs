@@ -48,6 +48,8 @@ defmodule DemoWeb.Tables.TaskTableTest do
                "Overdue?",
                "Comments",
                "Headline",
+               "Due within 7 days",
+               "Due within",
                "External ref",
                "Description",
                "Tags",

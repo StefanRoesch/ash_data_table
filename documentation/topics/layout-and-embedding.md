@@ -228,6 +228,13 @@ resource's domain says, which is `true` unless the domain says otherwise;
 `authorize?={true}` or `authorize?={false}` on the tag wins over the domain.
 See [Authorization](authorization.md) for what `authorize? false` means.
 
+One more attribute, `assigns`, is for a table one of whose columns asks for
+an argument with a default that is a function
+(`ask :rate, default: &MyApp.Defaults.rate/1`): the function is given this
+map, where a mounted table gives it the assigns of its socket. Pass what the
+function looks at, such as `assigns={%{current_user: @current_user}}`; see
+[Arguments](arguments.md#what-an-asked-argument-starts-with).
+
 ## Mounted against embedded
 
 | | Mounted | Embedded |

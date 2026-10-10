@@ -101,19 +101,26 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
   # which the table then runs with the action. Here, and not with the
   # editing, because it is the same for an edit, a row action and a create.
   defp result_read_errors(dsl, module) do
-    case Acting.private_result_read(module) do
-      nil ->
-        []
+    private =
+      case Acting.private_result_read(module) do
+        nil -> []
+        name -> [{:result_read_not_public, name}]
+      end
 
-      name ->
-        [
-          DslError.exception(
-            module: module,
-            path: [:table],
-            message: Acting.message({:result_read_not_public, name}),
-            location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
-          )
-        ]
+    # and through that action as it is: without arguments
+    unanswered =
+      case Acting.unanswered_result_read(module) do
+        nil -> []
+        {name, argument} -> [{:result_read_needs_argument, name, argument}]
+      end
+
+    for reason <- private ++ unanswered do
+      DslError.exception(
+        module: module,
+        path: [:table],
+        message: Acting.message(reason),
+        location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
+      )
     end
   end
 

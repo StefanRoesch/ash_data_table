@@ -21,7 +21,13 @@ defmodule DemoWeb.HomeLive do
           "relationships of every kind, three levels deep; a viewer has no line for people. " <>
           "Four row actions (one runs at once, two open the action panel, the delete asks " <>
           "first) and \"New task\", for admins and members; a member's are refused on tasks " <>
-          "that are not theirs, and a viewer has none"}
+          "that are not theirs, and a viewer has none. " <>
+          "Above the grid, the argument line: a search term for the read action, and the " <>
+          "days of a calculation that is a column twice"},
+       {"/deadlines",
+        "the tasks that are due by a day: a resource of its own over the same table, " <>
+          "read through an action that requires the day. Until it is given, the table " <>
+          "asks for it in place of its rows"}
      ]},
     {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
      [
