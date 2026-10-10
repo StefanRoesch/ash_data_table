@@ -227,6 +227,7 @@ be reached, and the browser keeps focus inside it.
 | --- | --- |
 | Tab, Shift+Tab | Move through the panel's fields and its two buttons. |
 | Enter or Space, on the button "Choose" of a field that holds the key of a related record | Opens the picker, a second modal dialog on top of the panel. Escape there closes the picker alone, and focus is on the button again. |
+| Enter or Space, on the button "✕" of a record in a field that holds several related records | Takes the record out of the field's list. Focus goes to the button of the record that stands in its place, else to the one before it, else to "Choose". See [Relationships an action manages](managing-relationships.md#the-keyboard-and-what-assistive-technology-is-told). |
 | Enter, in a field of one line | Runs the action, as "Run" does. In a text field of several lines it makes a new line. |
 | Escape | Closes the panel, as "Cancel" does. Nothing runs. |
 
@@ -402,6 +403,7 @@ page and keeps the focus.
 | A field of the panel | A label. A required field has `aria-required`, and the mark " \*" beside its label is hidden from assistive technology. A field with an error has `aria-invalid` and is described by the message. |
 | A field of the panel that holds the key of a related record | A group (`role="group"`) named by the field's label, with what the record is called as text and the button "Choose", which is described by that text. A group cannot say `aria-required`, so the label of a required one ends in the word "required", for screen readers only. Its errors describe the group. |
 | The picker | A modal dialog named by its heading: "Assignee: choose user". Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
+| A field of the panel that holds several related records | A group named by the field's label, with what each record is called as text, a button per record named by what it does ("Remove ops"), and the button "Choose". Its picker's grid says `aria-multiselectable="true"`, and has a box named "Select row" in every row and a status above it that says how many rows are selected. |
 | What an action says that is about no field of its panel | An alert (`role="alert"`) above the fields. |
 | The name of a table, its create button and the buttons of its table actions | Above the grid: the name as a heading of the page (`h1` on a mounted page), or as text where an embedded table is not told a heading level; the buttons named by what they say, "New task", "Count unused". |
 | A row that was added or taken away | The total (`aria-rowcount`) is one more or one less, and the rows after it are numbered again (`aria-rowindex`). |
@@ -532,7 +534,9 @@ match selected, with the question of a bulk action open, and with what a
 bulk action came to, in the light and in the dark theme; with the picker
 open, with a row selected in it, with a choice that was not taken, with a
 column's question on top of it, with a cell whose choice was refused, and
-with the picker on top of the action panel, in both themes; with the side
+with the picker on top of the action panel, in both themes; with a field
+that holds several related records, with one of them taken out, and with
+the picker for several on top of the panel, in both themes; with the side
 panel of an embedded resource open, with a value inside it taken away, with
 errors at its fields, and with the list of groups of an array of embedded
 resources with a value added and one refused, in both themes; with the

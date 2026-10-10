@@ -43,7 +43,7 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
 
         {:ok, action} ->
           with [input | _] <- Acting.unusable(dsl, action),
-               do: {:no_field, :create, action.name, input}
+               do: no_field(dsl, :create, action, input)
 
         :none ->
           []
@@ -129,11 +129,20 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
   # field in the action panel for everything it does not run without. The
   # argument that takes a row's primary key is given by the table, and
   # needs none.
-  defp usable(dsl, %{name: name} = declaration) do
+  defp usable(dsl, declaration) do
     with {:ok, kind, action} <- Acting.offered(dsl, declaration),
          {:ok, _action} <- bulk(dsl, kind, action, declaration),
          [input | _] <- Acting.unusable(dsl, action, declaration.record_argument) do
-      {:error, {:no_field, kind, name, input}}
+      {:error, no_field(dsl, kind, action, input)}
+    end
+  end
+
+  # A required input without a field. Where it is an argument that hands
+  # keys to a relationship, the reason is that its records cannot be chosen.
+  defp no_field(dsl, kind, action, input) do
+    case input.kind == :argument && Acting.unchosen(dsl, action, input.name) do
+      {relationship, reason} -> {:no_field, kind, action.name, input, relationship, reason}
+      _typed -> {:no_field, kind, action.name, input}
     end
   end
 

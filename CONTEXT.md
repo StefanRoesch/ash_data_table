@@ -52,7 +52,7 @@ What a record is called where a table shows it as one value: the attribute its r
 _Avoid_: Display name, title field, name field
 
 **Picker**:
-The dialog in which a person chooses the related record of a reference cell, or of an input of an action, from the related resource's own table.
+The dialog in which a person chooses the related record of a reference cell, or the related record or records of an input of an action, from the related resource's own table.
 _Avoid_: Lookup, dropdown, type-ahead, relation selector
 
 **Full view**:

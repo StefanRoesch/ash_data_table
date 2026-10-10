@@ -19,7 +19,8 @@ no HEEx.
 > the selected rows at once. A column can name a component of its own for
 > how its cells look and what they are edited with; a badge, a progress bar
 > and a slider are shipped. A cell that shows a related record is edited by
-> choosing another one from the related resource's own table. An embedded
+> choosing another one from the related resource's own table, and so are
+> the records an action hands to a relationship. An embedded
 > resource and a map are shown on one line and edited in the side panel,
 > field by field. A read action's arguments, and those of a calculation
 > column, are given in a line of inputs above the rows.
@@ -30,6 +31,7 @@ no HEEx.
 - [Reading](#reading): page size and sort, [filtering](#filtering), [arguments](#arguments), [the URL](#the-url), [when a read fails](#when-a-read-fails)
 - [Inline editing](#inline-editing)
 - [Choosing a related record](#choosing-a-related-record)
+- [Relationships an action manages](#relationships-an-action-manages)
 - [Row actions and create](#row-actions-and-create)
 - [Selecting rows and bulk actions](#selecting-rows-and-bulk-actions)
 - [Nested tables](#nested-tables)
@@ -59,6 +61,7 @@ examples from the demo app and each topic's edge cases.
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
 - [Choosing a related record](documentation/topics/choosing-a-related-record.md)
+- [Relationships an action manages](documentation/topics/managing-relationships.md)
 - [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
@@ -615,7 +618,10 @@ end
   column's own or the table's, accepts the relationship's foreign key (its
   `source_attribute`), under the rules of any editable cell. The key has to
   be a public, writable attribute, and the relationship must have no
-  `filter`. Every other reference cell is read-only, as before.
+  `filter`. And those whose action takes the related record through an
+  argument that it hands to the relationship: see
+  [Relationships an action manages](#relationships-an-action-manages).
+  Every other reference cell is read-only.
 - **Opening it.** Enter, F2 or a double click on the cell. The picker is a
   modal dialog, headed by the column and what is chosen ("Assignee: choose
   user"). Its table is rendered when it opens, and focus goes into it, to
@@ -650,6 +656,59 @@ end
 The guide [Choosing a related record](documentation/topics/choosing-a-related-record.md)
 has all of this in detail.
 
+## Relationships an action manages
+
+An action can take the records of a relationship as an argument and hand
+them to the relationship. A table lets a person give such an argument by
+choosing existing records in the picker: one, or several. Nothing is
+declared for it.
+
+```elixir
+update :set_labels do
+  require_atomic? false
+  argument :labels, {:array, :uuid}, allow_nil?: false
+  change manage_relationship(:labels, type: :append_and_remove)
+end
+
+table do
+  action :set_labels           # the panel lists the labels; "Choose" opens their table
+end
+```
+
+- **Which arguments.** One that a `manage_relationship` change of the
+  action hands to a relationship, and that holds the key of a related
+  record, or a list of such keys: the related resource's primary key,
+  unless the change names another attribute (`value_is_key`). The
+  relationship has to be public, without a `filter`, and its destination
+  has to have a table. A change that would make a record for a key that
+  names none (`type: :direct_control`) is not chosen.
+- **Existing records only.** An argument that holds a map, or a list of
+  maps, describes records to create or to change. A table has no form for
+  that; a related record is created in its nested table.
+- **The field.** For one key, what the record is called and a button
+  "Choose", as for a key the action accepts. For a list, what each record
+  is called, each with a button that takes it out of the list, and "Choose"
+  under them. The picker then has a box per row, opens with the rows of the
+  field's records selected, and "Choose" takes whatever is selected.
+- **What the field starts with.** The records that are related now, where
+  the argument is everything the relationship is to hold
+  (`:append_and_remove`): they are read as Ash reads them when the action
+  runs, for the same person. Nothing, where the change adds (`:append`) or
+  takes away (`:remove`).
+- **A reference cell** is edited through such an argument too: where its
+  action does not accept the foreign key, and has an argument that hands
+  one key to the column's relationship and relates the record it names. The
+  key the action accepts comes first.
+- **Keys are claims**, as for one record: every key that was not related
+  already is read as the person before the action runs, and the action,
+  with the policies of what it relates through, decides the rest. A related
+  record the person may not read is neither shown nor taken away.
+- **On the selected rows**, the chosen records are given to the action on
+  every record.
+
+The guide [Relationships an action manages](documentation/topics/managing-relationships.md)
+has all of this in detail.
+
 ## Row actions and create
 
 A row action is an update or destroy action of the resource that a person
@@ -681,7 +740,9 @@ end
   is reported when the resource is compiled.
 - **Straight away, or the action panel.** An action without inputs, or with
   optional arguments only, runs when its button is used. One that accepts
-  attributes or has a required argument without a default opens the **action panel** first: a
+  attributes, has a required argument without a default, or has an
+  argument that is given by choosing related records opens the
+  **action panel** first: a
   modal dialog at the right edge with one field per input, "Cancel" and
   "Run". A create always opens it.
 - **The panel's fields** are the action's public inputs in its own order,
@@ -698,7 +759,10 @@ end
   panel. The panel keeps everything else that was typed. Before the action
   runs, a key that was put into such a field is looked up as the person: one
   that names no record they could have chosen runs nothing. A key whose
-  destination has no table stays a plain text field.
+  destination has no table stays a plain text field. An argument that the
+  action hands to a relationship is chosen the same way, one record or
+  several: see
+  [Relationships an action manages](#relationships-an-action-manages).
 - **An array** is a field too: multiple choice for enum values, and a row
   per value for text, numbers, booleans, dates and datetimes. It gives the
   action a list, which is empty when there are no values.
@@ -1409,7 +1473,11 @@ nothing at all, unless the resource says `on_forbidden :message`.
   `confirm false`.
 - **A reference cell stays read-only.** No update action behind its column
   accepts the relationship's foreign key (`accept [:assignee_id]`, not
-  `:assignee`), or the relationship has a `filter`.
+  `:assignee`) or takes the record through an argument, or the
+  relationship has a `filter`.
+- **A list of keys has no field.** Its relationship is not public
+  (relationships are private unless they say `public? true`), or its
+  destination has no table.
 - **Space in the picker selects and does not choose.** "Choose", or Enter
   on the row, takes it.
 - **A bulk action is one statement per record, not one for all.** That is

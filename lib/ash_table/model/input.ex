@@ -27,6 +27,17 @@ defmodule AshTable.Model.Input do
   #     (`destination_attribute`), and through which read action the records
   #     on offer are read (`choose_action`). See
   #     `AshTable.Resource.Referencing.picking/2`.
+  #
+  #     An argument that a `manage_relationship` change of the action hands
+  #     to a relationship as the key of a related record is a `:reference`
+  #     too, and one that holds a list of such keys is `:references`: its
+  #     field lists what the chosen records are called, and the picker
+  #     selects any number of rows. `reference` is then as above, without a
+  #     `source_attribute`: the `destination_attribute` is the attribute the
+  #     argument names a record by, `several?` says which of the two it is,
+  #     and `related?` whether the argument is everything the relationship
+  #     is to hold, so that its field starts with the records that are
+  #     related now. See `AshTable.Resource.Referencing.managing/1`.
   #   * `required?` says whether the action takes the input empty: as the
   #     attribute and the action say (`allow_nil?`, `allow_nil_input`,
   #     `require_attributes`), or the argument (`allow_nil?`).
@@ -64,16 +75,23 @@ defmodule AshTable.Model.Input do
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
           fields: [AshTable.Model.Field.t()] | nil,
-          editor: AshTable.Resource.Editing.editor() | :plain | :component | :reference,
+          editor:
+            AshTable.Resource.Editing.editor()
+            | :plain
+            | :component
+            | :reference
+            | :references,
           component: map | nil,
           reference:
             %{
               relationship: atom,
               destination: Ash.Resource.t(),
-              source_attribute: atom,
+              source_attribute: atom | nil,
               destination_attribute: atom,
               allow_nil?: boolean,
-              choose_action: atom
+              choose_action: atom,
+              several?: boolean,
+              related?: boolean
             }
             | nil,
           default: term,

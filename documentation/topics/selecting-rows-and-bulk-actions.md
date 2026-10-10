@@ -20,7 +20,7 @@ kind to declare.
 
 There is nothing to declare. A table that has a row action has the boxes,
 and every row action is offered for a selection. The demo's tasks declare
-four
+five, of which these are the first four
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -43,7 +43,8 @@ end
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Every row starts with a
 box. Tick three: above the grid a line reads "3 selected", with the buttons
-"Clear selection", "Archive", "Reassign", "Set progress" and "Destroy". Use
+"Clear selection", "Archive", "Reassign", "Set progress", "Destroy" and
+"Set labels". Use
 "Archive": a dialog asks "Run “Archive” on 3 records?". Confirm: the three
 rows read "Archived", nothing is selected any more, and above the grid the
 table says what became of it: "Archive: 3 done."
@@ -57,7 +58,7 @@ grid, and is not announced as a grid whose rows can be selected.
 
 | Demo page | As | Boxes |
 | --- | --- | --- |
-| `/tasks` | Ada Admin, Max Member, Olga Outsider | Yes: four actions. |
+| `/tasks` | Ada Admin, Max Member, Olga Outsider | Yes: five actions. |
 | `/tasks` | Vera Viewer, nobody | No: they can run no action. |
 | `/projects` | Ada Admin, Max Member | Yes: "Set status". "Destroy" is kept to one row; see [Keeping an action to one row](#keeping-an-action-to-one-row). |
 | `/comments`, `/task_labels` | Ada Admin, Max Member | Yes: "Destroy", and "Remove". |
@@ -268,6 +269,7 @@ number) and has the fields the panel of a row has, with these differences:
 | --- | --- | --- |
 | An attribute starts with | The record's value | Nothing: there is no one record to take it from. Not the attribute's default either. |
 | An argument starts with | Its default, when that is a fixed value | The same. |
+| An argument that is everything a relationship is to hold starts with | The records that are related now | Nothing: what is chosen is given to every selected record, in place of what each had. See [Relationships an action manages](managing-relationships.md#on-the-selected-rows-in-a-create-in-a-nested-table). |
 | A field of an attribute the person sees on some records only | Is there where they see it on this record | Is never there. |
 | What the fields hold | Is given to the action on this record | Is given to the action on every selected record. |
 

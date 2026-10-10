@@ -55,7 +55,7 @@ action because the resource happens to have it.
 
 Each `action` names an action of the resource. The buttons stand in the
 declared order, in a last column headed "Actions". The demo's tasks declare
-four
+five, of which these are the first four
 ([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -97,8 +97,9 @@ action :destroy do
 end
 ```
 
-**Try it:** `/tasks` as Ada Admin: "Archive", "Reassign", "Set progress" and
-"Destroy" at the end of every row. `/task_labels`: one button, "Remove".
+**Try it:** `/tasks` as Ada Admin: "Archive", "Reassign", "Set progress",
+"Destroy" and "Set labels" at the end of every row. `/task_labels`: one
+button, "Remove".
 
 An action is declared once, and is the same in every row: there is no
 option that shows a button on some records only. Whether an action runs on
@@ -142,12 +143,14 @@ Using a button does one of two things, and the action decides which:
 | Has only arguments it runs without: optional ones, and ones with a default | Runs the action. The arguments keep their defaults and are not offered. |
 | Has a required argument without a default (`allow_nil? false`) | Opens the action panel. |
 | Accepts one or more attributes | Opens the action panel. |
+| Has an argument that is given by choosing related records, required or not | Opens the action panel. See [Relationships an action manages](managing-relationships.md). |
 
 An action that accepts attributes opens the panel even when every one of
 them may be empty. Changing them is what such an action is for: run without
 them it would change nothing. This is why naming a resource's primary
 `update` as a row action gives a button that opens a panel with every
-attribute the action accepts.
+attribute the action accepts. The same holds for an argument that the
+action hands to a relationship, and whose records a person chooses.
 
 The demo has both kinds. `archive` accepts nothing and has no arguments:
 
@@ -178,7 +181,7 @@ end
 
 | Demo page | Runs straight away | Opens the panel |
 | --- | --- | --- |
-| `/tasks` | Archive; Destroy, after its question | Reassign (Assignee, Reason), Set progress (Progress) |
+| `/tasks` | Archive; Destroy, after its question | Reassign (Assignee, Reason), Set progress (Progress), Set labels (Labels) |
 | `/projects` | Destroy, after its question | Set status (Status) |
 | `/comments`, `/labels` | Destroy, after its question | |
 | `/task_labels` | Remove, with no question | |
@@ -209,7 +212,7 @@ are declared. A private attribute or argument is never a field.
 | An attribute the table has a column for | The column's label: "State" for `status` on `/tasks`, whose column says `label "State"`. |
 | An attribute the table has no column for | The attribute's name in words: "External ref" for `external_ref`. |
 | The key of a related record that is chosen in the picker | The label of the table's column of that relationship: "Assignee" for `assignee_id` on `/tasks`. Without such a column, the relationship's name in words. |
-| An argument | The argument's name in words: "Reason". |
+| An argument | The argument's name in words: "Reason"; "Labels" for an argument that takes the labels of a task. |
 
 **Which control.** The controls are those of the cell editors, by the
 input's type, and one more:
@@ -225,6 +228,7 @@ input's type, and one more:
 | array of enum values | Multiple choice: a box per value of the enum, in declared order, under the field's label. |
 | array of text, numbers, booleans, dates or datetimes | A row per value, with the control of its type and a button that takes the value away, and the button "Add value" under them. |
 | The key of a public belongs-to relationship whose destination has a table | What the related record is called, as plain text, and a button "Choose" that opens the picker. See below. |
+| An argument that the action hands to a relationship, as the key of a related record or a list of such keys | The picker too: what the record is called and "Choose" for one key; for a list, what each record is called, each with a button that takes it out, and "Choose". See [Relationships an action manages](managing-relationships.md). |
 | A value written as one line of text that has no editor of its own: a UUID, an `:atom` without `one_of`, a time, a duration | A plain text field. What is typed is given to the action as it is, and Ash casts it. |
 | An embedded resource, a map that declares its fields, and an array of either | A group of the value's fields under the input's label, each with the control of its own type; for an array, a group per value. See [Maps and embedded resources](maps-and-embedded-resources.md#in-the-action-panel). |
 | Anything else: a map that declares no fields, a union, a binary, and an array of any of these or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
@@ -281,6 +285,7 @@ an argument, have the control of their type. See
 | --- | --- |
 | An attribute, in a row action | The record's current value, as it was read when the panel opened. |
 | An argument, in a row action | Its default, when that is a fixed value; else empty. |
+| An argument that is everything a relationship is to hold, in a row action | The records that are related now. See [What a field starts with](managing-relationships.md#what-a-field-starts-with). |
 | An attribute or an argument, in a create | Its default, when that is a fixed value; else empty. A default that is computed (a function) is left to the action. |
 
 **Which fields are marked as required.** The mark is " \*" after the label,
@@ -342,6 +347,9 @@ from the actor, and the second is the tenant the table runs every action in.
 | --- | --- |
 | Optional | It is left out of the panel. The action runs without it. |
 | Required | The action cannot be run from a table. The compiler reports it, and a table of a resource compiled all the same has no button for it. |
+
+A list of keys is among the inputs without a field, unless an action hands
+it to a relationship whose records can be chosen.
 
 So an action whose only inputs have no field, all of them optional, runs
 straight away. The demo's actions have no such input; the library's own
@@ -600,8 +608,10 @@ button is where the eye already is.
 
 A belongs-to, a has-one, a many-to-many, a manual relationship and one with
 `no_attributes?` offer no create, whatever the destination's table
-declares. Adding or linking a record through a many-to-many is a later
-slice. The full view of such a nested table offers none either.
+declares. An existing record is linked through a many-to-many by an action
+of the row that takes the related records as an argument: "Set labels" on
+`/tasks`, see [Relationships an action manages](managing-relationships.md).
+The full view of such a nested table offers no create either.
 
 **Try it:** `/tasks` as Max Member. Expand a row, open "Comments" and use
 "New comment" on the line. The comment is the first row of the nested
@@ -626,8 +636,8 @@ On `/tasks` in the demo:
 
 | Actor | Actions column | "New task" |
 | --- | --- | --- |
-| Ada Admin | Four buttons on every row, and each runs on every task. | Yes, with thirteen fields. |
-| Max Member | Four buttons on every row. A task that is neither assigned to him nor reported by him refuses: "You are not allowed to do this." | Yes, with twelve fields: no "External ref". |
+| Ada Admin | Five buttons on every row, and each runs on every task. | Yes, with thirteen fields. |
+| Max Member | Five buttons on every row. A task that is neither assigned to him nor reported by him refuses: "You are not allowed to do this." | Yes, with twelve fields: no "External ref". |
 | Vera Viewer | None. | No. |
 | Olga Outsider | As the member, on Globex's tasks. | Yes; the task is Globex's. |
 | Nobody | None, and no rows. | No. |
@@ -664,6 +674,8 @@ The action panel is a modal dialog. Focus moves into it and stays there,
 Tab goes through its fields and buttons, and Escape is Cancel. The field
 of a key has one control, its button "Choose": Enter or Space on it opens
 the picker on top of the panel, and Escape there closes the picker alone.
+The field of several related records has a button per record besides,
+which takes that record out of the list.
 
 A relationship line that has a create button holds two controls. Enter on
 the line still opens and closes it. F2 on the line moves into its controls,
@@ -722,6 +734,8 @@ All keys of a table are in
   relationship is not public, has a `filter`, or leads to a resource
   without a table. See
   [Choosing a related record](choosing-a-related-record.md#in-the-action-panel).
+- **A button that opens a panel though its one argument is optional.** The
+  action hands that argument to a relationship, and its records are chosen.
 - **No create button under a relationship.** It is not a has-many joined by
   attributes, or the destination's create action does not accept the
   attribute that joins the two.
@@ -731,9 +745,8 @@ All keys of a table are in
 
 ## Not in the first version
 
-No picker for an argument that manages a relationship, no fields for
-unions, nor for arrays of them, no adding or linking through a
-many-to-many, no create under a has-one, no type-to-confirm, no custom
-buttons or icons, and no undo.
+No form for a related record that an action creates or changes, no fields
+for unions, nor for arrays of them, no create under a many-to-many or a
+has-one, no type-to-confirm, no custom buttons or icons, and no undo.
 The later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

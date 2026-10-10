@@ -40,8 +40,8 @@ header changes who you are, and the same page changes with it:
 
 | Actor | Rows | Columns | Editing | Row actions and "New task" |
 | --- | --- | --- | --- | --- |
-| Ada Admin | Acme's tasks | all 17 | every editable column, on every task | four buttons on every row, each of which runs; "New task" |
-| Max Member | Acme's tasks | 16: no "External ref". "Estimate hours" is empty except on the tasks assigned to him | looks editable everywhere; a task that is not his refuses when a cell is saved | four buttons on every row; a task that is not his refuses when an action runs; "New task", without the field "External ref" |
+| Ada Admin | Acme's tasks | all 17 | every editable column, on every task | five buttons on every row, each of which runs; "New task" |
+| Max Member | Acme's tasks | 16: no "External ref". "Estimate hours" is empty except on the tasks assigned to him | looks editable everywhere; a task that is not his refuses when a cell is saved | five buttons on every row; a task that is not his refuses when an action runs; "New task", without the field "External ref" |
 | Vera Viewer | Acme's tasks | 14: as the member, and no "Assignee" and no "Reported by", since a viewer may not read people | none | no actions column, no "New task" |
 | Olga Outsider | Globex's tasks | 16, as the member | as the member, on Globex's tasks | as the member, on Globex's tasks |
 | Nobody | none: "No records" | 14: no "External ref", no "Estimate hours" and no "Project" | none | none |
@@ -234,6 +234,16 @@ that it asks of its own resource.
   record to point at that the table to choose from would not show them.
   [Choosing a related record](choosing-a-related-record.md#who-may-choose-what)
   has every case.
+- An argument that an action hands to a relationship is given the same
+  way, one record or several, and the same holds for every key in it: one
+  that was not related already is read as the person before the action
+  runs. Where the argument is everything the relationship is to hold, its
+  field starts with the related records as Ash reads them for that person
+  when the action runs. One they may not read is neither shown nor taken
+  away. Whether the relationship may be changed is the action's to say,
+  with the policies of what it relates through.
+  [Relationships an action manages](managing-relationships.md#who-may-choose-what)
+  has every case.
 
 [Nested tables](nested-tables.md#what-a-person-may-not-see) has every case.
 
@@ -300,6 +310,7 @@ resources must have `public?` read actions on their destination resources."
 | A relationship `through` a path of others | Besides: the primary read action of every resource the path passes. | The same. |
 | A [reference cell](nested-tables.md#the-reference-cell) | The relationship's own `read_action`, else the destination's primary read action: Ash loads the related record. | Reported; the table is refused. |
 | The [picker](choosing-a-related-record.md) of a reference cell, or of a field of the action panel | The relationship's own `read_action`, else the read action of the destination's table: the records to choose from, and the record that was chosen. | Nothing is offered: the cell is read-only, and the field is a typed key. The destination's own table is what is reported. |
+| The field of an argument that is [everything a relationship is to hold](managing-relationships.md#what-a-field-starts-with) | Besides the picker's: the relationship's own `read_action`, else the destination's primary read action, and for a many-to-many the read action of the join resource. Ash loads the records that are related now. | The argument is not chosen: one key is typed, and a list of keys has no field. An action that requires such a list is reported. |
 | An aggregate column | For every relationship of the aggregate's path: its own `read_action`, else the primary read action of its destination, and the read action of the join resource of a many-to-many. For the last relationship the aggregate's own `read_action` stands in for the primary one. | The same. |
 | A calculation column that is an expression | The read actions of every aggregate the expression holds, by name or written out (`count(comments)`), also inside a calculation it references. | The same. |
 | `update_action`, `action`, `create_action` | That action: an update, a destroy, a generic or a create action. | The same. |
@@ -347,6 +358,11 @@ the person gave it on the page:
   saved or put into the action panel. And the record a key of the panel
   points at, by that key, when the panel opens (for what the field calls
   it) and when its button is used (for a key that was put there).
+- **The records that are related now**, for the field of an argument that
+  is everything a relationship is to hold: the relationship is loaded onto
+  the row's record, as Ash loads it when the action runs, through the
+  relationship's own `read_action`, else the destination's primary read
+  action. When the panel opens, and when its button is used.
 - **The row a nested table belongs to**: through the read action of the
   table that shows the row. For a row of the table on the page that is the
   table's read action; for a row of a nested table it is the action that

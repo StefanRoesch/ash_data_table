@@ -3247,7 +3247,7 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "The update action `update` does not accept `author_id`, the foreign key of `author`, so it cannot save an edit of this column."
+               "The update action `update` does not accept `author_id`, the foreign key of `author`, and has no argument that a `manage_relationship` change hands to `author`, so it cannot save an edit of this column."
 
       # the column is read-only, and the table is built
       assert [%{name: :author, editable?: false, update_action: nil, editor: nil}] =
@@ -3498,7 +3498,7 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "`author` can never be edited, so `confirm` has no effect. A column that names a relationship is edited through an `update_action`, its own or the table's, that accepts the relationship's foreign key, `author_id`."
+               "`author` can never be edited, so `confirm` has no effect. A column that names a relationship is edited through an `update_action`, its own or the table's, that accepts the relationship's foreign key, `author_id`, or has an argument that a `manage_relationship` change hands to the relationship."
     end
 
     test "`confirm` is an error where there is nothing to choose with, and says why" do
@@ -3537,6 +3537,420 @@ defmodule AshTable.TableBlockTest do
 
       assert error.message ==
                "`author` can never be edited, so `confirm` has no effect. The relationship `author` has a `filter`, so a table cannot say which records it can hold, and offers none to choose from."
+    end
+
+    test "an `update_action` with an argument that hands one key to the relationship makes the cell editable, and `confirm` asks first" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceThroughArgument do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            # the key is not written from the outside
+            belongs_to :author, AshTable.Test.Relating.Author do
+              public? true
+              attribute_writable? false
+            end
+          end
+
+          actions do
+            defaults [:read, update: [:title]]
+
+            update :hand_over do
+              require_atomic? false
+              # the argument is required: an edit gives it
+              argument :author, :uuid, allow_nil?: false
+              change manage_relationship(:author, type: :append_and_remove)
+            end
+          end
+
+          table do
+            column :author do
+              update_action :hand_over
+              confirm "Change the author?"
+            end
+          end
+        end
+      end
+
+      assert [
+               %{
+                 name: :author,
+                 editable?: true,
+                 update_action: :hand_over,
+                 editor: :reference,
+                 confirm: "Change the author?",
+                 # the key could be empty, the argument cannot: no "None"
+                 reference: %{argument: :author, source_attribute: :author_id, allow_nil?: false}
+               }
+             ] = AshTable.Model.build(AshTable.TableBlockTest.ReferenceThroughArgument).columns
+    end
+
+    test "the table's `update_action` makes it editable through such an argument too" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceThroughTableArgument do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :author, AshTable.Test.Relating.Author, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            update :update do
+              primary? true
+              require_atomic? false
+              accept [:title]
+              # under a name of its own
+              argument :writer, :uuid
+              change manage_relationship(:writer, :author, type: :append)
+            end
+          end
+
+          table do
+            update_action :update
+
+            column :title
+
+            column :author do
+              confirm "Change the author?"
+            end
+          end
+        end
+      end
+
+      assert [
+               %{name: :title, editable?: true},
+               %{editable?: true, reference: %{argument: :writer}}
+             ] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceThroughTableArgument).columns
+    end
+
+    test "an `update_action` that takes the related record through an argument, and needs another, is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentWithAnother do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :hand_over do
+                require_atomic? false
+                argument :author, :uuid, allow_nil?: false
+                argument :reason, :string, allow_nil?: false
+                change manage_relationship(:author, type: :append_and_remove)
+              end
+            end
+
+            table do
+              column :author do
+                update_action :hand_over
+              end
+            end
+          end
+        end
+
+      # of the two, the one an edit does not give
+      assert error.message ==
+               "The update action `hand_over` requires the argument `reason`. An inline edit supplies only the cell's value, so the action behind a column must not need anything else."
+
+      assert [%{editable?: false}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceArgumentWithAnother).columns
+    end
+
+    test "an `update_action` whose argument holds a list of keys is an error: a cell holds one record" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentSeveral do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :hand_over do
+                require_atomic? false
+                argument :authors, {:array, :uuid}
+                change manage_relationship(:authors, :author, type: :append_and_remove)
+              end
+            end
+
+            table do
+              column :author do
+                update_action :hand_over
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The update action `hand_over` hands its argument `authors` to `author` as a list of keys. A cell holds one related record, and an edit of this column gives the action one key: the argument has to hold one key, not a list."
+
+      assert [%{editable?: false, update_action: nil}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceArgumentSeveral).columns
+    end
+
+    test "an `update_action` whose argument does not relate the record it names is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentRemoves do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :dismiss do
+                require_atomic? false
+                argument :author, :uuid
+                change manage_relationship(:author, type: :remove)
+              end
+            end
+
+            table do
+              column :author do
+                update_action :dismiss
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The update action `dismiss` hands its argument `author` to `author`, and does not relate the record the argument names: its `manage_relationship` change has no `on_lookup` (`type: :append` and `type: :append_and_remove` have one). An edit of this column chooses another record, which the action has to relate."
+
+      assert [%{editable?: false}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceArgumentRemoves).columns
+    end
+
+    test "an `update_action` whose argument holds no key is an error: a map describes a record to create" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentMap do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :enlist do
+                require_atomic? false
+                argument :author, :map
+                change manage_relationship(:author, type: :append_and_remove)
+              end
+            end
+
+            table do
+              column :author do
+                update_action :enlist
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The update action `enlist` hands its argument `author` to `author`, and the argument does not hold the key of a related record: it is of the type Ash.Type.Map, which is not stored as `id`, the key of AshTable.Test.Relating.Author, is (Ash.Type.UUID). A table edits a relationship by choosing an existing record, whose key it gives the action, so it cannot save an edit of this column."
+    end
+
+    test "an `update_action` whose argument names a record of a destination without one key is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :zone, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentNoKey do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              # a zone's primary key is two attributes
+              belongs_to :zone, AshTable.Test.Picking.Zone do
+                source_attribute :zone_code
+                destination_attribute :code
+                attribute_type :string
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+
+              update :move do
+                require_atomic? false
+                argument :zone, :string
+                change manage_relationship(:zone, type: :append_and_remove)
+              end
+            end
+
+            table do
+              column :zone do
+                update_action :move
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The update action `move` hands its argument `zone` to `zone`, and the argument does not hold the key of a related record: AshTable.Test.Picking.Zone has no one attribute to name a record by (its primary key is not one attribute, and the change names no `value_is_key`). A table edits a relationship by choosing an existing record, whose key it gives the action, so it cannot save an edit of this column."
+    end
+
+    test "an argument does not help where there is nothing to choose with: a `filter` on the relationship" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentFiltered do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author do
+                filter expr(name != "Nobody")
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+
+              update :hand_over do
+                require_atomic? false
+                argument :author, :uuid
+                change manage_relationship(:author, type: :append_and_remove)
+              end
+            end
+
+            table do
+              column :author do
+                update_action :hand_over
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` is edited by choosing a record of the destination's table, and there is nothing to choose it with, so the column is read-only and its `update_action` has no effect. " <>
+                 "The relationship `author` has a `filter`, so a table cannot say which records it can hold, and offers none to choose from. " <>
+                 "Remove `update_action` from this column."
+    end
+
+    test "a private key is no obstacle where the action takes the record through an argument" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceArgumentPrivateKey do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :author, AshTable.Test.Relating.Author do
+              public? true
+              attribute_public? false
+            end
+          end
+
+          actions do
+            defaults [:read]
+
+            update :update do
+              primary? true
+              require_atomic? false
+              # accepts the key, which is not public, and takes the author
+              # as an argument too
+              accept [:title, :author_id]
+              argument :author, :uuid
+              change manage_relationship(:author, type: :append_and_remove)
+            end
+          end
+
+          table do
+            column :author do
+              update_action :update
+            end
+          end
+        end
+      end
+
+      assert [%{editable?: true, reference: %{argument: :author}}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceArgumentPrivateKey).columns
     end
 
     test "`sortable? false`, `filterable? false` and `update_action false` say what is so anyway" do
@@ -5252,6 +5666,145 @@ defmodule AshTable.TableBlockTest do
       # compiled despite the finding, the table has no button for them
       assert [%{name: :touch}] =
                AshTable.Model.build(AshTable.TableBlockTest.NoFieldForInput).actions
+    end
+
+    test "an action with a required list of keys whose records cannot be chosen is an error that says why, and has no button" do
+      [{AshTable.TableBlockTest.NoPickerForKeys, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.NoPickerForKeys do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              # the relationship is the resource's own business
+              has_many :pages, AshTable.Test.Managing.Note, destination_attribute: :ticket_id
+
+              has_many :notes, AshTable.Test.Managing.Note,
+                destination_attribute: :ticket_id,
+                public?: true
+
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :set_pages do
+                require_atomic? false
+                argument :pages, {:array, :uuid}, allow_nil?: false
+                change manage_relationship(:pages, type: :append)
+              end
+
+              # several keys for a relationship of one record
+              update :set_authors do
+                require_atomic? false
+                argument :authors, {:array, :uuid}, allow_nil?: false
+                change manage_relationship(:authors, :author, type: :append)
+              end
+
+              # optional: no field, and no finding
+              update :add_pages do
+                require_atomic? false
+                argument :pages, {:array, :uuid}
+                change manage_relationship(:pages, type: :append)
+              end
+
+              # its records can be chosen
+              update :set_notes do
+                require_atomic? false
+                argument :notes, {:array, :uuid}, allow_nil?: false
+                change manage_relationship(:notes, type: :append)
+              end
+            end
+
+            table do
+              action :set_pages
+              action :set_authors
+              action :add_pages
+              action :set_notes
+            end
+          end
+        end
+
+      assert Enum.map(errors, &{&1.path, &1.message}) == [
+               {[:table, :action, :set_pages],
+                "The row action `set_pages` cannot be run from a table: its argument `pages` is required, and holds the keys of the records of `pages`. A table has a field for a list of keys only where the records can be chosen from the related resource's own table, and here they cannot. The relationship `pages` is not public. A table shows nothing of a relationship the resource keeps to itself."},
+               {[:table, :action, :set_authors],
+                "The row action `set_authors` cannot be run from a table: its argument `authors` is required, and holds the keys of the records of `author`. A table has a field for a list of keys only where the records can be chosen from the related resource's own table, and here they cannot. The argument holds a list of keys, and `author` holds one record: there is one to choose, not several."}
+             ]
+
+      # compiled despite the findings, the table has no button for them
+      assert [
+               %{name: :add_pages, inputs: [], panel?: false},
+               %{name: :set_notes, inputs: [%{name: :notes, editor: :references}], panel?: true}
+             ] = AshTable.Model.build(AshTable.TableBlockTest.NoPickerForKeys).actions
+    end
+
+    test "an argument that is everything its relationship is to hold is not chosen where the related records would be read through a private action" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :set_minutes]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivatelyRelated do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              # The table of the minutes reads through a public action, and
+              # Ash loads the relationship through their primary one, which
+              # is private.
+              has_many :minutes, AshTable.Test.Private.Minute do
+                destination_attribute :folder_id
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+
+              update :set_minutes do
+                require_atomic? false
+                argument :minutes, {:array, :uuid}, allow_nil?: false
+                change manage_relationship(:minutes, type: :append_and_remove)
+              end
+
+              # adds: nothing that is related is read for its field
+              update :add_minutes do
+                require_atomic? false
+                argument :minutes, {:array, :uuid}, allow_nil?: false
+                change manage_relationship(:minutes, type: :append)
+              end
+            end
+
+            table do
+              action :set_minutes
+              action :add_minutes
+            end
+          end
+        end
+
+      assert error.message ==
+               "The row action `set_minutes` cannot be run from a table: its argument `minutes` is required, and holds the keys of the records of `minutes`. A table has a field for a list of keys only where the records can be chosen from the related resource's own table, and here they cannot. " <>
+                 "The argument is everything `minutes` is to hold, so its field starts with the records that are related now, and those would be read through an action that is not a public read action: the relationship's own `read_action` or the primary read action of AshTable.Test.Private.Minute, or for a many-to-many that of the join resource. " <>
+                 "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies."
+
+      assert [
+               %{
+                 name: :add_minutes,
+                 inputs: [%{editor: :references, reference: %{related?: false}}]
+               }
+             ] =
+               AshTable.Model.build(AshTable.TableBlockTest.PrivatelyRelated).actions
     end
 
     test "beside a calculation column need a primary read action, as editing does: the row is shown again from it" do

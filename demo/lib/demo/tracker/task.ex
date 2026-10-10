@@ -213,6 +213,11 @@ defmodule Demo.Tracker.Task do
       confirm "Delete this task? This cannot be undone."
     end
 
+    # An argument that the action hands to a relationship: the panel lists
+    # the task's labels, and "Choose" opens the table of the labels, in which
+    # any number of them is selected.
+    action :set_labels
+
     # The "New task" button, on the line of the table's name.
     create_action :create
   end
@@ -345,6 +350,18 @@ defmodule Demo.Tracker.Task do
     update :archive do
       accept []
       change set_attribute(:status, :archived)
+    end
+
+    # The argument holds the keys of labels, and the change hands them to
+    # the relationship: these labels and no others. A table lets a person
+    # choose them from the table of the labels.
+    update :set_labels do
+      accept []
+      require_atomic? false
+
+      argument :labels, {:array, :uuid}, allow_nil?: false
+
+      change manage_relationship(:labels, type: :append_and_remove)
     end
 
     destroy :destroy do

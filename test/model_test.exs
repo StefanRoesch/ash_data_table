@@ -1927,7 +1927,11 @@ defmodule AshTable.ModelTest do
                  destination_attribute: :id,
                  allow_nil?: true,
                  # nobody edits it: `update` does not accept the key
-                 choose_action: nil
+                 choose_action: nil,
+                 # nor has it an argument that takes the record
+                 argument: nil,
+                 # what a choice would give its action: the record's key
+                 value_attribute: :id
                }
 
       # the relationship's own read action, as Ash loads it
@@ -3198,7 +3202,10 @@ defmodule AshTable.ModelTest do
                  source_attribute: :depot_id,
                  destination_attribute: :id,
                  allow_nil?: true,
-                 choose_action: :read
+                 choose_action: :read,
+                 # the key itself is what the action is given
+                 argument: nil,
+                 value_attribute: :id
                }
              } = reference(model, :depot)
     end
@@ -3372,7 +3379,10 @@ defmodule AshTable.ModelTest do
                  source_attribute: :depot_id,
                  destination_attribute: :id,
                  allow_nil?: true,
-                 choose_action: :read
+                 choose_action: :read,
+                 # one record, and the key is the form's to hold
+                 several?: false,
+                 related?: false
                }
 
       assert %{destination_attribute: :code, source_attribute: :zone_code} =
@@ -3421,6 +3431,280 @@ defmodule AshTable.ModelTest do
              ] == for(input <- inputs, do: {input.name, input.editor, input.required?})
 
       assert %{required?: true} = Enum.find(model.create.inputs, &(&1.name == :origin_id))
+    end
+  end
+
+  describe "an argument of an action that hands keys to a relationship" do
+    alias AshTable.Test.Managing.{Note, Person, Tag, Ticket}
+    alias AshTable.Test.Picking.Zone
+
+    setup do
+      %{model: Model.build(Ticket)}
+    end
+
+    defp managed_inputs(model, name) do
+      action = Enum.find(model.actions ++ [model.create], &(&1.name == name))
+      for input <- action.inputs, do: {input.name, input.editor}
+    end
+
+    test "is given by choosing: one record for one key, several for a list of keys", %{
+      model: model
+    } do
+      assert managed_inputs(model, :assign) == [owner: :reference]
+      assert managed_inputs(model, :set_tags) == [tags: :references]
+      # whatever the change does with the keys of existing records: add
+      # them, take them away, or keep those records and destroy the others
+      assert managed_inputs(model, :add_tags) == [add: :references]
+      assert managed_inputs(model, :drop_tags) == [drop: :references]
+      assert managed_inputs(model, :keep_notes) == [notes: :references]
+      # one key into a relationship of many
+      assert managed_inputs(model, :tag) == [tag: :reference]
+      assert managed_inputs(model, :retag) == [tag: :reference]
+      # beside the attributes the action accepts, in the action's order
+      assert managed_inputs(model, :create) == [
+               title: :text,
+               author: :reference,
+               tags: :references
+             ]
+    end
+
+    test "says what the picker needs: the destination, the attribute a record is named by, and the read action of its table",
+         %{model: model} do
+      %{inputs: [tags]} = Enum.find(model.actions, &(&1.name == :set_tags))
+
+      assert tags.reference == %{
+               relationship: :tags,
+               destination: Tag,
+               # no attribute of the record holds the keys
+               source_attribute: nil,
+               destination_attribute: :id,
+               allow_nil?: false,
+               # the read action of the destination's table
+               choose_action: :current,
+               several?: true,
+               # everything the relationship is to hold: starts with what is related
+               related?: true
+             }
+
+      %{inputs: [owner]} = Enum.find(model.actions, &(&1.name == :assign))
+
+      assert %{
+               relationship: :owner,
+               destination: Person,
+               destination_attribute: :id,
+               choose_action: :read,
+               several?: false,
+               related?: true
+             } = owner.reference
+
+      %{inputs: [notes]} = Enum.find(model.actions, &(&1.name == :keep_notes))
+      assert %{destination: Note, several?: true, related?: true} = notes.reference
+    end
+
+    test "starts empty where the change adds or takes away, and with what is related where the argument is everything",
+         %{model: model} do
+      related? = fn action ->
+        %{inputs: [input]} = Enum.find(model.actions, &(&1.name == action))
+        input.reference.related?
+      end
+
+      assert related?.(:set_tags)
+      assert related?.(:retag)
+      assert related?.(:keep_notes)
+      refute related?.(:add_tags)
+      refute related?.(:drop_tags)
+      refute related?.(:tag)
+    end
+
+    test "names a record by the attribute the change names, where that is not the primary key",
+         %{model: model} do
+      %{inputs: [codes]} = Enum.find(model.actions, &(&1.name == :set_codes))
+      assert %{editor: :references, reference: %{destination_attribute: :code}} = codes
+
+      %{inputs: [zone]} = Enum.find(model.actions, &(&1.name == :set_zone_code))
+
+      assert %{editor: :reference, reference: %{destination: Zone, destination_attribute: :code}} =
+               zone
+    end
+
+    test "is called by its own name, in words", %{model: model} do
+      labels = fn action ->
+        Enum.map(
+          Enum.find(model.actions ++ [model.create], &(&1.name == action)).inputs,
+          & &1.label
+        )
+      end
+
+      assert labels.(:set_tags) == ["Tags"]
+      assert labels.(:add_tags) == ["Add"]
+      # the table has a column for the relationship, called the same
+      assert labels.(:assign) == ["Owner"]
+      assert labels.(:create) == ["Title", "Author", "Tags"]
+    end
+
+    test "is required as the argument says", %{model: model} do
+      required = fn action ->
+        for input <- Enum.find(model.actions ++ [model.create], &(&1.name == action)).inputs,
+            do: {input.name, input.required?}
+      end
+
+      assert required.(:set_tags) == [tags: true]
+      assert required.(:assign) == [owner: false]
+      assert required.(:create) == [title: false, author: true, tags: false]
+    end
+
+    test "opens the action panel, required or not: choosing is what the action is for", %{
+      model: model
+    } do
+      panel? = fn action -> Enum.find(model.actions, &(&1.name == action)).panel? end
+
+      assert panel?.(:assign)
+      assert panel?.(:add_tags)
+      assert panel?.(:set_tags)
+      # a key that is typed is an argument like any other: optional, so the
+      # action runs straight away
+      refute panel?.(:set_patron)
+      refute panel?.(:annotate)
+    end
+
+    test "is typed, as before, where the relationship's records cannot be chosen", %{model: model} do
+      # a filter, no table at the destination, a relationship that is not public
+      assert managed_inputs(model, :set_patron) == [patron: :plain]
+      assert managed_inputs(model, :set_port) == [port: :plain]
+      assert managed_inputs(model, :set_ghost) == [ghost: :plain]
+      # no one attribute to name a record of the destination by: text, as its type says
+      assert managed_inputs(model, :set_zone) == [zone: :text]
+      # an argument no change hands to anything
+      assert managed_inputs(model, :annotate) == [reference_id: :plain]
+    end
+
+    test "is what its type makes it where it holds no keys: a list of maps has no field, a list of text is typed",
+         %{model: model} do
+      assert managed_inputs(model, :describe_tags) == []
+      assert managed_inputs(model, :name_tags) == [tags: :list]
+    end
+
+    test "has no field where it holds a list of keys and the relationship one record: a list of keys is not typed",
+         %{model: model} do
+      assert managed_inputs(model, :set_owners) == []
+    end
+
+    test "has no field where the change would make a record for a key that names none (`:direct_control`)",
+         %{model: model} do
+      assert managed_inputs(model, :control_notes) == []
+    end
+
+    test "runs on the selected rows as any row action does", %{model: model} do
+      assert Enum.find(model.actions, &(&1.name == :set_tags)).bulk?
+
+      assert [%{name: :tags, editor: :references}] =
+               Model.bulk_inputs(Enum.find(model.actions, &(&1.name == :set_tags)))
+    end
+
+    test "is no input of a generic action, which has no changes: its key is typed" do
+      model = Model.build(AshTable.Test.TableActing)
+
+      for action <- model.table_actions ++ model.actions, input <- action.inputs do
+        refute input.editor in [:reference, :references]
+      end
+    end
+  end
+
+  describe "a reference column that is edited through an argument" do
+    alias AshTable.Test.Managing.{Person, Ticket}
+
+    setup do
+      %{model: Model.build(Ticket)}
+    end
+
+    defp managed_column(model, name), do: Enum.find(model.columns, &(&1.name == name))
+
+    test "is editable where its action has an argument that hands one key to its relationship and relates the record",
+         %{model: model} do
+      assert %{
+               editable?: true,
+               update_action: :assign,
+               editor: :reference,
+               confirm: "Hand the ticket over?",
+               reference: %{
+                 relationship: :owner,
+                 destination: Person,
+                 label_field: :name,
+                 read_action: :read,
+                 # what the cell holds now is read from the key
+                 source_attribute: :owner_id,
+                 destination_attribute: :id,
+                 # what the action is given: the argument, with the chosen record's key
+                 argument: :owner,
+                 value_attribute: :id,
+                 allow_nil?: true,
+                 choose_action: :read
+               }
+             } = managed_column(model, :owner)
+    end
+
+    test "is edited through the key, where the action accepts it and has such an argument too",
+         %{model: model} do
+      assert %{
+               editable?: true,
+               update_action: :update,
+               reference: %{argument: nil, source_attribute: :reviewer_id, value_attribute: :id}
+             } = managed_column(model, :reviewer)
+    end
+
+    test "does not need a key that is written from the outside, or public", %{model: model} do
+      # `owner_id` is `attribute_writable? false`, `sponsor_id` is private
+      assert %{editable?: true, reference: %{argument: :owner}} = managed_column(model, :owner)
+
+      assert %{editable?: true, reference: %{argument: :sponsor}} =
+               managed_column(model, :sponsor)
+    end
+
+    test "offers no record where the key cannot be empty, the argument cannot, or leaving the record out leaves it related",
+         %{model: model} do
+      assert managed_column(model, :owner).reference.allow_nil?
+      # the key cannot be empty
+      refute managed_column(model, :author).reference.allow_nil?
+      # `:append`: no record given changes nothing
+      refute managed_column(model, :sponsor).reference.allow_nil?
+    end
+
+    test "stays editable for every person, where no policy hides the key from them", %{
+      model: model
+    } do
+      for actor <- [%{role: :admin}, %{role: :member}, nil] do
+        editable =
+          for %{kind: :reference, editable?: true, name: name} <-
+                Model.for_actor(model, actor: actor).columns,
+              do: name
+
+        assert editable == [:owner, :reviewer, :author, :sponsor]
+      end
+    end
+
+    test "is saved by what `AshTable.Resource.Editing` says of its action" do
+      alias AshTable.Resource.Editing
+
+      relationship = &Ash.Resource.Info.relationship(Ticket, &1)
+      action = &Ash.Resource.Info.action(Ticket, &1)
+
+      assert {:ok, {:argument, :owner, %{destination: Person, related?: true}}} =
+               Editing.written(Ticket, action.(:assign), relationship.(:owner))
+
+      # the key comes first
+      assert {:ok, {:attribute, :reviewer_id, %{source_attribute: :reviewer_id}}} =
+               Editing.written(Ticket, action.(:update), relationship.(:reviewer))
+
+      # an action that takes the record neither way
+      assert Editing.written(Ticket, action.(:assign), relationship.(:reviewer)) ==
+               {:error, :not_taken}
+
+      # the argument an edit gives is no argument the action lacks
+      assert Editing.given({:argument, :owner, %{}}) == [:owner]
+      assert Editing.given({:attribute, :reviewer_id, %{}}) == []
+
+      assert Editing.update_action(Ticket, relationship.(:owner), %{update_action: :assign}) ==
+               {:ok, :assign}
     end
   end
 

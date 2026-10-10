@@ -452,6 +452,10 @@ test.describe("nested tables", () => {
     page,
     tasks,
   }) => {
+    // Five runs of axe over the two largest pages of the suite, three of
+    // them with a table of 25 tasks nested in the page: about seven seconds
+    // each, which is all the time a test has.
+    test.slow()
     await tasks.open()
     await tasks.openLine(FIRST, "comments")
     await tasks.openLine(FIRST, "project")
@@ -847,7 +851,7 @@ test.describe("row actions and the action panel", () => {
     await tasks.open()
     await switchLocale(page, "de")
     await tasks.ready()
-    await expect(tasks.actions(FIRST)).toHaveText(["Archivieren", "Neu zuweisen", "Fortschritt setzen", "Löschen"])
+    await expect(tasks.actions(FIRST)).toHaveText(["Archivieren", "Neu zuweisen", "Fortschritt setzen", "Löschen", "Labels setzen"])
 
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
     await expect(tasks.panelTitle).toHaveText("Neu zuweisen: Rename the onboarding email")

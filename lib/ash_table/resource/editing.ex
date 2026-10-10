@@ -8,6 +8,7 @@ defmodule AshTable.Resource.Editing do
   alias AshTable.Model.CellType
   alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Managing
   alias AshTable.Resource.Referencing
 
   # The cell types with an editor.
@@ -48,20 +49,164 @@ defmodule AshTable.Resource.Editing do
   @spec update_action(Ash.Resource.t(), struct, AshTable.Resource.Column.t() | nil) ::
           {:ok, atom} | :none
   def update_action(resource, field, declared) do
-    found =
-      case declared && declared.update_action do
-        false -> :none
-        nil -> table_action(resource)
-        name -> action(resource, name)
-      end
+    case edit(resource, field, declared) do
+      {:ok, name, _written} -> {:ok, name}
+      :none -> :none
+    end
+  end
 
-    with {:ok, action} <- found,
-         nil <- obstacle(resource, field),
-         true <- accepts?(action, field),
-         [] <- required_arguments(action) do
-      {:ok, action.name}
+  @typedoc """
+  What an edit of a cell gives its action, as the action's one input:
+
+    * `{:attribute, name}` - the attribute itself, and for a reference cell
+      the relationship's foreign key, which the action accepts. `picking`
+      is then what the related record is chosen with
+      (`AshTable.Resource.Referencing.picking/2`);
+    * `{:argument, name}` - for a reference cell: an argument of the action
+      that hands the key of the chosen record to the relationship
+      (`AshTable.Resource.Managing`). `managing` is then what the record is
+      chosen with (`AshTable.Resource.Referencing.managing/1`).
+  """
+  @type written ::
+          {:attribute, atom}
+          | {:attribute, atom, Referencing.picking()}
+          | {:argument, atom, Referencing.managing()}
+
+  @doc """
+  The update action an inline edit of a column runs, with what the edit
+  gives it; `:none` for a column that can never be edited. `declared` is as
+  for `update_action/3`.
+  """
+  @spec edit(Ash.Resource.t(), struct, AshTable.Resource.Column.t() | nil) ::
+          {:ok, atom, written} | :none
+  def edit(resource, field, declared) do
+    with {:ok, action} <- behind(resource, declared),
+         {:ok, written} <- written(resource, action, field),
+         [] <- required_arguments(action) -- given(written) do
+      {:ok, action.name, written}
     else
       _ -> :none
+    end
+  end
+
+  @doc """
+  The arguments of its action that an edit gives itself: the one that hands
+  the chosen record's key to the relationship. It is no argument the action
+  lacks (`required_arguments/1`).
+  """
+  @spec given(written) :: [atom]
+  def given({:argument, name, _managing}), do: [name]
+  def given(_attribute), do: []
+
+  @doc """
+  The update action behind a column, whether or not it can save an edit of
+  it: the column's own `update_action`, else the table's. `:none` where
+  neither names one, or the column switches editing off.
+  """
+  @spec behind(Ash.Resource.t(), AshTable.Resource.Column.t() | nil) ::
+          {:ok, Ash.Resource.Actions.Update.t()} | :none | {:error, reason}
+  def behind(resource, declared) do
+    case declared && declared.update_action do
+      false -> :none
+      nil -> table_action(resource)
+      name -> action(resource, name)
+    end
+  end
+
+  @typedoc """
+  Why an action cannot save an edit of a reference cell:
+
+    * `{:no_picker, reason}` - there is nothing to choose the related
+      record with, whichever way the action takes it;
+    * `:not_taken` - the action neither accepts the relationship's foreign
+      key nor has an argument that hands a key to the relationship;
+    * `{:several, argument}` - it has such an argument, which holds a list
+      of keys: a cell holds one record;
+    * `{:not_related, argument}` - it has such an argument, which does not
+      relate the record it names (`on_lookup`);
+    * `{:not_keys, argument, reason}` - an argument of it is handed to the
+      relationship and holds no key
+      (`t:AshTable.Resource.Managing.not_keys/0`).
+  """
+  @type not_written ::
+          {:no_picker, Referencing.no_picker()}
+          | :not_taken
+          | {:several, atom}
+          | {:not_related, atom}
+          | {:not_keys, atom, Managing.not_keys()}
+
+  @doc """
+  What an edit of the field's cell gives the action as its one input, or why
+  the action cannot save one.
+
+  An attribute is given as itself, where the action accepts it and nothing
+  keeps its cells from being edited (`obstacle/2`).
+
+  A belongs-to relationship, whose cell is a reference cell, is given one of
+  two ways, and the first that holds is taken:
+
+    1. as the relationship's foreign key, where the action accepts it and
+       the key is a public, writable attribute;
+    2. through an argument of the action that a `manage_relationship`
+       change hands to the relationship: a public argument that holds one
+       key and relates the record it names (`on_lookup`). Where the action
+       has several, the first in the action's order.
+  """
+  @spec written(Ash.Resource.t(), struct, struct) ::
+          {:ok, written} | {:error, not_written | obstacle | :not_accepted}
+  def written(resource, action, %Ash.Resource.Relationships.BelongsTo{} = relationship) do
+    with {:ok, _read_action} <- chosen_from(relationship) do
+      key =
+        if relationship.source_attribute in action.accept,
+          do: Referencing.picking(resource, relationship),
+          else: :not_accepted
+
+      case {key, by_argument(resource, action, relationship)} do
+        {{:ok, picking}, _argument} -> {:ok, {:attribute, relationship.source_attribute, picking}}
+        {_no_key, {:ok, name, managing}} -> {:ok, {:argument, name, managing}}
+        # the key the action accepts is what is said of it first
+        {{:error, reason}, _argument} -> {:error, {:no_picker, reason}}
+        {:not_accepted, {:error, reason}} -> {:error, reason}
+      end
+    end
+  end
+
+  def written(resource, action, field) do
+    cond do
+      obstacle = obstacle(resource, field) -> {:error, obstacle}
+      field.name in action.accept -> {:ok, {:attribute, field.name}}
+      true -> {:error, :not_accepted}
+    end
+  end
+
+  defp chosen_from(relationship) do
+    with {:error, reason} <- Referencing.choosing(relationship),
+         do: {:error, {:no_picker, reason}}
+  end
+
+  # The argument of the action through which a reference cell is edited: the
+  # first public one that hands one key to the relationship and relates the
+  # record it names. Else what is wrong with the first that is handed to
+  # the relationship at all.
+  defp by_argument(resource, action, relationship) do
+    handed = Managing.handed(resource, action, relationship.name)
+
+    found =
+      Enum.find_value(handed, fn
+        {name, {:ok, %{several?: false, relates?: true} = managed}} ->
+          with {:ok, managing} <- Referencing.managing(managed), do: {:ok, name, managing}
+
+        _another ->
+          nil
+      end)
+
+    case {found, handed} do
+      {{:ok, name, managing}, _handed} -> {:ok, name, managing}
+      {{:error, reason}, _handed} -> {:error, {:no_picker, reason}}
+      {nil, []} -> {:error, :not_taken}
+      {nil, [{name, {:ok, %{several?: true}}} | _]} -> {:error, {:several, name}}
+      {nil, [{name, {:ok, %{relates?: false}}} | _]} -> {:error, {:not_related, name}}
+      {nil, [{name, {:error, reason}} | _]} -> {:error, {:not_keys, name, reason}}
     end
   end
 
@@ -80,7 +225,9 @@ defmodule AshTable.Resource.Editing do
   can give every one of its inputs: `AshTable.Resource.Embedding`); and a
   belongs-to
   relationship, whose cell is a reference cell, when a person can choose
-  its related record in a picker (`AshTable.Resource.Referencing.picking/2`).
+  its related record in a picker (`AshTable.Resource.Referencing.choosing/1`).
+  What an action needs besides to save the choice is said of the action
+  (`written/3`).
   """
   @spec obstacle(Ash.Resource.t(), struct) :: obstacle | nil
   def obstacle(resource, %Ash.Resource.Attribute{} = attribute) do
@@ -102,9 +249,9 @@ defmodule AshTable.Resource.Editing do
     end
   end
 
-  def obstacle(resource, %Ash.Resource.Relationships.BelongsTo{} = relationship) do
-    case Referencing.picking(resource, relationship) do
-      {:ok, _picking} -> nil
+  def obstacle(_resource, %Ash.Resource.Relationships.BelongsTo{} = relationship) do
+    case Referencing.choosing(relationship) do
+      {:ok, _read_action} -> nil
       {:error, reason} -> {:no_picker, relationship, reason}
     end
   end
@@ -192,26 +339,16 @@ defmodule AshTable.Resource.Editing do
   def editor(_cell_type, _type, _constraints), do: nil
 
   @doc """
-  Whether the action takes the field as an input: an attribute it accepts,
-  and for a belongs-to relationship its foreign key.
+  Whether the action takes the field as an attribute it accepts: the field
+  itself, and for a belongs-to relationship its foreign key.
   """
   @spec accepts?(Ash.Resource.Actions.Update.t(), struct) :: boolean
-  def accepts?(action, field) do
-    case written(field) do
-      nil -> false
-      name -> name in action.accept
-    end
-  end
+  def accepts?(action, %Ash.Resource.Attribute{name: name}), do: name in action.accept
 
-  @doc """
-  The attribute an edit of the field's cell gives the action: the field
-  itself, and for a belongs-to relationship its foreign key
-  (`source_attribute`). Nil for anything else.
-  """
-  @spec written(struct) :: atom | nil
-  def written(%Ash.Resource.Attribute{name: name}), do: name
-  def written(%Ash.Resource.Relationships.BelongsTo{source_attribute: name}), do: name
-  def written(_field), do: nil
+  def accepts?(action, %Ash.Resource.Relationships.BelongsTo{source_attribute: name}),
+    do: name in action.accept
+
+  def accepts?(_action, _field), do: false
 
   @doc """
   The arguments the action cannot run without: required, and without a
@@ -246,6 +383,37 @@ defmodule AshTable.Resource.Editing do
   def never_edited(_other),
     do:
       "A column is edited through an `update_action`, its own or the table's, that accepts its attribute."
+
+  @doc """
+  Why an action cannot save an edit of a reference cell, for a diagnostic:
+  what `written/3` says of the action `name` and the belongs-to
+  `relationship`, but for the lack of a picker, which
+  `AshTable.Resource.Referencing.no_picker/2` says.
+  """
+  @spec not_written(atom, struct, not_written) :: String.t()
+  def not_written(name, relationship, :not_taken),
+    do:
+      "The update action `#{name}` does not accept `#{relationship.source_attribute}`, the foreign key of `#{relationship.name}`, and has no argument that a `manage_relationship` change hands to `#{relationship.name}`, so it cannot save an edit of this column."
+
+  def not_written(name, relationship, {:several, argument}),
+    do:
+      "The update action `#{name}` hands its argument `#{argument}` to `#{relationship.name}` as a list of keys. A cell holds one related record, and an edit of this column gives the action one key: the argument has to hold one key, not a list."
+
+  def not_written(name, relationship, {:not_related, argument}),
+    do:
+      "The update action `#{name}` hands its argument `#{argument}` to `#{relationship.name}`, and does not relate the record the argument names: its `manage_relationship` change has no `on_lookup` (`type: :append` and `type: :append_and_remove` have one). An edit of this column chooses another record, which the action has to relate."
+
+  def not_written(name, relationship, {:not_keys, argument, reason}),
+    do:
+      "The update action `#{name}` hands its argument `#{argument}` to `#{relationship.name}`, and the argument does not hold the key of a related record: #{not_keys(relationship, reason)}. A table edits a relationship by choosing an existing record, whose key it gives the action, so it cannot save an edit of this column."
+
+  defp not_keys(relationship, :no_key),
+    do:
+      "#{inspect(relationship.destination)} has no one attribute to name a record by (its primary key is not one attribute, and the change names no `value_is_key`)"
+
+  defp not_keys(relationship, {:not_a_key, type, key, key_type}),
+    do:
+      "it is of the type #{inspect(type)}, which is not stored as `#{key}`, the key of #{inspect(relationship.destination)}, is (#{inspect(key_type)})"
 
   @doc "What is wrong with a named update action, for a diagnostic."
   @spec message(reason) :: String.t()

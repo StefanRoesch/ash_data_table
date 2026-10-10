@@ -18,11 +18,15 @@ defmodule AshTable.Model.Column do
   #     record through. `type`, `cell_type` and `values` are those of the
   #     label. Such a column is never sorted or filtered by. It is edited by
   #     choosing another record of the destination's table: `reference`
-  #     then also says which attribute an edit writes (`source_attribute`,
-  #     the foreign key), which attribute of the chosen record is its value
+  #     then also says which attribute an edit changes (`source_attribute`,
+  #     the foreign key), which attribute of the related record is its value
   #     (`destination_attribute`), whether "none" can be chosen
   #     (`allow_nil?`), and through which read action the records on offer
-  #     are read (`choose_action`; nil for a column nobody edits).
+  #     are read (`choose_action`; nil for a column nobody edits). What the
+  #     column's action is given is the foreign key, unless `argument` names
+  #     an argument of the action that hands the chosen record to the
+  #     relationship; either way its value is the chosen record's
+  #     `value_attribute`.
   #   * `label` is the column header.
   #   * `cell_type` is what the table shows the field's values as. An array
   #     of values that have a cell type is `{:array, item}`. A value of
@@ -51,14 +55,16 @@ defmodule AshTable.Model.Column do
   #     principle: the column is an attribute, the attribute is writable, an
   #     update action accepts it and its cell type has an editor; or it is a
   #     reference column whose related record can be chosen, and an update
-  #     action accepts the foreign key. In a model
+  #     action accepts the foreign key or takes the record through an
+  #     argument. In a model
   #     from `AshTable.Model.for_actor/2` it is also `false` when the person can
   #     never run that action. Whether one cell can be edited depends on the
   #     record besides.
   #   * `update_action` is the update action an edit of this column runs, with
   #     the column's attribute as its only input (for a reference column,
-  #     the foreign key): the column's own, else the table's. `nil` for a
-  #     column that is not editable.
+  #     the foreign key, or the argument that takes the related record): the
+  #     column's own, else the table's. `nil` for a column that is not
+  #     editable.
   #   * `editor` is what a cell of this column is edited with: `:text`,
   #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`; for an array
   #     `:choices` (one checkbox per value of an enum) or `:list` (one
@@ -133,7 +139,9 @@ defmodule AshTable.Model.Column do
               source_attribute: atom,
               destination_attribute: atom,
               allow_nil?: boolean,
-              choose_action: atom | nil
+              choose_action: atom | nil,
+              argument: atom | nil,
+              value_attribute: atom
             }
             | nil,
           apart?: boolean,

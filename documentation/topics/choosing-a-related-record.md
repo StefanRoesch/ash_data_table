@@ -12,7 +12,10 @@ those that are typed.
 What a reference cell shows, and how its label is read, is in
 [Nested tables](nested-tables.md#the-reference-cell). The rules of editing
 a cell are in [Inline editing](inline-editing.md), and the action panel in
-[Row actions and create](row-actions-and-create.md).
+[Row actions and create](row-actions-and-create.md). Choosing several
+records, and a reference cell whose action takes the related record through
+an argument, are in
+[Relationships an action manages](managing-relationships.md).
 
 A note on words: this guide says "key" for the foreign key of a
 relationship, the attribute of this resource that holds which record it
@@ -87,10 +90,10 @@ about there being something to choose from.
 | | |
 | --- | --- |
 | An update action is behind the column | The column's own `update_action`, else the table's. `update_action false` on the column switches it off. |
-| That action accepts the key | The relationship's `source_attribute` is in its `accept`. Not: the relationship's name. |
+| That action accepts the key | The relationship's `source_attribute` is in its `accept`. Not: the relationship's name. Or the action takes the related record through an argument: see [A reference cell that is edited through an argument](managing-relationships.md#a-reference-cell-that-is-edited-through-an-argument). |
 | That action needs nothing else | No required argument without a default, as for any column. |
 | The person may run it | One they can never run leaves the cell read-only for them. See [Authorization](authorization.md). |
-| The key is a public, writable attribute | `attribute_public?` and `attribute_writable?` of the relationship. A public relationship has a public key unless it says otherwise. |
+| The key is a public, writable attribute | `attribute_public?` and `attribute_writable?` of the relationship. A public relationship has a public key unless it says otherwise. Not needed where the action takes the record through an argument. |
 | The destination has a table | It lists `AshTable.Resource`. A reference column needs that anyway, for the label. |
 | The relationship has no `filter` | See [Which records are offered](#which-records-are-offered). |
 | The records can be read through a `public?` action | The relationship's own `read_action`, else the read action of the destination's table. |
@@ -458,8 +461,9 @@ theme. No screen reader has been tried.
 ## Things people trip over
 
 - **A reference cell that stays read-only.** No update action behind the
-  column accepts the key; or the key is not public or not writable; or the
-  relationship has a `filter`. `reporter_id` on `/tasks` is the first case.
+  column accepts the key or takes the record through an argument; or the
+  key is not public or not writable; or the relationship has a `filter`.
+  `reporter_id` on `/tasks` is the first case.
 - **Accepting the relationship's name.** An action accepts attributes:
   `accept [:assignee_id]`, not `accept [:assignee]`.
 - **Expecting to type a name.** The picker has no search box of its own. The
@@ -480,9 +484,8 @@ theme. No screen reader has been tried.
 ## Not in the first version
 
 No type-ahead in the cell, no search box besides the table's filters, no
-choosing several records, no relationship managed through an argument
-(`manage_relationship`), no creating a record from the picker, no picker
-for a relationship with a `filter`, no going to the page of the record that
-is chosen now, and no link from a reference cell to its record. The later
+creating a record from the picker, no picker for a relationship with a
+`filter`, no going to the page of the record that is chosen now, and no
+link from a reference cell to its record. The later
 slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

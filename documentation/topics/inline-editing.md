@@ -118,7 +118,8 @@ A cell can be edited when all of this holds:
 
 1. Its column is an attribute. Calculations and aggregates are never
    editable. A reference cell, whose column names a belongs-to
-   relationship, is edited through the relationship's foreign key: see
+   relationship, is edited through the relationship's foreign key, or
+   through an argument that its action hands to the relationship: see
    [Choosing a related record](choosing-a-related-record.md).
 2. The attribute is writable (`writable? true`, the default).
 3. An update action is behind the column: its own, else the table's. The

@@ -392,7 +392,8 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
                "Archivieren",
                "Neu zuweisen",
                "Fortschritt setzen",
-               "Löschen"
+               "Löschen",
+               "Labels setzen"
              ]
 
       assert attribute(html, "[id='task-row-#{task.id}-a-destroy']", "data-question") ==

@@ -15,6 +15,8 @@ defmodule AshTable.Resource.Acting do
   alias Ash.Resource.Info
   alias AshTable.Model.CellType
   alias AshTable.Resource.Editing
+  alias AshTable.Resource.Managing
+  alias AshTable.Resource.Referencing
 
   # What a value that has no editor of its own is stored as, where it can be
   # written as one line of text: a key, a time, an atom.
@@ -23,6 +25,12 @@ defmodule AshTable.Resource.Acting do
   @typedoc """
   An input of an action: an attribute it accepts or one of its arguments,
   with the control a table has for it (`editor`, nil when it has none).
+
+  An argument that hands keys to a relationship, whose records can be
+  chosen in a picker, is given by choosing them: its `editor` is
+  `:reference` for one key and `:references` for a list of them, and
+  `reference` says what is chosen from (`managing/3`). Nil for every other
+  input.
   """
   @type input :: %{
           name: atom,
@@ -30,8 +38,9 @@ defmodule AshTable.Resource.Acting do
           type: {Ash.Type.t(), keyword},
           cell_type: CellType.t(),
           values: CellType.values() | nil,
-          editor: Editing.editor() | :plain | nil,
+          editor: Editing.editor() | :plain | :reference | :references | nil,
           fields: [AshTable.Model.Field.t()] | nil,
+          reference: Referencing.managing() | nil,
           required?: boolean,
           default: term
         }
@@ -49,6 +58,7 @@ defmodule AshTable.Resource.Acting do
           | {:record_argument_no_single_key, atom, atom, [atom]}
           | {:record_argument_not_a_key, atom, atom, term, atom, term}
           | {:no_field, :row | :table | :create, atom, input}
+          | {:no_field, :row | :table | :create, atom, input, struct, Referencing.no_picker()}
           | {:not_a_create_action, atom, atom}
           | {:result_read_not_public, atom}
           | {:result_read_needs_argument, atom, atom}
@@ -144,6 +154,10 @@ defmodule AshTable.Resource.Acting do
   accepts, then its public arguments. A private attribute or argument is
   never given from the outside. Nor is the argument that takes a row's
   primary key (`record_argument`): the table gives it.
+
+  An argument that hands keys to a relationship is given by choosing the
+  related records, where there is something to choose them with
+  (`managing/3`).
   """
   @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil) :: [input]
   def inputs(resource, action, record_argument \\ nil) do
@@ -157,9 +171,52 @@ defmodule AshTable.Resource.Acting do
     arguments =
       for %{public?: true, name: name} = argument <- action.arguments,
           name != record_argument,
-          do: argument(argument)
+          do: argument |> argument() |> managing(resource, action)
 
     attributes ++ arguments
+  end
+
+  @doc """
+  An argument as the input it is where a change of the action hands it to a
+  relationship as keys (`AshTable.Resource.Managing`), and the related
+  records can be chosen in a picker
+  (`AshTable.Resource.Referencing.managing/1`): its control is the picker,
+  for one record (`:reference`) or for several (`:references`), and
+  `reference` says what is chosen from. Any other argument is the input it
+  was: one whose keys cannot be chosen is typed, where a table has a field
+  for its type.
+  """
+  @spec managing(input, Ash.Resource.t() | Spark.Dsl.t(), struct) :: input
+  def managing(%{kind: :argument, name: name} = input, resource, action) do
+    with {:ok, managed} <- Managing.managed(resource, action, name),
+         {:ok, managing} <- Referencing.managing(managed) do
+      %{
+        input
+        | editor: if(managing.several?, do: :references, else: :reference),
+          reference: managing
+      }
+    else
+      _not_managed_or_no_picker -> input
+    end
+  end
+
+  def managing(input, _resource, _action), do: input
+
+  @doc """
+  Why an argument that hands keys to a relationship is not given by choosing
+  the related records: the relationship, and what keeps it from having a
+  picker. Nil for an argument that is given so, and for one that hands no
+  keys to a relationship.
+  """
+  @spec unchosen(Ash.Resource.t() | Spark.Dsl.t(), struct, atom) ::
+          {struct, Referencing.no_picker()} | nil
+  def unchosen(resource, action, name) do
+    with {:ok, managed} <- Managing.managed(resource, action, name),
+         {:error, reason} <- Referencing.managing(managed) do
+      {managed.relationship, reason}
+    else
+      _chosen_or_not_managed -> nil
+    end
   end
 
   @doc """
@@ -197,6 +254,7 @@ defmodule AshTable.Resource.Acting do
       values: values,
       editor: control(cell_type, type, constraints),
       fields: fields(cell_type, type, constraints),
+      reference: nil,
       required?: required?,
       default: if(computed?(field), do: nil, else: field.default)
     }
@@ -240,16 +298,20 @@ defmodule AshTable.Resource.Acting do
 
   @doc """
   Whether using an action opens the action panel first. It does when the
-  person has something to give: an attribute the action accepts, which is
-  what such an action is for, or an argument it does not run without. An
-  action without inputs, or with optional arguments only, runs straight
-  away: those keep their defaults. `inputs` are the ones a table has a field
-  for.
+  person has something to give: an attribute the action accepts, or an
+  argument that hands the records they choose to a relationship, which is
+  what such an action is for; or an argument it does not run without. An
+  action without inputs, or with other optional arguments only, runs
+  straight away: those keep their defaults. `inputs` are the ones a table
+  has a field for.
   """
   @spec panel?([input]) :: boolean
   def panel?(inputs) do
-    # an argument with a default runs with it
-    Enum.any?(inputs, &(&1.kind == :attribute or (&1.required? and is_nil(&1.default))))
+    Enum.any?(inputs, fn input ->
+      # an argument with a default runs with it
+      input.kind == :attribute or not is_nil(input.reference) or
+        (input.required? and is_nil(input.default))
+    end)
   end
 
   @doc """
@@ -466,6 +528,15 @@ defmodule AshTable.Resource.Acting do
         "has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, " <>
         "values written as one line of text, such as a key, and for embedded resources and " <>
         "maps whose every field is one of these."
+
+  # a list of keys that is handed to a relationship, and cannot be chosen
+  def message({:no_field, what, name, %{name: input}, relationship, reason}),
+    do:
+      "The #{what} action `#{name}` cannot be run from a table: its argument `#{input}` is " <>
+        "required, and holds the keys of the records of `#{relationship.name}`. A table has a " <>
+        "field for a list of keys only where the records can be chosen from the related " <>
+        "resource's own table, and here they cannot. " <>
+        Referencing.no_picker(relationship, reason)
 
   def message({:result_read_not_public, name}),
     do:

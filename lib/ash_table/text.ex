@@ -359,8 +359,10 @@ defmodule AshTable.Text do
   defp msgid(:field_value), do: dgettext_noop("ash_table", "%{field}: %{value}")
   # the button of the panel in which such a cell is edited
   defp msgid(:save), do: dgettext_noop("ash_table", "Save")
-  # in that panel, and in the action panel: what the button is called that
-  # takes such a value away, where it is not one of a list
+  # In that panel, and in the action panel: what the button is called that
+  # takes such a value away, where it is not one of a list. And what the
+  # button is called that takes a related record out of a field that holds
+  # several: by what the record is called ("Remove ops").
   defp msgid(:remove_group), do: dgettext_noop("ash_table", "Remove %{column}")
 
   # in place of the rows, while an argument that the read action requires is

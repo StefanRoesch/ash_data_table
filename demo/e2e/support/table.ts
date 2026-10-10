@@ -524,6 +524,19 @@ export class Table {
   }
 
   /**
+   * What a field that holds several related records says each of them is
+   * called, in their order.
+   */
+  fieldChosenItems(name: string): Locator {
+    return this.field(name).locator("[data-chosen]")
+  }
+
+  /** The button of such a field that takes one of its records out again, by its place, counted from 0. */
+  fieldRemove(name: string, index: number): Locator {
+    return this.byId(`${this.id}-panel-f-${name}-r-${index}`)
+  }
+
+  /**
    * Chooses a record for a field of the open action panel, with the
    * pointer: the field's button, the row with that key, "Choose". `null`
    * uses "None".

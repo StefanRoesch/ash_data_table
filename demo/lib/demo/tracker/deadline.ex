@@ -48,7 +48,13 @@ defmodule Demo.Tracker.Deadline do
     column :status
     column :due_on
     column :tags
-    column :assignee
+
+    # A reference cell that is edited through an argument: `hand_over` does
+    # not accept `assignee_id`, it takes the person as an argument and hands
+    # it to the relationship. The cell opens the picker all the same.
+    column :assignee do
+      update_action :hand_over
+    end
 
     column :comment_count do
       label "Comments"
@@ -84,6 +90,18 @@ defmodule Demo.Tracker.Deadline do
 
     update :reschedule do
       accept [:due_on]
+    end
+
+    # The argument holds the key of a person, and the change hands it to
+    # the relationship: this person and no other. Empty, it takes the
+    # assignee away.
+    update :hand_over do
+      accept []
+      require_atomic? false
+
+      argument :assignee, :uuid
+
+      change manage_relationship(:assignee, type: :append_and_remove)
     end
   end
 

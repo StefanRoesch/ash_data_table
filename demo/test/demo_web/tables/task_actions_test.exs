@@ -81,14 +81,27 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       # the columns before it are where they were
       assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["24"]
 
-      assert actions(html, task.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
+      assert actions(html, task.id) == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels"
+             ]
     end
 
     test "has the buttons of the actions a person can ever run, and is not there when that is none",
          %{conn: conn, world: world, task: task} do
       # a member may run them on their own tasks: the buttons are there on every row
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
-      assert actions(html, task.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
+
+      assert actions(html, task.id) == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels"
+             ]
 
       # a viewer may run none
       {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
@@ -105,7 +118,15 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       [own | _] = world.other_tasks
 
       assert length(titles(html)) == length(world.other_tasks)
-      assert actions(html, own.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
+
+      assert actions(html, own.id) == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels"
+             ]
+
       assert text(html, "#task-create") == "New task"
 
       # a task of the first organization is no row of theirs: by its key nothing runs
@@ -193,7 +214,13 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert text(html, cell(task.id, "project")) == project.name
       assert text(html, cell(task.id, "assignee")) == world.member.name
       # and its buttons
-      assert actions(html, task.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
+      assert actions(html, task.id) == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels"
+             ]
     end
   end
 
@@ -220,7 +247,14 @@ defmodule DemoWeb.Tables.TaskActionsTest do
 
       assert text(html, cell(foreign.id, "status")) == "In progress"
       assert stored!(foreign).status == :in_progress
-      assert actions(html, foreign.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
+
+      assert actions(html, foreign.id) == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels"
+             ]
 
       # the other row has nothing to say
       assert action_failure(html, own.id) == nil

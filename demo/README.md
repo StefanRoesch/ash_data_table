@@ -55,14 +55,14 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, with no sort and no filter; the first two are edited by choosing another record from that resource's own table, in the picker, see below; the third is read-only); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. "Repeats", a map that declares its fields, shown on one line and edited in the side panel (see below). A box at the start of every row selects it, and the four row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below). Above the grid, the argument line: "Search", an argument of the read action that may be left empty, finds tasks by a text in their title or description, and "Due within: Days" is the argument of the column "Due within", which shows the calculation `due_within?` with the days a person gives it (30 to start with); the column beside it, "Due within 7 days", shows the same calculation with its argument fixed (see below) |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, with no sort and no filter; the first two are edited by choosing another record from that resource's own table, in the picker, see below; the third is read-only); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. "Repeats", a map that declares its fields, shown on one line and edited in the side panel (see below). A box at the start of every row selects it, and the five row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Five row actions in a last column, "Actions", the last of which, "Set labels", takes the labels of a task as an argument and hands them to the relationship: its panel lists the task's labels, and they are chosen in the picker (see below); and "New task" on the line of the table's name (see below). Above the grid, the argument line: "Search", an argument of the read action that may be left empty, finds tasks by a text in their title or description, and "Due within: Days" is the argument of the column "Due within", which shows the calculation `due_within?` with the days a person gives it (30 to start with); the column beside it, "Due within 7 days", shows the same calculation with its argument fixed (see below) |
 | http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Two of them are made of fields and edited in the side panel: "Client", an embedded resource with an address inside it, and "Milestones", an array of embedded resources (see below). Its block also says what a project is called in other tables (`label_field :name`). Two row actions: "Set status", whose one input is a choice, and "Destroy", which asks first; and "New project". Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
 | http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a field for the task that opens the picker: the table of the tasks to choose one from. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button. Three table actions, generic actions with their buttons after "New label": "Count unused" for everybody, "Recolour" and "Remove unused" for an admin; and "Copy" in every row, a generic action that is given the row's key (see below) |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25. One row action, a destroy relabelled "Remove", which runs at one click and says so (`confirm false`); "New task label", whose panel has a field for the task and one for the label, each of which opens the picker |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; and the values made of fields, edited in the side panel: "An address" (an embedded resource), "Addresses" (an array of them, without a primary key) and "A typed map" (a map that declares its fields). "A map", which declares none, is shown from whatever it holds and is read-only; "A keyword", "A tuple" and "A struct" stay read-only text. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
-| http://localhost:4478/deadlines | `Deadline` | the tasks once more, as a resource of its own over the same table, read through an action that **requires** an argument: the day they are due by. Until "Due by" is given the table reads nothing and says "Fill in Due by to see records."; "Include done?" is an argument with a default, and "Tags" a list that is given value by value. "Due on" is edited in place: a task that is put off beyond the day stays in its row until the table reads again. A row expands into its comments |
+| http://localhost:4478/deadlines | `Deadline` | the tasks once more, as a resource of its own over the same table, read through an action that **requires** an argument: the day they are due by. Until "Due by" is given the table reads nothing and says "Fill in Due by to see records."; "Include done?" is an argument with a default, and "Tags" a list that is given value by value. "Due on" is edited in place: a task that is put off beyond the day stays in its row until the table reads again. "Assignee" is a reference cell that is edited through an argument: its action, `hand_over`, does not accept `assignee_id`; it takes the person as an argument and hands it to the relationship, and the cell opens the picker all the same (see "Row actions and create" below). A row expands into its comments |
 
 http://localhost:4478/dashboard is a LiveView of the demo's own
 (`DemoWeb.DashboardLive`) with two tables placed in it with
@@ -227,6 +227,17 @@ Table actions are in `label_actions_test.exs`, on `/labels`, and in
 `table_actions_test.exs`, on the resources of
 `test/support/action_tables.ex`: every kind of generic action, in a row, on
 the selected rows and in a nested table.
+Relationships an action manages are in `task_labels_action_test.exs` ("Set
+labels" on `/tasks`: its field, the picker for several, what a hand-made
+form cannot do, the action's policies, the selected rows, a nested table,
+German), in `deadline_assignee_test.exs` (the "Assignee" cell of
+`/deadlines`, which is edited through an argument) and in
+`managed_relationships_test.exs`, on the resources of
+`test/support/relation_tables.ex`: an argument that adds, one that takes
+away, one key for a relationship of many, keys that are not the primary
+key, a destination whose rows are named by two attributes, a picker in
+pages and with an argument line, records a person may not read, and an
+action that is refused.
 Languages are in `translation_test.exs` and `translation_settings_test.exs`,
 tables placed in a LiveView in `embedded_table_test.exs`, the key of two
 attributes in `task_label_table_test.exs`, a read that fails in
@@ -391,7 +402,7 @@ the window first.
 
 | Table | Row actions | Create |
 | --- | --- | --- |
-| `/tasks` | "Archive" (no inputs: runs at once), "Reassign" (the assignee, chosen in the picker, and a required reason: opens the panel), "Set progress" (one number, with the task's progress in it), "Destroy" (asks "Delete this task? This cannot be undone.") | "New task": thirteen fields, among them "Project" and "Assignee", each with a button that opens the picker, "Tags" as a list of values and "Checks" as a multiple choice |
+| `/tasks` | "Archive" (no inputs: runs at once), "Reassign" (the assignee, chosen in the picker, and a required reason: opens the panel), "Set progress" (one number, with the task's progress in it), "Destroy" (asks "Delete this task? This cannot be undone."), "Set labels" (the task's labels, any number of them chosen in the picker) | "New task": thirteen fields, among them "Project" and "Assignee", each with a button that opens the picker, "Tags" as a list of values and "Checks" as a multiple choice |
 | `/projects` | "Set status" (a choice), "Destroy" (asks) | "New project" |
 | `/comments` | "Destroy" (asks) | "New comment": the body, and the task, chosen in the picker |
 | `/labels` | "Destroy" (asks), "Copy" (a generic action, see "Table actions" below) | "New label": the colour starts with the attribute's default |
@@ -411,12 +422,32 @@ Things to try, on `/tasks`:
   project in the picker, which opens on top of the panel; the title is still
   there. The task is the first row of the page, whatever the sort,
   until you sort, filter or change page.
+- "Set labels": the panel lists the task's labels under "Labels", each with
+  a button "✕" that takes it out of the list. "Choose" opens the table of
+  the labels on top of the panel, with a box in every row and the rows of
+  the task's labels ticked; tick another, use "Choose", and the label is in
+  the list. Nothing is saved until "Run". The action takes the labels as an
+  argument (`argument :labels, {:array, :uuid}`) and hands them to the
+  relationship (`manage_relationship(:labels, type: :append_and_remove)`):
+  these labels and no others.
 - As **Max Member**, "Archive" a task that is neither assigned to him nor
   reported by him: the row's last cell is marked and says "You are not
   allowed to do this." Escape on that cell clears it. His "New task" has no
-  field "External ref".
+  field "External ref". "Set labels" on such a task shows its labels, and
+  "Run" is refused in the panel.
 - With the keyboard: End moves to the actions cell, Enter to its first
   button, Left and Right Arrow between the buttons, Escape back to the cell.
+
+And on `/deadlines`, once "Due by" has a day:
+
+- Enter on an "Assignee" cell opens the picker on that person. Choose
+  another: the cell shows the new name. "None" takes the assignee away.
+  The column's action takes the person as an argument
+  (`argument :assignee, :uuid`, `manage_relationship(:assignee, type:
+  :append_and_remove)`); no update action of `Deadline` accepts
+  `assignee_id`.
+- As **Max Member**, on a task that is neither assigned to him nor reported
+  by him: the cell is marked and says "You are not allowed to change this."
 
 ### Table actions
 
@@ -467,7 +498,7 @@ unless one says `bulk? false`, as "Destroy" on `/projects` does.
 
 | Table | For the selected rows | Kept to one row |
 | --- | --- | --- |
-| `/tasks` | "Archive", "Reassign", "Set progress", "Destroy" | |
+| `/tasks` | "Archive", "Reassign", "Set progress", "Destroy", "Set labels" | |
 | `/projects` | "Set status" | "Destroy" (`bulk? false`) |
 | `/comments` | "Destroy" | |
 | `/labels` | "Destroy" | "Copy" (`bulk? false`: a name can be given to one label only) |
@@ -495,6 +526,10 @@ Things to try, on `/tasks`:
   empty unassigns both: an empty field is an empty value.
 - **A question of its own.** "Destroy" asks "Delete this task? This cannot
   be undone. 3 records are selected."
+- **Related records for all of them.** Select two tasks, "Set labels". The
+  panel is headed "Set labels: 2 records" and lists no label: there is no
+  one task to take them from. Choose a label and use "Run": both tasks
+  carry that label and no other.
 - **All that match.** Tick the box in the header: "25 selected", and
   "Select all 320 that match" appears. Use it, then filter "Title" by
   `email`: the selection is given up, as it was made under other filters.
@@ -521,8 +556,8 @@ Switch the actor at the top right and the same page changes:
 
 | Actor | Rows | Columns | Editing | Row actions and "New task" |
 | --- | --- | --- | --- | --- |
-| admin | Acme's 320 tasks | all 17, `External ref` among them | every editable column, on every task | four buttons on every row, and each runs; "New task" |
-| member | Acme's 320 tasks | 16: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved | four buttons on every row; a task that is not theirs refuses on the actions cell or in the panel; "New task" |
+| admin | Acme's 320 tasks | all 17, `External ref` among them | every editable column, on every task | five buttons on every row, and each runs; "New task" |
+| member | Acme's 320 tasks | 16: no `External ref`. `Estimate hours` is empty ("Not available") except on the tasks assigned to them | looks editable everywhere; a task that is not theirs refuses on the cell when it is saved | five buttons on every row; a task that is not theirs refuses on the actions cell or in the panel; "New task" |
 | viewer | Acme's 320 tasks | 14: as the member, and no `Assignee` and no `Reported by`, as a viewer may not read people | none: no cell opens, nothing is marked read-only, there are no editors in the page | no actions column, no "New task" |
 | outsider | Globex's 80 tasks | 16, as the member | as the member, on Globex's tasks | as the member, on Globex's tasks |
 | nobody | none: "No records" | 14: no `External ref`, no `Estimate hours`, which nobody can ever see, and no `Project`, whose read is refused when nobody is logged in | none | none |
@@ -613,7 +648,8 @@ tasks. In tests the ids are fresh ones, not the fixed ones above.
 
 `Deadline` is a second resource over the tasks' table (`migrate? false`):
 the tasks that are due by a day. It has no records of its own, so the seed
-is the tasks'.
+is the tasks'. Its `hand_over` takes the assignee as an argument and hands
+it to the relationship; its table edits the "Assignee" cell through it.
 
 Every primary read action carries its default sort (`prepare build(sort: …)`).
 
@@ -641,9 +677,11 @@ decide (nobody sees nothing).
   (priority; it also leaves "Reprioritised" in the private `internal_note`),
   `set_progress` (progress; it also moves a task from "To do" to "In
   progress"), `reassign` (assignee, and a required argument `reason`),
-  `archive` (nothing); plus `create` and `destroy`. Four of them are row
-  actions of its table (`archive`, `reassign`, `set_progress`, `destroy`),
-  and `create` is its create action
+  `archive` (nothing), `set_labels` (nothing; it takes the labels as an
+  argument, a list of keys, and hands them to the relationship with
+  `manage_relationship`); plus `create` and `destroy`. Five of them are row
+  actions of its table (`archive`, `reassign`, `set_progress`, `destroy`,
+  `set_labels`), and `create` is its create action
 - a validation that fails on another field: a task can only be `done` with
   progress 100
 
@@ -763,6 +801,7 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `nesting.spec.ts` | nested tables: the expander and the lines by pointer and by keyboard; Right and Left Arrow; into a nested table and back out; one tab stop for the whole tree at every depth, and Tab out of it; that moving sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or a row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
 | `full_view.spec.ts` | the link of a nested table to the full view, by pointer and by keyboard, and where it is not there; the page it leads to: its heading, the limit in the address through sort, filter and page and after a reload, the way back to all records, editing and expanding under the limit; the browser's back button; the page as the member, the viewer and the outsider; axe on it |
 | `picker.spec.ts` | the picker: which reference cells open one, by Enter, F2 and a double click; the dialog, its heading and the table in it, with focus on the row of the record chosen now; the keyboard in its grid, and that moving and selecting send nothing; Tab within the dialog; its own filters and sort; Space and "Choose", Enter on a row, a double click, a click on a row, "None", Escape and Cancel, and where focus is afterwards; the question of a column on top of it; a choice the action refuses, on the cell; a row that names no record the person may read; in a nested table; from the action panel, on top of it, for a row action, a create and an action on the selected rows; a narrow window; German; axe in both themes |
+| `relationships.spec.ts` | relationships an action manages: "Set labels" of `/tasks`, whose panel lists the task's labels in a named group, each with a button that takes it out, and where focus goes then; the picker for several on top of the panel, with a box per row, the rows of the task's labels selected and counted, a click and Space on a row, Enter and a double click that choose nothing, "Choose" that takes what is selected, a filter that keeps the selection, Escape; "Run", and the same on the selected rows; the member's refusal in the panel; a row that names no label the person may read; "Assignee" of `/deadlines`, a reference cell that is edited through an argument, with "None"; German; axe in both themes |
 | `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort or filter, and nothing to edit where no action accepts their key, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
 | `selection.spec.ts` | row selection and bulk actions: the boxes by pointer and by keyboard, Space on a cell, ranges with Shift, the box of the page and its mixed state; that selecting sends nothing and that the arrow keys still send nothing; the selection through a sort, a page and a filter change; "all that match"; the line above the grid and what is read out; the question, the panel of an action with inputs, and the result, as the admin and as the member, whose refused rows stay selected; where focus is afterwards; a nested table's own selection; a table told to let one row or several be selected with nothing to run on them; the height of a row with a box; axe with rows selected, with the question open and with a result, in the light and the dark theme |
 | `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |

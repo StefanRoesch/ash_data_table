@@ -75,6 +75,26 @@ defmodule AshTable.Model do
   # else. An input of an action that is such a foreign key is given the
   # same way, in the action panel.
   #
+  # ## Relationships an action manages
+  #
+  # An argument of an action that a `manage_relationship` change hands to a
+  # relationship, and that holds the key of a related record or a list of
+  # such keys (`AshTable.Resource.Managing`), is given by choosing existing
+  # records too, where the relationship has something to choose them with
+  # (`AshTable.Resource.Referencing.managing/1`): its editor is `:reference`
+  # for one key and `:references` for a list. Where the argument is
+  # everything the relationship is to hold (`on_missing`), its field starts
+  # with the records that are related now. An argument that holds anything
+  # else (a map: a related record to create or to change) is the input it
+  # would be without the change.
+  #
+  # A reference column is editable through such an argument as well: where
+  # its action does not accept the foreign key, and has an argument that
+  # hands one key to the column's relationship and relates the record it
+  # names. A save then gives the action that argument and nothing else. The
+  # foreign key the action accepts comes first
+  # (`AshTable.Resource.Editing.written/3`).
+  #
   # The table in the picker is the destination's own, built with `choose:`
   # the read action it reads through: it shows, sorts, filters and pages as
   # that table does, and nothing in it is edited, run, created or expanded.
@@ -173,9 +193,10 @@ defmodule AshTable.Model do
   # gives it.
   #
   # `panel?` says whether using an action opens the action panel first: it
-  # does when the action accepts an attribute or has a required argument,
-  # and always for the create action. An action without inputs, or with
-  # optional arguments only, runs straight away.
+  # does when the action accepts an attribute, has an argument that is given
+  # by choosing related records, or has a required argument, and always for
+  # the create action. An action without inputs, or with other optional
+  # arguments only, runs straight away.
   #
   # `bulk?` says whether a row action is also offered for the rows a person
   # has selected, to run on all of them at once: every one is, unless its
@@ -421,7 +442,7 @@ defmodule AshTable.Model do
 
     * A reference column is not editable for a person who can **never**
       read the records to choose from, through the action the picker reads
-      them through, or who can never see the foreign key the edit writes.
+      them through, or who can never see the foreign key the edit changes.
 
     * A relationship whose destination the person can **never** read,
       through the read action its nested table runs, is left out
@@ -1396,10 +1417,28 @@ defmodule AshTable.Model do
         %{
           input
           | editor: :reference,
-            reference: Map.put(reference, :choose_action, choose_action),
+            reference:
+              Map.merge(reference, %{
+                choose_action: choose_action,
+                several?: false,
+                related?: false
+              }),
             label: reference_label(input, picking.relationship, columns)
         }
     end
+  end
+
+  # An argument that hands keys to a relationship comes with what its
+  # records are chosen with (`AshTable.Resource.Acting.managing/3`). It is
+  # called by its own name, in words: what an argument is for is the
+  # action's to say ("Labels", "Add labels").
+  defp with_reference(%Input{kind: :argument, reference: %{} = managing} = input, _, _columns) do
+    {choose_action, reference} = Map.pop!(managing, :read_action)
+
+    %{
+      input
+      | reference: Map.merge(reference, %{choose_action: choose_action, source_attribute: nil})
+    }
   end
 
   defp with_reference(input, _resource, _columns), do: input
@@ -1484,16 +1523,11 @@ defmodule AshTable.Model do
     {type, constraints} = CellType.type(destination, label)
     {cell_type, values} = CellType.classify(type, constraints)
 
-    update_action =
-      case Editing.update_action(resource, relationship, declared) do
-        {:ok, name} -> name
-        :none -> nil
-      end
-
-    picking =
-      case Referencing.picking(resource, relationship) do
-        {:ok, picking} -> picking
-        {:error, _reason} -> nil
+    # the action an edit runs, and what a choice gives it
+    {update_action, written} =
+      case Editing.edit(resource, relationship, declared) do
+        {:ok, name, written} -> {name, written}
+        :none -> {nil, nil}
       end
 
     %Column{
@@ -1510,16 +1544,18 @@ defmodule AshTable.Model do
       values: values,
       sortable?: false,
       operators: [],
-      reference: %{
-        relationship: relationship.name,
-        destination: destination,
-        label_field: label.name,
-        read_action: read_action,
-        source_attribute: relationship.source_attribute,
-        destination_attribute: relationship.destination_attribute,
-        allow_nil?: match?(%{allow_nil?: true}, picking),
-        choose_action: update_action && picking.read_action
-      }
+      reference:
+        Map.merge(
+          %{
+            relationship: relationship.name,
+            destination: destination,
+            label_field: label.name,
+            read_action: read_action,
+            source_attribute: relationship.source_attribute,
+            destination_attribute: relationship.destination_attribute
+          },
+          choice(resource, relationship, written)
+        )
     }
   end
 
@@ -1567,6 +1603,44 @@ defmodule AshTable.Model do
           do: [],
           else: Operator.available(resource, field)
         )
+    }
+  end
+
+  # What a choice in a reference cell gives the column's action, by the way
+  # the action takes it (`AshTable.Resource.Editing.written/3`): as the
+  # foreign key it accepts, or through an argument that hands the chosen
+  # record's key to the relationship.
+  #
+  # "None" can be chosen where the key can be empty; through an argument,
+  # where the argument can be empty besides, and leaving the record out
+  # takes it away (`on_missing`).
+  defp choice(_resource, relationship, {:attribute, _key, picking}) do
+    %{
+      argument: nil,
+      value_attribute: relationship.destination_attribute,
+      allow_nil?: picking.allow_nil?,
+      choose_action: picking.read_action
+    }
+  end
+
+  defp choice(resource, relationship, {:argument, name, managing}) do
+    key = Info.attribute(resource, relationship.source_attribute)
+
+    %{
+      argument: name,
+      value_attribute: managing.destination_attribute,
+      allow_nil?: managing.allow_nil? and managing.related? and match?(%{allow_nil?: true}, key),
+      choose_action: managing.read_action
+    }
+  end
+
+  # a column nobody edits
+  defp choice(resource, relationship, nil) do
+    %{
+      argument: nil,
+      value_attribute: relationship.destination_attribute,
+      allow_nil?: match?({:ok, %{allow_nil?: true}}, Referencing.picking(resource, relationship)),
+      choose_action: nil
     }
   end
 

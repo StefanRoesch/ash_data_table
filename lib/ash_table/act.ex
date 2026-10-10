@@ -32,6 +32,12 @@ defmodule AshTable.Act do
   # through (`unchosen/4`). One that names nothing they could have chosen
   # runs nothing.
   #
+  # So does an argument that hands the keys of several records to a
+  # relationship (`editor: :references`): every key in it is looked up the
+  # same way, but for those of the records that are related already where
+  # the argument is everything the relationship is to hold (`related/3`).
+  # Those are nobody's choice: they were there.
+  #
   # A generic action is given no record: it is run through the same form
   # (`AshPhoenix.Form.for_action/3`, which builds an `Ash.ActionInput` and
   # runs it with `Ash.run_action/2`), with the values of its arguments. One
@@ -375,13 +381,15 @@ defmodule AshTable.Act do
   @doc """
   The inputs among `inputs` whose value, in what a panel's form sent, names
   a record this person could not have chosen: an input that is given by
-  choosing a related record, with a key that is none of a record they may
+  choosing related records, with a key that is none of a record they may
   read through the picker's read action.
 
-  Left alone are an input that is empty, one that holds what `record` holds
-  already (nil where there is no record: a create, a selection), which
-  nobody chose, and one whose value is no key at all, which the action
-  says itself.
+  Left alone are an input that is empty, a key that `record` holds already
+  (nil where there is no record: a create, a selection), which nobody
+  chose, and a value that is no key at all, which the action says itself.
+  What a record holds already is its attribute, for an attribute; for an
+  argument that is everything a relationship is to hold, the keys of the
+  records that are related now (`related/3`).
 
   `opts` are those of `AshTable.Pick.reader/2`, and `:picked_with`: what the
   picker's read action was given for a key that was chosen there.
@@ -389,39 +397,89 @@ defmodule AshTable.Act do
   @spec unchosen([Model.Input.t()], map, Ash.Resource.record() | nil, keyword) ::
           [Model.Input.t()]
   def unchosen(inputs, params, record, opts) when is_map(params) do
-    for %{editor: :reference, reference: reference, type: {type, constraints}} = input <- inputs,
-        typed = params[Atom.to_string(input.name)],
-        typed not in [nil, ""],
-        {:ok, value} when not is_nil(value) <- [Ash.Type.cast_input(type, typed, constraints)],
-        is_nil(record) or not held?(record, input.name, value),
-        Pick.current(reference, value, chosen_with(opts, input, typed)) == :error do
-      input
-    end
+    for %{editor: editor} = input <- inputs,
+        editor in [:reference, :references],
+        refused?(input, params[Atom.to_string(input.name)], record, opts),
+        do: input
   end
 
   def unchosen(_inputs, _params, _record, _opts), do: []
 
+  # Whether one of the keys an input was sent names a record the person
+  # could not have chosen.
+  defp refused?(input, sent, record, opts) do
+    case for(key <- List.wrap(typed(input, sent)), is_binary(key) and key != "", do: key) do
+      [] ->
+        false
+
+      keys ->
+        held = held(input, record, opts)
+
+        Enum.any?(keys, fn typed ->
+          with {:ok, value} when not is_nil(value) <- key(input, typed),
+               false <- MapSet.member?(held, Pick.written(value)) do
+            Pick.current(input.reference, value, chosen_with(opts, input, typed)) == :error
+          else
+            _held_or_no_key -> false
+          end
+        end)
+    end
+  end
+
+  # What was typed, as a key: as the input's type casts it, and for a list
+  # of keys the type of its values.
+  defp key(%{type: {{:array, type}, constraints}}, typed),
+    do: Ash.Type.cast_input(type, typed, constraints[:items] || [])
+
+  defp key(%{type: {type, constraints}}, typed), do: Ash.Type.cast_input(type, typed, constraints)
+
+  # The keys a record holds already for an input, as they are written.
+  defp held(_input, nil, _opts), do: MapSet.new()
+
+  defp held(%{kind: :attribute, name: name}, record, _opts) do
+    case Map.get(record, name) do
+      nil -> MapSet.new()
+      %Ash.ForbiddenField{} -> MapSet.new()
+      held -> MapSet.new([Pick.written(held)])
+    end
+  end
+
+  defp held(%{reference: %{related?: true} = reference}, record, opts) do
+    for related <- Pick.related(reference, record, opts),
+        {:ok, value} <- [Pick.value(reference, related)],
+        into: MapSet.new(),
+        do: Pick.written(value)
+  end
+
+  defp held(_input, _record, _opts), do: MapSet.new()
+
   # A key that was chosen in the picker is looked up as it was found there:
   # with what the picker's read action was given then (`:picked_with`: by
-  # input, the key as it was written and those arguments). Any other key
-  # through the action as it is.
+  # input, the key as it was written and those arguments; for an input of
+  # several keys, those arguments by key). Any other key through the action
+  # as it is.
   defp chosen_with(opts, %{name: name}, typed) do
     case Keyword.get(opts, :picked_with, %{}) do
       %{^name => {^typed, arguments}} -> Keyword.put(opts, :arguments, arguments)
+      %{^name => %{^typed => arguments}} -> Keyword.put(opts, :arguments, arguments)
       _typed_or_none -> Keyword.delete(opts, :arguments)
     end
   end
 
-  # two keys that are written alike are the same key
-  defp held?(record, name, value) do
-    case Map.get(record, name) do
-      nil -> false
-      %Ash.ForbiddenField{} -> false
-      held -> written(held) == written(value)
-    end
+  @doc """
+  The records that are related now, by input, for the inputs among `inputs`
+  that start with them: an argument that is everything a relationship is to
+  hold (`reference.related?`). Read as the person, as Ash reads them when
+  the action runs (`AshTable.Pick.related/3`). `opts` are the options of
+  `AshTable.Query.read/3` that say who is asking.
+  """
+  @spec related([Model.Input.t()], Ash.Resource.record(), keyword) ::
+          %{optional(atom) => [Ash.Resource.record()]}
+  def related(inputs, record, opts) do
+    for %{kind: :argument, reference: %{related?: true} = reference} = input <- inputs,
+        into: %{},
+        do: {input.name, Pick.related(reference, record, opts)}
   end
-
-  defp written(value), do: if(String.Chars.impl_for(value), do: to_string(value), else: value)
 
   @doc """
   What an action is given of what a panel's form sent: the values of
@@ -497,6 +555,9 @@ defmodule AshTable.Act do
   is left out here: what remains is the values as they were typed, and the
   empty list when there are none.
 
+  So does the field of an argument that holds the keys of several related
+  records, which sends one entry per record that was chosen.
+
   The field of a map cell sends its inputs by name, with a mark of its own
   (`_present`), and nothing at all while it has no value: what remains is
   the inputs by name, as they were typed, or nil. An array of them sends
@@ -526,6 +587,9 @@ defmodule AshTable.Act do
 
   def typed(%{cell_type: {:array, :map}, fields: [_ | _]}, _nothing), do: []
   def typed(%{cell_type: {:array, _item}}, [_own | values]), do: values
+  # the keys of the records that were chosen: sent as an array is
+  def typed(%{editor: :references}, [_own | values]), do: Enum.filter(values, &is_binary/1)
+  def typed(%{editor: :references}, _nothing), do: []
   def typed(_input, typed), do: typed
 
   # A field of a map cell always sends something: nothing is the value it
@@ -618,8 +682,10 @@ defmodule AshTable.Act do
   of `inputs`, and under `nil` for the others. An error about a field of a
   value inside the record (a field of a map cell) is under the way to that
   field: the input, the places of values in an array, and the fields on the
-  way (`[:client, :address, :city]`, `[:milestones, 1, :title]`). See
-  `AshTable.Errors` for what is shown of an error; `refusal` is what a
+  way (`[:client, :address, :city]`, `[:milestones, 1, :title]`). What Ash
+  says of a record that an argument hands to a relationship, without a text
+  of its own, is under that argument: that the record is not available.
+  See `AshTable.Errors` for what is shown of an error; `refusal` is what a
   refusal reads as.
   """
   @spec errors(form, Model.t(), [Model.Input.t()], String.t()) ::
@@ -650,8 +716,45 @@ defmodule AshTable.Act do
           not is_nil(elem(placed, 1)),
           do: placed
 
-    grouped = Enum.group_by(at_fields ++ nested ++ without_field, &elem(&1, 0), &elem(&1, 1))
+    grouped =
+      Enum.group_by(
+        at_fields ++ nested ++ managed(form, inputs) ++ without_field,
+        &elem(&1, 0),
+        &elem(&1, 1)
+      )
+
     Map.new(grouped, fn {field, messages} -> {field, Enum.uniq(messages)} end)
+  end
+
+  # What Ash says of a record an argument hands to a relationship, where it
+  # says it without a message for a person: at the field of that argument.
+  # Ash puts such an error under the argument's name and the place of the
+  # record in what was given (`path: [:labels, 0]`: the change gives the
+  # argument as the `meta[:id]` of what it manages), and the commonest of
+  # them has no text of its own: the record a key names was not found, by
+  # an action that looks it up to relate it, or among the related records
+  # by one that takes it away. The panel would otherwise stay open and say
+  # nothing.
+  defp managed(form, inputs) do
+    for %{class: :invalid, path: [name | _rest]} = error <- AshPhoenix.Form.raw_errors(form),
+        is_atom(name),
+        not Errors.about_field?(error),
+        is_nil(Errors.without_field(error)),
+        %{} = input <-
+          [
+            Enum.find(
+              inputs,
+              &(&1.kind == :argument and is_map(&1.reference) and &1.name == name)
+            )
+          ] do
+      text =
+        case error do
+          %Ash.Error.Query.NotFound{} -> Text.t(:record_gone)
+          _nothing_to_say -> Text.t(:action_failed)
+        end
+
+      {input.name, text}
+    end
   end
 
   # Where the panel shows an error about a field of a value inside the

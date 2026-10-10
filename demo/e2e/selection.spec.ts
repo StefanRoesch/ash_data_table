@@ -149,7 +149,7 @@ test.describe("selecting with the pointer", () => {
     expect(await tasks.selectedKeys()).toEqual([SECOND])
     await expect(tasks.selectedCount).toHaveText("1 selected")
     await expect(tasks.clearSelection).toBeVisible()
-    await expect(tasks.bulkButtons).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+    await expect(tasks.bulkButtons).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
     // focus is on the box's cell, which is the grid's tab stop now
     expect(await tasks.focused()).toBe(`task-row-${SECOND}-s`)
 
@@ -391,8 +391,8 @@ test.describe("selecting from the keyboard", () => {
   }) => {
     await tasks.cell(FIRST, "title").focus()
     await tasks.press("Space", "Shift+Tab")
-    expect(await tasks.focused()).toBe("task-bulk-destroy")
-    await tasks.press("Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab")
+    expect(await tasks.focused()).toBe("task-bulk-set_labels")
+    await tasks.press("Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab")
     expect(await tasks.focused()).toBe("task-clear-selection")
 
     await page.keyboard.press("Enter")

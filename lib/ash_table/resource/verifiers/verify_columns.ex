@@ -109,7 +109,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
             module,
             :confirm,
             "`#{column.name}` can never be edited, so `confirm` has no effect. " <>
-              never_edited(module, field)
+              never_edited(module, field, column)
           )
         ]
     end
@@ -118,16 +118,27 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   defp confirm_errors(_column, _field, _module), do: []
 
   # A column that names a relationship is edited through an action that
-  # accepts the relationship's foreign key, which is said in its own words.
-  defp never_edited(module, field) do
-    case {Editing.obstacle(module, field), field} do
-      {nil, %Ash.Resource.Relationships.BelongsTo{source_attribute: key}} ->
-        "A column that names a relationship is edited through an `update_action`, its own or the table's, that accepts the relationship's foreign key, `#{key}`."
+  # takes the related record: as the relationship's foreign key, or through
+  # an argument that it hands to the relationship. Which is said in its own
+  # words, unless there is nothing to choose a record with: then that is why.
+  defp never_edited(module, %Ash.Resource.Relationships.BelongsTo{} = relationship, column) do
+    with {:ok, action} <- Editing.behind(module, column),
+         {:error, {:no_picker, reason}} <- Editing.written(module, action, relationship) do
+      Referencing.no_picker(relationship, reason)
+    else
+      _no_action_or_not_taken ->
+        case Editing.obstacle(module, relationship) do
+          nil ->
+            "A column that names a relationship is edited through an `update_action`, its own or the table's, that accepts the relationship's foreign key, `#{relationship.source_attribute}`, or has an argument that a `manage_relationship` change hands to the relationship."
 
-      {obstacle, _field} ->
-        Editing.never_edited(obstacle)
+          obstacle ->
+            Editing.never_edited(obstacle)
+        end
     end
   end
+
+  defp never_edited(module, field, _column),
+    do: Editing.never_edited(Editing.obstacle(module, field))
 
   # A column's own update action has to be able to save an edit of it. The
   # table-level action is not held to that: what it cannot save is read-only.
@@ -172,8 +183,15 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
     # this one would have to do besides.
     case {Editing.obstacle(module, field), action} do
       {nil, {:ok, action}} ->
-        accept_errors(column, field, action, module) ++
-          for argument <- Editing.required_arguments(action) do
+        # what an edit gives the action, and what the action needs besides
+        {taken, given} =
+          case Editing.written(module, action, field) do
+            {:ok, written} -> {[], Editing.given(written)}
+            {:error, reason} -> {[not_written(column, field, action, reason, module)], []}
+          end
+
+        taken ++
+          for argument <- Editing.required_arguments(action) -- given do
             option_error(
               column,
               module,
@@ -211,25 +229,32 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
       obstacle <> " Remove `update_action` from this column."
   end
 
-  defp accept_errors(column, field, action, module) do
-    if Editing.accepts?(action, field) do
-      []
-    else
-      [
-        option_error(
-          column,
-          module,
-          :update_action,
-          "The update action `#{action.name}` does not accept #{accepted(column, field)}, so it cannot save an edit of this column."
-        )
-      ]
-    end
+  # Why the column's own action cannot save an edit of it.
+  defp not_written(
+         column,
+         %Ash.Resource.Relationships.BelongsTo{} = relationship,
+         action,
+         reason,
+         module
+       ) do
+    message =
+      case reason do
+        # the key the action accepts is not one a table sets
+        {:no_picker, reason} -> read_only(column, {:no_picker, relationship, reason})
+        reason -> Editing.not_written(action.name, relationship, reason)
+      end
+
+    option_error(column, module, :update_action, message)
   end
 
-  defp accepted(column, %Ash.Resource.Relationships.BelongsTo{source_attribute: key}),
-    do: "`#{key}`, the foreign key of `#{column.name}`"
-
-  defp accepted(column, _field), do: "`#{column.name}`"
+  defp not_written(column, _field, action, _not_accepted, module) do
+    option_error(
+      column,
+      module,
+      :update_action,
+      "The update action `#{action.name}` does not accept `#{column.name}`, so it cannot save an edit of this column."
+    )
+  end
 
   # A mistake in `read_action` or `paginate_with` is reported by
   # `VerifyReadAction`; without a valid one there is nothing to check here.

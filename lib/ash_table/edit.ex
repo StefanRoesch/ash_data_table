@@ -8,7 +8,8 @@ defmodule AshTable.Edit do
   # first, by primary key and as the person saving (`AshTable.Record`).
   #
   # A reference cell is saved the same way (`refer/5`): its one input is the
-  # relationship's foreign key, and its value that of the record the person
+  # relationship's foreign key, or the argument of the action that hands a
+  # key to the relationship, and its value that of the record the person
   # chose, which is read first, as them (`AshTable.Pick`).
 
   alias AshTable.Act
@@ -82,14 +83,18 @@ defmodule AshTable.Edit do
   @doc """
   Saves the choice of a related record as the value of the reference
   `column` on the record with the primary key `key`: the column's update
-  action, with the relationship's foreign key as its only input.
+  action, with one input. That is the relationship's foreign key, or, where
+  the action takes the record through an argument that it hands to the
+  relationship, that argument (`reference.argument`).
 
   `named` is the chosen record as the browser names it: its primary key
   (the key's value, or the list of its values), or nil for no record. It is
   a claim. The record is read by it, as the person, through the read action
-  the picker shows its rows through, and what is saved is that record's
-  value of the relationship's destination attribute; a key that names
-  nothing they may read there saves nothing.
+  the picker shows its rows through, and what the action is given is that
+  record's value of the attribute the input holds
+  (`reference.value_attribute`: the relationship's destination attribute,
+  or the key the argument names a record by); a key that names nothing they
+  may read there saves nothing.
 
   Takes the options of `AshTable.Query.read/3` that say who is asking,
   `:authorize_given` (see `AshTable.Pick.reader/2`), and `:ask?`, with which
@@ -140,7 +145,8 @@ defmodule AshTable.Edit do
 
   defp referred(reference, named, opts) do
     with {:ok, chosen} <- Pick.chosen(reference, named, opts),
-         {:ok, value} <- Pick.value(reference, chosen) do
+         {:ok, value} <-
+           Pick.value(%{reference | destination_attribute: reference.value_attribute}, chosen) do
       {:ok, chosen, value}
     else
       :error -> :unavailable
@@ -155,7 +161,8 @@ defmodule AshTable.Edit do
   end
 
   defp submit_key(model, column, record, chosen, value, opts) do
-    key = Atom.to_string(column.reference.source_attribute)
+    # the foreign key, or the argument that hands the key to the relationship
+    key = Atom.to_string(column.reference.argument || column.reference.source_attribute)
 
     record
     |> AshPhoenix.Form.for_update(
@@ -330,11 +337,13 @@ defmodule AshTable.Edit do
   # apart for translation; a refusal and other errors without a field are
   # among its raw errors. See `AshTable.Errors` for what is shown of them.
   #
-  # The field of a reference cell is the foreign key its edit writes.
+  # The field of a reference cell is the foreign key its edit writes. Where
+  # the edit gives an argument, what the action says of the relationship is
+  # about the cell.
   defp message(form, column, model) do
     field =
       case column do
-        %Column{kind: :reference, reference: %{source_attribute: key}} -> key
+        %Column{kind: :reference, reference: %{argument: nil, source_attribute: key}} -> key
         %Column{name: name} -> name
       end
 

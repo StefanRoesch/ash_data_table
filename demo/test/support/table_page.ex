@@ -235,6 +235,43 @@ defmodule DemoWeb.TablePage do
   """
   def confirm_picked(view, id \\ "task", row), do: send_picked(view, id, row, true)
 
+  @doc """
+  Chooses in an open picker in which several records are chosen, as its
+  hook does: one `picked` event with every row that is selected, each as
+  the hook of the picker's table names it. Returns the page.
+
+      picked_rows(view, [bug.id, urgent.id])
+      picked_rows(view, [])
+  """
+  def picked_rows(view, id \\ "task", rows) do
+    rows = Enum.map(rows, &if(is_list(&1) or is_map(&1), do: &1, else: to_string(&1)))
+
+    view |> element("[id='#{id}-picker']") |> render_hook("picked", %{"rows" => rows})
+  end
+
+  @doc """
+  Uses the button of a field of the open action panel that takes one of the
+  records it holds out again, as the panel's hook does: one `panel_unpick`
+  event with the field and the record's key. Returns the page.
+  """
+  def unpick(view, id \\ "task", name, key) do
+    view
+    |> element("[id='#{id}-panel']")
+    |> render_hook("panel_unpick", %{"input" => name, "key" => to_string(key)})
+  end
+
+  @doc """
+  The rows a table to choose several records from says are selected as it
+  opens (`data-chosen-rows` on its grid): each as the server is told of it, its
+  primary key, one value or the list of them. Nil for any other table.
+  """
+  def chosen_rows(html, id) do
+    case attribute(html, "[id='#{id}-grid']", "data-chosen-rows") do
+      [json] -> for [key, names] <- Jason.decode!(json), do: names || key
+      [] -> nil
+    end
+  end
+
   defp send_picked(view, id, row, confirmed?) do
     row = if is_nil(row) or is_list(row) or is_map(row), do: row, else: to_string(row)
 
@@ -541,7 +578,9 @@ defmodule DemoWeb.TablePage do
 
   The field of the key of a related record is a `"reference"`: its value is
   the key it holds, and it says besides what the record is called
-  (`chosen`, nil when it says nothing).
+  (`chosen`, nil when it says nothing). The field of the keys of several
+  related records is `"references"`: its value is the keys it holds, in
+  their order, and `chosen` what each of the records is called.
 
   The field of a value made of fields is a `"group"`, whose value says
   whether the value is there, and that of an array of them is `"groups"`,
@@ -561,13 +600,24 @@ defmodule DemoWeb.TablePage do
             {control, value, required?} = field_control(field)
 
             chosen =
-              if control == "reference" do
-                case Enum.to_list(LazyHTML.query(field, "[data-chosen]")) do
-                  [] -> %{chosen: nil}
-                  [element | _] -> %{chosen: element |> LazyHTML.text() |> String.trim()}
-                end
-              else
-                %{}
+              cond do
+                control == "reference" ->
+                  case Enum.to_list(LazyHTML.query(field, "[data-chosen]")) do
+                    [] -> %{chosen: nil}
+                    [element | _] -> %{chosen: element |> LazyHTML.text() |> String.trim()}
+                  end
+
+                # what each of the records it holds is called, in their order
+                control == "references" ->
+                  %{
+                    chosen:
+                      for element <- LazyHTML.query(field, "[data-chosen]") do
+                        element |> LazyHTML.text() |> String.trim()
+                      end
+                  }
+
+                true ->
+                  %{}
               end
 
             Map.merge(chosen, %{
@@ -627,6 +677,12 @@ defmodule DemoWeb.TablePage do
          Enum.count(elements(groups), fn {_tag, attributes, _} ->
            List.keymember?(attributes, "data-group-item", 0)
          end), false}
+
+      # the keys of several related records: each held by an input that is
+      # not shown, beside what its record is called
+      Enum.any?(LazyHTML.query(field, "[data-references]")) ->
+        {"references", field |> LazyHTML.query("input[data-key]") |> LazyHTML.attribute("value"),
+         false}
 
       # the key of a related record: held by an input that is not shown,
       # beside what the record is called and the button that opens the picker

@@ -86,8 +86,8 @@ test.describe("the actions column", () => {
     await expect(tasks.rowCells(FIRST).last()).toHaveId(`task-row-${FIRST}-a`)
     await expect(tasks.actionsCell(FIRST)).toHaveRole("gridcell")
     await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-colindex", "25")
-    await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
-    await expect(tasks.grid.locator(":scope > tbody > tr > td[data-actions] > button")).toHaveCount(100)
+    await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
+    await expect(tasks.grid.locator(":scope > tbody > tr > td[data-actions] > button")).toHaveCount(125)
 
     // the buttons are no tab stops: the grid is one, as it was
     for (const button of await tasks.actions(FIRST).all()) {
@@ -99,7 +99,7 @@ test.describe("the actions column", () => {
     // only the action that deletes asks first
     await expect(tasks.action(FIRST, "destroy")).toHaveAttribute("data-question", QUESTION)
     await expect(tasks.action(FIRST, "destroy")).toHaveAttribute("data-destructive")
-    for (const name of ["archive", "reassign", "set_progress"]) {
+    for (const name of ["archive", "reassign", "set_progress", "set_labels"]) {
       await expect(tasks.action(FIRST, name)).not.toHaveAttribute("data-question")
       await expect(tasks.action(FIRST, name)).not.toHaveAttribute("data-destructive")
     }
@@ -212,9 +212,11 @@ test.describe("with the keyboard", () => {
     await tasks.press("ArrowRight")
     await expect(tasks.action(FIRST, "destroy")).toBeFocused()
     await tasks.press("ArrowRight")
-    await expect(tasks.action(FIRST, "destroy"), "Right ends at the last button").toBeFocused()
+    await expect(tasks.action(FIRST, "set_labels")).toBeFocused()
+    await tasks.press("ArrowRight")
+    await expect(tasks.action(FIRST, "set_labels"), "Right ends at the last button").toBeFocused()
 
-    await tasks.press("ArrowLeft", "ArrowLeft", "ArrowLeft")
+    await tasks.press("ArrowLeft", "ArrowLeft", "ArrowLeft", "ArrowLeft")
     await expect(tasks.action(FIRST, "archive")).toBeFocused()
     await tasks.press("ArrowLeft")
     await expect(tasks.action(FIRST, "archive"), "and Left at the first").toBeFocused()
@@ -247,6 +249,8 @@ test.describe("with the keyboard", () => {
 
     await tasks.press("Enter", "Tab", "Tab", "Tab")
     await expect(tasks.action(FIRST, "destroy")).toBeFocused()
+    await tasks.press("Tab")
+    await expect(tasks.action(FIRST, "set_labels")).toBeFocused()
     await tasks.press("Tab")
     expect(await tasks.hasFocus(), "after the last button Tab leaves the grid").toBe(false)
     await expect(tasks.pageButton(1)).toBeFocused()
@@ -300,7 +304,7 @@ test.describe("an action that runs straight away", () => {
     // the cell of the button is the grid's tab stop now, and the row is as high as it was
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
     expect(await rowHeight(tasks, FIRST)).toBeCloseTo(height, 0)
-    await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+    await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
 
     await tasks.page.reload()
     await tasks.ready()
@@ -540,7 +544,7 @@ test.describe("an action that failed", () => {
       await expect(cell).toHaveAccessibleDescription(REFUSED)
       await expect(tasks.status, "it is read out").toHaveText(`Archive failed: ${REFUSED}`)
       await expect(tasks.cell(FIRST, "status"), "nothing was changed").not.toHaveText("Archived")
-      await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+      await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
       expect(await frames.count("act")).toBe(1)
 
       // the message shows while the cell, or a button in it, has focus or the
@@ -593,7 +597,7 @@ test.describe("an action that failed", () => {
       await expect(cell).toBeFocused()
       expect(await frames.count("dismiss")).toBe(1)
       expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
-      await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+      await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
     })
 
     test("the next action that runs in the row clears it; one on their own task runs", async ({ tasks }) => {
@@ -646,7 +650,7 @@ test.describe("an action that failed", () => {
       await expect(tasks.action(key, "archive")).toBeFocused()
       // the row is as it was: there was nothing to show it from
       await expect(tasks.rows).toHaveCount(25)
-      await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+      await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
       expect(await rowHeight(tasks, key)).toBeCloseTo(height, 0)
 
       await frames.clear()
@@ -655,7 +659,7 @@ test.describe("an action that failed", () => {
       await expect(cell).not.toHaveAttribute("aria-describedby")
       await expect(tasks.failure(cell)).toHaveCount(0)
       await expect(cell).toBeFocused()
-      await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+      await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
       expect(await frames.all(), "the mark was the hook's: the server is not asked").toEqual([])
     })
 
@@ -1167,7 +1171,7 @@ test.describe("creating a record", () => {
     await expect(tasks.cell(created, "external_ref")).toHaveText("EXT-E2E")
     await expect(tasks.cell(created, "project")).toHaveText("Mobile app")
     await expect(tasks.cell(created, "reporter"), "the person who created it").toHaveText("Ada Admin")
-    await expect(tasks.actions(created)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
+    await expect(tasks.actions(created)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
     await expect(tasks.expander(created)).toHaveAttribute("aria-expanded", "false")
 
     // focus is on its first data cell, which is the grid's tab stop

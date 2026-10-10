@@ -502,6 +502,9 @@ msgstr "Neu zuweisen"
 msgid "Set progress"
 msgstr "Fortschritt setzen"
 
+msgid "Set labels"
+msgstr "Labels setzen"
+
 msgid "Set status"
 msgstr "Status setzen"
 

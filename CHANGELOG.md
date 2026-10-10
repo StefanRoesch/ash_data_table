@@ -312,6 +312,46 @@ declared in the resource and mounted with one line in the router.
   `filterable? true`, `update_action` and `confirm` on such a column, and a
   `label_field` that names no public attribute.
 
+### Relationships an action manages
+
+- An argument of an action that a `manage_relationship` change hands to a
+  relationship, and that holds the key of a related record or a list of
+  such keys, is given by choosing existing records in the picker. Nothing
+  is declared for it. The key is the related resource's primary key, or the
+  attribute the change names with `value_is_key`. The relationship has to
+  be public, without a `filter`, and its destination has to have a table;
+  any other such argument is the input it was (one key is typed, a list of
+  keys has no field). A map, or a list of maps, is no such argument: a
+  table creates no related record through an action.
+- A field of one key is the field of a key the action accepts. A field of a
+  list of keys lists what its records are called, each with a button that
+  takes it out again, and its "Choose" opens the picker with a box per row,
+  the rows of the field's records selected on whatever page they are, and a
+  count of what is selected above the grid. "Choose" takes whatever is
+  selected; Enter on a row and a double click choose nothing there.
+- Where the argument is everything the relationship is to hold
+  (`on_missing`: `:append_and_remove`), its field starts with the records
+  that are related now, read as Ash reads them when the action runs, for
+  the same person. A record they may not read is neither shown nor taken
+  away. `:append` and `:remove` start empty.
+- A reference cell is edited through such an argument: where its update
+  action does not accept the foreign key and has an argument that hands one
+  key to the column's relationship and relates the record it names. The key
+  need not be public or writable then. The key the action accepts comes
+  first.
+- Every key that was not related already is read as the person, through
+  the picker's read action, when it is chosen and again before the action
+  runs. One that names nothing they may read runs nothing.
+- A record Ash does not find for a key (`Ash.Error.Query.NotFound`, which
+  has no text of its own) is said at the argument's field: "This record is
+  no longer available."
+- A change that would make a record for a key that names none
+  (`type: :direct_control`, `type: :create`) is not chosen.
+- Reported when the resource is compiled: a column's own `update_action`
+  whose argument holds a list of keys, does not relate the record it
+  names, or holds no key; and an action that requires a list of keys whose
+  records cannot be chosen, with the reason.
+
 ### Aggregate and calculation columns
 
 - A warning when the resource is compiled, for an aggregate column whose
@@ -647,6 +687,30 @@ declared in the resource and mounted with one line in the router.
 - The create button of a relationship line is told apart from the buttons
   of table actions beside it by `data-create`; those have
   `data-table-action`.
+
+### Changed since table actions were added
+
+- **An action whose argument is handed to a relationship opens the action
+  panel**, whether the argument is required or not, where the related
+  records can be chosen. An action with nothing but a typed optional
+  argument still runs when its button is used.
+- **An argument of one key that an action hands to a relationship is no
+  longer a typed key** where its records can be chosen: its field says what
+  the record is called and opens the picker.
+- **A list of keys that an action hands to a relationship has a field**,
+  where its records can be chosen. Before, an action that required one was
+  reported and had no button.
+- A reference cell whose column names its own `update_action`, and whose
+  foreign key is not public or not writable, is no longer reported where
+  that action takes the related record through an argument.
+- The message for a column's `update_action` that cannot save a reference
+  cell reads "… does not accept `KEY`, the foreign key of `NAME`, and has
+  no argument that a `manage_relationship` change hands to `NAME` …", and
+  the one for `confirm` on such a cell ends "… or has an argument that a
+  `manage_relationship` change hands to the relationship."
+- The picker's "Choose" is rendered `aria-disabled="false"` where several
+  records are chosen, and its dialog says `data-several`. The `picked`
+  event carries `rows` there, in place of `row`.
 
 ### Tooling
 

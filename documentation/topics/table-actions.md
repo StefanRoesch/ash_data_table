@@ -153,8 +153,11 @@ An action that requires one cannot be run from a table, and the compiler
 reports it.
 
 An argument that holds the key of another record is a plain text field. A
-generic action accepts no attribute, so no relationship says which records
-it could be, and there is no picker for it.
+generic action accepts no attribute and has no changes, so no relationship
+says which records it could be, and there is no picker for it: an argument
+is chosen where a `manage_relationship` change of a create, an update or a
+destroy action hands it to a relationship. See
+[Relationships an action manages](managing-relationships.md).
 
 ## What the table says afterwards
 

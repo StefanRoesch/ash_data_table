@@ -160,7 +160,8 @@ defmodule DemoWeb.Tables.TaskBulkTest do
                  "Archive",
                  "Reassign",
                  "Set progress",
-                 "Destroy"
+                 "Destroy",
+                 "Set labels"
                ],
                selected: "{n} selected",
                all: "All 3 that match are selected"
@@ -213,7 +214,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       assert ["Select all 3 that match", "Clear selection" | actions] = selection(html).buttons
-      assert actions == ["Archive", "Reassign", "Set progress", "Destroy"]
+      assert actions == ["Archive", "Reassign", "Set progress", "Destroy", "Set labels"]
     end
   end
 

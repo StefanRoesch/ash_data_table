@@ -185,7 +185,14 @@ defmodule DemoWeb.Tables.TaskCreateTest do
       assert text(html, cell(new.id, "headline")) == "Medium: Brand new (0%)"
       assert text(html, cell(new.id, "project")) == project.name
       assert text(html, cell(new.id, "reporter")) == world.member.name
-      assert actions(html, new.id) == ["Archive", "Reassign", "Set progress", "Destroy"]
+
+      assert actions(html, new.id) == [
+               "Archive",
+               "Reassign",
+               "Set progress",
+               "Destroy",
+               "Set labels"
+             ]
 
       # counted in: one row more on the page, one record more in all
       assert text(html, "#task-range") == "1–3 of 3"

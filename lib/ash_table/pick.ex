@@ -22,7 +22,13 @@ defmodule AshTable.Pick do
   # `reference` is what a column or an input says about its relationship
   # (`AshTable.Model.Column`, `AshTable.Model.Input`): the `destination`, the
   # `choose_action` its records are read through, and the
-  # `destination_attribute` whose value is the foreign key.
+  # `destination_attribute` whose value is the foreign key, or the key an
+  # argument names a related record by.
+  #
+  # An argument of an action that hands keys to a relationship is given the
+  # same way, one key or several. Where it is everything the relationship
+  # is to hold, its field starts with the records that are related now
+  # (`related/3`).
 
   # Both read as the picker's table does: for the person asking, in their
   # tenant, and with authorization as that table has it (`reader/2`). Where
@@ -137,6 +143,38 @@ defmodule AshTable.Pick do
   defp arguments(opts), do: Keyword.get(opts, :arguments) || %{}
 
   @doc """
+  The records that are related to `record` now through the relationship of
+  `reference`, as the person may read them: for the field of an action's
+  argument that is everything the relationship is to hold, which starts
+  with them.
+
+  They are read as Ash reads them when the action runs
+  (`Ash.Actions.ManagedRelationships.load/4`): the relationship is loaded
+  onto the record, for the person the action is run for. What Ash will
+  take as related then is what the field holds now; a record it would not
+  find is not in the field, and so is not taken away by leaving it out.
+
+  `opts` are the options of `AshTable.Query.read/3` that say who is asking
+  the table the record is of. Without a record there are none, nor where
+  they cannot be read.
+  """
+  @spec related(referred, Ash.Resource.record() | nil, keyword) :: [Ash.Resource.record()]
+  def related(_reference, nil, _opts), do: []
+
+  def related(%{relationship: relationship}, record, opts) do
+    case Ash.load(record, relationship, Query.reader_opts(opts)) do
+      {:ok, loaded} -> for %_{} = related <- List.wrap(Map.get(loaded, relationship)), do: related
+      {:error, _refused_or_failed} -> []
+    end
+  end
+
+  @doc "A key as it is written: in a field of the action panel, and where two are compared."
+  @spec written(term) :: term
+  def written(value) do
+    if String.Chars.impl_for(value), do: to_string(value), else: value
+  end
+
+  @doc """
   Whether the records of a page are the one a foreign key points at: for
   the row the picker opens with. `value` is the key as a record holds it, or
   as a field of the action panel does, which is as text.
@@ -149,12 +187,8 @@ defmodule AshTable.Pick do
       nil -> false
       %Ash.ForbiddenField{} -> false
       %Ash.NotLoaded{} -> false
+      # two values that are written alike are the same key
       held -> written(held) == written(value)
     end
-  end
-
-  # two values that are written alike are the same key
-  defp written(value) do
-    if String.Chars.impl_for(value), do: to_string(value), else: value
   end
 end
