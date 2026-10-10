@@ -925,7 +925,7 @@ test.describe("in the action panel: New task", () => {
     const checks = tasks.field("checks")
 
     await tasks.field("title").fill("Made with arrays")
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
 
     await tags.getByRole("button", { name: "Add value" }).focus()
     await page.keyboard.press("Enter")
@@ -974,7 +974,7 @@ test.describe("in the action panel: New task", () => {
     const first = tags.getByRole("textbox", { name: "Tags 1", exact: true })
 
     await tasks.field("title").fill("Made with arrays")
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
     await tags.getByRole("button", { name: "Add value" }).click()
     await page.keyboard.type("x")
     await tasks.panelSettled()

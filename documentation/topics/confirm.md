@@ -44,6 +44,7 @@ runs and before anything is sent to the server:
 | Chooses a value from a menu | Yes |
 | Toggles a boolean | Yes |
 | Lets go of a slider, or changes any other editor of a component that saves on change | Yes |
+| Chooses another related record in the picker of a reference cell | Yes, on top of the picker. Cancel returns to the picker, with the row still selected. |
 | Presses Escape in the editor | No: the edit is given up |
 | Saves the value the cell already had | No: nothing would be saved |
 
@@ -157,6 +158,12 @@ same file. See [Messages and translations](messages-and-translations.md).
   means is not asked anything. `confirm` guards against slips, not against
   misuse. What must not happen belongs in the action, as a policy or a
   validation.
+- **A reference cell asks the server first.** Whether a choice in the
+  picker changes the row is for the server to say: it reads the chosen
+  record, and answers with the question when the choice would change the
+  row. Nothing is saved before Confirm. On `/tasks`, "Project" asks "Move
+  this task to another project?". See
+  [Choosing a related record](choosing-a-related-record.md#what-a-choice-saves).
 - **A save that fails after Confirm** looks like any failed save: the cell
   is marked and keeps what was chosen. Saving it again asks again.
 - **A column the person cannot edit asks nothing.** If the person can never

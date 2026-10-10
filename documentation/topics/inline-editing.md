@@ -117,7 +117,9 @@ save.
 A cell can be edited when all of this holds:
 
 1. Its column is an attribute. Calculations and aggregates are never
-   editable.
+   editable. A reference cell, whose column names a belongs-to
+   relationship, is edited through the relationship's foreign key: see
+   [Choosing a related record](choosing-a-related-record.md).
 2. The attribute is writable (`writable? true`, the default).
 3. An update action is behind the column: its own, else the table's. The
    action is `public?`, accepts the attribute, and has no required argument
@@ -191,6 +193,11 @@ The rule for a cell is narrow:
 Every other type is read-only text; see
 [Columns and defaults](columns-and-defaults.md#types-shown-as-read-only-text).
 A NewType is edited as the type it is made of.
+
+A reference cell has no editor in the cell: Enter and F2 open the picker,
+a dialog with the related resource's own table, in which the person chooses
+the related record. See
+[Choosing a related record](choosing-a-related-record.md).
 
 A column's `component` can put an editor of its own in the place of the one
 in this table: on `/tasks`, "Progress" is edited with a slider and "Estimate
@@ -498,7 +505,7 @@ only runs actions.
 
 ## Not in the first version
 
-No editing of maps, embedded resources or related records in a cell, nor of
+No editing of maps or embedded resources in a cell, nor of
 arrays of them; no sorting or filtering by an array; no validation display
 before a cell is saved, no bulk edits and no undo. A column's own editor is built: see
 [Custom components](custom-components.md). They are later slices in the

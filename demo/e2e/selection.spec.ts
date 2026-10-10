@@ -738,7 +738,8 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.panel).toBeVisible()
     await expect(tasks.panelTitle).toHaveText("Reassign: 2 records")
     expect(await tasks.fields()).toEqual(["assignee_id", "reason"])
-    await expect(tasks.field("assignee_id")).toHaveValue("")
+    await expect(tasks.fieldKey("assignee_id")).toHaveValue("")
+    await expect(tasks.fieldChosen("assignee_id")).toHaveCount(0)
     await expect(tasks.field("reason")).toHaveValue("")
 
     // what the action makes of a value is at its field as it is typed
@@ -1008,25 +1009,37 @@ test.describe("tables that are told to let their rows be selected, with nothing 
     await several.ready()
   })
 
-  test("one row at a time: a box in every row and none for the page; another row takes the first one's place", async ({
+  test("one row at a time: a radio button in every row, of one group, and none for the page; another row takes the first one's place", async ({
     page,
   }) => {
     const [first, second] = await one.rowKeys()
 
-    await expect(one.grid).not.toHaveAttribute("aria-multiselectable")
+    // one of a set: a grid that says it is not multi-selectable, rows that
+    // say whether they are selected, and radio buttons of one group
+    await expect(one.grid).toHaveAttribute("aria-multiselectable", "false")
     await expect(one.pageBox).toHaveCount(0)
     await expect(one.pageBoxCell).toHaveText("Select row")
     await expect(one.selectionLine).toHaveCount(0)
-    await expect(one.boxes).toHaveCount(SEED.labels.acme)
+    await expect(one.boxes).toHaveCount(0)
+    await expect(one.radios).toHaveCount(SEED.labels.acme)
+    await expect(one.radio(first)).toHaveRole("radio")
+    await expect(one.radio(first)).toHaveAccessibleName("Select row")
+    expect(new Set(await one.radios.evaluateAll((radios) => radios.map((radio) => (radio as HTMLInputElement).name)))).toEqual(
+      new Set(["one-select"]),
+    )
+    await expect(one.rowLine(first)).toHaveAttribute("aria-selected", "false")
 
-    await one.box(first).click()
+    await one.radio(first).click()
     expect(await one.selectedKeys()).toEqual([first])
+    await expect(one.radio(first)).toBeChecked()
     expect((await heard(page)).one).toEqual({ table: "one", mode: "single", all: false, rows: [first] })
 
     await one.cell(second, "name").focus()
     await page.keyboard.press("Space")
     expect(await one.selectedKeys()).toEqual([second])
-    await expect(one.box(first)).not.toBeChecked()
+    await expect(one.radio(first)).not.toBeChecked()
+    await expect(one.radio(second)).toBeChecked()
+    expect(await one.radios.evaluateAll((radios) => radios.filter((radio) => (radio as HTMLInputElement).checked).length)).toBe(1)
     expect((await heard(page)).one.rows).toEqual([second])
 
     // Shift selects no range here
@@ -1035,12 +1048,22 @@ test.describe("tables that are told to let their rows be selected, with nothing 
     await one.cell(first, "name").click({ modifiers: ["Shift"] })
     expect(await one.selectedKeys()).toEqual([second])
 
-    // focus is on the row that was clicked: Space selects it in the other's place, and takes it out again
+    // focus is on the row that was clicked: Space selects it in the other's
+    // place. As a radio button, the selected row stays selected when it is
+    // used again, from the keyboard or with the pointer.
     await page.keyboard.press("Space")
     expect(await one.selectedKeys()).toEqual([first])
     await page.keyboard.press("Space")
-    expect(await one.selectedKeys()).toEqual([])
-    expect((await heard(page)).one.rows).toEqual([])
+    expect(await one.selectedKeys()).toEqual([first])
+    await one.radio(first).click()
+    expect(await one.selectedKeys()).toEqual([first])
+    await expect(one.radio(first)).toBeChecked()
+    expect((await heard(page)).one.rows).toEqual([first])
+
+    // a table that is told to let one row be selected is not one to choose
+    // from: a click on another cell of a row selects nothing
+    await one.cell(second, "name").click()
+    expect(await one.selectedKeys()).toEqual([first])
 
     // the other table has heard nothing, and selected nothing
     expect((await heard(page)).several).toBeUndefined()
@@ -1070,7 +1093,7 @@ test.describe("tables that are told to let their rows be selected, with nothing 
 
   test("axe finds nothing wrong with either, with rows selected", async ({ page }) => {
     const [first] = await one.rowKeys()
-    await one.box(first).click()
+    await one.radio(first).click()
     await several.pageBox.click()
     await expectNoAxeViolations(page)
   })

@@ -8,8 +8,13 @@ defmodule AshTable.Model.Column do
   #     relationship, to which `destination`, which of its attributes is the
   #     label (`label_field`), and the read action Ash loads the related
   #     record through. `type`, `cell_type` and `values` are those of the
-  #     label. Such a column is never sorted or filtered by, and never
-  #     edited.
+  #     label. Such a column is never sorted or filtered by. It is edited by
+  #     choosing another record of the destination's table: `reference`
+  #     then also says which attribute an edit writes (`source_attribute`,
+  #     the foreign key), which attribute of the chosen record is its value
+  #     (`destination_attribute`), whether "none" can be chosen
+  #     (`allow_nil?`), and through which read action the records on offer
+  #     are read (`choose_action`; nil for a column nobody edits).
   #   * `label` is the column header.
   #   * `cell_type` is what the table shows the field's values as. An array
   #     of values that have a cell type is `{:array, item}`. Types with no
@@ -30,18 +35,22 @@ defmodule AshTable.Model.Column do
   #     block switched off. See `AshTable.Model.Operator`.
   #   * `editable?` says whether a person can edit the cells of this column in
   #     principle: the column is an attribute, the attribute is writable, an
-  #     update action accepts it and its cell type has an editor. In a model
+  #     update action accepts it and its cell type has an editor; or it is a
+  #     reference column whose related record can be chosen, and an update
+  #     action accepts the foreign key. In a model
   #     from `AshTable.Model.for_actor/2` it is also `false` when the person can
   #     never run that action. Whether one cell can be edited depends on the
   #     record besides.
   #   * `update_action` is the update action an edit of this column runs, with
-  #     the column's attribute as its only input: the column's own, else the
-  #     table's. `nil` for a column that is not editable.
+  #     the column's attribute as its only input (for a reference column,
+  #     the foreign key): the column's own, else the table's. `nil` for a
+  #     column that is not editable.
   #   * `editor` is what a cell of this column is edited with: `:text`,
   #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`; for an array
   #     `:choices` (one checkbox per value of an enum) or `:list` (one
-  #     control per value); or `:component` for a column whose component has
-  #     an editor. `nil` for a column that is not editable.
+  #     control per value); `:component` for a column whose component has
+  #     an editor; or `:reference` for a reference column, which is edited
+  #     in the picker. `nil` for a column that is not editable.
   #   * `component` is the column's component, nil when the block names
   #     none: its `module`, which of the two parts it has (`cell?`,
   #     `editor?`), when its editor saves (`commit`: `:enter` or `:change`),
@@ -88,7 +97,7 @@ defmodule AshTable.Model.Column do
           operators: [AshTable.Model.Operator.t()],
           editable?: boolean,
           update_action: atom | nil,
-          editor: AshTable.Resource.Editing.editor() | :component | nil,
+          editor: AshTable.Resource.Editing.editor() | :component | :reference | nil,
           component: AshTable.Resource.Presenting.component() | nil,
           confirm: String.t() | nil,
           reference:
@@ -96,7 +105,11 @@ defmodule AshTable.Model.Column do
               relationship: atom,
               destination: Ash.Resource.t(),
               label_field: atom,
-              read_action: atom
+              read_action: atom,
+              source_attribute: atom,
+              destination_attribute: atom,
+              allow_nil?: boolean,
+              choose_action: atom | nil
             }
             | nil,
           apart?: boolean,

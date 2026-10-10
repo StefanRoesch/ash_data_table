@@ -135,10 +135,19 @@ defmodule Demo.Tracker.Task do
 
     # Reference cells: each names a belongs-to relationship and shows the
     # related record's label, the `label_field` of that resource's table, in
-    # place of the key. Read-only, and neither sorted nor filtered by.
-    column :project
+    # place of the key. Neither sorted nor filtered by.
+    #
+    # A reference cell is edited where the column's update action accepts
+    # the relationship's foreign key: a person chooses the related record
+    # from that resource's own table, in the picker. `update` accepts
+    # `project_id` and `assignee_id`. Moving a task asks first.
+    column :project do
+      confirm "Move this task to another project?"
+    end
+
     column :assignee
 
+    # No update action accepts `reporter_id`: read-only.
     column :reporter do
       label "Reported by"
     end

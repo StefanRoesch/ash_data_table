@@ -830,11 +830,22 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       %{view: view, html: html}
     end
 
-    test "one at a time: a box in every row, none for the page, no line, and a grid that is not multi-selectable",
+    test "one at a time: a radio button in every row, of one group, none for the page, no line, and a grid that says it is not multi-selectable",
          %{html: html} do
       assert attribute(html, "#pick-grid", "data-select") == ["single"]
-      assert attribute(html, "#pick-table", "aria-multiselectable") == []
-      assert length(attribute(html, "#pick-table td[data-selector] > input", "aria-label")) == 2
+      assert attribute(html, "#pick-table", "aria-multiselectable") == ["false"]
+
+      assert attribute(html, "#pick-table td[data-selector] > input", "type") ==
+               ["radio", "radio"]
+
+      assert attribute(html, "#pick-table td[data-selector] > input", "name") ==
+               ["pick-select", "pick-select"]
+
+      assert attribute(html, "#pick-table td[data-selector] > input", "aria-label") ==
+               ["Select row", "Select row"]
+
+      # told to let rows be selected, and not that it is one to choose from
+      assert attribute(html, "#pick-grid", "data-choose") == []
 
       # the column has a header, which names it and stands for nothing
       assert text(html, "#pick-select-head") == "Select row"

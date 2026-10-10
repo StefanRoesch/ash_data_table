@@ -423,12 +423,15 @@ defmodule DemoWeb.Tables.TaskActionsTest do
     test "has a field per input, top to bottom: the attributes with the record's values, then the arguments",
          %{view: view, world: world, task: task} do
       assert panel(act(view, task.id, "reassign")).fields == [
-               # a key is a plain field until there is a picker; labelled as its attribute
+               # the key of a related record is chosen in the picker: the field
+               # holds the key, says what the record is called, and is
+               # labelled as the table's column of the relationship
                %{
                  name: "assignee_id",
-                 label: "Assignee ID",
-                 control: "text",
+                 label: "Assignee",
+                 control: "reference",
                  value: world.member.id,
+                 chosen: world.member.name,
                  required?: false,
                  errors: []
                },
@@ -540,7 +543,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
                %{name: "reason", value: "", errors: ["is required"]}
              ] = panel(html).fields
 
-      assert announcement(html) == "Reassign failed: Assignee ID: is invalid; Reason: is required"
+      assert announcement(html) == "Reassign failed: Assignee: is invalid; Reason: is required"
 
       assert stored!(task).assignee_id == world.member.id
       assert text(html, cell(task.id, "assignee")) == world.member.name

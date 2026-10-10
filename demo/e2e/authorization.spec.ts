@@ -24,14 +24,16 @@ const EDITABLE = [
   "checks",
 ]
 
+// `editors` counts the two reference cells that are edited in the picker,
+// "Project" and "Assignee", with the eleven columns edited in the cell.
 // `actions` says whether the grid has the column of the row actions: the
 // person can run one of them on some record (actions.spec.ts).
 const TASKS: Record<Actor, { columns: number; editors: number; actions: boolean; range: string | null }> = {
-  admin: { columns: 19, editors: 11, actions: true, range: "1–25 of 320" },
-  member: { columns: 18, editors: 11, actions: true, range: "1–25 of 320" },
+  admin: { columns: 19, editors: 13, actions: true, range: "1–25 of 320" },
+  member: { columns: 18, editors: 13, actions: true, range: "1–25 of 320" },
   // may not read people: no assignee, no reporter
   viewer: { columns: 16, editors: 0, actions: false, range: "1–25 of 320" },
-  outsider: { columns: 18, editors: 11, actions: true, range: "1–25 of 80" },
+  outsider: { columns: 18, editors: 13, actions: true, range: "1–25 of 80" },
   // may not read projects, and sees no estimate
   nobody: { columns: 16, editors: 0, actions: false, range: null },
 }

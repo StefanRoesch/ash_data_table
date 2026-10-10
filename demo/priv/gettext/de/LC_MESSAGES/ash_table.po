@@ -203,6 +203,23 @@ msgstr "%{action}: %{done} erledigt, %{failed} nicht erledigt."
 msgid "%{message} (%{count})"
 msgstr "%{message} (%{count})"
 
+## The picker, in which a person chooses a related record from the related
+## resource's own table: its heading (the column, and what one record of
+## that table is called), its buttons, and what a field of the action panel
+## that has no control of its own says to a screen reader.
+
+msgid "%{column}: choose %{name}"
+msgstr "%{column}: %{name} auswählen"
+
+msgid "Choose"
+msgstr "Auswählen"
+
+msgid "None"
+msgstr "Keine Auswahl"
+
+msgid "required"
+msgstr "erforderlich"
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
@@ -376,8 +393,12 @@ msgstr "Zugewiesen an"
 msgid "Reported by"
 msgstr "Gemeldet von"
 
-## The table of the people, which is only ever seen nested under a task or a
-## comment.
+## The table of the people, which is seen nested under a task or a comment,
+## and in the picker of a task's assignee. It has no plural name: where the
+## picker names its grid, it is called by its resource's short name.
+
+msgid "User"
+msgstr "Personen"
 
 msgid "Name"
 msgstr "Name"
@@ -422,6 +443,9 @@ msgstr "Löschen"
 msgid "Remove"
 msgstr "Entfernen"
 
+msgid "Move this task to another project?"
+msgstr "Diese Aufgabe in ein anderes Projekt verschieben?"
+
 msgid "Delete this task? This cannot be undone."
 msgstr "Diese Aufgabe löschen? Das lässt sich nicht rückgängig machen."
 
@@ -437,11 +461,10 @@ msgstr "Dieses Projekt mit allen seinen Aufgaben löschen?"
 msgid "Reason"
 msgstr "Begründung"
 
-msgid "Assignee ID"
-msgstr "Zugewiesen an (ID)"
-
-msgid "Project ID"
-msgstr "Projekt (ID)"
+## The fields of the keys of a task's project and assignee are called what
+## the columns of those relationships are called, "Projekt" and "Zugewiesen
+## an" above. These are the columns of the keys themselves, in the tables
+## that have them.
 
 msgid "Task ID"
 msgstr "Aufgabe (ID)"
@@ -451,6 +474,9 @@ msgstr "Label (ID)"
 
 msgid "task"
 msgstr "Aufgabe"
+
+msgid "user"
+msgstr "Person"
 
 msgid "comment"
 msgstr "Kommentar"

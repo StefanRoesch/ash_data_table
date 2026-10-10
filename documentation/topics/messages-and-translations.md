@@ -121,6 +121,7 @@ These are all the messages of the template
 | The action panel | "%{action}: %{record}" (the heading of a row action's panel), "Run", "Create"; "Cancel" is the dialog's |
 | Selecting rows | "Select row" and "Select all rows of this page" (what the boxes are called), "Selected rows" (the name of the line above the grid), "%{count} selected", "All %{count} that match are selected", "All that match are selected", "Select all %{count} that match", "Select all that match", "Clear selection". "%{count} selected" has no plural forms: the number is put in by the browser, which alone knows it |
 | Bulk actions | The question: "Run “%{action}” on 1 record?" with the plural "Run “%{action}” on %{count} records?", "Run “%{action}” on all records that match?"; after an action's own question, "%{question} 1 record is selected." with the plural "%{question} %{count} records are selected.", and "%{question} All records that match are selected.". The heading of the panel: "%{action}: 1 record" with the plural "%{action}: %{count} records", "%{action}: all records that match". The result: "%{action}: %{done} done.", "%{action}: %{done} done, %{failed} not done.", and "%{message} (%{count})" for each message of the action with the number of records it is about |
+| The picker | "%{column}: choose %{name}" (its heading: the column, and what one record of the table to choose from is called, "Assignee: choose user"), "Choose" (its button, and the button of a field of the action panel that opens it), "None", "required" (said to a screen reader of a required field of the panel that holds the key of a related record). "Select row" names its radio buttons, and "Cancel" is the dialog's |
 | Create | "New %{name}" (the create button and the heading of its panel), "%{name} created" (read out; `name` is what one record is called: "Task created") |
 | Nested tables | "Related records" (the expanders and the heading of their column), "Loading…", "These records are not available." |
 | The full view | "Open in full view", "Open in full view: %{table}" (the link's accessible name), "%{record}: %{relationship}" (the heading over a table limited to the records of one parent), "Show all records" |
@@ -186,16 +187,17 @@ msgstr "Neu zuweisen"
 ```po
 msgid "Reason"
 msgstr "Begründung"
-
-msgid "Assignee ID"
-msgstr "Zugewiesen an (ID)"
 ```
+
+The other field of "Reassign" holds the key of the assignee, and is called
+what the column "Assignee" is called: it needs no entry of its own.
 
 **Try it:** `/tasks` in German, as Ada Admin: the column "Aktionen" with
 "Archivieren", "Neu zuweisen", "Fortschritt setzen" and "Löschen", and
 "Aufgabe anlegen" above the table. "Neu zuweisen" opens a panel with the
-fields "Zugewiesen an (ID)" and "Begründung" and the buttons "Abbrechen" and
-"Ausführen".
+fields "Zugewiesen an" and "Begründung" and the buttons "Abbrechen" and
+"Ausführen"; "Auswählen" under "Zugewiesen an" opens the picker, "Zugewiesen
+an: Person auswählen".
 
 A reference cell shows a value of a related record, its label, which is data
 and is not translated. The heading over a table limited to the records of

@@ -2942,12 +2942,90 @@ defmodule AshTable.TableBlockTest do
                "`author` shows the label of a related record, which a table does not filter by, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`."
     end
 
-    test "an `update_action` is an error: the cell is read-only" do
+    test "an `update_action` that accepts the relationship's foreign key makes the cell editable, and `confirm` asks first" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateAction do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :author, AshTable.Test.Relating.Author, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:title]]
+
+            update :hand_over do
+              accept [:author_id]
+            end
+          end
+
+          table do
+            column :author do
+              update_action :hand_over
+              confirm "Change the author?"
+            end
+          end
+        end
+      end
+
+      assert [
+               %{
+                 name: :author,
+                 editable?: true,
+                 update_action: :hand_over,
+                 editor: :reference,
+                 confirm: "Change the author?"
+               }
+             ] = AshTable.Model.build(AshTable.TableBlockTest.ReferenceUpdateAction).columns
+    end
+
+    test "the table's `update_action` makes it editable too, when it accepts the key, and `confirm` is then no mistake" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceTableAction do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :author, AshTable.Test.Relating.Author, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:title, :author_id]]
+          end
+
+          table do
+            update_action :update
+
+            column :author do
+              confirm "Change the author?"
+            end
+          end
+        end
+      end
+
+      assert [%{editable?: true, update_action: :update, editor: :reference}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceTableAction).columns
+    end
+
+    test "an `update_action` that does not accept the foreign key is an error" do
       error =
         assert_dsl_error %Spark.Error.DslError{
           path: [:table, :column, :author, :update_action]
         } do
-          defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateAction do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateActionWithoutKey do
             use Ash.Resource,
               domain: AshTable.Test.Domain,
               extensions: [AshTable.Resource]
@@ -2974,10 +3052,226 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "`author` shows the label of a related record. Only an attribute can be edited, so a column that names a relationship cannot have an `update_action`."
+               "The update action `update` does not accept `author_id`, the foreign key of `author`, so it cannot save an edit of this column."
+
+      # the column is read-only, and the table is built
+      assert [%{name: :author, editable?: false, update_action: nil, editor: nil}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceUpdateActionWithoutKey).columns
     end
 
-    test "`confirm` is an error: the cell is never edited" do
+    test "an `update_action` that needs an argument is an error, as for any column" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateActionWithArgument do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              update :hand_over do
+                accept [:author_id]
+                argument :reason, :string, allow_nil?: false
+              end
+            end
+
+            table do
+              column :author do
+                update_action :hand_over
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The update action `hand_over` requires the argument `reason`. An inline edit supplies only the cell's value, so the action behind a column must not need anything else."
+    end
+
+    test "an `update_action` on a column whose relationship has a `filter` is an error: there is nothing to choose with" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateActionFiltered do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author do
+                filter expr(name != "Nobody")
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read, update: [:title, :author_id]]
+            end
+
+            table do
+              column :author do
+                update_action :update
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` is edited by choosing a record of the destination's table, and there is nothing to choose it with, so the column is read-only and its `update_action` has no effect. " <>
+                 "The relationship `author` has a `filter`, so a table cannot say which records it can hold, and offers none to choose from. " <>
+                 "Remove `update_action` from this column."
+
+      assert [%{editable?: false}] =
+               AshTable.Model.build(AshTable.TableBlockTest.ReferenceUpdateActionFiltered).columns
+    end
+
+    test "an `update_action` on a column whose foreign key is private is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{
+          path: [:table, :column, :author, :update_action]
+        } do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceUpdateActionPrivateKey do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author do
+                public? true
+                attribute_public? false
+              end
+            end
+
+            actions do
+              defaults [:read, update: [:title, :author_id]]
+            end
+
+            table do
+              column :author do
+                update_action :update
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` is edited by choosing a record of the destination's table, and there is nothing to choose it with, so the column is read-only and its `update_action` has no effect. " <>
+                 "`author_id`, the foreign key of `author`, is not public (`attribute_public? false`). Only a `public?` attribute is set through a table. " <>
+                 "Remove `update_action` from this column."
+    end
+
+    test "a destination whose table would read through a private action is not chosen from: the cell is read-only, and the destination's own table says why" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :read_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.PrivatelyListed do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :name, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+
+              read :internal do
+                public? false
+              end
+            end
+
+            table do
+              read_action :internal
+              label_field :name
+            end
+          end
+        end
+
+      assert error.message ==
+               "The read action `internal` is not public. Only `public?` actions can be behind a table."
+
+      # the cell still shows the label, which Ash loads through the public
+      # primary read action
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReferenceToPrivatelyListed do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          relationships do
+            belongs_to :holder, AshTable.TableBlockTest.PrivatelyListed, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:title, :holder_id]]
+          end
+
+          table do
+            update_action :update
+
+            column :title
+            column :holder
+          end
+        end
+      end
+
+      model = AshTable.Model.build(AshTable.TableBlockTest.ReferenceToPrivatelyListed)
+
+      assert [%{name: :title, editable?: true}, %{name: :holder, editable?: false, editor: nil}] =
+               model.columns
+
+      assert {:error, :no_read_action} ==
+               AshTable.Resource.Referencing.picking(
+                 AshTable.TableBlockTest.ReferenceToPrivatelyListed,
+                 Ash.Resource.Info.relationship(
+                   AshTable.TableBlockTest.ReferenceToPrivatelyListed,
+                   :holder
+                 )
+               )
+
+      # and a picker over it is never built, through whichever action: a
+      # table that cannot be built is refused wherever it is shown
+      for action <- [:read, :internal] do
+        assert_raise ArgumentError,
+                     "cannot build the table of AshTable.TableBlockTest.PrivatelyListed: no usable read action ({:not_public, :internal})",
+                     fn ->
+                       AshTable.Model.build(AshTable.TableBlockTest.PrivatelyListed,
+                         choose: action
+                       )
+                     end
+      end
+    end
+
+    test "`confirm` is an error where no action accepts the key: the cell is never edited" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author, :confirm]} do
           defmodule Elixir.AshTable.TableBlockTest.ReferenceConfirm do
@@ -3009,7 +3303,45 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "`author` can never be edited, so `confirm` has no effect. It shows the label of a related record."
+               "`author` can never be edited, so `confirm` has no effect. A column that names a relationship is edited through an `update_action`, its own or the table's, that accepts the relationship's foreign key, `author_id`."
+    end
+
+    test "`confirm` is an error where there is nothing to choose with, and says why" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :author, :confirm]} do
+          defmodule Elixir.AshTable.TableBlockTest.ReferenceConfirmFiltered do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Relating.Author do
+                filter expr(name != "Nobody")
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read, update: [:title, :author_id]]
+            end
+
+            table do
+              update_action :update
+
+              column :author do
+                confirm "Change the author?"
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`author` can never be edited, so `confirm` has no effect. The relationship `author` has a `filter`, so a table cannot say which records it can hold, and offers none to choose from."
     end
 
     test "`sortable? false`, `filterable? false` and `update_action false` say what is so anyway" do

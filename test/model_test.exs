@@ -207,12 +207,12 @@ defmodule AshTable.ModelTest do
     test "of a reference cell's related record goes through the relationship's read action, as Ash loads it" do
       folder = Enum.find(Model.build(Minute).columns, &(&1.name == :folder))
 
-      assert folder.reference == %{
+      assert %{
                relationship: :folder,
                destination: Folder,
                label_field: :name,
                read_action: :open
-             }
+             } = folder.reference
     end
 
     defp via(overrides) do
@@ -1301,17 +1301,21 @@ defmodule AshTable.ModelTest do
                  relationship: :sender,
                  destination: Person,
                  label_field: :name,
-                 read_action: :read
+                 read_action: :read,
+                 source_attribute: :sender_id,
+                 destination_attribute: :id,
+                 allow_nil?: true,
+                 # nobody edits it: `update` does not accept the key
+                 choose_action: nil
                }
 
       # the relationship's own read action, as Ash loads it
-      assert column(model, :agent).reference ==
-               %{
-                 relationship: :agent,
-                 destination: Agent,
-                 label_field: :alias,
-                 read_action: :active
-               }
+      assert %{
+               relationship: :agent,
+               destination: Agent,
+               label_field: :alias,
+               read_action: :active
+             } = column(model, :agent).reference
 
       assert column(model, :subject).reference == nil
     end
@@ -1324,7 +1328,8 @@ defmodule AshTable.ModelTest do
       assert column(model, :rank).values == [junior: "Junior", senior: "Senior"]
     end
 
-    test "is never sorted by, filtered by or edited", %{model: model} do
+    test "is never sorted or filtered by, and not edited where no update action accepts its key",
+         %{model: model} do
       for name <- [:sender, :rank, :vault, :agent] do
         assert %{
                  sortable?: false,
@@ -1805,8 +1810,9 @@ defmodule AshTable.ModelTest do
       assert %Model.Action{name: :create, link: {:id, :board_id}, inputs: [%{name: :title}]} =
                nested(:cards).create
 
-      # on a page of its own the linking field is an input like any other
-      assert [%{name: :title}, %{name: :board_id, editor: :plain, required?: true}] =
+      # on a page of its own the linking field is an input like any other:
+      # the key of a board, which is chosen from the boards' table
+      assert [%{name: :title}, %{name: :board_id, editor: :reference, required?: true}] =
                Model.build(AshTable.Test.Acting.Card).create.inputs
     end
 
@@ -2094,6 +2100,313 @@ defmodule AshTable.ModelTest do
 
       %{actions: [relevel]} = Model.for_actor(model, actor: %{role: :admin})
       assert input(relevel, :level).component.column.editable? == true
+    end
+  end
+
+  describe "a reference column whose related record a person chooses" do
+    alias AshTable.Test.Picking.{Depot, Shipment, Vault, Zone}
+
+    setup do
+      %{model: Model.build(Shipment)}
+    end
+
+    defp reference(model, name), do: Enum.find(model.columns, &(&1.name == name))
+
+    test "is editable where the column's update action accepts the relationship's foreign key",
+         %{model: model} do
+      assert %{
+               editable?: true,
+               update_action: :update,
+               editor: :reference,
+               confirm: nil,
+               reference: %{
+                 relationship: :depot,
+                 destination: Depot,
+                 label_field: :name,
+                 read_action: :read,
+                 source_attribute: :depot_id,
+                 destination_attribute: :id,
+                 allow_nil?: true,
+                 choose_action: :read
+               }
+             } = reference(model, :depot)
+    end
+
+    test "says whether no record can be chosen: where the key can be empty", %{model: model} do
+      assert reference(model, :depot).reference.allow_nil?
+      refute reference(model, :origin).reference.allow_nil?
+    end
+
+    test "is saved through its own `update_action`, after its own question", %{model: model} do
+      assert %{
+               editable?: true,
+               update_action: :rebroker,
+               editor: :reference,
+               confirm: "Change the broker?"
+             } = reference(model, :broker)
+    end
+
+    test "offers the records of the relationship's own read action, when it names one: the action its label is loaded through",
+         %{model: model} do
+      assert %{read_action: :open, choose_action: :open} = reference(model, :relay).reference
+    end
+
+    test "offers the records of the read action of the destination's table otherwise, which need not be the primary one",
+         %{model: model} do
+      assert %{read_action: :read, choose_action: :listed, destination: Vault} =
+               reference(model, :vault).reference
+    end
+
+    test "is joined by whatever attributes the relationship names: the key need not be the destination's primary key",
+         %{model: model} do
+      assert %{
+               editable?: true,
+               reference: %{
+                 destination: Zone,
+                 source_attribute: :zone_code,
+                 destination_attribute: :code
+               }
+             } = reference(model, :zone)
+    end
+
+    test "is read-only where nothing can save it or there is nothing to choose with", %{
+      model: model
+    } do
+      # `haven` has a filter; the key of `auditor` and of `sealer` is no
+      # input of `update`; that of `owner` is private; `courier` says
+      # `update_action false`
+      for name <- [:haven, :auditor, :sealer, :owner, :courier] do
+        assert %{
+                 editable?: false,
+                 update_action: nil,
+                 editor: nil,
+                 confirm: nil,
+                 reference: %{choose_action: nil}
+               } = reference(model, name),
+               "#{name} is read-only"
+      end
+    end
+
+    test "is told apart from a column nobody edits by what stands in the way" do
+      relationship = &Ash.Resource.Info.relationship(Shipment, &1)
+
+      assert {:ok,
+              %{
+                relationship: :depot,
+                destination: Depot,
+                source_attribute: :depot_id,
+                destination_attribute: :id,
+                read_action: :read,
+                allow_nil?: true
+              }} == AshTable.Resource.Referencing.picking(Shipment, relationship.(:depot))
+
+      for {name, reason} <- [
+            haven: :filter,
+            port: :no_table,
+            sealer: :key_not_writable,
+            owner: :key_not_public
+          ] do
+        assert {:error, reason} ==
+                 AshTable.Resource.Referencing.picking(Shipment, relationship.(name))
+      end
+
+      # no belongs-to at all
+      assert {:error, :no_table} ==
+               AshTable.Resource.Referencing.picking(
+                 Depot,
+                 Ash.Resource.Info.relationship(Depot, :shipments)
+               )
+    end
+
+    test "stays what it shows: neither sorted nor filtered by, with the cell type of its label",
+         %{model: model} do
+      assert %{kind: :reference, sortable?: false, operators: [], cell_type: :text} =
+               reference(model, :depot)
+    end
+  end
+
+  describe "for_actor/2: the reference columns a person edits" do
+    alias AshTable.Test.Picking.Shipment
+
+    defp editable(model, actor) do
+      for column <- Model.for_actor(model, actor: actor).columns,
+          column.kind == :reference and column.editable?,
+          do: column.name
+    end
+
+    setup do
+      %{model: Model.build(Shipment)}
+    end
+
+    test "are all the model's for a person who can list every destination and sees every key",
+         %{model: model} do
+      assert editable(model, %{role: :admin}) ==
+               [:depot, :origin, :relay, :backer, :vault, :broker, :zone]
+    end
+
+    test "leave out one whose records the person can never list, and one whose key they never see",
+         %{model: model} do
+      # the vaults are listed by admins alone, and `backer_id` is seen by them alone
+      assert editable(model, %{role: :member}) == [:depot, :origin, :relay, :broker, :zone]
+
+      member = Model.for_actor(model, actor: %{role: :member})
+
+      # both are still shown: the label of a vault is read through another action
+      for name <- [:vault, :backer] do
+        assert %{editable?: false, update_action: nil, editor: nil, confirm: nil} =
+                 Enum.find(member.columns, &(&1.name == name))
+      end
+    end
+
+    test "are all the model's without authorization", %{model: model} do
+      assert Model.for_actor(model, actor: nil, authorize?: false) == model
+    end
+  end
+
+  describe "an input that is the key of a related record" do
+    alias AshTable.Test.Picking.{Depot, Shipment, Zone}
+
+    setup do
+      %{model: Model.build(Shipment)}
+    end
+
+    test "is given by choosing, where it is the foreign key of a public belongs-to relationship whose destination has a table",
+         %{model: model} do
+      inputs =
+        for input <- model.create.inputs,
+            do: {input.name, input.editor, input.reference && input.reference.destination}
+
+      assert inputs == [
+               {:code, :text, nil},
+               {:depot_id, :reference, Depot},
+               {:origin_id, :reference, Depot},
+               # the relationship has a filter
+               {:haven_id, :plain, nil},
+               # the destination has no table
+               {:port_id, :plain, nil},
+               # no relationship
+               {:batch_id, :plain, nil},
+               # the relationship is private
+               {:ghost_id, :plain, nil},
+               {:zone_code, :reference, Zone}
+             ]
+    end
+
+    test "says what the picker needs: the destination, its attribute, and the read action of its table",
+         %{model: model} do
+      assert Enum.find(model.create.inputs, &(&1.name == :depot_id)).reference ==
+               %{
+                 relationship: :depot,
+                 destination: Depot,
+                 source_attribute: :depot_id,
+                 destination_attribute: :id,
+                 allow_nil?: true,
+                 choose_action: :read
+               }
+
+      assert %{destination_attribute: :code, source_attribute: :zone_code} =
+               Enum.find(model.create.inputs, &(&1.name == :zone_code)).reference
+    end
+
+    test "is called what the table's column of the relationship is called, and a key that is typed by its own name",
+         %{model: model} do
+      assert Enum.map(model.create.inputs, & &1.label) == [
+               "Code",
+               "Depot",
+               "Origin",
+               "Haven ID",
+               "Port ID",
+               "Batch ID",
+               "Ghost ID",
+               "Zone"
+             ]
+    end
+
+    test "is called by the relationship's name in words where the table has no column for it" do
+      # the table of the cards has the default columns, `board_id` among
+      # them: the field is called what that column is
+      assert %{label: "Board ID", editor: :reference} =
+               Enum.find(
+                 Model.build(AshTable.Test.Acting.Card).create.inputs,
+                 &(&1.name == :board_id)
+               )
+
+      # the table of the crates has no column for the depot or for its key
+      assert %{label: "Depot", editor: :reference} =
+               Enum.find(
+                 Model.build(AshTable.Test.Picking.Crate).create.inputs,
+                 &(&1.name == :depot_id)
+               )
+    end
+
+    test "is the same input of a row action, required as the action says", %{model: model} do
+      assert [
+               %{name: :move, panel?: true, inputs: inputs}
+             ] = model.actions
+
+      assert [
+               {:depot_id, :reference, false},
+               {:reason, :text, true}
+             ] == for(input <- inputs, do: {input.name, input.editor, input.required?})
+
+      assert %{required?: true} = Enum.find(model.create.inputs, &(&1.name == :origin_id))
+    end
+  end
+
+  describe "build/2 with `choose:`: the table a picker shows" do
+    alias AshTable.Test.Picking.Depot
+
+    test "is the table of the resource with nothing to edit, run, create or expand" do
+      own = Model.build(Depot)
+      chooser = Model.build(Depot, choose: :read)
+
+      # the table itself has all of them
+      assert Enum.any?(own.columns, & &1.editable?)
+      assert own.actions != [] and own.create != nil and own.relationships != []
+
+      assert Enum.map(chooser.columns, &{&1.name, &1.label, &1.sortable?, &1.operators}) ==
+               Enum.map(own.columns, &{&1.name, &1.label, &1.sortable?, &1.operators})
+
+      for column <- chooser.columns do
+        assert %{editable?: false, update_action: nil, editor: nil, confirm: nil} = column
+      end
+
+      assert chooser.actions == []
+      assert Model.bulk_actions(chooser) == []
+      assert chooser.create == nil
+      assert chooser.relationships == []
+    end
+
+    test "reads through the action it is told, with that action's pages" do
+      assert %{read_action: :read, pagination: %{strategy: :offset, page_size: 10}} =
+               Model.build(Depot, choose: :read)
+
+      # the block says `paginate_with :offset`, which these two do not support
+      assert %{read_action: :open, pagination: %{strategy: :none}} =
+               Model.build(Depot, choose: :open)
+
+      assert %{read_action: :recent, pagination: %{strategy: :keyset, page_size: 5}} =
+               Model.build(Depot, choose: :recent)
+    end
+
+    test "is refused for an action that is not a public read action of the resource" do
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.Test.Private.Paper to choose a record from: it would be read through `internal`, which is not public. " <>
+                     "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies.",
+                   fn -> Model.build(AshTable.Test.Private.Paper, choose: :internal) end
+
+      for name <- [:update, :nothing] do
+        assert_raise ArgumentError,
+                     "cannot build the table of AshTable.Test.Picking.Depot to choose a record from: it would be read through `#{name}`, which is no read action of AshTable.Test.Picking.Depot.",
+                     fn -> Model.build(Depot, choose: name) end
+      end
+    end
+
+    test "stays what it is for the person asking: nothing to edit or run" do
+      chooser = Model.for_actor(Model.build(Depot, choose: :read), actor: %{role: :admin})
+
+      refute Enum.any?(chooser.columns, & &1.editable?)
+      assert chooser.actions == [] and chooser.create == nil
     end
   end
 end

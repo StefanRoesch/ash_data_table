@@ -561,10 +561,16 @@ A column that names a belongs-to relationship shows the related record's
 ```elixir
 # Reference cells: each names a belongs-to relationship and shows the
 # related record's label, the `label_field` of that resource's table, in
-# place of the key. Read-only, and neither sorted nor filtered by.
-column :project
+# place of the key. Neither sorted nor filtered by.
+#
+# ...
+column :project do
+  confirm "Move this task to another project?"
+end
+
 column :assignee
 
+# No update action accepts `reporter_id`: read-only.
 column :reporter do
   label "Reported by"
 end
@@ -595,7 +601,11 @@ What a reference cell is, and is not:
   that leads to a private one is reported; see below.
 - **It is shown as the label's type is shown**: text as text, an enum by its
   labels.
-- **It is read-only.** Choosing another related record is a later slice.
+- **It is edited by choosing another related record**, where the column's
+  update action accepts the relationship's foreign key: Enter on the cell
+  opens the picker, with the destination's own table to choose from. Where
+  no action accepts the key it is read-only. See
+  [Choosing a related record](choosing-a-related-record.md).
 - **It is not sorted by.** Ash accepts a sort through a relationship from
   outside and applies no policy of the related resource to it (tracked as
   #31), so the order of the rows would follow names the person may not read.
@@ -717,8 +727,7 @@ in a nested table for each of its rows.
 ## Not in the first version
 
 No counts on the relationship lines, no adding or linking a record through
-a many-to-many, no creating under a has-one or a belongs-to, no choosing
-another related record in a reference cell, no
+a many-to-many, no creating under a has-one or a belongs-to, no
 sorting or filtering by a reference cell, no label that is a calculation, no
 link from a reference cell to its record, and nothing of a nested table in
 the address but its full view. The later slices are listed in the

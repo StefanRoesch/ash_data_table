@@ -5,8 +5,9 @@ import { Table } from "./support/table"
 
 // Reference cells in a browser: the columns "Project", "Assignee" and
 // "Reported by" of /tasks show a related record by its label. They are
-// cells like any other for the keyboard, and nothing a person can edit,
-// sort by or filter by.
+// cells like any other for the keyboard, and nothing a person can sort by
+// or filter by. How the first two are edited is in picker.spec.ts; the
+// third is read-only.
 
 const FIRST = SEED.task.first
 
@@ -36,15 +37,15 @@ test.describe("as the admin", () => {
     expect(await reporter.columnTexts("name")).toEqual([shown.reporter])
   })
 
-  test("is a cell the arrow keys stop at, with nothing to sort, to filter or to edit", async ({
+  test("is a cell the arrow keys stop at, with nothing to sort or to filter; one whose key no action accepts has nothing to edit", async ({
     tasks,
     frames,
   }) => {
     for (const column of ["project", "assignee", "reporter"]) {
       await expect(tasks.header(column)).not.toHaveAttribute("aria-sort")
       await expect(tasks.filterCell(column).locator("input, select")).toHaveCount(0)
-      await expect(tasks.cell(FIRST, column)).toHaveAttribute("aria-readonly", "true")
     }
+    await expect(tasks.cell(FIRST, "reporter")).toHaveAttribute("aria-readonly", "true")
 
     await tasks.cell(FIRST, "inserted_at").focus()
     await tasks.press("ArrowRight")

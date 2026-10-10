@@ -644,7 +644,7 @@ test.describe("row actions and the action panel", () => {
     test.beforeEach(async ({ tasks }) => {
       await tasks.open()
       await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
-      await expect(tasks.field("assignee_id")).toBeFocused()
+      await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
     })
 
     test("as it opens", async ({ page, tasks }) => {
@@ -659,9 +659,7 @@ test.describe("row actions and the action panel", () => {
     })
 
     test("with the errors of every field, after Run", async ({ page, tasks }) => {
-      await tasks.field("assignee_id").fill("nobody")
       await tasks.panelSubmit.click()
-      await expect(tasks.fieldError("assignee_id")).toBeVisible()
       await expect(tasks.fieldError("reason")).toBeVisible()
       await expectNoAxeViolations(page)
     })

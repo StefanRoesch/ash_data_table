@@ -173,9 +173,13 @@ kind:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
-column :project
+column :project do
+  confirm "Move this task to another project?"
+end
+
 column :assignee
 
+# No update action accepts `reporter_id`: read-only.
 column :reporter do
   label "Reported by"
 end
@@ -183,7 +187,10 @@ end
 
 The label is the attribute that the destination's `table` block names as
 `label_field`: `Project`'s block above, and `label_field :name` on the
-demo's people. The cell is read-only and is neither sorted nor filtered by.
+demo's people. The cell is neither sorted nor filtered by. It is edited by
+choosing another related record from the destination's own table, where the
+column's update action accepts the relationship's foreign key; see
+[Choosing a related record](choosing-a-related-record.md).
 The related record is read through the relationship's own `read_action`,
 else the destination's primary read action, and that action has to be
 `public?`.

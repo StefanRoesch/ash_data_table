@@ -64,13 +64,20 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   # related record's label. The destination is looked at, which a verifier
   # may do (see `VerifyRelationships`).
   #
-  # The cell is read-only, and a table neither sorts nor filters by it: a
-  # sort through a relationship is not authorized by Ash (internal ticket
-  # #31), and filtering by a related record is not built yet.
+  # A table neither sorts nor filters by it: a sort through a relationship
+  # is not authorized by Ash (internal ticket #31), and filtering by a
+  # related record is not built yet. It is edited as any column is, through
+  # an `update_action`: one that accepts the relationship's foreign key,
+  # which a person sets by choosing a record of the destination's table.
   defp reference_errors(column, relationship, module) do
     case Referencing.reference(relationship) do
-      {:ok, _reference} -> reference_option_errors(column, module)
-      {:error, reason} -> [error(column, module, Referencing.message(reason))]
+      {:ok, _reference} ->
+        reference_option_errors(column, module) ++
+          update_action_errors(column, relationship, module) ++
+          confirm_errors(column, relationship, module)
+
+      {:error, reason} ->
+        [error(column, module, Referencing.message(reason))]
     end
   end
 
@@ -81,11 +88,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
           sortable?:
             "#{shows}, which a table does not sort by, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`.",
           filterable?:
-            "#{shows}, which a table does not filter by, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`.",
-          update_action:
-            "#{shows}. Only an attribute can be edited, so a column that names a relationship cannot have an `update_action`.",
-          confirm:
-            "`#{column.name}` can never be edited, so `confirm` has no effect. It shows the label of a related record."
+            "#{shows}, which a table does not filter by, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`."
         ],
         Map.fetch!(column, option) not in [nil, false] do
       option_error(column, module, option, message)
@@ -104,13 +107,25 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
             module,
             :confirm,
             "`#{column.name}` can never be edited, so `confirm` has no effect. " <>
-              Editing.never_edited(Editing.obstacle(module, field))
+              never_edited(module, field)
           )
         ]
     end
   end
 
   defp confirm_errors(_column, _field, _module), do: []
+
+  # A column that names a relationship is edited through an action that
+  # accepts the relationship's foreign key, which is said in its own words.
+  defp never_edited(module, field) do
+    case {Editing.obstacle(module, field), field} do
+      {nil, %Ash.Resource.Relationships.BelongsTo{source_attribute: key}} ->
+        "A column that names a relationship is edited through an `update_action`, its own or the table's, that accepts the relationship's foreign key, `#{key}`."
+
+      {obstacle, _field} ->
+        Editing.never_edited(obstacle)
+    end
+  end
 
   # A column's own update action has to be able to save an edit of it. The
   # table-level action is not held to that: what it cannot save is read-only.
@@ -180,6 +195,11 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
     "`#{column.name}` is declared `writable?: false`, so no action can save an edit of it: the column is read-only and its `update_action` has no effect. Remove `update_action` from this column, or make the attribute writable."
   end
 
+  defp read_only(column, {:no_picker, relationship, reason}) do
+    "`#{column.name}` is edited by choosing a record of the destination's table, and there is nothing to choose it with, so the column is read-only and its `update_action` has no effect. " <>
+      Referencing.no_picker(relationship, reason) <> " Remove `update_action` from this column."
+  end
+
   defp read_only(column, {:no_editor, type}) do
     "`#{column.name}` has the type `#{inspect(type)}`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, and arrays of those. Remove `update_action` from this column."
   end
@@ -193,11 +213,16 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
           column,
           module,
           :update_action,
-          "The update action `#{action.name}` does not accept `#{column.name}`, so it cannot save an edit of this column."
+          "The update action `#{action.name}` does not accept #{accepted(column, field)}, so it cannot save an edit of this column."
         )
       ]
     end
   end
+
+  defp accepted(column, %Ash.Resource.Relationships.BelongsTo{source_attribute: key}),
+    do: "`#{key}`, the foreign key of `#{column.name}`"
+
+  defp accepted(column, _field), do: "`#{column.name}`"
 
   # A mistake in `read_action` or `paginate_with` is reported by
   # `VerifyReadAction`; without a valid one there is nothing to check here.

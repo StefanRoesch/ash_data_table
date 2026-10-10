@@ -17,10 +17,18 @@ defmodule AshTable.Act do
   # record or on this one, is no input of theirs, and a field of a nested
   # table's create action that joins the new record to its row is given by
   # the table, never by the form.
+  #
+  # An input that is given by choosing a related record (`editor: :reference`)
+  # holds that record's key, and a key from the browser is a claim like any
+  # other: before an action runs, a key that was put there is looked up as
+  # the person, through the read action the picker offers its records
+  # through (`unchosen/4`). One that names nothing they could have chosen
+  # runs nothing.
 
   alias AshTable.Errors
   alias AshTable.Model
   alias AshTable.Model.Action
+  alias AshTable.Pick
   alias AshTable.Query
   alias AshTable.Record
   alias AshTable.Text
@@ -145,25 +153,29 @@ defmodule AshTable.Act do
   have on the record as it is now.
 
   Returns what `run/4` returns, but for an action that did not run:
-  `{:error, form}`, the form with the action's errors.
+  `{:error, form}`, the form with the action's errors, or
+  `{:unchosen, inputs}`, the inputs whose value names a record the person
+  could not have chosen (`unchosen/4`).
   """
   @spec submit_row(Model.t(), Action.t(), map, map, String.t(), keyword) ::
           {:ok, Ash.Resource.record()}
           | :destroyed
           | :gone
           | {:error, form}
+          | {:unchosen, [Model.Input.t()]}
           | {:error, nil, String.t()}
   def submit_row(%Model{} = model, %Action{} = action, key, params, id, opts) do
+    chooser = opts
     opts = Query.reader_opts(opts)
 
     case Record.fetch(model, key, opts) do
       {:ok, record} ->
-        submit(
-          model,
-          form(record, action, id, opts),
-          taken(inputs(action, record), params, %{}),
-          opts
-        )
+        inputs = inputs(action, record)
+
+        case unchosen(inputs, params, record, chooser) do
+          [] -> submit(model, form(record, action, id, opts), taken(inputs, params, %{}), opts)
+          unchosen -> {:unchosen, unchosen}
+        end
 
       :error ->
         {:error, nil, Text.t(:record_gone)}
@@ -176,14 +188,64 @@ defmodule AshTable.Act do
   joins a record created in a nested table to its row.
 
   Returns `{:ok, record}` with everything the table's columns show loaded,
-  `:gone` when the record was created and is not this person's to read, or
-  `{:error, form}`.
+  `:gone` when the record was created and is not this person's to read,
+  `{:error, form}`, or `{:unchosen, inputs}` as `submit_row/6` does.
   """
   @spec submit_create(Model.t(), Action.t(), map, map, String.t(), keyword) ::
-          {:ok, Ash.Resource.record()} | :gone | {:error, form}
+          {:ok, Ash.Resource.record()} | :gone | {:error, form} | {:unchosen, [Model.Input.t()]}
   def submit_create(%Model{} = model, %Action{type: :create} = action, params, given, id, opts) do
-    submit(model, open_create(model, action, id, opts), taken(action.inputs, params, given), opts)
+    case unchosen(action.inputs, params, nil, opts) do
+      [] ->
+        submit(
+          model,
+          open_create(model, action, id, opts),
+          taken(action.inputs, params, given),
+          opts
+        )
+
+      unchosen ->
+        {:unchosen, unchosen}
+    end
   end
+
+  @doc """
+  The inputs among `inputs` whose value, in what a panel's form sent, names
+  a record this person could not have chosen: an input that is given by
+  choosing a related record, with a key that is none of a record they may
+  read through the picker's read action.
+
+  Left alone are an input that is empty, one that holds what `record` holds
+  already (nil where there is no record: a create, a selection), which
+  nobody chose, and one whose value is no key at all, which the action
+  says itself.
+
+  `opts` are those of `AshTable.Pick.reader/2`.
+  """
+  @spec unchosen([Model.Input.t()], map, Ash.Resource.record() | nil, keyword) ::
+          [Model.Input.t()]
+  def unchosen(inputs, params, record, opts) when is_map(params) do
+    for %{editor: :reference, reference: reference, type: {type, constraints}} = input <- inputs,
+        typed = params[Atom.to_string(input.name)],
+        typed not in [nil, ""],
+        {:ok, value} when not is_nil(value) <- [Ash.Type.cast_input(type, typed, constraints)],
+        is_nil(record) or not held?(record, input.name, value),
+        Pick.current(reference, value, opts) == :error do
+      input
+    end
+  end
+
+  def unchosen(_inputs, _params, _record, _opts), do: []
+
+  # two keys that are written alike are the same key
+  defp held?(record, name, value) do
+    case Map.get(record, name) do
+      nil -> false
+      %Ash.ForbiddenField{} -> false
+      held -> written(held) == written(value)
+    end
+  end
+
+  defp written(value), do: if(String.Chars.impl_for(value), do: to_string(value), else: value)
 
   @doc """
   What an action is given of what a panel's form sent: the values of

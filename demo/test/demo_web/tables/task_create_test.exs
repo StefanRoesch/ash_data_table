@@ -97,8 +97,9 @@ defmodule DemoWeb.Tables.TaskCreateTest do
                  {"due_on", "Due on", "date", "", false},
                  {"external_ref", "External ref", "textarea", "", false},
                  # keys: plain fields until there is a picker
-                 {"project_id", "Project ID", "text", "", true},
-                 {"assignee_id", "Assignee ID", "text", "", false},
+                 # the keys of related records, chosen in the picker
+                 {"project_id", "Project", "reference", "", true},
+                 {"assignee_id", "Assignee", "reference", "", false},
                  # arrays: value by value, and multiple choice. Both start
                  # with the attribute's default, which is no values
                  {"tags", "Tags", "list", [], false},

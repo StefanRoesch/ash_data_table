@@ -65,7 +65,7 @@ order, not 425.
 | Tab, Shift+Tab | Leave the grid, forwards or backwards. |
 | Enter, on the heading of a sortable column | Sorts by the column: ascending, descending, none. Focus stays on the heading. |
 | Enter or F2, on a filter cell | Goes into the filter. |
-| Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. |
+| Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. On a reference cell, opens the picker: see [Choosing a related record](choosing-a-related-record.md#the-keyboard). |
 | Enter or F2, on the actions cell of a row | Goes to its first button. See [Row actions and the action panel](#row-actions-and-the-action-panel). |
 | A character, on a filter cell or a cell that can be edited | Goes into the filter or starts editing, with that character typed. |
 | Escape, on a cell whose save failed | Gives the failed edit up: the cell shows the saved value again. |
@@ -188,6 +188,7 @@ be reached, and the browser keeps focus inside it.
 | Key | Effect |
 | --- | --- |
 | Tab, Shift+Tab | Move through the panel's fields and its two buttons. |
+| Enter or Space, on the button "Choose" of a field that holds the key of a related record | Opens the picker, a second modal dialog on top of the panel. Escape there closes the picker alone, and focus is on the button again. |
 | Enter, in a field of one line | Runs the action, as "Run" does. In a text field of several lines it makes a new line. |
 | Escape | Closes the panel, as "Cancel" does. Nothing runs. |
 
@@ -343,7 +344,7 @@ page and keeps the focus.
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
-| That rows can be selected | `aria-multiselectable="true"` on the grid, and `aria-selected`, `true` or `false`, on every row of records. Neither is there on a table without the boxes. |
+| That rows can be selected | `aria-multiselectable="true"` on the grid, and `aria-selected`, `true` or `false`, on every row of records. Neither is there on a table without the boxes. In the picker, where one row is selected at a time, the grid says `aria-multiselectable="false"`. |
 | The box of a row, and the one in the header | Checkboxes named "Select row" and "Select all rows of this page", in a first column of the grid that is counted in `aria-colcount` and `aria-colindex`. The one in the header is mixed when some rows of the page are selected. |
 | What is selected | A group above the grid (`role="group"`) named "Selected rows", with a live region (`role="status"`) that says the number when it changes: "3 selected", "All 320 that match are selected". |
 | A bulk action in progress | `aria-busy` on the grid, and `aria-disabled` on the buttons of the line, which keep the focus. |
@@ -353,6 +354,8 @@ page and keeps the focus.
 | An action that failed | The live region: "Archive failed: …". For an action that ran straight away, also `aria-invalid` on the row's actions cell, described by the message. |
 | The action panel | A modal dialog named by its heading (`aria-labelledby`): "Reassign: Write the report", "New task". |
 | A field of the panel | A label. A required field has `aria-required`, and the mark " \*" beside its label is hidden from assistive technology. A field with an error has `aria-invalid` and is described by the message. |
+| A field of the panel that holds the key of a related record | A group (`role="group"`) named by the field's label, with what the record is called as text and the button "Choose", which is described by that text. A group cannot say `aria-required`, so the label of a required one ends in the word "required", for screen readers only. Its errors describe the group. |
+| The picker | A modal dialog named by its heading: "Assignee: choose user". Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
 | What an action says that is about no field of its panel | An alert (`role="alert"`) above the fields. |
 | The name of a table and its create button | Above the grid: the name as a heading of the page (`h1` on a mounted page), or as text where an embedded table is not told a heading level; the button named "New task". |
 | A row that was added or taken away | The total (`aria-rowcount`) is one more or one less, and the rows after it are numbered again (`aria-rowindex`). |
@@ -478,7 +481,10 @@ reference cells; with the actions column, a failed actions cell, the action
 panel open, with errors and with the dialog on top of it, and with the
 create button of a table and of a line; with rows selected, with all that
 match selected, with the question of a bulk action open, and with what a
-bulk action came to, in the light and in the dark theme).
+bulk action came to, in the light and in the dark theme; with the picker
+open, with a row selected in it, with a choice that was not taken, with a
+column's question on top of it, with a cell whose choice was refused, and
+with the picker on top of the action panel, in both themes).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see

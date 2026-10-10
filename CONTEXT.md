@@ -43,6 +43,10 @@ _Avoid_: Lookup, link cell, foreign-key cell
 What a record is called where a table shows it as one value: the attribute its resource's table names as `label_field`.
 _Avoid_: Display name, title field, name field
 
+**Picker**:
+The dialog in which a person chooses the related record of a reference cell, or of an input of an action, from the related resource's own table.
+_Avoid_: Lookup, dropdown, type-ahead, relation selector
+
 **Full view**:
 The records of a nested table shown on the page of their own resource's table, limited to the same row and relationship.
 _Avoid_: Detail page, drill-down, scoped page

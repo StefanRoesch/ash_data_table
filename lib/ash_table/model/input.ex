@@ -16,7 +16,15 @@ defmodule AshTable.Model.Input do
   #     `:plain` for a value that is written as one line of text and has no
   #     editor of its own (a key, a time, an atom), or `:component` for an
   #     attribute whose column in this table has a component with an editor:
-  #     `component` is then that column's (see `AshTable.Model.Column`).
+  #     `component` is then that column's (see `AshTable.Model.Column`); or
+  #     `:reference` for an attribute that is the foreign key of a public
+  #     belongs-to relationship whose related record can be chosen: the
+  #     field shows what the chosen record is called, and a button opens the
+  #     picker. `reference` then says which relationship, to which
+  #     `destination`, which attribute of the chosen record is the value
+  #     (`destination_attribute`), and through which read action the records
+  #     on offer are read (`choose_action`). See
+  #     `AshTable.Resource.Referencing.picking/2`.
   #   * `required?` says whether the action takes the input empty: as the
   #     attribute and the action say (`allow_nil?`, `allow_nil_input`,
   #     `require_attributes`), or the argument (`allow_nil?`).
@@ -39,6 +47,7 @@ defmodule AshTable.Model.Input do
     :values,
     :editor,
     :component,
+    :reference,
     :default,
     required?: false,
     partly_hidden?: false
@@ -51,8 +60,18 @@ defmodule AshTable.Model.Input do
           type: {Ash.Type.t(), keyword},
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
-          editor: AshTable.Resource.Editing.editor() | :plain | :component,
+          editor: AshTable.Resource.Editing.editor() | :plain | :component | :reference,
           component: map | nil,
+          reference:
+            %{
+              relationship: atom,
+              destination: Ash.Resource.t(),
+              source_attribute: atom,
+              destination_attribute: atom,
+              allow_nil?: boolean,
+              choose_action: atom
+            }
+            | nil,
           default: term,
           required?: boolean,
           partly_hidden?: boolean

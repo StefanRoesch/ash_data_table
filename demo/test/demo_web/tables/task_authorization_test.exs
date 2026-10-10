@@ -414,7 +414,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "is offered editing on every task: the table cannot know yet which will be refused",
          %{html: html, mine: mine, theirs: theirs} do
       assert editors(html, "task") ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks project assignee)
 
       for task <- [mine, theirs], field <- ~w(title status priority progress billable?) do
         assert attribute(html, cell(task.id, field), "aria-readonly") == [], field
@@ -458,7 +458,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
       assert editors(html, "task") ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks project assignee)
 
       assert attribute(html, cell(task.id, "title"), "aria-readonly") == []
 
@@ -487,12 +487,12 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
         end
 
       assert seen == [
-               admin: %{columns: 19, rows: 1, editors: 11},
-               member: %{columns: 18, rows: 1, editors: 11},
+               admin: %{columns: 19, rows: 1, editors: 13},
+               member: %{columns: 18, rows: 1, editors: 13},
                # may not read people: no assignee, no reporter
                viewer: %{columns: 16, rows: 1, editors: 0},
                # of the other organization: none of these tasks, and a member there
-               outsider: %{columns: 18, rows: 0, editors: 11},
+               outsider: %{columns: 18, rows: 0, editors: 13},
                # may not read projects
                nobody: %{columns: 16, rows: 0, editors: 0}
              ]

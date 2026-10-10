@@ -40,6 +40,20 @@ defmodule AshTable.Model do
   # carries that action, its editor and the question of its `confirm`. With no
   # `update_action` at either level nothing is editable.
   #
+  # ## Choosing a related record
+  #
+  # A reference column is editable when such an action accepts the
+  # relationship's foreign key, and a person has something to choose the
+  # related record with (`AshTable.Resource.Referencing.picking/2`): the
+  # picker, which shows the table of the destination. Its editor is
+  # `:reference`, and a save gives the action the foreign key and nothing
+  # else. An input of an action that is such a foreign key is given the
+  # same way, in the action panel.
+  #
+  # The table in the picker is the destination's own, built with `choose:`
+  # the read action it reads through: it shows, sorts, filters and pages as
+  # that table does, and nothing in it is edited, run, created or expanded.
+  #
   # ## Arrays
   #
   # An array of values that have a cell type of their own has the cell type
@@ -202,6 +216,10 @@ defmodule AshTable.Model do
       whose destination this resource is. The model is then that of the
       nested table of the records related to one row: see "Nested" above.
 
+    * `:choose` - the name of a public read action of the resource. The
+      model is then that of the table as a picker shows it, read through
+      that action: see "Choosing a related record" above.
+
   Raises `ArgumentError` for a resource without the extension, and for a
   `table` block with a mistake of the compile-time checks that leaves the
   table nothing sound to do: no usable read action or pagination, a column
@@ -226,9 +244,17 @@ defmodule AshTable.Model do
     ensure_table!(resource)
 
     via = via!(resource, opts[:via])
-    read_action = read_action!(resource, via)
+    choose = opts[:choose]
+
+    read_action =
+      if choose, do: choose_action!(resource, choose), else: read_action!(resource, via)
+
     source_read_action!(resource, via)
-    pagination = pagination(resource, read_action, via)
+
+    pagination =
+      if choose,
+        do: choose_pagination(resource, read_action),
+        else: pagination(resource, read_action, via)
 
     update_actions!(resource)
 
@@ -254,7 +280,7 @@ defmodule AshTable.Model do
         |> apart(field.name in apart)
       end)
 
-    %__MODULE__{
+    model = %__MODULE__{
       resource: resource,
       primary_key: Info.primary_key(resource),
       read_action: read_action.name,
@@ -266,6 +292,21 @@ defmodule AshTable.Model do
       name: name(resource),
       max_depth: TableInfo.table_max_depth!(resource),
       via: via
+    }
+
+    if choose, do: chooser(model), else: model
+  end
+
+  # The table as a picker shows it: for choosing a record, and for nothing
+  # else. No cell of it is edited, it has no row actions and no create
+  # action, and its rows do not expand.
+  defp chooser(%__MODULE__{} = model) do
+    %{
+      model
+      | columns: Enum.map(model.columns, &read_only_if(&1, true)),
+        relationships: [],
+        actions: [],
+        create: nil
     }
   end
 
@@ -313,6 +354,10 @@ defmodule AshTable.Model do
       and `Ash.can_see_fields/4`, asked of the destination). Whether one
       related record, or its label, can be seen is known once it is read.
 
+    * A reference column is not editable for a person who can **never**
+      read the records to choose from, through the action the picker reads
+      them through, or who can never see the foreign key the edit writes.
+
     * A relationship whose destination the person can **never** read,
       through the read action its nested table runs, is left out
       (`Ash.can/3`). One whose records the person may read in part stays: Ash
@@ -357,10 +402,12 @@ defmodule AshTable.Model do
 
       unsortable = unsortable(model, columns, partly_hidden, opts)
 
+      unchosen = unchosen(model, columns, opts)
+
       columns =
         for column <- columns do
           column
-          |> read_only_if(column.update_action in forbidden)
+          |> read_only_if(column.update_action in forbidden or column.name in unchosen)
           |> Map.put(:partly_hidden?, column.name in partly_hidden)
           |> Map.update!(:sortable?, &(&1 and column.name not in unsortable))
         end
@@ -493,6 +540,27 @@ defmodule AshTable.Model do
     seen = fields -- Access.hidden_fields(model.resource, model.read_action, fields, opts)
 
     Access.partly_hidden_fields(model.resource, model.read_action, seen, opts) != []
+  end
+
+  # The editable reference columns in which this person has nothing to
+  # choose: they can never read the destination through the action the
+  # picker reads through, or can never see the foreign key, which is then
+  # not theirs to write through a table either.
+  defp unchosen(model, columns, opts) do
+    editable = for %{kind: :reference, editable?: true} = column <- columns, do: column
+
+    hidden =
+      Access.hidden_fields(
+        model.resource,
+        model.read_action,
+        Enum.uniq(Enum.map(editable, & &1.reference.source_attribute)),
+        opts
+      )
+
+    for %{reference: reference, name: name} <- editable,
+        reference.source_attribute in hidden or
+          Access.forbidden_actions(reference.destination, [reference.choose_action], opts) != [],
+        do: name
   end
 
   # Whether the person can never be shown the label a reference column
@@ -683,6 +751,40 @@ defmodule AshTable.Model do
               "cannot build the nested table of #{inspect(resource)}: the relationship " <>
                 "`#{via.name}` it is reached through reads through `#{name}`, " <>
                 unusable(found, resource)
+    end
+  end
+
+  # The table of a picker reads through the action it is given: the one the
+  # relationship names, or the one of this table. It is looked up once more,
+  # as the action of a nested table is, and the table's own is checked all
+  # the same.
+  defp choose_action!(resource, name) do
+    read_action!(resource, nil)
+
+    case Info.action(resource, name) do
+      %{type: :read, public?: true} = action ->
+        action
+
+      found ->
+        raise ArgumentError,
+              "cannot build the table of #{inspect(resource)} to choose a record from: it would " <>
+                "be read through `#{name}`, " <> unusable(found, resource)
+    end
+  end
+
+  # The strategy the block names when the action that is read through
+  # supports it, which a relationship's own action need not; else what that
+  # action supports, and no pages when it declares none.
+  defp choose_pagination(resource, read_action) do
+    case Reading.strategy(resource, read_action) do
+      {:ok, strategy} ->
+        pagination(read_action, strategy)
+
+      {:error, {:unsupported, _strategy}} ->
+        pagination(
+          read_action,
+          List.first(Reading.supported_strategies(read_action.pagination), :none)
+        )
     end
   end
 
@@ -974,8 +1076,12 @@ defmodule AshTable.Model do
     end
   end
 
-  # What one record of the resource is called: its short name, in words.
-  defp name(resource) do
+  @doc """
+  What one record of a resource is called: its short name, in words ("task
+  label"). It is the `name` of the resource's model.
+  """
+  @spec name(Ash.Resource.t()) :: String.t()
+  def name(resource) do
     resource |> Info.short_name() |> to_string() |> String.replace("_", " ")
   end
 
@@ -985,6 +1091,7 @@ defmodule AshTable.Model do
       for %{editor: editor} = input when not is_nil(editor) <- Acting.inputs(resource, action) do
         Input
         |> struct!(Map.put(input, :label, input_label(input, columns)))
+        |> with_reference(resource, columns)
         |> with_component(columns)
       end
 
@@ -996,6 +1103,51 @@ defmodule AshTable.Model do
       inputs: inputs,
       panel?: Acting.panel?(inputs)
     }
+  end
+
+  # An attribute that is the foreign key of a public belongs-to relationship
+  # whose related record can be chosen is given by choosing: its field shows
+  # what the chosen record is called, and opens the picker. It is called
+  # what the table's column of that relationship is called, else by the
+  # relationship's name in words ("Assignee", not "Assignee ID"), unless the
+  # table has a column for the key itself.
+  defp with_reference(%Input{kind: :attribute, name: name} = input, resource, columns) do
+    found =
+      Enum.find_value(Info.public_relationships(resource), fn
+        %Ash.Resource.Relationships.BelongsTo{source_attribute: ^name} = relationship ->
+          case Referencing.picking(resource, relationship) do
+            {:ok, picking} -> picking
+            {:error, _reason} -> nil
+          end
+
+        _other ->
+          nil
+      end)
+
+    case found do
+      nil ->
+        input
+
+      picking ->
+        {choose_action, reference} = Map.pop!(picking, :read_action)
+
+        %{
+          input
+          | editor: :reference,
+            reference: Map.put(reference, :choose_action, choose_action),
+            label: reference_label(input, picking.relationship, columns)
+        }
+    end
+  end
+
+  defp with_reference(input, _resource, _columns), do: input
+
+  defp reference_label(input, relationship, columns) do
+    cond do
+      Enum.any?(columns, &(&1.name == input.name and &1.kind == :attribute)) -> input.label
+      column = Enum.find(columns, &(&1.name == relationship)) -> column.label
+      true -> humanize(relationship)
+    end
   end
 
   # An attribute whose column has a component with an editor is given
@@ -1053,12 +1205,13 @@ defmodule AshTable.Model do
   end
 
   # A column that names a belongs-to relationship: a reference cell. It is
-  # shown as the label is, and that is all a person can do with it: a sort
-  # through a relationship is not authorized by Ash (internal ticket #31),
-  # so nothing here ever makes it sortable, and filtering by a related
-  # record is not built.
+  # shown as the label is. A sort through a relationship is not authorized
+  # by Ash (internal ticket #31), so nothing here ever makes it sortable,
+  # and filtering by a related record is not built. It is edited by choosing
+  # another record, where an update action accepts the foreign key and there
+  # is something to choose with.
   defp column(
-         _resource,
+         resource,
          %Ash.Resource.Relationships.BelongsTo{destination: destination} = relationship,
          declared,
          _pagination
@@ -1067,7 +1220,23 @@ defmodule AshTable.Model do
     {type, constraints} = CellType.type(destination, label)
     {cell_type, values} = CellType.classify(type, constraints)
 
+    update_action =
+      case Editing.update_action(resource, relationship, declared) do
+        {:ok, name} -> name
+        :none -> nil
+      end
+
+    picking =
+      case Referencing.picking(resource, relationship) do
+        {:ok, picking} -> picking
+        {:error, _reason} -> nil
+      end
+
     %Column{
+      editable?: not is_nil(update_action),
+      update_action: update_action,
+      editor: update_action && :reference,
+      confirm: update_action && declared && declared.confirm,
       name: relationship.name,
       kind: :reference,
       label: (declared && declared.label) || humanize(relationship.name),
@@ -1080,7 +1249,11 @@ defmodule AshTable.Model do
         relationship: relationship.name,
         destination: destination,
         label_field: label.name,
-        read_action: read_action
+        read_action: read_action,
+        source_attribute: relationship.source_attribute,
+        destination_attribute: relationship.destination_attribute,
+        allow_nil?: match?(%{allow_nil?: true}, picking),
+        choose_action: update_action && picking.read_action
       }
     }
   end

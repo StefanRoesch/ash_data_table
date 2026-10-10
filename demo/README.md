@@ -55,12 +55,12 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
-| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, read-only, with no sort and no filter); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. A box at the start of every row selects it, and the four row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below) |
+| http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, with no sort and no filter; the first two are edited by choosing another record from that resource's own table, in the picker, see below; the third is read-only); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. A box at the start of every row selects it, and the four row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Four row actions in a last column, "Actions", and "New task" on the line of the table's name (see below) |
 | http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Its block also says what a project is called in other tables (`label_field :name`). Two row actions: "Set status", whose one input is a choice, and "Destroy", which asks first; and "New project". Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
-| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a plain field for the task's key. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
+| http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a field for the task that opens the picker: the table of the tasks to choose one from. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
 | http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
-| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25. One row action, a destroy relabelled "Remove", which runs at one click and says so (`confirm false`); "New task label", whose panel has a plain field for each of the two keys |
+| http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25. One row action, a destroy relabelled "Remove", which runs at one click and says so (`confirm false`); "New task label", whose panel has a field for the task and one for the label, each of which opens the picker |
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; "Addresses", an array of embedded resources, stays read-only text. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 
 http://localhost:4478/dashboard is a LiveView of the demo's own
@@ -88,8 +88,9 @@ editing. Nothing of it is in the URL.
 | `/labels` | Tasks (many-to-many, offset pages) | nothing declared |
 | `/task_labels` | Task, Label, from a row with a key of two attributes | nothing declared; `max_depth 1`: the nested task has no expanders |
 
-`User` has a table and no page: it is only ever seen nested, as the assignee
-or the reporter of a task or the author of a comment. Its block says
+`User` has a table and no page: it is seen nested, as the assignee
+or the reporter of a task or the author of a comment, and in the picker,
+where the assignee of a task is chosen from it. Its block says
 `max_depth 0`, so a person's row never expands, although a user has assigned
 and reported tasks that would be offered. Its last column, "Assigned hours",
 is an aggregate over the estimates of a person's tasks, which a field policy
@@ -234,6 +235,9 @@ Enter or leaving the cell saves, Escape gives up.
 | `due_on`, `completed_at` | a date, a datetime | `update` |
 | `tags` | an array of text: Enter opens one field per tag in the cell, each with a button that takes it away, and "Add value" under them. Enter in a tag saves the list, as leaving the editor does; Escape gives it up | `update`, with the whole list. A task has five tags at most, of two to twenty characters each |
 | `checks` | an array of enum values, as multiple choice: Enter opens a list of boxes in the cell, Space ticks, the arrow keys go from box to box, Enter saves | `update`, with the values that are ticked |
+| `project` | a related record, chosen in the picker: Enter opens the projects' own table in a dialog at the right edge; a row is selected and "Choose" takes it | `update`, with `project_id` alone, after the question of its `confirm`: "Move this task to another project?". A task has to have a project: the picker has no "None" |
+| `assignee` | a related record, chosen in the picker from the people's table | `update`, with `assignee_id` alone. "None" takes the assignee off |
+| `reporter` ("Reported by") | read-only | no update action accepts `reporter_id` |
 | `external_ref` | read-only | `update` accepts it, the column says `update_action false` |
 | `overdue?`, `comment_count`, `headline`, `inserted_at` | read-only | a calculation, an aggregate, and an attribute no action accepts |
 
@@ -259,7 +263,25 @@ Saves that fail, to try:
   to is refused on the cell, "You are not allowed to change this."; their own
   tasks they can change. On rows where `estimate_hours` is hidden from them,
   its cell cannot be edited
+- as the member: choose another assignee for a task they neither reported
+  nor are assigned to: the cell shows the chosen name, is marked, and says
+  "You are not allowed to change this."
 - as the viewer there is nothing to try: the table offers them no editing
+
+The picker, to try, as Ada Admin:
+
+- Enter on a cell of "Assignee": the people's table in a dialog at the right
+  edge, with the row of the task's assignee selected and focused. Down
+  Arrow, Space, then "Choose"; or Enter on a row; or a double click on a
+  row. Focus is back on the cell.
+- "None" takes the assignee off. Escape and "Cancel" change nothing.
+- Up Arrow from the first row reaches the filters of the people's table:
+  type a name, Enter. Escape there comes back to the grid, and once more
+  closes the picker.
+- Enter on a cell of "Project", choose another project: "Move this task to
+  another project?" is asked on top of the picker.
+- "Reported by" does not open: no action accepts its key.
+- As Olga Outsider, the pickers offer Globex's people and projects.
 
 After a save the row is shown from the action's result: `headline` follows a
 new title, `overdue?` a new due date, without the page being read again.
@@ -296,11 +318,11 @@ the window first.
 
 | Table | Row actions | Create |
 | --- | --- | --- |
-| `/tasks` | "Archive" (no inputs: runs at once), "Reassign" (the assignee's key and a required reason: opens the panel), "Set progress" (one number, with the task's progress in it), "Destroy" (asks "Delete this task? This cannot be undone.") | "New task": thirteen fields, among them plain fields for the keys of the project and of the assignee, "Tags" as a list of values and "Checks" as a multiple choice |
+| `/tasks` | "Archive" (no inputs: runs at once), "Reassign" (the assignee, chosen in the picker, and a required reason: opens the panel), "Set progress" (one number, with the task's progress in it), "Destroy" (asks "Delete this task? This cannot be undone.") | "New task": thirteen fields, among them "Project" and "Assignee", each with a button that opens the picker, "Tags" as a list of values and "Checks" as a multiple choice |
 | `/projects` | "Set status" (a choice), "Destroy" (asks) | "New project" |
-| `/comments` | "Destroy" (asks) | "New comment": the body, and the task's key |
+| `/comments` | "Destroy" (asks) | "New comment": the body, and the task, chosen in the picker |
 | `/labels` | "Destroy" (asks) | "New label": the colour starts with the attribute's default |
-| `/task_labels` | "Remove": a destroy that runs at one click, declared with `confirm false` | "New task label": two keys and a note |
+| `/task_labels` | "Remove": a destroy that runs at one click, declared with `confirm false` | "New task label": the task and the label, each chosen in the picker, and a note |
 
 Things to try, on `/tasks`:
 
@@ -312,8 +334,9 @@ Things to try, on `/tasks`:
 - "Destroy": Cancel in the dialog changes nothing; Confirm, which is in the
   error colour, takes the row away, and the range under the table counts one
   less.
-- "New task": give a title and paste the id of a project (the "ID" column
-  of `/projects`). The task is the first row of the page, whatever the sort,
+- "New task": give a title, use "Choose" under "Project" and choose a
+  project in the picker, which opens on top of the panel; the title is still
+  there. The task is the first row of the page, whatever the sort,
   until you sort, filter or change page.
 - As **Max Member**, "Archive" a task that is neither assigned to him nor
   reported by him: the row's last cell is marked and says "You are not
@@ -610,7 +633,8 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `locale.spec.ts` | the language switcher: the tables in German (labels, operators, counts in singular and plural, the messages of failed saves and reads), and back in English |
 | `nesting.spec.ts` | nested tables: the expander and the lines by pointer and by keyboard; Right and Left Arrow; into a nested table and back out; one tab stop for the whole tree at every depth, and Tab out of it; that moving sends nothing and opening sends one event; focus after a nested table's own sort, filter and page, after a line or a row is closed, and after a save in the row around it; editing and filtering in a nested table; three levels and the limit; fifty tables open on one page |
 | `full_view.spec.ts` | the link of a nested table to the full view, by pointer and by keyboard, and where it is not there; the page it leads to: its heading, the limit in the address through sort, filter and page and after a reload, the way back to all records, editing and expanding under the limit; the browser's back button; the page as the member, the viewer and the outsider; axe on it |
-| `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort, filter or edit, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
+| `picker.spec.ts` | the picker: which reference cells open one, by Enter, F2 and a double click; the dialog, its heading and the table in it, with focus on the row of the record chosen now; the keyboard in its grid, and that moving and selecting send nothing; Tab within the dialog; its own filters and sort; Space and "Choose", Enter on a row, a double click, a click on a row, "None", Escape and Cancel, and where focus is afterwards; the question of a column on top of it; a choice the action refuses, on the cell; a row that names no record the person may read; in a nested table; from the action panel, on top of it, for a row action, a create and an action on the selected rows; a narrow window; German; axe in both themes |
+| `references.spec.ts` | reference cells: what they show against the related record itself, that they are cells for the arrow keys with nothing to sort or filter, and nothing to edit where no action accepts their key, that a row keeps them through a save, in a nested table, and as the viewer, who has none for people |
 | `selection.spec.ts` | row selection and bulk actions: the boxes by pointer and by keyboard, Space on a cell, ranges with Shift, the box of the page and its mixed state; that selecting sends nothing and that the arrow keys still send nothing; the selection through a sort, a page and a filter change; "all that match"; the line above the grid and what is read out; the question, the panel of an action with inputs, and the result, as the admin and as the member, whose refused rows stay selected; where focus is afterwards; a nested table's own selection; a table told to let one row or several be selected with nothing to run on them; the height of a row with a box; axe with rows selected, with the question open and with a result, in the light and the dark theme |
 | `actions.spec.ts` | row actions and row create: the actions cell by pointer and by keyboard; the question before a destroy; where focus is after an update, a destroy and a create; a failed actions cell; the action panel as a modal dialog, every kind of field, errors at fields and above them, the question on top of it; the create button and the new row; create on a relationship line, in the full view and in the dashboard; the look at 1500, 900 and 390 px |
 | `arrays.spec.ts` | the array columns of `/tasks`: that their cells are plain text, with no sort and no filter; the list of an array of text (a named control per value, adding and taking away from the keyboard and with the pointer, where focus goes, Tab through its controls and out of the grid, typing on the cell) and the multiple choice of an array of enum values (Space, the arrow keys, a letter); that nothing is sent until Enter or leaving, and one save then; Escape; a save the action refuses, and what the cell opens with afterwards; the member's refusal; both as fields of "New task"; both in a nested table; the list of an array of numbers on `/specimens`; axe with each editor open, with a failed cell, in the dark theme and in the panel |

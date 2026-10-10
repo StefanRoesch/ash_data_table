@@ -101,6 +101,10 @@ defmodule AshTable.Text do
           | :bulk_done
           | :bulk_not_done
           | :bulk_failure
+          | :choose
+          | :choose_none
+          | :choose_for
+          | :required
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -328,4 +332,16 @@ defmodule AshTable.Text do
     do: dgettext_noop("ash_table", "%{action}: %{done} done, %{failed} not done.")
 
   defp msgid(:bulk_failure), do: dgettext_noop("ash_table", "%{message} (%{count})")
+
+  # the picker, in which a person chooses a related record: its button that
+  # takes the selected row, on the field of the action panel the button that
+  # opens it, and its button that chooses no record
+  defp msgid(:choose), do: dgettext_noop("ash_table", "Choose")
+  defp msgid(:choose_none), do: dgettext_noop("ash_table", "None")
+  # its heading: the column the record is chosen for, and what one record of
+  # the table it is chosen from is called ("Assignee: choose user")
+  defp msgid(:choose_for), do: dgettext_noop("ash_table", "%{column}: choose %{name}")
+  # said, to a screen reader, of a field of the action panel that has no
+  # control to say it of
+  defp msgid(:required), do: dgettext_noop("ash_table", "required")
 end

@@ -336,3 +336,19 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "%{action}: %{done} done."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{column}: choose %{name}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Choose"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "None"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "required"
+msgstr ""

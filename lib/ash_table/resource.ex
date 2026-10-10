@@ -50,9 +50,9 @@ defmodule AshTable.Resource do
   A `column` that names a public belongs-to relationship is a reference
   cell: it shows the related record's label, which is the attribute that the
   destination resource's own `table` block names with `label_field`. It is
-  read-only, and is neither sorted nor filtered by. The label is read as Ash
-  loads the relationship, as the person, so the destination's policies decide
-  what they read in the cell.
+  neither sorted nor filtered by. The label is read as Ash loads the
+  relationship, as the person, so the destination's policies decide what
+  they read in the cell.
 
   Ash applies the read policy of a related resource to an aggregate and not
   its field policies, and applies no policy to what a calculation
@@ -80,6 +80,41 @@ defmodule AshTable.Resource do
 
   Page size and default sort are not part of the block. They live on the read
   action (`pagination default_limit: …` and `prepare build(sort: …)`).
+
+  ## Choosing a related record
+
+  A reference cell is edited like any other cell: through an update action,
+  the column's own or the table's. What that action has to accept is the
+  relationship's foreign key (its `source_attribute`), which has to be a
+  public, writable attribute.
+
+      table do
+        update_action :update    # accepts :assignee_id
+
+        column :assignee
+      end
+
+  The person does not type the key. Enter on the cell opens the picker: a
+  dialog with the table of the destination resource, as that resource
+  declares it and as the person may read it, in which they select one row
+  and choose it. "None" is offered where the key can be empty. The save is
+  the save of a cell: the column's action runs with the key as its only
+  input, a `confirm` asks first, and the row is shown from what the action
+  returns.
+
+  The records on offer are read through the relationship's own
+  `read_action` when it names one, else through the read action of the
+  destination's table; either has to be `public?`. The record that was
+  chosen is read again on the server, by its key and as the person, before
+  the key is saved: a key from the browser that names no record they may
+  read there saves nothing.
+
+  A relationship with a `filter` has no picker, and its cell is read-only:
+  which records it can hold is for Ash's loader to say. So is a cell whose
+  key no update action accepts.
+
+  An input of a row action or of the create action that is such a key is
+  given the same way, in the action panel: see below.
 
   ## Nested tables
 
@@ -171,8 +206,13 @@ defmodule AshTable.Resource do
     * Its control is the editor a cell of its type has (text, number,
       boolean, date, datetime, enum, and an array of those), or a plain
       text field for a value that is written as one line and has no editor
-      of its own: a UUID, a time, an `:atom` without `one_of`. So an input
-      that points at another resource is a field for its key.
+      of its own: a UUID, a time, an `:atom` without `one_of`.
+    * An input that is the foreign key of a public belongs-to relationship
+      whose destination has a table is not typed: its field says what the
+      related record is called, and has a button that opens the picker on
+      top of the panel. The field is called what the table's column of that
+      relationship is called. A key whose destination has no table, or
+      whose relationship has a `filter`, is a plain text field.
     * A type with no field (a map, an embedded resource, a union, an array
       of those) is left out of the panel when the input is optional. An action that
       requires such an input cannot be run from a table: the compiler

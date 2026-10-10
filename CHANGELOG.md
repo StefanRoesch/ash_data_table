@@ -58,6 +58,38 @@ declared in the resource and mounted with one line in the router.
   datetimes and enums. The row is shown from what the action returns.
 - A failed save marks its cell with the action's message and keeps what was
   typed. `confirm` asks in a dialog before saving.
+- **Choosing a related record.** A reference cell is edited where its
+  column's update action, its own or the table's, accepts the relationship's
+  foreign key: Enter, F2 or a double click opens the picker, a modal dialog
+  at the right edge with the destination resource's own table (its columns,
+  filter row, sorting and pages), read as the person. The table there is for
+  choosing only, and its rows are selected one at a time. A row is selected
+  with a click or Space and taken with "Choose"; Enter on a row and a double
+  click choose it at once; "None" empties a key that can be empty; Escape
+  and "Cancel" close. The save is that of a cell: the column's action with
+  the key as its one input, nothing for the record the cell points at
+  already, the question of `confirm` on top of the picker, the row shown
+  from the action's result, and a refused save on the cell. The record that
+  was chosen is read again on the server, as the person and through the
+  read action the picker shows its rows through, before its key is saved: a
+  key of a record they may not read there saves nothing. The records on
+  offer are those of the relationship's own `read_action` when it names
+  one, else of the read action of the destination's table. A relationship
+  with a `filter`, or whose key is not a public, writable attribute, has no
+  picker, and its cell stays read-only.
+- In the action panel, an input that is such a key is a field that says
+  what the related record is called and has a button that opens the same
+  picker, on top of the panel; the panel keeps what else was typed. The
+  field is called what the table's column of the relationship is called. A
+  key that was put into such a field is looked up as the person before the
+  action runs. A key whose destination has no table stays a typed field.
+- `update_action` and `confirm` on a column that names a relationship are
+  no longer mistakes in themselves. They are reported where the action does
+  not accept the relationship's foreign key, and where the related record
+  cannot be chosen.
+- Where one row at a time is selected, a table's rows have radio buttons
+  of one group, its grid says `aria-multiselectable="false"`, and the
+  selected row stays selected when it is used again.
 - **Arrays.** An array of text, numbers, booleans, dates, datetimes or enum
   values is a cell of its own: shown as its values, as plain text separated
   by commas, each as a cell of its type shows it (the labels of an enum's

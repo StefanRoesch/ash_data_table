@@ -53,9 +53,9 @@ declared order. Calculations and aggregates appear only when named.
 A `column` that names a public belongs-to relationship is a reference
 cell: it shows the related record's label, which is the attribute that the
 destination resource's own `table` block names with `label_field`. It is
-read-only, and is neither sorted nor filtered by. The label is read as Ash
-loads the relationship, as the person, so the destination's policies decide
-what they read in the cell.
+neither sorted nor filtered by. The label is read as Ash loads the
+relationship, as the person, so the destination's policies decide what
+they read in the cell.
 
 Ash applies the read policy of a related resource to an aggregate and not
 its field policies, and applies no policy to what a calculation
@@ -83,6 +83,41 @@ about what a person may not see or do.
 
 Page size and default sort are not part of the block. They live on the read
 action (`pagination default_limit: …` and `prepare build(sort: …)`).
+
+## Choosing a related record
+
+A reference cell is edited like any other cell: through an update action,
+the column's own or the table's. What that action has to accept is the
+relationship's foreign key (its `source_attribute`), which has to be a
+public, writable attribute.
+
+    table do
+      update_action :update    # accepts :assignee_id
+
+      column :assignee
+    end
+
+The person does not type the key. Enter on the cell opens the picker: a
+dialog with the table of the destination resource, as that resource
+declares it and as the person may read it, in which they select one row
+and choose it. "None" is offered where the key can be empty. The save is
+the save of a cell: the column's action runs with the key as its only
+input, a `confirm` asks first, and the row is shown from what the action
+returns.
+
+The records on offer are read through the relationship's own
+`read_action` when it names one, else through the read action of the
+destination's table; either has to be `public?`. The record that was
+chosen is read again on the server, by its key and as the person, before
+the key is saved: a key from the browser that names no record they may
+read there saves nothing.
+
+A relationship with a `filter` has no picker, and its cell is read-only:
+which records it can hold is for Ash's loader to say. So is a cell whose
+key no update action accepts.
+
+An input of a row action or of the create action that is such a key is
+given the same way, in the action panel: see below.
 
 ## Nested tables
 
@@ -174,8 +209,13 @@ arguments.
   * Its control is the editor a cell of its type has (text, number,
     boolean, date, datetime, enum, and an array of those), or a plain
     text field for a value that is written as one line and has no editor
-    of its own: a UUID, a time, an `:atom` without `one_of`. So an input
-    that points at another resource is a field for its key.
+    of its own: a UUID, a time, an `:atom` without `one_of`.
+  * An input that is the foreign key of a public belongs-to relationship
+    whose destination has a table is not typed: its field says what the
+    related record is called, and has a button that opens the picker on
+    top of the panel. The field is called what the table's column of that
+    relationship is called. A key whose destination has no table, or
+    whose relationship has a `filter`, is a plain text field.
   * A type with no field (a map, an embedded resource, a union, an array
     of those) is left out of the panel when the input is optional. An action that
     requires such an input cannot be run from a table: the compiler
@@ -383,7 +423,7 @@ end
 
 | Name | Type | Default | Docs |
 |------|------|---------|------|
-| [`name`](#table-column-name){: #table-column-name .spark-required} | `atom` |  | What is shown in this column: a public attribute, calculation or aggregate, or a public belongs-to relationship. A relationship makes the column a reference cell: it shows the related record's label, the `label_field` of the destination's table, read-only, and is neither sorted nor filtered by. |
+| [`name`](#table-column-name){: #table-column-name .spark-required} | `atom` |  | What is shown in this column: a public attribute, calculation or aggregate, or a public belongs-to relationship. A relationship makes the column a reference cell: it shows the related record's label, the `label_field` of the destination's table, and is neither sorted nor filtered by. It is edited by choosing another related record from the destination's table, where the column's update action accepts the relationship's foreign key. |
 ### Options
 
 | Name | Type | Default | Docs |
@@ -391,7 +431,7 @@ end
 | [`label`](#table-column-label){: #table-column-label } | `String.t` |  | The column header. Defaults to the humanised field name (`:id` becomes "ID"). |
 | [`sortable?`](#table-column-sortable?){: #table-column-sortable? } | `boolean` |  | Set to `false` to switch sorting off for this column. Defaults to what the resource allows; it cannot switch sorting on. |
 | [`filterable?`](#table-column-filterable?){: #table-column-filterable? } | `boolean` |  | Set to `false` to leave this column without a filter. Defaults to what the resource allows; it cannot switch filtering on. |
-| [`update_action`](#table-column-update_action){: #table-column-update_action } | `false \| atom` |  | The update action an inline edit of this column runs, with the column's attribute as its only input. `false` makes the column read-only. Defaults to the table's `update_action`. |
+| [`update_action`](#table-column-update_action){: #table-column-update_action } | `false \| atom` |  | The update action an inline edit of this column runs, with the column's attribute as its only input; for a column that names a relationship, the relationship's foreign key. `false` makes the column read-only. Defaults to the table's `update_action`. |
 | [`confirm`](#table-column-confirm){: #table-column-confirm } | `String.t` |  | A question asked before an inline edit of this column is saved. |
 | [`component`](#table-column-component){: #table-column-component } | `module` |  | A module that says how the cells of this column look and what they are edited with: one that implements `AshTable.Component`, your own or one of the three that are shipped (`AshTable.Components.Badge`, `AshTable.Components.Progress`, `AshTable.Components.Slider`). It changes the look and the control only: a save still runs the column's `update_action`, and sorting, filtering and authorization are as without it. The same editor is the field of this attribute in the action panel. Not for a column that names a relationship. |
 | [`exposes_protected_field?`](#table-column-exposes_protected_field?){: #table-column-exposes_protected_field? } | `boolean` |  | Set to `true` on an aggregate or calculation column that is meant to show everyone who reads a row what a field policy protects elsewhere: a field of the related resource that the aggregate is over or filters by, or a field the calculation references. It silences the warning the compiler gives about such a column. Ash applies no field policy of what an aggregate or a calculation is made from; the column is protected by a field policy of its own on this resource. |

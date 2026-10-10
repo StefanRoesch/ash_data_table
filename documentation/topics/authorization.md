@@ -225,6 +225,12 @@ that it asks of its own resource.
 - A nested table, and a page limited to the records of one parent, read that
   parent again as the person on every read. A key in an event or in an
   address gives access to nothing.
+- A reference cell is edited by choosing a record from the destination's
+  own table, read as the person. The record that is chosen is read again by
+  its key, as the person, before anything is saved: a key gives nobody a
+  record to point at that the table to choose from would not show them.
+  [Choosing a related record](choosing-a-related-record.md#who-may-choose-what)
+  has every case.
 
 [Nested tables](nested-tables.md#what-a-person-may-not-see) has every case.
 
@@ -290,6 +296,7 @@ resources must have `public?` read actions on their destination resources."
 | A many-to-many a row offers | Besides: the read action of the join resource, which says which records are related at all. It is the `read_action` of the join relationship, else the join resource's primary read action. | The same. |
 | A relationship `through` a path of others | Besides: the primary read action of every resource the path passes. | The same. |
 | A [reference cell](nested-tables.md#the-reference-cell) | The relationship's own `read_action`, else the destination's primary read action: Ash loads the related record. | Reported; the table is refused. |
+| The [picker](choosing-a-related-record.md) of a reference cell, or of a field of the action panel | The relationship's own `read_action`, else the read action of the destination's table: the records to choose from, and the record that was chosen. | Nothing is offered: the cell is read-only, and the field is a typed key. The destination's own table is what is reported. |
 | An aggregate column | For every relationship of the aggregate's path: its own `read_action`, else the primary read action of its destination, and the read action of the join resource of a many-to-many. For the last relationship the aggregate's own `read_action` stands in for the primary one. | The same. |
 | A calculation column that is an expression | The read actions of every aggregate the expression holds, by name or written out (`count(comments)`), also inside a calculation it references. | The same. |
 | `update_action`, `action`, `create_action` | That action. | The same. |
@@ -330,6 +337,11 @@ action that was looked at:
   it belongs to. What the browser names is a claim: a key reaches no
   record that the table would not show this person. See
   [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-running-does).
+- **The record a person chose in the picker**: through the read action the
+  picker shows its rows through, by its primary key, before its key is
+  saved or put into the action panel. And the record a key of the panel
+  points at, by that key, when the panel opens (for what the field calls
+  it) and when its button is used (for a key that was put there).
 - **The row a nested table belongs to**: through the read action of the
   table that shows the row. For a row of the table on the page that is the
   table's read action; for a row of a nested table it is the action that

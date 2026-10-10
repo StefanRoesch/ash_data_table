@@ -276,7 +276,8 @@ test.describe("editing", () => {
   test("each table has the editors of its own resource, and one whose resource names no update action has none", async ({
     frames,
   }) => {
-    await expect(tasks.editorTemplates).toHaveCount(11)
+    // two of them are reference cells, edited in the picker
+    await expect(tasks.editorTemplates).toHaveCount(13)
     // name, description, status, starts on and budget: what the projects' `update` accepts
     await expect(projects.editorTemplates).toHaveCount(5)
 

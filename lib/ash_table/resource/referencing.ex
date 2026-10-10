@@ -1,9 +1,10 @@
 defmodule AshTable.Resource.Referencing do
   @moduledoc false
   # What a reference cell needs: the label a resource's records are called
-  # by, and what a column that names a relationship shows of the related
-  # record. Shared by the verifiers (which report a mistake) and the table
-  # model (which builds on the answer).
+  # by, what a column that names a relationship shows of the related
+  # record, and what a person chooses another related record with. Shared by
+  # the verifiers (which report a mistake) and the table model (which builds
+  # on the answer).
   #
   # Only the destination's own declarations are read here, never its table
   # model, as in `AshTable.Resource.Relating`.
@@ -35,6 +36,31 @@ defmodule AshTable.Resource.Referencing do
           label: Ash.Resource.Attribute.t(),
           read_action: atom
         }
+
+  @typedoc """
+  What a person chooses the related record of a belongs-to relationship
+  with: the picker, which shows the table of `destination` read through
+  `read_action`, and gives the chosen record's `destination_attribute` as
+  the value of `source_attribute`, the foreign key. `allow_nil?` says
+  whether the key can be empty, which is when "none" can be chosen.
+  """
+  @type picking :: %{
+          relationship: atom,
+          destination: Ash.Resource.t(),
+          source_attribute: atom,
+          destination_attribute: atom,
+          read_action: atom,
+          allow_nil?: boolean
+        }
+
+  @typedoc "Why the related record of a relationship is not chosen in a picker."
+  @type no_picker ::
+          :filter
+          | :no_table
+          | :no_read_action
+          | :key_not_found
+          | :key_not_public
+          | :key_not_writable
 
   @relationships [
     Ash.Resource.Relationships.BelongsTo,
@@ -134,6 +160,98 @@ defmodule AshTable.Resource.Referencing do
         {:ok, read_action}
     end
   end
+
+  @doc """
+  What a person chooses the related record of a belongs-to relationship of
+  `resource` with, or why there is nothing to choose it with.
+
+  The records on offer are those of the destination's table: read through
+  the relationship's own `read_action` when it declares one, which says
+  which records it means and is the action Ash loads the related record
+  through, else through the read action of the destination's table. Either
+  has to be `public?`.
+
+  There is no picker
+
+    * where the destination has no table, as its table is what is shown;
+    * where the relationship has a `filter`: which records it can then hold
+      is for Ash's loader to say, with the record the relationship starts
+      from, and a table cannot ask it for the candidates;
+    * where the foreign key is no public, writable attribute: nothing from
+      the outside sets it.
+  """
+  @spec picking(Ash.Resource.t() | Spark.Dsl.t(), struct) ::
+          {:ok, picking} | {:error, no_picker}
+  def picking(resource, %Ash.Resource.Relationships.BelongsTo{} = relationship) do
+    %{destination: destination, source_attribute: source_attribute} = relationship
+
+    with :ok <- unfiltered(relationship),
+         :ok <- has_table(destination),
+         {:ok, read_action} <- picker_read_action(relationship),
+         {:ok, key} <- key(resource, source_attribute) do
+      {:ok,
+       %{
+         relationship: relationship.name,
+         destination: destination,
+         source_attribute: source_attribute,
+         destination_attribute: relationship.destination_attribute,
+         read_action: read_action,
+         allow_nil?: key.allow_nil?
+       }}
+    end
+  end
+
+  def picking(_resource, _relationship), do: {:error, :no_table}
+
+  defp unfiltered(%{filter: nil}), do: :ok
+  defp unfiltered(_relationship), do: {:error, :filter}
+
+  defp has_table(destination),
+    do: if(Relating.table?(destination), do: :ok, else: {:error, :no_table})
+
+  # As a nested table of the relationship reads: `Relating.read_action/1`.
+  defp picker_read_action(relationship) do
+    case Relating.read_action(relationship) do
+      {:ok, action} -> {:ok, action.name}
+      {:error, _private_or_none} -> {:error, :no_read_action}
+    end
+  end
+
+  defp key(resource, name) do
+    case Info.attribute(resource, name) do
+      nil -> {:error, :key_not_found}
+      %{public?: false} -> {:error, :key_not_public}
+      %{writable?: false} -> {:error, :key_not_writable}
+      attribute -> {:ok, attribute}
+    end
+  end
+
+  @doc "Why a relationship's related record is never chosen in a picker, for a diagnostic."
+  @spec no_picker(struct, no_picker) :: String.t()
+  def no_picker(relationship, :filter),
+    do:
+      "The relationship `#{relationship.name}` has a `filter`, so a table cannot say which records it can hold, and offers none to choose from."
+
+  def no_picker(relationship, :no_table),
+    do:
+      "The destination of `#{relationship.name}`, #{inspect(relationship.destination)}, has no table to choose a record from."
+
+  def no_picker(relationship, :no_read_action),
+    do:
+      "The records to choose from would be read through an action of #{inspect(relationship.destination)} that is not a public read action: the relationship's own `read_action`, or the one behind the destination's table. " <>
+        AshTable.Resource.Reading.private_action()
+
+  def no_picker(relationship, :key_not_found),
+    do:
+      "The resource has no attribute `#{relationship.source_attribute}`, the foreign key of `#{relationship.name}`."
+
+  def no_picker(relationship, :key_not_public),
+    do:
+      "`#{relationship.source_attribute}`, the foreign key of `#{relationship.name}`, is not public (`attribute_public? false`). Only a `public?` attribute is set through a table."
+
+  def no_picker(relationship, :key_not_writable),
+    do:
+      "`#{relationship.source_attribute}`, the foreign key of `#{relationship.name}`, is declared `attribute_writable? false`, so no action can set it."
 
   @doc "What is wrong with a `label_field`, or with a column that names a relationship, for a diagnostic."
   @spec message(label_reason | reason) :: String.t()

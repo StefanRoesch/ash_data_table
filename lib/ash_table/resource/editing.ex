@@ -7,6 +7,7 @@ defmodule AshTable.Resource.Editing do
   alias Ash.Resource.Info
   alias AshTable.Model.CellType
   alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Referencing
 
   # The cell types with an editor.
   @editors [:text, :number, :boolean, :date, :datetime, :enum]
@@ -64,12 +65,18 @@ defmodule AshTable.Resource.Editing do
   end
 
   @typedoc "Why a field's cells can be edited through no action at all."
-  @type obstacle :: :not_an_attribute | :not_writable | {:no_editor, Ash.Type.t()}
+  @type obstacle ::
+          :not_an_attribute
+          | :not_writable
+          | {:no_editor, Ash.Type.t()}
+          | {:no_picker, struct, Referencing.no_picker()}
 
   @doc """
   What keeps a field's cells from being edited whichever action is behind
-  them, or nil when nothing does: only an attribute is edited, it has to be
-  writable, and its cell type has to have an editor.
+  them, or nil when nothing does: an attribute is edited, which has to be
+  writable and of a cell type that has an editor; and a belongs-to
+  relationship, whose cell is a reference cell, when a person can choose
+  its related record in a picker (`AshTable.Resource.Referencing.picking/2`).
   """
   @spec obstacle(Ash.Resource.t(), struct) :: obstacle | nil
   def obstacle(resource, %Ash.Resource.Attribute{} = attribute) do
@@ -77,6 +84,13 @@ defmodule AshTable.Resource.Editing do
       not attribute.writable? -> :not_writable
       is_nil(editor(resource, attribute)) -> {:no_editor, attribute.type}
       true -> nil
+    end
+  end
+
+  def obstacle(resource, %Ash.Resource.Relationships.BelongsTo{} = relationship) do
+    case Referencing.picking(resource, relationship) do
+      {:ok, _picking} -> nil
+      {:error, reason} -> {:no_picker, relationship, reason}
     end
   end
 
@@ -137,10 +151,27 @@ defmodule AshTable.Resource.Editing do
   def editor({:array, item}) when item in @editors, do: :list
   def editor(_cell_type), do: nil
 
-  @doc "Whether the action takes the field as an input: an attribute it accepts."
+  @doc """
+  Whether the action takes the field as an input: an attribute it accepts,
+  and for a belongs-to relationship its foreign key.
+  """
   @spec accepts?(Ash.Resource.Actions.Update.t(), struct) :: boolean
-  def accepts?(action, %Ash.Resource.Attribute{name: name}), do: name in action.accept
-  def accepts?(_action, _field), do: false
+  def accepts?(action, field) do
+    case written(field) do
+      nil -> false
+      name -> name in action.accept
+    end
+  end
+
+  @doc """
+  The attribute an edit of the field's cell gives the action: the field
+  itself, and for a belongs-to relationship its foreign key
+  (`source_attribute`). Nil for anything else.
+  """
+  @spec written(struct) :: atom | nil
+  def written(%Ash.Resource.Attribute{name: name}), do: name
+  def written(%Ash.Resource.Relationships.BelongsTo{source_attribute: name}), do: name
+  def written(_field), do: nil
 
   @doc """
   The arguments the action cannot run without: required, and without a
@@ -163,6 +194,9 @@ defmodule AshTable.Resource.Editing do
 
   def never_edited({:no_editor, type}),
     do: "It has the type `#{inspect(type)}`, which a table has no editor for."
+
+  def never_edited({:no_picker, relationship, reason}),
+    do: Referencing.no_picker(relationship, reason)
 
   def never_edited(_other),
     do:

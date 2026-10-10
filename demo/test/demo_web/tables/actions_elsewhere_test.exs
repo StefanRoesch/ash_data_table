@@ -111,7 +111,7 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
   end
 
   describe "a page whose create action takes the key of another record" do
-    test "has a plain field for the key, which the action checks", %{
+    test "has a field for the key, which is chosen in the picker and which the action checks", %{
       conn: conn,
       world: world,
       task: task
@@ -121,7 +121,15 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
 
       assert [
                %{name: "body", control: "textarea", required?: true},
-               %{name: "task_id", label: "Task ID", control: "text", value: "", required?: true}
+               # called what the table's column for the key is called
+               %{
+                 name: "task_id",
+                 label: "Task ID",
+                 control: "reference",
+                 value: "",
+                 chosen: nil,
+                 required?: true
+               }
              ] = panel(open_create(view, "comment"), "comment").fields
 
       html = run_panel(view, "comment", body: "Loose", task_id: "not a key")
@@ -393,7 +401,7 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
       html = act(view, task.id, "reassign")
 
       assert %{heading: "Neu zuweisen: Write the report", submit: "Ausführen"} = panel(html)
-      assert Enum.map(panel(html).fields, & &1.label) == ["Zugewiesen an (ID)", "Begründung"]
+      assert Enum.map(panel(html).fields, & &1.label) == ["Zugewiesen an", "Begründung"]
       assert text(html, "#task-panel-cancel") == "Abbrechen"
 
       html = run_panel(view, reason: "")

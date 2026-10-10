@@ -68,6 +68,33 @@ defmodule AshTable.Live.TableComponent do
   # is in `ID-result`, and the hook is told the rows it did not run on
   # (`ash_table:bulk`), which stay selected.
   #
+  # ## Choosing a related record
+  #
+  # A reference cell is edited in the picker: a second panel, `ID-picker`,
+  # which holds the table of the destination resource (this same component
+  # once more, under the id `ID-pick-NAME`, told `select: :single` and
+  # `choose`) and three buttons, `ID-picker-cancel`, `ID-picker-none` and
+  # `ID-picker-choose`. The hook asks for it with one `pick` event, with the
+  # row and the column; a field of the action panel that holds such a key
+  # asks with its button (`pick_input`). The person selects one row there,
+  # which is the hook's as every selection is, and the picker's own hook
+  # sends one `picked` event with the row as the grid's hook names it, or
+  # nil for no record.
+  #
+  # What the server keeps is which cell, or which field, the picker is open
+  # for (`picker`), as it keeps the panel's action; a new read closes it.
+  # The row it is told is a claim: the record is read by it, as the person,
+  # before anything is saved (`AshTable.Pick`). For a cell the column's
+  # action then runs with the foreign key as its one input, and the row is
+  # put back; for a field the key goes into the panel's form, with what the
+  # record is called beside it.
+  #
+  # A table that is told `choose` is one to choose from: nothing in it is
+  # edited, run, created or expanded (`AshTable.Model.build/2`), its grid
+  # says so (`data-choose`), and the row of the record that is chosen now
+  # says `data-current`, which the hook selects until the person selects
+  # another.
+  #
   # ## Nested tables
   #
   # A table whose rows offer relationships, to this person and at this depth,
@@ -122,7 +149,9 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Model
   alias AshTable.Model.Operator
   alias AshTable.Model.Relationship
+  alias AshTable.Pick
   alias AshTable.Query
+  alias AshTable.Record
   alias AshTable.Related
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Routes
@@ -184,6 +213,12 @@ defmodule AshTable.Live.TableComponent do
      # the inputs of, with its form. At most one per table; a new read
      # closes it.
      |> assign(panel: nil)
+     # The picker, while it is open: the cell, or the field of the panel,
+     # that a person is choosing a related record for. At most one per
+     # table; a new read closes it. And what makes a table the one in a
+     # picker: the read action it reads through, and the key of the record
+     # that is chosen now (`choose`).
+     |> assign(picker: nil, choose: nil)
      # Whether rows can be selected, and how. `select` is what the table was
      # told (`:multi` or `:single`), and `selecting` what it does: what it
      # was told, else `:multi` while it has an action that runs on several
@@ -204,7 +239,7 @@ defmodule AshTable.Live.TableComponent do
           assigns,
           [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
-            [:select]
+            [:select, :choose]
         )
       )
 
@@ -313,12 +348,20 @@ defmodule AshTable.Live.TableComponent do
   # at all: Phoenix can recompile and render a page again without mounting
   # it (`live_reload: [notify: [live_view: …]]`), and the table then has to
   # be what the block says now.
+  #
+  # A table to choose from is built for the read action it is told.
   defp build(%{assigns: %{resource: resource, via: via, built: built}} = socket) do
-    if match?(%{resource: ^resource, via: ^via}, built) and not reloading?(socket) do
+    read = socket.assigns.choose && socket.assigns.choose.read_action
+
+    if match?(%{resource: ^resource, via: ^via, choose: ^read}, built) and
+         not reloading?(socket) do
       socket
     else
-      model = Model.build(resource, via: via)
-      assign(socket, built: %{resource: resource, via: via, model: model, nested: %{}})
+      model = Model.build(resource, via: via, choose: read)
+
+      assign(socket,
+        built: %{resource: resource, via: via, choose: read, model: model, nested: %{}}
+      )
     end
   end
 
@@ -599,7 +642,9 @@ defmodule AshTable.Live.TableComponent do
     # each row, and after it its detail when rows can be expanded: closed
     items =
       Enum.flat_map(rows, fn row ->
-        [item(id, row.key, row.record, row.rowindex, %{}, false, row.names)] ++
+        current? = current?(socket.assigns.choose, model, row.record)
+
+        [item(id, row.key, row.record, row.rowindex, %{}, false, row.names, current?)] ++
           if(socket.assigns.expandable?, do: [detail(id, row.key, nil, nil)], else: [])
       end)
 
@@ -607,8 +652,8 @@ defmodule AshTable.Live.TableComponent do
     |> assign(page: %{page | records: [], parent: nil}, row_count: length(rows))
     |> assign(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
     # the rows are other rows now: a panel never acts on a record that the
-    # table no longer shows
-    |> assign(panel: nil)
+    # table no longer shows, and neither does a picker
+    |> assign(panel: nil, picker: nil)
     |> assign(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
       failed: %{},
@@ -631,6 +676,16 @@ defmodule AshTable.Live.TableComponent do
   # than that the records are not available otherwise. Never "No records".
   defp show(%{assigns: %{nested?: true}} = socket, {:error, refusal}, _read)
        when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
+    case TableInfo.table_on_forbidden!(socket.assigns.resource) do
+      :message -> show_message(socket, Text.t(:not_allowed))
+      :not_found -> show_message(socket, Text.t(:records_not_available))
+    end
+  end
+
+  # A table to choose from whose read is refused: the picker has told the
+  # person that there is a table, so it says something in every case, as a
+  # nested table does.
+  defp show(%{assigns: %{choose: %{}}} = socket, {:error, %Ash.Error.Forbidden{}}, _read) do
     case TableInfo.table_on_forbidden!(socket.assigns.resource) do
       :message -> show_message(socket, Text.t(:not_allowed))
       :not_found -> show_message(socket, Text.t(:records_not_available))
@@ -664,7 +719,7 @@ defmodule AshTable.Live.TableComponent do
     socket
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     # nothing is said of a record that was not read for this person
-    |> assign(error: text, open: %{}, related_title: nil, panel: nil)
+    |> assign(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
     |> stream(:rows, [], reset: true)
   end
 
@@ -689,8 +744,9 @@ defmodule AshTable.Live.TableComponent do
   # failed and the action's message, and under `action` the message of a row
   # action that failed. `open?` says whether the row is expanded, and `names`
   # what the hook names the row by where the key in its id does not (see
-  # `names/3`).
-  defp item(id, key, record, rowindex, failed, open?, names) do
+  # `names/3`). `current?` says, in a table to choose from, that this is the
+  # record that is chosen now.
+  defp item(id, key, record, rowindex, failed, open?, names, current? \\ false) do
     %{
       dom_id: "#{id}-row-#{key}",
       record: record,
@@ -698,9 +754,22 @@ defmodule AshTable.Live.TableComponent do
       failed: Map.get(failed, :cells, %{}),
       acted: Map.get(failed, :action),
       open?: open?,
-      names: names
+      names: names,
+      current?: current?
     }
   end
+
+  # Whether a record of a table to choose from is the one the key points at
+  # now: the row the picker opens with, where it is on the page.
+  defp current?(%{current: {attribute, value}}, model, record),
+    do:
+      Pick.current?(
+        %{destination: model.resource, destination_attribute: attribute},
+        record,
+        value
+      )
+
+  defp current?(_choose, _model, _record), do: false
 
   # What the hook tells the server of a selected row is the row's primary
   # key. Where that is one value and the key in the row's DOM id is that
@@ -1079,9 +1148,13 @@ defmodule AshTable.Live.TableComponent do
   def handle_event("panel_validate", params, %{assigns: %{panel: %{} = panel}} = socket) do
     typed = typed(params)
     form = Act.validate(panel.form, panel.inputs, typed, given(panel))
+    # a field whose record was chosen is one the person has been in
+    used = MapSet.union(used(typed), panel.picked)
 
     {:noreply,
-     assign(socket, panel: errors(%{panel | form: form, used: used(typed)}, socket.assigns.model))}
+     assign(socket,
+       panel: errors(%{panel | form: form, used: used, typed: typed}, socket.assigns.model)
+     )}
   end
 
   # Sent by the panel's form when the person uses its button: the action
@@ -1090,7 +1163,118 @@ defmodule AshTable.Live.TableComponent do
     do: submit(socket, panel, typed(params))
 
   # Sent by the panel's hook for Cancel and Escape.
-  def handle_event("panel_cancel", _params, socket), do: {:noreply, assign(socket, panel: nil)}
+  def handle_event("panel_cancel", _params, socket),
+    do: {:noreply, assign(socket, panel: nil, picker: nil)}
+
+  # Sent by the hook when a person opens the editor of a reference cell: the
+  # row by the key in its DOM id, and the column. The picker opens; nothing
+  # is saved. The record is read first, as the person: the picker opens on
+  # the record the cell points at now.
+  def handle_event("pick", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+    %{model: model, rows: rows} = socket.assigns
+
+    with %{editable?: true, kind: :reference, reference: reference} = column <-
+           column(model, name),
+         %{} = row <- rows[key] do
+      case Record.fetch(model, row.pk, Query.reader_opts(reader(socket.assigns))) do
+        {:ok, record} ->
+          case Map.get(record, reference.source_attribute) do
+            # not theirs to see on this record, and so not theirs to change
+            %Ash.ForbiddenField{} ->
+              {:reply, %{ok: false}, socket}
+
+            current ->
+              picker = %{
+                for: {:cell, key, column.name},
+                name: column.name,
+                reference: reference,
+                title: picker_title(column.label, reference),
+                current: current,
+                none?: reference.allow_nil?,
+                question: column.confirm,
+                error: nil
+              }
+
+              {:reply, %{ok: true}, assign(socket, picker: picker)}
+          end
+
+        :error ->
+          message = Text.t(:record_gone)
+
+          {:reply, %{ok: false, error: message},
+           say(socket, Text.t(:not_saved, column: column.label, message: message))}
+      end
+    else
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("pick", _params, socket), do: {:reply, %{ok: false}, socket}
+
+  # Sent by the button of a field of the action panel that holds the key of
+  # a related record: the picker opens on top of the panel, on the record
+  # the field holds now.
+  def handle_event("pick_input", %{"input" => name}, %{assigns: %{panel: %{} = panel}} = socket)
+      when is_binary(name) do
+    case reference_input(panel, name) do
+      nil ->
+        {:noreply, socket}
+
+      input ->
+        default? = panel.kind == :create or input.kind == :argument
+        held = field_value(input, AshPhoenix.Form.value(panel.form, input.name), default?)
+
+        picker = %{
+          for: {:input, input.name},
+          name: input.name,
+          reference: input.reference,
+          title: picker_title(input.label, input.reference),
+          current: blank_as_nil(held),
+          none?: not input.required?,
+          question: nil,
+          error: nil
+        }
+
+        {:noreply, assign(socket, picker: picker)}
+    end
+  end
+
+  def handle_event("pick_input", _params, socket), do: {:noreply, socket}
+
+  # Sent by the picker's hook when the person has chosen: the row they
+  # selected, as the grid's hook names it (its primary key), or nil for no
+  # record; and `confirmed`, once they have answered the column's question.
+  #
+  # The row is a claim. Which cell or field it is chosen for is the
+  # server's to say, from what the picker was opened for.
+  def handle_event("picked", params, %{assigns: %{picker: %{} = picker}} = socket)
+      when is_map(params) do
+    %{model: model, rows: rows, panel: panel} = socket.assigns
+    named = params["row"]
+
+    case picker.for do
+      {:cell, key, name} ->
+        with %{editable?: true, kind: :reference} = column <-
+               Enum.find(model.columns, &(&1.name == name)),
+             %{} = row <- rows[key] do
+          refer(socket, key, row, column, named, params["confirmed"] == true)
+        else
+          _ -> {:reply, %{ok: false}, assign(socket, picker: nil)}
+        end
+
+      {:input, name} ->
+        case panel && reference_input(panel, Atom.to_string(name)) do
+          %{} = input -> choose_input(socket, panel, input, named)
+          _ -> {:reply, %{ok: false}, assign(socket, picker: nil)}
+        end
+    end
+  end
+
+  def handle_event("picked", _params, socket), do: {:reply, %{ok: false}, socket}
+
+  # Sent by the picker's hook for Cancel and Escape.
+  def handle_event("picker_cancel", _params, socket),
+    do: {:noreply, assign(socket, picker: nil)}
 
   # the form of a panel that is no longer open
   def handle_event(event, _params, socket) when event in ["panel_validate", "panel_submit"],
@@ -1104,19 +1288,17 @@ defmodule AshTable.Live.TableComponent do
 
     case parent_link(socket.assigns, action) do
       {:ok, given} ->
-        panel = %{
-          kind: :create,
-          action: action,
-          key: nil,
-          form: Act.open_create(model, action, "#{id}-panel", reader(socket.assigns)),
-          inputs: action.inputs,
-          title: action.label,
-          submit: Text.t(:create),
-          errors: %{},
-          submitted?: false,
-          used: MapSet.new(),
-          given: given
-        }
+        panel =
+          panel(socket.assigns, & &1.default, %{
+            kind: :create,
+            action: action,
+            key: nil,
+            form: Act.open_create(model, action, "#{id}-panel", reader(socket.assigns)),
+            inputs: action.inputs,
+            title: action.label,
+            submit: Text.t(:create),
+            given: given
+          })
 
         {:noreply, assign(socket, panel: panel)}
 
@@ -1180,6 +1362,152 @@ defmodule AshTable.Live.TableComponent do
     end
   end
 
+  # The choice of a related record for a reference cell. A column with a
+  # question is asked first whether the choice changes the row at all, and
+  # the hook asks the person; a choice that changes nothing calls nothing.
+  # Then, as for any cell, the row is put back with what is true now: the
+  # action's result, or the record as it is and the cell marked, with what
+  # the chosen record is called in it.
+  defp refer(socket, key, row, column, named, confirmed?) do
+    opts = [ask?: not is_nil(column.confirm) and not confirmed?] ++ chooser(socket.assigns)
+
+    case Edit.refer(socket.assigns.model, column, row.pk, named, opts) do
+      :changed ->
+        {:reply, %{ask: column.confirm}, socket}
+
+      :unavailable ->
+        {:reply, %{ok: false}, unavailable(socket)}
+
+      {:ok, record} ->
+        {:reply, %{ok: true},
+         socket
+         |> assign(picker: nil)
+         |> put_failure(key, record, column.name, nil)
+         |> put_row(key, record)}
+
+      {:error, %_{} = record, message, chosen} ->
+        {:reply, %{ok: false},
+         socket
+         |> assign(picker: nil)
+         |> put_failure(key, record, column.name, {referred(column, chosen), message, []})
+         |> put_row(key, record)
+         |> say(Text.t(:not_saved, column: column.label, message: message))}
+
+      {:error, nil, message} ->
+        {:reply, %{ok: false, error: message},
+         socket
+         |> assign(picker: nil)
+         |> say(Text.t(:not_saved, column: column.label, message: message))}
+    end
+  end
+
+  # What a reference cell shows of a record that was chosen for it: its
+  # label, as far as this person may see it. Nothing for no record.
+  defp referred(_column, nil), do: ""
+
+  defp referred(%{reference: %{label_field: label}} = column, chosen),
+    do: Format.format(column, Map.get(chosen, label))
+
+  # The choice of a related record for a field of the action panel: its key
+  # goes into the panel's form, as if it had been typed there, with what the
+  # record is called beside it. Nothing runs.
+  defp choose_input(socket, panel, input, named) do
+    chosen =
+      with false <- is_nil(named),
+           {:ok, record} <- Pick.chosen(input.reference, named, chooser(socket.assigns)),
+           {:ok, value} <- Pick.value(input.reference, record) do
+        {Format.input(input, value), called(input.reference, record)}
+      else
+        true -> {"", nil}
+        :error -> :error
+      end
+
+    case chosen do
+      :error ->
+        {:reply, %{ok: false}, unavailable(socket)}
+
+      {text, _label} = chosen ->
+        name = Atom.to_string(input.name)
+        typed = Map.put(panel.typed, name, text)
+        picked = MapSet.put(panel.picked, name)
+
+        panel = %{
+          panel
+          | form: Act.validate(panel.form, panel.inputs, typed, given(panel)),
+            typed: typed,
+            picked: picked,
+            used: MapSet.union(panel.used, picked),
+            chosen: Map.put(panel.chosen, input.name, chosen)
+        }
+
+        {:reply, %{ok: true},
+         assign(socket, picker: nil, panel: errors(panel, socket.assigns.model))}
+    end
+  end
+
+  # The row the browser named is none of a record this person may read
+  # through the picker's read action: nothing is chosen, and the picker
+  # stays open and says so.
+  defp unavailable(%{assigns: %{picker: picker}} = socket) do
+    message = Text.t(:record_gone)
+
+    socket |> assign(picker: %{picker | error: message}) |> say(message)
+  end
+
+  # The input of a panel that is given by choosing a related record, by its
+  # name as text.
+  defp reference_input(panel, name),
+    do: Enum.find(panel.inputs, &(&1.editor == :reference and Atom.to_string(&1.name) == name))
+
+  # What the picker is headed by: the column, or the field, and what one
+  # record of the table to choose from is called.
+  defp picker_title(label, reference),
+    do: Text.t(:choose_for, column: label, name: Text.label(Model.name(reference.destination)))
+
+  # What a record of a destination is called, as far as this person may see
+  # it on it: for the field of the panel that holds its key.
+  defp called(reference, record),
+    do: reference.destination |> Model.build() |> in_words() |> title_of(record)
+
+  # Who is asking, for what is read of a destination to choose from: the
+  # reader, and what this table was told about authorization, which its
+  # picker's table is told too (`AshTable.Pick.reader/2`).
+  defp chooser(assigns), do: [authorize_given: assigns.authorize_given] ++ reader(assigns)
+
+  # An action panel as the table keeps it while it is open. Besides what it
+  # is given: `typed` is what its form sent last, `picked` the fields whose
+  # record the person has chosen in the picker, and `chosen` what the
+  # record is called that each such field holds, by field, with the key as
+  # the field writes it. `held` gives the value an input starts with.
+  defp panel(assigns, held, panel) do
+    chosen =
+      for %{editor: :reference, reference: reference} = input <- panel.inputs,
+          value = held.(input),
+          not is_nil(value),
+          not is_struct(value, Ash.ForbiddenField),
+          into: %{} do
+        label =
+          case Pick.current(reference, value, chooser(assigns)) do
+            {:ok, record} -> called(reference, record)
+            :error -> nil
+          end
+
+        {input.name, {Format.input(input, value), label}}
+      end
+
+    Map.merge(
+      %{
+        errors: %{},
+        submitted?: false,
+        used: MapSet.new(),
+        typed: %{},
+        picked: MapSet.new(),
+        chosen: chosen
+      },
+      panel
+    )
+  end
+
   # A row action that runs straight away. The row is put back with what is
   # true now: the action's result, or the record as it is and the actions
   # cell marked with the action's message. A record that was destroyed is
@@ -1204,18 +1532,16 @@ defmodule AshTable.Live.TableComponent do
             name -> Text.t(:action_on, action: action.label, record: name)
           end
 
-        panel = %{
-          kind: :row,
-          action: action,
-          key: key,
-          form: form,
-          inputs: inputs,
-          title: title,
-          submit: Text.t(:run),
-          errors: %{},
-          submitted?: false,
-          used: MapSet.new()
-        }
+        panel =
+          panel(socket.assigns, &Map.get(record, &1.name), %{
+            kind: :row,
+            action: action,
+            key: key,
+            form: form,
+            inputs: inputs,
+            title: title,
+            submit: Text.t(:run)
+          })
 
         {:reply, %{ok: true, panel: true}, assign(socket, panel: panel)}
 
@@ -1312,20 +1638,18 @@ defmodule AshTable.Live.TableComponent do
         count -> Text.n(:bulk_on, count, action: action.label)
       end
 
-    panel = %{
-      kind: :bulk,
-      action: action,
-      key: nil,
-      selection: selection,
-      question: question,
-      form: Act.open_bulk(model, action, "#{id}-panel", reader(socket.assigns)),
-      inputs: Model.bulk_inputs(action),
-      title: title,
-      submit: Text.t(:run),
-      errors: %{},
-      submitted?: false,
-      used: MapSet.new()
-    }
+    panel =
+      panel(socket.assigns, fn _input -> nil end, %{
+        kind: :bulk,
+        action: action,
+        key: nil,
+        selection: selection,
+        question: question,
+        form: Act.open_bulk(model, action, "#{id}-panel", reader(socket.assigns)),
+        inputs: Model.bulk_inputs(action),
+        title: title,
+        submit: Text.t(:run)
+      })
 
     assign(socket, panel: panel)
   end
@@ -1354,9 +1678,16 @@ defmodule AshTable.Live.TableComponent do
     panel = errors(%{panel | form: form}, socket.assigns.model)
 
     # a panel is never open beside a run: the run that starts closes it
-    if Enum.any?(panel.inputs, &is_map_key(panel.errors, &1.name)),
-      do: {:noreply, failed_panel(socket, panel, nil)},
-      else: {:noreply, run_bulk(socket, action, selection, Act.values(panel.inputs, params))}
+    cond do
+      Enum.any?(panel.inputs, &is_map_key(panel.errors, &1.name)) ->
+        {:noreply, failed_panel(socket, panel, nil)}
+
+      (unchosen = Act.unchosen(panel.inputs, params, nil, chooser(socket.assigns))) != [] ->
+        {:noreply, failed_panel(socket, panel, unchosen(unchosen))}
+
+      true ->
+        {:noreply, run_bulk(socket, action, selection, Act.values(panel.inputs, params))}
+    end
   end
 
   # Runs the action of a row's panel. The row has to be one of the page
@@ -1369,9 +1700,12 @@ defmodule AshTable.Live.TableComponent do
         {:noreply, assign(socket, panel: nil)}
 
       row ->
-        case Act.submit_row(model, action, row.pk, params, "#{id}-panel", reader(socket.assigns)) do
+        case Act.submit_row(model, action, row.pk, params, "#{id}-panel", chooser(socket.assigns)) do
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
+
+          {:unchosen, inputs} ->
+            {:noreply, failed_panel(socket, panel, unchosen(inputs))}
 
           # the record is gone, or no longer this person's to read
           {:error, nil, message} ->
@@ -1398,7 +1732,7 @@ defmodule AshTable.Live.TableComponent do
                params,
                given,
                "#{id}-panel",
-               reader(socket.assigns)
+               chooser(socket.assigns)
              ) do
           {:ok, record} ->
             {:noreply,
@@ -1412,6 +1746,9 @@ defmodule AshTable.Live.TableComponent do
             {:noreply,
              socket |> assign(panel: nil) |> say(Text.t(:created, name: created_name(model)))}
 
+          {:unchosen, inputs} ->
+            {:noreply, failed_panel(socket, panel, unchosen(inputs))}
+
           {:error, form} ->
             {:noreply, failed_panel(socket, %{panel | form: form, given: given}, nil)}
         end
@@ -1419,6 +1756,14 @@ defmodule AshTable.Live.TableComponent do
       :error ->
         {:noreply, failed_panel(socket, panel, Text.t(:record_gone))}
     end
+  end
+
+  # What the panel says of the fields whose key names a record the person
+  # could not have chosen: nothing ran.
+  defp unchosen(inputs) do
+    Enum.map_join(inputs, " ", fn input ->
+      Text.t(:error_on_field, field: input.label, message: Text.t(:record_gone))
+    end)
   end
 
   # What one record of the table is called, at the start of a sentence.
@@ -1715,7 +2060,8 @@ defmodule AshTable.Live.TableComponent do
       <%!-- `data-ash-table` marks the element a grid's hook is on, for the hooks
       of the tables nested in it and around it; `data-lead` is the number of
       columns before the first data column; `data-select` says whether rows can
-      be selected, and how many at a time. --%>
+      be selected, and how many at a time; `data-choose` that the table is one
+      to choose a record from. --%>
       <div
         id={"#{@id}-grid"}
         phx-hook=".Grid"
@@ -1723,6 +2069,7 @@ defmodule AshTable.Live.TableComponent do
         data-ash-table
         data-lead={@lead}
         data-select={@selecting}
+        data-choose={not is_nil(@choose)}
         class={not @nested? && "overflow-x-auto"}
       >
         <table
@@ -1732,7 +2079,7 @@ defmodule AshTable.Live.TableComponent do
           aria-labelledby={@labelledby}
           aria-rowcount={aria_rowcount(@page)}
           aria-colcount={length(@model.columns) + @lead + trail(@acting?)}
-          aria-multiselectable={@selecting == :multi && "true"}
+          aria-multiselectable={@selecting && to_string(@selecting == :multi)}
           aria-busy={(@busy? or not is_nil(@running)) && "true"}
           data-first-row={first_row(@page)}
           class={
@@ -1793,7 +2140,8 @@ defmodule AshTable.Live.TableComponent do
               <%!-- The first column, where rows can be selected: a box per row,
               and here the one that stands for the rows of the page. Its state
               is the hook's, as is that of every box under it. Where one row at a
-              time is selected there is nothing to stand for. --%>
+              time is selected there is nothing to stand for, and the rows have
+              radio buttons of one group: one of them at most is on. --%>
               <th
                 :if={@selecting}
                 id={"#{@id}-select-head"}
@@ -1907,6 +2255,7 @@ defmodule AshTable.Live.TableComponent do
             data-detail={row[:detail?]}
             data-row={row[:detail?] && row.key}
             data-key={@selecting && !row[:detail?] && row.names && held(row.names)}
+            data-current={row[:current?]}
             phx-no-format
           ><.lines
             :if={row[:detail?] && row.lines}
@@ -1928,7 +2277,7 @@ defmodule AshTable.Live.TableComponent do
             aria-colindex="1"
             tabindex="-1"
             data-selector
-          ><input type="checkbox" tabindex="-1" aria-label={Text.t(:select_row)} class="checkbox checkbox-xs border-base-content/50" /></td><td
+          ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={Text.t(:select_row)} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={Text.t(:select_row)} class="radio radio-xs border-base-content/50" /></td><td
             :if={@expandable?}
             id={"#{dom_id}-e"}
             role="gridcell"
@@ -2018,7 +2367,9 @@ defmodule AshTable.Live.TableComponent do
           </tfoot>
         </table>
         <%!-- One editor per editable column. The hook opens a copy of it in the
-        cell being edited; which cell that is, the server never knows. --%>
+        cell being edited; which cell that is, the server never knows. A
+        reference column has an empty one: its cells are edited in the picker,
+        which the hook asks for. --%>
         <template
           :for={column <- @model.columns}
           :if={column.editable?}
@@ -2027,7 +2378,11 @@ defmodule AshTable.Live.TableComponent do
           data-commit={column.editor == :component && column.component.commit}
           data-confirm={column.confirm}
         >
-          <.editor column={column} allow_nil?={allow_nil?(@model.resource, column)} />
+          <.editor
+            :if={column.editor != :reference}
+            column={column}
+            allow_nil?={allow_nil?(@model.resource, column)}
+          />
         </template>
         <%!-- The message of a cell whose save failed, for the one case in which
         the hook has to mark the cell itself: the record is gone, so there is
@@ -2057,6 +2412,15 @@ defmodule AshTable.Live.TableComponent do
         </dialog>
       </div>
       <.panel :if={@panel} id={@id} panel={@panel} target={@myself} />
+      <%!-- After the panel, and so on top of it when both are open: a picker
+      that a field of the panel has opened. --%>
+      <.picker
+        :if={@picker}
+        id={@id}
+        picker={@picker}
+        reader={picker_reader(assigns)}
+        target={@myself}
+      />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <p
         :if={@error}
@@ -2262,6 +2626,130 @@ defmodule AshTable.Live.TableComponent do
           }
         }
       </script>
+      <script :type={Phoenix.LiveView.ColocatedHook} name=".Picker">
+        // The picker: a modal dialog that is open for as long as the server
+        // renders it, as the action panel is, and on top of the panel when
+        // a field of the panel opened it. Focus moves into its table, to
+        // the row of the record that is chosen now when that is on the
+        // page. The person selects a row there, which is the table's own
+        // hook's to know and to say (`ash_table:selection`), and "Choose"
+        // sends it; Enter on a row and a double click choose that row at
+        // once (`ash_table:choose`). Escape and Cancel ask the server to
+        // take the picker away; when it is gone, focus goes back to the
+        // cell, or to the button of the panel, that opened it.
+        export default {
+          mounted() {
+            const dialog = this.el
+            const grid = document.getElementById(dialog.id.replace(/-picker$/, "-grid"))
+            // the hook of the table the picker belongs to: its dialog asks
+            // a column's question
+            this.grid = grid && grid._ashTable
+            const active = document.activeElement
+            this.opener = active && active !== document.body ? active : null
+            this.openerId = this.opener && this.opener.id
+            // the rows that are selected in the picker's table: one at most
+            this.rows = []
+            this.busy = false
+            if (dialog.showModal) dialog.showModal()
+            // Escape: the dialog stays until the server has taken it away
+            dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
+            dialog.addEventListener("click", e => {
+              if (!e.target.closest) return
+              if (e.target.closest("[data-cancel]")) this.cancel()
+              else if (e.target.closest("[data-none]")) this.choose(null)
+              else if (e.target.closest("[data-take]")) this.chooseSelected()
+            })
+            dialog.addEventListener("ash_table:selection", e => this.heard(e.detail))
+            dialog.addEventListener("ash_table:choose", e => { this.heard(e.detail); this.chooseSelected() })
+            // once the table's own hook is there
+            setTimeout(() => this.enter())
+          },
+
+          // The table in the picker, as its hook.
+          table() {
+            const grid = this.el.querySelector("[data-ash-table]")
+            return grid && grid._ashTable
+          },
+
+          // Into the table: to the row that is selected as it opens, else
+          // to where the arrow keys start from. A picker whose table could
+          // not be read has no grid, and focus stays on its first button.
+          enter() {
+            const table = this.table()
+            if (!table || !this.el.isConnected) return
+            this.heard(table.selected())
+            const current = table.el.querySelector("tr[aria-selected='true']")
+            const cell = current ? current.cells[Math.min(table.lead(), current.cells.length - 1)] : table.cellAt(table.pos.r, table.pos.c)
+            if (cell) cell.focus()
+          },
+
+          // What is selected in the table. "Choose" is for a selected row.
+          heard(detail) {
+            this.rows = detail && detail.rows ? detail.rows : []
+            const button = this.el.querySelector("[data-take]")
+            if (!button) return
+            const none = this.rows.length === 0
+            button.setAttribute("aria-disabled", String(none))
+            button.classList.toggle("btn-disabled", none)
+          },
+
+          chooseSelected() { if (this.rows.length > 0) this.choose(this.rows[0]) },
+
+          // Sends the choice: a row as the table's hook names it, or null
+          // for no record. The server reads that record as the person, and
+          // answers with the question of a column that has one when the
+          // choice would change the row; Confirm sends it again. What
+          // comes of it is the server's to show: it takes the picker away,
+          // or says in it why nothing was chosen.
+          choose(row, confirmed) {
+            if (this.busy) return
+            this.busy = true
+            const cell = this.cell()
+            if (cell) cell.setAttribute("aria-busy", "true")
+            this.pushEventTo(this.el, "picked", {row, confirmed: !!confirmed}, reply => {
+              this.busy = false
+              if (cell) cell.removeAttribute("aria-busy")
+              if (reply && reply.ask && this.grid) {
+                // Cancel, and Escape: the browser puts focus back in the picker
+                this.grid.ask(reply.ask).then(yes => { if (yes && this.el.isConnected) this.choose(row, true) })
+                return
+              }
+              // the row's record is gone: there is no row to send, so the cell is marked here
+              if (reply && reply.error) this.failed = reply.error
+            })
+          },
+
+          // The cell the picker was opened from, when it was a cell.
+          cell() {
+            const opener = this.opener && this.opener.isConnected ? this.opener : (this.openerId ? document.getElementById(this.openerId) : null)
+            return opener && opener.matches("td[role='gridcell']") ? opener : null
+          },
+
+          cancel() { this.pushEventTo(this.el, "picker_cancel", {}) },
+
+          // Once the patch is done, and only while focus is nowhere, as the
+          // action panel does.
+          destroyed() {
+            const failed = this.failed
+            setTimeout(() => {
+              const active = document.activeElement
+              const opener = this.opener && this.opener.isConnected
+                ? this.opener
+                : (this.openerId ? document.getElementById(this.openerId) : null)
+              const cell = opener && opener.closest("td,th")
+              if (failed && cell && cell === opener && this.grid) {
+                this.grid.fail(cell, failed, () => {
+                  const message = document.getElementById(`${cell.id}-error`)
+                  if (message) message.remove()
+                })
+              }
+              if (active && active !== document.body && active !== cell) return
+              if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
+              else if (this.grid && this.grid.el.isConnected) this.grid.toTabStop()
+            })
+          }
+        }
+      </script>
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
         // Keyboard, focus and editing for one grid: a single tab stop with a
         // roving tabindex, moved by the arrow keys.
@@ -2303,6 +2791,23 @@ defmodule AshTable.Live.TableComponent do
         // filled in here. Others learn of a selection from `selected()`
         // and from the event `ash_table:selection`, which this element
         // sends, with the same, whenever it changes.
+        //
+        // Where one row at a time is selected ("single"), the rows have
+        // radio buttons, and behave as those do: selecting another row
+        // takes the first one's place, and selecting the selected row
+        // again leaves it selected.
+        //
+        // A reference cell has no editor in the cell: its related record
+        // is chosen in the picker, a dialog with the table of the related
+        // resource, which the server renders when this hook asks for it
+        // (`pick`). That table is one to choose from (`data-choose`): a
+        // click anywhere on a row selects the row, Enter on a row and a
+        // double click choose it (`ash_table:choose`, for the picker's
+        // hook), and it starts with the row selected that the server marks
+        // as the record chosen now (`data-current`), until the person
+        // selects another. A grid in a dialog is the top of its own tree
+        // of grids, wherever the dialog stands in the page: nothing
+        // outside a modal dialog can be reached while it is open.
 
         // a key that types a character
         const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -2316,6 +2821,15 @@ defmodule AshTable.Live.TableComponent do
 
         // the element a grid's hook is on
         const GRID = "[data-ash-table]"
+
+        // What is around an element, nearest first, as far as it is of
+        // the same tree of grids: the grid it is in, or the cell that
+        // holds the nested table it is in. Nothing beyond a dialog: a
+        // dialog is a place of its own.
+        const AROUND = (node, what) => {
+          const found = node.parentElement && node.parentElement.closest(`${what},dialog`)
+          return found && found.matches(what) ? found : null
+        }
 
         // The control of an editor: what holds the value and takes the
         // focus. A built-in editor is its own control. The editor of a
@@ -2463,7 +2977,7 @@ defmodule AshTable.Live.TableComponent do
           // depth; itself when it is nested in none.
           top() {
             let top = this.el
-            for (let up; (up = top.parentElement && top.parentElement.closest(GRID));) top = up
+            for (let up; (up = AROUND(top, GRID));) top = up
             return top
           },
 
@@ -2486,10 +3000,7 @@ defmodule AshTable.Live.TableComponent do
           },
 
           // The cell of the grid around this one that holds it, if any.
-          holder() {
-            const cell = this.el.parentElement && this.el.parentElement.closest("td[data-nested]")
-            return cell || null
-          },
+          holder() { return AROUND(this.el, "td[data-nested]") },
 
           // The number of columns before the first data column.
           lead() { return Number(this.el.dataset.lead || 0) },
@@ -2503,7 +3014,7 @@ defmodule AshTable.Live.TableComponent do
               if (is(node, "nested")) trail.push(node.dataset.lineCell, node.dataset.expanderCell)
               else if (is(node, "line")) trail.push(node.id.replace(/-l-[^-]+-c$/, "-e"))
               const grid = node.closest(GRID)
-              node = grid && grid.parentElement ? grid.parentElement.closest("td[data-nested]") : null
+              node = grid ? AROUND(grid, "td[data-nested]") : null
               if (node) trail.push(node.id)
             }
             return trail
@@ -2692,6 +3203,8 @@ defmodule AshTable.Live.TableComponent do
             // with Shift, on a row of records: the rows from the one that
             // was selected last to this one
             if (e.shiftKey && this.selects() === "multi" && this.record(cell)) this.selectTo(this.record(cell))
+            // in a table to choose from, a click anywhere on a row selects it
+            if (this.chooses() && this.record(cell)) this.toggleRow(this.record(cell))
             if (document.activeElement !== cell) cell.focus()
           },
 
@@ -2707,6 +3220,8 @@ defmodule AshTable.Live.TableComponent do
 
           onDblclick(e) {
             const cell = this.cellOf(e.target)
+            // in a table to choose from, a double click chooses the row
+            if (cell && this.chooses() && this.record(cell)) return this.chooseRow(this.record(cell))
             if (!cell || this.controlOf(e.target) || !this.canEdit(cell)) return
             // beside the control of an editor that is open already: nothing to open
             if (this.editing && this.editing.cell === cell) return
@@ -2877,6 +3392,8 @@ defmodule AshTable.Live.TableComponent do
                 else if (is(cell, "nested")) this.enterNested(cell)
                 else if (is(cell, "view")) this.follow(cell)
                 else if (this.canEdit(cell)) this.startEdit(cell, null)
+                // in a table to choose from, Enter on a row chooses it
+                else if (this.chooses() && this.record(cell)) this.chooseRow(this.record(cell))
                 else handled = false
                 break
               case "F2":
@@ -2942,6 +3459,16 @@ defmodule AshTable.Live.TableComponent do
           // "single", or nothing.
           selects() { return this.el.dataset.select },
 
+          // Whether the table is one to choose a record from: the one in a
+          // picker.
+          chooses() { return this.el.dataset.choose !== undefined },
+
+          // Chooses a row at once: selects it, and tells the picker.
+          chooseRow(body) {
+            this.toggleRow(body)
+            this.el.dispatchEvent(new CustomEvent("ash_table:choose", {bubbles: true, detail: this.selected()}))
+          },
+
           // The rows of records of the page, top to bottom: not what is
           // open under a row.
           records() {
@@ -2968,13 +3495,21 @@ defmodule AshTable.Live.TableComponent do
           // What is selected, for whoever asks: every record the filters
           // match (`all`), or `rows`, each by its primary key: one value,
           // or the list of them for a key of several attributes.
+          //
+          // In a table to choose from, what is selected is the selected
+          // row that is in view: one that a filter or another page has
+          // taken out of sight is not there to be taken, and is selected
+          // again when it comes back.
           selected() {
             const {keys, all} = this.selection
+            const held = this.chooses()
+              ? Array.from(keys).filter(([key]) => document.getElementById(`${this.id}-row-${key}`))
+              : Array.from(keys)
             return {
               table: this.id,
               mode: this.selects(),
               all,
-              rows: all ? [] : Array.from(keys, ([key, named]) => named || key)
+              rows: all ? [] : held.map(([key, named]) => named || key)
             }
           },
 
@@ -3004,11 +3539,15 @@ defmodule AshTable.Live.TableComponent do
           toggleRow(body) {
             const key = this.keyOf(body)
             let keys = this.shown()
-            if (keys.has(key)) keys.delete(key)
-            else {
-              if (this.selects() === "single") keys = new Map()
-              keys.set(key, this.named(body))
-            }
+            // the person has selected: what the server marked as chosen
+            // is no longer what the selection starts from
+            this.selection.touched = true
+            if (this.selects() === "single") {
+              // as radio buttons: the selected row stays selected
+              if (keys.has(key) && keys.size === 1) return
+              keys = new Map([[key, this.named(body)]])
+            } else if (keys.has(key)) keys.delete(key)
+            else keys.set(key, this.named(body))
             this.selection.anchor = key
             this.select(keys, false)
           },
@@ -3086,6 +3625,12 @@ defmodule AshTable.Live.TableComponent do
             }
             selection.scope = scope
             const rows = this.records()
+            // In a table to choose from, the row of the record that is
+            // chosen now is selected until the person selects another.
+            if (this.chooses() && !selection.touched) {
+              const current = rows.find(body => is(body, "current") && !selection.keys.has(this.keyOf(body)))
+              if (current) return this.select(new Map([[this.keyOf(current), this.named(current)]]), false, false)
+            }
             let onPage = 0
             for (const body of rows) {
               const on = selection.all || selection.keys.has(this.keyOf(body))
@@ -3094,6 +3639,16 @@ defmodule AshTable.Live.TableComponent do
               if (row.getAttribute("aria-selected") !== String(on)) row.setAttribute("aria-selected", String(on))
               const box = row.cells[0].querySelector("input")
               if (box && box.checked !== on) box.checked = on
+            }
+            // A table to choose from says again what is selected when the
+            // selected row comes into view or goes out of it, with the
+            // rows of another read.
+            if (this.chooses() && selection.inView !== onPage) {
+              const before = selection.inView
+              selection.inView = onPage
+              if (before !== undefined) {
+                this.el.dispatchEvent(new CustomEvent("ash_table:selection", {bubbles: true, detail: this.selected()}))
+              }
             }
             const every = rows.length > 0 && onPage === rows.length
             // this table's own header: not that of a table nested in it,
@@ -3270,6 +3825,11 @@ defmodule AshTable.Live.TableComponent do
               if (key === null) this.toggle(cell, template)
               return key === null
             }
+            // nor has a reference cell: Enter and F2 open the picker, typing does nothing
+            if (type === "reference") {
+              if (key === null) this.pick(cell)
+              return key === null
+            }
             const root = template.content.firstElementChild.cloneNode(true)
             if (type === "choices" || type === "list") return this.startList(cell, template, root, key)
             const input = CONTROL(root)
@@ -3334,6 +3894,25 @@ defmodule AshTable.Live.TableComponent do
               handled = key === null
             }
             return handled
+          },
+
+          // Asks for the picker of a reference cell: one event with the row
+          // and the column. The server renders the picker, whose own hook
+          // takes it from there; the cell is its opener, and has the focus
+          // again when it is gone. Where the row's record is gone there is
+          // nothing to open it for, and the cell is marked here.
+          pick(cell) {
+            if (this.picking) return
+            this.picking = true
+            const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
+            this.pushEventTo(this.el, "pick", payload, reply => {
+              this.picking = false
+              if (!reply || !reply.error || !cell.isConnected) return
+              this.fail(cell, reply.error, () => {
+                const message = document.getElementById(`${cell.id}-error`)
+                if (message) message.remove()
+              })
+            })
           },
 
           // The editor of an array: several controls in one cell. For an
@@ -4090,6 +4669,8 @@ defmodule AshTable.Live.TableComponent do
           default?={@panel.kind == :create or input.kind == :argument}
           errors={field_errors(@panel, input)}
           places={field_places(@panel, input)}
+          chosen={@panel.chosen[input.name]}
+          target={@target}
         />
         <div class="mt-6 flex justify-end gap-2">
           <button type="button" id={"#{@id}-panel-cancel"} class="btn" data-cancel>
@@ -4104,6 +4685,89 @@ defmodule AshTable.Live.TableComponent do
           </button>
         </div>
       </.form>
+    </dialog>
+    """
+  end
+
+  # The picker: where a person chooses the related record of a reference
+  # cell, or of a field of the action panel that holds such a key. A modal
+  # dialog at the right edge of the window, as the action panel is, and on
+  # top of it when a field of the panel has opened it. It holds the table of
+  # the destination resource, told that it is one to choose from, whose rows
+  # are selected one at a time; "Choose" takes the selected row.
+  #
+  # The table is as wide as its columns need, so the dialog is wider than
+  # the panel, and the table scrolls sideways in it as it does on a page.
+  attr :id, :string, required: true
+  attr :picker, :map, required: true
+  attr :reader, :map, required: true
+  attr :target, :any, required: true
+
+  defp picker(assigns) do
+    ~H"""
+    <dialog
+      id={"#{@id}-picker"}
+      phx-hook=".Picker"
+      phx-mounted={JS.ignore_attributes(["open"])}
+      phx-target={@target}
+      data-question={@picker.question}
+      aria-labelledby={"#{@id}-picker-title"}
+      class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-3xl overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
+    >
+      <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{@picker.title}</h2>
+      <%!-- the row that was chosen names no record this person may read --%>
+      <p
+        :if={@picker.error}
+        id={"#{@id}-picker-error"}
+        role="alert"
+        class="mb-4 text-sm font-medium"
+      >
+        {@picker.error}
+      </p>
+      <.live_component
+        module={__MODULE__}
+        id={"#{@id}-pick-#{@picker.name}"}
+        resource={@picker.reference.destination}
+        select={:single}
+        choose={
+          %{
+            read_action: @picker.reference.choose_action,
+            current: {@picker.reference.destination_attribute, @picker.current}
+          }
+        }
+        label={AshTable.label(@picker.reference.destination)}
+        heading={false}
+        url={nil}
+        mounted?={false}
+        {@reader}
+      />
+      <div class="mt-6 flex justify-end gap-2">
+        <button type="button" id={"#{@id}-picker-cancel"} class="btn" data-cancel>
+          {Text.t(:cancel)}
+        </button>
+        <button
+          :if={@picker.none?}
+          type="button"
+          id={"#{@id}-picker-none"}
+          class="btn"
+          data-none
+        >
+          {Text.t(:choose_none)}
+        </button>
+        <%!-- Not to be used while no row is selected, and says so without
+        being `disabled`, as the buttons above a grid do. Which rows are
+        selected is the hook's, so this is too: a patch leaves it alone. --%>
+        <button
+          type="button"
+          id={"#{@id}-picker-choose"}
+          class="btn btn-primary btn-disabled"
+          aria-disabled="true"
+          phx-mounted={JS.ignore_attributes(["aria-disabled", "class"])}
+          data-take
+        >
+          {Text.t(:choose)}
+        </button>
+      </div>
     </dialog>
     """
   end
@@ -4133,20 +4797,32 @@ defmodule AshTable.Live.TableComponent do
   attr :errors, :list, required: true
   attr :places, :list, default: []
   attr :default?, :boolean, required: true
+  attr :chosen, :any, default: nil
+  attr :target, :any, default: nil
 
   defp field(assigns) do
+    value = field_value(assigns.input, assigns.field.value, assigns.default?)
+
     assigns =
       assign(assigns,
-        value: field_value(assigns.input, assigns.field.value, assigns.default?),
+        value: value,
         described: assigns.errors != [] && "#{assigns.id}-error",
-        array?: assigns.input.editor in [:choices, :list]
+        array?: assigns.input.editor in [:choices, :list],
+        reference?: assigns.input.editor == :reference,
+        # what the record is called whose key the field holds, while it
+        # holds that key
+        called:
+          case assigns.chosen do
+            {^value, called} -> called
+            _other -> nil
+          end
       )
 
     ~H"""
     <div class="fieldset mb-2" data-field={@input.name}>
       <%!-- an unchecked box sends nothing: this says "false" for it --%>
       <input :if={@input.editor == :boolean} type="hidden" name={@field.name} value="false" />
-      <label :if={not @array?} for={@id} class="label mb-1 text-base-content">
+      <label :if={not @array? and not @reference?} for={@id} class="label mb-1 text-base-content">
         <input
           :if={@input.editor == :boolean}
           type="checkbox"
@@ -4168,6 +4844,39 @@ defmodule AshTable.Live.TableComponent do
       <span :if={@array?} id={"#{@id}-label"} class="label mb-1 text-base-content">
         <span data-label>{@input.label}</span>
       </span>
+      <%!-- The key of a related record is not typed: the field says what the
+      record is called, as plain text, and its button opens the picker. The
+      two are a group, which the label names; the key itself is sent by an
+      input that is not shown. (Not of the type `hidden`, for the reason given
+      at the field of an array.) A group cannot say that it is required, so
+      the label says it. --%>
+      <span :if={@reference?} id={"#{@id}-label"} class="label mb-1 text-base-content">
+        <span data-label>{@input.label}</span>
+        <span :if={@input.required?} aria-hidden="true">*</span>
+        <span :if={@input.required?} class="sr-only">{Text.t(:required)}</span>
+      </span>
+      <div
+        :if={@reference?}
+        id={@id}
+        role="group"
+        aria-labelledby={"#{@id}-label"}
+        aria-describedby={@described}
+        class="flex items-center gap-2"
+      >
+        <input type="text" name={@field.name} value={@value} hidden data-key />
+        <span :if={@called} id={"#{@id}-chosen"} class="text-sm" data-chosen>{@called}</span>
+        <button
+          type="button"
+          id={"#{@id}-choose"}
+          class="btn btn-sm"
+          aria-describedby={@called && "#{@id}-chosen"}
+          phx-click="pick_input"
+          phx-value-input={@input.name}
+          phx-target={@target}
+        >
+          {Text.t(:choose)}
+        </button>
+      </div>
       <div
         :if={@array?}
         id={@id}
@@ -4344,6 +5053,18 @@ defmodule AshTable.Live.TableComponent do
   defp boxless(%{values: values}, held) do
     choices = Enum.map(values, fn {choice, _label} -> to_string(choice) end)
     Enum.reject(held, &(&1 in choices))
+  end
+
+  # What the table in a picker is given of the table it is opened from: who
+  # is asking. It authorizes as a nested table does: as this table was told,
+  # else as its own resource's domain says.
+  defp picker_reader(assigns) do
+    %{
+      scope: assigns.scope,
+      actor: assigns.actor,
+      tenant: assigns.tenant,
+      authorize?: assigns.authorize_given
+    }
   end
 
   # What a nested table is given of the table it is in: who is asking, how
@@ -5028,9 +5749,17 @@ defmodule AshTable.Live.TableComponent do
   defp cell_attributes(true, id, column, row) do
     value = value(column, row.record)
 
-    case {editable?(column, value), row.failed[column.name]} do
+    case {editable?(column, value, row.record), row.failed[column.name]} do
       {false, _failure} ->
         [{"aria-readonly", "true"}]
+
+      # a reference cell has no editor that holds a value: it is edited in
+      # the picker, which opens on the record the row has
+      {true, {_shown, _message, _places}} when column.kind == :reference ->
+        [{"aria-invalid", "true"}, {"aria-describedby", "#{id}-error"}]
+
+      {true, nil} when column.kind == :reference ->
+        []
 
       {true, {typed, _message, places}} ->
         [
@@ -5100,7 +5829,7 @@ defmodule AshTable.Live.TableComponent do
   defp cell_content(id, column, row) do
     value = value(column, row.record)
 
-    case editable?(column, value) && row.failed[column.name] do
+    case editable?(column, value, row.record) && row.failed[column.name] do
       {typed, message, _places} ->
         {:safe, shown} = typed |> typed(column) |> Phoenix.HTML.html_escape()
         {:safe, message} = failure_message("#{id}-error", message)
@@ -5146,9 +5875,14 @@ defmodule AshTable.Live.TableComponent do
   defp typed_value(typed, _item, _column), do: typed
 
   # Whether a person can edit this cell: its column is editable, and the
-  # field is not hidden from them on this row.
-  defp editable?(_column, %Ash.ForbiddenField{}), do: false
-  defp editable?(column, _value), do: column.editable?
+  # field is not hidden from them on this row. The field of a reference cell
+  # is the foreign key an edit of it writes: the cell is edited where they
+  # see the key, whatever they see of the record it points at.
+  defp editable?(%{kind: :reference, editable?: true, reference: reference}, _value, record),
+    do: not is_struct(Map.get(record, reference.source_attribute), Ash.ForbiddenField)
+
+  defp editable?(_column, %Ash.ForbiddenField{}, _record), do: false
+  defp editable?(column, _value, _record), do: column.editable?
 
   # A field the actor may not see on this row looks empty and is announced.
   defp cell(_column, %Ash.ForbiddenField{}) do

@@ -416,6 +416,87 @@ export class Table {
     return this.byId(`${this.id}-result`)
   }
 
+  /** The radio button that selects a row, where one row at a time is selected. */
+  radio(key: string): Locator {
+    return this.boxCell(key).locator("input[type=radio]")
+  }
+
+  /** The radio buttons of the rows of the page, top to bottom. */
+  get radios(): Locator {
+    return this.grid.locator(":scope > tbody > tr > td[data-selector] > input[type=radio]")
+  }
+
+  // ---- the picker ---------------------------------------------------------
+
+  /** The picker: a modal dialog with the table to choose a related record from, in the page only while it is open. */
+  get picker(): Locator {
+    return this.byId(`${this.id}-picker`)
+  }
+
+  /** Its heading: the column, and what is chosen. */
+  get pickerTitle(): Locator {
+    return this.byId(`${this.id}-picker-title`)
+  }
+
+  /** What it says when a choice was not taken. */
+  get pickerError(): Locator {
+    return this.byId(`${this.id}-picker-error`)
+  }
+
+  get pickerCancel(): Locator {
+    return this.byId(`${this.id}-picker-cancel`)
+  }
+
+  /** "None": there only where the key can be empty. */
+  get pickerNone(): Locator {
+    return this.byId(`${this.id}-picker-none`)
+  }
+
+  /** "Choose": takes the selected row. */
+  get pickerChoose(): Locator {
+    return this.byId(`${this.id}-picker-choose`)
+  }
+
+  /**
+   * The table in the picker: a table like any other, under an id of its
+   * own. `name` is the column the picker was opened for ("assignee"), or
+   * the field of the action panel ("assignee_id").
+   */
+  pickerTable(name: string): Table {
+    return new Table(this.page, `${this.id}-pick-${name}`, this.path)
+  }
+
+  /** The button of a field of the action panel that opens the picker. */
+  fieldChoose(name: string): Locator {
+    return this.byId(`${this.id}-panel-f-${name}-choose`)
+  }
+
+  /** What such a field says the chosen record is called; not there while it holds none. */
+  fieldChosen(name: string): Locator {
+    return this.byId(`${this.id}-panel-f-${name}-chosen`)
+  }
+
+  /** The input of such a field that holds the key: not shown. */
+  fieldKey(name: string): Locator {
+    return this.field(name).locator("input[data-key]")
+  }
+
+  /**
+   * Chooses a record for a field of the open action panel, with the
+   * pointer: the field's button, the row with that key, "Choose". `null`
+   * uses "None".
+   */
+  async chooseField(name: string, key: string | null): Promise<void> {
+    await this.fieldChoose(name).click()
+    await expect(this.picker).toBeVisible()
+    if (key === null) await this.pickerNone.click()
+    else {
+      await this.pickerTable(name).radio(key).click()
+      await this.pickerChoose.click()
+    }
+    await expect(this.picker).toHaveCount(0)
+  }
+
   // ---- the action panel ---------------------------------------------------
 
   /** The action panel: a modal dialog, in the page only while it is open. */

@@ -3,8 +3,9 @@ defmodule Demo.Tracker.User do
   A person, and the actor of the demo. Not multitenant itself: it is looked up
   by id before the tenant is known, and its `organization_id` becomes the tenant.
 
-  Its table is mounted nowhere: it is only ever seen nested, under the row of
-  a task (its assignee, its reporter) or of a comment (its author). A viewer
+  Its table is mounted nowhere: it is seen nested, under the row of a task
+  (its assignee, its reporter) or of a comment (its author), and in the
+  picker, where the assignee of a task is chosen from it. A viewer
   may not read people at all, so those lines are not there for a viewer. It
   is the one table of the demo that offers no editing to anybody.
   """

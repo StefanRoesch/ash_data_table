@@ -421,7 +421,7 @@ for (const theme of ["light", "dark"] as const) {
 
       test("of a field of the panel with an error: its edge, its focus ring and its message", async ({ tasks }) => {
         await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
-        await expect(tasks.field("assignee_id")).toBeFocused()
+        await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
         const reason = tasks.field("reason")
         await reason.fill("ab")
         await expect(tasks.fieldError("reason")).toBeVisible()
@@ -433,7 +433,7 @@ for (const theme of ["light", "dark"] as const) {
         expect(await contrastOf(reason, "outline")).toBeGreaterThanOrEqual(MARK)
         expect(await contrastOf(tasks.fieldError("reason"), "text")).toBeGreaterThanOrEqual(TEXT)
 
-        await tasks.field("assignee_id").focus()
+        await tasks.fieldChoose("assignee_id").focus()
         expect(await contrastOf(reason, "border")).toBeGreaterThanOrEqual(MARK)
       })
     })

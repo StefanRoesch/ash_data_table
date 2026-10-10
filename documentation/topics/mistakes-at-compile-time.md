@@ -213,8 +213,17 @@ the relationship and `DESTINATION` its destination resource.
 | The destination of \`NAME\`, DESTINATION, has no primary read action, and the relationship names no \`read_action\`. The related record of a column is read as Ash loads the relationship, which needs one of the two. | Neither is there. | Mark a read action of the destination `primary? true`, or give the relationship a `read_action`. |
 | \`NAME\` shows the label of a related record, which a table does not sort by, so \`sortable? true\` has no effect. \`sortable?\` can only switch sorting off; remove it or set it to \`false\`. | `sortable? true` on a reference cell. | Remove the option. |
 | \`NAME\` shows the label of a related record, which a table does not filter by, so \`filterable? true\` has no effect. \`filterable?\` can only switch filtering off; remove it or set it to \`false\`. | `filterable? true` on a reference cell. | Remove the option. |
-| \`NAME\` shows the label of a related record. Only an attribute can be edited, so a column that names a relationship cannot have an \`update_action\`. | `update_action` on a reference cell. | Remove the option. |
-| \`NAME\` can never be edited, so \`confirm\` has no effect. It shows the label of a related record. | `confirm` on a reference cell. | Remove the option. |
+| The update action \`ACTION\` does not accept \`KEY\`, the foreign key of \`NAME\`, so it cannot save an edit of this column. | The column's own `update_action` does not have the relationship's foreign key (its `source_attribute`) in its `accept`. A reference cell is edited by choosing another related record, which sets that key. | Add the key to the action's `accept`, or name an action that has it. |
+| \`NAME\` is edited by choosing a record of the destination's table, and there is nothing to choose it with, so the column is read-only and its \`update_action\` has no effect. … Remove \`update_action\` from this column. | The column has its own `update_action`, and its related record cannot be chosen. The sentence in between says why: the relationship has a `filter`; its foreign key is not public (`attribute_public? false`) or not writable (`attribute_writable? false`); or the records to choose from would be read through an action that is not a public read action. | Remove the option. |
+| \`NAME\` can never be edited, so \`confirm\` has no effect. A column that names a relationship is edited through an \`update_action\`, its own or the table's, that accepts the relationship's foreign key, \`KEY\`. | `confirm` on a reference cell that no update action saves: none at either level, `update_action false`, or an action that does not accept the key or needs an argument. | Remove `confirm`, or make the column editable. |
+| \`NAME\` can never be edited, so \`confirm\` has no effect. The relationship \`NAME\` has a \`filter\`, so a table cannot say which records it can hold, and offers none to choose from. | `confirm` on a reference cell whose related record cannot be chosen, whichever action is behind it. The second sentence says why, as above. | Remove `confirm`. |
+
+The messages about the name of a column's `update_action` and about an
+argument it requires, in the table above, apply to a reference cell as they
+are. Under the table's `update_action`, a reference cell whose key that
+action does not accept, or whose related record cannot be chosen, is
+read-only without a finding. See
+[Choosing a related record](choosing-a-related-record.md#which-reference-cells-are-edited).
 
 A private relationship gets the "is not public" message of a private field.
 

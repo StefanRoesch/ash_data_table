@@ -50,7 +50,8 @@ defmodule DemoWeb.Router do
   # reference cell whose label is not always shown (`reference_tables.ex`),
   # two with aggregate columns under field policies (`ledger_tables.ex`),
   # one whose columns have components (`component_tables.ex`), one whose
-  # columns are arrays (`array_tables.ex`), one whose
+  # columns are arrays (`array_tables.ex`), one whose reference cells are
+  # chosen by keys that are no UUID (`picker_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
   # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
@@ -96,6 +97,7 @@ defmodule DemoWeb.Router do
         ash_table "/crates", Demo.Support.Bulk.Crate, layout: false
         ash_table "/letters", Demo.Support.Bulk.Letter, layout: false
         ash_table "/pouches", Demo.Support.Bulk.Pouch, layout: false
+        ash_table "/stops", Demo.Support.Route.Stop, layout: false
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/select", DemoWeb.Support.SelectLive
         live "/url", DemoWeb.Support.UrlLive

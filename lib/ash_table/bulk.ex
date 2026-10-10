@@ -146,28 +146,8 @@ defmodule AshTable.Bulk do
     {for(record <- related(model, :all, opts), do: Map.take(record, model.primary_key)), 0}
   end
 
-  # A row as the browser names it, as a primary key: each value cast as the
-  # attribute's type casts what comes from outside. Nil for anything else.
-  defp key(%Model{primary_key: [_field]} = model, value) when not is_list(value),
-    do: key(model, [value])
-
-  defp key(%Model{primary_key: fields, resource: resource}, values)
-       when is_list(values) and length(values) == length(fields) and fields != [] do
-    fields
-    |> Enum.zip(values)
-    |> Enum.reduce_while(%{}, fn {field, value}, key ->
-      %{type: type, constraints: constraints} = Ash.Resource.Info.attribute(resource, field)
-
-      case scalar?(value) && Ash.Type.cast_input(type, value, constraints) do
-        {:ok, cast} when not is_nil(cast) -> {:cont, Map.put(key, field, cast)}
-        _not_a_value -> {:halt, nil}
-      end
-    end)
-  end
-
-  defp key(_model, _row), do: nil
-
-  defp scalar?(value), do: is_binary(value) or is_number(value) or is_boolean(value)
+  # A row as the browser names it, as a primary key; nil for anything else.
+  defp key(%Model{resource: resource}, row), do: AshTable.Record.key(resource, row)
 
   # The records with these keys that the person may read, a chunk at a
   # time: read when the chunk before them has been run on.

@@ -18,13 +18,15 @@ no HEEx.
 > for them in a panel. Rows can be selected, and a row action runs on all
 > the selected rows at once. A column can name a component of its own for
 > how its cells look and what they are edited with; a badge, a progress bar
-> and a slider are shipped. A picker for related records is a later slice.
+> and a slider are shipped. A cell that shows a related record is edited by
+> choosing another one from the related resource's own table.
 
 - [Install](#install)
 - [A first table](#a-first-table)
 - [Describing the table](#describing-the-table): columns and defaults
 - [Reading](#reading): page size and sort, [filtering](#filtering), [the URL](#the-url), [when a read fails](#when-a-read-fails)
 - [Inline editing](#inline-editing)
+- [Choosing a related record](#choosing-a-related-record)
 - [Row actions and create](#row-actions-and-create)
 - [Selecting rows and bulk actions](#selecting-rows-and-bulk-actions)
 - [Nested tables](#nested-tables)
@@ -52,6 +54,7 @@ examples from the demo app and each topic's edge cases.
 - [State in the URL](documentation/topics/state-in-the-url.md)
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
+- [Choosing a related record](documentation/topics/choosing-a-related-record.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
 - [Nested tables](documentation/topics/nested-tables.md)
@@ -214,8 +217,10 @@ end
   calculation with a required argument cannot be a column.
 - A column that names a public belongs-to relationship is a reference cell:
   it shows the related record's label, the attribute that the destination's
-  `table` block names with `label_field :name`. It is read-only, and not
-  sorted or filtered by. The label is read as Ash loads the relationship, as
+  `table` block names with `label_field :name`. It is not sorted or
+  filtered by, and is edited by
+  [choosing another related record](#choosing-a-related-record) where an
+  update action accepts the relationship's foreign key. The label is read as Ash loads the relationship, as
   the person, so a related record they may not read is an empty cell, and
   the column is left out for a person who can never read the destination.
 - Only `public?` fields and actions can appear. That holds for every
@@ -402,7 +407,9 @@ table is read-only.
 **A cell can be edited when all of this holds:**
 
 - its column is an attribute, and the attribute is writable. Calculations and
-  aggregates are never editable;
+  aggregates are never editable. A reference cell is edited through the
+  foreign key of its relationship: see
+  [Choosing a related record](#choosing-a-related-record);
 - an update action accepts the attribute: the column's own `update_action`,
   else the table's. The action is `public?` and needs nothing but the cell's
   value: an action with a required argument without a default cannot save a
@@ -495,6 +502,65 @@ run. The refusal on the cell is for an action that depends on the record.
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
 returns to the cell, still in edit mode with what was typed.
 
+## Choosing a related record
+
+A reference cell shows the record a belongs-to relationship points at. A
+person changes which record that is by choosing one from the related
+resource's own table, in a dialog at the right edge of the window: the
+**picker**. Nothing is declared for it.
+
+```elixir
+table do
+  update_action :update      # accepts :project_id and :assignee_id
+
+  column :project do
+    confirm "Move this task to another project?"
+  end
+
+  column :assignee
+  column :reporter           # no action accepts :reporter_id: read-only
+end
+```
+
+- **Which reference cells are edited.** Those whose update action, the
+  column's own or the table's, accepts the relationship's foreign key (its
+  `source_attribute`), under the rules of any editable cell. The key has to
+  be a public, writable attribute, and the relationship must have no
+  `filter`. Every other reference cell is read-only, as before.
+- **Opening it.** Enter, F2 or a double click on the cell. The picker is a
+  modal dialog, headed by the column and what is chosen ("Assignee: choose
+  user"). Its table is rendered when it opens, and focus goes into it, to
+  the row of the record the cell points at now when that row is on the page.
+- **The table in it** is the destination's table as declared: its columns,
+  its filter row, its sorting and its pages. It is for choosing only: no
+  cell of it is edited, and it has no row actions, no create button and no
+  expanders. Its rows have radio buttons: one row is selected at a time.
+- **Which records are offered.** Those the destination's read action
+  returns for this person, in their tenant: the relationship's own
+  `read_action` when it names one, else the read action of the
+  destination's table.
+- **Choosing.** A click on a row, or Space, selects it, which changes
+  nothing; "Choose" takes the selected row. Enter on a row and a double
+  click choose it at once. "None" empties the key, where the key can be
+  empty. "Cancel" and Escape close the picker.
+- **Saving** is the save of a cell: the column's update action runs with
+  exactly one input, the key, through `AshPhoenix.Form`; the record the cell
+  points at already saves nothing; a column with `confirm` asks first, on
+  top of the picker; the row is shown from what the action returns; and a
+  save the action refuses is shown on the cell, with the action's message.
+- **A key from the browser is a claim.** The row the picker sends is read
+  again on the server, as the person and through the read action the picker
+  shows its rows through, and it is that record's value that is saved. A
+  key of a record they may not read there, or of another tenant, saves
+  nothing, however it was sent.
+- **In the action panel**, an input that is such a key is given the same
+  way: its field says what the record is called and has a button, "Choose",
+  that opens the picker on top of the panel. See
+  [Row actions and create](#row-actions-and-create).
+
+The guide [Choosing a related record](documentation/topics/choosing-a-related-record.md)
+has all of this in detail.
+
 ## Row actions and create
 
 A row action is an update or destroy action of the resource that a person
@@ -531,10 +597,17 @@ end
   accepted attributes first. A field is called what the table's column for
   that attribute is called, else by the input's name in words. Its control
   is the cell editor of its type, and a plain text field for a value
-  written as one line that has no editor (a UUID, a time, an atom): an
-  input that points at another record is such a key field until there is a
-  picker. Attributes start with the record's values, arguments with their
+  written as one line that has no editor (a UUID, a time, an atom).
+  Attributes start with the record's values, arguments with their
   defaults. A field is marked as required when the action requires it.
+- **The key of a related record is chosen, not typed.** An input that is
+  the foreign key of a public belongs-to relationship whose destination has
+  a table is a field that says what the related record is called, with a
+  button that opens the [picker](#choosing-a-related-record) on top of the
+  panel. The panel keeps everything else that was typed. Before the action
+  runs, a key that was put into such a field is looked up as the person: one
+  that names no record they could have chosen runs nothing. A key whose
+  destination has no table stays a plain text field.
 - **An array** is a field too: multiple choice for enum values, and a row
   per value for text, numbers, booleans, dates and datetimes. It gives the
   action a list, which is empty when there are no values.
@@ -844,6 +917,7 @@ read action, as the person, before the action runs on it.
 | The person can **never see a field** (a field policy that depends on the actor only) | The column is left out for that person: no header, no filter, no cells. A URL that sorts or filters by it is ignored. |
 | The person sees a field on **some records only** (a field policy with a check on the record) | The column stays. Hidden cells are empty, announced as "Not available", and cannot be edited. |
 | The person can **never read a related resource** | A reference cell of it has no column for them, and it has no line under an expanded row. |
+| The person may **not read one related record** | It is not among the records to choose from in the picker, and its key cannot be saved by them, by whatever event. |
 | The person can **never run an update action** | The columns it saves are read-only for that person. If that is every editable column, the table offers them no editing at all. |
 | The person may run an update action on **some records only** | Cells look editable. On a record the action refuses, the cell says "You are not allowed to change this." when it is saved. |
 | The person can **never run a row action**, or the create action | The action has no button for them; with no row action left, the table has no actions column. |
@@ -940,7 +1014,7 @@ On a cell that can be edited:
 
 | Key | Effect |
 | --- | --- |
-| Enter, F2 | Start editing; on a boolean, toggle it and save |
+| Enter, F2 | Start editing; on a boolean, toggle it and save; on a reference cell, open the picker |
 | A character | Start editing with it: text and numbers are replaced by what is typed; a date keeps its value and takes a digit into its first part; a choice opens at the first value starting with the character |
 | Escape | While editing, give the edit up; on a cell whose save failed, restore the saved value |
 | Enter, while editing | Save; focus stays on the cell. In text, Shift+Enter makes a new line |
@@ -953,7 +1027,10 @@ button. Left and Right Arrow move between the buttons, Enter or Space uses
 one, Escape returns to the cell, and Tab moves on through the buttons and
 out of the grid after the last. Space on the cell itself selects the row.
 The action panel is a modal dialog: focus moves into it and stays, and
-Escape is Cancel. A relationship line with a create button is entered with
+Escape is Cancel. The picker is one too, on top of the panel when a field
+of the panel opened it: in its grid the keys are those of any grid, Space
+selects a row, Enter on a row chooses it, and Escape closes the picker
+alone. A relationship line with a create button is entered with
 F2; Enter on the line opens and closes it as before.
 
 A double click starts editing too. In a choice, the menu opens at once;
@@ -1158,8 +1235,11 @@ nothing at all, unless the resource says `on_forbidden :message`.
 - **`action :destroy` warns when the resource is compiled.** A destroy
   action without `confirm` deletes at one click. Give it a question, or say
   `confirm false`.
-- **A related record is given by its key in the action panel.** There is no
-  picker yet.
+- **A reference cell stays read-only.** No update action behind its column
+  accepts the relationship's foreign key (`accept [:assignee_id]`, not
+  `:assignee`), or the relationship has a `filter`.
+- **Space in the picker selects and does not choose.** "Choose", or Enter
+  on the row, takes it.
 - **A bulk action is one statement per record, not one for all.** That is
   what lets a policy or a validation refuse one record and not the others.
   A run on thousands of records takes as long as that many updates.

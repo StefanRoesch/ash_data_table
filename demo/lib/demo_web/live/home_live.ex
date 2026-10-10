@@ -15,6 +15,8 @@ defmodule DemoWeb.HomeLive do
         "declared columns, offset pages, sortable aggregate and calculation; " <>
           "columns and editing differ by who you are. Four columns have a component: " <>
           "badges, a bar with a slider, and hours with their unit. " <>
+          "The project and the assignee of a task are chosen from the table of the " <>
+          "projects and of the people, in a picker. " <>
           "A row expands into seven declared " <>
           "relationships of every kind, three levels deep; a viewer has no line for people. " <>
           "Four row actions (one runs at once, two open the action panel, the delete asks " <>
@@ -49,8 +51,8 @@ defmodule DemoWeb.HomeLive do
     {Demo.Tracker.User,
      "Not multitenant; filtered to your organization by policy, and refused outright for a " <>
        "viewer. Its table is mounted nowhere: it is seen nested, under a task or a comment, " <>
-       "and its rows never expand (max_depth 0). The demo's one read-only table: it names " <>
-       "no update action.", []},
+       "and in the picker of a task's assignee, and its rows never expand (max_depth 0). " <>
+       "The demo's one read-only table: it names no update action.", []},
     {Demo.Tracker.Organization, "The tenant.", []},
     {Demo.Tracker.TaskLabel, "The join between tasks and labels.",
      [

@@ -100,6 +100,101 @@ defmodule DemoWeb.TablePage do
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
+  @doc """
+  Opens the editor of a reference cell as the table's hook does when a
+  person presses Enter or F2 on it, or double-clicks it: one `pick` event
+  with the row's key and the column. Returns the page, with the picker in
+  it when the cell can be edited.
+
+      pick(view, task.id, "assignee")
+  """
+  def pick(view, id \\ "task", key, field) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("pick", %{"row" => to_string(key), "column" => field})
+  end
+
+  @doc """
+  Uses the button of a field of the open action panel that holds the key of
+  a related record: the picker opens on top of the panel. Returns the page.
+  """
+  def pick_input(view, id \\ "task", name) do
+    view |> element("[id='#{id}-panel-f-#{name}-choose']") |> render_click()
+  end
+
+  @doc """
+  Chooses in the open picker as its hook does: one `picked` event with the
+  row the person selected, as the hook of the picker's table names it (its
+  primary key; for a key of several attributes the list of its values), or
+  nil for "None". Returns the page.
+
+      picked(view, user.id)
+      picked(view, nil)
+      picked(view, nested("project", project.id, "tasks"), user.id)
+  """
+  def picked(view, id \\ "task", row), do: send_picked(view, id, row, false)
+
+  @doc """
+  The same once the person has answered the column's question with Confirm,
+  which is when the picker's hook sends the choice again.
+  """
+  def confirm_picked(view, id \\ "task", row), do: send_picked(view, id, row, true)
+
+  defp send_picked(view, id, row, confirmed?) do
+    row = if is_nil(row) or is_list(row) or is_map(row), do: row, else: to_string(row)
+
+    view
+    |> element("[id='#{id}-picker']")
+    |> render_hook("picked", %{"row" => row, "confirmed" => confirmed?})
+  end
+
+  @doc "Closes the open picker as Cancel and Escape do. Returns the page."
+  def cancel_picker(view, id \\ "task") do
+    view |> element("[id='#{id}-picker']") |> render_hook("picker_cancel", %{})
+  end
+
+  @doc """
+  The picker of the table `id` as a person reads it: its heading, the id of
+  the table in it (a table's id like any other: every function here takes
+  it), what its buttons say, the question it asks before a choice is saved,
+  and what it says when a choice was not taken. Nil while no picker is open.
+  """
+  def picker(html, id \\ "task") do
+    case Enum.to_list(query(html, "[id='#{id}-picker']")) do
+      [] ->
+        nil
+
+      [_dialog] ->
+        prefix = "#{id}-pick-"
+
+        %{
+          heading: text(html, "[id='#{id}-picker-title']"),
+          table:
+            html
+            |> attribute("[id='#{id}-picker'] > div[id^='#{prefix}']", "id")
+            |> List.first(),
+          buttons:
+            html
+            |> query("[id='#{id}-picker'] > div:last-child > button")
+            |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())),
+          question: List.first(attribute(html, "[id='#{id}-picker']", "data-question")),
+          error: text(html, "[id='#{id}-picker-error']")
+        }
+    end
+  end
+
+  @doc """
+  The keys of the rows that a table to choose from marks as the record that
+  is chosen now: what follows `ID-row-` in the row's id.
+  """
+  def current(html, id) do
+    prefix = "#{id}-row-"
+
+    html
+    |> attribute("[id='#{id}-table'] > tbody[data-current]", "id")
+    |> Enum.map(&String.replace_prefix(&1, prefix, ""))
+  end
+
   @doc "The header labels of the table's columns, left to right, without the sort marks."
   def headers(html, id) do
     html
@@ -226,6 +321,9 @@ defmodule DemoWeb.TablePage do
   @doc "The selector of the box of the record with primary key `key` in the table `id`."
   def box(id \\ "task", key), do: "[id='#{id}-row-#{key}-s'] > input[type=checkbox]"
 
+  @doc "The same where one row at a time is selected: a radio button."
+  def radio(id, key), do: "[id='#{id}-row-#{key}-s'] > input[type=radio]"
+
   @doc """
   Gives up the failure of a row's actions cell, as the table's hook does
   when a person presses Escape on it. Returns the page.
@@ -257,6 +355,10 @@ defmodule DemoWeb.TablePage do
   The field of an array has several controls, and its value is a list: for
   `"choices"`, the boxes of a multiple choice, the values that are ticked;
   for `"list"`, one control per value, what each of them holds.
+
+  The field of the key of a related record is a `"reference"`: its value is
+  the key it holds, and it says besides what the record is called
+  (`chosen`, nil when it says nothing).
   """
   def panel(html, id \\ "task") do
     case Enum.to_list(query(html, "[id='#{id}-panel']")) do
@@ -269,7 +371,17 @@ defmodule DemoWeb.TablePage do
             [name] = LazyHTML.attribute(field, "data-field")
             {control, value, required?} = field_control(field)
 
-            %{
+            chosen =
+              if control == "reference" do
+                case Enum.to_list(LazyHTML.query(field, "[data-chosen]")) do
+                  [] -> %{chosen: nil}
+                  [element | _] -> %{chosen: element |> LazyHTML.text() |> String.trim()}
+                end
+              else
+                %{}
+              end
+
+            Map.merge(chosen, %{
               name: name,
               label:
                 field
@@ -283,7 +395,7 @@ defmodule DemoWeb.TablePage do
                 field
                 |> LazyHTML.query("[data-error]")
                 |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
-            }
+            })
           end
 
         %{
@@ -302,6 +414,13 @@ defmodule DemoWeb.TablePage do
   # that it is required.
   defp field_control(field) do
     cond do
+      # the key of a related record: held by an input that is not shown,
+      # beside what the record is called and the button that opens the picker
+      Enum.any?(LazyHTML.query(field, "input[data-key]")) ->
+        [value] = field |> LazyHTML.query("input[data-key]") |> LazyHTML.attribute("value")
+
+        {"reference", value, Enum.any?(LazyHTML.query(field, "[id$='-label'] > .sr-only"))}
+
       # an array, value by value: its rows, without the one in the `<template>`
       Enum.any?(LazyHTML.query(field, "[data-list]")) ->
         values =
@@ -418,7 +537,8 @@ defmodule DemoWeb.TablePage do
 
   An array has several controls: `"choices"`, one box per choice, or
   `{"list", control}`, a row per value with that control, a button that
-  takes the value away, and a button that adds one.
+  takes the value away, and a button that adds one. A reference cell has
+  none in the cell: `"reference"`, for the picker.
   """
   def editor(html, id, field) do
     case html |> query("template[id='#{id}-editor-#{field}']") |> LazyHTML.to_tree() do
@@ -436,6 +556,10 @@ defmodule DemoWeb.TablePage do
                content
                |> LazyHTML.query("label")
                |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))}
+
+            # a reference cell is edited in the picker: its template is empty
+            "reference" ->
+              {"reference", []}
 
             "list" ->
               # the row of a value is in a template of its own

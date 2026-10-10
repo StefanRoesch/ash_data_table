@@ -101,21 +101,36 @@ defmodule DemoWeb.Tables.ReferenceCellTest do
                ["Ada Lovelace", "Grace Hopper", "", "Ada Lovelace"]
     end
 
-    test "is read-only: no editor for its column, and marked as such beside cells that are edited",
+    test "is read-only where no update action accepts its key: no editor for its column, and marked as such",
          %{conn: conn, world: world} do
       task = task(world, "Write the report")
 
-      {:ok, view, html} = live(conn, "/tasks")
+      {:ok, _view, html} = live(conn, "/tasks")
 
-      for name <- ["project", "assignee", "reporter"] do
-        assert name not in editors(html, "task")
-        assert attribute(html, cell(task.id, name), "aria-readonly") == ["true"]
+      # `update` accepts `project_id` and `assignee_id`, and no action `reporter_id`
+      assert "reporter" not in editors(html, "task")
+      assert attribute(html, cell(task.id, "reporter"), "aria-readonly") == ["true"]
+
+      for name <- ["project", "assignee"] do
+        assert name in editors(html, "task")
+        assert attribute(html, cell(task.id, name), "aria-readonly") == []
+      end
+    end
+
+    test "has no value that is typed: a `save` of it is nothing the table lets anyone send",
+         %{conn: conn, world: world} do
+      ada = person(world, "Ada Lovelace")
+      task = task(world, "Write the report")
+
+      {:ok, view, _html} = live(conn, "/tasks")
+
+      for name <- ["assignee", "reporter", "project"], typed <- ["Somebody", ada.id] do
+        html = save(view, task.id, name, typed)
+        assert_reply view, %{ok: false}
+        assert text(html, cell(task.id, "assignee")) == ""
       end
 
-      # an edit of it is nothing the table lets anyone send
-      html = save(view, task.id, "assignee", "Somebody")
-      assert_reply view, %{ok: false}
-      assert text(html, cell(task.id, "assignee")) == ""
+      assert Ash.get!(Demo.Tracker.Task, task.id, authorize?: false).assignee_id == nil
     end
   end
 

@@ -674,7 +674,7 @@ test.describe("an action that failed", () => {
 })
 
 test.describe("the action panel", () => {
-  test("is a modal dialog at the right edge of the window, named by its heading; focus moves to its first field", async ({
+  test("is a modal dialog at the right edge of the window, named by its heading; focus moves to its first control", async ({
     page,
     tasks,
     frames,
@@ -692,7 +692,9 @@ test.describe("the action panel", () => {
     await expect(tasks.status).toHaveText("")
 
     expect(await tasks.fields()).toEqual(["assignee_id", "reason"])
-    await expect(tasks.field("assignee_id"), "the first field has the focus").toBeFocused()
+    // the first field holds the key of a related record: its control is the
+    // button that opens the picker (picker.spec.ts)
+    await expect(tasks.fieldChoose("assignee_id"), "the first control has the focus").toBeFocused()
     await expect(tasks.panelSubmit).toHaveText("Run")
     await expect(tasks.panelCancel).toHaveText("Cancel")
 
@@ -707,7 +709,7 @@ test.describe("the action panel", () => {
 
   test("Tab stays in the panel, and the page behind it is out of reach", async ({ page, tasks, frames }) => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
-    await expect(tasks.field("assignee_id")).toBeFocused()
+    await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
     await frames.clear()
 
     await tasks.press("Tab")
@@ -759,7 +761,7 @@ test.describe("the action panel", () => {
 
     // from the keyboard, and with Cancel
     await tasks.acts(FIRST, () => tasks.press("Enter"))
-    await expect(tasks.field("assignee_id")).toBeFocused()
+    await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
     await expect(tasks.field("reason"), "opened again, it is empty").toHaveValue("")
     await tasks.panelCancel.click()
     await expect(tasks.panel).toHaveCount(0)
@@ -814,8 +816,11 @@ test.describe("the action panel", () => {
     await expect(tasks.field("reason")).toHaveAttribute("aria-required", "true")
     await expect(tasks.field("reason")).toHaveAccessibleName(/^Reason/)
     await expect(tasks.panel.locator("[data-field=reason] label")).toHaveText(/Reason\s*\*/)
-    await expect(tasks.field("assignee_id")).not.toHaveAttribute("aria-required")
-    await tasks.field("assignee_id").fill("")
+    await expect(tasks.field("assignee_id")).toHaveRole("group")
+    await expect(tasks.field("assignee_id")).toHaveAccessibleName("Assignee")
+    await expect(tasks.field("assignee_id").locator(".sr-only")).toHaveCount(0)
+    await tasks.chooseField("assignee_id", null)
+    await expect(tasks.fieldKey("assignee_id")).toHaveValue("")
     await tasks.field("reason").fill("Nobody has the time")
     await tasks.panelSubmit.click()
 
@@ -831,34 +836,24 @@ test.describe("the action panel", () => {
     frames,
   }) => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
-    const assignee = tasks.field("assignee_id")
     const reason = tasks.field("reason")
     await expect(tasks.panel.locator("[data-error]")).toHaveCount(0)
 
-    // a key that is none: the field that was typed in says so, the other says nothing yet
-    await assignee.focus()
-    await tasks.retype("nobody")
-    await expect(tasks.fieldError("assignee_id")).toHaveText("is invalid")
-    await expect(assignee).toHaveAttribute("aria-invalid", "true")
-    await expect(assignee).toHaveAttribute("aria-describedby", "task-panel-f-assignee_id-error")
-    await expect(assignee).toHaveAccessibleDescription("is invalid")
-    await expect(assignee, "typing keeps the focus and what was typed").toBeFocused()
-    await expect(assignee).toHaveValue("nobody")
-    await expect(tasks.fieldError("reason")).toHaveCount(0)
-    await expect(reason).not.toHaveAttribute("aria-invalid")
-    expect(await frames.count("panel_validate")).toBeGreaterThan(0)
-    expect(await frames.count("panel_submit")).toBe(0)
-
-    // put right, it says nothing any more
-    await tasks.retype("")
-    await expect(tasks.fieldError("assignee_id")).toHaveCount(0)
-    await expect(assignee).not.toHaveAttribute("aria-invalid")
-
+    // too short: the field that was typed in says so
     await reason.focus()
     await page.keyboard.type("ab")
     await expect(tasks.fieldError("reason")).toHaveText("length must be greater than or equal to 3")
     await expect(reason).toHaveAttribute("aria-invalid", "true")
+    await expect(reason).toHaveAttribute("aria-describedby", "task-panel-f-reason-error")
+    await expect(reason).toHaveAccessibleDescription("length must be greater than or equal to 3")
+    await expect(reason, "typing keeps the focus and what was typed").toBeFocused()
+    await expect(reason).toHaveValue("ab")
+    expect(await frames.count("panel_validate")).toBeGreaterThan(0)
+    expect(await frames.count("panel_submit")).toBe(0)
+
+    // put right, it says nothing any more
     await page.keyboard.type("c")
+    await expect(reason).not.toHaveAttribute("aria-invalid")
     await expect(tasks.fieldError("reason")).toHaveCount(0)
     await expect(reason).toHaveValue("abc")
     await expect(reason).toBeFocused()
@@ -1077,17 +1072,24 @@ test.describe("creating a record", () => {
     await expect(tasks.field("billable?")).toHaveAttribute("type", "checkbox")
     await expect(tasks.field("billable?")).not.toBeChecked()
     await expect(tasks.field("due_on")).toHaveAttribute("type", "date")
-    await expect(tasks.field("project_id")).toHaveAttribute("type", "text")
+    // the key of a related record: what it is called and a button, as a group
+    await expect(tasks.field("project_id")).toHaveRole("group")
+    await expect(tasks.fieldKey("project_id")).toHaveValue("")
+    await expect(tasks.fieldKey("project_id")).toBeHidden()
+    await expect(tasks.fieldChoose("project_id")).toHaveText("Choose")
 
     // named by their labels, as the columns are; what has to be given says so
     await expect(tasks.field("status")).toHaveAccessibleName(/^State/)
     await expect(tasks.field("billable?")).toHaveAccessibleName("Billable?")
-    for (const name of ["title", "status", "priority", "progress", "project_id"]) {
+    for (const name of ["title", "status", "priority", "progress"]) {
       await expect(tasks.field(name), name).toHaveAttribute("aria-required", "true")
     }
-    for (const name of ["description", "estimate_hours", "billable?", "due_on", "assignee_id"]) {
+    for (const name of ["description", "estimate_hours", "billable?", "due_on"]) {
       await expect(tasks.field(name), name).not.toHaveAttribute("aria-required")
     }
+    // a group cannot say that it is required: its name does
+    await expect(tasks.field("project_id")).toHaveAccessibleName(/^Project\s+required$/)
+    await expect(tasks.field("assignee_id")).toHaveAccessibleName("Assignee")
 
     await tasks.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
@@ -1128,10 +1130,10 @@ test.describe("creating a record", () => {
     await tasks.field("billable?").focus()
     await page.keyboard.press("Space")
     await expect(tasks.field("billable?")).toBeChecked()
-    // a date, and a key: a plain field
+    // a date, and the key of a related record, which is chosen
     await tasks.field("due_on").fill("2031-02-03")
     await tasks.field("external_ref").fill("EXT-E2E")
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
 
     // what was typed first is still there after everything the server has said since
     await expect(tasks.field("title")).toHaveValue("Made in the browser")
@@ -1202,7 +1204,7 @@ test.describe("creating a record", () => {
 
     await tasks.create.click()
     await tasks.field("title").fill("Made on page two")
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
     await tasks.panelSubmit.click()
     await expect(tasks.panel).toHaveCount(0)
 
@@ -1237,7 +1239,7 @@ test.describe("creating a record", () => {
 
     await tasks.panelSubmit.click()
     await expect(tasks.fieldError("project_id")).toHaveText("is required")
-    await expect(tasks.field("project_id")).toHaveAttribute("aria-invalid", "true")
+    await expect(tasks.field("project_id")).toHaveAccessibleDescription("is required")
     await expect(tasks.fieldError("title")).toHaveText("length must be greater than or equal to 3")
     await expect(tasks.panel).toBeVisible()
     await expect(tasks.status).toHaveText(/^New task failed: /)
@@ -1247,7 +1249,7 @@ test.describe("creating a record", () => {
     // put right, it is created
     await tasks.field("title").fill("abc")
     await expect(tasks.fieldError("title")).toHaveCount(0)
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
     await expect(tasks.fieldError("project_id")).toHaveCount(0)
     await tasks.panelSubmit.click()
     await expect(tasks.panel).toHaveCount(0)
@@ -1265,7 +1267,7 @@ test.describe("creating a record", () => {
       expect(await tasks.fields()).not.toContain("external_ref")
       expect(await tasks.fields()).toContain("estimate_hours")
       await tasks.field("title").fill("A member's task")
-      await tasks.field("project_id").fill(SEED.project.mobileApp)
+      await tasks.chooseField("project_id", SEED.project.mobileApp)
       await tasks.panelSubmit.click()
 
       await expect(tasks.panel).toHaveCount(0)
@@ -1691,7 +1693,7 @@ test.describe("the two tables of /dashboard", () => {
     const projectKeys = await projects.rowKeys()
     await tasks.create.click()
     await tasks.field("title").fill("Made on the dashboard")
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
     await tasks.panelSubmit.click()
     await expect(tasks.panel).toHaveCount(0)
 
@@ -1784,7 +1786,7 @@ test.describe("the look", () => {
     expect(submit.x + submit.width).toBeLessThanOrEqual(390)
 
     await tasks.field("title").fill("Made on a narrow window")
-    await tasks.field("project_id").fill(SEED.project.mobileApp)
+    await tasks.chooseField("project_id", SEED.project.mobileApp)
     await tasks.panelSubmit.click()
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.cell(await tasks.rowKey(1), "title")).toHaveText("Made on a narrow window")

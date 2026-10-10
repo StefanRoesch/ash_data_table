@@ -38,7 +38,7 @@ defmodule AshTable.Resource.Column do
       type: :atom,
       required: true,
       doc:
-        "What is shown in this column: a public attribute, calculation or aggregate, or a public belongs-to relationship. A relationship makes the column a reference cell: it shows the related record's label, the `label_field` of the destination's table, read-only, and is neither sorted nor filtered by."
+        "What is shown in this column: a public attribute, calculation or aggregate, or a public belongs-to relationship. A relationship makes the column a reference cell: it shows the related record's label, the `label_field` of the destination's table, and is neither sorted nor filtered by. It is edited by choosing another related record from the destination's table, where the column's update action accepts the relationship's foreign key."
     ],
     label: [
       type: :string,
@@ -57,7 +57,7 @@ defmodule AshTable.Resource.Column do
     update_action: [
       type: {:or, [{:literal, false}, :atom]},
       doc:
-        "The update action an inline edit of this column runs, with the column's attribute as its only input. `false` makes the column read-only. Defaults to the table's `update_action`."
+        "The update action an inline edit of this column runs, with the column's attribute as its only input; for a column that names a relationship, the relationship's foreign key. `false` makes the column read-only. Defaults to the table's `update_action`."
     ],
     confirm: [
       type: :string,

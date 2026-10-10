@@ -73,6 +73,15 @@ defmodule AshTable.Live.Page do
       available". **A destination they can never read** has no column for
       its reference cell.
 
+    * **A related record is chosen from what the person may read.** The
+      picker of a reference cell, and of a field of the action panel that
+      holds such a key, shows the destination's table as the person may
+      read it. The record they choose is read again by its key, as them,
+      before the key is saved or the action runs: a key from the browser
+      that names no record they may read there changes nothing. A person
+      who can never read the destination that way, or can never see the
+      key, has no editor for the cell.
+
     * **A relationship whose destination the person can never read** has no
       line under an expanded row. In a nested table everything above holds
       for its own resource. A record created in a nested table is joined to

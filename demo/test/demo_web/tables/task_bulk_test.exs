@@ -280,7 +280,14 @@ defmodule DemoWeb.Tables.TaskBulkTest do
                submit: "Run",
                errors: [],
                fields: [
-                 %{name: "assignee_id", label: "Assignee ID", value: "", required?: false},
+                 %{
+                   name: "assignee_id",
+                   label: "Assignee",
+                   control: "reference",
+                   value: "",
+                   chosen: nil,
+                   required?: false
+                 },
                  %{name: "reason", label: "Reason", value: "", required?: true}
                ]
              } = panel(html)

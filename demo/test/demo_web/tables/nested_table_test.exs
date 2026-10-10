@@ -618,7 +618,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       {_view, html} = open_tasks(conn, project)
 
       assert editors(html, id) ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks project assignee)
 
       assert editor(html, id, "status").confirm == "Change the state of this task?"
       # the projects around it have the editors of their own table

@@ -174,7 +174,7 @@ end
 
 | Demo page | Runs straight away | Opens the panel |
 | --- | --- | --- |
-| `/tasks` | Archive; Destroy, after its question | Reassign (Assignee ID, Reason), Set progress (Progress) |
+| `/tasks` | Archive; Destroy, after its question | Reassign (Assignee, Reason), Set progress (Progress) |
 | `/projects` | Destroy, after its question | Set status (Status) |
 | `/comments`, `/labels` | Destroy, after its question | |
 | `/task_labels` | Remove, with no question | |
@@ -203,7 +203,8 @@ are declared. A private attribute or argument is never a field.
 | The input | Its label |
 | --- | --- |
 | An attribute the table has a column for | The column's label: "State" for `status` on `/tasks`, whose column says `label "State"`. |
-| An attribute the table has no column for | The attribute's name in words: "Assignee ID" for `assignee_id`. |
+| An attribute the table has no column for | The attribute's name in words: "External ref" for `external_ref`. |
+| The key of a related record that is chosen in the picker | The label of the table's column of that relationship: "Assignee" for `assignee_id` on `/tasks`. Without such a column, the relationship's name in words. |
 | An argument | The argument's name in words: "Reason". |
 
 **Which control.** The controls are those of the cell editors, by the
@@ -219,12 +220,24 @@ input's type, and one more:
 | enum | A menu of the values, with an empty choice when the input is not required. |
 | array of enum values | Multiple choice: a box per value of the enum, in declared order, under the field's label. |
 | array of text, numbers, booleans, dates or datetimes | A row per value, with the control of its type and a button that takes the value away, and the button "Add value" under them. |
+| The key of a public belongs-to relationship whose destination has a table | What the related record is called, as plain text, and a button "Choose" that opens the picker. See below. |
 | A value written as one line of text that has no editor of its own: a UUID, an `:atom` without `one_of`, a time, a duration | A plain text field. What is typed is given to the action as it is, and Ash casts it. |
 | Anything else: a map, an embedded resource, a union, a binary, and an array of any of these or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
 
-An input that points at another resource, such as `assignee_id` or
-`project_id`, is a key, and so a plain text field into which the key is
-typed or pasted. A picker of related records is a later slice.
+**The field of a key.** An input that points at another resource, such as
+`assignee_id` or `project_id`, is the foreign key of a relationship. Where
+that is a public belongs-to relationship whose destination has a table, the
+key is not typed: the field says what the related record is called, and its
+button opens the picker, the destination's own table in a dialog on top of
+the panel, where the person chooses a record. The panel underneath keeps
+everything that was typed into it. On `/tasks`, "Reassign" has "Assignee",
+and "New task" has "Project" and "Assignee". What the picker offers, what a
+choice puts into the field and what a hand-made form cannot do with it is
+in [Choosing a related record](choosing-a-related-record.md#in-the-action-panel).
+
+A key whose destination has no table, whose relationship is private or has
+a `filter`, or that is a key by name only, is a plain text field into which
+the key is typed or pasted, as any UUID is.
 
 **The field of an array** is a group of controls under one label, in a row
 action and in a create alike. On `/tasks`, "New task" has "Tags", a list of
@@ -283,7 +296,8 @@ shown at the field like every other message of the action.
 **Try it:** `/tasks` as Ada Admin, "New task". Thirteen fields: "Title \*",
 "Description", "State \*" starting with "To do", "Priority \*" with
 "Medium", "Progress \*", a slider at 0, "Estimate hours", the checkbox "Billable?",
-"Due on", "External ref", "Project ID \*", "Assignee ID", and the two
+"Due on", "External ref", "Project \*" and "Assignee", each with the button
+"Choose", and the two
 arrays: "Tags", with the button "Add value" and no values yet, and "Checks",
 four boxes. The create action accepts exactly these:
 
@@ -377,7 +391,7 @@ no validation of its own.
 | Anything that is not of the action's making | Above the fields | "This could not be done." |
 
 A failure is announced to screen readers as well: "Reassign failed:
-Assignee ID: is invalid; Reason: is required".
+Reason: is required".
 
 **Try it:** `/tasks` as Ada Admin, "Reassign". Type `No` into "Reason":
 "length must be greater than or equal to 3". Empty it and use "Run": "is
@@ -637,7 +651,9 @@ as a filter's controls are.
 | Space | On the cell | Selects the row, or takes it out of the selection, as on any cell of a row. |
 
 The action panel is a modal dialog. Focus moves into it and stays there,
-Tab goes through its fields and buttons, and Escape is Cancel.
+Tab goes through its fields and buttons, and Escape is Cancel. The field
+of a key has one control, its button "Choose": Enter or Space on it opens
+the picker on top of the panel, and Escape there closes the picker alone.
 
 A relationship line that has a create button holds two controls. Enter on
 the line still opens and closes it. F2 on the line moves into its controls,
@@ -692,8 +708,10 @@ All keys of a table are in
   accepts attributes. Give the table an action that accepts none.
 - **Expecting a new record to appear where the sort puts it.** It is the
   first row until the table reads again.
-- **A key field for a related record.** `project_id` is typed or pasted.
-  There is no picker yet.
+- **A key field that is typed, where a picker was expected.** The key's
+  relationship is not public, has a `filter`, or leads to a resource
+  without a table. See
+  [Choosing a related record](choosing-a-related-record.md#in-the-action-panel).
 - **No create button under a relationship.** It is not a has-many joined by
   attributes, or the destination's create action does not accept the
   attribute that joins the two.
@@ -703,7 +721,7 @@ All keys of a table are in
 
 ## Not in the first version
 
-No picker for an input that points at another resource, no fields for
+No picker for an argument that manages a relationship, no fields for
 maps, embedded resources and unions, nor for arrays of them, no actions
 that belong to the
 table and not to a row (generic actions), no adding or linking through a

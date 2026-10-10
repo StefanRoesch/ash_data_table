@@ -60,7 +60,9 @@ test.describe("which cells can be edited", () => {
     for (const column of ["title", "status", "priority", "progress", "estimate_hours", "tags", "checks"]) {
       await expect(tasks.cell(FIRST, column)).not.toHaveAttribute("aria-readonly")
     }
-    await expect(tasks.editorTemplates).toHaveCount(11)
+    // eleven columns with an editor in the cell, and two reference cells
+    // that are edited in the picker (picker.spec.ts)
+    await expect(tasks.editorTemplates).toHaveCount(13)
 
     const headline = tasks.cell(FIRST, "headline")
     await headline.focus()

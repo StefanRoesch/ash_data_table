@@ -69,7 +69,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
     test "every editable column has an editor of its type, and no other column has one",
          %{html: html} do
       assert editors(html, "task") ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks project assignee)
 
       assert editor(html, "task", "title") == %{control: "textarea", choices: nil, confirm: nil}
       assert editor(html, "task", "description").control == "textarea"

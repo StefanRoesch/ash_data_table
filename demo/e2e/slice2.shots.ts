@@ -65,10 +65,9 @@ test.describe("as the member", () => {
 test("the action panel: a row action, with errors, and the create panel", async ({ page, tasks }) => {
   await tasks.open()
   await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
-  await expect(tasks.field("assignee_id")).toBeFocused()
+  await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
   await shot(page, "final-panel-reassign")
 
-  await tasks.field("assignee_id").fill("nobody")
   await tasks.panelSubmit.click()
   await expect(tasks.fieldError("reason")).toBeVisible()
   await shot(page, "final-panel-errors")
@@ -123,7 +122,7 @@ test.describe("at 900 px", () => {
     await shot(page, "final-900-actions")
 
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
-    await expect(tasks.field("assignee_id")).toBeFocused()
+    await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
     await shot(page, "final-900-panel")
   })
 
