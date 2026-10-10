@@ -30,8 +30,8 @@ defmodule DemoWeb.Tables.EmbeddedUrlTableTest do
     end
 
     on_exit(fn ->
-      Ash.DataLayer.Ets.stop(Entry)
-      Ash.DataLayer.Ets.stop(Ticket)
+      Demo.Support.Ets.stop(Entry)
+      Demo.Support.Ets.stop(Ticket)
     end)
   end
 

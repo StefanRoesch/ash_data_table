@@ -42,28 +42,10 @@ defmodule DemoWeb.Tables.ManagedRelationshipsTest do
       Ash.create!(Site, %{country: country, number: number, code: code, name: name})
     end
 
-    on_exit(fn -> stop([Gig, GigSkill, Member, Site, Skill]) end)
+    # waits until the tables are gone: the next test starts without them
+    on_exit(fn -> Demo.Support.Ets.stop([Gig, GigSkill, Member, Site, Skill]) end)
 
     %{people: people, skills: skills}
-  end
-
-  # The tables are kept by a process each, which `Ash.DataLayer.Ets.stop/1`
-  # tells to stop and does not wait for. The next test starts with tables
-  # that are gone for certain.
-  defp stop(resources) do
-    for resource <- resources do
-      manager = Process.whereis(Module.concat(resource, TableManager))
-      reference = manager && Process.monitor(manager)
-      Ash.DataLayer.Ets.stop(resource)
-
-      if reference do
-        receive do
-          {:DOWN, ^reference, :process, _pid, _reason} -> :ok
-        after
-          1000 -> :ok
-        end
-      end
-    end
   end
 
   defp as(conn, role),

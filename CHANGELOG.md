@@ -554,6 +554,89 @@ declared in the resource and mounted with one line in the router.
   action, and a generic action with a required argument the panel has no
   field for.
 
+### Unions
+
+- A union (`Ash.Type.Union`, also as a NewType) is a cell of its own
+  (`cell_type: :union`), where it was read-only text as Elixir writes it.
+  The cell shows the value the union holds, as a cell of that kind's type
+  shows it: a number as a number, a boolean as its check mark, the label of
+  an enum's value, an embedded resource or a map as its one line. Nothing
+  says which kind it is. An array of unions (`{:array, :union}`) shows its
+  values with `; ` between them, and a union inside an embedded resource or
+  a map is shown after its field's label.
+- A union is edited in the side panel, kind first: Enter, F2 or a double
+  click on the cell opens the action panel with the union as a group, in it
+  "Kind", a choice of the union's kinds by their names in words (through
+  the host's Gettext, as the labels of an enum's values), and under it the
+  value of the kind that is chosen: the one control of its type, or the
+  fields of a kind made of fields. Choosing another kind puts that kind's
+  fields in place of the others, empty; no kind is no value, where the
+  attribute may be empty. "Save" runs the column's update action with the
+  kind and its value as Ash takes a union from outside
+  (`%{"_union_type" => …, "_union_value" => …}`), for tagged and untagged
+  unions alike; the key a tagged union tells its kinds by is given by the
+  table and is no field of the panel. A value that was typed for one kind
+  is never given as the value of another.
+- What the action says of the value of a kind is shown at that value's
+  control, of a field of a kind made of fields at that field, and anything
+  else about the union under its label.
+- A union is editable when every kind has a control: text, a number, a
+  boolean, a date, a datetime, a choice, a value written as one line of
+  text, or an embedded resource or a map whose fields can all be given. A
+  union with another kind (an array, a map without fields, a tuple) is
+  read-only, and so is an array of unions; a column's own `update_action`
+  on one is reported when the resource is compiled. An embedded resource
+  among the kinds is given through its create action alone, which is what
+  `Ash.Type.Union` runs.
+- An embedded resource or a map with a union among its fields is no longer
+  read-only for that: the union is a field of its group.
+- In the action panel, of a row action, of a table action, of an action on
+  the selected rows and of the create action, an input that is a union is
+  the same group. An action that requires a union the panel has no field
+  for is reported and has no button, as before.
+- A union is neither sorted nor filtered by, as in `ash_json_api` and
+  `ash_graphql`. A union column no longer offers a sort, which
+  `Ash.Resource.Info.sortable?/3` alone would allow.
+- New text: "Kind".
+- A column's `component` shows the cells of a union column; its editor is
+  not used for one. A component is told `cell_type: :union`, or
+  `{:array, :union}`, where it was told `:other`.
+
+### Files
+
+- An argument of an action that takes a file (`Ash.Type.File`, also as a
+  NewType) is a field of the action panel: the browser's file input, under
+  the argument's label, for one file. It is there for a row action, a
+  generic action in a row, a table action, the create action and an action
+  on the selected rows. An action with such an argument always opens its
+  panel. Before, an action that required a file was reported and had no
+  button, and an optional file was left out.
+- The field is an upload of LiveView's. The file is sent when the panel's
+  button is used, and the action runs while LiveView holds it. The action
+  is given a `Plug.Upload`, which Ash casts to an `Ash.Type.File` with the
+  uploaded file's path, the name the browser gave (without any directory)
+  and its content type. A file is never taken from what the form sent.
+- A file is given once: after the panel's button is used the file input is
+  empty again, whatever came of the action, and what the action said of
+  the file stays at the field until another is chosen.
+- `upload`, an entity of the `table` section, says what the upload of the
+  arguments of one name takes: `accept`, a list of file name extensions and
+  MIME types, and `max_file_size`, in bytes. Without one the upload takes
+  any file of 8 MB at most, which are LiveView's own limits;
+  `Ash.Type.File` has no constraints to say them with.
+  `AshTable.Resource.Info.uploads/1` returns the declarations.
+- A file the upload does not take is refused as it is chosen, at the field
+  and in the live region, and "Run" then runs nothing. New texts: "The file
+  is too large. The limit is %{limit}.", "This type of file is not
+  accepted.", "The file could not be uploaded."
+- On the selected rows every record is given the same file: the run has a
+  copy of it, which is removed when the run is done.
+- Reported when the resource is compiled: an `upload` that names no public
+  file argument of an action the table offers, one whose `accept` is empty
+  or lists what LiveView does not know. An action that requires several
+  files (`{:array, :file}`) cannot be run from a table, and a file is no
+  input of the argument line.
+
 ### Custom components
 
 - `component` on a `column`: a module that says how the cells of the column
@@ -711,6 +794,23 @@ declared in the resource and mounted with one line in the router.
 - The picker's "Choose" is rendered `aria-disabled="false"` where several
   records are chosen, and its dialog says `data-several`. The `picked`
   event carries `rows` there, in place of `row`.
+
+### Changed since relationship editing was added
+
+- **A union column is a cell type of its own.** `cell_type` is `:union`
+  where it was `:other`, an array of unions `{:array, :union}`, and such a
+  column is no longer sortable. A component on one is told so.
+- **A union is editable under a table-level `update_action`** that accepts
+  it, where every kind has a control. A table that should keep it
+  read-only says `update_action false` on the column.
+- **An embedded resource with a union in it is editable**, where it was
+  read-only because of the union.
+- **An action with a file argument has a button and a panel.** One that
+  requires a file is no longer reported; one whose only input is an
+  optional file opens the panel where it ran at once.
+- The message for an action that requires an input without a field, and
+  the one for a column's `update_action` on a type without an editor, name
+  unions and files among what a table has a field for.
 
 ### Tooling
 

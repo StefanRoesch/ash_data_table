@@ -24,7 +24,7 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
 
     on_exit(fn ->
       Gate.open()
-      Enum.each([Binder, Paper, Draft, Clerk, Docket], &Ash.DataLayer.Ets.stop/1)
+      Demo.Support.Ets.stop([Binder, Paper, Draft, Clerk, Docket])
     end)
   end
 

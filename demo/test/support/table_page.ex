@@ -582,6 +582,15 @@ defmodule DemoWeb.TablePage do
   related records is `"references"`: its value is the keys it holds, in
   their order, and `chosen` what each of the records is called.
 
+  The field of a union is a `"union"`, whose value is the kind that is
+  chosen (`""` for none). The choice of the kind and the kind's value
+  follow it as fields of their own: `"content._union_type"`,
+  `"content._union_value"`, and for a kind made of fields
+  `"content._union_value.street"`.
+
+  The field of an argument that takes a file is a `"file"`, whose value is
+  nothing: what it holds is the browser's to show.
+
   The field of a value made of fields is a `"group"`, whose value says
   whether the value is there, and that of an array of them is `"groups"`,
   whose value is how many there are. The fields in them follow, each named
@@ -678,6 +687,22 @@ defmodule DemoWeb.TablePage do
            List.keymember?(attributes, "data-group-item", 0)
          end), false}
 
+      # a union: the kind that is chosen, "" for none. The choice itself and
+      # the kind's value follow it, each a field of the panel
+      # ("content._union_type", "content._union_value", and for a kind
+      # made of fields "content._union_value.street").
+      (union = child(field, "data-union")) != nil ->
+        union = union |> List.wrap() |> LazyHTML.from_tree()
+
+        kind =
+          union
+          |> LazyHTML.query("select[name$='[_union_type]'] option[selected]")
+          |> Enum.take(1)
+          |> Enum.flat_map(&LazyHTML.attribute(&1, "value"))
+          |> List.first("")
+
+        {"union", kind, Enum.any?(LazyHTML.query(union, "[id$='-label'] > .sr-only"))}
+
       # the keys of several related records: each held by an input that is
       # not shown, beside what its record is called
       Enum.any?(LazyHTML.query(field, "[data-references]")) ->
@@ -706,6 +731,15 @@ defmodule DemoWeb.TablePage do
          field
          |> LazyHTML.query("[role=group] input[type=checkbox][checked]")
          |> LazyHTML.attribute("value"), false}
+
+      # an argument that takes a file: what it holds is the browser's to show
+      Enum.any?(LazyHTML.query(field, "input[type=file]")) ->
+        [required] =
+          for input <- LazyHTML.query(field, "input[type=file]") do
+            LazyHTML.attribute(input, "aria-required") == ["true"]
+          end
+
+        {"file", nil, required}
 
       true ->
         control = LazyHTML.query(field, "textarea, select, input:not([type=hidden])")
@@ -746,7 +780,8 @@ defmodule DemoWeb.TablePage do
   # group.
   defp own_errors(field) do
     holder =
-      child(field, "data-group") || child(field, "data-groups") || hd(LazyHTML.to_tree(field))
+      child(field, "data-group") || child(field, "data-groups") || child(field, "data-union") ||
+        hd(LazyHTML.to_tree(field))
 
     for {"div", attributes, _} = element <- elements(holder),
         String.ends_with?(:proplists.get_value("id", attributes, ""), "-error"),

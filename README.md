@@ -22,7 +22,9 @@ no HEEx.
 > choosing another one from the related resource's own table, and so are
 > the records an action hands to a relationship. An embedded
 > resource and a map are shown on one line and edited in the side panel,
-> field by field. A read action's arguments, and those of a calculation
+> field by field. A union is shown as the value it holds and edited there
+> too, its kind first. An action that takes a file has a file input in its
+> panel. A read action's arguments, and those of a calculation
 > column, are given in a line of inputs above the rows.
 
 - [Install](#install)
@@ -34,6 +36,8 @@ no HEEx.
 - [Relationships an action manages](#relationships-an-action-manages)
 - [Row actions and create](#row-actions-and-create)
 - [Selecting rows and bulk actions](#selecting-rows-and-bulk-actions)
+- [Table actions](#table-actions)
+- [Files](#files)
 - [Nested tables](#nested-tables)
 - [Custom components](#custom-components)
 - [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
@@ -63,9 +67,11 @@ examples from the demo app and each topic's edge cases.
 - [Choosing a related record](documentation/topics/choosing-a-related-record.md)
 - [Relationships an action manages](documentation/topics/managing-relationships.md)
 - [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md)
+- [Unions](documentation/topics/unions.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
 - [Table actions](documentation/topics/table-actions.md)
+- [Files](documentation/topics/files.md)
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Custom components](documentation/topics/custom-components.md)
 - [Authorization](documentation/topics/authorization.md)
@@ -486,9 +492,10 @@ table is read-only.
   | an array of enum values | multiple choice: a list of boxes in the cell, one per value |
   | an array of any other type above | one control per value, with a button that takes the value away and one that adds a value |
   | an embedded resource, a map that declares its fields, and an array of either | not in the cell: the side panel, with a field for every field of the value (see below) |
+  | a union whose every kind is one of the above, a single value or a value made of fields | not in the cell: the side panel, with the choice of the kind and that kind's value (see below) |
 
-  Everything else (maps without fields, unions, uuids, times and so on, and
-  arrays of those) is read-only. A NewType is edited as the type it is made
+  Everything else (maps without fields, uuids, times and so on, arrays of
+  those, and arrays of unions) is read-only. A NewType is edited as the type it is made
   of. An array is shown as its values, as plain text separated by commas,
   and saved as a whole: on Enter or on leaving its editor, with the values
   as they were typed;
@@ -593,6 +600,33 @@ says about a field is shown at that field, and the panel stays open.
 - It is neither sorted nor filtered by.
 
 See [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md).
+
+**Unions.** A union (`:union`, with its kinds as `types`) is shown as the
+value it holds, as a cell of that kind's type shows it: a number as a
+number, an embedded resource as its one line. Nothing in the cell says
+which kind it is.
+
+Enter, F2 or a double click opens the side panel with the union as a
+group: "Kind", a choice of the union's kinds by their names in words, and
+under it the value of that kind, with the one control of its type or, for
+a kind made of fields, with its fields. Choosing another kind puts that
+kind's fields in place of the others, empty. No kind is no value, where
+the attribute may be empty. "Save" runs the column's update action with
+the kind and its value, as Ash takes a union from outside
+(`%{"_union_type" => …, "_union_value" => …}`), for tagged and untagged
+unions alike.
+
+- It is editable when every kind has a control. A union with a kind that
+  has none (an array, a map without fields) is read-only, and so is an
+  array of unions.
+- What the action says of the value is shown at the value's control, and
+  of a field of a kind at that field.
+- An embedded resource among the kinds is cast through its create action
+  every time: `Ash.Type.Union` does not run its update action.
+- It is neither sorted nor filtered by, as in `ash_json_api` and
+  `ash_graphql`.
+
+See [Unions](documentation/topics/unions.md).
 
 ## Choosing a related record
 
@@ -770,8 +804,12 @@ end
   its fields under the input's label, and an array of either a group per
   value: "New project" in the demo gives the client, its address and the
   milestones. See [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md#in-the-action-panel).
-- **Inputs without a field** (maps without fields, unions, and arrays of
-  them): an
+- **A union** is the choice of its kind and that kind's value, as in the
+  side panel of a union's cell. See [Unions](documentation/topics/unions.md#in-the-action-panel).
+- **An argument that takes a file** (`:file`) is a file input: see
+  [Files](#files).
+- **Inputs without a field** (maps without fields, unions with a kind
+  that has no control, arrays of unions, several files): an
   optional one is left out of the panel; an action that requires one cannot
   be run from a table, which the compiler reports.
 - **Errors.** The action's messages are shown at their fields as the person
@@ -925,6 +963,51 @@ end
 
 The guide [Table actions](documentation/topics/table-actions.md) has all of
 this in detail.
+
+## Files
+
+An action can take a file: an argument of the type `:file`
+(`Ash.Type.File`). Ash stores no file, so a file is never a column; it is an
+input of an action, and the action panel has a file input for it.
+
+```elixir
+actions do
+  action :import, :integer do
+    argument :file, :file, allow_nil?: false
+    run MyApp.Labels.Import
+  end
+end
+
+table do
+  action :import
+
+  upload :file do                  # optional: what the upload takes
+    accept ~w(.csv)                # default: any kind of file
+    max_file_size 100_000          # default: 8 MB, LiveView's own limit
+  end
+end
+```
+
+- **Where.** In the panel of a row action, of a table action, of the create
+  action and of an action on the selected rows. An action with a file
+  argument always opens its panel.
+- **How it gets there.** The field is a LiveView upload. The file is sent
+  when the panel's button is used, and the action runs while LiveView still
+  holds it. The action is given a `Plug.Upload`, which Ash casts to an
+  `Ash.Type.File`: `open/2`, `path/1`, the browser's `filename/1` and
+  `content_type/1`. The file is gone when the action is done.
+- **Limits.** `Ash.Type.File` has no constraints, so the `upload` of the
+  block says what the upload takes, by the argument's name. A file outside
+  it is refused as it is chosen, at the field: "The file is too large. The
+  limit is 100 kB.", "This type of file is not accepted."
+- **Errors.** What the action says of the file is shown at the field, and
+  the panel stays open. A file is given once: after "Run" the input is
+  empty again, and a person whose action did not run chooses the file
+  again.
+- **On the selected rows** every record is given the same file.
+- **Not** several files for one argument, and no download.
+
+The guide [Files](documentation/topics/files.md) has all of this in detail.
 
 ## Nested tables
 

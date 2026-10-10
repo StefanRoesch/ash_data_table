@@ -1,7 +1,8 @@
 defmodule AshTable.Resource.Embedding do
   @moduledoc false
   # What a table makes of a value of named fields: an embedded resource, a
-  # map, or an array of either (the cell type `:map`). Which fields it shows,
+  # map, or an array of either (the cell type `:map`), and of a union, a
+  # value that is one of several kinds (`:union`). Which fields it shows,
   # which of them a person gives when the value is edited, and whether it
   # can be edited at all. Shared by the verifiers (which report a mistake)
   # and the table model (which builds on the answer).
@@ -41,6 +42,34 @@ defmodule AshTable.Resource.Embedding do
   # no control for is read-only, and so is one whose action needs something
   # a table cannot give (a private attribute or an argument it does not run
   # without).
+  #
+  # ## Unions
+  #
+  # A union (`Ash.Type.Union`, or a NewType of it) is a value of one of
+  # several kinds: the `types` it declares. Each kind is a field of its own
+  # type (`members`), shown as a value of that type is shown, and a union is
+  # edited by choosing the kind and giving that kind's value: with the one
+  # control of its type, or, for a kind made of fields, with its group of
+  # inputs.
+  #
+  # A table gives the action the kind and its value as Ash takes them from
+  # outside (`Ash.Type.Union.cast_input/2`, and what `AshPhoenix.Form` sends
+  # for a union): `%{"_union_type" => kind, "_union_value" => value}`. Ash
+  # casts the value as that kind, whichever kind the record held. For a kind
+  # that is an embedded resource that is its create action, every time: the
+  # update action is not run for a value inside a union, so only the create
+  # action says which attributes are inputs.
+  #
+  # Where the union tells its kinds apart by a key of the value (`tag`), the
+  # table gives that key itself, with what it holds for the kind
+  # (`tag_value`): it is no input of the kind.
+  #
+  # It is all or nothing here too: a union with a kind a table has no
+  # control for is read-only. A kind has a control when a single value of
+  # its type has one (text, a number, a boolean, a date, a datetime, a
+  # choice, a value written as one line of text) or when it is a value made
+  # of fields that can be edited. An array of unions is shown, and not
+  # edited.
 
   alias Ash.Resource.Info
   alias AshTable.Model
@@ -53,40 +82,144 @@ defmodule AshTable.Resource.Embedding do
   map that declares none, and for an embedded resource inside itself), and
   what keeps it from being edited, as a sentence, or nil when nothing does.
   """
-  @type t :: %{fields: [Field.t()] | nil, obstacle: String.t() | nil}
+  @type t :: %{
+          fields: [Field.t()] | nil,
+          members: [Field.t()] | nil,
+          obstacle: String.t() | nil
+        }
+
+  # The controls a kind of a union can have: those that hold one value, and
+  # the group of a value made of fields.
+  @member_controls [:text, :number, :boolean, :date, :datetime, :enum, :plain, :group]
 
   @doc """
-  What a table makes of the type of a map cell, or of an array of them.
-  Nil for every other type.
+  What a table makes of the type of a map cell, of a union, or of an array
+  of either. Nil for every other type.
+
+  A map cell has `fields`, and a union `members`: its kinds.
   """
   @spec of(Ash.Type.t(), keyword) :: t | nil
-  def of(type, constraints), do: build(type, constraints || [], [])
+  def of(type, constraints), do: build(type, constraints || [], [], [])
 
-  defp build({:array, type}, constraints, seen),
-    do: build(type, constraints[:items] || [], true, seen)
+  # `given` names the fields the table gives itself: the key a union tells
+  # its kinds by. They are no inputs.
+  defp build({:array, type}, constraints, seen, given),
+    do: build(type, constraints[:items] || [], true, seen, given)
 
-  defp build(type, constraints, seen), do: build(type, constraints, false, seen)
+  defp build(type, constraints, seen, given), do: build(type, constraints, false, seen, given)
 
-  defp build(type, constraints, array?, seen) do
+  defp build(type, constraints, array?, seen, given) do
     case kind(type, constraints) do
       {:embedded, resource, constraints} ->
         if resource in seen,
-          do: %{fields: nil, obstacle: "#{inspect(resource)} holds a value of its own type."},
-          else: embedded(resource, constraints, array?, [resource | seen])
+          do: %{
+            fields: nil,
+            members: nil,
+            obstacle: "#{inspect(resource)} holds a value of its own type."
+          },
+          else: embedded(resource, constraints, array?, [resource | seen], given)
 
       {:map, nil} ->
         %{
           fields: nil,
+          members: nil,
           obstacle:
             "It is a map that declares no `fields`, so a table does not know what to ask for."
         }
 
       {:map, declared} ->
-        declared(declared, seen)
+        declared(declared, seen, given)
 
       nil ->
+        case union(type, constraints) do
+          nil -> nil
+          types -> united(types, array?, seen)
+        end
+    end
+  end
+
+  @doc """
+  The kinds a union declares (`types`), each with its configuration, a
+  NewType taken as what it is made of. Nil for every other type, and for an
+  array.
+  """
+  @spec union(Ash.Type.t(), keyword) :: keyword | nil
+  def union({:array, _type}, _constraints), do: nil
+
+  def union(type, constraints) do
+    type = Ash.Type.get_type(type)
+
+    cond do
+      not is_atom(type) ->
+        nil
+
+      type == Ash.Type.Union ->
+        List.wrap(constraints[:types])
+
+      Ash.Type.NewType.new_type?(type) ->
+        union(type.subtype_of(), Ash.Type.NewType.constraints(type, constraints))
+
+      true ->
         nil
     end
+  end
+
+  # The kinds of a union, each as a field of its own type. Ash casts the
+  # value of a kind as new every time, so an embedded resource among them
+  # is given through its create action alone.
+  defp united(types, array?, seen) do
+    built =
+      for {name, config} <- types do
+        type = config[:type]
+        constraints = config[:constraints] || []
+        tag = if config[:tag], do: {config[:tag], config[:tag_value]}
+
+        cast_as =
+          case kind(type, constraints) do
+            {:embedded, _resource, _constraints} -> Keyword.put(constraints, :on_update, :replace)
+            _another -> constraints
+          end
+
+        {field, obstacle} =
+          field(
+            name,
+            type,
+            cast_as,
+            seen,
+            %{input?: true},
+            for({key, _value} <- List.wrap(tag), do: key)
+          )
+
+        field = %{field | type: {type, constraints}, tag: tag}
+
+        if field.editor in @member_controls,
+          do: {field, nil},
+          else: {%{field | editor: nil}, obstacle || :no_control}
+      end
+
+    obstacle =
+      cond do
+        built == [] ->
+          "It is a union that declares no `types`, so a table does not know what to ask for."
+
+        array? ->
+          "It is an array of unions, which a table shows and has no editor for."
+
+        true ->
+          Enum.find_value(built, fn
+            {_member, nil} ->
+              nil
+
+            {%Field{name: name, type: {type, _constraints}}, :no_control} ->
+              "Its kind `#{name}` has the type `#{inspect(type)}`, which a table has no control " <>
+                "for in a union."
+
+            {%Field{name: name}, obstacle} ->
+              "Its kind `#{name}` cannot be edited. " <> obstacle
+          end)
+      end
+
+    %{fields: nil, members: Enum.map(built, &elem(&1, 0)), obstacle: obstacle}
   end
 
   @doc """
@@ -129,24 +262,28 @@ defmodule AshTable.Resource.Embedding do
 
   # The fields a map declares. Each is an input: Ash casts the map as a
   # whole, and keeps of it what it was given.
-  defp declared(declared, seen) do
+  defp declared(declared, seen, given) do
     built =
       for {name, config} <- declared do
         type = config[:type]
         constraints = config[:constraints] || []
+        input? = not given?(name, given)
 
         field(name, type, constraints, seen, %{
-          input?: true,
-          required?: Keyword.get(config, :allow_nil?, true) == false
+          input?: input?,
+          required?: input? and Keyword.get(config, :allow_nil?, true) == false
         })
       end
 
-    %{fields: Enum.map(built, &elem(&1, 0)), obstacle: uneditable(built)}
+    %{fields: Enum.map(built, &elem(&1, 0)), members: nil, obstacle: uneditable(built)}
   end
+
+  # A key is named as the union names it: as an atom, or as text.
+  defp given?(name, given), do: Enum.any?(given, &(to_string(&1) == Atom.to_string(name)))
 
   # The public attributes of an embedded resource, and which of them the
   # actions Ash casts a value through take.
-  defp embedded(resource, constraints, array?, seen) do
+  defp embedded(resource, constraints, array?, seen, given) do
     create = action(resource, constraints[:create_action], :create)
 
     update =
@@ -158,7 +295,7 @@ defmodule AshTable.Resource.Embedding do
 
     built =
       for attribute <- Info.public_attributes(resource) do
-        input? = attribute.name in accepted
+        input? = attribute.name in accepted and not given?(attribute.name, given)
 
         field(attribute.name, attribute.type, attribute.constraints || [], seen, %{
           input?: input?,
@@ -189,7 +326,7 @@ defmodule AshTable.Resource.Embedding do
           uneditable(built)
       end
 
-    %{fields: Enum.map(built, &elem(&1, 0)), obstacle: obstacle}
+    %{fields: Enum.map(built, &elem(&1, 0)), members: nil, obstacle: obstacle}
   end
 
   # Whether Ash runs the update action for a value that replaces another:
@@ -256,9 +393,12 @@ defmodule AshTable.Resource.Embedding do
     end)
   end
 
-  defp field(name, type, constraints, seen, more) do
+  defp field(name, type, constraints, seen, more, given \\ []) do
     {cell_type, values} = CellType.classify(type, constraints)
-    nested = if cell_type in [:map, {:array, :map}], do: build(type, constraints, seen)
+
+    nested =
+      if cell_type in [:map, {:array, :map}, :union, {:array, :union}],
+        do: build(type, constraints, seen, given)
 
     editor =
       cond do
@@ -266,6 +406,7 @@ defmodule AshTable.Resource.Embedding do
         is_nil(nested) -> Acting.control(cell_type, type, constraints)
         is_binary(nested.obstacle) -> nil
         cell_type == :map -> :group
+        cell_type == :union -> :union
         true -> :groups
       end
 
@@ -278,6 +419,7 @@ defmodule AshTable.Resource.Embedding do
           cell_type: cell_type,
           values: values,
           fields: nested && nested.fields,
+          members: nested && nested.members,
           editor: editor
         },
         more
@@ -297,6 +439,7 @@ defmodule AshTable.Resource.Embedding do
   """
   @spec hidden?(term) :: boolean
   def hidden?(%Ash.ForbiddenField{}), do: true
+  def hidden?(%Ash.Union{value: value}), do: hidden?(value)
   def hidden?(values) when is_list(values), do: Enum.any?(values, &hidden?/1)
 
   def hidden?(%_{} = value) do

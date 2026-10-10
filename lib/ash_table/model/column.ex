@@ -30,14 +30,18 @@ defmodule AshTable.Model.Column do
   #   * `label` is the column header.
   #   * `cell_type` is what the table shows the field's values as. An array
   #     of values that have a cell type is `{:array, item}`. A value of
-  #     named fields (an embedded resource, a map) is `:map`. Types with no
-  #     cell of their own (keys, unions, …, and the arrays of those) are
-  #     `:other` and shown as read-only text.
+  #     named fields (an embedded resource, a map) is `:map`, and a value
+  #     that is one of several kinds `:union`. Types with no cell of their
+  #     own (keys, …, and the arrays of those) are `:other` and shown as
+  #     read-only text.
   #   * `fields` holds, for a map cell and for an array of them, the fields
   #     of the value (`AshTable.Model.Field`): the public attributes of an
   #     embedded resource, or the fields a map declares. Nil for a map that
   #     declares none, which shows whatever it holds, and for every other
   #     cell type.
+  #   * `members` holds, for a union and for an array of them, the kinds of
+  #     the value (`AshTable.Model.Field`, one per kind). Nil for every
+  #     other cell type.
   #   * `type` is the field's Ash type with its constraints. What a person
   #     types into the column's filter is checked against it.
   #   * `values` holds, for an `:enum` column and for an array of enum
@@ -50,7 +54,7 @@ defmodule AshTable.Model.Column do
   #     operator first: those of the cell type that Ash supports for the field.
   #     It is empty for a column without a filter: one the resource does not
   #     allow to be filtered, one of cell type `:other`, an array, a map
-  #     cell, or one the block switched off. See `AshTable.Model.Operator`.
+  #     cell, a union, or one the block switched off. See `AshTable.Model.Operator`.
   #   * `editable?` says whether a person can edit the cells of this column in
   #     principle: the column is an attribute, the attribute is writable, an
   #     update action accepts it and its cell type has an editor; or it is a
@@ -70,6 +74,7 @@ defmodule AshTable.Model.Column do
   #     `:choices` (one checkbox per value of an enum) or `:list` (one
   #     control per value); `:group` for a map cell and `:groups` for an
   #     array of them, which are edited in the side panel, field by field;
+  #     `:union` for a union, which is edited there too, kind first;
   #     `:component` for a column whose component has
   #     an editor; or `:reference` for a reference column, which is edited
   #     in the picker. `nil` for a column that is not editable.
@@ -98,6 +103,7 @@ defmodule AshTable.Model.Column do
     :cell_type,
     :values,
     :fields,
+    :members,
     :sortable?,
     :operators,
     :update_action,
@@ -123,6 +129,7 @@ defmodule AshTable.Model.Column do
           cell_type: AshTable.Model.CellType.t(),
           values: [{atom | String.t(), String.t()}] | nil,
           fields: [AshTable.Model.Field.t()] | nil,
+          members: [AshTable.Model.Field.t()] | nil,
           sortable?: boolean,
           operators: [AshTable.Model.Operator.t()],
           editable?: boolean,

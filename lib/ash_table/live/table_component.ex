@@ -166,6 +166,30 @@ defmodule AshTable.Live.TableComponent do
   # of their own, which say their order and not their places: nothing in
   # the page changes its name when a value is taken away.
   #
+  # ## Unions
+  #
+  # A cell of a union has no editor in the cell either: the hook asks for
+  # the side panel as it does for a map cell (`edit`), and the panel's one
+  # input is the column's attribute, shown as a union's field (`union/1`):
+  # a group with the choice of the kind (`…-kind`) and, under it, the value
+  # of the kind that is chosen: one field of the panel (`…-value`), or the
+  # fields of a kind made of fields (`…-f-NAME`). Choosing a kind is a
+  # change of the panel's form like any other, and the server renders that
+  # kind's fields. The field sends the kind (`_union_type`), the value
+  # (`_union_value`), and which kind that value was given for (`_of`), by
+  # which a value that was typed for another kind is told and left out
+  # (`AshTable.Act.kind/2`). What such a field holds is kept with the
+  # panel's groups.
+  #
+  # ## Files
+  #
+  # An argument that takes a file is a field of the action panel that is an
+  # upload of LiveView's (`live_file_input/1`), allowed by this component
+  # when a panel with such a field opens, under the name `file-ARGUMENT`.
+  # The input's id is LiveView's; its label points at it. The file is sent
+  # by LiveView's client when the panel's form is submitted, and the action
+  # runs while LiveView holds it (see "Files" among the functions below).
+  #
   # ## Nested tables
   #
   # A table whose rows offer relationships, to this person and at this depth,
@@ -295,6 +319,11 @@ defmodule AshTable.Live.TableComponent do
      # the inputs of, with its form. At most one per table; a new read
      # closes it.
      |> assign(panel: nil)
+     # The files of the panel's uploads that an action has been given, by
+     # the entry LiveView knows each by: those are LiveView's to drop.
+     # And the copies of the files that an action on the selected rows is
+     # running with, which are taken away when it is done.
+     |> assign(spent: MapSet.new(), running_files: [])
      # The picker, while it is open: the cell, or the field of the panel,
      # that a person is choosing a related record for. At most one per
      # table; a new read closes it. And what makes a table the one in a
@@ -555,6 +584,7 @@ defmodule AshTable.Live.TableComponent do
             confirm: column.confirm && Text.label(column.confirm),
             values: values,
             fields: fields_in_words(column.fields),
+            members: fields_in_words(column.members),
             # what the column's component is told, in the same words
             component:
               column.component &&
@@ -604,6 +634,7 @@ defmodule AshTable.Live.TableComponent do
                 input.values &&
                   Enum.map(input.values, fn {value, label} -> {value, Text.label(label)} end),
               fields: fields_in_words(input.fields),
+              members: fields_in_words(input.members),
               component: input.component && Map.get(components, input.name, input.component)
           }
         end
@@ -654,7 +685,9 @@ defmodule AshTable.Live.TableComponent do
           values:
             field.values &&
               Enum.map(field.values, fn {value, label} -> {value, Text.label(label)} end),
-          fields: fields_in_words(field.fields)
+          fields: fields_in_words(field.fields),
+          # the kinds of a union are called in the same words
+          members: fields_in_words(field.members)
       }
     end
   end
@@ -804,6 +837,7 @@ defmodule AshTable.Live.TableComponent do
 
     {:noreply,
      socket
+     |> drop_copies()
      |> assign(running: nil, result: %{summary: summary, failures: failures})
      |> say(Enum.join([summary | failures], " "))
      |> push_event("ash_table:bulk", %{table: id, failed: failed})
@@ -824,6 +858,7 @@ defmodule AshTable.Live.TableComponent do
 
     {:noreply,
      socket
+     |> drop_copies()
      |> assign(running: nil, result: %{summary: summary, failures: []})
      |> say(summary)
      |> push_event("ash_table:bulk", %{table: id})
@@ -1444,7 +1479,7 @@ defmodule AshTable.Live.TableComponent do
             submit: Text.t(:run)
           })
 
-        {:noreply, assign(socket, panel: panel)}
+        {:noreply, opened(socket, panel)}
 
       %Model.Action{confirm: question} = action when is_binary(question) ->
         {:noreply,
@@ -1520,13 +1555,17 @@ defmodule AshTable.Live.TableComponent do
     used = MapSet.union(used(typed), panel.picked)
     panel = sent(%{panel | form: form, used: used, typed: typed}, typed)
 
-    {:noreply, assign(socket, panel: errors(panel, socket.assigns.model))}
+    {:noreply,
+     socket |> assign(panel: errors(panel, socket.assigns.model)) |> say_refused_files()}
   end
 
   # Sent by the panel's form when the person uses its button: the action
-  # runs with what the fields hold.
-  def handle_event("panel_submit", params, %{assigns: %{panel: %{} = panel}} = socket),
-    do: submit(socket, sent(panel, typed(params)), typed(params))
+  # runs with what the fields hold, and with the files of its uploads,
+  # which LiveView has received by then.
+  def handle_event("panel_submit", params, %{assigns: %{panel: %{} = panel}} = socket) do
+    typed = typed(params)
+    filed(socket, sent(panel, typed), &submit(socket, &1, typed))
+  end
 
   # Sent by the panel's hook when a person uses the button that adds a
   # value to a field made of groups, or the one that takes a value away:
@@ -1815,7 +1854,7 @@ defmodule AshTable.Live.TableComponent do
             given: given
           })
 
-        {:noreply, assign(socket, panel: panel)}
+        {:noreply, opened(socket, panel)}
 
       # The row is gone, or no longer theirs: said to the live region, and
       # shown by the table itself, which reads again and finds the same.
@@ -2196,6 +2235,12 @@ defmodule AshTable.Live.TableComponent do
   #     starts with what the form knows nothing of: the records that are
   #     related now (`related`, by field: see `AshTable.Act.related/3`), or
   #     its default.
+  #
+  # For the fields of the arguments that take a file: `file_errors` is what
+  # the action said of such an argument when it last ran, by field, with
+  # the entry LiveView knew the file by that it was given, nil for none
+  # (`file_errors/3`), and `refused_files` what was last read out of the
+  # files LiveView does not take.
   defp panel(assigns, held, panel) do
     related = Map.get(panel, :related, %{})
 
@@ -2250,7 +2295,9 @@ defmodule AshTable.Live.TableComponent do
         chosen: chosen,
         refs: refs,
         groups: groups,
-        touched: MapSet.new()
+        touched: MapSet.new(),
+        file_errors: %{},
+        refused_files: []
       },
       Map.delete(panel, :related)
     )
@@ -2269,8 +2316,9 @@ defmodule AshTable.Live.TableComponent do
   end
 
   # Whether a column, or an input of the panel, is a map cell or an array of
-  # them, edited as groups of fields.
-  defp group?(%{editor: editor}), do: editor in [:group, :groups]
+  # them, edited as groups of fields, or a union, edited as its kind and that
+  # kind's value: the fields the server renders from what the panel holds.
+  defp group?(%{editor: editor}), do: editor in [:group, :groups, :union]
 
   # What a field made of groups starts with: the value it is given, as its
   # form sends it. Without a value, a list is empty, and a single value is
@@ -2278,6 +2326,10 @@ defmodule AshTable.Live.TableComponent do
   # then its fields are there to be filled in.
   defp started(%{editor: :groups} = input, value, _kind),
     do: Act.sent(input, Format.input(input, List.wrap(value)))
+
+  # a union always sends its kind: none where it has no value
+  defp started(%{editor: :union} = input, value, _kind),
+    do: Act.sent(input, Format.input(input, value))
 
   defp started(input, %{} = value, _kind), do: Act.sent(input, Format.input(input, value))
   defp started(%{required?: true} = input, _none, :create), do: Act.blank(input)
@@ -2359,9 +2411,23 @@ defmodule AshTable.Live.TableComponent do
 
   defp regroup(%{cell_type: :map, fields: fields}, %{} = held, [name | rest], change) do
     with %{} = field <- Enum.find(fields || [], &(group?(&1) and Atom.to_string(&1.name) == name)),
+         # a union is no group that is added or taken away: only what is in it
+         true <- field.editor != :union or rest != [],
          {:ok, inner, focus} <- regroup(field, held[name], rest, change) do
       # the id of a field in a group: see `members/1`
       {:ok, Map.put(held, name, inner), ["f", name | focus]}
+    else
+      _ -> :error
+    end
+  end
+
+  # Through a union, to a group inside the value of its kind: the value is
+  # sent under a name of its own, and has no id of its own.
+  defp regroup(%{cell_type: :union} = field, %{} = held, ["_union_value" | rest], change) do
+    with {%{cell_type: :map} = member, %{} = value} <- Act.kind(field, held),
+         [_ | _] <- rest,
+         {:ok, inner, focus} <- regroup(member, value, rest, change) do
+      {:ok, Map.merge(held, %{"_of" => held["_union_type"], "_union_value" => inner}), focus}
     else
       _ -> :error
     end
@@ -2417,7 +2483,7 @@ defmodule AshTable.Live.TableComponent do
             related: Act.related(inputs, record, reader(socket.assigns))
           })
 
-        {:reply, %{ok: true, panel: true}, assign(socket, panel: panel)}
+        {:reply, %{ok: true, panel: true}, opened(socket, panel)}
 
       :error ->
         ran({:error, nil, Text.t(:record_gone)}, socket, key, action)
@@ -2529,7 +2595,7 @@ defmodule AshTable.Live.TableComponent do
         submit: Text.t(:run)
       })
 
-    assign(socket, panel: panel)
+    opened(socket, panel)
   end
 
   # Runs an action on the selected rows, beside the process: a run takes as
@@ -2557,7 +2623,7 @@ defmodule AshTable.Live.TableComponent do
   # with the panel left open, as for a row. Everything else an action says
   # depends on the record, and is said when it has run.
   defp submit(socket, %{kind: :bulk, action: action, selection: selection} = panel, params) do
-    form = Act.validate(panel.form, panel.inputs, params)
+    form = Act.validate(panel.form, panel.inputs, params, files(panel))
     panel = errors(%{panel | form: form}, socket.assigns.model)
 
     # a panel is never open beside a run: the run that starts closes it
@@ -2569,8 +2635,17 @@ defmodule AshTable.Live.TableComponent do
       (unchosen = Act.unchosen(panel.inputs, params, nil, chooser(socket.assigns, panel))) != [] ->
         {:noreply, failed_panel(socket, panel, unchosen(unchosen))}
 
+      # A file goes to every record, and the run outlasts this event, which
+      # is as long as LiveView keeps the file: it runs with a copy, which is
+      # this process's until the run is done (`Plug.Upload`).
       true ->
-        {:noreply, run_bulk(socket, action, selection, Act.values(panel.inputs, params))}
+        copies = copies(files(panel))
+        input = Map.merge(Act.values(panel.inputs, params), copies)
+
+        {:noreply,
+         socket
+         |> assign(running_files: for({_name, %{path: path}} <- copies, do: path))
+         |> run_bulk(action, selection, input)}
     end
   end
 
@@ -2618,7 +2693,7 @@ defmodule AshTable.Live.TableComponent do
                row.pk,
                params,
                "#{id}-panel",
-               chooser(socket.assigns, panel)
+               [files: files(panel)] ++ chooser(socket.assigns, panel)
              ) do
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
@@ -2645,7 +2720,14 @@ defmodule AshTable.Live.TableComponent do
 
     case table_action(socket.assigns, Atom.to_string(action.name)) do
       %Model.Action{} = action ->
-        case Act.submit_generic(model, action, params, %{}, "#{id}-panel", reader(socket.assigns)) do
+        case Act.submit_generic(
+               model,
+               action,
+               params,
+               files(panel),
+               "#{id}-panel",
+               reader(socket.assigns)
+             ) do
           {:done, value} ->
             {:noreply, socket |> assign(panel: nil) |> done(action, value)}
 
@@ -2674,7 +2756,7 @@ defmodule AshTable.Live.TableComponent do
                model,
                action,
                params,
-               given,
+               Map.merge(files(panel), given),
                "#{id}-panel",
                chooser(socket.assigns, panel)
              ) do
@@ -2701,6 +2783,256 @@ defmodule AshTable.Live.TableComponent do
         {:noreply, failed_panel(socket, panel, Text.t(:record_gone))}
     end
   end
+
+  # ## Files
+  #
+  # An argument that takes a file has an upload of LiveView's in the panel
+  # (`allow_upload/3`), under a name of the argument's own. It is allowed
+  # when a panel with such a field first opens and kept from then on: what
+  # it is limited to is the same every time.
+  #
+  # The file is sent when the panel's button is used: LiveView's client
+  # sends the files of a form before the form itself. The action then runs
+  # while LiveView still holds the file (`consume_uploaded_entry/3`), and
+  # is given it as a `Plug.Upload`, which is what Ash takes for a file from
+  # a web request: with the path LiveView wrote it to, the name the browser
+  # gave, and its content type. After that the file is LiveView's to take
+  # away, whatever the action made of it: a file is given once. The browser
+  # shows the same: LiveView's client empties the file input once the file
+  # is sent, so a panel that stays open, with what the action said, asks
+  # for the file again. What a panel leaves behind that went without its
+  # button having been used is given up when the next panel opens
+  # (`opened/2`).
+
+  # The name of the upload of a field.
+  defp upload_name(%{name: name}), do: "file-" <> Atom.to_string(name)
+
+  defp file_inputs(%{inputs: inputs}), do: Enum.filter(inputs, &(&1.editor == :file))
+
+  # The upload of a field, as LiveView keeps it; nil for any other field.
+  defp upload_of(uploads, %{editor: :file} = input) when is_map(uploads),
+    do: Map.get(uploads, upload_name(input))
+
+  defp upload_of(_uploads, _input), do: nil
+
+  # The file of an upload, which holds one at most, as LiveView knows it
+  # (an entry). A file that another has taken the place of is still among
+  # the upload's entries until LiveView has let go of it: it is none of the
+  # field's any more.
+  defp entry(%{entries: entries}), do: Enum.find(entries, &(not &1.cancelled?))
+  defp entry(_none), do: nil
+
+  defp entry_ref(upload), do: with(%{ref: ref} <- entry(upload), do: ref)
+
+  # The files a panel's action is given: by the name of the argument.
+  defp files(panel), do: Map.get(panel, :files, %{})
+
+  # A panel is opened: with an upload for each of its fields that takes a
+  # file, and without a file that an earlier panel left behind. A panel that
+  # goes without its button having been used (Cancel, a new read of the
+  # table) leaves the file a person chose with its upload, where nothing is
+  # sent of it and nothing shows it; it is given up here, before the next
+  # panel is shown.
+  defp opened(socket, panel) do
+    socket = drop_files(socket)
+
+    socket =
+      Enum.reduce(file_inputs(panel), socket, fn input, socket ->
+        name = upload_name(input)
+
+        if is_map_key(socket.assigns[:uploads] || %{}, name) do
+          socket
+        else
+          allow_upload(socket, name,
+            accept: input.upload.accept,
+            max_entries: 1,
+            max_file_size: input.upload.max_file_size
+          )
+        end
+      end)
+
+    assign(socket, panel: panel)
+  end
+
+  # Gives up the files of the panel's uploads: those a person chose and no
+  # action was given. What an action was given is LiveView's to take away.
+  defp drop_files(socket) do
+    spent = socket.assigns.spent
+
+    Enum.reduce(socket.assigns[:uploads] || %{}, socket, fn
+      {"file-" <> _argument = name, %{entries: entries}}, socket ->
+        Enum.reduce(entries, socket, fn entry, socket ->
+          if entry.cancelled? or entry.ref in spent,
+            do: socket,
+            else: cancel_upload(socket, name, entry.ref)
+        end)
+
+      _another, socket ->
+        socket
+    end)
+  end
+
+  # Runs a panel's action with the files of its uploads: `run` is given the
+  # panel with them (`files/1`), and answers as an event is answered.
+  # Nothing runs while LiveView does not take a file, or has not received
+  # one: that is said, and the panel stays.
+  defp filed(socket, panel, run) do
+    inputs = file_inputs(panel)
+    refused = refused_files(socket, panel)
+
+    # LiveView's client sends the files before the form; a form that
+    # comes without them was not sent by it
+    waiting? =
+      Enum.any?(inputs, fn input ->
+        match?(%{done?: false}, entry(upload_of(socket.assigns[:uploads], input)))
+      end)
+
+    cond do
+      inputs == [] ->
+        run.(panel)
+
+      refused != [] ->
+        {:noreply,
+         socket |> assign(panel: %{panel | refused_files: refused}) |> say_files(refused)}
+
+      waiting? ->
+        {:noreply, say(socket, Text.t(:upload_failed))}
+
+      true ->
+        attach(socket, inputs, %{}, &run.(Map.put(panel, :files, &1)))
+    end
+  end
+
+  # Each file in turn, the action inside the last: LiveView takes a file
+  # away when the function it is given for it returns.
+  defp attach(_socket, [], files, run), do: run.(files)
+
+  defp attach(socket, [input | rest], files, run) do
+    case entry(upload_of(socket.assigns[:uploads], input)) do
+      %{done?: true} = entry ->
+        consume_uploaded_entry(socket, entry, fn %{path: path} ->
+          file = %Plug.Upload{
+            path: path,
+            # a name is a name: never a way to somewhere
+            filename: Path.basename(entry.client_name),
+            content_type: entry.client_type
+          }
+
+          {:noreply, socket} =
+            attach(socket, rest, Map.put(files, Atom.to_string(input.name), file), run)
+
+          # the file is gone when this returns: its entry is LiveView's to drop
+          {:ok, {:noreply, assign(socket, spent: MapSet.put(socket.assigns.spent, entry.ref))}}
+        end)
+
+      _no_file ->
+        attach(socket, rest, files, run)
+    end
+  end
+
+  # Copies of the files for a run that outlasts the event: temporary files
+  # of this process, which are gone when it is (`Plug.Upload.random_file!/1`).
+  defp copies(files) do
+    for {name, %Plug.Upload{path: path} = file} <- files, into: %{} do
+      copy = Plug.Upload.random_file!("ash_table")
+      File.cp!(path, copy)
+      {name, %{file | path: copy}}
+    end
+  end
+
+  defp drop_copies(socket) do
+    Enum.each(socket.assigns.running_files, &File.rm/1)
+    assign(socket, running_files: [])
+  end
+
+  # What LiveView says of the files of a panel that it does not take: by
+  # field, what is shown at the field.
+  defp refused_files(socket, panel) do
+    for input <- file_inputs(panel),
+        texts = upload_errors_of(upload_of(socket.assigns[:uploads], input)),
+        texts != [],
+        do: {input.label, texts}
+  end
+
+  # Read out when it changes: a file is refused as it is chosen, without
+  # the panel's button having been used.
+  defp say_refused_files(%{assigns: %{panel: panel}} = socket) do
+    case refused_files(socket, panel) do
+      refused when refused == panel.refused_files ->
+        socket
+
+      refused ->
+        socket |> assign(panel: %{panel | refused_files: refused}) |> say_files(refused)
+    end
+  end
+
+  defp say_files(socket, []), do: socket
+
+  defp say_files(socket, refused) do
+    text =
+      Enum.map_join(refused, "; ", fn {label, texts} ->
+        Text.t(:error_on_field, field: label, message: Enum.join(texts, " "))
+      end)
+
+    say(socket, text)
+  end
+
+  # What an upload's file is refused for, as a person reads it.
+  #
+  # The field takes one file, and a browser gives it one. A file that
+  # another has taken the place of is not counted: LiveView lists it for a
+  # moment longer, and says "too many" of the two.
+  defp upload_errors_of(nil), do: []
+
+  defp upload_errors_of(upload) do
+    reasons =
+      case Enum.reject(upload.entries, & &1.cancelled?) do
+        [entry] -> upload_errors(upload, entry)
+        [] -> []
+        several -> upload_errors(upload) ++ Enum.flat_map(several, &upload_errors(upload, &1))
+      end
+
+    for reason <- Enum.uniq(reasons) do
+      case reason do
+        :too_large -> Text.t(:upload_too_large, limit: size(upload.max_file_size))
+        :not_accepted -> Text.t(:upload_not_accepted)
+        _failure -> Text.t(:upload_failed)
+      end
+    end
+  end
+
+  # A number of bytes as a size, in the units LiveView counts in.
+  defp size(bytes) when bytes >= 1_000_000, do: "#{number(bytes / 1_000_000)} MB"
+  defp size(bytes) when bytes >= 1_000, do: "#{number(bytes / 1_000)} kB"
+  defp size(bytes), do: "#{bytes} B"
+
+  defp number(amount) do
+    rounded = Float.round(amount, 1)
+    if rounded == trunc(rounded), do: trunc(rounded), else: rounded
+  end
+
+  # What the action said of the file of a field: what it said when it last
+  # ran, of the file it was given then or of having been given none, until
+  # another file is chosen. A file that was chosen and not yet given has
+  # had nothing said of it.
+  defp file_errors(panel, input, upload) do
+    case {Map.get(panel.file_errors, input.name), entry_ref(upload)} do
+      # the file the action was given, for as long as LiveView lists it
+      {{given, texts}, given} -> texts
+      # no file since
+      {{_given, texts}, nil} -> texts
+      _another_file_or_never_run -> []
+    end
+  end
+
+  # What is read out of a field when the panel stays open: for a file, what
+  # is shown at its field; for the rest, what the action said.
+  defp said_of(panel, %{editor: :file} = input, uploads) do
+    upload = upload_of(uploads, input)
+    upload_errors_of(upload) ++ file_errors(panel, input, upload)
+  end
+
+  defp said_of(panel, input, _uploads), do: Map.get(panel.errors, input && input.name, [])
 
   # What the panel says of the fields whose key names a record the person
   # could not have chosen: nothing ran.
@@ -2781,7 +3113,26 @@ defmodule AshTable.Live.TableComponent do
   # The panel stays open with what the action said: at the fields, and above
   # them what is about no field of the panel. All of it is read out.
   defp failed_panel(socket, panel, message) do
-    panel = errors(%{panel | submitted?: true}, socket.assigns.model)
+    # What the action said of a file is kept with the entry it was said of,
+    # where the action has run: its form is then another than the one the
+    # panel held, which was never given a file. The entry is still listed:
+    # LiveView drops it after this event.
+    ran? = panel.form != (socket.assigns.panel && socket.assigns.panel.form)
+    panel = errors(%{Map.delete(panel, :files) | submitted?: true}, socket.assigns.model)
+
+    panel =
+      if ran? do
+        told =
+          for input <- file_inputs(panel), into: %{} do
+            {input.name,
+             {entry_ref(upload_of(socket.assigns[:uploads], input)),
+              Map.get(panel.errors, input.name, [])}}
+          end
+
+        %{panel | file_errors: told}
+      else
+        panel
+      end
 
     panel =
       if message,
@@ -2790,7 +3141,7 @@ defmodule AshTable.Live.TableComponent do
 
     said =
       for input <- [nil | panel.inputs],
-          text <- Map.get(panel.errors, input && input.name, []) do
+          text <- said_of(panel, input, socket.assigns[:uploads]) do
         if input, do: Text.t(:error_on_field, field: input.label, message: text), else: text
       end
 
@@ -2820,8 +3171,12 @@ defmodule AshTable.Live.TableComponent do
     field_called(%{field | label: position, cell_type: :map}, rest)
   end
 
-  defp field_called(%{label: label, fields: fields}, [name | rest]) do
-    case Enum.find(fields || [], &(&1.name == name)) do
+  defp field_called(%{label: label} = field, [name | rest]) do
+    # of a union, a field of one of its kinds
+    fields =
+      Map.get(field, :fields) || Enum.flat_map(Map.get(field, :members) || [], &(&1.fields || []))
+
+    case Enum.find(fields, &(&1.name == name)) do
       nil -> label
       field -> field_called(%{field | label: label <> " " <> field.label}, rest)
     end
@@ -3501,7 +3856,7 @@ defmodule AshTable.Live.TableComponent do
           data-confirm={column.confirm}
         >
           <.editor
-            :if={column.editor not in [:reference, :group, :groups]}
+            :if={column.editor not in [:reference, :group, :groups, :union]}
             column={column}
             allow_nil?={allow_nil?(@model.resource, column)}
           />
@@ -3533,7 +3888,7 @@ defmodule AshTable.Live.TableComponent do
           </form>
         </dialog>
       </div>
-      <.panel :if={@panel} id={@id} panel={@panel} target={@myself} />
+      <.panel :if={@panel} id={@id} panel={@panel} uploads={assigns[:uploads]} target={@myself} />
       <%!-- After the panel, and so on top of it when both are open: a picker
       that a field of the panel has opened. --%>
       <.picker
@@ -5084,8 +5439,8 @@ defmodule AshTable.Live.TableComponent do
               if (key === null) this.pick(cell)
               return key === null
             }
-            // nor has a map cell: Enter and F2 open the side panel, typing does nothing
-            if (type === "group" || type === "groups") {
+            // nor has a map cell, or a union: Enter and F2 open the side panel, typing does nothing
+            if (type === "group" || type === "groups" || type === "union") {
               if (key === null) this.editInPanel(cell)
               return key === null
             }
@@ -6085,6 +6440,7 @@ defmodule AshTable.Live.TableComponent do
   # action's errors are shown at their fields.
   attr :id, :string, required: true
   attr :panel, :map, required: true
+  attr :uploads, :any, default: nil
   attr :target, :any, required: true
 
   defp panel(assigns) do
@@ -6127,9 +6483,10 @@ defmodule AshTable.Live.TableComponent do
           input={input}
           name={@form[input.name].name}
           value={panel_value(@panel, @form, input)}
-          errors={field_errors(@panel, input)}
+          errors={field_errors(@panel, input, upload_of(@uploads, input))}
           places={field_places(@panel, input)}
           chosen={@panel.chosen[input.name]}
+          upload={upload_of(@uploads, input)}
           inside={
             %{
               errors: @panel.errors,
@@ -6274,10 +6631,37 @@ defmodule AshTable.Live.TableComponent do
 
   # The errors of a field that are shown: all of them once the person has
   # used "Run", and until then those of the fields they have been in.
-  defp field_errors(panel, input) do
+  defp field_errors(panel, input, upload \\ nil)
+
+  # of a file: what the action said of the file it was given
+  defp field_errors(panel, %{editor: :file} = input, upload),
+    do: file_errors(panel, input, upload)
+
+  # of a union: once they have been at its choice, or in its value
+  defp field_errors(panel, %{editor: :union} = input, _upload) do
+    if panel.submitted? or in_union?(panel.touched, [Atom.to_string(input.name)]),
+      do: Map.get(panel.errors, input.name, []),
+      else: []
+  end
+
+  defp field_errors(panel, input, _upload) do
     if panel.submitted? or Atom.to_string(input.name) in panel.used,
       do: Map.get(panel.errors, input.name, []),
       else: []
+  end
+
+  # Whether a person has been in the field of a union: at the choice of its
+  # kind, or in the value of the kind. `path` is the way to the field, as
+  # the names it is sent under. That the field was sent says nothing: it
+  # always is, and so are the entries of its own that say what is there
+  # (`_of`, `_present`).
+  defp in_union?(touched, path) do
+    value = path ++ ["_union_value"]
+    inside = Enum.filter(touched, &(List.starts_with?(&1, value) and &1 != value))
+
+    (path ++ ["_union_type"]) in touched or
+      Enum.any?(inside, &(List.last(&1) not in ["_present", "_of"])) or
+      (inside == [] and value in touched)
   end
 
   # The values of an array field that the errors shown at it are about, by
@@ -6306,17 +6690,26 @@ defmodule AshTable.Live.TableComponent do
   attr :errors, :list, required: true
   attr :places, :list, default: []
   attr :chosen, :any, default: nil
+  attr :upload, :any, default: nil
   attr :inside, :map, required: true
   attr :target, :any, default: nil
 
   defp field(assigns) do
     value = assigns.value
 
+    # what LiveView says of the file of an upload comes before what the
+    # action said of it
+    assigns =
+      if assigns.upload,
+        do: assign(assigns, errors: upload_errors_of(assigns.upload) ++ assigns.errors),
+        else: assigns
+
     assigns =
       assign(assigns,
         described: assigns.errors != [] && "#{assigns.id}-error",
         array?: assigns.input.editor in [:choices, :list],
         group?: group?(assigns.input),
+        file?: assigns.input.editor == :file and not is_nil(assigns.upload),
         reference?: assigns.input.editor == :reference,
         references?: assigns.input.editor == :references,
         # what the record is called whose key the field holds, while it
@@ -6341,7 +6734,7 @@ defmodule AshTable.Live.TableComponent do
       <%!-- an unchecked box sends nothing: this says "false" for it --%>
       <input :if={@input.editor == :boolean} type="hidden" name={@name} value="false" />
       <label
-        :if={not @array? and not @reference? and not @references? and not @group?}
+        :if={not @array? and not @reference? and not @references? and not @group? and not @file?}
         for={@id}
         class="label mb-1 text-base-content"
       >
@@ -6531,6 +6924,44 @@ defmodule AshTable.Live.TableComponent do
         inside={@inside}
         target={@target}
       />
+      <%!-- a union: the choice of its kind, and under it that kind's value --%>
+      <.union
+        :if={@input.editor == :union}
+        id={@id}
+        name={@name}
+        field={@input}
+        held={@value}
+        errors={@errors}
+        inside={@inside}
+        target={@target}
+      />
+      <%!-- An argument that takes a file: LiveView's own file input, which
+      shows the name of the file that was chosen, as a browser does. Its id
+      is LiveView's to say, so the label is pointed at that. The file is sent
+      when the panel's button is used, and a bar says how far it has come
+      while that takes time. --%>
+      <label :if={@file?} for={@upload.ref} class="label mb-1 text-base-content">
+        <span data-label>{@input.label}</span>
+        <span :if={@input.required?} aria-hidden="true">*</span>
+      </label>
+      <.live_file_input
+        :if={@file?}
+        upload={@upload}
+        aria-required={@input.required? && "true"}
+        aria-invalid={@errors != [] && "true"}
+        aria-describedby={@described}
+        class={["file-input w-full", control_edge()]}
+      />
+      <progress
+        :for={entry <- (@file? && @upload.entries) || []}
+        :if={entry.progress > 0 and not entry.done? and not entry.cancelled?}
+        value={entry.progress}
+        max="100"
+        aria-label={entry.client_name}
+        class="progress mt-1 w-full"
+      >
+        {entry.progress}%
+      </progress>
       <%!-- an attribute whose column has a component that edits: its editor --%>
       {if @input.editor == :component, do: field_editor(assigns)}
       <textarea
@@ -6746,6 +7177,116 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # The field of a union: a group, named by the field's label, of the choice
+  # of its kind and, under it, that kind's value. A kind that holds one
+  # value has the one control of its type, called what the kind is called;
+  # a kind made of fields has those fields, each with its own control, as
+  # the group of a map cell has them.
+  #
+  # No kind is no value: the choice has an empty entry where the value may
+  # be left out, and until a kind is chosen. Choosing another kind is an
+  # ordinary change of the panel's form: the server renders the fields of
+  # that kind in place of the others. The field says which kind the value
+  # it sends was given for (`_of`), so that what was typed for one kind is
+  # never taken as the value of another (`AshTable.Act.kind/2`).
+  #
+  # What the action says of the union as a whole is shown at the value where
+  # the kind holds one value, which is what it is about, and under the
+  # group's label otherwise.
+  #
+  # `held` is what the field holds, as its form sends it
+  # (`AshTable.Act.sent/2`); `inside` is as for `group/1`.
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :field, :map, required: true
+  attr :held, :any, required: true
+  attr :errors, :list, required: true
+  attr :inside, :map, required: true
+  attr :target, :any, default: nil
+
+  defp union(assigns) do
+    {member, held} =
+      case Act.kind(assigns.field, assigns.held) do
+        {%{cell_type: :map} = member, held} when not is_map(held) -> {member, Act.fresh(member)}
+        {member, held} -> {member, held}
+        nil -> {nil, nil}
+      end
+
+    single? = not is_nil(member) and member.cell_type != :map
+
+    assigns =
+      assign(assigns,
+        member: member,
+        value: held,
+        kind: if(member, do: Atom.to_string(member.name), else: ""),
+        single?: single?,
+        own_errors: if(single?, do: [], else: assigns.errors),
+        value_errors: if(single?, do: assigns.errors, else: []),
+        within: %{assigns.inside | path: assigns.inside.path ++ ["_union_value"]}
+      )
+
+    ~H"""
+    <div
+      id={@id}
+      role="group"
+      aria-labelledby={"#{@id}-label"}
+      aria-describedby={@own_errors != [] && "#{@id}-error"}
+      data-union
+    >
+      <span id={"#{@id}-label"} class="label mb-1 text-base-content">
+        <span data-label>{@field.label}</span>
+        <span :if={@field.required?} aria-hidden="true">*</span>
+        <span :if={@field.required?} class="sr-only">{Text.t(:required)}</span>
+      </span>
+      <div :if={@own_errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
+        <p :for={message <- @own_errors} data-error>{message}</p>
+      </div>
+      <div class="ps-4">
+        <input type="hidden" name={"#{@name}[_of]"} value={@kind} />
+        <div class="fieldset mb-2" data-field={Enum.join(@inside.path ++ ["_union_type"], ".")}>
+          <label for={"#{@id}-kind"} class="label mb-1 text-base-content">
+            <span data-label>{Text.t(:kind)}</span>
+          </label>
+          <select
+            id={"#{@id}-kind"}
+            name={"#{@name}[_union_type]"}
+            aria-required={@field.required? && "true"}
+            class={["select w-full", control_edge()]}
+          >
+            <option :if={not @field.required? or @kind == ""} value=""></option>
+            <option
+              :for={kind <- @field.members}
+              value={kind.name}
+              selected={Atom.to_string(kind.name) == @kind}
+            >
+              {kind.label}
+            </option>
+          </select>
+        </div>
+        <.field
+          :if={@single?}
+          id={"#{@id}-value"}
+          input={@member}
+          name={"#{@name}[_union_value]"}
+          value={member_value(@member, @value)}
+          errors={@value_errors}
+          inside={@within}
+          target={@target}
+        />
+        <.members
+          :if={@member && not @single?}
+          id={@id}
+          name={"#{@name}[_union_value]"}
+          field={@member}
+          held={@value}
+          inside={@within}
+          target={@target}
+        />
+      </div>
+    </div>
+    """
+  end
+
   # The inputs of one value made of fields, each a field of the panel, whose
   # id is the group's with `-f-` and its name: `ID-panel-f-client-f-name`,
   # `ID-panel-f-milestones-0-f-title`. The
@@ -6792,7 +7333,7 @@ defmodule AshTable.Live.TableComponent do
   # What a field inside a group holds, of what its group holds: a field
   # made of groups as its form sends it, an array without the entry of its
   # own, and anything else as text.
-  defp member_value(%{editor: editor}, held) when editor in [:group, :groups], do: held
+  defp member_value(%{editor: editor}, held) when editor in [:group, :groups, :union], do: held
   defp member_value(%{cell_type: {:array, _item}}, [_own | values]), do: values
   defp member_value(%{cell_type: {:array, _item}}, _nothing), do: []
   defp member_value(_field, held) when is_binary(held), do: held
@@ -6802,7 +7343,14 @@ defmodule AshTable.Live.TableComponent do
   # the person has used the panel's button, and until then those of the
   # fields they have been in.
   defp member_errors(inside, field) do
-    if inside.submitted? or (inside.path ++ [Atom.to_string(field.name)]) in inside.touched,
+    path = inside.path ++ [Atom.to_string(field.name)]
+
+    been? =
+      if field.editor == :union,
+        do: in_union?(inside.touched, path),
+        else: path in inside.touched
+
+    if inside.submitted? or been?,
       do: Map.get(inside.errors, inside.place ++ [field.name], []),
       else: []
   end
@@ -7660,7 +8208,10 @@ defmodule AshTable.Live.TableComponent do
   # value in a way of its own.
   defp own_value?(%{cell_type: cell_type}) when cell_type in [:boolean, :enum], do: true
   # a map cell has no editor in the cell: nothing is held for one
-  defp own_value?(%{cell_type: cell_type}) when cell_type in [:map, {:array, :map}], do: false
+  defp own_value?(%{cell_type: cell_type})
+       when cell_type in [:map, {:array, :map}, :union, {:array, :union}],
+       do: false
+
   defp own_value?(%{cell_type: {:array, _item}}), do: true
   defp own_value?(%{component: %{cell?: true}}), do: true
   defp own_value?(_column), do: false
@@ -7767,7 +8318,7 @@ defmodule AshTable.Live.TableComponent do
   # A map cell that holds something the person may not see (a field that a
   # field policy of the embedded resource hides) is not theirs to edit.
   defp editable?(%{editable?: true, cell_type: cell_type}, value, _record)
-       when cell_type in [:map, {:array, :map}],
+       when cell_type in [:map, {:array, :map}, :union],
        do: not Embedding.hidden?(value)
 
   defp editable?(column, _value, _record), do: column.editable?
@@ -7793,6 +8344,15 @@ defmodule AshTable.Live.TableComponent do
       text: Format.format(column, value),
       column: component.column
     })
+  end
+
+  # A union shows the value it holds, as a cell of its kind's type shows
+  # it: a yes or no among its kinds is the check indicator a boolean has.
+  defp cell(%{cell_type: :union, members: [_ | _] = members} = column, %Ash.Union{} = union) do
+    case Enum.find(members, &(&1.name == union.type)) do
+      nil -> Format.format(column, union)
+      kind -> cell(kind, union.value)
+    end
   end
 
   # A boolean is a check indicator with its accessible text beside it;

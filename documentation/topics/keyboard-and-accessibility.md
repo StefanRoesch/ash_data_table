@@ -145,6 +145,7 @@ cell's type:
 | array of text or of numbers | Opens the list of values, with focus in the first and its text selected; on the button "Add value" when there is none. | Opens the list and starts a new value with the character, after the others. A character a number does not take adds nothing. |
 | array of dates, datetimes or booleans | As above. | Opens the list, as Enter does. |
 | a value made of fields: an embedded resource, a map, an array of either | Opens the side panel, with focus in the value's first field. | Nothing. |
+| a union | Opens the side panel, with focus on the choice of its kind. | Nothing. |
 | The editor of a column's component, with a control that is typed into (text, a number) | Opens the editor with its value selected. | As text and number above. |
 | The editor of a column's component, with any other control (a slider, a menu, a date) | Opens the editor with its value. | Opens the editor and keeps the value; the key goes on to the control, which does with it what it does. A slider takes no characters. |
 
@@ -189,6 +190,13 @@ and when one is gone, on what stands in its place: the value after it, the
 one before it, or "Add value". See
 [Maps and embedded resources](maps-and-embedded-resources.md#editing-in-the-side-panel).
 
+**A union** is edited in the side panel too. Its group is named by the
+column and starts with "Kind", a menu of the union's kinds, which has the
+focus when the panel opens. Up and Down Arrow choose another kind, as in
+any menu; the server then puts that kind's fields under the menu, and
+focus stays on the menu. Tab goes on into the fields of the kind. See
+[Unions](unions.md#editing-in-the-side-panel).
+
 An editor of a component that saves when its value changes, such as the
 slider of "Progress" on `/tasks`, saves a change made with the pointer at
 once and stays open. A step made with these keys is not yet a choice, as in
@@ -229,6 +237,7 @@ be reached, and the browser keeps focus inside it.
 | Enter or Space, on the button "Choose" of a field that holds the key of a related record | Opens the picker, a second modal dialog on top of the panel. Escape there closes the picker alone, and focus is on the button again. |
 | Enter or Space, on the button "✕" of a record in a field that holds several related records | Takes the record out of the field's list. Focus goes to the button of the record that stands in its place, else to the one before it, else to "Choose". See [Relationships an action manages](managing-relationships.md#the-keyboard-and-what-assistive-technology-is-told). |
 | Enter, in a field of one line | Runs the action, as "Run" does. In a text field of several lines it makes a new line. |
+| Enter or Space, on the file input of an argument that takes a file | Opens the browser's file dialog. The file is sent when the action is run. See [Files](files.md#the-field). |
 | Escape | Closes the panel, as "Cancel" does. Nothing runs. |
 
 Where focus goes afterwards:
@@ -404,6 +413,8 @@ page and keeps the focus.
 | A field of the panel that holds the key of a related record | A group (`role="group"`) named by the field's label, with what the record is called as text and the button "Choose", which is described by that text. A group cannot say `aria-required`, so the label of a required one ends in the word "required", for screen readers only. Its errors describe the group. |
 | The picker | A modal dialog named by its heading: "Assignee: choose user". Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
 | A field of the panel that holds several related records | A group named by the field's label, with what each record is called as text, a button per record named by what it does ("Remove ops"), and the button "Choose". Its picker's grid says `aria-multiselectable="true"`, and has a box named "Select row" in every row and a status above it that says how many rows are selected. |
+| The field of a union | A group (`role="group"`) named by the field's label, which ends in the word "required", for screen readers only, where the union cannot be empty. In it a menu labelled "Kind", and the fields of the kind that is chosen, each with its own label. What the action says of the value of a kind that holds one value describes that value's control; of a kind made of fields, the group. |
+| The field of an argument that takes a file | The browser's file input, with a label. A required one has `aria-required`. A file the upload refuses, and what the action said of the file, mark the input `aria-invalid` and describe it; a refusal as the file is chosen is said in the live region as well ("File: The file is too large. …"). While the file is sent, a `<progress>` named by the file says how far it has come. |
 | What an action says that is about no field of its panel | An alert (`role="alert"`) above the fields. |
 | The name of a table, its create button and the buttons of its table actions | Above the grid: the name as a heading of the page (`h1` on a mounted page), or as text where an embedded table is not told a heading level; the buttons named by what they say, "New task", "Count unused". |
 | A row that was added or taken away | The total (`aria-rowcount`) is one more or one less, and the rows after it are numbered again (`aria-rowindex`). |
@@ -540,6 +551,10 @@ the picker for several on top of the panel, in both themes; with the side
 panel of an embedded resource open, with a value inside it taken away, with
 errors at its fields, and with the list of groups of an array of embedded
 resources with a value added and one refused, in both themes; with the
+side panel of a union open, with an error at the value of a kind and at a
+field of a kind made of fields, in both themes; with the panel of an action
+that takes a file open, in both themes, and with a file the upload or the
+action refused; with the
 argument line, with a value Ash refused at one of its inputs and with "Fill
 in … to see records." in place of the rows, in both themes, and with a list
 of values in it, in German, and with the line of a nested table and of a

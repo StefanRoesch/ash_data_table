@@ -60,9 +60,9 @@ on the argument line, in the action's order. Nothing is declared for it.
 - An argument that is `allow_nil? false` is marked with `*` and
   `aria-required`, as a required field of the action panel is.
 - An argument that is `public? false` is never on the line and never given.
-- An optional argument of a type without an input (a map, a union) is left
-  out. A read action that *requires* such an argument cannot be behind a
-  table: the compiler says so.
+- An optional argument of a type without an input (a map, a union, a file)
+  is left out. A read action that *requires* such an argument cannot be
+  behind a table: the compiler says so.
 
 The demo's deadlines are the tasks that are due by a day, read through an
 action with three arguments

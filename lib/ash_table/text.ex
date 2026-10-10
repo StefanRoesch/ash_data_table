@@ -111,6 +111,10 @@ defmodule AshTable.Text do
           | :remove_group
           | :fill_in
           | :argument_of
+          | :kind
+          | :upload_too_large
+          | :upload_not_accepted
+          | :upload_failed
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -372,4 +376,20 @@ defmodule AshTable.Text do
   # what an argument is called that a column asks for: the column, and the
   # argument ("Price in: Currency")
   defp msgid(:argument_of), do: dgettext_noop("ash_table", "%{column}: %{argument}")
+
+  # in the action panel, at the field of a union: what the choice of its
+  # kind is called
+  defp msgid(:kind), do: dgettext_noop("ash_table", "Kind")
+
+  # At the field of an argument that takes a file, what LiveView says of a
+  # file it does not take: larger than the limit, which is said as a size
+  # ("8 MB"); of a type the field does not accept; and a file that did not
+  # arrive.
+  defp msgid(:upload_too_large),
+    do: dgettext_noop("ash_table", "The file is too large. The limit is %{limit}.")
+
+  defp msgid(:upload_not_accepted),
+    do: dgettext_noop("ash_table", "This type of file is not accepted.")
+
+  defp msgid(:upload_failed), do: dgettext_noop("ash_table", "The file could not be uploaded.")
 end

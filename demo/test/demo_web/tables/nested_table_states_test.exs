@@ -36,7 +36,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
     on_exit(fn ->
       Gate.open()
       Switch.set(:ok)
-      Enum.each([Binder, Paper, Draft, Sheet, Slip], &Ash.DataLayer.Ets.stop/1)
+      Demo.Support.Ets.stop([Binder, Paper, Draft, Sheet, Slip])
     end)
 
     {:ok, view, _html} = live(conn, "/support/binders")

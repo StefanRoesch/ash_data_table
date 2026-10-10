@@ -57,7 +57,9 @@ defmodule DemoWeb.Router do
   # chosen by keys that are no UUID (`picker_tables.ex`), those whose read
   # actions and calculations take arguments (`argument_tables.ex`), those
   # with generic actions (`action_tables.ex`), one whose actions hand their
-  # arguments to relationships (`relation_tables.ex`), one whose
+  # arguments to relationships (`relation_tables.ex`), one whose columns are
+  # unions (`union_tables.ex`), one whose actions take files
+  # (`file_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
   # `Demo.Support.Exposed`, which one test defines for itself);
   # two of them once more
@@ -112,6 +114,8 @@ defmodule DemoWeb.Router do
         ash_table "/rotas", Demo.Support.Generic.Rota, layout: false
         ash_table "/shifts", Demo.Support.Generic.Shift, layout: false
         ash_table "/gigs", Demo.Support.Managed.Gig, layout: false
+        ash_table "/gifts", Demo.Support.Unions.Gift, layout: false
+        ash_table "/scans", Demo.Support.Files.Scan, layout: false
         live "/asked", DemoWeb.Support.AskedLive
         live "/embedded", DemoWeb.Support.EmbeddedLive
         live "/select", DemoWeb.Support.SelectLive

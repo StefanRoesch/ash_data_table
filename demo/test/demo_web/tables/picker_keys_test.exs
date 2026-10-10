@@ -63,7 +63,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
 
     on_exit(fn ->
       Gate.open()
-      Enum.each([Zone, Bay, Dock, Stop], &Ash.DataLayer.Ets.stop/1)
+      Demo.Support.Ets.stop([Zone, Bay, Dock, Stop])
     end)
 
     %{conn: conn, stop: stop, sealed: sealed}

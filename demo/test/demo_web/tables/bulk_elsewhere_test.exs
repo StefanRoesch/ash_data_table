@@ -367,7 +367,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
         |> Ash.create!()
       end
 
-      on_exit(fn -> Ash.DataLayer.Ets.stop(Parcel) end)
+      on_exit(fn -> Demo.Support.Ets.stop(Parcel) end)
     end
 
     defp shipped do
@@ -450,7 +450,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
         |> Ash.create!()
       end
 
-      on_exit(fn -> Ash.DataLayer.Ets.stop(Crate) end)
+      on_exit(fn -> Demo.Support.Ets.stop(Crate) end)
     end
 
     test "runs on all that match, and on rows that are named", %{conn: conn} do
@@ -476,7 +476,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
           |> Ash.create!()
         end
 
-      on_exit(fn -> Ash.DataLayer.Ets.stop(Crate) end)
+      on_exit(fn -> Demo.Support.Ets.stop(Crate) end)
 
       {:ok, view, _html} = live(conn, "/support/crates")
       %{view: view, crates: crates}
@@ -578,8 +578,8 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
         end
 
       on_exit(fn ->
-        Ash.DataLayer.Ets.stop(Letter)
-        Ash.DataLayer.Ets.stop(Pouch)
+        Demo.Support.Ets.stop(Letter)
+        Demo.Support.Ets.stop(Pouch)
       end)
 
       {:ok, view, html} = live(conn, "/support/letters")
@@ -649,7 +649,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     @member %{id: "max", name: "max", role: :member}
 
     setup do
-      on_exit(fn -> Ash.DataLayer.Ets.stop(Order) end)
+      on_exit(fn -> Demo.Support.Ets.stop(Order) end)
     end
 
     defp order(attributes) do
@@ -757,7 +757,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
   describe "an action that fails on the selected rows" do
     setup %{conn: conn} do
-      on_exit(fn -> Ash.DataLayer.Ets.stop(Order) end)
+      on_exit(fn -> Demo.Support.Ets.stop(Order) end)
 
       orders =
         for {title, note} <- [{"One", "Long enough"}, {"Two", "No"}, {"Three", "Long enough"}] do
@@ -822,8 +822,8 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       Tally |> Ash.Changeset.for_create(:create, %{title: "A tally"}) |> Ash.create!()
 
       on_exit(fn ->
-        Ash.DataLayer.Ets.stop(Slot)
-        Ash.DataLayer.Ets.stop(Tally)
+        Demo.Support.Ets.stop(Slot)
+        Demo.Support.Ets.stop(Tally)
       end)
 
       {:ok, view, html} = live(conn, "/support/select")

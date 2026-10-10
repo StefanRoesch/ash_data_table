@@ -59,6 +59,16 @@ defmodule Demo.Tracker.Label do
     action :remove_unused do
       confirm "Delete every label that no task carries?"
     end
+
+    # An argument that takes a file: the panel has a file input for it. The
+    # upload takes what the block says here, one CSV file of 100 kB at most;
+    # without an `upload` it would take any file of up to 8 MB.
+    action :import
+
+    upload :file do
+      accept ~w(.csv)
+      max_file_size 100_000
+    end
   end
 
   actions do
@@ -130,6 +140,37 @@ defmodule Demo.Tracker.Label do
       end
     end
 
+    # Takes a file: a CSV with a label on each line, its name and, after a
+    # comma, its colour, which may be left out. Returns how many labels it
+    # made. Nothing is made when one line is refused.
+    action :import, :integer do
+      description "Makes a label of each line of a CSV file."
+      transaction? true
+
+      argument :file, :file, allow_nil?: false
+
+      run fn input, context ->
+        opts = Ash.Context.to_opts(context)
+
+        with {:ok, lines} <- lines(input.arguments.file) do
+          lines
+          |> Enum.with_index(1)
+          |> Enum.reduce_while({:ok, 0}, fn {line, number}, {:ok, made} ->
+            attributes =
+              case String.split(line, ",", parts: 2) do
+                [name] -> %{name: String.trim(name)}
+                [name, colour] -> %{name: String.trim(name), colour: String.trim(colour)}
+              end
+
+            case Ash.create(__MODULE__, attributes, opts) do
+              {:ok, _label} -> {:cont, {:ok, made + 1}}
+              {:error, error} -> {:halt, {:error, refused(error, number)}}
+            end
+          end)
+        end
+      end
+    end
+
     # Takes the key of a label and a name: a table gives the first from
     # the row the action is used on (`record_argument` in the block above).
     action :copy do
@@ -154,6 +195,59 @@ defmodule Demo.Tracker.Label do
     end
   end
 
+  # The lines of an uploaded file that hold something. The file is read
+  # through `Ash.Type.File`, whatever it was given as.
+  defp lines(file) do
+    with {:ok, device} <- Ash.Type.File.open(file, [:read, :utf8]) do
+      # nothing at all is read as the end of the file
+      text = with :eof <- IO.read(device, :eof), do: ""
+      File.close(device)
+
+      cond do
+        not is_binary(text) or not String.valid?(text) ->
+          {:error, invalid("is not a text file")}
+
+        String.trim(text) == "" ->
+          {:error, invalid("is empty")}
+
+        true ->
+          {:ok, for(line <- String.split(text, ~r/\R/), String.trim(line) != "", do: line)}
+      end
+    else
+      {:error, _reason} -> {:error, invalid("could not be read")}
+    end
+  end
+
+  # What a line was refused for, said of the file: the place of the line,
+  # and what the label's own action said.
+  defp refused(error, number) do
+    said =
+      error
+      |> Ash.Error.to_error_class()
+      |> Map.get(:errors, [])
+      |> Enum.map_join("; ", fn
+        %{field: field, message: message} = error when is_binary(message) ->
+          message =
+            Enum.reduce(Map.get(error, :vars) || [], message, fn {name, value}, message ->
+              String.replace(message, "%{#{name}}", to_string(value))
+            end)
+
+          "#{field} #{message}"
+
+        %{class: :forbidden} ->
+          "is not allowed"
+
+        _other ->
+          "is refused"
+      end)
+
+    invalid("line %{line}: %{said}", line: number, said: said)
+  end
+
+  defp invalid(message, vars \\ []) do
+    Ash.Error.Action.InvalidArgument.exception(field: :file, message: message, vars: vars)
+  end
+
   policies do
     policy action_type(:read) do
       authorize_if expr(organization_id == ^actor(:organization_id))
@@ -170,7 +264,7 @@ defmodule Demo.Tracker.Label do
       authorize_if actor_present()
     end
 
-    policy action([:recolour, :remove_unused, :copy]) do
+    policy action([:recolour, :remove_unused, :copy, :import]) do
       authorize_if actor_attribute_equals(:role, :admin)
     end
   end

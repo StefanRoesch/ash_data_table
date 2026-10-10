@@ -16,7 +16,7 @@ defmodule AshTable.PickTest do
   end
 
   setup do
-    on_exit(fn -> Enum.each([Depot, Vault, Zone, Locker], &Ash.DataLayer.Ets.stop/1) end)
+    on_exit(fn -> AshTable.Test.Ets.stop([Depot, Vault, Zone, Locker]) end)
     :ok
   end
 

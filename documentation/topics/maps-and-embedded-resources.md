@@ -168,9 +168,9 @@ person has to be able to give every input of the value**:
 
 - **Every input has a control.** The controls are those of the action
   panel: text, number, boolean, date, datetime, a choice, an array of
-  those, a value written as one line of text (a time, a key), and a value
-  made of fields, for which the same holds in turn. A union, for one, has
-  none.
+  those, a value written as one line of text (a time, a key), a value
+  made of fields, for which the same holds in turn, and a union whose every
+  kind has a control ([Unions](unions.md)). A tuple, for one, has none.
 - **A map declares its fields.** A map without `fields` could hold
   anything, and a table does not know what to ask for.
 - **The embedded resource's create and update actions accept the same
@@ -511,8 +511,9 @@ translated once, for a column and for a field of a client alike.
   An `Ash.Type.Struct` with `fields` and an `Ash.TypedStruct` are cast as a
   map with fields is and would be edited the same way; they are left for
   later. A keyword list would fit too. A tuple takes no map as its input.
-- **Unions**, also inside an embedded resource, which makes that resource
-  read-only.
+- **Arrays of unions**, also inside an embedded resource, which makes that
+  resource read-only. A single union is a field like any other:
+  see [Unions](unions.md).
 - **Calculations of an embedded resource.**
 - **A filter by a field of the value**, and a sort.
 - **Masking of `sensitive?` fields**, which is planned for columns and will
@@ -520,5 +521,5 @@ translated once, for a column and for a field of a client alike.
 - **Reordering the values of an array.** A value is added at the end.
 - **Showing constraints before saving**, as for every editor.
 
-Unions and the display of constraints are later slices in the
+The display of constraints is a later slice in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

@@ -38,8 +38,9 @@ defmodule AshTable.Resource.Acting do
           type: {Ash.Type.t(), keyword},
           cell_type: CellType.t(),
           values: CellType.values() | nil,
-          editor: Editing.editor() | :plain | :reference | :references | nil,
+          editor: Editing.editor() | :plain | :file | :reference | :references | nil,
           fields: [AshTable.Model.Field.t()] | nil,
+          members: [AshTable.Model.Field.t()] | nil,
           reference: Referencing.managing() | nil,
           required?: boolean,
           default: term
@@ -252,20 +253,41 @@ defmodule AshTable.Resource.Acting do
       type: {type, constraints},
       cell_type: cell_type,
       values: values,
-      editor: control(cell_type, type, constraints),
+      editor: file(kind, type) || control(cell_type, type, constraints),
       fields: fields(cell_type, type, constraints),
+      members: members(cell_type, type, constraints),
       reference: nil,
       required?: required?,
       default: if(computed?(field), do: nil, else: field.default)
     }
   end
 
+  # An argument that takes a file is given by uploading one. Ash stores no
+  # file, so only an argument is ever of that type.
+  defp file(:argument, type), do: if(file?(type), do: :file)
+  defp file(_attribute, _type), do: nil
+
+  @doc "Whether a type is `Ash.Type.File`, a NewType taken as what it is made of."
+  @spec file?(Ash.Type.t()) :: boolean
+  def file?({:array, _type}), do: false
+
+  def file?(type) do
+    type = Ash.Type.get_type(type)
+
+    cond do
+      type == Ash.Type.File -> true
+      is_atom(type) and Ash.Type.NewType.new_type?(type) -> file?(type.subtype_of())
+      true -> false
+    end
+  end
+
   @doc """
   The control a table has for a value of a type, where a person gives one
-  in a form: that of a cell of that type (a group of fields for a map cell),
-  or a plain field for a value that is written as one line of text. Nil for
-  the rest: unions and so on, the arrays of anything without a cell type,
-  and a map cell with an input a person cannot give.
+  in a form: that of a cell of that type (a group of fields for a map cell,
+  the kind and its value for a union), or a plain field for a value that is
+  written as one line of text. Nil for the rest: the arrays of anything
+  without a cell type, and a map cell or a union with an input a person
+  cannot give.
   """
   @spec control(CellType.t(), Ash.Type.t(), keyword) :: Editing.editor() | :plain | nil
   def control(:other, {:array, _type}, _constraints), do: nil
@@ -286,6 +308,16 @@ defmodule AshTable.Resource.Acting do
 
   defp fields(_cell_type, _type, _constraints), do: nil
 
+  # The kinds of an input that is a union.
+  defp members(:union, type, constraints) do
+    case AshTable.Resource.Embedding.of(type, constraints) do
+      %{members: members} -> members
+      nil -> nil
+    end
+  end
+
+  defp members(_cell_type, _type, _constraints), do: nil
+
   @doc """
   The required inputs of an action that a table has no field for. An action
   with one cannot be run from a table.
@@ -300,7 +332,8 @@ defmodule AshTable.Resource.Acting do
   Whether using an action opens the action panel first. It does when the
   person has something to give: an attribute the action accepts, or an
   argument that hands the records they choose to a relationship, which is
-  what such an action is for; or an argument it does not run without. An
+  what such an action is for, as is an argument that takes a file; or an
+  argument it does not run without. An
   action without inputs, or with other optional arguments only, runs
   straight away: those keep their defaults. `inputs` are the ones a table
   has a field for.
@@ -309,7 +342,7 @@ defmodule AshTable.Resource.Acting do
   def panel?(inputs) do
     Enum.any?(inputs, fn input ->
       # an argument with a default runs with it
-      input.kind == :attribute or not is_nil(input.reference) or
+      input.kind == :attribute or not is_nil(input.reference) or input.editor == :file or
         (input.required? and is_nil(input.default))
     end)
   end
@@ -526,8 +559,9 @@ defmodule AshTable.Resource.Acting do
       "The #{what} action `#{name}` cannot be run from a table: its input `#{input}` is " <>
         "required, and a table has no field for its type (#{inspect(type)}). The action panel " <>
         "has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, " <>
-        "values written as one line of text, such as a key, and for embedded resources and " <>
-        "maps whose every field is one of these."
+        "values written as one line of text, such as a key, for embedded resources and " <>
+        "maps whose every field is one of these, for unions whose every kind is, and for " <>
+        "an argument that takes one file."
 
   # a list of keys that is handed to a relationship, and cannot be chosen
   def message({:no_field, what, name, %{name: input}, relationship, reason}),

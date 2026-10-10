@@ -270,6 +270,8 @@ number) and has the fields the panel of a row has, with these differences:
 | An attribute starts with | The record's value | Nothing: there is no one record to take it from. Not the attribute's default either. |
 | An argument starts with | Its default, when that is a fixed value | The same. |
 | An argument that is everything a relationship is to hold starts with | The records that are related now | Nothing: what is chosen is given to every selected record, in place of what each had. See [Relationships an action manages](managing-relationships.md#on-the-selected-rows-in-a-create-in-a-nested-table). |
+| A union starts with | The kind and the value the record holds | No kind, which is given to every selected record as no value. See [Unions](unions.md#in-the-action-panel). |
+| A file | Is given to the action on this record | Is given to the action on every selected record: the same file each time. See [Files](files.md#on-the-selected-rows). |
 | A field of an attribute the person sees on some records only | Is there where they see it on this record | Is never there. |
 | What the fields hold | Is given to the action on this record | Is given to the action on every selected record. |
 

@@ -85,13 +85,19 @@ defmodule DemoWeb.Tables.LabelActionsTest do
       {:ok, _view, html} = conn |> log_in(world.admin) |> live("/labels")
 
       assert text(html, "#label-create") == "New label"
-      assert table_actions(html, "label") == ["Count unused", "Recolour", "Remove unused"]
+
+      assert table_actions(html, "label") == [
+               "Count unused",
+               "Recolour",
+               "Remove unused",
+               "Import"
+             ]
 
       assert html
              |> LazyHTML.from_fragment()
              |> LazyHTML.query("#label-header button")
              |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())) ==
-               ["New label", "Count unused", "Recolour", "Remove unused"]
+               ["New label", "Count unused", "Recolour", "Remove unused", "Import"]
 
       # counting is everybody's; what changes labels is an admin's
       for actor <- [world.member, world.viewer] do
@@ -123,7 +129,7 @@ defmodule DemoWeb.Tables.LabelActionsTest do
       {:ok, view, html} = conn |> log_in(world.admin) |> in_locale("de") |> live("/labels")
 
       assert table_actions(html, "label") ==
-               ["Unbenutzte zählen", "Umfärben", "Unbenutzte entfernen"]
+               ["Unbenutzte zählen", "Umfärben", "Unbenutzte entfernen", "Importieren"]
 
       assert result(table_act(view, "label", "count_unused"), "label") == "Unbenutzte zählen: 2"
 
@@ -300,7 +306,7 @@ defmodule DemoWeb.Tables.LabelActionsTest do
 
     test "the labels' table actions are on their line", %{html: html, task: task} do
       assert line_buttons(html, task.id, "labels") ==
-               ["Count unused", "Recolour", "Remove unused"]
+               ["Count unused", "Recolour", "Remove unused", "Import"]
 
       # a line whose table has none is as it was
       assert line_buttons(html, task.id, "comments") == []

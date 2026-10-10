@@ -67,9 +67,9 @@ defmodule AshTable.Test.Embedding.Mixed do
   attributes do
     attribute :label, :string, public?: true
 
-    attribute :either, :union,
+    attribute :pair, :tuple,
       public?: true,
-      constraints: [types: [text: [type: :string], number: [type: :integer]]]
+      constraints: [fields: [left: [type: :integer], right: [type: :integer]]]
   end
 end
 

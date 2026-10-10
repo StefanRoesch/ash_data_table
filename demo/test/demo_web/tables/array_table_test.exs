@@ -27,7 +27,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
   @viewer %{id: "vera", name: "vera", role: :viewer}
 
   setup do
-    on_exit(fn -> Ash.DataLayer.Ets.stop(Roster) end)
+    on_exit(fn -> Demo.Support.Ets.stop(Roster) end)
   end
 
   defp roster(attributes \\ %{}) do

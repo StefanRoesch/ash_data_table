@@ -345,6 +345,10 @@ defmodule AshTable.Resource.Reading do
   can be sorted by, and `Ash.Query.sort_input/2`, through which a table
   sorts, refuses one ("is not sortable"); Ash's interface extensions leave
   embedded resources out of what they sort by as well.
+
+  Nor by a union. Ash stores one as a map of its kind and its value, and
+  `Ash.Resource.Info.sortable?/3` does not say no; `ash_json_api` and
+  `ash_graphql` both leave unions out of what they sort and filter by.
   """
   @spec sortable?(Ash.Resource.t() | Spark.Dsl.t(), atom, strategy) :: boolean
   def sortable?(resource, name, strategy) do
@@ -354,8 +358,12 @@ defmodule AshTable.Resource.Reading do
       not made_of_fields?(Info.field(resource, name))
   end
 
-  defp made_of_fields?(%{type: type} = field) when not is_nil(type) and not is_tuple(type),
-    do: not is_nil(AshTable.Resource.Embedding.kind(type, Map.get(field, :constraints) || []))
+  defp made_of_fields?(%{type: type} = field) when not is_nil(type) and not is_tuple(type) do
+    constraints = Map.get(field, :constraints) || []
+
+    not is_nil(AshTable.Resource.Embedding.kind(type, constraints)) or
+      not is_nil(AshTable.Resource.Embedding.union(type, constraints))
+  end
 
   defp made_of_fields?(_field), do: false
 

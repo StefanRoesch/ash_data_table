@@ -26,7 +26,7 @@ defmodule DemoWeb.Tables.FailedReadTest do
 
     on_exit(fn ->
       Switch.set(:ok)
-      Ash.DataLayer.Ets.stop(Report)
+      Demo.Support.Ets.stop(Report)
     end)
   end
 

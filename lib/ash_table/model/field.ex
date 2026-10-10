@@ -9,16 +9,21 @@ defmodule AshTable.Model.Field do
   #     are what a column of that type has (see `AshTable.Model.Column`), and
   #     `fields` the fields of a field that is itself a map cell, or an array
   #     of them: nil for every other field, for a map that declares none,
-  #     and for an embedded resource that holds itself.
+  #     and for an embedded resource that holds itself. `members` are the
+  #     kinds of a field that is a union, or an array of them: each a field
+  #     of this kind itself, named as the union names the kind, whose `tag`
+  #     is what the union tells the kind by where it does (`{key, value}`:
+  #     the key of a map and what it holds for this kind). Nil for every
+  #     other field.
   #   * `input?` says whether a person gives the field when the value is
   #     edited: always for a field of a map, and for an attribute of an
   #     embedded resource when the actions Ash casts the value through
   #     accept it. An attribute that is shown and not given keeps what it
   #     holds, or is filled in by the resource.
   #   * `editor` is the control of an input: that of a field of the action
-  #     panel (see `AshTable.Model.Input`), `:group` for a map cell and
-  #     `:groups` for an array of them. Nil for a field that is no input,
-  #     and for one a table has no control for.
+  #     panel (see `AshTable.Model.Input`), `:group` for a map cell,
+  #     `:groups` for an array of them, and `:union` for a union. Nil for a
+  #     field that is no input, and for one a table has no control for.
   #   * `required?` says whether the input can be left empty, and `default`
   #     is the static default a new value starts with.
   #   * `key?` is set for an attribute of an embedded resource's primary key
@@ -35,6 +40,8 @@ defmodule AshTable.Model.Field do
     :cell_type,
     :values,
     :fields,
+    :members,
+    :tag,
     :editor,
     :default,
     input?: false,
@@ -50,6 +57,8 @@ defmodule AshTable.Model.Field do
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
           fields: [t] | nil,
+          members: [t] | nil,
+          tag: {atom | String.t(), term} | nil,
           editor: AshTable.Resource.Editing.editor() | :plain | nil,
           default: term,
           input?: boolean,

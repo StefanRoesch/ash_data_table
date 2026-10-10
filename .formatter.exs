@@ -1,4 +1,5 @@
 spark_locals_without_parens = [
+  accept: 1,
   action: 1,
   action: 2,
   actor_assign: 1,
@@ -21,6 +22,7 @@ spark_locals_without_parens = [
   label: 1,
   label_field: 1,
   max_depth: 1,
+  max_file_size: 1,
   on_forbidden: 1,
   paginate_with: 1,
   read_action: 1,
@@ -30,7 +32,9 @@ spark_locals_without_parens = [
   scope_assign: 1,
   sortable?: 1,
   tenant_assign: 1,
-  update_action: 1
+  update_action: 1,
+  upload: 1,
+  upload: 2
 ]
 
 [

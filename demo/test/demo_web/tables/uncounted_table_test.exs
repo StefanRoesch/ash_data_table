@@ -23,7 +23,7 @@ defmodule DemoWeb.Tables.UncountedTableTest do
       |> Ash.create!()
     end
 
-    on_exit(fn -> Ash.DataLayer.Ets.stop(Ticket) end)
+    on_exit(fn -> Demo.Support.Ets.stop(Ticket) end)
   end
 
   test "shows no total, and does not claim to know how many rows there are", %{conn: conn} do

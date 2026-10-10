@@ -122,6 +122,26 @@ defmodule AshTable.Model do
   # (`Ash.Resource.Info.sortable?/3`), and its interface extensions filter
   # by neither.
   #
+  # ## Unions
+  #
+  # A union (`Ash.Type.Union`) has the cell type `:union`, and an array of
+  # them `{:array, :union}`: a value of one of several kinds, shown as the
+  # value it holds, as its kind's type is shown. The column carries the
+  # kinds as `members` (`AshTable.Resource.Embedding`). It is edited in the
+  # side panel (`:union`): the kind first, then that kind's value, where a
+  # person can give every kind. It is neither sorted nor filtered by, as
+  # Ash's interface extensions sort and filter by no union. An array of
+  # unions is not edited.
+  #
+  # ## Files
+  #
+  # An argument of an action that takes a file (`Ash.Type.File`) is an
+  # input with the editor `:file`: the action panel has an upload for it.
+  # Ash stores no file, so no column and no attribute is ever one. What the
+  # upload is limited to is the input's `upload`: what an `upload` of the
+  # block says for an argument of that name, else LiveView's own limits.
+  # An action with such an argument always opens its panel.
+  #
   # ## Components
   #
   # A column whose block names a `component` carries it: the module, which
@@ -1363,6 +1383,7 @@ defmodule AshTable.Model do
         |> struct!(Map.put(input, :label, input_label(input, columns)))
         |> with_reference(resource, columns)
         |> with_component(columns)
+        |> with_upload(resource)
       end
 
     %Action{
@@ -1387,6 +1408,14 @@ defmodule AshTable.Model do
   end
 
   defp returns(_action), do: nil
+
+  # An argument that takes a file is given by uploading one, within what
+  # the block says for its name (`upload`), else within LiveView's own
+  # limits.
+  defp with_upload(%Input{editor: :file, name: name} = input, resource),
+    do: %{input | upload: AshTable.Resource.Uploading.limits(resource, name)}
+
+  defp with_upload(input, _resource), do: input
 
   # An attribute that is the foreign key of a public belongs-to relationship
   # whose related record can be chosen is given by choosing: its field shows
@@ -1456,6 +1485,7 @@ defmodule AshTable.Model do
   # is a map cell.
   defp with_component(%Input{cell_type: {:array, _item}} = input, _columns), do: input
   defp with_component(%Input{cell_type: :map} = input, _columns), do: input
+  defp with_component(%Input{cell_type: :union} = input, _columns), do: input
 
   defp with_component(%Input{kind: :attribute, name: name} = input, columns) do
     case Enum.find(columns, &(&1.name == name and &1.kind == :attribute)) do
@@ -1584,6 +1614,7 @@ defmodule AshTable.Model do
       update_action: update_action,
       editor: update_action && editor(cell_type, component, type, constraints),
       fields: fields(cell_type, type, constraints),
+      members: members(cell_type, type, constraints),
       confirm: update_action && declared && declared.confirm,
       component: component,
       name: name,
@@ -1649,7 +1680,7 @@ defmodule AshTable.Model do
   # edited with the table's own editor, and so is a map cell: the editor of
   # a component holds one value.
   defp editor(cell_type, %{editor?: true}, _type, _constraints)
-       when cell_type != :map and not is_tuple(cell_type),
+       when cell_type not in [:map, :union] and not is_tuple(cell_type),
        do: :component
 
   defp editor(cell_type, _component, type, constraints),
@@ -1666,14 +1697,26 @@ defmodule AshTable.Model do
 
   defp fields(_cell_type, _type, _constraints), do: nil
 
+  # The kinds of a union, and of an array of them; nil for every other cell
+  # type.
+  defp members(cell_type, type, constraints) when cell_type in [:union, {:array, :union}] do
+    case Embedding.of(type, constraints) do
+      %{members: members} -> members
+      nil -> nil
+    end
+  end
+
+  defp members(_cell_type, _type, _constraints), do: nil
+
   @doc """
   The input a map cell of `column` is edited as, in the side panel: the
   column's attribute as the one input of its update action, with the fields
-  of its value. It is required where the attribute cannot be empty.
+  of its value. It is required where the attribute cannot be empty. A
+  union is edited the same way, with its kinds.
   """
   @spec input(t, Column.t()) :: Input.t()
   def input(%__MODULE__{resource: resource}, %Column{editor: editor} = column)
-      when editor in [:group, :groups] do
+      when editor in [:group, :groups, :union] do
     %Input{
       name: column.name,
       kind: :attribute,
@@ -1682,6 +1725,7 @@ defmodule AshTable.Model do
       cell_type: column.cell_type,
       values: column.values,
       fields: column.fields,
+      members: column.members,
       editor: editor,
       required?: Info.attribute(resource, column.name).allow_nil? == false
     }

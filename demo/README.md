@@ -58,10 +58,10 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | http://localhost:4478/tasks | `Task` | a `table` block: chosen columns in a chosen order, a relabelled column, an aggregate, two calculations, and three reference cells ("Project", "Assignee", "Reported by": each shows a related record by its name, with no sort and no filter; the first two are edited by choosing another record from that resource's own table, in the picker, see below; the third is read-only); offset pages of 25. Two array columns, "Tags" (an array of text) and "Checks" (an array of enum values), shown as their values and edited as a whole, with neither a sort nor a filter. "Repeats", a map that declares its fields, shown on one line and edited in the side panel (see below). A box at the start of every row selects it, and the five row actions run on the selected rows (see below). Inline editing of every cell type (see below). Filters of every kind: text (`title`, `external_ref`), numbers (`progress`, `estimate_hours`), a date (`due_on`), datetimes (`completed_at`, `inserted_at`), booleans (`billable?` and the calculation `overdue?`), enums (`status`, `priority`), an aggregate (`comment_count`). No filter on `description` (`sortable? false` and `filterable? false`) and none on `headline` (computed in Elixir). Five row actions in a last column, "Actions", the last of which, "Set labels", takes the labels of a task as an argument and hands them to the relationship: its panel lists the task's labels, and they are chosen in the picker (see below); and "New task" on the line of the table's name (see below). Above the grid, the argument line: "Search", an argument of the read action that may be left empty, finds tasks by a text in their title or description, and "Due within: Days" is the argument of the column "Due within", which shows the calculation `due_within?` with the days a person gives it (30 to start with); the column beside it, "Due within 7 days", shows the same calculation with its argument fixed (see below) |
 | http://localhost:4478/projects | `Project` | no column declared: the public attributes, edited in place through `update_action :update` (Name, Description, Status, Starts on, Budget) by an admin or a member. Two of them are made of fields and edited in the side panel: "Client", an embedded resource with an address inside it, and "Milestones", an array of embedded resources (see below). Its block also says what a project is called in other tables (`label_field :name`). Two row actions: "Set status", whose one input is a choice, and "Destroy", which asks first; and "New project". Refused outright for nobody, who gets a 404: the page answers as if it did not exist |
 | http://localhost:4478/comments | `Comment` | the public attributes again, the foreign keys among them: "Task ID" and "Author ID" are the raw keys, where `/tasks` shows names. "Body" is edited in place, by an admin and by a comment's own author; anyone else's save is refused on the cell. Keyset pagination: next and previous only, and no page numbers. The action counts (Ash's `countable` is on unless an action says otherwise), so the line under the table gives the number of records without a range, and a filter change is announced with its count. A row action, "Destroy", which asks first, and "New comment", whose panel has a field for the task that opens the picker: the table of the tasks to choose one from. Refused outright for nobody too, but declared with `on_forbidden :message`: nobody is told "You are not allowed to see these records." |
-| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button. Three table actions, generic actions with their buttons after "New label": "Count unused" for everybody, "Recolour" and "Remove unused" for an admin; and "Copy" in every row, a generic action that is given the row's key (see below) |
+| http://localhost:4478/labels | `Label` | no pagination: every record. "Name" and "Colour" are edited in place by an admin (`update_action :update`); a member and a viewer are offered no editing. `label_field :name` says what a label is called. "Destroy", which asks first, and "New label", for an admin: a member and a viewer have no actions column and no create button. Four table actions, generic actions with their buttons after "New label": "Count unused" for everybody, "Recolour", "Remove unused" and "Import", which takes a CSV file, for an admin; and "Copy" in every row, a generic action that is given the row's key (see below) |
 | http://localhost:4478/bare/labels | `Label` | the same, mounted with `layout: false`: the heading and the table straight in the root layout. A bare table brings no landmark, so the demo's root layout has the `<main>` around every page, beside its header |
 | http://localhost:4478/task_labels | `TaskLabel` | a primary key of two attributes: rows are named, found and saved by both parts together. `Note` is editable; offset pages of 25. One row action, a destroy relabelled "Remove", which runs at one click and says so (`confirm false`); "New task label", whose panel has a field for the task and one for the label, each of which opens the picker |
-| http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; and the values made of fields, edited in the side panel: "An address" (an embedded resource), "Addresses" (an array of them, without a primary key) and "A typed map" (a map that declares its fields). "A map", which declares none, is shown from whatever it holds and is read-only; "A keyword", "A tuple" and "A struct" stay read-only text. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
+| http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; and the values made of fields, edited in the side panel: "An address" (an embedded resource), "Addresses" (an array of them, without a primary key) and "A typed map" (a map that declares its fields). "A map", which declares none, is shown from whatever it holds and is read-only; "A keyword", "A tuple" and "A struct" stay read-only text. "A union" is a number, a text, a shade or an address: its cell shows the value it holds, and it is edited in the side panel, the kind first. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 | http://localhost:4478/deadlines | `Deadline` | the tasks once more, as a resource of its own over the same table, read through an action that **requires** an argument: the day they are due by. Until "Due by" is given the table reads nothing and says "Fill in Due by to see records."; "Include done?" is an argument with a default, and "Tags" a list that is given value by value. "Due on" is edited in place: a task that is put off beyond the day stays in its row until the table reads again. "Assignee" is a reference cell that is edited through an argument: its action, `hand_over`, does not accept `assignee_id`; it takes the person as an argument and hands it to the relationship, and the cell opens the picker all the same (see "Row actions and create" below). A row expands into its comments |
 
 http://localhost:4478/dashboard is a LiveView of the demo's own
@@ -227,6 +227,20 @@ Table actions are in `label_actions_test.exs`, on `/labels`, and in
 `table_actions_test.exs`, on the resources of
 `test/support/action_tables.ex`: every kind of generic action, in a row, on
 the selected rows and in a nested table.
+Unions are in `specimen_union_test.exs` ("A union" on `/specimens`: its
+cell, the side panel, the kinds one after the other, saving and what a
+refused save says) and in `union_table_test.exs`, on the resource of
+`test/support/union_tables.ex`: a union that cannot be empty, a tagged one,
+a kind with a value in it that can be left out, a union inside an embedded
+resource, unions that cannot be edited, and a union among the inputs of a
+row action, of the create action and of an action on the selected rows.
+Files are in `label_import_test.exs` ("Import" on `/labels`: the file
+input, the upload and its limits, what the action reads and what it
+refuses) and in `file_actions_test.exs`, on the resource of
+`test/support/file_tables.ex`: a file for a row action, for a generic
+action, for the create action and for the selected rows, two files in one
+action, a file that can be left out, and what becomes of the file
+afterwards.
 Relationships an action manages are in `task_labels_action_test.exs` ("Set
 labels" on `/tasks`: its field, the picker for several, what a hand-made
 form cannot do, the action's policies, the selected rows, a nested table,
@@ -370,6 +384,29 @@ Things to try, as Ada Admin:
 - In German (the language switcher): "Wiederholung", "Alle: 4, Einheit:
   Woche", "Speichern".
 
+### Unions
+
+A union is a value that is one of several kinds. `/specimens` has one, "A
+union": a number, a text, a shade or an address (an embedded resource). Its
+cell shows the value it holds and nothing of the kind: `969`, `chore`,
+`Light`, `Street: Unionsweg 559, City: Leipzig, Primary?: No`.
+
+Things to try (anyone may edit a specimen):
+
+- Enter on the "A union" of the first row. The side panel has "Kind", which
+  says "Number" and has the focus, and under it "Number" with 969.
+- Choose "Text" under "Kind": the number goes and a text field is there,
+  empty. Choose "Address": the fields of an address. Nothing is saved yet;
+  Escape leaves the cell as it was.
+- Type `-3` into "Number" and use "Save": "must be greater than or equal
+  to 0" at the number. Choose "Address", leave "Street" empty and save: "is
+  required" at "Street".
+- Choose the empty entry of "Kind" and save: the cell is empty, and the
+  panel then opens without a kind.
+- With the keyboard alone: Enter on the cell, Down Arrow for the next kind,
+  Tab into its field, type, Tab to "Save", Enter.
+- In German: "Art", with "Zahl", "Text", "Farbton" and "Adresse".
+
 ### Components on `/tasks`
 
 Four columns of `/tasks` name a `component`, a module that says how their
@@ -453,7 +490,7 @@ And on `/deadlines`, once "Due by" has a day:
 
 A table action runs on the table as a whole: a generic action of the
 resource, named with `action` like a row action. Its button is on the line
-of the table's name, after the create button. The demo's labels have three,
+of the table's name, after the create button. The demo's labels have four,
 and one generic action in the rows.
 
 | On `/labels` | The action | What its button does |
@@ -461,6 +498,7 @@ and one generic action in the rows.
 | "Count unused" | no argument, returns a number | runs at once; the table says "Count unused: 0" above the grid |
 | "Recolour" | two required arguments, returns how many labels it changed | opens the action panel with "From" and "To" |
 | "Remove unused" | no argument, returns nothing, declared with `confirm` | asks "Delete every label that no task carries?", then says "Remove unused: done" |
+| "Import" | one required argument that takes a file (`:file`), returns how many labels it made | opens the action panel with a file input, "File" |
 | "Copy", in every row | takes the label's key (`record_argument :label_id`) and a name | opens the panel with "Name" alone; the table gives the key |
 
 Things to try, on `/labels` as **Ada Admin**:
@@ -479,7 +517,7 @@ Things to try, on `/labels` as **Ada Admin**:
   "Copy". The actions that change labels are for admins.
 - As **Olga Outsider**: the same buttons as her role in Globex has, and
   every action counts and changes Globex's labels alone.
-- On `/tasks`, expand a row and open "Labels": the three buttons are on
+- On `/tasks`, expand a row and open "Labels": the four buttons are on
   that line, after "Labels". A table action is the same there as on
   `/labels`: it is not told which task the line is under, so "Count unused"
   still counts the labels of the whole organization.
@@ -487,7 +525,29 @@ Things to try, on `/labels` as **Ada Admin**:
   "Labels" line of a task, F2 goes into the line's buttons, and Left and
   Right Arrow move between them.
 - In German (the language switcher): "Unbenutzte zählen", "Umfärben",
-  "Unbenutzte entfernen", "Kopieren".
+  "Unbenutzte entfernen", "Importieren", "Kopieren".
+
+### A file for an action
+
+"Import" on `/labels` takes a file: a CSV with a label on each line, its
+name and, after a comma, its colour (`#rrggbb`), which may be left out. The
+`table` block limits the upload to one `.csv` file of 100 kB.
+
+Things to try, as **Ada Admin**:
+
+- Save two lines, `zebra,#00aa00` and `yak`, as `labels.csv`. "Import",
+  choose the file, "Run": "Import: 2", and the labels are in the table.
+- Change the second line to `yak,red` and import again: the panel stays
+  open, with "line 2: colour must match the pattern …" at "File", and no
+  label was made. The file input is empty again: a file is given once.
+  Choose a corrected file and "Run".
+- "Run" without a file: "is required" at "File".
+- Choose a file that is larger than 100 kB: "The file is too large. The
+  limit is 100 kB." at once, and "Run" runs nothing. A file that is no
+  `.csv` is not offered by the file dialog, and refused if it is given all
+  the same: "This type of file is not accepted."
+- As **Max Member**: no "Import".
+- In German: "Importieren", "Datei", "Die Datei ist zu groß. …".
 
 ### Selecting rows and bulk actions
 
@@ -697,10 +757,12 @@ boolean, date, time, time_usec, utc_datetime, utc_datetime_usec, datetime,
 naive_datetime, duration, duration_name, uuid, uuid_v7, binary,
 url_encoded_binary, map, map with fields, keyword, tuple, struct, term, module,
 a date range, arrays of strings, integers and an enum, an embedded resource and
-an array of it, a union, a NewType and an `Ash.Type.Enum`, plus `opt_*`
+an array of it, a union (of a number, a text, an enum and that embedded
+resource), a NewType and an `Ash.Type.Enum`, plus `opt_*`
 nil-able variants. It has no tenant, is open to anyone, and paginates by
 offset (20). Its table is edited through `update`, which accepts all of them. Left out: `function`, `file` and `vector`, which have no sensible
-column here (the last needs the pgvector extension).
+column here (the last needs the pgvector extension). A file is no attribute
+at all: Ash stores none. The labels' "Import" has one as an argument.
 
 ## What is private or restricted, and why
 
@@ -808,6 +870,8 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `table_actions.spec.ts` | table actions on `/labels`: their buttons on the line of the table's name, as tab stops before the grid, and what each actor has of them; an action that runs at once, by pointer and by keyboard, what the table says and reads out, and that focus stays on its button; one that asks first, with Cancel and Confirm; one with arguments, its panel opened from the keyboard, the action's message at a field, and focus back on the button; a generic action in a row, whose panel asks for what the row does not give; the buttons on the line of a nested table, with the keyboard, the nested table's own dialog and panel; axe-core in these states, in both themes |
 | `arrays.spec.ts` | the array columns of `/tasks`: that their cells are plain text, with no sort and no filter; the list of an array of text (a named control per value, adding and taking away from the keyboard and with the pointer, where focus goes, Tab through its controls and out of the grid, typing on the cell) and the multiple choice of an array of enum values (Space, the arrow keys, a letter); that nothing is sent until Enter or leaving, and one save then; Escape; a save the action refuses, and what the cell opens with afterwards; the member's refusal; both as fields of "New task"; both in a nested table; the list of an array of numbers on `/specimens`; axe with each editor open, with a failed cell, in the dark theme and in the panel |
 | `maps.spec.ts` | the values made of fields: that their cells are one line of plain text, with no sort and no filter; the side panel of a project's client, opened by Enter, F2 and a double click, with focus in its first field and back on the cell when it closes; its groups, the address as a group in the group, and that a group is marked by nothing but its label; saving from the keyboard; what the embedded resources refuse, at their fields, with the other entries kept; taking a value away and adding it again, and where focus goes; a project without a client; "Save" without a change; the list of groups of the milestones (adding, typing, taking away from the keyboard, the last and the only value, a value that is refused); the map "Repeats" of a task, its column's question when "Save" is used and only for a change; both in "New project" and "New task"; the member's refusal in the panel; axe with the panel open, with errors shown and with the list of an array, in the light and the dark theme |
+| `unions.spec.ts` | the union of `/specimens`: that its cell is the plain text of the value it holds, with no sort and no filter; the side panel, opened by Enter, F2 and a double click, with focus on the choice of the kind; choosing another kind, which puts its fields in place of the others; saving by keyboard alone, a kind made of fields, and no kind; what a refused save says at the value and at a field of a kind, with axe in both themes; and in German |
+| `files.spec.ts` | "Import" on `/labels`: the file input of its panel, labelled, required and limited, as the first stop of the keyboard, with axe in both themes; a file that is sent and read when "Run" is used, and the bar that says how far it has come; what the action says of a file at the field, and that the input is empty again; a file the upload refuses, too large or of another kind, said as it is chosen and read out; and in German |
 | `components.spec.ts` | the components of `/tasks`: the slider by keyboard (its keys are its own; a step is saved by Enter or by leaving) and by pointer (nothing sent while it is dragged, one save on letting go, the number beside it following, the slider staying open); Escape after a save; a save through it that fails; the question of a column before a change is saved; the demo's own component, whose editor saves on Enter or on leaving; the slider as a field of the action panel; the height of a row with and without components; components in a nested table |
 | `arguments.spec.ts` | the argument line: its inputs as labelled tab stops before the grid; that typing sends nothing and Enter and leaving apply; the argument in the URL, reload, Back and Forward; a column's asked argument, its column sorted and filtered by with it; a value Ash refuses at its input, with the rows left as they are; `/deadlines` asking for its day in place of its rows; a box and a list from the keyboard; that the grid does not move; a nested table's line and a picker's; axe-core in each of these states, in both themes |
 | `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, with nested tables open at every depth, and with the components of `/tasks`: at rest, a slider open, a failed one, and in the panels |

@@ -162,7 +162,7 @@ defmodule AshTable.Errors do
   @spec nested_text(Model.t(), [atom | non_neg_integer], atom, {String.t(), keyword}) ::
           String.t() | nil
   def nested_text(%Model{} = model, [name | rest], field, {_message, _vars} = error) do
-    with %{label: label, cell_type: cell_type} when cell_type in [:map, {:array, :map}] <-
+    with %{label: label, cell_type: cell_type} when cell_type in [:map, {:array, :map}, :union] <-
            Enum.find(model.columns, &(&1.name == name)) do
       labels =
         Enum.reduce(rest ++ [field], [label], fn

@@ -21,7 +21,7 @@ defmodule DemoWeb.Tables.ActionFieldsTest do
   @member %{id: "max", name: "max", role: :member}
 
   setup do
-    on_exit(fn -> Ash.DataLayer.Ets.stop(Order) end)
+    on_exit(fn -> Demo.Support.Ets.stop(Order) end)
   end
 
   defp order(attributes) do
@@ -243,8 +243,8 @@ defmodule DemoWeb.Tables.ActionFieldsTest do
 
     setup do
       on_exit(fn ->
-        Ash.DataLayer.Ets.stop(Customer)
-        Ash.DataLayer.Ets.stop(Visit)
+        Demo.Support.Ets.stop(Customer)
+        Demo.Support.Ets.stop(Visit)
       end)
     end
 

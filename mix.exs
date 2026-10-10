@@ -59,9 +59,11 @@ defmodule AshTable.MixProject do
         "documentation/topics/choosing-a-related-record.md",
         "documentation/topics/managing-relationships.md",
         "documentation/topics/maps-and-embedded-resources.md",
+        "documentation/topics/unions.md",
         "documentation/topics/row-actions-and-create.md",
         "documentation/topics/selecting-rows-and-bulk-actions.md",
         "documentation/topics/table-actions.md",
+        "documentation/topics/files.md",
         "documentation/topics/nested-tables.md",
         "documentation/topics/custom-components.md",
         "documentation/topics/authorization.md",
@@ -96,6 +98,7 @@ defmodule AshTable.MixProject do
           AshTable.Resource.Relationship,
           AshTable.Resource.Action,
           AshTable.Resource.Argument,
+          AshTable.Resource.Upload,
           AshTable.Resource.Ask,
           AshTable.Domain.Info
         ]

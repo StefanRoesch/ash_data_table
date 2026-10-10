@@ -234,15 +234,16 @@ test.describe("/specimens: one column per built-in type", () => {
       await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)
       await expect(specimens.header(column), column).not.toHaveAttribute("aria-sort")
     }
-    // a value made of fields is editable, in the side panel, and has neither a filter nor a sort
-    for (const column of ["an_address", "addresses", "a_typed_map"]) {
+    // a value made of fields is editable, in the side panel, and has neither a filter nor a
+    // sort; so is a union
+    for (const column of ["an_address", "addresses", "a_typed_map", "a_union"]) {
       await expect(specimens.cell(first, column), column).not.toHaveAttribute("aria-readonly")
       await expect(specimens.cell(first, column), column).not.toHaveText("")
       await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)
       await expect(specimens.header(column), column).not.toHaveAttribute("aria-sort")
     }
     // a map that declares no fields among the read-only ones
-    for (const column of ["a_map", "a_union", "a_tuple", "a_binary"]) {
+    for (const column of ["a_map", "a_tuple", "a_binary"]) {
       await expect(specimens.cell(first, column), column).toHaveAttribute("aria-readonly", "true")
       await expect(specimens.cell(first, column), column).not.toHaveText("")
       await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)

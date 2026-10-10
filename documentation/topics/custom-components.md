@@ -207,7 +207,7 @@ component need not be told twice:
 | `label` | The column's header, translated: "Progress". |
 | `type` | The Ash type, as a module: `Ash.Type.Integer`, `Demo.Tracker.TaskStatus`. An array is `{:array, module}`. |
 | `constraints` | The type's constraints as the resource declares them: `[min: 0, max: 100]`. |
-| `cell_type` | What the table shows the field as: `:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`; `:map` for an embedded resource or a map; `{:array, :text}` and so on for an array of such values; or `:other`. |
+| `cell_type` | What the table shows the field as: `:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`; `:map` for an embedded resource or a map; `:union` for a union; `{:array, :text}` and so on for an array of such values; or `:other`. |
 | `values` | For an enum and for an array of enum values, each value with its label, translated, in declared order; else `nil`. |
 | `editable?` | Whether this person can edit cells of the column at all. |
 
@@ -423,6 +423,11 @@ the cell.
   the one line the table would show. Its `editor/1` is not used: the value
   is edited in the side panel, with the table's own fields. See
   [Maps and embedded resources](maps-and-embedded-resources.md#custom-components).
+- **The editor of a union.** A column that is a union can have a component
+  as well, and its `cell/1` shows the cells: `@value` is the `Ash.Union`
+  the record holds, with its kind (`type`) and its value, and `@text` what
+  the table would show. Its `editor/1` is not used: a union is edited in
+  the side panel, its kind first. See [Unions](unions.md).
 
 ## Edge cases
 

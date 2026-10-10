@@ -248,7 +248,8 @@ Using a button runs the action straight away when the action has no
 inputs, or optional arguments only, which keep their defaults. An action
 that accepts attributes, or has an argument that is `allow_nil? false`,
 opens the action panel first: changing its attributes is what such an
-action is for. The create action always opens the panel.
+action is for. So does one with an argument that takes a file. The create
+action always opens the panel.
 
 The panel has one field per input the action takes from the outside, in
 the action's own order: the public attributes it accepts, then its public
@@ -269,8 +270,14 @@ arguments.
   * An input that is an embedded resource or a map that declares its
     fields, or an array of either, is a group of the value's fields under
     the input's label, each with the control of its own type.
-  * A type with no field (a map that declares no fields, a union, an
-    array of those) is left out of the panel when the input is optional. An action that
+  * An input that is a union is the choice of its kind and, under it,
+    that kind's value: the one control of its type, or the fields of a
+    kind made of fields.
+  * An argument that takes a file (`:file`) is a file input: see "Files"
+    below.
+  * A type with no field (a map that declares no fields, a union with a
+    kind that has no control, several files, an array of those) is left
+    out of the panel when the input is optional. An action that
     requires such an input cannot be run from a table: the compiler
     reports it, and the table has no button for it.
   * A field is marked as required as the action says: an attribute that is
@@ -395,6 +402,44 @@ asked once per action and without arguments: a policy of a generic action
 has no record to look at. In a nested table a table action is the same
 action as on the table's own page: it is not given the row above.
 
+## Unions
+
+A column of a union (`:union`, with its kinds as `types`) needs nothing in
+the block. Its cells show the value the union holds, as a cell of that
+kind's type shows it, and nothing of the kind. It is edited as every
+column is, through an `update_action` that accepts the attribute: in the
+side panel, where a person chooses the kind first and then gives that
+kind's value. The action is given both as Ash takes a union from outside
+(`%{"_union_type" => kind, "_union_value" => value}`).
+
+A union is edited where every kind has a control: a single value of a
+type a cell has an editor for, or an embedded resource or a map whose
+fields can all be given. Otherwise it is read-only, as an array of
+unions always is. It is neither sorted nor filtered by.
+
+## Files
+
+An argument of an action that takes a file (`Ash.Type.File`) has a file
+input in the action panel, whichever kind of action it is. Ash stores no
+file, so no column is one. The file is sent when the panel's button is
+used, and the action is given it while it runs, as a `Plug.Upload`.
+
+`Ash.Type.File` has no constraints. What the upload takes is said by an
+`upload`, for the arguments of one name:
+
+    table do
+      action :import
+
+      upload :file do
+        accept ~w(.csv text/csv)
+        max_file_size 1_000_000
+      end
+    end
+
+Without one the upload takes one file of any kind, of 8 MB at most. A
+file outside the limits is refused before the action runs. On the
+selected rows, every record is given the same file.
+
 ## Custom components
 
 A column can name a module that says how its cells look, what they are
@@ -442,6 +487,7 @@ How the resource is presented to people as a table.
  * [relationship](#table-relationship)
  * [action](#table-action)
  * [argument](#table-argument)
+ * [upload](#table-upload)
 
 
 ### Examples
@@ -795,6 +841,52 @@ end
 ### Introspection
 
 Target: `AshTable.Resource.Argument`
+
+### table.upload
+```elixir
+upload name
+```
+
+
+What the upload of an argument that takes a file is limited to: which kinds of file, and how large.
+
+Nothing has to be declared for an upload to be there: an argument of the type `Ash.Type.File` of an action the table offers has a file input in the action panel, which takes one file of any kind, of 8 MB at most. A declaration sets other limits for the arguments of one name. `Ash.Type.File` has no constraints of its own to say them with.
+
+The limits are those of the upload, checked before the action runs. What the action makes of the file is the action's to say.
+
+
+
+
+### Examples
+```
+upload :file do
+  accept ~w(.csv text/csv)
+  max_file_size 1_000_000
+end
+
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#table-upload-name){: #table-upload-name .spark-required} | `atom` |  | The argument: a public argument of the type `Ash.Type.File` of an action the table offers (an `action` of the block, or its `create_action`). It applies to every such action that has an argument of this name. |
+### Options
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`accept`](#table-upload-accept){: #table-upload-accept } | `list(String.t)` |  | The kinds of file the upload takes: file name extensions (`".csv"`) and MIME types (`"text/csv"`, `"image/*"`), as `Phoenix.LiveView.allow_upload/3` takes them. Defaults to any file. |
+| [`max_file_size`](#table-upload-max_file_size){: #table-upload-max_file_size } | `pos_integer` |  | The largest file the upload takes, in bytes. Defaults to LiveView's own limit, 8 MB. |
+
+
+
+
+
+### Introspection
+
+Target: `AshTable.Resource.Upload`
 
 
 

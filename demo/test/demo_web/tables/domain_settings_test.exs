@@ -28,8 +28,8 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
 
     on_exit(fn ->
       Gate.open()
-      Ash.DataLayer.Ets.stop(Guarded.Note)
-      Ash.DataLayer.Ets.stop(Unguarded.Note)
+      Demo.Support.Ets.stop(Guarded.Note)
+      Demo.Support.Ets.stop(Unguarded.Note)
     end)
   end
 

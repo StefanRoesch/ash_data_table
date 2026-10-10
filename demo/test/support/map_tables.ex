@@ -94,15 +94,15 @@ defmodule Demo.Support.Maps.Sealed do
 end
 
 defmodule Demo.Support.Maps.Mixed do
-  @moduledoc "An embedded resource with an input a table has no control for: a union."
+  @moduledoc "An embedded resource with an input a table has no control for: a tuple."
   use Ash.Resource, data_layer: :embedded
 
   attributes do
     attribute :label, :string, public?: true
 
-    attribute :either, :union,
+    attribute :pair, :tuple,
       public?: true,
-      constraints: [types: [text: [type: :string], number: [type: :integer]]]
+      constraints: [fields: [left: [type: :integer], right: [type: :integer]]]
   end
 end
 

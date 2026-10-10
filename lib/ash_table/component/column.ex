@@ -15,7 +15,8 @@ defmodule AshTable.Component.Column do
       for a string, `[one_of: [...]]` for an atom. Empty for an aggregate.
     * `cell_type` - what the table shows the field as: `:text`, `:number`,
       `:boolean`, `:date`, `:datetime`, `:enum`; `:map` for a value made of
-      fields (an embedded resource, a map); `{:array, item}` for an array
+      fields (an embedded resource, a map); `:union` for a union, whose
+      value is then an `Ash.Union`; `{:array, item}` for an array
       of values of one of those, as `{:array, :text}`; or `:other`
       for everything a table has no cell of its own for.
     * `values` - for an `:enum` and for an array of enum values, each value
@@ -41,7 +42,8 @@ defmodule AshTable.Component.Column do
             | :datetime
             | :enum
             | :map
-            | {:array, :text | :number | :boolean | :date | :datetime | :enum | :map}
+            | :union
+            | {:array, :text | :number | :boolean | :date | :datetime | :enum | :map | :union}
             | :other,
           values: [{atom | String.t(), String.t()}] | nil,
           editable?: boolean

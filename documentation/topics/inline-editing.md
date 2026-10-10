@@ -307,7 +307,8 @@ An array of embedded resources, or of maps that declare their fields, is
 edited in the side panel, as a list of groups: see
 [Maps and embedded resources](maps-and-embedded-resources.md#an-array). An
 array of anything else (maps without fields, unions, UUIDs, times, arrays)
-is read-only.
+is read-only. A single union is edited in the side panel too:
+see [Unions](unions.md).
 
 **Try it:** on `/tasks`, as Ada Admin, move to a cell of "Tags", press
 Enter, Tab to "Add value", press Enter, type a tag and press Enter again.
@@ -516,9 +517,9 @@ only runs actions.
 
 ## Not in the first version
 
-No editing of unions, structs, keyword lists or tuples, nor of a map that
-declares no fields; no sorting or filtering by an array, an embedded
-resource or a map; no validation display
+No editing of structs, keyword lists or tuples, nor of a map that
+declares no fields or of an array of unions; no sorting or filtering by an
+array, an embedded resource, a map or a union; no validation display
 before a cell is saved, no bulk edits and no undo. A column's own editor is built: see
 [Custom components](custom-components.md). They are later slices in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

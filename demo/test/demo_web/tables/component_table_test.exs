@@ -24,7 +24,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
   @viewer %{id: "vera", name: "vera", role: :viewer}
 
   setup do
-    on_exit(fn -> Ash.DataLayer.Ets.stop(Gauge) end)
+    on_exit(fn -> Demo.Support.Ets.stop(Gauge) end)
   end
 
   defp gauge(attributes \\ %{}) do

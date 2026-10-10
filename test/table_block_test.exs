@@ -807,7 +807,7 @@ defmodule AshTable.TableBlockTest do
       assert error.module == AshTable.TableBlockTest.ColumnActionWithoutEditor
 
       assert error.message ==
-               "`owner_id` has the type `Ash.Type.UUID`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, arrays of those, and embedded resources and maps whose fields are of those. Remove `update_action` from this column."
+               "`owner_id` has the type `Ash.Type.UUID`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, arrays of those, embedded resources and maps whose fields are of those, and unions whose kinds are. Remove `update_action` from this column."
     end
 
     test "on an array of values without an editor is the same error" do
@@ -872,7 +872,7 @@ defmodule AshTable.TableBlockTest do
           sealed:
             "The actions Ash casts a value of AshTable.Test.Embedding.Sealed through, `create` and `update`, accept different attributes, and a table cannot know which of the two will run for a value.",
           mixed:
-            "Its field `either` has the type `Ash.Type.Union`, which a table has no control for.",
+            "Its field `pair` has the type `Ash.Type.Tuple`, which a table has no control for.",
           argued:
             "The action `create` of AshTable.Test.Embedding.Argued requires the argument `reason`, which a table cannot give.",
           stamped:
@@ -5658,9 +5658,9 @@ defmodule AshTable.TableBlockTest do
 
       assert Enum.map(errors, &{&1.path, &1.message}) == [
                {[:table, :action, :configure],
-                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."},
+                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, for embedded resources and maps whose every field is one of these, for unions whose every kind is, and for an argument that takes one file."},
                {[:table, :action, :retag],
-                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."}
+                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, for embedded resources and maps whose every field is one of these, for unions whose every kind is, and for an argument that takes one file."}
              ]
 
       # compiled despite the finding, the table has no button for them
@@ -6095,7 +6095,7 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."
+               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, for embedded resources and maps whose every field is one of these, for unions whose every kind is, and for an argument that takes one file."
 
       assert AshTable.Model.build(AshTable.TableBlockTest.NoFieldForCreate).create == nil
     end
@@ -6548,9 +6548,9 @@ defmodule AshTable.TableBlockTest do
 
       assert Enum.map(errors, &{&1.path, &1.message}) == [
                {[:table, :action, :configure],
-                "The table action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."},
+                "The table action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, for embedded resources and maps whose every field is one of these, for unions whose every kind is, and for an argument that takes one file."},
                {[:table, :action, :retag],
-                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."}
+                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, for embedded resources and maps whose every field is one of these, for unions whose every kind is, and for an argument that takes one file."}
              ]
 
       # compiled despite the finding, the table has no button for them
@@ -7812,6 +7812,584 @@ defmodule AshTable.TableBlockTest do
           end
         end
       end
+    end
+  end
+
+  describe "a union column" do
+    test "is edited through an `update_action`, and compiles without anything said of it" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.UnionColumn do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+
+            attribute :value, :union,
+              public?: true,
+              constraints: [
+                types: [text: [type: :string], place: [type: AshTable.Test.Unions.Place]]
+              ]
+
+            attribute :content, AshTable.Test.Unions.Content, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            update :update do
+              primary? true
+              require_atomic? false
+              accept [:value, :content]
+            end
+          end
+
+          table do
+            column :value do
+              update_action :update
+              confirm "Change the value?"
+            end
+
+            column :content do
+              update_action :update
+            end
+          end
+        end
+      end
+
+      model = AshTable.Model.build(AshTable.TableBlockTest.UnionColumn)
+
+      assert Enum.map(model.columns, &{&1.name, &1.editor, &1.confirm}) == [
+               {:value, :union, "Change the value?"},
+               {:content, :union, nil}
+             ]
+    end
+
+    for {column, reason} <- [
+          odd:
+            "Its kind `pair` has the type `Ash.Type.Tuple`, which a table has no control for in a union.",
+          listed:
+            "Its kind `tags` has the type `{:array, Ash.Type.String}`, which a table has no control for in a union.",
+          sealed:
+            "Its kind `sealed` cannot be edited. It is a map that declares no `fields`, so a table does not know what to ask for.",
+          values: "It is an array of unions, which a table shows and has no editor for."
+        ] do
+      test "a column-level update_action on a union that a table cannot edit says what stands in the way: `#{column}`" do
+        error =
+          assert_dsl_error %Spark.Error.DslError{
+            path: [:table, :column, unquote(column), :update_action]
+          } do
+            defmodule Module.concat(AshTable.TableBlockTest, "UneditableUnion#{unquote(column)}") do
+              use Ash.Resource,
+                domain: AshTable.Test.Domain,
+                data_layer: Ash.DataLayer.Ets,
+                extensions: [AshTable.Resource]
+
+              attributes do
+                uuid_primary_key :id
+
+                attribute :odd, :union,
+                  public?: true,
+                  constraints: [
+                    types: [
+                      text: [type: :string],
+                      pair: [type: :tuple, constraints: [fields: [a: [type: :integer]]]]
+                    ]
+                  ]
+
+                attribute :listed, :union,
+                  public?: true,
+                  constraints: [types: [text: [type: :string], tags: [type: {:array, :string}]]]
+
+                attribute :sealed, :union,
+                  public?: true,
+                  constraints: [types: [text: [type: :string], sealed: [type: :map]]]
+
+                attribute :values, {:array, :union},
+                  public?: true,
+                  constraints: [items: [types: [text: [type: :string]]]]
+              end
+
+              actions do
+                defaults [:read]
+
+                update :update do
+                  primary? true
+                  require_atomic? false
+                  accept [:odd, :listed, :sealed, :values]
+                end
+              end
+
+              table do
+                column unquote(column) do
+                  update_action :update
+                end
+              end
+            end
+          end
+
+        type =
+          if unquote(column) == :values, do: "{:array, Ash.Type.Union}", else: "Ash.Type.Union"
+
+        assert error.message ==
+                 "`#{unquote(column)}` has the type `#{type}`, a union, which a table edits kind by kind, and here it cannot, so the column is read-only and its `update_action` has no effect. " <>
+                   unquote(reason) <> " Remove `update_action` from this column."
+      end
+    end
+
+    test "under a table-level `update_action` such a union is read-only, and nothing is said" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ReadOnlyUnion do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+
+            attribute :listed, :union,
+              public?: true,
+              constraints: [types: [text: [type: :string], tags: [type: {:array, :string}]]]
+          end
+
+          actions do
+            defaults [:read]
+
+            update :update do
+              primary? true
+              require_atomic? false
+              accept [:title, :listed]
+            end
+          end
+
+          table do
+            update_action :update
+          end
+        end
+      end
+
+      model = AshTable.Model.build(AshTable.TableBlockTest.ReadOnlyUnion)
+
+      assert [%{editable?: true}, %{name: :listed, editable?: false, editor: nil}] =
+               tl(model.columns)
+    end
+
+    test "`sortable? true` and `filterable? true` on a union and on an array of them are errors: Ash's interfaces sort and filter by none" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.ArrangedByUnion do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+
+              attribute :value, :union,
+                public?: true,
+                constraints: [types: [text: [type: :string], amount: [type: :integer]]]
+
+              attribute :content, AshTable.Test.Unions.Content, public?: true
+
+              attribute :values, {:array, :union},
+                public?: true,
+                constraints: [items: [types: [text: [type: :string]]]]
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              for name <- [:value, :content, :values] do
+                column name do
+                  sortable? true
+                  filterable? true
+                end
+              end
+            end
+          end
+        end
+
+      assert [{AshTable.TableBlockTest.ArrangedByUnion, errors}] = errors
+
+      assert Enum.map(errors, & &1.path) ==
+               Enum.flat_map([:value, :content, :values], fn name ->
+                 [[:table, :column, name, :sortable?], [:table, :column, name, :filterable?]]
+               end)
+
+      assert hd(errors).message ==
+               "`value` cannot be sorted, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`."
+
+      # switching them off says nothing new, and is accepted
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.NotArrangedByUnion do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+
+            attribute :value, :union,
+              public?: true,
+              constraints: [types: [text: [type: :string]]]
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :value do
+              sortable? false
+              filterable? false
+            end
+          end
+        end
+      end
+    end
+
+    test "an action that requires a union a table cannot give is an error; one that can be given is not" do
+      [{AshTable.TableBlockTest.UnionArguments, errors}] =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.UnionArguments do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :weigh do
+                argument :by, :union,
+                  allow_nil?: false,
+                  constraints: [types: [amount: [type: :integer], word: [type: :string]]]
+
+                run fn _input, _context -> :ok end
+              end
+
+              action :sort_out do
+                argument :by, :union,
+                  allow_nil?: false,
+                  constraints: [types: [tags: [type: {:array, :string}]]]
+
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :weigh
+              action :sort_out
+            end
+          end
+        end
+
+      assert [%{path: [:table, :action, :sort_out], message: message}] = errors
+
+      assert message =~
+               "The table action `sort_out` cannot be run from a table: its input `by` is required, and a table has no field for its type (Ash.Type.Union)."
+
+      model = AshTable.Model.build(AshTable.TableBlockTest.UnionArguments)
+
+      assert [%{name: :weigh, panel?: true, inputs: [%{name: :by, editor: :union}]}] =
+               model.table_actions
+    end
+  end
+
+  describe "upload" do
+    defmodule Filed do
+      @moduledoc "A resource with actions that take files, for the blocks below."
+      defmacro __using__(_opts) do
+        quote do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            create :create do
+              accept [:title]
+              argument :cover, :file
+            end
+
+            update :attach do
+              require_atomic? false
+              argument :file, :file, allow_nil?: false
+              argument :note, :string
+              argument :secret, :file, public?: false
+            end
+
+            # not offered by any of the blocks below
+            update :shelve do
+              require_atomic? false
+              argument :label, :file
+            end
+          end
+        end
+      end
+    end
+
+    test "says what the upload of a file argument is limited to, and is readable through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Uploads do
+          use AshTable.TableBlockTest.Filed
+
+          table do
+            action :attach
+            create_action :create
+
+            upload :file do
+              accept ~w(.csv text/plain image/*)
+              max_file_size 1_000_000
+            end
+
+            # of the create action: only how large
+            upload :cover do
+              max_file_size 500
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.Uploads
+
+      assert [
+               %AshTable.Resource.Upload{
+                 name: :file,
+                 accept: [".csv", "text/plain", "image/*"],
+                 max_file_size: 1_000_000
+               },
+               %AshTable.Resource.Upload{name: :cover, accept: nil, max_file_size: 500}
+             ] = AshTable.Resource.Info.uploads(Uploads)
+
+      model = AshTable.Model.build(Uploads)
+      [attach] = model.actions
+
+      assert Enum.find(attach.inputs, &(&1.name == :file)).upload ==
+               %{accept: [".csv", "text/plain", "image/*"], max_file_size: 1_000_000}
+
+      assert Enum.find(model.create.inputs, &(&1.name == :cover)).upload ==
+               %{accept: :any, max_file_size: 500}
+    end
+
+    test "a file argument needs no `upload`: it has LiveView's own limits, and a required one is no mistake" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.PlainUpload do
+          use AshTable.TableBlockTest.Filed
+
+          table do
+            action :attach
+          end
+        end
+      end
+
+      [attach] = AshTable.Model.build(AshTable.TableBlockTest.PlainUpload).actions
+
+      assert [%{name: :file, editor: :file, required?: true, upload: upload}, %{name: :note}] =
+               attach.inputs
+
+      assert upload == %{accept: :any, max_file_size: 8_000_000}
+    end
+
+    test "naming an argument no action of the table has is an error: one of no action, of an action the table does not offer, or a private one" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.UploadOfNothing do
+            use AshTable.TableBlockTest.Filed
+
+            table do
+              action :attach
+
+              upload :scan do
+                max_file_size 500
+              end
+
+              upload :label do
+                max_file_size 500
+              end
+
+              upload :secret do
+                max_file_size 500
+              end
+
+              # the create action is not this table's
+              upload :cover do
+                max_file_size 500
+              end
+            end
+          end
+        end
+
+      assert [{AshTable.TableBlockTest.UploadOfNothing, errors}] = errors
+
+      assert Enum.map(errors, & &1.path) ==
+               for(name <- [:scan, :label, :secret, :cover], do: [:table, :upload, name])
+
+      assert hd(errors).message ==
+               "No action of the table has a public argument named `scan`. An `upload` names an argument of the type `Ash.Type.File` of an action the table offers: an `action` of the block, or its `create_action`."
+    end
+
+    test "naming an argument that takes no file is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :upload, :note]} do
+          defmodule Elixir.AshTable.TableBlockTest.UploadOfText do
+            use AshTable.TableBlockTest.Filed
+
+            table do
+              action :attach
+
+              upload :note do
+                max_file_size 500
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The argument `note` of the action `attach` is of the type Ash.Type.String, and takes no file. An `upload` says what the upload of an argument of the type `Ash.Type.File` is limited to."
+    end
+
+    test "`accept` takes what LiveView takes: anything else is an error when the resource is compiled, not when the panel opens" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.UploadOfUnknownKinds do
+            use AshTable.TableBlockTest.Filed
+
+            table do
+              action :attach
+
+              upload :file do
+                accept ["csv", ".nosuchextension", "text/nosuchtype", "text/*", ".csv"]
+              end
+            end
+          end
+        end
+
+      assert [{AshTable.TableBlockTest.UploadOfUnknownKinds, errors}] = errors
+      assert Enum.all?(errors, &(&1.path == [:table, :upload, :file, :accept]))
+
+      expected =
+        Enum.map(["csv", ".nosuchextension", "text/nosuchtype", "text/*"], fn kind ->
+          "The upload of `file` accepts #{inspect(kind)}, which is no kind of file LiveView knows. `accept` takes file name extensions with a known MIME type (\".csv\"), MIME types (\"text/csv\"), and the wildcards \"audio/*\", \"image/*\" and \"video/*\". Another extension is made known with `config :mime, :types`."
+        end)
+
+      assert Enum.map(errors, & &1.message) == expected
+
+      # what the block accepts, LiveView accepts
+      assert %Phoenix.LiveView.UploadConfig{} =
+               Phoenix.LiveView.UploadConfig.build("file", "ref",
+                 accept: ~w(.csv text/plain image/* audio/* video/*)
+               )
+    end
+
+    test "`accept []` is an error: it would take no file at all" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :upload, :file, :accept]} do
+          defmodule Elixir.AshTable.TableBlockTest.UploadOfNoKind do
+            use AshTable.TableBlockTest.Filed
+
+            table do
+              action :attach
+
+              upload :file do
+                accept []
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The upload of `file` says `accept []`, which takes no file at all. Name the kinds of file it takes, or leave `accept` out: it then takes any file."
+    end
+
+    test "a size that is no number of bytes is refused by the DSL itself" do
+      assert_raise Spark.Error.DslError, ~r/max_file_size/, fn ->
+        defmodule Elixir.AshTable.TableBlockTest.UploadOfNoSize do
+          use AshTable.TableBlockTest.Filed
+
+          table do
+            action :attach
+
+            upload :file do
+              max_file_size 0
+            end
+          end
+        end
+      end
+    end
+
+    test "an action that requires several files at once cannot be run from a table" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :collect]} do
+          defmodule Elixir.AshTable.TableBlockTest.SeveralFiles do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              defaults [:read]
+
+              action :collect do
+                argument :files, {:array, :file}, allow_nil?: false
+                run fn _input, _context -> :ok end
+              end
+            end
+
+            table do
+              action :collect
+            end
+          end
+        end
+
+      assert error.message =~
+               "its input `files` is required, and a table has no field for its type ({:array, Ash.Type.File})."
+    end
+
+    test "a read action that requires a file cannot be behind a table: the argument line has no input for one" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{} do
+          defmodule Elixir.AshTable.TableBlockTest.ReadByFile do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource],
+              primary_read_warning?: false
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              read :read do
+                primary? true
+                argument :like, :file, allow_nil?: false
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "`like`"
     end
   end
 end

@@ -118,6 +118,8 @@ These are all the messages of the template
 | Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
 | The editor of an array | "Add value" (the button that adds one), "%{column} %{position}" (what the control of a value is called: "Tags 2"; a message about one value has it in front, through "%{field}: %{message}"), "Remove %{column} %{position}" (what its button is called) |
 | A value made of fields | "%{field}: %{value}" (one field of an embedded resource or a map, as its cell shows it: "City: Kiel"), "Save" (the button of the panel such a cell is edited in), "Remove %{column}" (what the button is called that takes such a value away: "Remove Address"). The button that adds one is the array's "Add value", and a value of an array is called by "%{column} %{position}" |
+| A union | "Kind" (what the choice of a union's kind is called in the panel). What each kind is called is your resource's wording: see below |
+| A file | What the field of an argument that takes a file says of a file its upload does not take: "The file is too large. The limit is %{limit}." (`limit` is a size, "100 kB"), "This type of file is not accepted.", "The file could not be uploaded." |
 | Dialog | "Cancel", "Confirm" |
 | Row actions | "Actions" (the heading of their column), "You are not allowed to do this.", "This could not be done.", and what is read out: "%{action}: done", "%{action} failed: %{message}" |
 | Table actions | "%{action}: %{result}" (what is shown above the grid, and read out, when a generic action returned a value: "Count unused: 3"). One that returned nothing is said with "%{action}: done", and a failure with "%{action} failed: %{message}" |
@@ -158,6 +160,10 @@ So are the fields of an embedded resource and of a map, in a cell and in
 the side panel: each is called by its name in words, as a column of that
 name would be, and looked up the same way. See
 [Maps and embedded resources](maps-and-embedded-resources.md#translating-the-fields).
+
+So are the kinds of a union, in the choice of the side panel: each is
+called by its name in words ("Number", "Address"). See
+[Unions](unions.md#translating-the-kinds).
 
 Row actions, table actions and create add five more of the same kind:
 

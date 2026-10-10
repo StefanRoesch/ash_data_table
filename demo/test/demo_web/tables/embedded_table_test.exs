@@ -221,8 +221,8 @@ defmodule DemoWeb.Tables.EmbeddedTableTest do
       end
 
       on_exit(fn ->
-        Ash.DataLayer.Ets.stop(Guarded.Note)
-        Ash.DataLayer.Ets.stop(Unguarded.Note)
+        Demo.Support.Ets.stop(Guarded.Note)
+        Demo.Support.Ets.stop(Unguarded.Note)
       end)
     end
 

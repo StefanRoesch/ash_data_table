@@ -25,6 +25,13 @@ defmodule AshTable.Act do
   # resource's own actions. An error about a field of such a value is shown
   # at that field (`errors/4`).
   #
+  # An input that is a union is given as its kind and that kind's value, as
+  # Ash takes a union from outside (`typed/2`).
+  #
+  # An input that takes a file is never taken from what the browser sent:
+  # the table gives it, from the upload the panel holds, as what it gives
+  # itself.
+  #
   # An input that is given by choosing a related record (`editor: :reference`)
   # holds that record's key, and a key from the browser is a claim like any
   # other: before an action runs, a key that was put there is looked up as
@@ -318,6 +325,10 @@ defmodule AshTable.Act do
   `{:error, form}`, the form with the action's errors, or
   `{:unchosen, inputs}`, the inputs whose value names a record the person
   could not have chosen (`unchosen/4`).
+
+  `opts` are those of `unchosen/4`, and `:files`: the files the panel's
+  uploads hold, by the name of the argument each is for. They are the
+  table's to give, as what it gives itself.
   """
   @spec submit_row(Model.t(), Action.t(), map, map, String.t(), keyword) ::
           {:ok, Ash.Resource.record()}
@@ -328,8 +339,10 @@ defmodule AshTable.Act do
           | {:unchosen, [Model.Input.t()]}
           | {:error, nil, String.t()}
   def submit_row(%Model{} = model, %Action{type: :action} = action, key, params, id, opts) do
+    given = Map.merge(files(opts), given(action, key))
+
     case Record.fetch(model, key, Query.reader_opts(opts)) do
-      {:ok, _record} -> submit_generic(model, action, params, given(action, key), id, opts)
+      {:ok, _record} -> submit_generic(model, action, params, given, id, opts)
       :error -> {:error, nil, Text.t(:record_gone)}
     end
   end
@@ -343,8 +356,16 @@ defmodule AshTable.Act do
         inputs = inputs(action, record)
 
         case unchosen(inputs, params, record, chooser) do
-          [] -> submit(model, form(record, action, id, opts), taken(inputs, params, %{}), opts)
-          unchosen -> {:unchosen, unchosen}
+          [] ->
+            submit(
+              model,
+              form(record, action, id, opts),
+              taken(inputs, params, files(chooser)),
+              opts
+            )
+
+          unchosen ->
+            {:unchosen, unchosen}
         end
 
       :error ->
@@ -377,6 +398,8 @@ defmodule AshTable.Act do
         {:unchosen, unchosen}
     end
   end
+
+  defp files(opts), do: Keyword.get(opts, :files, %{})
 
   @doc """
   The inputs among `inputs` whose value, in what a panel's form sent, names
@@ -543,8 +566,14 @@ defmodule AshTable.Act do
   defp taken(_inputs, _params, given), do: given
 
   # A map cell always says what it holds: a group that is not there is no
-  # value, and a list without groups is the empty list.
-  defp given?(%{editor: editor}, _params, _name) when editor in [:group, :groups], do: true
+  # value, and a list without groups is the empty list. So does a union: no
+  # kind is no value.
+  defp given?(%{editor: editor}, _params, _name) when editor in [:group, :groups, :union],
+    do: true
+
+  # A file is never taken from what the form sent: the table gives it, from
+  # the upload (`given`).
+  defp given?(%{editor: :file}, _params, _name), do: false
   defp given?(_input, params, name), do: is_map_key(params, name)
 
   @doc """
@@ -586,16 +615,67 @@ defmodule AshTable.Act do
     do: for({_key, item} <- items(sent), do: typed(%{field | cell_type: :map}, item))
 
   def typed(%{cell_type: {:array, :map}, fields: [_ | _]}, _nothing), do: []
+
+  # The field of a union sends the kind and that kind's value. What remains
+  # is the two as Ash takes them from outside (`Ash.Type.Union.cast_input/2`):
+  # the kind by its name, and the value as its own field gives it. No kind
+  # is no value.
+  def typed(%{cell_type: :union, members: [_ | _]} = field, sent) do
+    case kind(field, sent) do
+      nil ->
+        nil
+
+      {member, held} ->
+        %{
+          "_union_type" => Atom.to_string(member.name),
+          "_union_value" => member |> inner(held) |> tagged(member)
+        }
+    end
+  end
+
   def typed(%{cell_type: {:array, _item}}, [_own | values]), do: values
   # the keys of the records that were chosen: sent as an array is
   def typed(%{editor: :references}, [_own | values]), do: Enum.filter(values, &is_binary/1)
   def typed(%{editor: :references}, _nothing), do: []
   def typed(_input, typed), do: typed
 
+  @doc """
+  The kind a union's field holds, of what its form sent for it, and what it
+  holds for that kind, as the kind's own field sends it. Nil for no kind,
+  and for one the union does not have.
+
+  The field says which kind its value was given for (`_of`). A value that
+  was given for another kind is not this kind's: the person has just chosen
+  this one, and it starts as a new value of it does (`fresh/1`).
+  """
+  @spec kind(map, term) :: {Model.Field.t(), term} | nil
+  def kind(%{members: [_ | _] = members}, %{"_union_type" => named} = sent)
+      when is_binary(named) do
+    with %{} = member <- Enum.find(members, &(Atom.to_string(&1.name) == named)) do
+      held = if Map.get(sent, "_of", named) == named, do: sent["_union_value"]
+      {member, if(is_nil(held), do: fresh(member), else: held)}
+    end
+  end
+
+  def kind(_field, _sent), do: nil
+
+  @doc "What the field of a kind of a union sends for a new value of that kind."
+  @spec fresh(map) :: term
+  def fresh(%{cell_type: :map, fields: [_ | _]} = member), do: blank(member)
+  def fresh(_member), do: ""
+
+  # A union that tells its kinds apart by a key of the value is given that
+  # key with the value: it is the kind's, not the person's to type.
+  defp tagged(%{} = value, %{tag: {key, held}}) when not is_nil(held),
+    do: Map.put(value, to_string(key), held)
+
+  defp tagged(value, _member), do: value
+
   # A field of a map cell always sends something: nothing is the value it
   # has when it is empty.
-  defp inner(%{cell_type: cell_type} = field, sent) when cell_type in [:map, {:array, :map}],
-    do: typed(field, sent)
+  defp inner(%{cell_type: cell_type} = field, sent)
+       when cell_type in [:map, {:array, :map}, :union],
+       do: typed(field, sent)
 
   defp inner(%{cell_type: {:array, _item}} = field, sent) when is_list(sent),
     do: typed(field, sent)
@@ -639,6 +719,25 @@ defmodule AshTable.Act do
       {Integer.to_string(number), sent(%{field | cell_type: :map}, item)}
     end
   end
+
+  # A union: the kind, which kind the value is of, and the value as that
+  # kind's field sends it. Without a value it sends that it has no kind.
+  def sent(%{cell_type: :union, members: [_ | _] = members}, %{"_union_type" => named} = held) do
+    case Enum.find(members, &(Atom.to_string(&1.name) == named)) do
+      nil ->
+        %{"_union_type" => "", "_of" => ""}
+
+      member ->
+        %{
+          "_union_type" => named,
+          "_of" => named,
+          "_union_value" => sent(member, held["_union_value"])
+        }
+    end
+  end
+
+  def sent(%{cell_type: :union, members: [_ | _]}, _nothing),
+    do: %{"_union_type" => "", "_of" => ""}
 
   def sent(%{cell_type: {:array, _item}}, held), do: ["" | List.wrap(held)]
   def sent(_field, nil), do: ""
@@ -767,8 +866,8 @@ defmodule AshTable.Act do
   # error's path, and that of an array of maps among its variables, if at
   # all.
   defp place(inputs, [name | rest], field, {_message, vars}) do
-    with %{fields: [_ | _]} = input <-
-           Enum.find(inputs, &(&1.name == name and &1.editor in [:group, :groups])) do
+    with %{} = input <-
+           Enum.find(inputs, &(&1.name == name and &1.editor in [:group, :groups, :union])) do
       {place, at} = Enum.reduce_while(rest, {[name], input}, &step/2)
 
       {place, at} =
@@ -785,7 +884,7 @@ defmodule AshTable.Act do
         match?({:array, :map}, at.cell_type) and not is_integer(List.last(place)) ->
           {:group, place}
 
-        Enum.any?(at.fields || [], &(&1.name == field and &1.input?)) ->
+        Enum.any?(fields_at(at), &(&1.name == field and &1.input?)) ->
           {:field, place ++ [field]}
 
         # Ash says of some errors of a value inside a value that they are
@@ -804,13 +903,28 @@ defmodule AshTable.Act do
 
   # The ways from a value to a field of that name in the values inside it,
   # not through an array.
-  defp inside(%{fields: fields}, name) do
-    for %{cell_type: :map, fields: [_ | _], input?: true} = inner <- fields || [],
+  defp inside(at, name) do
+    for %{cell_type: cell_type, input?: true} = inner <- fields_at(at),
+        cell_type in [:map, :union],
+        fields_at(inner) != [],
         way <-
-          if(Enum.any?(inner.fields, &(&1.name == name and &1.input?)), do: [[name]], else: []) ++
+          if(Enum.any?(fields_at(inner), &(&1.name == name and &1.input?)),
+            do: [[name]],
+            else: []
+          ) ++
             inside(inner, name),
         do: [inner.name | way]
   end
+
+  # The fields a value has where the panel shows it: those of a map cell,
+  # and for a union those of its kinds that are made of fields. Ash does not
+  # say which kind an error is about; the panel shows one kind at a time,
+  # and a field of it is found by its name.
+  defp fields_at(%{cell_type: :union, members: members}),
+    do: Enum.flat_map(members || [], &(&1.fields || []))
+
+  defp fields_at(%{fields: fields}), do: fields || []
+  defp fields_at(_other), do: []
 
   # the errors of an input as a whole are under its name
   defp single([name]), do: name
@@ -835,7 +949,11 @@ defmodule AshTable.Act do
   defp step(name, {place, at}) when is_atom(name) do
     listed? = match?({:array, :map}, at.cell_type) and not is_integer(List.last(place))
 
-    case not listed? && Enum.find(at.fields || [], &(&1.name == name and is_list(&1.fields))) do
+    case not listed? &&
+           Enum.find(
+             fields_at(at),
+             &(&1.name == name and (is_list(&1.fields) or is_list(&1.members)))
+           ) do
       %{} = field -> {:cont, {place ++ [name], field}}
       _none -> {:halt, {place, at}}
     end

@@ -144,6 +144,7 @@ Using a button does one of two things, and the action decides which:
 | Has a required argument without a default (`allow_nil? false`) | Opens the action panel. |
 | Accepts one or more attributes | Opens the action panel. |
 | Has an argument that is given by choosing related records, required or not | Opens the action panel. See [Relationships an action manages](managing-relationships.md). |
+| Has an argument that takes a file, required or not | Opens the action panel. See [Files](files.md). |
 
 An action that accepts attributes opens the panel even when every one of
 them may be empty. Changing them is what such an action is for: run without
@@ -231,7 +232,9 @@ input's type, and one more:
 | An argument that the action hands to a relationship, as the key of a related record or a list of such keys | The picker too: what the record is called and "Choose" for one key; for a list, what each record is called, each with a button that takes it out, and "Choose". See [Relationships an action manages](managing-relationships.md). |
 | A value written as one line of text that has no editor of its own: a UUID, an `:atom` without `one_of`, a time, a duration | A plain text field. What is typed is given to the action as it is, and Ash casts it. |
 | An embedded resource, a map that declares its fields, and an array of either | A group of the value's fields under the input's label, each with the control of its own type; for an array, a group per value. See [Maps and embedded resources](maps-and-embedded-resources.md#in-the-action-panel). |
-| Anything else: a map that declares no fields, a union, a binary, and an array of any of these or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
+| A union whose every kind has a control | The choice of its kind, and under it that kind's value. See [Unions](unions.md#in-the-action-panel). |
+| An argument that takes a file (`:file`) | A file input. See [Files](files.md). |
+| Anything else: a map that declares no fields, a union with a kind that has no control, a binary, several files, and an array of any of these, of unions, or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
 
 **The field of a key.** An input that points at another resource, such as
 `assignee_id` or `project_id`, is the foreign key of a relationship. Where
@@ -349,7 +352,9 @@ from the actor, and the second is the tenant the table runs every action in.
 | Required | The action cannot be run from a table. The compiler reports it, and a table of a resource compiled all the same has no button for it. |
 
 A list of keys is among the inputs without a field, unless an action hands
-it to a relationship whose records can be chosen.
+it to a relationship whose records can be chosen. So are an argument that
+takes several files, a union with a kind a table has no control for, and
+an array of unions.
 
 So an action whose only inputs have no field, all of them optional, runs
 straight away. The demo's actions have no such input; the library's own
@@ -746,7 +751,7 @@ All keys of a table are in
 ## Not in the first version
 
 No form for a related record that an action creates or changes, no fields
-for unions, nor for arrays of them, no create under a many-to-many or a
+for arrays of unions, nor for several files, no create under a many-to-many or a
 has-one, no type-to-confirm, no custom buttons or icons, and no undo.
 The later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

@@ -376,3 +376,19 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "%{action}: %{result}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Kind"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The file could not be uploaded."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "The file is too large. The limit is %{limit}."
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "This type of file is not accepted."
+msgstr ""

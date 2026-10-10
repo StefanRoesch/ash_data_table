@@ -513,10 +513,24 @@ defmodule Demo.Generator do
       addresses: rnd(fn -> Enum.map(1..int(3), fn _ -> address() end) end),
       a_union:
         rnd(fn ->
+          number = int(1000)
+          text = one(@label_names)
+          shade = one([:light, :medium, :dark])
+
           one([
-            %Ash.Union{type: :number, value: int(1000)},
-            %Ash.Union{type: :text, value: one(@label_names)},
-            %Ash.Union{type: :shade, value: one([:light, :medium, :dark])}
+            %Ash.Union{type: :number, value: number},
+            %Ash.Union{type: :text, value: text},
+            %Ash.Union{type: :shade, value: shade},
+            # made of what was drawn above, so that every other value of
+            # the seeded data stays what it was
+            %Ash.Union{
+              type: :address,
+              value: %Address{
+                street: "Unionsweg #{number}",
+                city: Enum.at(@cities, rem(number, length(@cities))),
+                primary?: false
+              }
+            }
           ])
         end),
       a_percentage: rnd(fn -> int(101) - 1 end),

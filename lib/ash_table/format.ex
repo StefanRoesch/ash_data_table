@@ -6,6 +6,7 @@ defmodule AshTable.Format do
   # (`input/2`). An array is its values, each as its own cell type shows it.
   # A map cell (an embedded resource, a map) is its fields on one line,
   # `field: value, field: value`, each value as its own cell type shows it.
+  # A union is the value it holds, shown as its kind's type is shown.
   # Nothing is parsed here: what a person types goes to the resource's action
   # as typed.
 
@@ -77,6 +78,27 @@ defmodule AshTable.Format do
     end)
   end
 
+  # A union is shown as the value it holds, as a value of that kind's type
+  # is shown: a number as a number, a value made of fields as its one line.
+  # Nothing says which kind it is.
+  def format(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value}) do
+    case Enum.find(members(field) || [], &(&1.name == kind)) do
+      nil -> other(value)
+      member -> format(member, value)
+    end
+  end
+
+  # the values of an array of unions, set apart as those of an array of
+  # values made of fields are: one of them may be such a value
+  def format(%{cell_type: {:array, :union}} = column, values) when is_list(values) do
+    column = %{cell_type: :union, members: members(column) || []}
+
+    values
+    |> Enum.map(&format(column, &1))
+    |> Enum.reject(&(&1 == ""))
+    |> Enum.join("; ")
+  end
+
   # the values of an array, each as a cell of its type shows it; values
   # that are made of fields themselves are set apart from each other
   def format(%{cell_type: {:array, :map}} = column, values) when is_list(values) do
@@ -110,11 +132,35 @@ defmodule AshTable.Format do
       held = held(value, name)
 
       {Atom.to_string(name),
-       if(inner.cell_type == :map, do: input(inner, held), else: input(inner, held) || "")}
+       if(inner.cell_type in [:map, :union],
+         do: input(inner, held),
+         else: input(inner, held) || ""
+       )}
     end
   end
 
   def input(%{cell_type: :map}, _value), do: nil
+
+  # The editor of a union holds the kind and that kind's value, as the
+  # editor of its type holds it. Nil is no value, and so is a kind that
+  # holds nothing: Ash keeps the kind of a value that was taken away.
+  def input(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value})
+      when not is_nil(value) do
+    case Enum.find(members(field) || [], &(&1.name == kind)) do
+      nil ->
+        nil
+
+      member ->
+        held = input(member, value)
+
+        %{
+          "_union_type" => Atom.to_string(kind),
+          "_union_value" => if(member.cell_type == :map, do: held, else: held || "")
+        }
+    end
+  end
+
+  def input(%{cell_type: :union}, _value), do: nil
 
   def input(%{cell_type: {:array, :map}} = column, values) when is_list(values),
     do: Enum.map(values, &input(%{column | cell_type: :map}, &1))
@@ -152,6 +198,19 @@ defmodule AshTable.Format do
 
   defp fields(_field, _value), do: nil
 
+  # The kinds of a union: those its column or field says, else those of its
+  # type.
+  defp members(%{members: [_ | _] = members}), do: members
+
+  defp members(%{type: {type, constraints}}) when not is_nil(type) do
+    case Embedding.of(type, constraints) do
+      %{members: [_ | _] = members} -> Enum.map(members, &%{&1 | label: Text.label(&1.label)})
+      _none -> nil
+    end
+  end
+
+  defp members(_field), do: nil
+
   # What a value holds for a field: a map that declares its fields has them
   # by name, and one that was not cast by text.
   defp held(value, name) do
@@ -184,6 +243,9 @@ defmodule AshTable.Format do
   end
 
   defp other(value) when is_list(value), do: Enum.map_join(value, ", ", &other/1)
+
+  # a union whose kinds are not known here: the value it holds
+  defp other(%Ash.Union{value: value}), do: other(value)
 
   defp other(%_{} = value) do
     if String.Chars.impl_for(value), do: to_string(value), else: inspect(value)

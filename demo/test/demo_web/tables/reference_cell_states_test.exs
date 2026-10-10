@@ -35,7 +35,7 @@ defmodule DemoWeb.Tables.ReferenceCellStatesTest do
 
     on_exit(fn ->
       Gate.open()
-      Enum.each([Clerk, Docket], &Ash.DataLayer.Ets.stop/1)
+      Demo.Support.Ets.stop([Clerk, Docket])
     end)
 
     %{conn: conn, north: north, south: south, free: free}

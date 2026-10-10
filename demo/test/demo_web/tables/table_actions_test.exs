@@ -22,7 +22,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
 
   setup do
     on_exit(fn ->
-      for resource <- [Chore, Rota, Shift], do: Ash.DataLayer.Ets.stop(resource)
+      for resource <- [Chore, Rota, Shift], do: Demo.Support.Ets.stop(resource)
     end)
   end
 

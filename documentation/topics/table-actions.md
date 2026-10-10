@@ -20,7 +20,8 @@ A note on words: "generic action" is what the action is on the resource.
 ## The smallest example
 
 An `action` in the `table` block that names a generic action is a button on
-the line of the table's name. The demo's labels have three
+the line of the table's name. The demo's labels have four, of which these
+are three; the fourth, "Import", takes a file and is in [Files](files.md)
 ([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
@@ -56,8 +57,8 @@ end
 ```
 
 **Try it:** `/labels` in the demo, as Ada Admin. On the line of the table's
-name, at the right, are "New label", "Count unused", "Recolour" and "Remove
-unused". Use "Count unused": above the grid the table says "Count unused:
+name, at the right, are "New label", "Count unused", "Recolour", "Remove
+unused" and "Import". Use "Count unused": above the grid the table says "Count unused:
 0", as every label of the seed is on some task. Make a label with "New
 label" and count again: "Count unused: 1".
 
@@ -103,16 +104,20 @@ while the argument line still waits for a required argument.
 ## At once, after a question, or the action panel
 
 Using a button does one of three things, and the action decides which:
+it runs the action, asks first, or opens the action panel.
 
 | The action | Using its button |
 | --- | --- |
 | Has no argument, or only arguments it runs without: optional ones, and ones with a default | Runs the action. |
 | The same, declared with `confirm` | Asks the question in the table's dialog. Confirm runs the action; Cancel and Escape run nothing and put focus back on the button. |
 | Has a required argument without a default (`allow_nil? false`) | Opens the action panel. |
+| Has an argument that takes a file, required or not | Opens the action panel: see [Files](files.md). |
 
 The panel is the one of a row action: one field per public argument, in the
 order they are declared, each with the control of its type and its name in
-words as its label. It is headed by what the button says and ends in
+words as its label. An argument that is a union has the choice of its kind
+and that kind's value ([Unions](unions.md#in-the-action-panel)), and one
+that takes a file a file input ([Files](files.md)). It is headed by what the button says and ends in
 "Cancel" and "Run". An action with `confirm` asks its question when "Run"
 is used, on top of the panel.
 
@@ -322,14 +327,14 @@ policy action(:count_unused) do
   authorize_if actor_present()
 end
 
-policy action([:recolour, :remove_unused, :copy]) do
+policy action([:recolour, :remove_unused, :copy, :import]) do
   authorize_if actor_attribute_equals(:role, :admin)
 end
 ```
 
 | Actor on `/labels` | On the line of the table's name | In the rows |
 | --- | --- | --- |
-| Ada Admin | "New label", "Count unused", "Recolour", "Remove unused" | "Destroy", "Copy" |
+| Ada Admin | "New label", "Count unused", "Recolour", "Remove unused", "Import" | "Destroy", "Copy" |
 | Max Member, Vera Viewer | "Count unused" | No actions column. |
 | Olga Outsider | As her role in Globex says, and every action counts and changes Globex's labels alone. | |
 | Nobody | Nothing. | |
@@ -363,7 +368,8 @@ does.
   not.
 
 **Try it:** `/tasks` as Ada Admin. Expand a row and open "Labels". On the
-line, after "Labels", are "Count unused", "Recolour" and "Remove unused".
+line, after "Labels", are "Count unused", "Recolour", "Remove unused" and
+"Import".
 
 ## The keyboard
 

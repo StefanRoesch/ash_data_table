@@ -43,7 +43,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       Ash.create!(Lot, %{code: code, size: size, stock_id: apple.id})
     end
 
-    on_exit(fn -> Enum.each([Stock, Lot, Shelf], &Ash.DataLayer.Ets.stop/1) end)
+    on_exit(fn -> Demo.Support.Ets.stop([Stock, Lot, Shelf]) end)
 
     %{
       conn: as(conn, reader: @admin),

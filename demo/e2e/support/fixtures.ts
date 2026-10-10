@@ -14,6 +14,8 @@ export class Frames {
   constructor(private page: Page) {
     page.on("websocket", (socket) => {
       socket.on("framesent", (frame) => {
+        // the parts of an uploaded file are sent as bytes: no event of a person
+        if (typeof frame.payload !== "string") return
         const text = String(frame.payload)
         if (!text.includes('"heartbeat"')) this.sent.push(text)
       })

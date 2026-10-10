@@ -236,6 +236,20 @@ msgstr "Speichern"
 msgid "Remove %{column}"
 msgstr "%{column} entfernen"
 
+# Unions: the choice of the kind, in the action panel
+msgid "Kind"
+msgstr "Art"
+
+# Files: what the field of an upload says of a file it does not take
+msgid "The file is too large. The limit is %{limit}."
+msgstr "Die Datei ist zu groß. Die Grenze liegt bei %{limit}."
+
+msgid "This type of file is not accepted."
+msgstr "Dateien dieser Art werden nicht angenommen."
+
+msgid "The file could not be uploaded."
+msgstr "Die Datei konnte nicht hochgeladen werden."
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
@@ -556,6 +570,26 @@ msgstr "Von"
 
 msgid "To"
 msgstr "Nach"
+
+## The table action that takes a file, and its field.
+
+msgid "Import"
+msgstr "Importieren"
+
+msgid "File"
+msgstr "Datei"
+
+## The kinds of the specimens' union, as the choice of the kind names them.
+## "Address" is translated above, as a field of a client.
+
+msgid "Number"
+msgstr "Zahl"
+
+msgid "Text"
+msgstr "Text"
+
+msgid "Shade"
+msgstr "Farbton"
 
 ## The fields of the keys of a task's project and assignee are called what
 ## the columns of those relationships are called, "Projekt" and "Zugewiesen

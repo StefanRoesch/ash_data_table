@@ -252,14 +252,16 @@ defmodule Demo.KitchenSink.Specimen do
     attribute :an_address, Address, public?: true
     attribute :addresses, {:array, Address}, public?: true
 
-    # A union
+    # A union: a value that is one of several kinds. Shown as the value it
+    # holds, and edited in the side panel, the kind first.
     attribute :a_union, :union do
       public? true
 
       constraints types: [
                     number: [type: :integer, constraints: [min: 0]],
                     text: [type: :string],
-                    shade: [type: Shade]
+                    shade: [type: Shade],
+                    address: [type: Address]
                   ]
     end
 

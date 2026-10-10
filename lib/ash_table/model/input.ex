@@ -14,7 +14,11 @@ defmodule AshTable.Model.Input do
   #     (`:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`, and
   #     `:choices` or `:list` for an array, `:group` for a map cell and
   #     `:groups` for an array of them, whose `fields` are then those of
-  #     the value: see `AshTable.Model.Field`), or
+  #     the value: see `AshTable.Model.Field`), `:union` for a union,
+  #     whose `members` are then its kinds, or
+  #     `:file` for an argument that takes a file (`Ash.Type.File`), which
+  #     is given by uploading one: `upload` then says what the upload is
+  #     limited to (`accept`, `max_file_size`); or
   #     `:plain` for a value that is written as one line of text and has no
   #     editor of its own (a key, a time, an atom), or `:component` for an
   #     attribute whose column in this table has a component with an editor:
@@ -59,6 +63,8 @@ defmodule AshTable.Model.Input do
     :cell_type,
     :values,
     :fields,
+    :members,
+    :upload,
     :editor,
     :component,
     :reference,
@@ -75,9 +81,12 @@ defmodule AshTable.Model.Input do
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
           fields: [AshTable.Model.Field.t()] | nil,
+          members: [AshTable.Model.Field.t()] | nil,
+          upload: %{accept: :any | [String.t()], max_file_size: pos_integer} | nil,
           editor:
             AshTable.Resource.Editing.editor()
             | :plain
+            | :file
             | :component
             | :reference
             | :references,

@@ -394,8 +394,8 @@ defmodule AshTable.ModelTest do
                maps: {:array, :map},
                addresses: {:array, :map},
                lists: :other,
-               unions: :other,
-               union: :other,
+               unions: {:array, :union},
+               union: :union,
                inserted_at: :datetime,
                updated_at: :datetime
              ]
@@ -414,9 +414,12 @@ defmodule AshTable.ModelTest do
       assert types[:priorities] == {:array, :enum}
 
       # an array of values a table has no cell for, and an array of arrays
-      for name <- [:atoms, :uuids, :times, :lists, :unions] do
+      for name <- [:atoms, :uuids, :times, :lists] do
         assert types[name] == :other, "#{name}"
       end
+
+      # an array of unions is the cell type of its values, as any array is
+      assert types[:unions] == {:array, :union}
     end
 
     test "is `:map` for a value made of fields: an embedded resource and a map, whether it declares its fields or not, and a NewType of one" do
@@ -684,7 +687,7 @@ defmodule AshTable.ModelTest do
       assert %{editable?: false, editor: nil} = mapped(:mixed)
 
       assert obstacle(:mixed) ==
-               "Its field `either` has the type `Ash.Type.Union`, which a table has no control for."
+               "Its field `pair` has the type `Ash.Type.Tuple`, which a table has no control for."
     end
 
     test "one whose action needs an argument, or a private attribute, is not" do
@@ -1025,7 +1028,7 @@ defmodule AshTable.ModelTest do
       record =
         Ash.Seed.seed!(AshTable.Test.Embedding, %{name: "Harbour", base: %Place{street: "Base 1"}})
 
-      on_exit(fn -> Ash.DataLayer.Ets.stop(AshTable.Test.Embedding) end)
+      on_exit(fn -> AshTable.Test.Ets.stop(AshTable.Test.Embedding) end)
 
       {:error, form} =
         record
@@ -1278,7 +1281,9 @@ defmodule AshTable.ModelTest do
       enum: :enum,
       # a value of named fields: an embedded resource, and a map
       embedded_resource: :map,
-      map: :map
+      map: :map,
+      # a value that is one of several kinds
+      union: :union
     }
 
     defp manifest_types(resource, read_action) do

@@ -26,7 +26,7 @@ defmodule DemoWeb.Tables.MapTableTest do
   @winch "21111111-2222-4333-8444-555555555555"
 
   setup do
-    on_exit(fn -> Ash.DataLayer.Ets.stop(Site) end)
+    on_exit(fn -> Demo.Support.Ets.stop(Site) end)
   end
 
   defp site(attributes \\ %{}) do
@@ -378,7 +378,7 @@ defmodule DemoWeb.Tables.MapTableTest do
 
     test "of a record that is gone opens nothing and says so", %{view: view, site: site} do
       Ash.Seed.seed!(Site, %{name: "Other", base: %Place{street: "B", city: "C"}})
-      Ash.DataLayer.Ets.stop(Site)
+      Demo.Support.Ets.stop(Site)
 
       html = edit(view, "site", site.id, "place")
 
@@ -565,7 +565,7 @@ defmodule DemoWeb.Tables.MapTableTest do
       site = site()
       {:ok, view, _html} = open(conn, @admin)
       edit(view, "site", site.id, "place")
-      Ash.DataLayer.Ets.stop(Site)
+      Demo.Support.Ets.stop(Site)
 
       html = submit_panel(view, place: place(%{"city" => "Lübeck"}))
 

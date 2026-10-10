@@ -55,14 +55,14 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
 
   @editable ~w(label a_string a_ci_string an_atom an_integer a_float a_decimal a_boolean a_date
                a_utc_datetime a_utc_datetime_usec a_datetime a_naive_datetime a_duration_name
-               a_typed_map strings integers shades an_address addresses a_percentage a_shade
-               opt_string opt_integer opt_decimal
+               a_typed_map strings integers shades an_address addresses a_union a_percentage
+               a_shade opt_string opt_integer opt_decimal
                opt_boolean opt_date opt_utc_datetime opt_shade)
 
   # a map that declares no fields among them: a table does not know what to ask for
   @read_only ~w(id a_time a_time_usec a_duration a_uuid a_uuid_v7 a_binary a_url_encoded_binary
                 a_map a_keyword a_tuple a_struct a_term a_module a_date_range
-                a_union inserted_at updated_at)
+                inserted_at updated_at)
 
   describe "what can be edited" do
     test "the types with an editor have one; the others, and what the action does not accept, are read-only",

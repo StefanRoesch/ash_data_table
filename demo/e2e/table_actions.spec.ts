@@ -10,9 +10,10 @@ import { Table } from "./support/table"
 // same buttons on the line of a nested table.
 //
 // /labels as the admin, who may run every one of them, unless a test says
-// otherwise. Its table has three table actions: "Count unused" runs at one
+// otherwise. Its table has four table actions: "Count unused" runs at one
 // click and returns a number, "Recolour" opens the action panel with two
-// fields, and "Remove unused" asks first and returns nothing. Every row
+// fields, "Remove unused" asks first and returns nothing, and "Import"
+// takes a file, which files.spec.ts is about. Every row
 // has "Copy", a generic action that is given the row's key. In the seed
 // every label is on some task, so no label is unused until a test makes
 // one. These tests change the data: the database is seeded again after
@@ -42,12 +43,13 @@ test.describe("the buttons", () => {
   test("stand on the line of the table's name after \"New label\", look as it does, and are tab stops of the page before the grid", async ({
     page,
   }) => {
-    await expect(labels.tableActions).toHaveText(["Count unused", "Recolour", "Remove unused"])
+    await expect(labels.tableActions).toHaveText(["Count unused", "Recolour", "Remove unused", "Import"])
     await expect(labels.headerLine.getByRole("button")).toHaveText([
       "New label",
       "Count unused",
       "Recolour",
       "Remove unused",
+      "Import",
     ])
 
     // the same button as the create button: its classes, and so its height
@@ -67,7 +69,7 @@ test.describe("the buttons", () => {
 
     // Tab goes through them in that order, and then into the grid
     await labels.create.focus()
-    for (const name of ["count_unused", "recolour", "remove_unused"]) {
+    for (const name of ["count_unused", "recolour", "remove_unused", "import"]) {
       await page.keyboard.press("Tab")
       await expect(labels.tableAction(name)).toBeFocused()
     }
@@ -300,7 +302,7 @@ test.describe("in a nested table", () => {
     await expect(tasks.lineAction(FIRST, "labels", "count_unused"), "a closed line has none").toHaveCount(0)
 
     const nested = await tasks.openLine(FIRST, "labels")
-    const names = ["count_unused", "recolour", "remove_unused"]
+    const names = ["count_unused", "recolour", "remove_unused", "import"]
     const comments = await tasks.openLine(FIRST, "comments")
     const create = tasks.lineCreate(FIRST, "comments")
 
@@ -316,6 +318,7 @@ test.describe("in a nested table", () => {
       "Count unused",
       "Recolour",
       "Remove unused",
+      "Import",
     ])
     // the nested table has no line of its own for them
     await expect(nested.headerLine).toHaveCount(0)

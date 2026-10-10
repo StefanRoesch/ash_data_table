@@ -20,7 +20,7 @@ defmodule DemoWeb.Tables.SaveErrorFieldsTest do
   @member %{id: "max", name: "max", role: :member}
 
   setup do
-    on_exit(fn -> Ash.DataLayer.Ets.stop(Memo) end)
+    on_exit(fn -> Demo.Support.Ets.stop(Memo) end)
   end
 
   defp memo(attributes) do

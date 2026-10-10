@@ -183,9 +183,10 @@ defmodule AshTable.Edit do
   end
 
   @doc """
-  Opens a map cell for editing: the record with the primary key `key` as it
-  was read for the person, and the form of the column's update action on
-  it, for the side panel. `id` is the id of the form.
+  Opens a map cell, or the cell of a union, for editing: the record with
+  the primary key `key` as it was read for the person, and the form of the
+  column's update action on it, for the side panel. `id` is the id of the
+  form.
 
   `:hidden` when the value, or something in it, is not this person's to
   see, and so not theirs to change; `:error` when the record can no longer
@@ -194,7 +195,7 @@ defmodule AshTable.Edit do
   @spec open(Model.t(), Column.t(), map, String.t(), keyword) ::
           {:ok, Ash.Resource.record(), AshPhoenix.Form.t()} | :hidden | :error
   def open(%Model{} = model, %Column{editable?: true, editor: editor} = column, key, id, opts)
-      when editor in [:group, :groups] and is_map(key) do
+      when editor in [:group, :groups, :union] and is_map(key) do
     opts = Query.reader_opts(opts)
 
     with {:ok, record} <- Record.fetch(model, key, opts) do
@@ -205,11 +206,12 @@ defmodule AshTable.Edit do
   end
 
   @doc """
-  Saves what the side panel's form sent for a map cell, as the value of
-  `column` on the record with the primary key `key`: the column's update
-  action, with the column's attribute as its one input, given as a map of
-  its fields (a list of them for an array). `input` is the column as the
-  panel's one input (`AshTable.Model.input/2`), and `id` the id of the form.
+  Saves what the side panel's form sent for a map cell or a union, as the
+  value of `column` on the record with the primary key `key`: the column's
+  update action, with the column's attribute as its one input, given as a
+  map of its fields (a list of them for an array), and for a union as its
+  kind and that kind's value. `input` is the column as the panel's one
+  input (`AshTable.Model.input/2`), and `id` the id of the form.
 
   Returns `{:ok, record}` when it was saved, and when what was sent is what
   the record holds, for which nothing is called; `{:error, form}`, the form
@@ -271,8 +273,9 @@ defmodule AshTable.Edit do
   # a reference cell has no editor that holds a text: see `refer/5`
   def typed?(%Column{kind: :reference}, _typed), do: false
   # nor has a map cell, which is edited in the side panel: see `put/7`
-  def typed?(%Column{cell_type: cell_type}, _typed) when cell_type in [:map, {:array, :map}],
-    do: false
+  def typed?(%Column{cell_type: cell_type}, _typed)
+      when cell_type in [:map, {:array, :map}, :union, {:array, :union}],
+      do: false
 
   def typed?(%Column{cell_type: {:array, _item}}, typed),
     do: is_list(typed) and Enum.all?(typed, &is_binary/1)
