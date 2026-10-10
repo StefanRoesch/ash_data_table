@@ -662,6 +662,40 @@ declared in the resource and mounted with one line in the router.
 - New compile-time findings for all of the above: see "Sensitive fields" in
   the guide to mistakes at compile time.
 
+### Limits shown before saving
+
+- A number input says what the resource's constraints say, before anything
+  is saved: `min` and `max` of an integer, a float and a decimal, and
+  `step` ("1" for an integer, "any" otherwise). On the editor of a cell, on
+  a field of the action panel, on a number inside a map cell, an embedded
+  resource or a union, on each value of an array of numbers, and on the
+  argument line. The arrows stop at the limits, and assistive technology
+  is told them. An argument's input has the argument's constraints, an attribute's
+  the attribute's. Nothing is declared for it.
+- The limits describe and never stop a save: a number past them is sent as
+  typed, and Ash's message is shown at the cell or the field, as before.
+  The forms of the action panel and of the argument line are `novalidate`.
+  Only what the browser cannot read as a number or a date at all is held
+  back, as before.
+- The editor of a cell says `aria-required` where the column's update
+  action cannot take the cell empty (`allow_nil?`, `require_attributes`),
+  as a field of the action panel does. A component's editor is told the
+  same in a cell (`@control`).
+- Not put on an input, on purpose: the length of text (`max_length`,
+  `min_length`: `maxlength` would stop the typing without a word, and
+  counts differently from Ash), `match`, the bounds `greater_than` and
+  `less_than`, and how many values an array takes. See "Limits an editor
+  shows before saving" in the guide to inline editing.
+
+### Changed since sensitive columns were added
+
+- **The group of a map cell says "required" as the cell's update action
+  says it** (`require_attributes` included), no longer as the attribute's
+  `allow_nil?` alone does.
+- **The argument line and the action panel are `novalidate` forms.** A
+  host's test or script that counted on the browser's own check of a form
+  finds none: only an input the browser cannot read is held back.
+
 ### Fixed
 
 - A read that was on its way when the argument its read action requires was

@@ -78,6 +78,11 @@ defmodule AshTable.Model.Column do
   #     `:component` for a column whose component has
   #     an editor; or `:reference` for a reference column, which is edited
   #     in the picker. `nil` for a column that is not editable.
+  #   * `required?` says whether an edit can leave the cell empty: as the
+  #     attribute and the column's update action say (`allow_nil?`,
+  #     `require_attributes`), which is how an input of the action panel is
+  #     told. `false` for a column that is not editable, and for a reference
+  #     column, whose `reference` says whether "none" can be chosen.
   #   * `component` is the column's component, nil when the block names
   #     none: its `module`, which of the two parts it has (`cell?`,
   #     `editor?`), when its editor saves (`commit`: `:enter` or `:change`),
@@ -118,6 +123,7 @@ defmodule AshTable.Model.Column do
     :component,
     :reference,
     editable?: false,
+    required?: false,
     apart?: false,
     partly_hidden?: false,
     sensitive?: false,
@@ -140,6 +146,7 @@ defmodule AshTable.Model.Column do
           sortable?: boolean,
           operators: [AshTable.Model.Operator.t()],
           editable?: boolean,
+          required?: boolean,
           update_action: atom | nil,
           editor: AshTable.Resource.Editing.editor() | :component | :reference | nil,
           component: AshTable.Resource.Presenting.component() | nil,

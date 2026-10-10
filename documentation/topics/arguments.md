@@ -166,6 +166,12 @@ refuse, is not applied:
 - the argument keeps the value it had, the rows stay as they are, and the
   address does not change. No error takes the place of the rows.
 
+The input of a number says the least and the most the argument's
+constraints allow (`min`, `max`, `step`): the arrows of "Due within: Days"
+stop at 0. That describes and holds nothing back. A number past the limit
+can be typed, and is refused by Ash as above. See
+[Limits an editor shows before saving](inline-editing.md#limits-an-editor-shows-before-saving).
+
 **Try it:** `/tasks`, "Due within: Days": type `-1` and press Enter.
 
 A value in an address that Ash refuses is treated the same way when the page

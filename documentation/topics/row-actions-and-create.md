@@ -387,7 +387,11 @@ anyone its policy allows; see
 ## Errors in the panel
 
 The panel's form is an `AshPhoenix.Form` of the action, and the table adds
-no validation of its own.
+no validation of its own. A number field says the least and the most its
+constraints allow (`min`, `max`, `step`), from the action's argument or the
+attribute it accepts, and the form is `novalidate`: the browser holds
+nothing back over them, and the action's message is shown as below. See
+[Limits an editor shows before saving](inline-editing.md#limits-an-editor-shows-before-saving).
 
 - **While the person types**, what the fields hold is given to the action
   (`AshPhoenix.Form.validate/3`), and nothing runs. An error is shown at its

@@ -736,6 +736,7 @@ defmodule AshTable.Model do
       | editable?: false,
         update_action: nil,
         editor: nil,
+        required?: false,
         confirm: nil,
         # its component still shows, and is told that nothing is edited
         component:
@@ -1630,6 +1631,7 @@ defmodule AshTable.Model do
       editable?: not is_nil(update_action),
       update_action: update_action,
       editor: update_action && editor(cell_type, component, type, constraints),
+      required?: required?(resource, field, update_action),
       fields: fields(cell_type, type, constraints),
       members: members(cell_type, type, constraints),
       confirm: update_action && declared && declared.confirm,
@@ -1728,11 +1730,12 @@ defmodule AshTable.Model do
   @doc """
   The input a map cell of `column` is edited as, in the side panel: the
   column's attribute as the one input of its update action, with the fields
-  of its value. It is required where the attribute cannot be empty. A
-  union is edited the same way, with its kinds.
+  of its value. It is required where the action cannot take the attribute
+  empty (the column's `required?`). A union is edited the same way, with its
+  kinds.
   """
   @spec input(t, Column.t()) :: Input.t()
-  def input(%__MODULE__{resource: resource}, %Column{editor: editor} = column)
+  def input(%__MODULE__{}, %Column{editor: editor} = column)
       when editor in [:group, :groups, :union] do
     %Input{
       name: column.name,
@@ -1744,9 +1747,19 @@ defmodule AshTable.Model do
       fields: column.fields,
       members: column.members,
       editor: editor,
-      required?: Info.attribute(resource, column.name).allow_nil? == false
+      required?: column.required?
     }
   end
+
+  # Whether an edit of a column can leave its cell empty: as the attribute
+  # and the action the edit runs say, which is how a field of the action
+  # panel is told (`AshTable.Resource.Acting.required?/2`).
+  defp required?(_resource, _field, nil), do: false
+
+  defp required?(resource, %Ash.Resource.Attribute{} = attribute, update_action),
+    do: Acting.required?(Info.action(resource, update_action), attribute)
+
+  defp required?(_resource, _field, _update_action), do: false
 
   # The component of a column, as far as the block names one, with what it
   # is told about the column, which is all it is told.

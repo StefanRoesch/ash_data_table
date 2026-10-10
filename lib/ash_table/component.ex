@@ -98,6 +98,9 @@ defmodule AshTable.Component do
       and the table puts a copy of it into the cell that is edited. `value`
       is `""` there, and the table gives the control the cell's value when
       it opens the editor.
+    * In a cell `control` carries the control's accessible name, and says
+      when the column's action cannot take the cell empty
+      (`aria-required`).
     * In the action panel `control` carries the `id` the field's label
       points at and the `name` the value is sent under, and says when the
       field is required or has an error. The label, the mark of a required

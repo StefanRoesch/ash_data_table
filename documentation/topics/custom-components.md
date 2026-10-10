@@ -287,7 +287,7 @@ its field in the action panel, of a row action and of a create.
 | --- | --- | --- |
 | `@place` | `:grid` | `:panel` |
 | `@value` | `""`; the table sets the control's value | The field's value |
-| `@control` | The accessible name (`aria-label`), and the mark the table finds the control by | `id`, `name`, the mark, and `aria-required`, `aria-invalid` and `aria-describedby` when they apply |
+| `@control` | The accessible name (`aria-label`), the mark the table finds the control by, and `aria-required` when the column's action cannot take the cell empty | `id`, `name`, the mark, and `aria-required`, `aria-invalid` and `aria-describedby` when they apply |
 | Saving | As the component says: on Enter and leaving, or on change | With the form, when the person uses "Run" or "Create". A change saves nothing. |
 | Around it | The table's cell | The table's label, the mark of a required field, and the action's messages |
 

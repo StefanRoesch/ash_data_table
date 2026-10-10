@@ -565,6 +565,14 @@ A person who can never run a column's action does not get this far: the
 column is read-only for them, and a `save` event sent all the same is not
 run. The refusal on the cell is for an action that depends on the record.
 
+**Limits before saving.** A number's editor says the least and the most
+the attribute's constraints allow (`min`, `max`, and `step`), so the arrows
+stop there and assistive technology is told them; so do a number field of the
+action panel and a number of the argument line. They describe and stop
+nothing: a number past them is sent, and Ash's message is shown as above.
+The length of text and its pattern are not put on the input. See
+[Inline editing](documentation/topics/inline-editing.md#limits-an-editor-shows-before-saving).
+
 **Confirm.** A column with `confirm` asks its question in a dialog at the
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
 returns to the cell, still in edit mode with what was typed.

@@ -316,6 +316,78 @@ Then add a tag of one character. On a cell of "Checks", press Enter, tick
 with Space, move with the arrow keys, and press Enter. `/specimens` has
 "Strings", "Integers" (which has to keep one value) and "Shades".
 
+## Limits an editor shows before saving
+
+A number's editor says what the attribute's constraints say, before
+anything is saved. The demo's specimens have a whole number between -1000
+and 1000
+([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
+
+<!-- source: demo/lib/demo/kitchen_sink/specimen.ex -->
+```elixir
+attribute :an_integer, :integer do
+  allow_nil? false
+  public? true
+  constraints min: -1000, max: 1000
+end
+```
+
+Its editor is `<input type="number" min="-1000" max="1000" step="1">`. The
+arrow keys and the input's own arrows stop at -1000 and at 1000, and
+assistive technology is told the two limits with the input. Nothing is
+declared for it in the `table` block.
+
+| The constraint | On the input |
+| --- | --- |
+| `min`, `max` of `:integer`, `:float`, `:decimal` | `min`, `max` |
+| a whole number (`:integer`) | `step="1"` |
+| `:float`, `:decimal` | `step="any"` |
+| the action cannot take the input empty | `aria-required="true"` |
+
+The same is on a number field of the action panel, on a number inside a
+map cell, an embedded resource or a union, on each value of an array of
+numbers, and on a number of the argument line. Each takes it from where the
+input belongs: an attribute's constraints for an attribute, an argument's
+own for an argument, and "required" from the action that runs (the
+attribute's `allow_nil?`, and the action's `require_attributes` and
+`allow_nil_input`). A NewType has the limits of the type it is made of. A
+column's `component` is given the constraints and says them itself, as the
+slider does: see [Custom components](custom-components.md).
+
+**The limits describe. They never stop a save.** A person can still type
+5000 and press Enter. The value is sent as it was typed, Ash refuses it,
+and its message is shown at the cell, as described under
+[When a save fails](#when-a-save-fails). The browser checks nothing: the
+forms of the action panel and of the argument line are `novalidate`, and a
+cell's editor is in no form. One thing is held back, as before: what the
+browser cannot read as a number or a date at all (`1e`, a date half typed).
+Such an input says it is empty, and sending it would clear the value.
+
+Left out on purpose, because HTML has no attribute that means the same as
+Ash does:
+
+- **The length of text** (`min_length`, `max_length`). The browser's
+  `maxlength` stops the typing and cuts pasted text, without a word. It also
+  counts differently: UTF-16 code units of the text as typed, where Ash
+  counts codepoints, graphemes or bytes of the trimmed text. Fifty emoji
+  are fifty characters to Ash and a hundred to `maxlength`. So text can be
+  typed past its limit, and Ash's message says what is wrong.
+- **A pattern** (`match`). It is a regular expression of Erlang's. A browser
+  reads it by other rules, and a text editor is a `<textarea>`, which has no
+  `pattern`.
+- **Bounds that exclude their own value** (`greater_than`, `less_than`).
+  `min="0"` would say that 0 is fine.
+- **How many values an array takes** (`min_length`, `max_length` of the
+  array), and the `precision` and `scale` of a decimal.
+
+A `validate` of the resource is no constraint: what it says is known only
+once the action has run with the record. It is shown after a save, as
+before.
+
+**Try it:** on `/specimens`, press Enter on a cell of "An integer", hold
+the up arrow past 1000, then type `5000` and press Enter. On `/tasks`, press
+the down arrow in "Due within: Days" until it stops at 0.
+
 ## Saving and cancelling
 
 | Gesture | Effect |
@@ -517,13 +589,19 @@ only runs actions.
   an action that accepts less.
 - **A refusal that only shows on save.** The policy depends on the record.
   See [Authorization](authorization.md).
+- **Expecting `min` and `max` on the input to stop a wrong number.** They
+  say the limits; Ash refuses the value. See
+  [Limits an editor shows before saving](#limits-an-editor-shows-before-saving).
 
 ## Not in the first version
 
 No editing of structs, keyword lists or tuples, nor of a map that
 declares no fields or of an array of unions; no sorting or filtering by an
-array, an embedded resource, a map or a union; no validation display
-before a cell is saved, no bulk edits and no undo. A column's own editor is built: see
+array, an embedded resource, a map or a union; no limit on the length of
+text or its pattern before a cell is saved (see
+[Limits an editor shows before saving](#limits-an-editor-shows-before-saving)),
+no hint beside an editor that says its limits in words, no bulk edits and no
+undo. A column's own editor is built: see
 [Custom components](custom-components.md). They are later slices in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).
 Creating and deleting records, and actions with several inputs, are not

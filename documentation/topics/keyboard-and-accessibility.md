@@ -396,6 +396,8 @@ page and keeps the focus.
 | The link to the full view | A link named "Open in full view: Comments": its text and the nested table's name. |
 | A table limited to the records of one parent | A heading above the grid: the parent and the relationship, "Write the report: Comments". |
 | Cells that cannot be edited | `aria-readonly`, on a table that offers the person any editing. |
+| The editor of a cell | Named by its column. `aria-required` where the column's action cannot take the cell empty; not on a box, on the group of an array, or on the editor of a sensitive cell, which saves nothing when left empty. |
+| The limits of a number | `min`, `max` and `step` on the number input of a cell's editor, of a field of the action panel and of the argument line, from the resource's constraints: the browser passes them on as the least and the greatest value of the input. Nothing is checked against them in the browser. See [Inline editing](inline-editing.md#limits-an-editor-shows-before-saving). |
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |

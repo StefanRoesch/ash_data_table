@@ -263,6 +263,7 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Errors
   alias AshTable.Format
   alias AshTable.Model
+  alias AshTable.Model.Limits
   alias AshTable.Model.Operator
   alias AshTable.Model.Relationship
   alias AshTable.Pick
@@ -3550,13 +3551,20 @@ defmodule AshTable.Live.TableComponent do
       <%!-- The argument line: what the read action is given, and what the
       columns ask for of their calculations' arguments. A line of its own, which
       is there whenever the table has arguments, so that nothing moves when the
-      line under it fills. A table without arguments has none. --%>
+      line under it fills. A table without arguments has none.
+
+      `novalidate`: an input of a number says the least and the most the
+      argument takes (`AshTable.Model.Limits`), and the browser is not to hold
+      the form back over that. Ash is given what was typed and says what is
+      wrong with it. Only what the browser cannot read as a value at all is
+      held back, by the hook (`UNREADABLE`). --%>
       <form
         :if={@model.arguments != []}
         id={"#{@id}-arguments"}
         phx-change="arguments"
         phx-submit="arguments"
         phx-target={@myself}
+        novalidate
         data-arguments
         class={[
           "flex flex-wrap items-start gap-x-4 gap-y-2",
@@ -4117,6 +4125,18 @@ defmodule AshTable.Live.TableComponent do
         // Cancel ask the server to take it away; when it is gone, focus goes
         // back to the control that opened it, and to the grid when that
         // control is gone too.
+
+        // The control of a form that holds something the browser cannot read
+        // as a value of its type: a number that is none, a date half typed.
+        // Such a control says it holds nothing (`value` is ""), and sent so
+        // it would be taken as empty. It is the one thing a form is held
+        // back for here: the browser says at the control what is wrong.
+        // Everything else a control says of its value (the least and the
+        // most a number can be) describes, and is the action's to judge:
+        // the forms are `novalidate`.
+        const UNREADABLE = form =>
+          Array.from(form.elements).find(control => control.validity && control.validity.badInput)
+
         export default {
           mounted() {
             const dialog = this.el
@@ -4199,6 +4219,14 @@ defmodule AshTable.Live.TableComponent do
             // table's other dialog, on top of this one. Cancel there comes
             // back here, with everything as it was typed.
             dialog.addEventListener("submit", e => {
+              // what the browser cannot read is not sent as "nothing"
+              const unreadable = UNREADABLE(e.target)
+              if (unreadable) {
+                e.preventDefault()
+                e.stopPropagation()
+                unreadable.reportValidity()
+                return
+              }
               const question = dialog.dataset.question
               const same = this.initial !== null && this.snapshot() === this.initial
               if (!question || !this.grid || this.confirmed || same) { this.confirmed = false; return }
@@ -4497,6 +4525,12 @@ defmodule AshTable.Live.TableComponent do
         // the element a grid's hook is on
         const GRID = "[data-ash-table]"
 
+        // The control of a form that holds something the browser cannot read
+        // as a value of its type, as in the panel's hook: the one thing the
+        // argument line is held back for.
+        const UNREADABLE = form =>
+          Array.from(form.elements).find(control => control.validity && control.validity.badInput)
+
         // What is around an element, nearest first, as far as it is of
         // the same tree of grids: the grid it is in, or the cell that
         // holds the nested table it is in. Nothing beyond a dialog: a
@@ -4678,7 +4712,9 @@ defmodule AshTable.Live.TableComponent do
             const form = control.form
             if (!form || form.id !== `${this.id}-arguments`) return
             e.preventDefault()
-            if (form.reportValidity()) form.requestSubmit()
+            const unreadable = UNREADABLE(form)
+            if (unreadable) unreadable.reportValidity()
+            else form.requestSubmit()
           },
 
           // ---- the tree of grids -------------------------------------------
@@ -6522,7 +6558,9 @@ defmodule AshTable.Live.TableComponent do
     assigns =
       assign(assigns,
         described: assigns.errors != [] && "#{assigns.id}-error",
-        array?: assigns.argument.editor in [:choices, :list]
+        array?: assigns.argument.editor in [:choices, :list],
+        # as for a field of the action panel
+        limits: Limits.of(assigns.argument)
       )
 
     ~H"""
@@ -6566,7 +6604,9 @@ defmodule AshTable.Live.TableComponent do
         <input
           :if={@argument.editor in [:text, :number, :date, :datetime, :plain]}
           type={argument_type(@argument.editor)}
-          step={input_step(@argument.editor)}
+          step={@limits.step || input_step(@argument.editor)}
+          min={@limits.min}
+          max={@limits.max}
           id={@id}
           name={@name}
           value={@value}
@@ -6615,7 +6655,9 @@ defmodule AshTable.Live.TableComponent do
           >
             <input
               type={argument_type(elem(@argument.cell_type, 1))}
-              step={input_step(elem(@argument.cell_type, 1))}
+              step={@limits.step || input_step(elem(@argument.cell_type, 1))}
+              min={@limits.min}
+              max={@limits.max}
               id={"#{@id}-#{at}"}
               name={@name <> "[]"}
               value={value}
@@ -6692,12 +6734,15 @@ defmodule AshTable.Live.TableComponent do
       aria-labelledby={"#{@id}-panel-title"}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
     >
+      <%!-- `novalidate`, for the reason given at the argument line: the
+      limits on a field describe, and the action judges. --%>
       <.form
         for={@form}
         id={"#{@id}-panel-form"}
         phx-change="panel_validate"
         phx-submit="panel_submit"
         phx-target={@target}
+        novalidate
       >
         <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{@panel.title}</h2>
         <%!-- what the action says that is about none of the fields --%>
@@ -6949,6 +6994,9 @@ defmodule AshTable.Live.TableComponent do
       assign(assigns,
         described: assigns.errors != [] && "#{assigns.id}-error",
         array?: assigns.input.editor in [:choices, :list],
+        # what the constraints of a number say of its control; of an array,
+        # of the control of each value
+        limits: Limits.of(assigns.input),
         group?: group?(assigns.input),
         # typed hidden: a password input in place of the control of its type
         secret?: Sensitive.sensitive?(assigns.input),
@@ -7140,6 +7188,7 @@ defmodule AshTable.Live.TableComponent do
           phx-update="ignore"
           label={@input.label}
           item={elem(@input.cell_type, 1)}
+          limits={@limits}
           place={:panel}
           values={@value}
           name={@name <> "[]"}
@@ -7254,7 +7303,9 @@ defmodule AshTable.Live.TableComponent do
       <input
         :if={@input.editor in [:number, :date, :datetime, :plain] and not @secret?}
         type={field_type(@input.editor)}
-        step={input_step(@input.editor)}
+        step={@limits.step || input_step(@input.editor)}
+        min={@limits.min}
+        max={@limits.max}
         id={@id}
         name={@name}
         value={@value}
@@ -8158,7 +8209,11 @@ defmodule AshTable.Live.TableComponent do
       label: column.label,
       column: component.column,
       place: :grid,
-      control: %{"aria-label" => column.label, "data-control" => true}
+      control: %{
+        "aria-label" => column.label,
+        "aria-required" => column.required? && "true",
+        "data-control" => true
+      }
     })
   end
 
@@ -8182,6 +8237,7 @@ defmodule AshTable.Live.TableComponent do
     <textarea
       rows="1"
       aria-label={@column.label}
+      aria-required={@column.required? && "true"}
       class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none"
     ></textarea>
     """
@@ -8202,6 +8258,7 @@ defmodule AshTable.Live.TableComponent do
     ~H"""
     <select
       aria-label={@column.label}
+      aria-required={@column.required? && "true"}
       class="block h-5 w-full bg-transparent p-0 text-sm outline-none"
     >
       <option :if={@allow_nil?} value=""></option>
@@ -8234,17 +8291,26 @@ defmodule AshTable.Live.TableComponent do
       aria-label={@column.label}
       label={@column.label}
       item={@item}
+      limits={Limits.of(@column)}
       place={:grid}
     />
     """
   end
 
+  # The control of a number says what the attribute's constraints say of it
+  # (`AshTable.Model.Limits`). Nothing in the browser checks it against them:
+  # the hook sends what the control holds, and Ash says what is wrong with it.
   defp editor(assigns) do
+    assigns = assign(assigns, limits: Limits.of(assigns.column))
+
     ~H"""
     <input
       type={input_type(@column.editor)}
-      step={input_step(@column.editor)}
+      step={@limits.step || input_step(@column.editor)}
+      min={@limits.min}
+      max={@limits.max}
       aria-label={@column.label}
+      aria-required={@column.required? && "true"}
       class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"
     />
     """
@@ -8268,6 +8334,7 @@ defmodule AshTable.Live.TableComponent do
   # texts given here with `{n}` where the number goes.
   attr :label, :string, required: true
   attr :item, :atom, required: true
+  attr :limits, :map, required: true
   attr :place, :atom, required: true
   attr :values, :list, default: []
   attr :name, :string, default: nil
@@ -8288,6 +8355,7 @@ defmodule AshTable.Live.TableComponent do
       <template><.list_item
         label={@label}
         item={@item}
+        limits={@limits}
         place={@place}
         name={@name}
         value=""
@@ -8297,6 +8365,7 @@ defmodule AshTable.Live.TableComponent do
         :for={{value, position} <- Enum.with_index(@values, 1)}
         label={@label}
         item={@item}
+        limits={@limits}
         place={@place}
         name={@name}
         value={value}
@@ -8357,7 +8426,9 @@ defmodule AshTable.Live.TableComponent do
       <input
         :if={@item in [:number, :date, :datetime]}
         type={input_type(@item)}
-        step={input_step(@item)}
+        step={@limits.step || input_step(@item)}
+        min={@limits.min}
+        max={@limits.max}
         name={@name}
         value={@value}
         aria-label={@value_label}

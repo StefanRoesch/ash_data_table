@@ -60,6 +60,7 @@ defmodule DemoWeb.Router do
   # arguments to relationships (`relation_tables.ex`), one whose columns are
   # unions (`union_tables.ex`), one whose actions take files
   # (`file_tables.ex`), one with sensitive columns (`sensitive_tables.ex`),
+  # one whose numbers have limits where the demo has none (`limit_tables.ex`),
   # those of a domain whose policies allow nothing, mounted with and without
   # authorization (`unchecked_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
@@ -120,6 +121,7 @@ defmodule DemoWeb.Router do
         ash_table "/gifts", Demo.Support.Unions.Gift, layout: false
         ash_table "/scans", Demo.Support.Files.Scan, layout: false
         ash_table "/safes", Demo.Support.Secrets.Safe, layout: false
+        ash_table "/meters", Demo.Support.Limits.Meter, layout: false
 
         # The same tables twice: as their domain says, which authorizes, and
         # mounted without authorization. Under `/support` and in the test
