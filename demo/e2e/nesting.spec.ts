@@ -55,6 +55,8 @@ test.describe("with the pointer", () => {
       "status",
       "starts_on",
       "budget",
+      "client",
+      "milestones",
       "inserted_at",
     ])
 

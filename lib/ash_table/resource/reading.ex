@@ -347,12 +347,29 @@ defmodule AshTable.Resource.Reading do
       )
   end
 
-  @doc "Whether the resource allows sorting by the field under the given pagination strategy."
-  @spec sortable?(Ash.Resource.t(), atom, strategy) :: boolean
+  @doc """
+  Whether the resource allows sorting by the field under the given
+  pagination strategy.
+
+  Never by a value made of fields: an embedded resource or a map.
+  `Ash.Resource.Info.sortable?/3` says so for a map, and not for a NewType
+  of one, which is a map all the same. It says that an embedded resource
+  can be sorted by, and `Ash.Query.sort_input/2`, through which a table
+  sorts, refuses one ("is not sortable"); Ash's interface extensions leave
+  embedded resources out of what they sort by as well.
+  """
+  @spec sortable?(Ash.Resource.t() | Spark.Dsl.t(), atom, strategy) :: boolean
   def sortable?(resource, name, strategy) do
     pagination_type = if strategy == :keyset, do: :keyset, else: :offset
-    Info.sortable?(resource, name, pagination_type: pagination_type, include_private?: false)
+
+    Info.sortable?(resource, name, pagination_type: pagination_type, include_private?: false) and
+      not made_of_fields?(Info.field(resource, name))
   end
+
+  defp made_of_fields?(%{type: type} = field) when not is_nil(type) and not is_tuple(type),
+    do: not is_nil(AshTable.Resource.Embedding.kind(type, Map.get(field, :constraints) || []))
+
+  defp made_of_fields?(_field), do: false
 
   @doc """
   The `first` aggregates among `fields` that a table reads apart from the

@@ -207,7 +207,7 @@ component need not be told twice:
 | `label` | The column's header, translated: "Progress". |
 | `type` | The Ash type, as a module: `Ash.Type.Integer`, `Demo.Tracker.TaskStatus`. An array is `{:array, module}`. |
 | `constraints` | The type's constraints as the resource declares them: `[min: 0, max: 100]`. |
-| `cell_type` | What the table shows the field as: `:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`; `{:array, :text}` and so on for an array of such values; or `:other`. |
+| `cell_type` | What the table shows the field as: `:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`; `:map` for an embedded resource or a map; `{:array, :text}` and so on for an array of such values; or `:other`. |
 | `values` | For an enum and for an array of enum values, each value with its label, translated, in declared order; else `nil`. |
 | `editable?` | Whether this person can edit cells of the column at all. |
 
@@ -416,6 +416,13 @@ the cell.
   control holds one value, and an array is edited with the table's own
   editor, a multiple choice or a list of values. See
   [Inline editing](inline-editing.md#arrays).
+- **The editor of a value made of fields.** A column that is an embedded
+  resource or a map, or an array of either, can have a component, and its
+  `cell/1` shows the cells: `@value` is the value as the record holds it
+  (the struct of an embedded resource, a map, a list of them), and `@text`
+  the one line the table would show. Its `editor/1` is not used: the value
+  is edited in the side panel, with the table's own fields. See
+  [Maps and embedded resources](maps-and-embedded-resources.md#custom-components).
 
 ## Edge cases
 
@@ -432,7 +439,7 @@ the cell.
   the way from the minimum to the maximum. A whole number moves by one.
 - **An enum with a component that edits.** The editor's control holds the
   value's name (`"in_progress"`), and the labels are in `@column.values`.
-- **A column whose type the table shows as read-only text** (a UUID, a map)
+- **A column whose type the table shows as read-only text** (a UUID, a struct)
   is not made editable by a component: an editor is used only where the
   table would have one of its own.
 - **Translations.** `@text`, `@label`, `@column.label` and the labels in

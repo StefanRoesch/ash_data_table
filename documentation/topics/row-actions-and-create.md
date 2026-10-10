@@ -222,7 +222,8 @@ input's type, and one more:
 | array of text, numbers, booleans, dates or datetimes | A row per value, with the control of its type and a button that takes the value away, and the button "Add value" under them. |
 | The key of a public belongs-to relationship whose destination has a table | What the related record is called, as plain text, and a button "Choose" that opens the picker. See below. |
 | A value written as one line of text that has no editor of its own: a UUID, an `:atom` without `one_of`, a time, a duration | A plain text field. What is typed is given to the action as it is, and Ash casts it. |
-| Anything else: a map, an embedded resource, a union, a binary, and an array of any of these or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
+| An embedded resource, a map that declares its fields, and an array of either | A group of the value's fields under the input's label, each with the control of its own type; for an array, a group per value. See [Maps and embedded resources](maps-and-embedded-resources.md#in-the-action-panel). |
+| Anything else: a map that declares no fields, a union, a binary, and an array of any of these or of values written as one line of text | No field. See [Inputs the panel has no field for](#inputs-the-panel-has-no-field-for). |
 
 **The field of a key.** An input that points at another resource, such as
 `assignee_id` or `project_id`, is the foreign key of a relationship. Where
@@ -293,13 +294,14 @@ The browser's own `required` is not used. A field that is left empty is not
 stopped by the browser; the action says "is required", and the message is
 shown at the field like every other message of the action.
 
-**Try it:** `/tasks` as Ada Admin, "New task". Thirteen fields: "Title \*",
+**Try it:** `/tasks` as Ada Admin, "New task". Fourteen fields: "Title \*",
 "Description", "State \*" starting with "To do", "Priority \*" with
 "Medium", "Progress \*", a slider at 0, "Estimate hours", the checkbox "Billable?",
 "Due on", "External ref", "Project \*" and "Assignee", each with the button
 "Choose", and the two
 arrays: "Tags", with the button "Add value" and no values yet, and "Checks",
-four boxes. The create action accepts exactly these:
+four boxes; and "Repeats", a map, whose group has the button "Add value"
+until the value is added. The create action accepts exactly these:
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -319,7 +321,8 @@ create :create do
     :project_id,
     :assignee_id,
     :tags,
-    :checks
+    :checks,
+    :recurrence
   ]
 
   change relate_actor(:reporter)
@@ -376,6 +379,9 @@ no validation of its own.
   was typed. Nothing was changed. Put right, the action runs.
 - **An error at a field** is under the field, which is marked
   (`aria-invalid`) and described by it (`aria-describedby`).
+- **An error about a field of a value made of fields** (an embedded
+  resource, a map) is at that field, inside the value's group. See
+  [Maps and embedded resources](maps-and-embedded-resources.md#when-a-save-fails).
 - **An error about no field of the panel** is above the fields, as an
   alert. That is an error the action attached to no field, an error about a
   field that is no input of the panel, and a refusal.

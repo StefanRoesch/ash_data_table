@@ -367,6 +367,16 @@ it), manage a relationship through actions of the related resource, or call
 anything from a change. A table that named such an update action runs it as
 it is.
 
+The actions of an embedded resource are of this kind. Ash runs them while
+it casts the value of an attribute the action accepts: the create, update
+and destroy actions the attribute's constraints name, else the embedded
+resource's primary ones. It runs them whichever interface gave the value,
+does not ask whether they are `public?`, and neither do `ash_json_api` and
+`ash_graphql`. A table does not name them and does not check them. They
+are authorized as the action around them is, with the same actor: an
+embedded resource's own policies apply. See
+[Maps and embedded resources](maps-and-embedded-resources.md#what-ash-does-with-the-value).
+
 Code of the resource is not looked into either: a calculation computed in
 Elixir may load what it likes, and a manual relationship fetches as its
 module says.

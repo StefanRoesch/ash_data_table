@@ -105,6 +105,9 @@ defmodule AshTable.Text do
           | :choose_none
           | :choose_for
           | :required
+          | :field_value
+          | :save
+          | :remove_group
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -344,4 +347,13 @@ defmodule AshTable.Text do
   # said, to a screen reader, of a field of the action panel that has no
   # control to say it of
   defp msgid(:required), do: dgettext_noop("ash_table", "required")
+
+  # one field of a value that is made of fields (an embedded resource, a
+  # map), as its cell shows it: what the field is called, and its value
+  defp msgid(:field_value), do: dgettext_noop("ash_table", "%{field}: %{value}")
+  # the button of the panel in which such a cell is edited
+  defp msgid(:save), do: dgettext_noop("ash_table", "Save")
+  # in that panel, and in the action panel: what the button is called that
+  # takes such a value away, where it is not one of a list
+  defp msgid(:remove_group), do: dgettext_noop("ash_table", "Remove %{column}")
 end

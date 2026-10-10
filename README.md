@@ -19,7 +19,9 @@ no HEEx.
 > the selected rows at once. A column can name a component of its own for
 > how its cells look and what they are edited with; a badge, a progress bar
 > and a slider are shipped. A cell that shows a related record is edited by
-> choosing another one from the related resource's own table.
+> choosing another one from the related resource's own table. An embedded
+> resource and a map are shown on one line and edited in the side panel,
+> field by field.
 
 - [Install](#install)
 - [A first table](#a-first-table)
@@ -55,6 +57,7 @@ examples from the demo app and each topic's edge cases.
 - [Inline editing](documentation/topics/inline-editing.md)
 - [Confirm](documentation/topics/confirm.md)
 - [Choosing a related record](documentation/topics/choosing-a-related-record.md)
+- [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md)
 - [Row actions and create](documentation/topics/row-actions-and-create.md)
 - [Selecting rows and bulk actions](documentation/topics/selecting-rows-and-bulk-actions.md)
 - [Nested tables](documentation/topics/nested-tables.md)
@@ -304,8 +307,9 @@ field that can be nil, and never for a boolean or an enum column.
 
 A column has no filter when
 
-- its type is shown as read-only text (maps, embedded resources, uuids,
-  times and so on);
+- its type is shown as read-only text (uuids, times and so on);
+- it is an embedded resource or a map: Ash's interface extensions filter by
+  neither, and neither is one sorted by;
 - it is an array: Ash's interface extensions filter by none, and neither is
   an array sorted by;
 - the resource declares the field `filterable?: false`; with
@@ -427,8 +431,9 @@ table is read-only.
   | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice of the values, and of none when the attribute can be nil |
   | an array of enum values | multiple choice: a list of boxes in the cell, one per value |
   | an array of any other type above | one control per value, with a button that takes the value away and one that adds a value |
+  | an embedded resource, a map that declares its fields, and an array of either | not in the cell: the side panel, with a field for every field of the value (see below) |
 
-  Everything else (maps, embedded resources, uuids, times and so on, and
+  Everything else (maps without fields, unions, uuids, times and so on, and
   arrays of those) is read-only. A NewType is edited as the type it is made
   of. An array is shown as its values, as plain text separated by commas,
   and saved as a whole: on Enter or on leaving its editor, with the values
@@ -501,6 +506,39 @@ run. The refusal on the cell is for an action that depends on the record.
 **Confirm.** A column with `confirm` asks its question in a dialog at the
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
 returns to the cell, still in edit mode with what was typed.
+
+**Maps and embedded resources.** A value made of fields is shown on one
+line, as plain text: `Name: Lumen, Key account?: No, Address: Street: Ring
+3, City: Bonn`. Each field is called by its name in words, as a column of
+that name would be, and shown as a cell of its type shows it; a field that
+holds nothing is left out; the values of an array have `; ` between them.
+Of an embedded resource the fields are its public attributes; of a map,
+the fields it declares (`fields`), or whatever it holds when it declares
+none.
+
+Enter, F2 or a double click on such a cell opens the side panel, headed by
+the column and the record, with the value as a group of its fields: each
+with the control of its type, a value inside the value as a group in the
+group, and an array as one group per value, with a button that takes a
+value away and one that adds a value. "Save" runs the column's update
+action with the attribute as its one input, given as a map of its fields;
+a panel that holds what the record holds saves nothing. What the action
+says about a field is shown at that field, and the panel stays open.
+
+- A value that may be empty is taken away with the button beside its
+  label, and one that is not there is added with "Add value". A group that
+  is there is a value, empty fields included: nothing is guessed.
+- It is editable when the column's action accepts the attribute and a
+  person can give every field of it: every field has a control, a map
+  declares its fields, and an embedded resource's create and update
+  actions accept the same public attributes. Otherwise the cell is
+  read-only, as a map without fields always is.
+- Ash casts the value through the embedded resource's own actions (create,
+  update on a matching primary key, destroy), as for every interface. A
+  table does not name them and does not check whether they are `public?`.
+- It is neither sorted nor filtered by.
+
+See [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md).
 
 ## Choosing a related record
 
@@ -611,8 +649,12 @@ end
 - **An array** is a field too: multiple choice for enum values, and a row
   per value for text, numbers, booleans, dates and datetimes. It gives the
   action a list, which is empty when there are no values.
-- **Inputs without a field** (maps, embedded resources, unions, and arrays
-  of them): an
+- **An embedded resource or a map that declares its fields** is a group of
+  its fields under the input's label, and an array of either a group per
+  value: "New project" in the demo gives the client, its address and the
+  milestones. See [Maps and embedded resources](documentation/topics/maps-and-embedded-resources.md#in-the-action-panel).
+- **Inputs without a field** (maps without fields, unions, and arrays of
+  them): an
   optional one is left out of the panel; an action that requires one cannot
   be run from a table, which the compiler reports.
 - **Errors.** The action's messages are shown at their fields as the person
@@ -898,6 +940,11 @@ and refused when it is built, over a private
 - update, destroy or create action that the block names;
 - primary read action, where the table changes records: Ash loads what a
   create, an update or a destroy action returns through it.
+
+Not checked is what a public action does while it runs. The actions of an
+embedded resource are of that kind: Ash runs them while it casts the value
+of an attribute the action accepts, whichever interface gave the value, and
+does not ask whether they are `public?`.
 
 A relationship of the default set that leads to a private read action is
 quietly not offered. Make the action public, name a public one, or do not

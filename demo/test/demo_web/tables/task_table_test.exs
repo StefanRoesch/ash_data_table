@@ -52,6 +52,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
                "Description",
                "Tags",
                "Checks",
+               "Repeats",
                "Inserted at",
                "Project",
                "Assignee",

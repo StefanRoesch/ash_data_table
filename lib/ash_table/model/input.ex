@@ -12,7 +12,9 @@ defmodule AshTable.Model.Input do
   #     what the field's value is written with (`AshTable.Format.input/2`).
   #   * `editor` is the control of the field: that of a cell of its type
   #     (`:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`, and
-  #     `:choices` or `:list` for an array), or
+  #     `:choices` or `:list` for an array, `:group` for a map cell and
+  #     `:groups` for an array of them, whose `fields` are then those of
+  #     the value: see `AshTable.Model.Field`), or
   #     `:plain` for a value that is written as one line of text and has no
   #     editor of its own (a key, a time, an atom), or `:component` for an
   #     attribute whose column in this table has a component with an editor:
@@ -45,6 +47,7 @@ defmodule AshTable.Model.Input do
     :type,
     :cell_type,
     :values,
+    :fields,
     :editor,
     :component,
     :reference,
@@ -60,6 +63,7 @@ defmodule AshTable.Model.Input do
           type: {Ash.Type.t(), keyword},
           cell_type: AshTable.Model.CellType.t(),
           values: AshTable.Model.CellType.values() | nil,
+          fields: [AshTable.Model.Field.t()] | nil,
           editor: AshTable.Resource.Editing.editor() | :plain | :component | :reference,
           component: map | nil,
           reference:

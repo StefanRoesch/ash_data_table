@@ -173,8 +173,8 @@ resource is written in full: the alias of the surrounding `scope` is not
 applied to it.
 
 Open `/projects` in the demo as Ada Admin. The page shows the columns ID,
-Name, Description, Status, Starts on, Budget and Inserted at, ten projects to
-a page, sorted by name. A click on a column's heading sorts, the row under
+Name, Description, Status, Starts on, Budget, Client, Milestones and
+Inserted at, ten projects to a page, sorted by name. A click on a column's heading sorts, the row under
 the headings filters, and the arrow keys move from cell to cell. The page size and
 the order are not the table's: they are the `default_limit` and the sort of
 the primary read action.

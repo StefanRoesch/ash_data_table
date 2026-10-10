@@ -31,6 +31,8 @@ defmodule DemoWeb.Tables.ProjectTableTest do
              "Status",
              "Starts on",
              "Budget",
+             "Client",
+             "Milestones",
              "Inserted at"
            ]
   end

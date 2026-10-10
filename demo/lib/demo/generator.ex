@@ -37,7 +37,8 @@ defmodule Demo.Generator do
 
   alias Demo.Actors
   alias Demo.KitchenSink.{Address, Dimensions, Specimen}
-  alias Demo.Tracker.{Comment, Label, Organization, Project, Task, TaskLabel, User}
+  alias Demo.Tracker.{Client, Comment, Label, Milestone, Organization, Project, Task, TaskLabel}
+  alias Demo.Tracker.User
 
   @default_seed 42
   @state {__MODULE__, :random_state}
@@ -97,6 +98,9 @@ defmodule Demo.Generator do
   @label_names ~w(bug feature chore docs design ops security question)
   @tags ~w(frontend backend api database mobile customer quick-win needs-design)
   @checks [:reviewed, :tested, :documented, :released]
+  @clients ["Nordwind GmbH", "Hafen & Söhne", "Atelier Blau", "Kontor 12", "Werkbank AG", "Lumen"]
+  @cities ~w(Berlin Hamburg München Köln Leipzig)
+  @milestones ["Kick-off", "Concept signed off", "First release", "Handover", "Review"]
   @colours ~w(#ef4444 #f97316 #eab308 #22c55e #14b8a6 #3b82f6 #8b5cf6 #64748b)
   @project_names [
     "Website relaunch",
@@ -203,11 +207,16 @@ defmodule Demo.Generator do
     seed_generator(fn _uses -> struct!(build.(), drawn(overrides)) end, uses: %{})
   end
 
+  # A value that is a function is given the values before it, and draws
+  # nothing: a field that follows from another one of its record.
   defp drawn(values) do
-    Enum.map(values, fn
-      {name, %StreamData{} = generator} -> {name, Enum.at(generator, 0)}
-      pair -> pair
+    values
+    |> Enum.reduce([], fn
+      {name, %StreamData{} = generator}, drawn -> [{name, Enum.at(generator, 0)} | drawn]
+      {name, from}, drawn when is_function(from, 1) -> [{name, from.(drawn)} | drawn]
+      pair, drawn -> [pair | drawn]
     end)
+    |> Enum.reverse()
   end
 
   ## Tracker
@@ -247,9 +256,89 @@ defmodule Demo.Generator do
       inserted_at: rnd(fn -> past(60, 365) end),
       updated_at: rnd(fn -> past(0, 60) end),
       budget: rnd(fn -> maybe(0.7, fn -> Decimal.new(int(200) * 500) end) end),
-      starts_on: rnd(fn -> maybe(0.85, fn -> Date.add(today(), -int(400)) end) end)
+      starts_on: rnd(fn -> maybe(0.85, fn -> Date.add(today(), -int(400)) end) end),
+      # both follow from the project's id, and draw nothing
+      client: &client(&1[:id]),
+      milestones: &milestones(&1[:id])
     )
   end
+
+  # Who a project is for, or nobody: by the project's id and by nothing
+  # else, as `derived/4` does it for a list.
+  defp client(id) do
+    if chance(id, :client, 70) do
+      name = of(id, :client_name, @clients)
+
+      %Client{
+        name: name,
+        email:
+          if(chance(id, :client_email, 75),
+            do: "office@" <> mailbox(name) <> ".test"
+          ),
+        key_account?: chance(id, :client_key_account, 30),
+        address:
+          if chance(id, :client_address, 60) do
+            %Demo.Tracker.Address{
+              street:
+                "#{of(id, :client_street, @last_names)}weg #{1 + number(id, :client_no, 80)}",
+              city: of(id, :client_city, @cities),
+              postcode:
+                if(chance(id, :client_postcode, 80),
+                  do: "#{10_000 + number(id, :client_postcode, 89_999)}"
+                )
+            }
+          end
+      }
+    end
+  end
+
+  # A name as the part of an address: its letters and digits, an umlaut as
+  # its vowel.
+  defp mailbox(name) do
+    name
+    |> String.normalize(:nfd)
+    |> String.replace(~r/[^A-Za-z0-9]+/, "")
+    |> String.downcase()
+  end
+
+  # The milestones of a project: between none and three, by its id.
+  defp milestones(id) do
+    for {title, index} <- Enum.with_index(derived(id, :milestones, @milestones, [0, 1, 2, 2, 3])) do
+      <<a::48, _::4, b::12, _::2, c::62>> = :crypto.hash(:md5, "#{id}/milestone/#{index}")
+
+      %Milestone{
+        id: Ecto.UUID.cast!(<<a::48, 4::4, b::12, 2::2, c::62>>),
+        title: title,
+        due_on:
+          if(chance(id, {:milestone_due, index}, 80),
+            do: Date.add(today(), 30 * index + number(id, {:milestone_due, index}, 60) - 30)
+          ),
+        reached?: index == 0 and chance(id, :milestone_reached, 60)
+      }
+    end
+  end
+
+  # How often a task comes round again, for about one task in five: by its
+  # id.
+  defp recurrence(id) do
+    if chance(id, :recurrence, 20) do
+      %{
+        every: 1 + number(id, :recurrence_every, 4),
+        unit: of(id, :recurrence_unit, [:day, :week, :week, :month]),
+        until:
+          if(chance(id, :recurrence_until, 50),
+            do: Date.add(today(), 30 + number(id, :recurrence_until, 300))
+          )
+      }
+    end
+  end
+
+  # What follows from a record's id for one of its fields, without a draw:
+  # a number below `below`, one of `values`, and yes in `percent` of a
+  # hundred cases.
+  defp number(id, field, below), do: :erlang.phash2({id, field}, below)
+  defp of(id, field, values), do: Enum.at(values, number(id, {field, :of}, length(values)))
+  defp chance(id, field, percent), do: number(id, {field, :chance}, 100) < percent
 
   @doc """
   A task. Needs `organization_id:`, `project_id:` and `reporter_id:`;
@@ -268,6 +357,7 @@ defmodule Demo.Generator do
         id: id,
         tags: derived(id, :tags, @tags, [0, 0, 1, 1, 2, 3]),
         checks: derived(id, :checks, @checks, [0, 0, 0, 1, 2, 3]),
+        recurrence: recurrence(id),
         title: title(),
         description: maybe(0.7, &paragraph/0),
         status: shape.status,

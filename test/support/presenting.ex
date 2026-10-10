@@ -151,3 +151,40 @@ defmodule AshTable.Test.Presenting.Lists do
     action :update
   end
 end
+
+defmodule AshTable.Test.Presenting.Maps do
+  @moduledoc "A value made of fields, and an array of them, whose columns have a component."
+  use Ash.Resource,
+    domain: AshTable.Test.Domain,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshTable.Resource]
+
+  attributes do
+    uuid_primary_key :id
+    attribute :place, AshTable.Test.Embedding.Place, public?: true
+    attribute :places, {:array, AshTable.Test.Embedding.Place}, public?: true
+  end
+
+  actions do
+    defaults [:read]
+
+    update :update do
+      require_atomic? false
+      accept [:place, :places]
+    end
+  end
+
+  table do
+    update_action :update
+
+    column :place do
+      component AshTable.Test.Cells.Both
+    end
+
+    column :places do
+      component AshTable.Test.Cells.Both
+    end
+
+    action :update
+  end
+end

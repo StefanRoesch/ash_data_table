@@ -14,8 +14,9 @@ defmodule AshTable.Component.Column do
       them: `[min: 0, max: 100]` for a bounded number, `[max_length: 40]`
       for a string, `[one_of: [...]]` for an atom. Empty for an aggregate.
     * `cell_type` - what the table shows the field as: `:text`, `:number`,
-      `:boolean`, `:date`, `:datetime`, `:enum`; `{:array, item}` for an
-      array of values of one of those, as `{:array, :text}`; or `:other`
+      `:boolean`, `:date`, `:datetime`, `:enum`; `:map` for a value made of
+      fields (an embedded resource, a map); `{:array, item}` for an array
+      of values of one of those, as `{:array, :text}`; or `:other`
       for everything a table has no cell of its own for.
     * `values` - for an `:enum` and for an array of enum values, each value
       with its label, in declared order and in the language of the person
@@ -39,7 +40,8 @@ defmodule AshTable.Component.Column do
             | :date
             | :datetime
             | :enum
-            | {:array, :text | :number | :boolean | :date | :datetime | :enum}
+            | :map
+            | {:array, :text | :number | :boolean | :date | :datetime | :enum | :map}
             | :other,
           values: [{atom | String.t(), String.t()}] | nil,
           editable?: boolean

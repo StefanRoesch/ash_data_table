@@ -103,7 +103,9 @@ defmodule DemoWeb.Tables.TaskCreateTest do
                  # arrays: value by value, and multiple choice. Both start
                  # with the attribute's default, which is no values
                  {"tags", "Tags", "list", [], false},
-                 {"checks", "Checks", "choices", [], false}
+                 {"checks", "Checks", "choices", [], false},
+                 # a map that declares its fields: a group, not there until it is added
+                 {"recurrence", "Repeats", "group", false, false}
                ]
 
       assert length(stored(world)) == 2

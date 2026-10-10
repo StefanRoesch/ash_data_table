@@ -77,7 +77,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
       # the boxes, the expanders, the nineteen columns of the table, the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["22"]
+      assert attribute(html, "#task-table", "aria-colcount") == ["23"]
       assert attribute(html, "#task-table", "aria-multiselectable") == ["true"]
       assert attribute(html, "#task-grid", "data-select") == ["multi"]
       assert attribute(html, "#task-grid", "data-lead") == ["2"]
@@ -108,7 +108,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["2"]
       assert attribute(html, "#task-expander-head", "aria-colindex") == ["2"]
       assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["3"]
-      assert attribute(html, actions_cell(task.id), "aria-colindex") == ["22"]
+      assert attribute(html, actions_cell(task.id), "aria-colindex") == ["23"]
     end
 
     test "say nothing about which rows are selected: that is the hook's, and no row is sent again for it",
@@ -137,7 +137,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "#task-grid", "data-select") == []
       assert selection(html) == nil
       # the expanders and the sixteen columns a viewer has, as before
-      assert attribute(html, "#task-table", "aria-colcount") == ["17"]
+      assert attribute(html, "#task-table", "aria-colcount") == ["18"]
       assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["1"]
     end
   end

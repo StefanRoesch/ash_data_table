@@ -23,6 +23,7 @@ defmodule AshTable.Resource.Acting do
           cell_type: CellType.t(),
           values: CellType.values() | nil,
           editor: Editing.editor() | :plain | nil,
+          fields: [AshTable.Model.Field.t()] | nil,
           required?: boolean,
           default: term
         }
@@ -84,7 +85,7 @@ defmodule AshTable.Resource.Acting do
       for name <- Map.get(action, :accept) || [],
           attribute = Info.attribute(resource, name),
           attribute.public? do
-        input(:attribute, attribute, required_attribute?(action, attribute))
+        input(:attribute, attribute, required?(action, attribute))
       end
 
     arguments =
@@ -95,9 +96,12 @@ defmodule AshTable.Resource.Acting do
     attributes ++ arguments
   end
 
-  # Whether the action takes the attribute empty. A create action fills in a
-  # default that is computed, so nothing has to be given for it.
-  defp required_attribute?(action, attribute) do
+  @doc """
+  Whether the action takes the attribute empty. A create action fills in a
+  default that is computed, so nothing has to be given for it.
+  """
+  @spec required?(struct, Ash.Resource.Attribute.t()) :: boolean
+  def required?(action, attribute) do
     name = attribute.name
 
     name in (Map.get(action, :require_attributes) || []) or
@@ -117,22 +121,38 @@ defmodule AshTable.Resource.Acting do
       type: {type, constraints},
       cell_type: cell_type,
       values: values,
-      editor: editor(cell_type, type, constraints),
+      editor: control(cell_type, type, constraints),
+      fields: fields(cell_type, type, constraints),
       required?: required?,
       default: if(computed?(field), do: nil, else: field.default)
     }
   end
 
-  # The control of a cell of that type, or a plain field for a value that
-  # is written as one line of text. Nothing for the rest: maps, embedded
-  # resources and so on, and the arrays of anything without a cell type.
-  defp editor(:other, {:array, _type}, _constraints), do: nil
+  @doc """
+  The control a table has for a value of a type, where a person gives one
+  in a form: that of a cell of that type (a group of fields for a map cell),
+  or a plain field for a value that is written as one line of text. Nil for
+  the rest: unions and so on, the arrays of anything without a cell type,
+  and a map cell with an input a person cannot give.
+  """
+  @spec control(CellType.t(), Ash.Type.t(), keyword) :: Editing.editor() | :plain | nil
+  def control(:other, {:array, _type}, _constraints), do: nil
 
-  defp editor(:other, type, constraints) do
+  def control(:other, type, constraints) do
     if Ash.Type.storage_type(type, constraints) in @plain, do: :plain
   end
 
-  defp editor(cell_type, _type, _constraints), do: Editing.editor(cell_type)
+  def control(cell_type, type, constraints), do: Editing.editor(cell_type, type, constraints)
+
+  # The fields of an input that is a map cell, or an array of them.
+  defp fields(cell_type, type, constraints) when cell_type in [:map, {:array, :map}] do
+    case AshTable.Resource.Embedding.of(type, constraints) do
+      %{fields: fields} -> fields
+      nil -> nil
+    end
+  end
+
+  defp fields(_cell_type, _type, _constraints), do: nil
 
   @doc """
   The required inputs of an action that a table has no field for. An action
@@ -282,7 +302,8 @@ defmodule AshTable.Resource.Acting do
       "The #{what} action `#{name}` cannot be run from a table: its input `#{input}` is " <>
         "required, and a table has no field for its type (#{inspect(type)}). The action panel " <>
         "has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, " <>
-        "and for values written as one line of text, such as a key."
+        "values written as one line of text, such as a key, and for embedded resources and " <>
+        "maps whose every field is one of these."
 
   def message({:result_read_not_public, name}),
     do:

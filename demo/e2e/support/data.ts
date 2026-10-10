@@ -88,3 +88,33 @@ export const SEED = {
     membersOwn: "bc362be6-fa62-4282-83de-ca8676131bb4",
   },
 } as const
+
+/**
+ * The values made of fields in the standard seed (maps.spec.ts): what the
+ * cells of a few projects and tasks show. A project's client and its
+ * milestones follow from its id, and a task's recurrence from the task's,
+ * so they are the same in every seed; no date of them is named.
+ */
+export const MAPS = {
+  project: {
+    /** a client with an address; no milestone */
+    customerPortal: {
+      id: "0c70bdb6-7e47-41e2-be1e-985629d47bbb",
+      client:
+        "Name: Hafen & Söhne, Email: office@hafensohne.test, Key account?: Yes, Address: Street: Ernstweg 48, City: München, Postcode: 60948",
+    },
+    /** no client; two milestones, "First release" and "Review" */
+    dataWarehouse: "f1892901-0837-4a04-9104-34fd12a9bb05",
+    /** a client without an address; three milestones */
+    internalTools: {
+      id: "4b870188-0603-4a3d-9f75-d6610a951637",
+      client: "Name: Nordwind GmbH, Email: office@nordwindgmbh.test, Key account?: No",
+    },
+  },
+  task: {
+    /** the second row of /tasks: comes round every four weeks, with no end */
+    weekly: { id: SEED.task.second, recurrence: "Every: 4, Unit: Week" },
+    /** the first row: does not come round */
+    once: SEED.task.first,
+  },
+} as const

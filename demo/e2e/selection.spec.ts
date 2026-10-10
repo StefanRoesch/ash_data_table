@@ -54,7 +54,7 @@ test.describe("the boxes", () => {
     tasks,
   }) => {
     // the boxes, the expanders, the nineteen columns of the table, the actions
-    await expect(tasks.grid).toHaveAttribute("aria-colcount", "22")
+    await expect(tasks.grid).toHaveAttribute("aria-colcount", "23")
     await expect(tasks.grid).toHaveAttribute("aria-multiselectable", "true")
     await expect(tasks.headerCells.first()).toHaveId("task-select-head")
     await expect(tasks.pageBoxCell).toHaveRole("columnheader")

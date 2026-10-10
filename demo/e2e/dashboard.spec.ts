@@ -54,11 +54,13 @@ test.describe("the page", () => {
       "Status",
       "Starts on",
       "Budget",
+      "Client",
+      "Milestones",
       "Inserted at",
     ])
     await expect(projects.rows).toHaveCount(SEED.projects.acme)
     await expect(projects.range).toHaveText("1–6 of 6")
-    await expect(tasks.headers).toHaveCount(19)
+    await expect(tasks.headers).toHaveCount(20)
     await expect(tasks.rows).toHaveCount(25)
     await expect(tasks.range).toHaveText(`1–25 of ${SEED.tasks.acme}`)
     expect((await tasks.rowKeys()).slice(0, 2)).toEqual([FIRST, SECOND])
@@ -276,10 +278,10 @@ test.describe("editing", () => {
   test("each table has the editors of its own resource, and one whose resource names no update action has none", async ({
     frames,
   }) => {
-    // two of them are reference cells, edited in the picker
-    await expect(tasks.editorTemplates).toHaveCount(13)
-    // name, description, status, starts on and budget: what the projects' `update` accepts
-    await expect(projects.editorTemplates).toHaveCount(5)
+    // two of them are reference cells, edited in the picker, and one a map, edited in the side panel
+    await expect(tasks.editorTemplates).toHaveCount(14)
+    // name, description, status, starts on, budget, client and milestones: what the projects' `update` accepts
+    await expect(projects.editorTemplates).toHaveCount(7)
 
     // The people's table names no update action. It has no page; under a
     // task it is the one row of "Reported by".
@@ -423,7 +425,7 @@ test.describe("as another actor", () => {
 
     test("each table is this person's: the tasks without the column they may never see", async () => {
       expect(await tasks.columns()).not.toContain("external_ref")
-      await expect(tasks.headers).toHaveCount(18)
+      await expect(tasks.headers).toHaveCount(19)
       await expect(tasks.cell(FIRST, "estimate_hours")).toHaveText("Not available")
       await expect(projects.rows).toHaveCount(SEED.projects.acme)
     })

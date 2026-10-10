@@ -117,7 +117,68 @@ defmodule AshTable.Errors do
       for {field, {message, vars}} <- at_fields(form),
           do: at_field(model, cell, field, {message, vars})
 
-    Enum.uniq(at_fields ++ without_fields(form, refusal))
+    nested =
+      for {path, field, error} <- nested(form),
+          text = nested_text(model, path, field, error),
+          do: text
+
+    Enum.uniq(at_fields ++ nested ++ without_fields(form, refusal))
+  end
+
+  @doc """
+  The errors of a form that are about a field of a value inside the record:
+  of an embedded resource or a map, or of one of an array of them. Each
+  with the way to that value (the record's attribute first, then the place
+  of a value in an array, counted from 0, and the fields on the way), the
+  field, and the message with its variables.
+
+  Ash says the way as the error's path. A form puts such an error nowhere:
+  the table gives the action the value as a map, and has no form nested in
+  the action's for it. They are read from the form's raw errors, through
+  the protocol the form itself reads an error with.
+  """
+  @spec nested(AshPhoenix.Form.t()) :: [{[atom | non_neg_integer], atom, {String.t(), keyword}}]
+  def nested(form) do
+    for %{class: :invalid, path: [name | _rest] = path} = error <-
+          AshPhoenix.Form.raw_errors(form),
+        is_atom(name),
+        about_field?(error),
+        AshPhoenix.FormData.Error.impl_for(error),
+        {field, message, vars} <- List.wrap(AshPhoenix.FormData.Error.to_form_error(error)),
+        is_binary(message),
+        do: {path, field, {message, Keyword.new(vars)}}
+  end
+
+  @doc """
+  The text of such an error where it is not shown at its field: the message
+  after what the value and the field are called, from the outside in
+  ("Client: Street: is required").
+
+  Only for a value the person has a column for, which is called what its
+  column is. Nil for any other: a path leads into whatever is nested in the
+  record, a related record among it, whose field may be called what a
+  column of this table is, and is not that column.
+  """
+  @spec nested_text(Model.t(), [atom | non_neg_integer], atom, {String.t(), keyword}) ::
+          String.t() | nil
+  def nested_text(%Model{} = model, [name | rest], field, {_message, _vars} = error) do
+    with %{label: label, cell_type: cell_type} when cell_type in [:map, {:array, :map}] <-
+           Enum.find(model.columns, &(&1.name == name)) do
+      labels =
+        Enum.reduce(rest ++ [field], [label], fn
+          index, [label | labels] when is_integer(index) ->
+            [Text.t(:value_position, column: label, position: index + 1) | labels]
+
+          name, labels ->
+            [Text.label(Model.humanize(name)) | labels]
+        end)
+
+      Enum.reduce(labels, Text.error(error), fn label, message ->
+        Text.t(:error_on_field, field: label, message: message)
+      end)
+    else
+      _no_such_column -> nil
+    end
   end
 
   @doc """
@@ -229,6 +290,15 @@ defmodule AshTable.Errors do
     cond do
       not about_field?(error) ->
         List.wrap(without_field(error))
+
+      # about a field of a value inside the record, which has only the name
+      # in common with a field of the record
+      match?(%{path: [name | _]} when is_atom(name), error) and
+          not is_nil(AshPhoenix.FormData.Error.impl_for(error)) ->
+        for {field, message, vars} <- List.wrap(AshPhoenix.FormData.Error.to_form_error(error)),
+            is_binary(message),
+            text = nested_text(model, error.path, field, {message, Keyword.new(vars)}),
+            do: text
 
       AshPhoenix.FormData.Error.impl_for(error) ->
         for {field, message, vars} <- List.wrap(AshPhoenix.FormData.Error.to_form_error(error)),

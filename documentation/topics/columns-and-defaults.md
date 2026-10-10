@@ -40,7 +40,7 @@ out declare its row actions and its create button (see
 table would have the same columns, and be read-only.
 
 **Try it:** `/projects` in the demo, as Ada Admin. The columns are ID, Name,
-Description, Status, Starts on, Budget and Inserted at.
+Description, Status, Starts on, Budget, Client, Milestones and Inserted at.
 
 ## The default set
 
@@ -62,7 +62,7 @@ set. All of the demo's tables but two are of this kind:
 
 | Demo page | Block | Columns |
 | --- | --- | --- |
-| `/projects` | `update_action :update`, `label_field :name`, two `action`s, `create_action` | ID, Name, Description, Status, Starts on, Budget, Inserted at |
+| `/projects` | `update_action :update`, `label_field :name`, two `action`s, `create_action` | ID, Name, Description, Status, Starts on, Budget, Client, Milestones, Inserted at |
 | `/labels` | `update_action :update`, `label_field :name`, one `action`, `create_action` | ID, Name, Colour |
 | `/comments` | `update_action :update`, `on_forbidden :message`, one `action`, `create_action` | ID, Body, Inserted at, Task ID, Author ID |
 | `/task_labels` | `update_action :update`, `max_depth 1`, one `action`, `create_action` | Note, Task ID, Label ID |
@@ -397,7 +397,7 @@ that a field policy never lets them see has no column in their table. See
 
 ## How each type is displayed
 
-The table sorts every Ash type into one of seven cell types. The cell type
+The table sorts every Ash type into one of eight cell types. The cell type
 decides how a value is shown, which filter the column gets and which editor.
 
 | Ash type | Cell type | Shown as |
@@ -408,7 +408,8 @@ decides how a value is shown, which filter the column gets and which editor.
 | `:date` | date | ISO 8601: `2026-10-06`. |
 | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime | To the second, without a zone: `2026-10-06T14:23:03`. The UTC types are shown in UTC. |
 | A module that uses `Ash.Type.Enum`; `:atom` with the constraint `one_of`; `:duration_name` | enum | The label of the value: what the enum's `label/1` returns, else the value in words (`:in_progress` becomes "In progress"). |
-| `{:array, type}` of one of the types above | array | The values as plain text, separated by a comma and a space, each as a cell of its type shows it: `api, mobile` for text, `Reviewed, Tested` for an enum, `Yes, No` for booleans. |
+| An embedded resource; `:map`, with the `fields` constraint or without | map | Its fields on one line, as plain text: `Name: Lumen, Key account?: No`. Each field is called by its name in words and shown as a cell of its type shows it. See [Maps and embedded resources](maps-and-embedded-resources.md). |
+| `{:array, type}` of one of the types above | array | The values as plain text, separated by a comma and a space, each as a cell of its type shows it: `api, mobile` for text, `Reviewed, Tested` for an enum, `Yes, No` for booleans. An array of embedded resources or maps has a semicolon between its values. |
 | Everything else | other | Read-only text. |
 
 Text, numbers, dates and datetimes are shown in the format the matching
@@ -430,12 +431,16 @@ A NewType counts as the type it is made of. The demo's
 
 ### Types shown as read-only text
 
-"Everything else" is: maps, keywords, tuples, structs, embedded resources,
-unions, UUIDs, times, durations, binaries, modules, ranges, terms, an
-`:atom` without `one_of`, and the arrays of all of these and of arrays. A
-column of such a type has no editor and no filter. Whether it can be sorted
-is still the resource's decision: a UUID column sorts, a map column does
-not.
+"Everything else" is: keywords, tuples, structs, unions, UUIDs, times,
+durations, binaries, modules, ranges, terms, an `:atom` without `one_of`,
+and the arrays of all of these and of arrays. A column of such a type has
+no editor and no filter. Whether it can be sorted is still the resource's
+decision: a UUID column sorts.
+
+An embedded resource and a map are not among them: they are shown field by
+field, and edited in the side panel where their fields are declared. See
+[Maps and embedded resources](maps-and-embedded-resources.md). They have no
+sort and no filter.
 
 An array of values that do have a cell type is not among them: it is shown
 as its values and can be edited, see

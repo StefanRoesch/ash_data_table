@@ -63,6 +63,20 @@ defmodule AshTable.Model do
   # control per value (`:list`). It is neither sorted nor filtered by: Ash
   # sorts by no array, and its interface extensions filter by none.
   #
+  # ## Map cells
+  #
+  # An embedded resource and a map have the cell type `:map`, and an array of
+  # either `{:array, :map}`: a value of named fields, shown as those fields
+  # on one line. The column carries the `fields`
+  # (`AshTable.Resource.Embedding`): the public attributes of an embedded
+  # resource, or the fields a map declares. It is edited in the side panel
+  # as a `:group` of its inputs (`:groups` for an array), where a person can
+  # give every one of them; a map that declares no fields is never edited.
+  # It is neither sorted nor filtered by: Ash refuses to sort by an embedded
+  # resource (`Ash.Query.sort_input/2`) and by a map
+  # (`Ash.Resource.Info.sortable?/3`), and its interface extensions filter
+  # by neither.
+  #
   # ## Components
   #
   # A column whose block names a `component` carries it: the module, which
@@ -113,8 +127,10 @@ defmodule AshTable.Model do
   #
   # Not looked at is what a public action does while it runs (the read
   # action an update is run over, `atomic_upgrade_with`; what a change
-  # calls), and what code of the resource does: a calculation computed in
-  # Elixir, a manual relationship.
+  # calls; the actions of an embedded resource, which Ash runs while it
+  # casts the value of an attribute the action accepts), and what code of
+  # the resource does: a calculation computed in Elixir, a manual
+  # relationship.
   #
   # ## Acting
   #
@@ -167,6 +183,7 @@ defmodule AshTable.Model do
   alias AshTable.Model.Relationship
   alias AshTable.Resource.Acting
   alias AshTable.Resource.Editing
+  alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Presenting
   alias AshTable.Resource.Reading
@@ -1151,8 +1168,10 @@ defmodule AshTable.Model do
   end
 
   # An attribute whose column has a component with an editor is given
-  # through that editor, in the panel as in a cell. An array never is.
+  # through that editor, in the panel as in a cell. An array never is, nor
+  # is a map cell.
   defp with_component(%Input{cell_type: {:array, _item}} = input, _columns), do: input
+  defp with_component(%Input{cell_type: :map} = input, _columns), do: input
 
   defp with_component(%Input{kind: :attribute, name: name} = input, columns) do
     case Enum.find(columns, &(&1.name == name and &1.kind == :attribute)) do
@@ -1276,7 +1295,8 @@ defmodule AshTable.Model do
     %Column{
       editable?: not is_nil(update_action),
       update_action: update_action,
-      editor: update_action && editor(cell_type, component),
+      editor: update_action && editor(cell_type, component, type, constraints),
+      fields: fields(cell_type, type, constraints),
       confirm: update_action && declared && declared.confirm,
       component: component,
       name: field.name,
@@ -1300,10 +1320,46 @@ defmodule AshTable.Model do
 
   # What an editable column is edited with: the editor of its component,
   # when that has one, else the editor of its cell type. An array is always
-  # edited with the table's own editor: that of a component holds one value.
-  defp editor({:array, _item} = cell_type, _component), do: Editing.editor(cell_type)
-  defp editor(_cell_type, %{editor?: true}), do: :component
-  defp editor(cell_type, _component), do: Editing.editor(cell_type)
+  # edited with the table's own editor, and so is a map cell: the editor of
+  # a component holds one value.
+  defp editor(cell_type, %{editor?: true}, _type, _constraints)
+       when cell_type != :map and not is_tuple(cell_type),
+       do: :component
+
+  defp editor(cell_type, _component, type, constraints),
+    do: Editing.editor(cell_type, type, constraints)
+
+  # The fields of a map cell, and of an array of them; nil for a map that
+  # declares none, and for every other cell type.
+  defp fields(cell_type, type, constraints) when cell_type in [:map, {:array, :map}] do
+    case Embedding.of(type, constraints) do
+      %{fields: fields} -> fields
+      nil -> nil
+    end
+  end
+
+  defp fields(_cell_type, _type, _constraints), do: nil
+
+  @doc """
+  The input a map cell of `column` is edited as, in the side panel: the
+  column's attribute as the one input of its update action, with the fields
+  of its value. It is required where the attribute cannot be empty.
+  """
+  @spec input(t, Column.t()) :: Input.t()
+  def input(%__MODULE__{resource: resource}, %Column{editor: editor} = column)
+      when editor in [:group, :groups] do
+    %Input{
+      name: column.name,
+      kind: :attribute,
+      label: column.label,
+      type: column.type,
+      cell_type: column.cell_type,
+      values: column.values,
+      fields: column.fields,
+      editor: editor,
+      required?: Info.attribute(resource, column.name).allow_nil? == false
+    }
+  end
 
   # The component of a column, as far as the block names one, with what it
   # is told about the column, which is all it is told.

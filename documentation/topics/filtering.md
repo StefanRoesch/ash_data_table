@@ -132,8 +132,12 @@ text whatever its case, make the attribute a `:ci_string`.
 
 A column has no filter, and an empty cell in the filter row, when
 
-- its cell type is "other": maps, embedded resources, UUIDs, times and the
-  rest of the types shown as read-only text;
+- its cell type is "other": UUIDs, times and the rest of the types shown
+  as read-only text;
+- it is an embedded resource or a map: Ash's interface extensions filter by
+  neither, and what Ash can compare inside one it compares without casting
+  what was typed. See
+  [Maps and embedded resources](maps-and-embedded-resources.md#sorting-and-filtering);
 - it is an array, whatever it holds: see
   [Why an array has no filter](#why-an-array-has-no-filter);
 - the resource declares the field `filterable?: false`;

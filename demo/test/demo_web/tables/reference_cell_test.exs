@@ -359,7 +359,7 @@ defmodule DemoWeb.Tables.ReferenceCellTest do
       for {actor, headers} <- [
             {world.admin, ["Inserted at", "Project", "Assignee", "Reported by"]},
             {world.member, ["Inserted at", "Project", "Assignee", "Reported by"]},
-            {world.viewer, ["Checks", "Inserted at", "Project"]}
+            {world.viewer, ["Repeats", "Inserted at", "Project"]}
           ] do
         {:ok, view, _html} = conn |> log_in(actor) |> live("/projects")
 

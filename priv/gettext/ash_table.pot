@@ -352,3 +352,15 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "required"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{field}: %{value}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Remove %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Save"
+msgstr ""

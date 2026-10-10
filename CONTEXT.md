@@ -23,6 +23,14 @@ _Avoid_: Quick edit, in-place form
 A cell whose value is a list of values of one type that the table has a cell for; shown as those values in plain text and edited as a whole.
 _Avoid_: List cell, tags, chips, multi-value cell
 
+**Map cell**:
+A cell whose value is made of named fields: an embedded resource or a map, or an array of either; shown as those fields on one line of plain text, and edited in the side panel where its fields are declared.
+_Avoid_: Object cell, JSON cell, nested record, sub-form
+
+**Group**:
+The fields of one map cell's value as the action panel shows them: under the value's label, each field with the control of its own type.
+_Avoid_: Fieldset, card, section, nested form
+
 **Multiple choice**:
 The editor of an array of enum values: one box per value of the enum, of which any number can be ticked.
 _Avoid_: Multi-select, checkbox group, tag picker

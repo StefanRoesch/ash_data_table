@@ -216,8 +216,11 @@ arguments.
     top of the panel. The field is called what the table's column of that
     relationship is called. A key whose destination has no table, or
     whose relationship has a `filter`, is a plain text field.
-  * A type with no field (a map, an embedded resource, a union, an array
-    of those) is left out of the panel when the input is optional. An action that
+  * An input that is an embedded resource or a map that declares its
+    fields, or an array of either, is a group of the value's fields under
+    the input's label, each with the control of its own type.
+  * A type with no field (a map that declares no fields, a union, an
+    array of those) is left out of the panel when the input is optional. An action that
     requires such an input cannot be run from a table: the compiler
     reports it, and the table has no button for it.
   * A field is marked as required as the action says: an attribute that is

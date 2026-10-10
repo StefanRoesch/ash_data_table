@@ -216,6 +216,43 @@ defmodule DemoWeb.TablePage do
   def cell(id \\ "task", key, field), do: "[id='#{id}-row-#{key}-c-#{field}']"
 
   @doc """
+  Opens the editor of a map cell (an embedded resource, a map, an array of
+  either) as the table's hook does when a person presses Enter or F2 on it,
+  or double-clicks it: one `edit` event with the row's key and the column.
+  Returns the page, with the side panel in it when the cell can be edited.
+
+      edit(view, "project", project.id, "client")
+  """
+  def edit(view, id \\ "task", key, field) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("edit", %{"row" => to_string(key), "column" => field})
+  end
+
+  @doc """
+  Uses the button of the open panel that adds a value to a field made of
+  groups, as the panel's hook does: one `panel_add` event with the way to
+  the field, as the names it is sent under. Returns the page.
+
+      add_group(view, "project", ["client"])
+      add_group(view, "project", ["milestones"])
+  """
+  def add_group(view, id \\ "task", path) do
+    view |> element("[id='#{id}-panel']") |> render_hook("panel_add", %{"path" => path})
+  end
+
+  @doc """
+  Uses the button that takes such a value away: one `panel_remove` event
+  with the way to the value. Returns the page.
+
+      remove_group(view, "project", ["client", "address"])
+      remove_group(view, "project", ["milestones", "0"])
+  """
+  def remove_group(view, id \\ "task", path) do
+    view |> element("[id='#{id}-panel']") |> render_hook("panel_remove", %{"path" => path})
+  end
+
+  @doc """
   Uses a button of a row's actions cell as the table's hook does, once the
   person has answered the question of an action that has one: one `act`
   event with the row's key and the action. Returns the page.
@@ -359,6 +396,12 @@ defmodule DemoWeb.TablePage do
   The field of the key of a related record is a `"reference"`: its value is
   the key it holds, and it says besides what the record is called
   (`chosen`, nil when it says nothing).
+
+  The field of a value made of fields is a `"group"`, whose value says
+  whether the value is there, and that of an array of them is `"groups"`,
+  whose value is how many there are. The fields in them follow, each named
+  by the way to it: `"client.name"`, `"client.address.city"`,
+  `"milestones.0.title"` (the number is the one the value is sent under).
   """
   def panel(html, id \\ "task") do
     case Enum.to_list(query(html, "[id='#{id}-panel']")) do
@@ -383,18 +426,17 @@ defmodule DemoWeb.TablePage do
 
             Map.merge(chosen, %{
               name: name,
+              # its own: a group holds the labels of its fields besides
               label:
                 field
                 |> LazyHTML.query("[data-label]")
-                |> LazyHTML.text()
+                |> Enum.take(1)
+                |> Enum.map_join(&LazyHTML.text/1)
                 |> String.trim(),
               control: control,
               value: value,
               required?: required?,
-              errors:
-                field
-                |> LazyHTML.query("[data-error]")
-                |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+              errors: own_errors(field)
             })
           end
 
@@ -414,6 +456,32 @@ defmodule DemoWeb.TablePage do
   # that it is required.
   defp field_control(field) do
     cond do
+      # a value made of fields: whether it is there. Its fields follow it,
+      # each a field of the panel, named by the way to it ("client.name").
+      (group = child(field, "data-group")) != nil ->
+        present? =
+          Enum.any?(
+            for {"div", _attributes, inner} <- elements(group),
+                {"input", attributes, _} <- inner,
+                do: String.ends_with?(:proplists.get_value("name", attributes, ""), "[_present]")
+          )
+
+        required? =
+          group
+          |> List.wrap()
+          |> LazyHTML.from_tree()
+          |> LazyHTML.query("[id$='-label'] > .sr-only")
+
+        {"group", present?, Enum.any?(Enum.take(required?, 1)) and required_first?(group)}
+
+      # an array of them: how many values it has ("milestones.0.title" is a
+      # field of the first)
+      (groups = child(field, "data-groups")) != nil ->
+        {"groups",
+         Enum.count(elements(groups), fn {_tag, attributes, _} ->
+           List.keymember?(attributes, "data-group-item", 0)
+         end), false}
+
       # the key of a related record: held by an input that is not shown,
       # beside what the record is called and the button that opens the picker
       Enum.any?(LazyHTML.query(field, "input[data-key]")) ->
@@ -444,6 +512,45 @@ defmodule DemoWeb.TablePage do
 
         {if(tag == "input", do: type, else: tag), control_value(control),
          :proplists.get_value("aria-required", attributes, nil) == "true"}
+    end
+  end
+
+  # The element directly inside a field that has the attribute, as a tree.
+  defp child(field, attribute) do
+    [{_tag, _attributes, children}] = LazyHTML.to_tree(field)
+
+    Enum.find(
+      children,
+      &(is_tuple(&1) and tuple_size(&1) == 3 and List.keymember?(elem(&1, 1), attribute, 0))
+    )
+  end
+
+  # The elements directly inside an element.
+  defp elements({_tag, _attributes, children}),
+    do: Enum.filter(children, &(is_tuple(&1) and tuple_size(&1) == 3))
+
+  # Whether a group's own label, the first thing in it, says "required".
+  defp required_first?(group) do
+    case elements(group) do
+      [{"div", _, _} = head | _] ->
+        head |> List.wrap() |> LazyHTML.from_tree() |> LazyHTML.query(".sr-only") |> Enum.any?()
+
+      _other ->
+        false
+    end
+  end
+
+  # The errors a field shows as its own: not those of the fields inside a
+  # group.
+  defp own_errors(field) do
+    holder =
+      child(field, "data-group") || child(field, "data-groups") || hd(LazyHTML.to_tree(field))
+
+    for {"div", attributes, _} = element <- elements(holder),
+        String.ends_with?(:proplists.get_value("id", attributes, ""), "-error"),
+        message <-
+          element |> List.wrap() |> LazyHTML.from_tree() |> LazyHTML.query("[data-error]") do
+      message |> LazyHTML.text() |> String.trim()
     end
   end
 

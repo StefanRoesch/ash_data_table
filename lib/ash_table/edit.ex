@@ -11,6 +11,7 @@ defmodule AshTable.Edit do
   # relationship's foreign key, and its value that of the record the person
   # chose, which is read first, as them (`AshTable.Pick`).
 
+  alias AshTable.Act
   alias AshTable.Errors
   alias AshTable.Format
   alias AshTable.Model
@@ -159,7 +160,7 @@ defmodule AshTable.Edit do
     record
     |> AshPhoenix.Form.for_update(
       column.update_action,
-      [as: "cell", warn_on_unhandled_errors?: false] ++ opts
+      [as: "cell", warn_on_unhandled_errors?: false, forms: [auto?: false]] ++ opts
     )
     |> AshPhoenix.Form.submit(params: %{key => value})
     |> case do
@@ -175,6 +176,86 @@ defmodule AshTable.Edit do
   end
 
   @doc """
+  Opens a map cell for editing: the record with the primary key `key` as it
+  was read for the person, and the form of the column's update action on
+  it, for the side panel. `id` is the id of the form.
+
+  `:hidden` when the value, or something in it, is not this person's to
+  see, and so not theirs to change; `:error` when the record can no longer
+  be read by them.
+  """
+  @spec open(Model.t(), Column.t(), map, String.t(), keyword) ::
+          {:ok, Ash.Resource.record(), AshPhoenix.Form.t()} | :hidden | :error
+  def open(%Model{} = model, %Column{editable?: true, editor: editor} = column, key, id, opts)
+      when editor in [:group, :groups] and is_map(key) do
+    opts = Query.reader_opts(opts)
+
+    with {:ok, record} <- Record.fetch(model, key, opts) do
+      if AshTable.Resource.Embedding.hidden?(Map.get(record, column.name)),
+        do: :hidden,
+        else: {:ok, record, form(record, column, id, opts)}
+    end
+  end
+
+  @doc """
+  Saves what the side panel's form sent for a map cell, as the value of
+  `column` on the record with the primary key `key`: the column's update
+  action, with the column's attribute as its one input, given as a map of
+  its fields (a list of them for an array). `input` is the column as the
+  panel's one input (`AshTable.Model.input/2`), and `id` the id of the form.
+
+  Returns `{:ok, record}` when it was saved, and when what was sent is what
+  the record holds, for which nothing is called; `{:error, form}`, the form
+  with the action's errors; and `{:error, nil, message}` when the record
+  can no longer be read by this person, or the value is not theirs to
+  change.
+  """
+  @spec put(Model.t(), Column.t(), Model.Input.t(), map, map, String.t(), keyword) ::
+          {:ok, Ash.Resource.record()}
+          | {:error, AshPhoenix.Form.t()}
+          | {:error, nil, String.t()}
+  def put(%Model{} = model, %Column{editable?: true} = column, input, key, params, id, opts)
+      when is_map(key) and is_map(params) do
+    opts = Query.reader_opts(opts)
+    name = Atom.to_string(column.name)
+
+    case Record.fetch(model, key, opts) do
+      {:ok, record} ->
+        value = Map.get(record, column.name)
+
+        cond do
+          AshTable.Resource.Embedding.hidden?(value) ->
+            {:error, nil, Text.t(:edit_not_allowed)}
+
+          # A value that is the one the cell already holds calls nothing.
+          Act.unchanged?(input, params[name], value) ->
+            unchanged(model, record, opts)
+
+          true ->
+            record
+            |> form(column, id, opts)
+            |> AshPhoenix.Form.submit(params: Act.values([input], params))
+            |> case do
+              {:ok, saved} ->
+                case Record.load(model, saved, opts) do
+                  {:ok, saved} -> {:ok, saved}
+                  :error -> {:error, nil, Text.t(:record_gone)}
+                end
+
+              {:error, form} ->
+                {:error, form}
+            end
+        end
+
+      :error ->
+        {:error, nil, Text.t(:record_gone)}
+    end
+  end
+
+  defp form(record, column, id, opts),
+    do: AshPhoenix.Form.for_update(record, column.update_action, Act.form_opts(id) ++ opts)
+
+  @doc """
   Whether `typed` is what an editor of `column` holds: one text, and for an
   array a list of texts, one per value. Anything else is nothing the table's
   editors send.
@@ -182,6 +263,9 @@ defmodule AshTable.Edit do
   @spec typed?(Column.t(), term) :: boolean
   # a reference cell has no editor that holds a text: see `refer/5`
   def typed?(%Column{kind: :reference}, _typed), do: false
+  # nor has a map cell, which is edited in the side panel: see `put/7`
+  def typed?(%Column{cell_type: cell_type}, _typed) when cell_type in [:map, {:array, :map}],
+    do: false
 
   def typed?(%Column{cell_type: {:array, _item}}, typed),
     do: is_list(typed) and Enum.all?(typed, &is_binary/1)
@@ -224,7 +308,7 @@ defmodule AshTable.Edit do
     # what the form cannot put at a field is read from its raw errors below
     |> AshPhoenix.Form.for_update(
       column.update_action,
-      [as: "cell", warn_on_unhandled_errors?: false] ++ opts
+      [as: "cell", warn_on_unhandled_errors?: false, forms: [auto?: false]] ++ opts
     )
     |> AshPhoenix.Form.submit(params: %{Atom.to_string(column.name) => typed})
     |> case do

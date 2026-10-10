@@ -72,20 +72,20 @@ test.describe("the actions column", () => {
   test("is the last column of the grid: a header, an empty filter cell, and a button per action in every row", async ({
     tasks,
   }) => {
-    // the boxes, the expanders, the nineteen columns of the table, the actions
-    await expect(tasks.grid).toHaveAttribute("aria-colcount", "22")
-    await expect(tasks.headerCells).toHaveCount(22)
+    // the boxes, the expanders, the twenty columns of the table, the actions
+    await expect(tasks.grid).toHaveAttribute("aria-colcount", "23")
+    await expect(tasks.headerCells).toHaveCount(23)
     await expect(tasks.headerCells.last()).toHaveId("task-actions-head")
     await expect(tasks.actionsHeader).toHaveText("Actions")
     await expect(tasks.actionsHeader).toHaveRole("columnheader")
-    await expect(tasks.actionsHeader).toHaveAttribute("aria-colindex", "22")
+    await expect(tasks.actionsHeader).toHaveAttribute("aria-colindex", "23")
     await expect(tasks.actionsHeader, "it sorts nothing").not.toHaveAttribute("aria-sort")
     await expect(tasks.actionsFilter).toHaveText("")
-    await expect(tasks.actionsFilter).toHaveAttribute("aria-colindex", "22")
+    await expect(tasks.actionsFilter).toHaveAttribute("aria-colindex", "23")
 
     await expect(tasks.rowCells(FIRST).last()).toHaveId(`task-row-${FIRST}-a`)
     await expect(tasks.actionsCell(FIRST)).toHaveRole("gridcell")
-    await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-colindex", "22")
+    await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-colindex", "23")
     await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy"])
     await expect(tasks.grid.locator(":scope > tbody > tr > td[data-actions] > button")).toHaveCount(100)
 
@@ -106,7 +106,7 @@ test.describe("the actions column", () => {
 
     // what is under an expanded row spans the actions column too
     await tasks.expand(FIRST)
-    await expect(tasks.lineCell(FIRST, "comments")).toHaveAttribute("colspan", "22")
+    await expect(tasks.lineCell(FIRST, "comments")).toHaveAttribute("colspan", "23")
   })
 
   test("its buttons stand in one line, and make a row no higher than a row without them is", async ({
@@ -1057,6 +1057,7 @@ test.describe("creating a record", () => {
       "assignee_id",
       "tags",
       "checks",
+      "recurrence",
     ])
     await expect(tasks.field("title"), "the first field has the focus").toBeFocused()
 

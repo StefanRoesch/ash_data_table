@@ -55,13 +55,14 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
 
   @editable ~w(label a_string a_ci_string an_atom an_integer a_float a_decimal a_boolean a_date
                a_utc_datetime a_utc_datetime_usec a_datetime a_naive_datetime a_duration_name
-               strings integers shades a_percentage a_shade opt_string opt_integer opt_decimal
+               a_typed_map strings integers shades an_address addresses a_percentage a_shade
+               opt_string opt_integer opt_decimal
                opt_boolean opt_date opt_utc_datetime opt_shade)
 
-  # an array of embedded resources among them: its values have no editor
+  # a map that declares no fields among them: a table does not know what to ask for
   @read_only ~w(id a_time a_time_usec a_duration a_uuid a_uuid_v7 a_binary a_url_encoded_binary
-                a_map a_typed_map a_keyword a_tuple a_struct a_term a_module a_date_range
-                an_address addresses a_union inserted_at updated_at)
+                a_map a_keyword a_tuple a_struct a_term a_module a_date_range
+                a_union inserted_at updated_at)
 
   describe "what can be edited" do
     test "the types with an editor have one; the others, and what the action does not accept, are read-only",
@@ -216,6 +217,79 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
                shown: "5000",
                message: "must be less than or equal to 1000"
              }
+    end
+  end
+
+  describe "the values made of fields" do
+    test "an embedded resource is saved from the side panel, on Postgres", %{
+      conn: conn,
+      view: view,
+      specimen: specimen
+    } do
+      html = edit(view, "specimen", specimen.id, "an_address")
+
+      # the specimens' table names no `label_field`: a record is called by its first column
+      assert %{heading: "An address: " <> _id, submit: "Save"} = panel(html, "specimen")
+
+      assert Enum.map(panel(html, "specimen").fields, &{&1.name, &1.control}) == [
+               {"an_address", "group"},
+               {"an_address.street", "textarea"},
+               {"an_address.city", "textarea"},
+               {"an_address.postcode", "textarea"},
+               {"an_address.primary?", "checkbox"}
+             ]
+
+      html =
+        run_panel(view, "specimen",
+          an_address: %{"street" => "Neuer Weg 9", "city" => "Bonn", "primary?" => "true"}
+        )
+
+      refute panel(html, "specimen")
+      assert shown(html, specimen, "an_address") =~ "Street: Neuer Weg 9, City: Bonn"
+
+      {:ok, _view, html} = live(conn, "/specimens")
+      assert shown(html, specimen, "an_address") =~ "Street: Neuer Weg 9, City: Bonn"
+    end
+
+    test "an array of embedded resources without a primary key is saved as the list it is then",
+         %{conn: conn, view: view, specimen: specimen} do
+      html = edit(view, "specimen", specimen.id, "addresses")
+      [%{control: "groups", value: count} | _] = panel(html, "specimen").fields
+
+      html = add_group(view, "specimen", ["addresses"])
+      assert hd(panel(html, "specimen").fields).value == count + 1
+
+      html =
+        run_panel(view, "specimen",
+          addresses: %{"#{count}" => %{"street" => "Am Ende 1", "city" => "Kiel"}}
+        )
+
+      refute panel(html, "specimen")
+      assert shown(html, specimen, "addresses") =~ "; Street: Am Ende 1, City: Kiel, Primary?: No"
+
+      {:ok, _view, html} = live(conn, "/specimens")
+      assert shown(html, specimen, "addresses") =~ "Street: Am Ende 1, City: Kiel"
+    end
+
+    test "a map that declares its fields is saved from the side panel, and says what its constraints refuse",
+         %{conn: conn, view: view, specimen: specimen} do
+      edit(view, "specimen", specimen.id, "a_typed_map")
+      html = run_panel(view, "specimen", a_typed_map: %{"name" => "Fay", "count" => "-1"})
+
+      assert Enum.find(panel(html, "specimen").fields, &(&1.name == "a_typed_map.count")).errors ==
+               ["must be greater than or equal to 0"]
+
+      html = run_panel(view, "specimen", a_typed_map: %{"name" => "Fay", "count" => "7"})
+
+      refute panel(html, "specimen")
+      assert shown(html, specimen, "a_typed_map") == "Name: Fay, Count: 7"
+
+      {:ok, _view, html} = live(conn, "/specimens")
+      assert shown(html, specimen, "a_typed_map") == "Name: Fay, Count: 7"
+    end
+
+    test "a map that declares none opens nothing", %{view: view, specimen: specimen} do
+      refute panel(edit(view, "specimen", specimen.id, "a_map"), "specimen")
     end
   end
 end

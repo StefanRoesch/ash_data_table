@@ -807,7 +807,7 @@ defmodule AshTable.TableBlockTest do
       assert error.module == AshTable.TableBlockTest.ColumnActionWithoutEditor
 
       assert error.message ==
-               "`owner_id` has the type `Ash.Type.UUID`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, and arrays of those. Remove `update_action` from this column."
+               "`owner_id` has the type `Ash.Type.UUID`, which a table has no editor for, so the column is read-only and its `update_action` has no effect. A table edits text, numbers, booleans, dates, datetimes and enums, arrays of those, and embedded resources and maps whose fields are of those. Remove `update_action` from this column."
     end
 
     test "on an array of values without an editor is the same error" do
@@ -837,6 +837,157 @@ defmodule AshTable.TableBlockTest do
 
       assert error.message =~
                "`keys` has the type `{:array, Ash.Type.UUID}`, which a table has no editor for"
+    end
+
+    test "on a map that declares no fields is an error that says why a table cannot edit it" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :notes, :update_action]} do
+          defmodule Elixir.AshTable.TableBlockTest.ColumnActionOnFreeMap do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :notes, :map, public?: true
+            end
+
+            actions do
+              defaults [:read, update: [:notes]]
+            end
+
+            table do
+              column :notes do
+                update_action :update
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`notes` has the type `Ash.Type.Map`, which a table edits field by field, and here it cannot, so the column is read-only and its `update_action` has no effect. It is a map that declares no `fields`, so a table does not know what to ask for. Remove `update_action` from this column."
+    end
+
+    for {column, reason} <- [
+          sealed:
+            "The actions Ash casts a value of AshTable.Test.Embedding.Sealed through, `create` and `update`, accept different attributes, and a table cannot know which of the two will run for a value.",
+          mixed:
+            "Its field `either` has the type `Ash.Type.Union`, which a table has no control for.",
+          argued:
+            "The action `create` of AshTable.Test.Embedding.Argued requires the argument `reason`, which a table cannot give.",
+          stamped:
+            "The action `create` of AshTable.Test.Embedding.Stamped requires `stamp`, which is not public, so a table cannot give it.",
+          loose:
+            "Its field `inner` cannot be edited. It is a map that declares no `fields`, so a table does not know what to ask for."
+        ] do
+      module =
+        Module.concat(AshTable.TableBlockTest, "ColumnActionOn#{Macro.camelize("#{column}")}")
+
+      test "on a value made of fields that a table cannot edit says what stands in the way: `#{column}`" do
+        error =
+          assert_dsl_error %Spark.Error.DslError{
+            path: [:table, :column, unquote(column), :update_action]
+          } do
+            defmodule unquote(module) do
+              use Ash.Resource,
+                domain: AshTable.Test.Domain,
+                extensions: [AshTable.Resource]
+
+              alias AshTable.Test.Embedding.{Argued, Mixed, Sealed, Stamped}
+
+              attributes do
+                uuid_primary_key :id
+                attribute :sealed, Sealed, public?: true
+                attribute :mixed, Mixed, public?: true
+                attribute :argued, Argued, public?: true
+                attribute :stamped, Stamped, public?: true
+
+                attribute :loose, :map,
+                  public?: true,
+                  constraints: [fields: [label: [type: :string], inner: [type: :map]]]
+              end
+
+              actions do
+                defaults [:read]
+
+                update :update do
+                  require_atomic? false
+                  accept [:sealed, :mixed, :argued, :stamped, :loose]
+                end
+              end
+
+              table do
+                column unquote(column) do
+                  update_action :update
+                end
+              end
+            end
+          end
+
+        assert error.message =~ "which a table edits field by field, and here it cannot"
+        assert error.message =~ unquote(reason)
+      end
+    end
+
+    test "on an embedded resource, a map that declares its fields, and an array of either is fine: they are edited through it" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.ColumnActionOnMaps do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          alias AshTable.Test.Embedding.{Named, Part, Place}
+
+          attributes do
+            uuid_primary_key :id
+            attribute :place, Place, public?: true
+            attribute :parts, {:array, Part}, public?: true
+
+            attribute :settings, :map,
+              public?: true,
+              constraints: [fields: [title: [type: :string]]]
+
+            # cast through an action of the embedded resource that is not
+            # public: what the resource's public action does while it runs
+            attribute :named, Named,
+              public?: true,
+              constraints: [create_action: :draft, update_action: :redraft]
+          end
+
+          actions do
+            defaults [:read]
+
+            update :update do
+              require_atomic? false
+              accept [:place, :parts, :settings, :named]
+            end
+          end
+
+          table do
+            column :place do
+              update_action :update
+              confirm "Move it?"
+            end
+
+            column :parts do
+              update_action :update
+            end
+
+            column :settings do
+              update_action :update
+            end
+
+            column :named do
+              update_action :update
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.ColumnActionOnMaps
+
+      assert for(c <- AshTable.Model.build(ColumnActionOnMaps).columns, do: {c.name, c.editor}) ==
+               [place: :group, parts: :groups, settings: :group, named: :group]
     end
 
     test "on an array of values that have an editor is fine, and the column is edited through it" do
@@ -916,6 +1067,49 @@ defmodule AshTable.TableBlockTest do
                {[:table, :column, :tags, :filterable?],
                 "`tags` cannot be filtered, so `filterable? true` has no effect. `filterable?` can only switch filtering off; remove it or set it to `false`."}
              ]
+    end
+
+    test "`sortable? true` and `filterable? true` on an embedded resource, a map and an array of either are errors: Ash sorts and filters by none" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.ArrangedByMap do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :place, AshTable.Test.Embedding.Place, public?: true
+              attribute :layout, AshTable.Test.Embedding.Layout, public?: true
+              attribute :notes, :map, public?: true
+              attribute :places, {:array, AshTable.Test.Embedding.Place}, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              for name <- [:place, :layout, :notes, :places] do
+                column name do
+                  sortable? true
+                  filterable? true
+                end
+              end
+            end
+          end
+        end
+
+      assert [{AshTable.TableBlockTest.ArrangedByMap, errors}] = errors
+
+      assert Enum.map(errors, & &1.path) ==
+               Enum.flat_map([:place, :layout, :notes, :places], fn name ->
+                 [[:table, :column, name, :sortable?], [:table, :column, name, :filterable?]]
+               end)
+
+      assert hd(errors).message ==
+               "`place` cannot be sorted, so `sortable? true` has no effect. `sortable?` can only switch sorting off; remove it or set it to `false`."
     end
 
     test "on a column whose attribute is not writable is an error that says so" do
@@ -5056,9 +5250,9 @@ defmodule AshTable.TableBlockTest do
 
       assert Enum.map(errors, &{&1.path, &1.message}) == [
                {[:table, :action, :configure],
-                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, and for values written as one line of text, such as a key."},
+                "The row action `configure` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."},
                {[:table, :action, :retag],
-                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, and for values written as one line of text, such as a key."}
+                "The row action `retag` cannot be run from a table: its input `ids` is required, and a table has no field for its type ({:array, Ash.Type.UUID}). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."}
              ]
 
       # compiled despite the finding, the table has no button for them
@@ -5354,7 +5548,7 @@ defmodule AshTable.TableBlockTest do
         end
 
       assert error.message ==
-               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, and for values written as one line of text, such as a key."
+               "The create action `create` cannot be run from a table: its input `settings` is required, and a table has no field for its type (Ash.Type.Map). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, and for embedded resources and maps whose every field is one of these."
 
       assert AshTable.Model.build(AshTable.TableBlockTest.NoFieldForCreate).create == nil
     end

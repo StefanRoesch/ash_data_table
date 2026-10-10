@@ -124,7 +124,9 @@ A cell can be edited when all of this holds:
 3. An update action is behind the column: its own, else the table's. The
    action is `public?`, accepts the attribute, and has no required argument
    without a default.
-4. The column's type has an editor (the table below).
+4. The column's type has an editor (the table below). For an embedded
+   resource or a map, a person has to be able to give every field of it:
+   see [Maps and embedded resources](maps-and-embedded-resources.md#what-can-be-edited).
 5. The field is not hidden from the person on that row by a field policy.
 6. The person is not someone who can never run the action.
 
@@ -189,6 +191,7 @@ The rule for a cell is narrow:
 | enum | an `Ash.Type.Enum`, `:atom` with `one_of` | A menu of the values, with an empty choice when the attribute can be nil. |
 | array of enum values | `{:array, type}` of an enum | Multiple choice: a list of boxes in the cell, one per value of the enum. See [Arrays](#arrays). |
 | array of text, numbers, booleans, dates or datetimes | `{:array, type}` of one of the types above | One control per value, with a button that takes the value away and a button that adds one. See [Arrays](#arrays). |
+| a value made of fields | an embedded resource, `:map` with the `fields` constraint, and an array of either | Not in the cell: the side panel, with a field for every field of the value. See [Maps and embedded resources](maps-and-embedded-resources.md). |
 
 Every other type is read-only text; see
 [Columns and defaults](columns-and-defaults.md#types-shown-as-read-only-text).
@@ -198,6 +201,10 @@ A reference cell has no editor in the cell: Enter and F2 open the picker,
 a dialog with the related resource's own table, in which the person chooses
 the related record. See
 [Choosing a related record](choosing-a-related-record.md).
+
+Nor has a cell whose value is made of fields: Enter and F2 open the side
+panel, where the value is edited field by field and saved with "Save". See
+[Maps and embedded resources](maps-and-embedded-resources.md).
 
 A column's `component` can put an editor of its own in the place of the one
 in this table: on `/tasks`, "Progress" is edited with a slider and "Estimate
@@ -295,8 +302,11 @@ An array column is never sorted or filtered by, whatever it holds: see
 [Reading, sorting and pagination](reading-sorting-and-pagination.md#sorting)
 and [Filtering](filtering.md#a-column-without-a-filter).
 
-An array of anything else (maps, embedded resources, unions, UUIDs, times,
-arrays) stays read-only text.
+An array of embedded resources, or of maps that declare their fields, is
+edited in the side panel, as a list of groups: see
+[Maps and embedded resources](maps-and-embedded-resources.md#an-array). An
+array of anything else (maps without fields, unions, UUIDs, times, arrays)
+is read-only.
 
 **Try it:** on `/tasks`, as Ada Admin, move to a cell of "Tags", press
 Enter, Tab to "Add value", press Enter, type a tag and press Enter again.
@@ -505,8 +515,9 @@ only runs actions.
 
 ## Not in the first version
 
-No editing of maps or embedded resources in a cell, nor of
-arrays of them; no sorting or filtering by an array; no validation display
+No editing of unions, structs, keyword lists or tuples, nor of a map that
+declares no fields; no sorting or filtering by an array, an embedded
+resource or a map; no validation display
 before a cell is saved, no bulk edits and no undo. A column's own editor is built: see
 [Custom components](custom-components.md). They are later slices in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

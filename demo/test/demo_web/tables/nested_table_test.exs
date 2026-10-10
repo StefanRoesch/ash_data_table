@@ -90,10 +90,10 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "[id='task-row-#{task.id}-e']", "aria-colindex") == ["2"]
       assert attribute(html, "#task-head-title", "aria-colindex") == ["3"]
       assert attribute(html, cell(task.id, "title"), "aria-colindex") == ["3"]
-      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["18"]
-      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["21"]
+      assert attribute(html, cell(task.id, "inserted_at"), "aria-colindex") == ["19"]
+      assert attribute(html, cell(task.id, "reporter"), "aria-colindex") == ["22"]
       # the boxes, the expanders, the 19 columns and the actions
-      assert attribute(html, "#task-table", "aria-colcount") == ["22"]
+      assert attribute(html, "#task-table", "aria-colcount") == ["23"]
       # and not one of the table's columns
       assert hd(headers(html, "task")) == "Title"
     end
@@ -275,7 +275,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='task-row-#{task.id}-c-title']") == "Write the report"
 
       # the boxes, the expanders, 19 columns and the actions
-      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["22"]
+      assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "colspan") == ["23"]
       assert attribute(html, "[id='task-row-#{task.id}-n-comments-c']", "role") == ["gridcell"]
     end
 
@@ -618,11 +618,12 @@ defmodule DemoWeb.Tables.NestedTableTest do
       {_view, html} = open_tasks(conn, project)
 
       assert editors(html, id) ==
-               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks project assignee)
+               ~w(title status priority progress estimate_hours billable? due_on completed_at description tags checks recurrence project assignee)
 
       assert editor(html, id, "status").confirm == "Change the state of this task?"
       # the projects around it have the editors of their own table
-      assert editors(html, "project") == ~w(name description status starts_on budget)
+      assert editors(html, "project") ==
+               ~w(name description status starts_on budget client milestones)
     end
 
     test "saves the cell of the right record through the destination's own update action",
@@ -754,7 +755,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
          %{conn: conn, world: world, task: task, project: project} do
       {view, html, id} = open_line(conn, task, "project")
 
-      assert editors(html, id) == ~w(name description status starts_on budget)
+      assert editors(html, id) == ~w(name description status starts_on budget client milestones)
       assert column(html, id, "name") == ["Aardvark"]
 
       html = save(view, id, project.id, "name", "Anteater")
@@ -791,7 +792,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert Ash.get!(Demo.Tracker.Comment, comments.first.id, authorize?: false).body == "First"
 
       {_view, html, id} = open_line(conn, task, "project")
-      assert editors(html, id) == ~w(name description status starts_on budget)
+      assert editors(html, id) == ~w(name description status starts_on budget client milestones)
 
       {view, html, id} = open_line(conn, task, "labels")
       assert editors(html, id) == []

@@ -42,6 +42,7 @@ const MOUNTED: Mounted[] = [
       "Description",
       "Tags",
       "Checks",
+      "Repeats",
       "Inserted at",
       "Project",
       "Assignee",
@@ -55,7 +56,17 @@ const MOUNTED: Mounted[] = [
     id: "project",
     title: "Projects",
     shows: "no column declared: the defaults",
-    headers: ["ID", "Name", "Description", "Status", "Starts on", "Budget", "Inserted at"],
+    headers: [
+      "ID",
+      "Name",
+      "Description",
+      "Status",
+      "Starts on",
+      "Budget",
+      "Client",
+      "Milestones",
+      "Inserted at",
+    ],
     rows: SEED.projects.acme,
     pagination: "offset",
   },
@@ -221,7 +232,15 @@ test.describe("/specimens: one column per built-in type", () => {
       await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)
       await expect(specimens.header(column), column).not.toHaveAttribute("aria-sort")
     }
-    for (const column of ["a_map", "addresses", "an_address", "a_union", "a_tuple", "a_binary"]) {
+    // a value made of fields is editable, in the side panel, and has neither a filter nor a sort
+    for (const column of ["an_address", "addresses", "a_typed_map"]) {
+      await expect(specimens.cell(first, column), column).not.toHaveAttribute("aria-readonly")
+      await expect(specimens.cell(first, column), column).not.toHaveText("")
+      await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)
+      await expect(specimens.header(column), column).not.toHaveAttribute("aria-sort")
+    }
+    // a map that declares no fields among the read-only ones
+    for (const column of ["a_map", "a_union", "a_tuple", "a_binary"]) {
       await expect(specimens.cell(first, column), column).toHaveAttribute("aria-readonly", "true")
       await expect(specimens.cell(first, column), column).not.toHaveText("")
       await expect(specimens.filterCell(column).locator("input, select"), column).toHaveCount(0)

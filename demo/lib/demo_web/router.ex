@@ -78,6 +78,7 @@ defmodule DemoWeb.Router do
         ash_table "/errands", Demo.Support.Ledger.Errand, layout: false
         ash_table "/gauges", Demo.Support.Styled.Gauge, layout: false
         ash_table "/rosters", Demo.Support.Lists.Roster, layout: false
+        ash_table "/sites", Demo.Support.Maps.Site, layout: false
         ash_table "/dossiers", Demo.Support.Vault.Dossier, layout: false
         ash_table "/notes", Demo.Support.Vault.Note, layout: false
         ash_table "/folders", Demo.Support.Vault.Folder, layout: false

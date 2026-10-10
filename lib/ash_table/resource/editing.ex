@@ -6,6 +6,7 @@ defmodule AshTable.Resource.Editing do
 
   alias Ash.Resource.Info
   alias AshTable.Model.CellType
+  alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Referencing
 
@@ -69,21 +70,35 @@ defmodule AshTable.Resource.Editing do
           :not_an_attribute
           | :not_writable
           | {:no_editor, Ash.Type.t()}
+          | {:no_fields, Ash.Type.t(), String.t()}
           | {:no_picker, struct, Referencing.no_picker()}
 
   @doc """
   What keeps a field's cells from being edited whichever action is behind
   them, or nil when nothing does: an attribute is edited, which has to be
-  writable and of a cell type that has an editor; and a belongs-to
+  writable and of a cell type that has an editor (a map cell where a person
+  can give every one of its inputs: `AshTable.Resource.Embedding`); and a
+  belongs-to
   relationship, whose cell is a reference cell, when a person can choose
   its related record in a picker (`AshTable.Resource.Referencing.picking/2`).
   """
   @spec obstacle(Ash.Resource.t(), struct) :: obstacle | nil
   def obstacle(resource, %Ash.Resource.Attribute{} = attribute) do
     cond do
-      not attribute.writable? -> :not_writable
-      is_nil(editor(resource, attribute)) -> {:no_editor, attribute.type}
-      true -> nil
+      not attribute.writable? ->
+        :not_writable
+
+      is_nil(editor(resource, attribute)) ->
+        case Embedding.of(attribute.type, attribute.constraints || []) do
+          %{obstacle: obstacle} when is_binary(obstacle) ->
+            {:no_fields, attribute.type, obstacle}
+
+          _no_map_cell ->
+            {:no_editor, attribute.type}
+        end
+
+      true ->
+        nil
     end
   end
 
@@ -129,27 +144,52 @@ defmodule AshTable.Resource.Editing do
   What a cell is edited with: the control of its cell type; for an array of
   enum values `:choices`, one checkbox per value of the enum (multiple
   choice); and for any other array `:list`, one control per value, of the
-  values' cell type, with a way to add a value and to remove one.
+  values' cell type, with a way to add a value and to remove one. A map cell
+  is edited as a `:group` of its fields, each with the control of its own
+  type, and an array of them as `:groups`, one group per value; both in the
+  side panel, never in the cell.
   """
-  @type editor :: CellType.item() | :choices | :list
+  @type editor ::
+          :text
+          | :number
+          | :boolean
+          | :date
+          | :datetime
+          | :enum
+          | :choices
+          | :list
+          | :group
+          | :groups
 
   @doc """
   What a field's cells are edited with, by cell type; nil for a type without
-  an editor (maps, embedded resources, keys, times and so on, and the arrays
-  of those).
+  an editor (keys, times and so on, the arrays of those, and a map cell with
+  an input a person cannot give).
   """
   @spec editor(Ash.Resource.t(), struct) :: editor | nil
   def editor(resource, field) do
-    {cell_type, _values} = CellType.of(resource, field)
-    editor(cell_type)
+    {type, constraints} = CellType.type(resource, field)
+    {cell_type, _values} = CellType.classify(type, constraints)
+    editor(cell_type, type, constraints)
   end
 
-  @doc "The editor of a cell type; nil for one without."
-  @spec editor(CellType.t()) :: editor | nil
-  def editor(cell_type) when cell_type in @editors, do: cell_type
-  def editor({:array, :enum}), do: :choices
-  def editor({:array, item}) when item in @editors, do: :list
-  def editor(_cell_type), do: nil
+  @doc """
+  The editor of a cell type, for a value of that Ash type; nil for one
+  without. A map cell has one when `AshTable.Resource.Embedding` finds
+  nothing that keeps it from being edited.
+  """
+  @spec editor(CellType.t(), Ash.Type.t() | nil, keyword) :: editor | nil
+  def editor(cell_type, type, constraints) when cell_type in [:map, {:array, :map}] do
+    case Embedding.of(type, constraints) do
+      %{obstacle: nil} -> if(cell_type == :map, do: :group, else: :groups)
+      _obstacle_or_none -> nil
+    end
+  end
+
+  def editor(cell_type, _type, _constraints) when cell_type in @editors, do: cell_type
+  def editor({:array, :enum}, _type, _constraints), do: :choices
+  def editor({:array, item}, _type, _constraints) when item in @editors, do: :list
+  def editor(_cell_type, _type, _constraints), do: nil
 
   @doc """
   Whether the action takes the field as an input: an attribute it accepts,
@@ -194,6 +234,11 @@ defmodule AshTable.Resource.Editing do
 
   def never_edited({:no_editor, type}),
     do: "It has the type `#{inspect(type)}`, which a table has no editor for."
+
+  def never_edited({:no_fields, type, obstacle}),
+    do:
+      "It has the type `#{inspect(type)}`, which a table edits field by field, and here it " <>
+        "cannot. " <> obstacle
 
   def never_edited({:no_picker, relationship, reason}),
     do: Referencing.no_picker(relationship, reason)

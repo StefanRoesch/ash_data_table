@@ -220,6 +220,19 @@ msgstr "Keine Auswahl"
 msgid "required"
 msgstr "erforderlich"
 
+## A value made of fields (an embedded resource, a map): one field of it as
+## its cell shows it, the button of the panel it is edited in, and what the
+## button is called that takes such a value away.
+
+msgid "%{field}: %{value}"
+msgstr "%{field}: %{value}"
+
+msgid "Save"
+msgstr "Speichern"
+
+msgid "Remove %{column}"
+msgstr "%{column} entfernen"
+
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
@@ -370,6 +383,58 @@ msgstr "Dokumentiert"
 
 msgid "Released"
 msgstr "Veröffentlicht"
+
+## The fields of the values that are made of fields: of a task's recurrence
+## (a map), and of a project's client and milestones (embedded resources).
+## A field is called what a column of its name would be called.
+
+msgid "Repeats"
+msgstr "Wiederholung"
+
+msgid "Change how often this task comes round?"
+msgstr "Ändern, wie oft diese Aufgabe wiederkehrt?"
+
+msgid "Every"
+msgstr "Alle"
+
+msgid "Unit"
+msgstr "Einheit"
+
+msgid "Until"
+msgstr "Bis"
+
+msgid "Day"
+msgstr "Tag"
+
+msgid "Week"
+msgstr "Woche"
+
+msgid "Month"
+msgstr "Monat"
+
+msgid "Client"
+msgstr "Kunde"
+
+msgid "Key account?"
+msgstr "Großkunde?"
+
+msgid "Address"
+msgstr "Adresse"
+
+msgid "Street"
+msgstr "Straße"
+
+msgid "City"
+msgstr "Ort"
+
+msgid "Postcode"
+msgstr "PLZ"
+
+msgid "Milestones"
+msgstr "Meilensteine"
+
+msgid "Reached?"
+msgstr "Erreicht?"
 
 ## What a row of /tasks expands into: the labels of its relationships, as
 ## the block declares them or as their names are humanised. They are looked

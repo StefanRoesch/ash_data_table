@@ -148,7 +148,8 @@ defmodule DemoWeb.Tables.EmbeddedTableTest do
 
       assert "title" in editors(html, @tasks)
       # each table has the editors of its own columns
-      assert editors(html, @projects) == ~w(name description status starts_on budget)
+      assert editors(html, @projects) ==
+               ~w(name description status starts_on budget client milestones)
 
       html = save(view, @tasks, task.id, "title", "Task thirty")
 

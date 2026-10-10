@@ -105,6 +105,53 @@ declared in the resource and mounted with one line in the router.
   read-only text. A column's `component` shows an array's cells; its editor
   is not used for one. A component is told `cell_type: {:array, item}` for
   such a column, where it was told `:other`.
+- **Maps and embedded resources.** An embedded resource, a map, and an
+  array of either are cells of their own (`cell_type: :map`, and
+  `{:array, :map}`), where they were read-only text as Elixir writes them.
+  The cell shows the value on one line, as plain text: its fields as
+  `label: value` with commas between them, each field called by its name in
+  words (through the host's Gettext, as a column's label) and shown as a
+  cell of its type shows it; a field that holds nothing is left out; a
+  value inside the value follows its label the same way; the values of an
+  array have `; ` between them. The fields of an embedded resource are its
+  public attributes, without a primary key that nobody gives; those of a
+  map are the fields it declares, or whatever it holds when it declares
+  none. A private attribute of an embedded resource is no longer shown.
+- An embedded resource, a map that declares its fields (also as a NewType),
+  and an array of either are edited in the side panel: Enter, F2 or a
+  double click on the cell opens the action panel, headed by the column and
+  the record, with the value as a group of its fields, each with the
+  control of its type, a value inside it as a group in the group, and an
+  array as a group per value with a button that takes the value away and
+  one that adds a value. A value that may be empty is taken away and added
+  the same way. "Save" runs the column's update action with the attribute
+  as its one input, given as a map of its fields; a panel that holds what
+  the record holds saves nothing; the column's `confirm` asks only when
+  something was changed. What the action says about a field of the value is
+  shown at that field, in an array at that field of that value, and the
+  panel stays open with what was typed. A map that declares no fields is
+  read-only, and so is a value with a field a table has no control for, or
+  an embedded resource whose create and update actions accept different
+  attributes or need what a table cannot give; a column's own
+  `update_action` on one is reported when the resource is compiled.
+- In the action panel, of a row action, of an action on the selected rows
+  and of the create action, an input that is such a value is the same
+  group of fields under the input's label.
+- An embedded resource and a map are neither sorted nor filtered by. A
+  column of an embedded resource, or of a NewType of a map, no longer
+  offers a sort: `Ash.Query.sort_input/2` refuses the first, and the second
+  is a map, which Ash does not sort by.
+- The forms a table runs its actions through build no nested forms
+  (`forms: [auto?: false]`): the value of an embedded resource is given to
+  the action as a map, as the value of a map is.
+- An error an action returns about a field of a value inside the record,
+  where it is not shown at that field, says the way to it ("Client: Street:
+  is required"), when the person has a column for the value; such an error
+  is never taken for one about a column of the same name.
+- New texts: "%{field}: %{value}", "Save", "Remove %{column}".
+- A column's `component` shows the cells of such a column; its editor is
+  not used for one. A component is told `cell_type: :map`, or
+  `{:array, :map}`, where it was told `:other`.
 - An error an action returns about one value of an array is shown, in a
   cell and in the action panel, and says which value: "Tags 2: length must
   be greater than or equal to 2". In the list of values the control of that

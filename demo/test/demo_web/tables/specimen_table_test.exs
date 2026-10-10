@@ -37,6 +37,11 @@ defmodule DemoWeb.Tables.SpecimenTableTest do
         integers: [3, 4],
         shades: [:light, :dark],
         an_address: %Address{street: "Hauptstraße 1", city: "Köln", postcode: nil, primary?: true},
+        addresses: [
+          %Address{street: "Am Hafen 2", city: "Kiel", postcode: "24103", primary?: false},
+          %Address{street: "Ring 3", city: "Bonn", postcode: nil, primary?: true}
+        ],
+        a_typed_map: %{name: "Dana", count: 4},
         a_percentage: 80,
         a_shade: :medium,
         opt_string: nil,
@@ -110,15 +115,26 @@ defmodule DemoWeb.Tables.SpecimenTableTest do
     assert shown(html, "integers") == "3, 4"
     # the labels of an enum's values
     assert shown(html, "shades") == "Light, Dark"
-    # an array of embedded resources has no cell of its own: read-only text, as before
-    assert shown(html, "addresses") =~ "%Demo.KitchenSink.Address{"
+  end
+
+  test "an embedded resource and a map are shown on one line, field by field; an array of them with semicolons between",
+       %{html: html} do
+    assert shown(html, "an_address") == "Street: Hauptstraße 1, City: Köln, Primary?: Yes"
+
+    assert shown(html, "addresses") ==
+             "Street: Am Hafen 2, City: Kiel, Postcode: 24103, Primary?: No; Street: Ring 3, City: Bonn, Primary?: Yes"
+
+    assert shown(html, "a_typed_map") == "Name: Dana, Count: 4"
+    # a map that declares no fields: whatever it holds
+    assert shown(html, "a_map") == "Colour: red"
   end
 
   test "every other type is shown as text", %{html: html} do
     assert shown(html, "a_uuid") == "11111111-2222-4333-8444-555555555555"
     assert shown(html, "a_time") == "07:05:00"
     assert shown(html, "a_module") == "Enum"
-    assert shown(html, "a_map") == ~s(%{"colour" => "red"})
-    assert shown(html, "an_address") =~ "Köln"
+    # what has no cell of its own is shown as Elixir writes it
+    assert shown(html, "a_keyword") =~ "unit"
+    assert shown(html, "a_struct") =~ "Demo.KitchenSink.Dimensions"
   end
 end

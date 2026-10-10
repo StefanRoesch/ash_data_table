@@ -18,6 +18,13 @@ defmodule AshTable.Act do
   # table's create action that joins the new record to its row is given by
   # the table, never by the form.
   #
+  # An input that is a map cell (an embedded resource, a map, an array of
+  # either) is given as a map of its fields, as an API gives it: by the
+  # names of the fields the table offers, each as it was typed, and nothing
+  # else that was sent (`typed/2`). Ash casts it, through the embedded
+  # resource's own actions. An error about a field of such a value is shown
+  # at that field (`errors/4`).
+  #
   # An input that is given by choosing a related record (`editor: :reference`)
   # holds that record's key, and a key from the browser is a claim like any
   # other: before an action runs, a key that was put there is looked up as
@@ -26,6 +33,7 @@ defmodule AshTable.Act do
   # runs nothing.
 
   alias AshTable.Errors
+  alias AshTable.Format
   alias AshTable.Model
   alias AshTable.Model.Action
   alias AshTable.Pick
@@ -102,7 +110,9 @@ defmodule AshTable.Act do
   @spec inputs(Action.t(), Ash.Resource.record()) :: [Model.Input.t()]
   def inputs(%Action{inputs: inputs}, record) do
     Enum.reject(inputs, fn input ->
-      input.kind == :attribute and match?(%Ash.ForbiddenField{}, Map.get(record, input.name))
+      # hidden as a whole, or a map cell with a field that is hidden in it
+      input.kind == :attribute and
+        AshTable.Resource.Embedding.hidden?(Map.get(record, input.name))
     end)
   end
 
@@ -280,15 +290,26 @@ defmodule AshTable.Act do
   defp form(record, %Action{type: :destroy, name: name}, id, opts),
     do: AshPhoenix.Form.for_destroy(record, name, form_opts(id) ++ opts)
 
-  # what the form cannot put at a field is read from its raw errors
-  defp form_opts(id), do: [as: "panel", id: id, warn_on_unhandled_errors?: false]
+  @doc """
+  The options of a form of the panel. What the form cannot put at a field
+  is read from its raw errors.
+
+  The form builds no forms nested in it (`auto?: false`): the value of an
+  embedded resource is given to the action as a map of its fields, as the
+  value of a map is, and as an API gives it. AshPhoenix would nest a form
+  for an embedded resource and none for a map, and the two are edited
+  alike.
+  """
+  @spec form_opts(String.t()) :: keyword
+  def form_opts(id),
+    do: [as: "panel", id: id, warn_on_unhandled_errors?: false, forms: [auto?: false]]
 
   # The values of the inputs, by name, as they were typed, and what the table
   # gives itself, which nothing from the browser replaces.
   defp taken(inputs, params, given) when is_map(params) do
     for input <- inputs,
         name = Atom.to_string(input.name),
-        is_map_key(params, name),
+        given?(input, params, name),
         into: %{} do
       {name, typed(input, params[name])}
     end
@@ -297,20 +318,147 @@ defmodule AshTable.Act do
 
   defp taken(_inputs, _params, given), do: given
 
-  # What a field of the panel holds. A form cannot send a list without
-  # values, so the field of an array sends one entry of its own before its
-  # values (see the panel's `field/1`), which is left out here: what remains
-  # is the values as they were typed, and the empty list when there are none.
-  defp typed(%{cell_type: {:array, _item}}, [_own | values]), do: values
-  defp typed(_input, typed), do: typed
+  # A map cell always says what it holds: a group that is not there is no
+  # value, and a list without groups is the empty list.
+  defp given?(%{editor: editor}, _params, _name) when editor in [:group, :groups], do: true
+  defp given?(_input, params, name), do: is_map_key(params, name)
+
+  @doc """
+  What a field of the panel holds, of what its form sent for it.
+
+  A form cannot send a list without values, so the field of an array sends
+  one entry of its own before its values (see the panel's `field/1`), which
+  is left out here: what remains is the values as they were typed, and the
+  empty list when there are none.
+
+  The field of a map cell sends its inputs by name, with a mark of its own
+  (`_present`), and nothing at all while it has no value: what remains is
+  the inputs by name, as they were typed, or nil. An array of them sends
+  each value under a number of its own, which says their order and nothing
+  else: what remains is the list of them. Only what the fields say is
+  taken, whatever else was sent.
+  """
+  @spec typed(map, term) :: term
+  def typed(%{cell_type: :map, fields: [_ | _] = fields}, %{} = sent) do
+    for %{name: name} = field <- fields, field.input? or field.key?, reduce: %{} do
+      taken ->
+        key = Atom.to_string(name)
+
+        cond do
+          field.input? -> Map.put(taken, key, inner(field, sent[key]))
+          # the key of an embedded resource, as it came: Ash matches by it
+          is_binary(sent[key]) and sent[key] != "" -> Map.put(taken, key, sent[key])
+          true -> taken
+        end
+    end
+  end
+
+  def typed(%{cell_type: :map, fields: [_ | _]}, _nothing), do: nil
+
+  def typed(%{cell_type: {:array, :map}, fields: [_ | _]} = field, %{} = sent),
+    do: for({_key, item} <- items(sent), do: typed(%{field | cell_type: :map}, item))
+
+  def typed(%{cell_type: {:array, :map}, fields: [_ | _]}, _nothing), do: []
+  def typed(%{cell_type: {:array, _item}}, [_own | values]), do: values
+  def typed(_input, typed), do: typed
+
+  # A field of a map cell always sends something: nothing is the value it
+  # has when it is empty.
+  defp inner(%{cell_type: cell_type} = field, sent) when cell_type in [:map, {:array, :map}],
+    do: typed(field, sent)
+
+  defp inner(%{cell_type: {:array, _item}} = field, sent) when is_list(sent),
+    do: typed(field, sent)
+
+  defp inner(%{cell_type: {:array, _item}}, _nothing), do: []
+  defp inner(%{cell_type: :boolean}, sent), do: to_string(sent == "true")
+  defp inner(_field, sent) when is_binary(sent), do: sent
+  defp inner(_field, _nothing), do: ""
+
+  @doc """
+  The values of an array of map cells as its field sent them, in their
+  order: each with the number it was sent under.
+  """
+  @spec items(term) :: [{String.t(), map}]
+  def items(%{} = sent) do
+    numbered =
+      for {key, %{} = item} <- sent, {number, ""} <- [Integer.parse(key)], do: {number, key, item}
+
+    for {_number, key, item} <- Enum.sort(numbered), do: {key, item}
+  end
+
+  def items(_sent), do: []
+
+  @doc """
+  What the field of a map cell sends for a value it holds: the opposite of
+  `typed/2`. `held` is the value as its editor holds it
+  (`AshTable.Format.input/2`). It is what the field starts with.
+  """
+  @spec sent(map, term) :: term
+  def sent(%{cell_type: :map, fields: [_ | _] = fields}, %{} = held) do
+    for %{name: name} = field <- fields, field.input? or field.key?, into: %{"_present" => ""} do
+      key = Atom.to_string(name)
+      {key, sent(field, held[key])}
+    end
+  end
+
+  def sent(%{cell_type: :map, fields: [_ | _]}, _nothing), do: nil
+
+  def sent(%{cell_type: {:array, :map}, fields: [_ | _]} = field, held) do
+    for {item, number} <- Enum.with_index(List.wrap(held)), into: %{"_present" => ""} do
+      {Integer.to_string(number), sent(%{field | cell_type: :map}, item)}
+    end
+  end
+
+  def sent(%{cell_type: {:array, _item}}, held), do: ["" | List.wrap(held)]
+  def sent(_field, nil), do: ""
+  def sent(_field, held), do: held
+
+  @doc """
+  What the field of a map cell sends for a new value: its inputs empty, but
+  for those that have a default, and a value inside it that cannot be left
+  out started the same way.
+  """
+  @spec blank(map) :: map
+  def blank(%{fields: fields}) do
+    for %{name: name, input?: true} = field <- fields, into: %{"_present" => ""} do
+      started =
+        cond do
+          not is_nil(field.default) ->
+            sent(field, Format.input(field, field.default))
+
+          field.cell_type == :map and field.required? and is_list(field.fields) ->
+            blank(field)
+
+          true ->
+            sent(field, Format.input(field, nil))
+        end
+
+      {Atom.to_string(name), started}
+    end
+  end
+
+  @doc """
+  Whether what the field of a map cell sent is what the cell holds already:
+  `value` as the record has it. Compared as the field itself would send
+  the value.
+  """
+  @spec unchanged?(map, term, term) :: boolean
+  def unchanged?(input, sent, value),
+    do: typed(input, sent) == typed(input, sent(input, Format.input(input, value)))
 
   @doc """
   What a form's errors say to a person: by input, for the errors about one
-  of `inputs`, and under `nil` for the others. See `AshTable.Errors` for
-  what is shown of an error.
+  of `inputs`, and under `nil` for the others. An error about a field of a
+  value inside the record (a field of a map cell) is under the way to that
+  field: the input, the places of values in an array, and the fields on the
+  way (`[:client, :address, :city]`, `[:milestones, 1, :title]`). See
+  `AshTable.Errors` for what is shown of an error; `refusal` is what a
+  refusal reads as.
   """
-  @spec errors(form, Model.t(), [Model.Input.t()]) :: %{optional(atom | nil) => [String.t()]}
-  def errors(form, %Model{} = model, inputs) do
+  @spec errors(form, Model.t(), [Model.Input.t()], String.t()) ::
+          %{optional(atom | nil | [atom | non_neg_integer]) => [String.t()]}
+  def errors(form, %Model{} = model, inputs, refusal \\ Text.t(:action_not_allowed)) do
     at_fields =
       for {field, error} <- Errors.at_fields(form) do
         case Enum.find(inputs, &(&1.name == field)) do
@@ -320,11 +468,111 @@ defmodule AshTable.Act do
       end
 
     without_field =
-      for message <- Errors.without_fields(form, Text.t(:action_not_allowed)), do: {nil, message}
+      for message <- Errors.without_fields(form, refusal), do: {nil, message}
 
-    grouped = Enum.group_by(at_fields ++ without_field, &elem(&1, 0), &elem(&1, 1))
+    # about a field of a value inside the record: at that field, where the
+    # panel has it, by the way to it
+    nested =
+      for {path, field, error} <- Errors.nested(form),
+          placed =
+            (case place(inputs, path, field, error) do
+               {:field, place} -> {place, Text.error(error)}
+               # at the group, which says which of its fields is meant
+               {:group, place} -> {single(place), named(field, error)}
+               nil -> {nil, Errors.nested_text(model, path, field, error)}
+             end),
+          not is_nil(elem(placed, 1)),
+          do: placed
+
+    grouped = Enum.group_by(at_fields ++ nested ++ without_field, &elem(&1, 0), &elem(&1, 1))
     Map.new(grouped, fn {field, messages} -> {field, Enum.uniq(messages)} end)
   end
+
+  # Where the panel shows an error about a field of a value inside the
+  # record: the way to the field, as far as the panel has it (the input,
+  # the places of the values of arrays, the fields on the way). An error
+  # about something the panel has no field for is shown at the group it is
+  # in. Nil when the panel has no input for the value at all.
+  #
+  # Ash says the place of a value of an array of embedded resources in the
+  # error's path, and that of an array of maps among its variables, if at
+  # all.
+  defp place(inputs, [name | rest], field, {_message, vars}) do
+    with %{fields: [_ | _]} = input <-
+           Enum.find(inputs, &(&1.name == name and &1.editor in [:group, :groups])) do
+      {place, at} = Enum.reduce_while(rest, {[name], input}, &step/2)
+
+      {place, at} =
+        case {at.cell_type, List.last(place), vars[:index]} do
+          {{:array, :map}, last, index} when not is_integer(last) and is_integer(index) ->
+            {place ++ [index], at}
+
+          _placed ->
+            {place, at}
+        end
+
+      cond do
+        # the values of an array are told apart by their places
+        match?({:array, :map}, at.cell_type) and not is_integer(List.last(place)) ->
+          {:group, place}
+
+        Enum.any?(at.fields || [], &(&1.name == field and &1.input?)) ->
+          {:field, place ++ [field]}
+
+        # Ash says of some errors of a value inside a value that they are
+        # about the value around it. Where one value in it, and no other,
+        # has a field of that name, that is the field.
+        true ->
+          case inside(at, field) do
+            [way] -> {:field, place ++ way}
+            _none_or_several -> {:group, place}
+          end
+      end
+    else
+      _no_group -> nil
+    end
+  end
+
+  # The ways from a value to a field of that name in the values inside it,
+  # not through an array.
+  defp inside(%{fields: fields}, name) do
+    for %{cell_type: :map, fields: [_ | _], input?: true} = inner <- fields || [],
+        way <-
+          if(Enum.any?(inner.fields, &(&1.name == name and &1.input?)), do: [[name]], else: []) ++
+            inside(inner, name),
+        do: [inner.name | way]
+  end
+
+  # the errors of an input as a whole are under its name
+  defp single([name]), do: name
+  defp single(place), do: place
+
+  # The message of an error about a field the panel has no place for, after
+  # the field's name in words.
+  defp named(field, error) do
+    Text.t(:error_on_field,
+      field: Text.label(Model.humanize(field)),
+      message: Text.error(error)
+    )
+  end
+
+  defp step(index, {place, %{cell_type: {:array, :map}} = at})
+       when is_integer(index) do
+    if is_integer(List.last(place)),
+      do: {:halt, {place, at}},
+      else: {:cont, {place ++ [index], at}}
+  end
+
+  defp step(name, {place, at}) when is_atom(name) do
+    listed? = match?({:array, :map}, at.cell_type) and not is_integer(List.last(place))
+
+    case not listed? && Enum.find(at.fields || [], &(&1.name == name and is_list(&1.fields))) do
+      %{} = field -> {:cont, {place ++ [name], field}}
+      _none -> {:halt, {place, at}}
+    end
+  end
+
+  defp step(_other, acc), do: {:halt, acc}
 
   @doc """
   The values of the arrays among `inputs` that a form's errors are about:

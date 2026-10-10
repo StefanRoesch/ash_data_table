@@ -225,7 +225,7 @@ returns to the first page; the filters stay.
 
 | Column | Offset or no pagination | Keyset |
 | --- | --- | --- |
-| An attribute | yes, unless it is declared `sortable?: false` or is an array or a map. An array is never sorted by, whatever it holds: Ash says no for every array, as `ash_json_api` and `ash_graphql` do. | the same |
+| An attribute | yes, unless it is declared `sortable?: false` or is an array, a map or an embedded resource. An array is never sorted by, whatever it holds: Ash says no for every array, as `ash_json_api` and `ash_graphql` do. For an embedded resource the table does not follow `sortable?/3`, which says yes: see below. | the same |
 | A calculation with an expression | yes | no |
 | A calculation computed in Elixir | no | no |
 | An aggregate | yes | no |
@@ -235,6 +235,13 @@ For one person an aggregate column can be without its sort where the table
 has it for others: an aggregate that a field policy hides from them on some
 records. See
 [Columns and defaults](columns-and-defaults.md#what-a-table-does-not-sort-by).
+
+An embedded resource is the one place where a table says no and
+`sortable?/3` says yes. `Ash.Query.sort_input/2`, through which a table
+sorts, refuses an embedded resource ("is not sortable"), and `ash_json_api`
+and `ash_graphql` leave embedded resources out of what they sort by. The
+same goes for a NewType of a map, which is a map all the same. See
+[Maps and embedded resources](maps-and-embedded-resources.md#sorting-and-filtering).
 
 A calculation or an aggregate cannot be sorted under keyset pagination
 because that is Ash's answer: `sortable?/3` says no for both when the

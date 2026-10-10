@@ -371,13 +371,13 @@ defmodule AshTable.ModelTest do
                time_usec: :other,
                duration: :other,
                binary: :other,
-               map: :other,
+               map: :map,
                keyword: :other,
                tuple: :other,
                struct: :other,
                term: :other,
                module: :other,
-               address: :other,
+               address: :map,
                strings: {:array, :text},
                slugs: {:array, :text},
                integers: {:array, :number},
@@ -391,8 +391,8 @@ defmodule AshTable.ModelTest do
                atoms: :other,
                uuids: :other,
                times: :other,
-               maps: :other,
-               addresses: :other,
+               maps: {:array, :map},
+               addresses: {:array, :map},
                lists: :other,
                unions: :other,
                union: :other,
@@ -414,9 +414,29 @@ defmodule AshTable.ModelTest do
       assert types[:priorities] == {:array, :enum}
 
       # an array of values a table has no cell for, and an array of arrays
-      for name <- [:atoms, :uuids, :times, :maps, :addresses, :lists, :unions] do
+      for name <- [:atoms, :uuids, :times, :lists, :unions] do
         assert types[name] == :other, "#{name}"
       end
+    end
+
+    test "is `:map` for a value made of fields: an embedded resource and a map, whether it declares its fields or not, and a NewType of one" do
+      types = cell_types(AshTable.Test.Embedding)
+
+      for name <- [:place, :contact, :settings, :layout, :notes, :sealed, :named] do
+        assert types[name] == :map, "#{name}"
+      end
+
+      for name <- [:parts, :places, :entries, :notes_list, :nameds] do
+        assert types[name] == {:array, :map}, "#{name}"
+      end
+    end
+
+    test "stays `:other` for the types that look like these: a typed struct, a struct of a resource, a keyword list, a tuple" do
+      assert cell_types(AshTable.Test.Embedding)[:point] == :other
+      assert cell_types(AshTable.Test.Embedding)[:keyword] == :other
+      assert cell_types(AshTable.Test.Embedding)[:struct] == :other
+      assert cell_types(AshTable.Test.KitchenSink)[:tuple] == :other
+      assert cell_types(AshTable.Test.KitchenSink)[:struct] == :other
     end
 
     test "follows the type of a calculation and of an aggregate" do
@@ -482,6 +502,604 @@ defmodule AshTable.ModelTest do
     test "what a person typed is held as it was typed" do
       assert Format.input(sink(:integers), ["1", "x", ""]) == ["1", "x", ""]
       assert Format.input(sink(:booleans), ["true"]) == ["true"]
+    end
+  end
+
+  describe "the fields of a map cell" do
+    alias AshTable.Model.Field
+
+    defp mapped(name),
+      do: Enum.find(Model.build(AshTable.Test.Embedding).columns, &(&1.name == name))
+
+    defp field(column, name), do: Enum.find(column.fields, &(&1.name == name))
+
+    test "are the public attributes of an embedded resource, in their order, each called by its name in words" do
+      assert Enum.map(mapped(:place).fields, &{&1.name, &1.label, &1.cell_type}) == [
+               {:street, "Street", :text},
+               {:city, "City", :text},
+               {:open?, "Open?", :boolean},
+               {:kind, "Kind", :enum},
+               {:opens_at, "Opens at", :other},
+               {:tags, "Tags", {:array, :text}},
+               {:token, "Token", :text}
+             ]
+    end
+
+    test "never a private attribute" do
+      refute field(mapped(:place), :memo)
+      refute field(mapped(:stamped), :stamp)
+    end
+
+    test "carry the values of an enum with their labels" do
+      assert field(mapped(:place), :kind).values == [office: "Office", main_depot: "Main depot"]
+      assert field(mapped(:settings), :mode).values == [fast: "Fast", extra_slow: "Extra slow"]
+    end
+
+    test "say what the attribute says about being sensitive, which changes nothing else" do
+      assert %Field{sensitive?: true, editor: :text, input?: true} = field(mapped(:place), :token)
+      refute field(mapped(:place), :street).sensitive?
+    end
+
+    test "are the fields a map declares, in their order; none for a map that declares none" do
+      assert Enum.map(mapped(:settings).fields, &{&1.name, &1.cell_type}) == [
+               title: :text,
+               count: :number,
+               mode: :enum,
+               limits: :map,
+               place: :map
+             ]
+
+      assert Enum.map(mapped(:layout).fields, & &1.name) == [:columns, :dense?]
+      assert mapped(:notes).fields == nil
+      assert mapped(:notes_list).fields == nil
+    end
+
+    test "are those of one value for an array" do
+      assert Enum.map(mapped(:places).fields, & &1.name) ==
+               Enum.map(mapped(:place).fields, & &1.name)
+
+      assert Enum.map(mapped(:entries).fields, & &1.name) == [:label]
+    end
+
+    test "have fields of their own where a field is a map cell itself, or an array of them" do
+      contact = mapped(:contact)
+
+      assert %Field{cell_type: :map, editor: :group} = place = field(contact, :place)
+      assert Enum.map(place.fields, & &1.name) == Enum.map(mapped(:place).fields, & &1.name)
+      assert %Field{cell_type: {:array, :map}, editor: :groups} = field(contact, :places)
+
+      assert %Field{cell_type: :map, editor: :group, fields: [%Field{name: :low}]} =
+               field(mapped(:settings), :limits)
+
+      # an embedded resource in a map
+      assert %Field{cell_type: :map, editor: :group} = field(mapped(:settings), :place)
+    end
+
+    test "every other column has none" do
+      model = Model.build(AshTable.Test.Embedding)
+
+      for column <- model.columns, column.cell_type not in [:map, {:array, :map}] do
+        assert column.fields == nil, "#{column.name}"
+      end
+    end
+  end
+
+  describe "the inputs of a map cell" do
+    alias AshTable.Model.Field
+
+    test "are the public attributes the embedded resource's actions accept, each with the control of its type" do
+      assert for(%Field{input?: true} = f <- mapped(:place).fields, do: {f.name, f.editor}) == [
+               street: :text,
+               city: :text,
+               open?: :boolean,
+               kind: :enum,
+               # a value written as one line of text
+               opens_at: :plain,
+               tags: :list,
+               token: :text
+             ]
+    end
+
+    test "not an attribute no action accepts: it is shown and never asked for" do
+      assert %Field{input?: false, editor: nil, key?: false} = field(mapped(:parts), :made_at)
+    end
+
+    test "not the primary key Ash tells the values of an array apart by, which is sent back as it came" do
+      assert %Field{input?: false, editor: nil, key?: true} = field(mapped(:parts), :id)
+    end
+
+    test "a primary key the actions accept is an input like any other" do
+      assert %Field{input?: true, editor: :text, key?: false, required?: true} =
+               field(mapped(:codes), :code)
+    end
+
+    test "are every field of a map that declares its fields" do
+      assert Enum.all?(mapped(:settings).fields, & &1.input?)
+    end
+
+    test "are required as the embedded resource's create action, or the map's field, says" do
+      assert for(%Field{required?: true} = f <- mapped(:place).fields, do: f.name) ==
+               [:street, :open?]
+
+      assert for(%Field{required?: true} = f <- mapped(:settings).fields, do: f.name) == [:title]
+      assert for(%Field{required?: true} = f <- mapped(:layout).fields, do: f.name) == [:columns]
+    end
+
+    test "start with the attribute's static default" do
+      assert field(mapped(:place), :open?).default == false
+      assert field(mapped(:place), :street).default == nil
+    end
+
+    test "follow the actions the attribute's constraints name, whether those are public or not" do
+      # `draft` and `redraft` accept the label only; `draft` is not public
+      assert for(%Field{input?: true} = f <- mapped(:named).fields, do: f.name) == [:label]
+      assert mapped(:named).editor == :group
+
+      # of an array, the constraints of its items
+      assert for(%Field{input?: true} = f <- mapped(:nameds).fields, do: f.name) == [:label]
+    end
+  end
+
+  describe "whether a map cell is edited" do
+    alias AshTable.Resource.Embedding
+
+    defp obstacle(name) do
+      attribute = Ash.Resource.Info.attribute(AshTable.Test.Embedding, name)
+      Embedding.of(attribute.type, attribute.constraints).obstacle
+    end
+
+    test "an embedded resource and a map that declares its fields are, as a group of fields; an array of either as groups" do
+      for name <- [:place, :base, :contact, :settings, :layout, :named] do
+        assert %{editable?: true, editor: :group, update_action: :update} = mapped(name),
+               "#{name}"
+
+        assert obstacle(name) == nil
+      end
+
+      for name <- [:parts, :codes, :places, :entries, :nameds] do
+        assert %{editable?: true, editor: :groups} = mapped(name), "#{name}"
+      end
+    end
+
+    test "a map that declares no fields is not, nor is an array of them" do
+      for name <- [:notes, :notes_list] do
+        assert %{editable?: false, editor: nil, update_action: nil} = mapped(name)
+
+        assert obstacle(name) ==
+                 "It is a map that declares no `fields`, so a table does not know what to ask for."
+      end
+    end
+
+    test "an embedded resource whose create and update actions accept different attributes is not" do
+      assert %{editable?: false, editor: nil} = mapped(:sealed)
+      assert obstacle(:sealed) =~ "accept different attributes"
+    end
+
+    test "unless Ash never updates it: with `on_update: :replace` only the create action runs" do
+      assert %{editable?: true, editor: :group} = mapped(:replaced)
+      assert for(f <- mapped(:replaced).fields, f.input?, do: f.name) == [:code, :label]
+    end
+
+    test "one with an input a table has no control for is not, though the rest of it has controls" do
+      assert %{editable?: false, editor: nil} = mapped(:mixed)
+
+      assert obstacle(:mixed) ==
+               "Its field `either` has the type `Ash.Type.Union`, which a table has no control for."
+    end
+
+    test "one whose action needs an argument, or a private attribute, is not" do
+      assert %{editable?: false} = mapped(:argued)
+      assert obstacle(:argued) =~ "requires the argument `reason`"
+      assert %{editable?: false} = mapped(:stamped)
+      assert obstacle(:stamped) =~ "requires `stamp`, which is not public"
+    end
+
+    test "a map with a field that cannot be edited is not, and says which" do
+      assert %{editable?: false} = mapped(:loose)
+
+      assert obstacle(:loose) =~
+               "Its field `inner` cannot be edited. It is a map that declares no"
+    end
+
+    test "nothing is edited without an update action that accepts the attribute" do
+      assert Enum.all?(Model.build(AshTable.Test.KitchenSink).columns, &is_nil(&1.editor))
+    end
+
+    test "is neither sorted nor filtered by, whatever Ash says of the type" do
+      model = Model.build(AshTable.Test.Embedding)
+
+      for column <- model.columns, column.cell_type in [:map, {:array, :map}] do
+        refute column.sortable?, "#{column.name}"
+        assert column.operators == [], "#{column.name}"
+      end
+
+      # Ash itself: a map is not sortable, an embedded resource and a
+      # NewType of a map are, and `sort_input` refuses the embedded resource
+      sortable? = &Ash.Resource.Info.sortable?(AshTable.Test.Embedding, &1)
+      refute sortable?.(:settings)
+      assert sortable?.(:place)
+      assert sortable?.(:layout)
+
+      assert %{valid?: false} = Ash.Query.sort_input(AshTable.Test.Embedding, "place")
+    end
+  end
+
+  describe "what a map cell shows" do
+    alias AshTable.Format
+    alias AshTable.Test.Embedding.{Contact, Part, Place}
+
+    test "its fields on one line, each by its label and as a cell of its type shows it" do
+      place = %Place{
+        street: "Quay 1",
+        city: "Kiel",
+        open?: true,
+        kind: :main_depot,
+        opens_at: ~T[08:30:00],
+        tags: ["north", "pier"]
+      }
+
+      assert Format.format(mapped(:place), place) ==
+               "Street: Quay 1, City: Kiel, Open?: Yes, Kind: Main depot, Opens at: 08:30:00, Tags: north, pier"
+    end
+
+    test "nothing of a private attribute" do
+      refute Format.format(mapped(:place), %Place{street: "Quay 1", memo: "hidden"}) =~ "hidden"
+    end
+
+    test "not a field that holds nothing, or one that is hidden from the person" do
+      place = %Place{
+        street: "Quay 1",
+        city: nil,
+        open?: false,
+        tags: [],
+        token: %Ash.ForbiddenField{}
+      }
+
+      assert Format.format(mapped(:place), place) == "Street: Quay 1, Open?: No"
+    end
+
+    test "nothing at all for no value, and for a value none of whose fields holds anything" do
+      assert Format.format(mapped(:place), nil) == ""
+      assert Format.format(mapped(:settings), %{}) == ""
+      assert Format.format(mapped(:settings), %{title: nil}) == ""
+      assert Format.format(mapped(:notes), %{}) == ""
+      assert Format.format(mapped(:places), []) == ""
+      assert Format.format(mapped(:places), nil) == ""
+    end
+
+    test "a value made of fields inside it the same way, after its label" do
+      contact = %Contact{
+        name: "Ida",
+        place: %Place{street: "Lane 5", open?: false},
+        places: [%Place{street: "A 1", open?: true}, %Place{street: "B 2", open?: false}]
+      }
+
+      assert Format.format(mapped(:contact), contact) ==
+               "Name: Ida, Place: Street: Lane 5, Open?: No, Places: Street: A 1, Open?: Yes; Street: B 2, Open?: No"
+    end
+
+    test "a map by the fields it declares, in their order, whichever way its keys are written" do
+      assert Format.format(mapped(:settings), %{mode: :extra_slow, count: 3, title: "Main"}) ==
+               "Title: Main, Count: 3, Mode: Extra slow"
+
+      assert Format.format(mapped(:settings), %{"title" => "Main", "limits" => %{"low" => 1}}) ==
+               "Title: Main, Limits: Low: 1"
+    end
+
+    test "nothing of what a map holds beside its declared fields" do
+      assert Format.format(mapped(:settings), %{title: "Main", stray: "x"}) == "Title: Main"
+    end
+
+    test "a map that declares no fields by whatever it holds, by key, a map in it the same way" do
+      assert Format.format(mapped(:notes), %{"size" => 3, "colour" => "red", "tags" => ["a", "b"]}) ==
+               "Colour: red, Size: 3, Tags: a, b"
+
+      assert Format.format(mapped(:notes), %{"user_id" => 7, deep: %{"on" => true}}) ==
+               "Deep: On: true, User ID: 7"
+    end
+
+    test "an array as its values, each on the same line, set apart by semicolons" do
+      places = [%Place{street: "A 1", open?: true}, %Place{street: "B 2", open?: false}]
+
+      assert Format.format(mapped(:places), places) ==
+               "Street: A 1, Open?: Yes; Street: B 2, Open?: No"
+
+      assert Format.format(mapped(:entries), [%{label: "one"}, %{label: "two"}]) ==
+               "Label: one; Label: two"
+
+      assert Format.format(mapped(:notes_list), [%{"a" => 1}, %{}, %{"b" => 2}]) == "A: 1; B: 2"
+    end
+
+    test "not the key Ash tells the values of an array apart by, when nobody gives it" do
+      parts = [%Part{id: "11111111-2222-4333-8444-555555555555", name: "Crane"}]
+
+      assert Format.format(mapped(:parts), parts) == "Name: Crane"
+    end
+
+    test "a key that is an input is shown as any field" do
+      assert Format.format(mapped(:codes), [%{code: "A1", label: "First"}]) ==
+               "Code: A1, Label: First"
+    end
+
+    test "a type that only looks like these stays as it was: read-only text" do
+      assert Format.format(mapped(:keyword), a: "x") =~ "a"
+      assert mapped(:keyword).cell_type == :other
+    end
+  end
+
+  describe "what the editor of a map cell holds" do
+    alias AshTable.Act
+    alias AshTable.Format
+    alias AshTable.Test.Embedding.{Part, Place}
+
+    test "its inputs by name, each as the editor of its type writes it; nil for no value" do
+      place = %Place{street: "Quay 1", open?: true, kind: :main_depot, tags: ["a"], memo: "x"}
+
+      assert Format.input(mapped(:place), place) == %{
+               "street" => "Quay 1",
+               "city" => "",
+               "open?" => "true",
+               "kind" => "main_depot",
+               "opens_at" => "",
+               "tags" => ["a"],
+               "token" => ""
+             }
+
+      assert Format.input(mapped(:place), nil) == nil
+    end
+
+    test "with the key of an embedded resource that is no input, and without what is only shown" do
+      part = %Part{
+        id: "11111111-2222-4333-8444-555555555555",
+        name: "Crane",
+        made_at: ~U[2026-01-01 00:00:00Z]
+      }
+
+      assert Format.input(mapped(:parts), [part]) == [
+               %{"id" => "11111111-2222-4333-8444-555555555555", "name" => "Crane"}
+             ]
+
+      assert Format.input(mapped(:parts), nil) == []
+    end
+
+    test "a value made of fields inside it the same way, nil where there is none" do
+      assert Format.input(mapped(:settings), %{title: "Main", limits: %{low: 1}}) == %{
+               "title" => "Main",
+               "count" => "",
+               "mode" => "",
+               "limits" => %{"low" => "1"},
+               "place" => nil
+             }
+    end
+
+    test "is sent by its field with a mark of its own, and taken back as it was held" do
+      place = mapped(:place)
+      held = Format.input(place, %Place{street: "Quay 1", open?: true, tags: ["a", "b"]})
+      sent = Act.sent(place, held)
+
+      assert sent["_present"] == ""
+      # the field of an array sends an entry of its own before its values
+      assert sent["tags"] == ["", "a", "b"]
+      assert Act.typed(place, sent) == held
+      assert Act.sent(place, nil) == nil
+      assert Act.typed(place, nil) == nil
+      assert Act.typed(place, "") == nil
+    end
+
+    test "an array of them is sent value by value, each under a number of its own, and taken back in that order" do
+      entries = mapped(:entries)
+      sent = Act.sent(entries, [%{"label" => "one"}, %{"label" => "two"}])
+
+      assert sent == %{
+               "_present" => "",
+               "0" => %{"_present" => "", "label" => "one"},
+               "1" => %{"_present" => "", "label" => "two"}
+             }
+
+      assert Act.items(sent) |> Enum.map(&elem(&1, 0)) == ["0", "1"]
+
+      # a number says the order, and need not be the place
+      assert Act.typed(entries, %{"10" => %{"label" => "b"}, "2" => %{"label" => "a"}, "x" => %{}}) ==
+               [%{"label" => "a"}, %{"label" => "b"}]
+
+      # nothing sent is the empty list
+      assert Act.typed(entries, nil) == []
+      assert Act.typed(entries, %{"_present" => ""}) == []
+    end
+
+    test "only what the fields say is taken, whatever else was sent" do
+      assert Act.typed(mapped(:place), %{"street" => "Quay 1", "memo" => "forged", "bogus" => "x"}) ==
+               %{
+                 "street" => "Quay 1",
+                 "city" => "",
+                 "open?" => "false",
+                 "kind" => "",
+                 "opens_at" => "",
+                 "tags" => [],
+                 "token" => ""
+               }
+
+      # what is only shown is never taken; the key is, as it came
+      assert Act.typed(mapped(:parts), %{
+               "0" => %{"id" => "abc", "name" => "Crane", "made_at" => "2020-01-01T00:00:00"}
+             }) == [%{"id" => "abc", "name" => "Crane"}]
+    end
+
+    test "a new value starts with its inputs empty, but for those with a default" do
+      assert Act.blank(mapped(:place)) == %{
+               "_present" => "",
+               "street" => "",
+               "city" => "",
+               "open?" => "false",
+               "kind" => "",
+               "opens_at" => "",
+               "tags" => [""],
+               "token" => ""
+             }
+
+      # a value inside it that can be left out is not there
+      assert Act.blank(mapped(:settings))["limits"] == nil
+      assert Act.blank(mapped(:contact))["places"] == %{"_present" => ""}
+    end
+
+    test "what it sent is unchanged when it is what the record holds, as its field would send that" do
+      place = %Place{street: "Quay 1", open?: false, tags: ["a"]}
+      column = mapped(:place)
+      sent = Act.sent(column, Format.input(column, place))
+
+      assert Act.unchanged?(column, sent, place)
+      refute Act.unchanged?(column, %{sent | "city" => "Kiel"}, place)
+      refute Act.unchanged?(column, nil, place)
+      assert Act.unchanged?(column, nil, nil)
+      # a box that is not ticked is sent as "false", also for a value that is not there yet
+      assert Act.unchanged?(column, Map.put(sent, "open?", "false"), %{place | open?: nil})
+
+      parts = mapped(:parts)
+      list = [%Part{id: "a", name: "Crane"}, %Part{id: "b", name: "Winch"}]
+      sent = Act.sent(parts, Format.input(parts, list))
+      assert Act.unchanged?(parts, sent, list)
+      refute Act.unchanged?(parts, Map.delete(sent, "1"), list)
+      assert Act.unchanged?(parts, %{"_present" => ""}, [])
+      assert Act.unchanged?(parts, %{"_present" => ""}, nil)
+    end
+  end
+
+  describe "an input of an action that is a map cell" do
+    test "is a group of its fields, and an array of them a list of groups, an argument as an attribute" do
+      model = Model.build(AshTable.Test.Embedding)
+      [move] = model.actions
+
+      assert Enum.map(move.inputs, &{&1.name, &1.kind, &1.editor, &1.required?}) == [
+               {:place, :attribute, :group, false},
+               {:places, :attribute, :groups, false},
+               {:stops, :argument, :groups, false},
+               {:reason, :argument, :text, true}
+             ]
+
+      assert Enum.map(hd(move.inputs).fields, & &1.name) ==
+               Enum.map(mapped(:place).fields, & &1.name)
+
+      assert move.panel?
+    end
+
+    test "is left out when it cannot be edited and is not required: a map that declares no fields" do
+      [move] = Model.build(AshTable.Test.Embedding).actions
+
+      refute :notes in Enum.map(move.inputs, & &1.name)
+    end
+
+    test "is required where the record cannot be without it" do
+      create = Model.build(AshTable.Test.Embedding).create
+
+      assert Enum.map(create.inputs, &{&1.name, &1.editor, &1.required?}) == [
+               {:name, :text, false},
+               {:place, :group, false},
+               {:base, :group, true},
+               {:parts, :groups, false}
+             ]
+    end
+
+    test "the input a map cell is edited as is its column's attribute, with the column's fields" do
+      model = Model.build(AshTable.Test.Embedding)
+
+      assert %AshTable.Model.Input{
+               name: :base,
+               kind: :attribute,
+               label: "Base",
+               editor: :group,
+               cell_type: :map,
+               required?: true,
+               fields: fields
+             } = Model.input(model, mapped(:base))
+
+      assert fields == mapped(:base).fields
+      assert %{editor: :groups, required?: false} = Model.input(model, mapped(:parts))
+    end
+  end
+
+  describe "where the panel shows an error about a field of a value inside the record" do
+    alias AshTable.Act
+    alias AshTable.Test.Embedding.Place
+
+    setup do
+      record =
+        Ash.Seed.seed!(AshTable.Test.Embedding, %{name: "Harbour", base: %Place{street: "Base 1"}})
+
+      on_exit(fn -> Ash.DataLayer.Ets.stop(AshTable.Test.Embedding) end)
+
+      {:error, form} =
+        record
+        |> AshPhoenix.Form.for_update(:refuse, Act.form_opts("panel"))
+        |> AshPhoenix.Form.submit(params: %{})
+
+      model = Model.build(AshTable.Test.Embedding)
+
+      inputs =
+        for name <- [:place, :contact, :places, :entries, :settings],
+            do: Model.input(model, mapped(name))
+
+      %{errors: Act.errors(form, model, inputs), form: form, model: model}
+    end
+
+    test "at the field, by the way to it: the input, and the fields on the way", %{errors: errors} do
+      assert errors[[:place, :street]] == ["is refused"]
+      assert errors[[:settings, :limits, :low]] == ["is refused"]
+    end
+
+    test "at a field of one value of an array, by the value's place, wherever Ash says it", %{
+      errors: errors
+    } do
+      # in the error's path, as for an array of embedded resources
+      assert errors[[:places, 0, :street]] == ["is refused"]
+      assert errors[[:contact, :places, 2, :street]] == ["is refused"]
+      # among its variables, as for an array of maps
+      assert errors[[:entries, 1, :label]] == ["is refused"]
+    end
+
+    test "at a value inside the value, when the error is about that value as a whole", %{
+      errors: errors
+    } do
+      assert errors[[:settings, :limits]] == ["is refused"]
+    end
+
+    test "at the one field of that name in a value inside it, where Ash names the value around it",
+         %{errors: errors} do
+      assert errors[[:contact, :place, :street]] == ["is refused"]
+    end
+
+    test "at the group, after the field's name, where the group has no such field or does not say which value is meant",
+         %{errors: errors} do
+      assert errors[:place] == ["Bogus: is refused"]
+      assert errors[:entries] == ["Label: is refused"]
+    end
+
+    test "above the fields, with the way to it, for a value the panel has no input for and the table a column",
+         %{errors: errors} do
+      assert errors[nil] == ["Parts 1: Name: is refused"]
+    end
+
+    test "nowhere for a path that leads to no column: it is not this table's to name", %{
+      errors: errors,
+      form: form,
+      model: model
+    } do
+      refute Enum.any?(List.flatten(Map.values(errors)), &(&1 =~ "Elsewhere"))
+
+      assert Enum.count(AshTable.Errors.nested(form)) == 11
+      assert AshTable.Errors.nested_text(model, [:elsewhere, 0], :name, {"is refused", []}) == nil
+    end
+
+    test "where an action is not run from a panel, each is said with the way to its field", %{
+      form: form,
+      model: model
+    } do
+      said = AshTable.Errors.of_form(form, model, nil, "refused")
+
+      assert "Place: Street: is refused" in said
+      assert "Contact: Places 3: Street: is refused" in said
+      assert "Settings: Limits: Low: is refused" in said
+      refute Enum.any?(said, &(&1 =~ "Elsewhere"))
+      refute "Name: is refused" in said
     end
   end
 
@@ -657,7 +1275,10 @@ defmodule AshTable.ModelTest do
       utc_datetime: :datetime,
       utc_datetime_usec: :datetime,
       naive_datetime: :datetime,
-      enum: :enum
+      enum: :enum,
+      # a value of named fields: an embedded resource, and a map
+      embedded_resource: :map,
+      map: :map
     }
 
     defp manifest_types(resource, read_action) do
@@ -2026,6 +2647,45 @@ defmodule AshTable.ModelTest do
       assert [
                %{name: :moods, editor: :list, component: nil},
                %{name: :grades, editor: :choices, component: nil}
+             ] = update.inputs
+    end
+  end
+
+  describe "a component on the column of a map cell" do
+    alias AshTable.Test.Presenting.Maps
+
+    test "shows, and is told that the column is a value made of fields, or an array of them" do
+      [place, places] = Model.build(Maps).columns
+
+      assert %{module: AshTable.Test.Cells.Both, cell?: true} = place.component
+
+      assert %AshTable.Component.Column{
+               type: AshTable.Test.Embedding.Place,
+               cell_type: :map,
+               values: nil,
+               editable?: true
+             } = place.component.column
+
+      assert %AshTable.Component.Column{
+               type: {:array, AshTable.Test.Embedding.Place},
+               cell_type: {:array, :map}
+             } = places.component.column
+    end
+
+    # the editor of a component holds one value
+    test "never edits: a map cell is edited in the side panel, with the table's own fields" do
+      [place, places] = Model.build(Maps).columns
+
+      assert %{editable?: true, editor: :group, component: %{editor?: true}} = place
+      assert %{editable?: true, editor: :groups, component: %{editor?: true}} = places
+    end
+
+    test "nor in the action panel" do
+      %{actions: [update]} = Model.build(Maps)
+
+      assert [
+               %{name: :place, editor: :group, component: nil},
+               %{name: :places, editor: :groups, component: nil}
              ] = update.inputs
     end
   end

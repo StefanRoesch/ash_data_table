@@ -130,6 +130,14 @@ defmodule Demo.Tracker.Task do
     column :tags
     column :checks
 
+    # A map that declares its fields: shown on one line, and edited in the
+    # side panel, field by field. Neither sorted nor filtered by. A change
+    # asks first, when Save is used.
+    column :recurrence do
+      label "Repeats"
+      confirm "Change how often this task comes round?"
+    end
+
     # no update action accepts it
     column :inserted_at
 
@@ -253,7 +261,8 @@ defmodule Demo.Tracker.Task do
         :project_id,
         :assignee_id,
         :tags,
-        :checks
+        :checks,
+        :recurrence
       ]
 
       change relate_actor(:reporter)
@@ -276,7 +285,8 @@ defmodule Demo.Tracker.Task do
         :project_id,
         :assignee_id,
         :tags,
-        :checks
+        :checks,
+        :recurrence
       ]
     end
 
@@ -426,6 +436,21 @@ defmodule Demo.Tracker.Task do
       allow_nil? false
       default []
       public? true
+    end
+
+    # A map that declares its fields: how often a task comes round again.
+    attribute :recurrence, :map do
+      public? true
+
+      constraints fields: [
+                    every: [type: :integer, allow_nil?: false, constraints: [min: 1, max: 365]],
+                    unit: [
+                      type: :atom,
+                      allow_nil?: false,
+                      constraints: [one_of: [:day, :week, :month]]
+                    ],
+                    until: [type: :date]
+                  ]
     end
 
     # Private on purpose: never a column.

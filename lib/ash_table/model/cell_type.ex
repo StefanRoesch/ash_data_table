@@ -5,7 +5,7 @@ defmodule AshTable.Model.CellType do
   # runtime (ADR 0001); the test suite compares this module's answers with it.
 
   @typedoc "The cell type of one value."
-  @type item :: :text | :number | :boolean | :date | :datetime | :enum
+  @type item :: :text | :number | :boolean | :date | :datetime | :enum | :map
 
   @typedoc """
   A cell type: that of one value, `{:array, item}` for a list of such
@@ -57,9 +57,13 @@ defmodule AshTable.Model.CellType do
   array of values that have a cell type of their own is `{:array, item}`,
   with the values of an enum item.
 
-  Everything a table has no dedicated cell for is `:other`: maps, embedded
-  resources, unions, keys, times, durations and so on, and the arrays of
-  those and of arrays.
+  A value of named fields is `:map`: an embedded resource, and a map,
+  whether it declares its fields or not. Which fields it has is
+  `AshTable.Resource.Embedding`'s to say.
+
+  Everything a table has no dedicated cell for is `:other`: unions, keys,
+  times, durations, structs, keyword lists, tuples and so on, and the arrays
+  of those and of arrays.
   """
   @spec classify(Ash.Type.t(), keyword) :: {t, values | nil}
   def classify({:array, type}, constraints) do
@@ -91,6 +95,9 @@ defmodule AshTable.Model.CellType do
 
       Ash.Type.NewType.new_type?(type) ->
         classify(type.subtype_of(), Ash.Type.NewType.constraints(type, constraints))
+
+      type == Ash.Type.Map or (not is_nil(type) and Ash.Type.embedded_type?(type)) ->
+        {:map, nil}
 
       true ->
         {:other, nil}

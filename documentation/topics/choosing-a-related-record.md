@@ -65,7 +65,8 @@ update :update do
     :project_id,
     :assignee_id,
     :tags,
-    :checks
+    :checks,
+    :recurrence
   ]
 end
 ```

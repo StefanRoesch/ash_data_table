@@ -116,6 +116,7 @@ These are all the messages of the template
 | Announcements | "1 result" with the plural "%{count} results", "Results updated", "%{column} was not saved: %{message}" |
 | Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
 | The editor of an array | "Add value" (the button that adds one), "%{column} %{position}" (what the control of a value is called: "Tags 2"; a message about one value has it in front, through "%{field}: %{message}"), "Remove %{column} %{position}" (what its button is called) |
+| A value made of fields | "%{field}: %{value}" (one field of an embedded resource or a map, as its cell shows it: "City: Kiel"), "Save" (the button of the panel such a cell is edited in), "Remove %{column}" (what the button is called that takes such a value away: "Remove Address"). The button that adds one is the array's "Add value", and a value of an array is called by "%{column} %{position}" |
 | Dialog | "Cancel", "Confirm" |
 | Row actions | "Actions" (the heading of their column), "You are not allowed to do this.", "This could not be done.", and what is read out: "%{action}: done", "%{action} failed: %{message}" |
 | The action panel | "%{action}: %{record}" (the heading of a row action's panel), "Run", "Create"; "Cancel" is the dialog's |
@@ -145,6 +146,11 @@ values of an enum, the question of a `confirm`, and the name of the table
 of each relationship line under an expanded row (declared with `label`, or
 the relationship's name in words). Each of them is looked up as a message in
 the same `ash_table` domain and shown as it is when the domain has no entry.
+
+So are the fields of an embedded resource and of a map, in a cell and in
+the side panel: each is called by its name in words, as a column of that
+name would be, and looked up the same way. See
+[Maps and embedded resources](maps-and-embedded-resources.md#translating-the-fields).
 
 Row actions and create add four more of the same kind:
 

@@ -118,6 +118,7 @@ test.describe("in German", () => {
       "Beschreibung",
       "Schlagwörter",
       "Prüfungen",
+      "Wiederholung",
       "Angelegt am",
       "Projekt",
       "Zugewiesen an",
@@ -405,6 +406,8 @@ test.describe("in German", () => {
       "Status",
       "Starts on",
       "Budget",
+      "Kunde",
+      "Meilensteine",
       "Angelegt am",
     ])
     await expect(projects.pagination).toHaveAccessibleName("Seiten: Projects")

@@ -73,12 +73,15 @@ defmodule Demo.Tracker.Project do
 
     create :create do
       primary? true
-      accept [:name, :description, :status, :starts_on, :budget]
+      accept [:name, :description, :status, :starts_on, :budget, :client, :milestones]
     end
 
     update :update do
       primary? true
-      accept [:name, :description, :status, :starts_on, :budget]
+      # An embedded resource is cast through its own actions, which is
+      # nothing a single statement can do.
+      require_atomic? false
+      accept [:name, :description, :status, :starts_on, :budget, :client, :milestones]
     end
 
     update :set_status do
@@ -135,6 +138,17 @@ defmodule Demo.Tracker.Project do
     attribute :budget, :decimal do
       public? true
       constraints min: 0
+    end
+
+    # An embedded resource, with another one inside it: shown on one line,
+    # edited in the side panel.
+    attribute :client, Demo.Tracker.Client, public?: true
+
+    # An array of embedded resources.
+    attribute :milestones, {:array, Demo.Tracker.Milestone} do
+      allow_nil? false
+      default []
+      public? true
     end
 
     create_timestamp :inserted_at, public?: true

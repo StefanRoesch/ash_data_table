@@ -22,20 +22,22 @@ const EDITABLE = [
   "description",
   "tags",
   "checks",
+  "recurrence",
 ]
 
 // `editors` counts the two reference cells that are edited in the picker,
-// "Project" and "Assignee", with the eleven columns edited in the cell.
+// "Project" and "Assignee", and "Repeats", which is edited in the side
+// panel, with the eleven columns edited in the cell.
 // `actions` says whether the grid has the column of the row actions: the
 // person can run one of them on some record (actions.spec.ts).
 const TASKS: Record<Actor, { columns: number; editors: number; actions: boolean; range: string | null }> = {
-  admin: { columns: 19, editors: 13, actions: true, range: "1–25 of 320" },
-  member: { columns: 18, editors: 13, actions: true, range: "1–25 of 320" },
+  admin: { columns: 20, editors: 14, actions: true, range: "1–25 of 320" },
+  member: { columns: 19, editors: 14, actions: true, range: "1–25 of 320" },
   // may not read people: no assignee, no reporter
-  viewer: { columns: 16, editors: 0, actions: false, range: "1–25 of 320" },
-  outsider: { columns: 18, editors: 13, actions: true, range: "1–25 of 80" },
+  viewer: { columns: 17, editors: 0, actions: false, range: "1–25 of 320" },
+  outsider: { columns: 19, editors: 14, actions: true, range: "1–25 of 80" },
   // may not read projects, and sees no estimate
-  nobody: { columns: 16, editors: 0, actions: false, range: null },
+  nobody: { columns: 17, editors: 0, actions: false, range: null },
 }
 
 for (const actor of ACTOR_KEYS) {
@@ -101,7 +103,7 @@ for (const actor of ACTOR_KEYS) {
 test.describe("the member, whose rights depend on the record", () => {
   test.use({ actor: "member" })
 
-  test("the smaller grid is whole: the boxes, the expanders, 18 columns and the actions, numbered 1 to 21, walked without a gap", async ({
+  test("the smaller grid is whole: the boxes, the expanders, 19 columns and the actions, numbered 1 to 22, walked without a gap", async ({
     tasks,
     frames,
   }) => {
@@ -116,16 +118,16 @@ test.describe("the member, whose rights depend on the record", () => {
             Number(cell.getAttribute("aria-colindex")),
           ]),
         )
-    const oneToTwentyOne = Array.from({ length: 21 }, (_, index) => [index + 1, index + 1])
+    const oneToTwentyTwo = Array.from({ length: 22 }, (_, index) => [index + 1, index + 1])
 
-    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwentyOne)
-    expect(await numbering("#task-head-row th")).toEqual(oneToTwentyOne)
-    expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyOne)
+    expect(await numbering(`[id="task-row-${first}"] td`)).toEqual(oneToTwentyTwo)
+    expect(await numbering("#task-head-row th")).toEqual(oneToTwentyTwo)
+    expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyTwo)
 
     await tasks.cell(first, "title").focus()
     await frames.clear()
     const walked = [await tasks.focused()]
-    for (let step = 0; step < 22; step++) {
+    for (let step = 0; step < 23; step++) {
       await tasks.press("ArrowRight")
       const focused = await tasks.focused()
       if (focused === walked.at(-1)) break
@@ -143,6 +145,7 @@ test.describe("the member, whose rights depend on the record", () => {
       "description",
       "tags",
       "checks",
+      "recurrence",
       "inserted_at",
       "project",
       "assignee",

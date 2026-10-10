@@ -95,6 +95,26 @@ defmodule AshTable.Live.TableComponent do
   # says `data-current`, which the hook selects until the person selects
   # another.
   #
+  # ## Map cells
+  #
+  # A cell whose value is made of fields (an embedded resource, a map, or an
+  # array of either) has no editor in the cell either. The hook asks for it
+  # with one `edit` event, with the row and the column, and the server
+  # opens the action panel for it: the record is read, as the person, and
+  # the panel's one input is the column's attribute, shown as a group of
+  # the value's fields (`group/1`), or as one group per value of an array
+  # (`groups/1`). "Save" runs the column's update action with that one
+  # input (`AshTable.Edit.put/7`); what the action says about a field is
+  # shown at that field, and the panel stays open.
+  #
+  # What such a field holds is the server's to render, unlike the rows of an
+  # array of plain values: a group shows the action's messages at its
+  # fields. The panel keeps what the form sent for it last (`groups`), a
+  # group is added and taken away by an event (`panel_add`, `panel_remove`,
+  # with the way to it), and the values of an array are sent under numbers
+  # of their own, which say their order and not their places: nothing in
+  # the page changes its name when a value is taken away.
+  #
   # ## Nested tables
   #
   # A table whose rows offer relationships, to this person and at this depth,
@@ -153,6 +173,7 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Query
   alias AshTable.Record
   alias AshTable.Related
+  alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Routes
   alias AshTable.State
@@ -447,6 +468,7 @@ defmodule AshTable.Live.TableComponent do
           | label: label,
             confirm: column.confirm && Text.label(column.confirm),
             values: values,
+            fields: fields_in_words(column.fields),
             # what the column's component is told, in the same words
             component:
               column.component &&
@@ -475,6 +497,7 @@ defmodule AshTable.Live.TableComponent do
               values:
                 input.values &&
                   Enum.map(input.values, fn {value, label} -> {value, Text.label(label)} end),
+              fields: fields_in_words(input.fields),
               component: input.component && Map.get(components, input.name, input.component)
           }
         end
@@ -499,6 +522,23 @@ defmodule AshTable.Live.TableComponent do
         actions: Enum.map(model.actions, action),
         create: create
     }
+  end
+
+  # The fields of a map cell, in the same words: what each is called, the
+  # labels of its values, and the fields of a field that is one itself.
+  defp fields_in_words(nil), do: nil
+
+  defp fields_in_words(fields) do
+    for field <- fields do
+      %{
+        field
+        | label: Text.label(field.label),
+          values:
+            field.values &&
+              Enum.map(field.values, fn {value, label} -> {value, Text.label(label)} end),
+          fields: fields_in_words(field.fields)
+      }
+    end
   end
 
   # A table whose state lives in the URL takes it from there on every update;
@@ -1150,17 +1190,101 @@ defmodule AshTable.Live.TableComponent do
     form = Act.validate(panel.form, panel.inputs, typed, given(panel))
     # a field whose record was chosen is one the person has been in
     used = MapSet.union(used(typed), panel.picked)
+    panel = sent(%{panel | form: form, used: used, typed: typed}, typed)
 
-    {:noreply,
-     assign(socket,
-       panel: errors(%{panel | form: form, used: used, typed: typed}, socket.assigns.model)
-     )}
+    {:noreply, assign(socket, panel: errors(panel, socket.assigns.model))}
   end
 
   # Sent by the panel's form when the person uses its button: the action
   # runs with what the fields hold.
   def handle_event("panel_submit", params, %{assigns: %{panel: %{} = panel}} = socket),
-    do: submit(socket, panel, typed(params))
+    do: submit(socket, sent(panel, typed(params)), typed(params))
+
+  # Sent by the panel's hook when a person uses the button that adds a
+  # value to a field made of groups, or the one that takes a value away:
+  # the way to the group, as the names it is sent under. The panel is
+  # rendered again with the group, or without it, and the action is told as
+  # it is of anything typed. The answer says where focus goes.
+  def handle_event(event, %{"path" => path}, %{assigns: %{panel: %{} = panel}} = socket)
+      when event in ["panel_add", "panel_remove"] and is_list(path) do
+    change = if event == "panel_add", do: :add, else: :remove
+
+    with [name | rest] when is_binary(name) <- path,
+         true <- Enum.all?(rest, &is_binary/1),
+         %{} = input <-
+           Enum.find(panel.inputs, &(group?(&1) and Atom.to_string(&1.name) == name)),
+         {:ok, held, focus} <- regroup(input, panel.groups[name], rest, change) do
+      groups = Map.put(panel.groups, name, held)
+      # every group as the panel holds it, with what the form sent last
+      typed = Map.merge(panel.typed, groups)
+      form = Act.validate(panel.form, panel.inputs, typed, given(panel))
+      used = MapSet.put(panel.used, name)
+      panel = %{panel | form: form, typed: typed, groups: groups, used: used}
+      focus = Enum.join(["#{socket.assigns.id}-panel-f-#{name}" | focus], "-")
+
+      {:reply, %{focus: focus}, assign(socket, panel: errors(panel, socket.assigns.model))}
+    else
+      _ -> {:reply, %{}, socket}
+    end
+  end
+
+  def handle_event(event, _params, socket) when event in ["panel_add", "panel_remove"],
+    do: {:reply, %{}, socket}
+
+  # Sent by the hook when a person opens the editor of a map cell: the row
+  # by the key in its DOM id, and the column. The side panel opens with the
+  # value's fields; nothing is saved. The record is read first, as the
+  # person.
+  def handle_event("edit", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+    %{id: id, model: model, rows: rows} = socket.assigns
+
+    with %{editable?: true} = column <- column(model, name),
+         true <- group?(column),
+         %{} = row <- rows[key] do
+      case Edit.open(model, column, row.pk, "#{id}-panel", reader(socket.assigns)) do
+        {:ok, record, form} ->
+          title =
+            case title_of(model, record) do
+              nil -> column.label
+              name -> Text.t(:action_on, action: column.label, record: name)
+            end
+
+          panel =
+            panel(socket.assigns, &Map.get(record, &1.name), %{
+              kind: :cell,
+              # the column's update action, as the panel knows an action
+              action: %Model.Action{
+                name: column.update_action,
+                type: :update,
+                label: column.label,
+                confirm: column.confirm
+              },
+              key: key,
+              column: column.name,
+              form: form,
+              inputs: [Model.input(model, column)],
+              title: title,
+              submit: Text.t(:save)
+            })
+
+          {:reply, %{ok: true}, assign(socket, panel: panel)}
+
+        # not theirs to see on this record, and so not theirs to change
+        :hidden ->
+          {:reply, %{ok: false}, socket}
+
+        :error ->
+          message = Text.t(:record_gone)
+
+          {:reply, %{ok: false, error: message},
+           say(socket, Text.t(:not_saved, column: column.label, message: message))}
+      end
+    else
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("edit", _params, socket), do: {:reply, %{ok: false}, socket}
 
   # Sent by the panel's hook for Cancel and Escape.
   def handle_event("panel_cancel", _params, socket),
@@ -1495,6 +1619,12 @@ defmodule AshTable.Live.TableComponent do
         {input.name, {Format.input(input, value), label}}
       end
 
+    # what each field made of groups starts with, as its form sends it
+    groups =
+      for input <- panel.inputs, group?(input), into: %{} do
+        {Atom.to_string(input.name), started(input, held.(input), panel.kind)}
+      end
+
     Map.merge(
       %{
         errors: %{},
@@ -1502,11 +1632,102 @@ defmodule AshTable.Live.TableComponent do
         used: MapSet.new(),
         typed: %{},
         picked: MapSet.new(),
-        chosen: chosen
+        chosen: chosen,
+        groups: groups,
+        touched: MapSet.new()
       },
       panel
     )
   end
+
+  # Whether a column, or an input of the panel, is a map cell or an array of
+  # them, edited as groups of fields.
+  defp group?(%{editor: editor}), do: editor in [:group, :groups]
+
+  # What a field made of groups starts with: the value it is given, as its
+  # form sends it. Without a value, a list is empty, and a single value is
+  # not there, unless a record is being created and cannot be without it:
+  # then its fields are there to be filled in.
+  defp started(%{editor: :groups} = input, value, _kind),
+    do: Act.sent(input, Format.input(input, List.wrap(value)))
+
+  defp started(input, %{} = value, _kind), do: Act.sent(input, Format.input(input, value))
+  defp started(%{required?: true} = input, _none, :create), do: Act.blank(input)
+  defp started(_input, _none, _kind), do: nil
+
+  # The panel with what its form sent for its fields made of groups, and
+  # with the fields in them a person has been in. A group that was not sent
+  # is not there.
+  defp sent(panel, typed) do
+    groups =
+      for {name, _held} <- panel.groups, into: %{} do
+        {name, with(held when not is_map(held) <- typed[name], do: nil)}
+      end
+
+    %{panel | groups: groups, touched: touched(typed, [])}
+  end
+
+  # The fields a person has been in, by the names they are sent under, from
+  # the outside in. As `used/1`, for the fields inside a group.
+  defp touched(typed, path) do
+    for {name, held} <- typed,
+        not String.starts_with?(name, "_unused_"),
+        not is_map_key(typed, "_unused_" <> name),
+        reduce: MapSet.new() do
+      touched ->
+        touched = MapSet.put(touched, path ++ [name])
+        if is_map(held), do: MapSet.union(touched, touched(held, path ++ [name])), else: touched
+    end
+  end
+
+  # Adds a group to a field made of groups, or takes one away: what the
+  # field holds then, and where focus goes, as the end of an id. `path` is
+  # the way from the field to the group, as the names it is sent under, and
+  # is a claim: it is followed through the fields the input has, and through
+  # nothing else.
+  defp regroup(%{cell_type: :map} = field, nil, [], :add), do: {:ok, Act.blank(field), []}
+
+  defp regroup(%{cell_type: :map, required?: false}, %{}, [], :remove), do: {:ok, nil, ["add"]}
+
+  defp regroup(%{cell_type: {:array, :map}} = field, held, [], :add) do
+    held = if is_map(held), do: held, else: %{"_present" => ""}
+    numbers = for {key, _item} <- Act.items(held), do: String.to_integer(key)
+    key = Integer.to_string(Enum.max(numbers, fn -> -1 end) + 1)
+
+    {:ok, Map.put(held, key, Act.blank(field)), [key]}
+  end
+
+  defp regroup(%{cell_type: {:array, :map}} = field, %{} = held, [key | rest], change) do
+    keys = for {key, _item} <- Act.items(held), do: key
+
+    cond do
+      key not in keys ->
+        :error
+
+      rest == [] and change == :remove ->
+        at = Enum.find_index(keys, &(&1 == key))
+        # to the value after it, else to the one before it, else to the
+        # button that adds one
+        focus = Enum.at(keys, at + 1) || (at > 0 && Enum.at(keys, at - 1)) || "add"
+        {:ok, Map.delete(held, key), [focus]}
+
+      true ->
+        with {:ok, item, focus} <- regroup(%{field | cell_type: :map}, held[key], rest, change),
+             do: {:ok, Map.put(held, key, item), [key | focus]}
+    end
+  end
+
+  defp regroup(%{cell_type: :map, fields: fields}, %{} = held, [name | rest], change) do
+    with %{} = field <- Enum.find(fields || [], &(group?(&1) and Atom.to_string(&1.name) == name)),
+         {:ok, inner, focus} <- regroup(field, held[name], rest, change) do
+      # the id of a field in a group: see `members/1`
+      {:ok, Map.put(held, name, inner), ["f", name | focus]}
+    else
+      _ -> :error
+    end
+  end
+
+  defp regroup(_field, _held, _path, _change), do: :error
 
   # A row action that runs straight away. The row is put back with what is
   # true now: the action's result, or the record as it is and the actions
@@ -1572,8 +1793,12 @@ defmodule AshTable.Live.TableComponent do
   # The panel with what its form's errors say, by field.
   # and which values of its arrays they are about
   defp errors(panel, model) do
+    # a cell that is not this person's to change says so as a cell does
+    refusal =
+      if panel.kind == :cell, do: Text.t(:edit_not_allowed), else: Text.t(:action_not_allowed)
+
     panel
-    |> Map.put(:errors, own(Act.errors(panel.form, model, panel.inputs), panel))
+    |> Map.put(:errors, own(Act.errors(panel.form, model, panel.inputs, refusal), panel))
     |> Map.put(:places, Act.places(panel.form, panel.inputs))
   end
 
@@ -1679,7 +1904,8 @@ defmodule AshTable.Live.TableComponent do
 
     # a panel is never open beside a run: the run that starts closes it
     cond do
-      Enum.any?(panel.inputs, &is_map_key(panel.errors, &1.name)) ->
+      # at a field of the panel, or at a field of a value inside one
+      Enum.any?(Map.keys(panel.errors), &(not is_nil(&1))) ->
         {:noreply, failed_panel(socket, panel, nil)}
 
       (unchosen = Act.unchosen(panel.inputs, params, nil, chooser(socket.assigns))) != [] ->
@@ -1687,6 +1913,34 @@ defmodule AshTable.Live.TableComponent do
 
       true ->
         {:noreply, run_bulk(socket, action, selection, Act.values(panel.inputs, params))}
+    end
+  end
+
+  # Saves the map cell of a panel: the column's update action, with the
+  # column's attribute as its one input. The row has to be one of the page
+  # still, and the column one this person edits; the record is read again,
+  # as the person. What is not saved leaves the panel open, with what the
+  # action said.
+  defp submit(socket, %{kind: :cell, key: key, column: name, inputs: [input]} = panel, params) do
+    %{id: id, model: model, rows: rows} = socket.assigns
+    column = Enum.find(model.columns, &(&1.name == name and &1.editable? and group?(&1)))
+
+    case column && rows[key] do
+      %{} = row ->
+        case Edit.put(model, column, input, row.pk, params, "#{id}-panel", reader(socket.assigns)) do
+          {:ok, record} ->
+            {:noreply, socket |> assign(panel: nil) |> put_row(key, record)}
+
+          {:error, %AshPhoenix.Form{} = form} ->
+            {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
+
+          # the record is gone, or the value is not this person's to change
+          {:error, nil, message} ->
+            {:noreply, failed_panel(socket, panel, message)}
+        end
+
+      _gone ->
+        {:noreply, assign(socket, panel: nil)}
     end
   end
 
@@ -1849,10 +2103,40 @@ defmodule AshTable.Live.TableComponent do
         if input, do: Text.t(:error_on_field, field: input.label, message: text), else: text
       end
 
-    socket
-    |> assign(panel: panel)
-    |> say(Text.t(:action_not_done, action: panel.action.label, message: Enum.join(said, "; ")))
+    # what is said at a field inside a group, with the way to it
+    inside =
+      for {[name | _] = place, texts} <- panel.errors,
+          input = Enum.find(panel.inputs, &(&1.name == name)),
+          text <- texts,
+          do: Text.t(:error_on_field, field: field_called(input, tl(place)), message: text)
+
+    message = Enum.join(said ++ inside, "; ")
+
+    said =
+      case panel.kind do
+        :cell -> Text.t(:not_saved, column: panel.action.label, message: message)
+        _action -> Text.t(:action_not_done, action: panel.action.label, message: message)
+      end
+
+    socket |> assign(panel: panel) |> say(said)
   end
+
+  # What a field inside a group is called, for the live region: the labels
+  # on the way to it, with the place of a value of an array ("Milestones 2
+  # Title").
+  defp field_called(%{label: label} = field, [index | rest]) when is_integer(index) do
+    position = Text.t(:value_position, column: label, position: index + 1)
+    field_called(%{field | label: position, cell_type: :map}, rest)
+  end
+
+  defp field_called(%{label: label, fields: fields}, [name | rest]) do
+    case Enum.find(fields || [], &(&1.name == name)) do
+      nil -> label
+      field -> field_called(%{field | label: label <> " " <> field.label}, rest)
+    end
+  end
+
+  defp field_called(%{label: label}, []), do: label
 
   # What became of a row action, run straight away or from its panel: the
   # reply to the hook, and the page as it is now.
@@ -2369,7 +2653,8 @@ defmodule AshTable.Live.TableComponent do
         <%!-- One editor per editable column. The hook opens a copy of it in the
         cell being edited; which cell that is, the server never knows. A
         reference column has an empty one: its cells are edited in the picker,
-        which the hook asks for. --%>
+        which the hook asks for. So has the column of a map cell, which is
+        edited in the side panel. --%>
         <template
           :for={column <- @model.columns}
           :if={column.editable?}
@@ -2379,7 +2664,7 @@ defmodule AshTable.Live.TableComponent do
           data-confirm={column.confirm}
         >
           <.editor
-            :if={column.editor != :reference}
+            :if={column.editor not in [:reference, :group, :groups]}
             column={column}
             allow_nil?={allow_nil?(@model.resource, column)}
           />
@@ -2536,6 +2821,11 @@ defmodule AshTable.Live.TableComponent do
             this.openerId = this.opener && this.opener.id
             this.confirmed = false
             if (dialog.showModal) dialog.showModal()
+            // The browser puts focus on the first control of the dialog.
+            // Where that is the button that takes a group away, it goes on
+            // to the group's first field: Enter there is not to remove what
+            // the person came to edit.
+            if (document.activeElement && document.activeElement.matches("[data-remove-group]")) this.into(dialog.id)
             // Escape: the dialog stays until the server has taken it away
             dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
             dialog.addEventListener("click", e => { if (e.target.closest("[data-cancel]")) this.cancel() })
@@ -2572,12 +2862,29 @@ defmodule AshTable.Live.TableComponent do
               this.grid.hold(item)
               changed(item.closest("[data-list]"))
             })
+            // A field made of groups (an embedded resource, a map, an array
+            // of either): the server adds a group and takes one away, and
+            // says where focus goes then: into the group that was added,
+            // or to what stands where the one that is gone stood.
+            dialog.addEventListener("click", e => {
+              const button = e.target.closest && e.target.closest("[data-add-group],[data-remove-group]")
+              if (!button) return
+              const add = button.dataset.addGroup !== undefined
+              let path = null
+              try { path = JSON.parse(add ? button.dataset.addGroup : button.dataset.removeGroup) } catch (_error) { return }
+              this.pushEventTo(dialog, add ? "panel_add" : "panel_remove", {path}, reply => this.into(reply && reply.focus))
+            })
+            // The panel of a cell asks the column's question only when
+            // something was changed: what its form holds as it opens is
+            // what the record has.
+            this.initial = dialog.dataset.ask === "changed" ? this.snapshot() : null
             // An action with a question asks it when "Run" is used, in the
             // table's other dialog, on top of this one. Cancel there comes
             // back here, with everything as it was typed.
             dialog.addEventListener("submit", e => {
               const question = dialog.dataset.question
-              if (!question || !this.grid || this.confirmed) { this.confirmed = false; return }
+              const same = this.initial !== null && this.snapshot() === this.initial
+              if (!question || !this.grid || this.confirmed || same) { this.confirmed = false; return }
               e.preventDefault()
               e.stopPropagation()
               const submitter = e.submitter
@@ -2590,6 +2897,25 @@ defmodule AshTable.Live.TableComponent do
           },
 
           cancel() { this.pushEventTo(this.el, "panel_cancel", {}) },
+
+          // What the form holds, as it would be sent.
+          snapshot() {
+            const form = this.el.querySelector("form")
+            return form ? new URLSearchParams(new FormData(form)).toString() : ""
+          },
+
+          // Into the element of that id: to the first field in it, else to
+          // its first button, or to the element itself when it is a control.
+          into(id) {
+            const element = id && document.getElementById(id)
+            if (!element) return
+            const shown = control => control.type !== "hidden" && !control.hidden
+            const control = element.matches("button,input,select,textarea")
+              ? element
+              : (Array.from(element.querySelectorAll("input,select,textarea")).find(shown) ||
+                 Array.from(element.querySelectorAll("button")).find(shown))
+            if (control) control.focus()
+          },
 
           // The server says which values of an array the action refuses, on
           // the group around the field's rows; the rows are this hook's, so
@@ -2805,7 +3131,15 @@ defmodule AshTable.Live.TableComponent do
         // double click choose it (`ash_table:choose`, for the picker's
         // hook), and it starts with the row selected that the server marks
         // as the record chosen now (`data-current`), until the person
-        // selects another. A grid in a dialog is the top of its own tree
+        // selects another.
+        //
+        // Nor has a map cell (an embedded resource, a map, an array of
+        // either): Enter, F2 and a double click ask the server for the
+        // side panel (`edit`), in which its fields are edited and saved.
+        // The cell is the panel's opener, and has the focus again when
+        // the panel is gone.
+        //
+        // A grid in a dialog is the top of its own tree
         // of grids, wherever the dialog stands in the page: nothing
         // outside a modal dialog can be reached while it is open.
 
@@ -3830,6 +4164,11 @@ defmodule AshTable.Live.TableComponent do
               if (key === null) this.pick(cell)
               return key === null
             }
+            // nor has a map cell: Enter and F2 open the side panel, typing does nothing
+            if (type === "group" || type === "groups") {
+              if (key === null) this.editInPanel(cell)
+              return key === null
+            }
             const root = template.content.firstElementChild.cloneNode(true)
             if (type === "choices" || type === "list") return this.startList(cell, template, root, key)
             const input = CONTROL(root)
@@ -3906,6 +4245,24 @@ defmodule AshTable.Live.TableComponent do
             this.picking = true
             const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
             this.pushEventTo(this.el, "pick", payload, reply => {
+              this.picking = false
+              if (!reply || !reply.error || !cell.isConnected) return
+              this.fail(cell, reply.error, () => {
+                const message = document.getElementById(`${cell.id}-error`)
+                if (message) message.remove()
+              })
+            })
+          },
+
+          // Asks for the side panel of a map cell: one event with the row
+          // and the column. The server renders the panel, whose own hook
+          // takes it from there. Where the row's record is gone there is
+          // nothing to open it for, and the cell is marked here.
+          editInPanel(cell) {
+            if (this.picking) return
+            this.picking = true
+            const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
+            this.pushEventTo(this.el, "edit", payload, reply => {
               this.picking = false
               if (!reply || !reply.error || !cell.isConnected) return
               this.fail(cell, reply.error, () => {
@@ -4640,6 +4997,7 @@ defmodule AshTable.Live.TableComponent do
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
       data-question={Map.get(@panel, :question) || @panel.action.confirm}
+      data-ask={@panel.kind == :cell && "changed"}
       data-destructive={@panel.action.type == :destroy}
       aria-labelledby={"#{@id}-panel-title"}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
@@ -4665,11 +5023,29 @@ defmodule AshTable.Live.TableComponent do
           :for={input <- @panel.inputs}
           id={"#{@id}-panel-f-#{input.name}"}
           input={input}
-          field={@form[input.name]}
-          default?={@panel.kind == :create or input.kind == :argument}
+          name={@form[input.name].name}
+          value={
+            if group?(input),
+              do: @panel.groups[Atom.to_string(input.name)],
+              else:
+                field_value(
+                  input,
+                  @form[input.name].value,
+                  @panel.kind == :create or input.kind == :argument
+                )
+          }
           errors={field_errors(@panel, input)}
           places={field_places(@panel, input)}
           chosen={@panel.chosen[input.name]}
+          inside={
+            %{
+              errors: @panel.errors,
+              touched: @panel.touched,
+              submitted?: @panel.submitted?,
+              place: [input.name],
+              path: [Atom.to_string(input.name)]
+            }
+          }
           target={@target}
         />
         <div class="mt-6 flex justify-end gap-2">
@@ -4791,23 +5167,32 @@ defmodule AshTable.Live.TableComponent do
   # One field of the action panel: its label, the control of its type, and
   # the action's errors about it. The controls are those of the cell
   # editors, at the size of a form's.
+  #
+  # `name` is what the field is sent under and `value` what it holds, as its
+  # control holds it (`field_value/3`). A field inside a group is one of
+  # these too: `input` is then a field of a map cell
+  # (`AshTable.Model.Field`). `inside` is what a field made of groups needs
+  # to know of the panel for the fields in it: see `group/1`. Its `path` is
+  # also what the field says of itself (`data-field`): its name, and for a
+  # field inside a group the names on the way to it, with a dot between.
   attr :id, :string, required: true
   attr :input, :map, required: true
-  attr :field, :any, required: true
+  attr :name, :string, required: true
+  attr :value, :any, required: true
   attr :errors, :list, required: true
   attr :places, :list, default: []
-  attr :default?, :boolean, required: true
   attr :chosen, :any, default: nil
+  attr :inside, :map, required: true
   attr :target, :any, default: nil
 
   defp field(assigns) do
-    value = field_value(assigns.input, assigns.field.value, assigns.default?)
+    value = assigns.value
 
     assigns =
       assign(assigns,
-        value: value,
         described: assigns.errors != [] && "#{assigns.id}-error",
         array?: assigns.input.editor in [:choices, :list],
+        group?: group?(assigns.input),
         reference?: assigns.input.editor == :reference,
         # what the record is called whose key the field holds, while it
         # holds that key
@@ -4819,15 +5204,19 @@ defmodule AshTable.Live.TableComponent do
       )
 
     ~H"""
-    <div class="fieldset mb-2" data-field={@input.name}>
+    <div class="fieldset mb-2" data-field={Enum.join(@inside.path, ".")}>
       <%!-- an unchecked box sends nothing: this says "false" for it --%>
-      <input :if={@input.editor == :boolean} type="hidden" name={@field.name} value="false" />
-      <label :if={not @array? and not @reference?} for={@id} class="label mb-1 text-base-content">
+      <input :if={@input.editor == :boolean} type="hidden" name={@name} value="false" />
+      <label
+        :if={not @array? and not @reference? and not @group?}
+        for={@id}
+        class="label mb-1 text-base-content"
+      >
         <input
           :if={@input.editor == :boolean}
           type="checkbox"
           id={@id}
-          name={@field.name}
+          name={@name}
           value="true"
           checked={@value == "true"}
           aria-invalid={@errors != [] && "true"}
@@ -4863,7 +5252,7 @@ defmodule AshTable.Live.TableComponent do
         aria-describedby={@described}
         class="flex items-center gap-2"
       >
-        <input type="text" name={@field.name} value={@value} hidden data-key />
+        <input type="text" name={@name} value={@value} hidden data-key />
         <span :if={@called} id={"#{@id}-chosen"} class="text-sm" data-chosen>{@called}</span>
         <button
           type="button"
@@ -4890,7 +5279,7 @@ defmodule AshTable.Live.TableComponent do
         sent before the values in every case, and is left out where they are
         taken (`AshTable.Act`). It is not of the type `hidden`: LiveView then
         says of the field whether a person has used it, as of any other. --%>
-        <input type="text" name={@field.name <> "[]"} value="" hidden data-own />
+        <input type="text" name={@name <> "[]"} value="" hidden data-own />
         <%!-- multiple choice: one box per value of the enum --%>
         <label
           :for={{choice, label} <- (@input.editor == :choices && @input.values) || []}
@@ -4898,7 +5287,7 @@ defmodule AshTable.Live.TableComponent do
         >
           <input
             type="checkbox"
-            name={@field.name <> "[]"}
+            name={@name <> "[]"}
             value={choice}
             checked={to_string(choice) in @value}
             aria-invalid={@errors != [] && "true"}
@@ -4912,7 +5301,7 @@ defmodule AshTable.Live.TableComponent do
         <input
           :for={value <- (@input.editor == :choices && boxless(@input, @value)) || []}
           type="hidden"
-          name={@field.name <> "[]"}
+          name={@name <> "[]"}
           value={value}
         />
         <%!-- The rows are the hook's from here on: a patch leaves them alone,
@@ -4928,16 +5317,37 @@ defmodule AshTable.Live.TableComponent do
           item={elem(@input.cell_type, 1)}
           place={:panel}
           values={@value}
-          name={@field.name <> "[]"}
+          name={@name <> "[]"}
         />
       </div>
 
+      <%!-- a value made of fields, and an array of them --%>
+      <.group
+        :if={@input.editor == :group}
+        id={@id}
+        name={@name}
+        field={@input}
+        held={@value}
+        errors={@errors}
+        inside={@inside}
+        target={@target}
+      />
+      <.groups
+        :if={@input.editor == :groups}
+        id={@id}
+        name={@name}
+        field={@input}
+        held={@value}
+        errors={@errors}
+        inside={@inside}
+        target={@target}
+      />
       <%!-- an attribute whose column has a component that edits: its editor --%>
       {if @input.editor == :component, do: field_editor(assigns)}
       <textarea
         :if={@input.editor == :text}
         id={@id}
-        name={@field.name}
+        name={@name}
         rows="3"
         aria-required={@input.required? && "true"}
         aria-invalid={@errors != [] && "true"}
@@ -4947,7 +5357,7 @@ defmodule AshTable.Live.TableComponent do
       <select
         :if={@input.editor == :enum}
         id={@id}
-        name={@field.name}
+        name={@name}
         aria-required={@input.required? && "true"}
         aria-invalid={@errors != [] && "true"}
         aria-describedby={@described}
@@ -4967,7 +5377,7 @@ defmodule AshTable.Live.TableComponent do
         type={field_type(@input.editor)}
         step={input_step(@input.editor)}
         id={@id}
-        name={@field.name}
+        name={@name}
         value={@value}
         aria-required={@input.required? && "true"}
         aria-invalid={@errors != [] && "true"}
@@ -4975,11 +5385,244 @@ defmodule AshTable.Live.TableComponent do
         class={["input w-full", control_edge()]}
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
-      <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-sm">
+      <div :if={@errors != [] and not @group?} id={"#{@id}-error"} class="mt-1 text-sm">
         <p :for={message <- @errors} data-error>{message}</p>
       </div>
     </div>
     """
+  end
+
+  # The field of a map cell: an embedded resource, or a map that declares
+  # its fields. A group, named by the field's label, of the value's inputs,
+  # each a field of the panel with the control of its own type. Nothing
+  # marks it but the label and the indentation of what belongs to it.
+  #
+  # A value that is not there has a button that adds it, and one that may
+  # be left out a button that takes it away: no group is no value, and a
+  # group is the value as its fields say it, empty fields included. The
+  # server renders it either way, and the panel's hook asks it to
+  # (`data-add-group`, `data-remove-group`: the way to the group, as JSON).
+  #
+  # `held` is what the field holds, as its form sends it
+  # (`AshTable.Act.sent/2`), nil for no value. `inside` says what the panel
+  # knows of the fields in it: the action's `errors` by the way to a field
+  # (`place`: names, and the places of values in an array), and which
+  # fields a person has been in (`touched`, by `path`: the names they are
+  # sent under), whose errors are shown before "Run" is used.
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :field, :map, required: true
+  attr :held, :any, required: true
+  attr :errors, :list, required: true
+  attr :inside, :map, required: true
+  attr :target, :any, default: nil
+
+  defp group(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      role="group"
+      aria-labelledby={"#{@id}-label"}
+      aria-describedby={@errors != [] && "#{@id}-error"}
+      data-group
+    >
+      <div class="flex items-center gap-1">
+        <span id={"#{@id}-label"} class="label mb-1 text-base-content">
+          <span data-label>{@field.label}</span>
+          <span :if={@field.required?} aria-hidden="true">*</span>
+          <span :if={@field.required?} class="sr-only">{Text.t(:required)}</span>
+        </span>
+        <button
+          :if={is_map(@held) and not @field.required?}
+          type="button"
+          id={"#{@id}-remove"}
+          data-remove-group={held(@inside.path)}
+          aria-label={Text.t(:remove_group, column: @field.label)}
+          class="btn btn-ghost btn-xs mb-1"
+        >
+          <span aria-hidden="true">✕</span>
+        </button>
+      </div>
+      <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
+        <p :for={message <- @errors} data-error>{message}</p>
+      </div>
+      <div :if={is_map(@held)} class="ps-4">
+        <.members
+          id={@id}
+          name={@name}
+          field={@field}
+          held={@held}
+          inside={@inside}
+          target={@target}
+        />
+      </div>
+      <button
+        :if={not is_map(@held)}
+        type="button"
+        id={"#{@id}-add"}
+        data-add-group={held(@inside.path)}
+        class="btn btn-sm"
+      >
+        {Text.t(:add_value)}
+      </button>
+    </div>
+    """
+  end
+
+  # The field of an array of map cells: one group per value, each named by
+  # the field's label and the value's place ("Milestones 2"), with a button
+  # that takes the value away, and after them a button that adds one, as
+  # the field of an array of plain values has them.
+  #
+  # Each value is sent under a number of its own, which says where it
+  # stands among the others and stays its own for as long as it is there:
+  # taking a value away renames none of the others. The field sends an
+  # entry of its own besides, so that a list without values is sent at all.
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :field, :map, required: true
+  attr :held, :any, required: true
+  attr :errors, :list, required: true
+  attr :inside, :map, required: true
+  attr :target, :any, default: nil
+
+  defp groups(assigns) do
+    assigns = assign(assigns, items: Enum.with_index(Act.items(assigns.held)))
+
+    ~H"""
+    <div
+      id={@id}
+      role="group"
+      aria-labelledby={"#{@id}-label"}
+      aria-describedby={@errors != [] && "#{@id}-error"}
+      data-groups
+    >
+      <span id={"#{@id}-label"} class="label mb-1 text-base-content">
+        <span data-label>{@field.label}</span>
+      </span>
+      <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
+        <p :for={message <- @errors} data-error>{message}</p>
+      </div>
+      <input type="hidden" name={"#{@name}[_present]"} value="" />
+      <div
+        :for={{{key, item}, index} <- @items}
+        id={"#{@id}-#{key}"}
+        role="group"
+        aria-labelledby={"#{@id}-#{key}-label"}
+        aria-describedby={item_errors(@inside, index) != [] && "#{@id}-#{key}-error"}
+        data-group-item
+        class="mb-2"
+      >
+        <div class="flex items-center gap-1">
+          <span id={"#{@id}-#{key}-label"} class="label mb-1 text-base-content">
+            {Text.t(:value_position, column: @field.label, position: index + 1)}
+          </span>
+          <button
+            type="button"
+            id={"#{@id}-#{key}-remove"}
+            data-remove-group={held(@inside.path ++ [key])}
+            aria-label={Text.t(:remove_value, column: @field.label, position: index + 1)}
+            class="btn btn-ghost btn-xs mb-1"
+          >
+            <span aria-hidden="true">✕</span>
+          </button>
+        </div>
+        <div
+          :if={item_errors(@inside, index) != []}
+          id={"#{@id}-#{key}-error"}
+          class="mb-1 text-sm"
+        >
+          <p :for={message <- item_errors(@inside, index)} data-error>{message}</p>
+        </div>
+        <div class="ps-4">
+          <.members
+            id={"#{@id}-#{key}"}
+            name={"#{@name}[#{key}]"}
+            field={@field}
+            held={item}
+            inside={%{@inside | place: @inside.place ++ [index], path: @inside.path ++ [key]}}
+            target={@target}
+          />
+        </div>
+      </div>
+      <button
+        type="button"
+        id={"#{@id}-add"}
+        data-add-group={held(@inside.path)}
+        class="btn btn-sm"
+      >
+        {Text.t(:add_value)}
+      </button>
+    </div>
+    """
+  end
+
+  # The inputs of one value made of fields, each a field of the panel, whose
+  # id is the group's with `-f-` and its name: `ID-panel-f-client-f-name`,
+  # `ID-panel-f-milestones-0-f-title`. The
+  # value says that it is there with an entry of its own (`_present`), so
+  # that one without inputs, or with nothing but boxes, is sent at all; and
+  # sends back the primary key it came with, where that is no input: Ash
+  # tells by it which value of an array is which.
+  attr :id, :string, required: true
+  attr :name, :string, required: true
+  attr :field, :map, required: true
+  attr :held, :map, required: true
+  attr :inside, :map, required: true
+  attr :target, :any, default: nil
+
+  defp members(assigns) do
+    ~H"""
+    <input type="hidden" name={"#{@name}[_present]"} value="" />
+    <input
+      :for={%{key?: true, name: name} <- @field.fields}
+      :if={is_binary(@held[Atom.to_string(name)])}
+      type="hidden"
+      name={"#{@name}[#{name}]"}
+      value={@held[Atom.to_string(name)]}
+    />
+    <.field
+      :for={%{input?: true} = inner <- @field.fields}
+      id={"#{@id}-f-#{inner.name}"}
+      input={inner}
+      name={"#{@name}[#{inner.name}]"}
+      value={member_value(inner, @held[Atom.to_string(inner.name)])}
+      errors={member_errors(@inside, inner)}
+      inside={
+        %{
+          @inside
+          | place: @inside.place ++ [inner.name],
+            path: @inside.path ++ [Atom.to_string(inner.name)]
+        }
+      }
+      target={@target}
+    />
+    """
+  end
+
+  # What a field inside a group holds, of what its group holds: a field
+  # made of groups as its form sends it, an array without the entry of its
+  # own, and anything else as text.
+  defp member_value(%{editor: editor}, held) when editor in [:group, :groups], do: held
+  defp member_value(%{cell_type: {:array, _item}}, [_own | values]), do: values
+  defp member_value(%{cell_type: {:array, _item}}, _nothing), do: []
+  defp member_value(_field, held) when is_binary(held), do: held
+  defp member_value(_field, _nothing), do: ""
+
+  # The errors of a field inside a group that are shown: all of them once
+  # the person has used the panel's button, and until then those of the
+  # fields they have been in.
+  defp member_errors(inside, field) do
+    if inside.submitted? or (inside.path ++ [Atom.to_string(field.name)]) in inside.touched,
+      do: Map.get(inside.errors, inside.place ++ [field.name], []),
+      else: []
+  end
+
+  # The errors about one value of an array of map cells as a whole.
+  defp item_errors(inside, index) do
+    if inside.submitted? or inside.path in inside.touched,
+      do: Map.get(inside.errors, inside.place ++ [index], []),
+      else: []
   end
 
   # The editor of a column's component as a field of the panel. It is given
@@ -4997,7 +5640,7 @@ defmodule AshTable.Live.TableComponent do
       place: :panel,
       control: %{
         "id" => assigns.id,
-        "name" => assigns.field.name,
+        "name" => assigns.name,
         "aria-required" => input.required? && "true",
         "aria-invalid" => assigns.errors != [] && "true",
         "aria-describedby" => assigns.described,
@@ -5786,6 +6429,8 @@ defmodule AshTable.Live.TableComponent do
   # editor holds each value apart; and a column whose component shows the
   # value in a way of its own.
   defp own_value?(%{cell_type: cell_type}) when cell_type in [:boolean, :enum], do: true
+  # a map cell has no editor in the cell: nothing is held for one
+  defp own_value?(%{cell_type: cell_type}) when cell_type in [:map, {:array, :map}], do: false
   defp own_value?(%{cell_type: {:array, _item}}), do: true
   defp own_value?(%{component: %{cell?: true}}), do: true
   defp own_value?(_column), do: false
@@ -5882,6 +6527,13 @@ defmodule AshTable.Live.TableComponent do
     do: not is_struct(Map.get(record, reference.source_attribute), Ash.ForbiddenField)
 
   defp editable?(_column, %Ash.ForbiddenField{}, _record), do: false
+
+  # A map cell that holds something the person may not see (a field that a
+  # field policy of the embedded resource hides) is not theirs to edit.
+  defp editable?(%{editable?: true, cell_type: cell_type}, value, _record)
+       when cell_type in [:map, {:array, :map}],
+       do: not Embedding.hidden?(value)
+
   defp editable?(column, _value, _record), do: column.editable?
 
   # A field the actor may not see on this row looks empty and is announced.

@@ -119,6 +119,7 @@ cell's type:
 | array of enum values (multiple choice) | Opens the list of boxes, with focus on the first. | Opens the list, with focus on the first choice that starts with the character. Nothing is ticked by that alone. |
 | array of text or of numbers | Opens the list of values, with focus in the first and its text selected; on the button "Add value" when there is none. | Opens the list and starts a new value with the character, after the others. A character a number does not take adds nothing. |
 | array of dates, datetimes or booleans | As above. | Opens the list, as Enter does. |
+| a value made of fields: an embedded resource, a map, an array of either | Opens the side panel, with focus in the value's first field. | Nothing. |
 | The editor of a column's component, with a control that is typed into (text, a number) | Opens the editor with its value selected. | As text and number above. |
 | The editor of a column's component, with any other control (a slider, a menu, a date) | Opens the editor with its value. | Opens the editor and keeps the value; the key goes on to the control, which does with it what it does. A slider takes no characters. |
 
@@ -150,6 +151,18 @@ When a value is taken away, focus goes to the value after it, else to the
 one before it, else to "Add value". The controls are named by their place:
 "Tags 1", "Tags 2", "Remove Tags 2". The names follow when a value is added
 or taken away.
+
+**A value made of fields** is edited in the side panel, not in the cell.
+The panel is the [action panel](#row-actions-and-the-action-panel), and its
+keys are the panel's: Tab goes through the fields in their order, Escape
+closes it without saving, and focus comes back to the cell either way. The
+value is a group named by the column, a value inside it a group in the
+group, and each value of an array a group named by its place ("Milestones
+2"). The buttons that add a value and take one away are tab stops among
+the fields; when the server has added a group, focus is in its first field,
+and when one is gone, on what stands in its place: the value after it, the
+one before it, or "Add value". See
+[Maps and embedded resources](maps-and-embedded-resources.md#editing-in-the-side-panel).
 
 An editor of a component that saves when its value changes, such as the
 slider of "Progress" on `/tasks`, saves a change made with the pointer at
@@ -484,7 +497,10 @@ match selected, with the question of a bulk action open, and with what a
 bulk action came to, in the light and in the dark theme; with the picker
 open, with a row selected in it, with a choice that was not taken, with a
 column's question on top of it, with a cell whose choice was refused, and
-with the picker on top of the action panel, in both themes).
+with the picker on top of the action panel, in both themes; with the side
+panel of an embedded resource open, with a value inside it taken away, with
+errors at its fields, and with the list of groups of an array of embedded
+resources with a value added and one refused, in both themes).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
@@ -497,7 +513,8 @@ by tests of their own, as [What was measured](#what-was-measured) says.
 Two things about the action panel are covered more thinly than the rest: no
 panel of the demo has a datetime field, and no action of the demo has both a
 question and a panel, so that path is tested with a question put onto an
-open panel by the test.
+open panel by the test. The side panel of a cell with a question is tested
+as it is: "Repeats" on `/tasks` asks when "Save" is used.
 
 The editor of an array is tested in the browser for text, for numbers and
 for enum values, which is what the demo's tasks and specimens have. The
