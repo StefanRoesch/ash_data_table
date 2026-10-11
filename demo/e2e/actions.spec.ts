@@ -848,8 +848,12 @@ test.describe("the action panel", () => {
     await page.keyboard.type("ab")
     await expect(tasks.fieldError("reason")).toHaveText("length must be greater than or equal to 3")
     await expect(reason).toHaveAttribute("aria-invalid", "true")
-    await expect(reason).toHaveAttribute("aria-describedby", "task-panel-f-reason-error")
-    await expect(reason).toHaveAccessibleDescription("length must be greater than or equal to 3")
+    // described by the message, and after it by its counter: the reason has a most it can be long
+    await expect(reason).toHaveAttribute(
+      "aria-describedby",
+      "task-panel-f-reason-error task-panel-f-reason-count",
+    )
+    await expect(reason).toHaveAccessibleDescription("length must be greater than or equal to 3 2/200")
     await expect(reason, "typing keeps the focus and what was typed").toBeFocused()
     await expect(reason).toHaveValue("ab")
     expect(await frames.count("panel_validate")).toBeGreaterThan(0)
@@ -1665,7 +1669,12 @@ test.describe("the two tables of /dashboard", () => {
 
     // a row action of the projects, whose input is a choice with the record's value
     const key = await projects.rowKey(1)
-    await expect(projects.actions(key)).toHaveText(["Set status", "Destroy"])
+    await expect(projects.actions(key)).toHaveText([
+      "Set status",
+      "Set budget",
+      "Destroy",
+      "Assign open tasks",
+    ])
     const before = await projects.cell(key, "status").getAttribute("data-value")
     await projects.acts(key, () => projects.action(key, "set_status").click())
     await expect(projects.panel).toBeVisible()

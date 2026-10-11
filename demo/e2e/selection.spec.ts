@@ -975,9 +975,14 @@ test.describe("an action the block keeps to one row", () => {
     await projects.open()
     const [project] = await projects.rowKeys()
 
-    await expect(projects.actions(project)).toHaveText(["Set status", "Destroy"])
+    await expect(projects.actions(project)).toHaveText([
+      "Set status",
+      "Set budget",
+      "Destroy",
+      "Assign open tasks",
+    ])
     await projects.box(project).click()
-    await expect(projects.bulkButtons).toHaveText(["Set status"])
+    await expect(projects.bulkButtons).toHaveText(["Set status", "Set budget", "Assign open tasks"])
   })
 })
 

@@ -571,6 +571,24 @@ msgstr "Von"
 msgid "To"
 msgstr "Nach"
 
+## Actions with arguments whose records are chosen in the picker
+## (`reference`): on the labels and on the projects. "Labels" and "Assignee"
+## are translated above.
+
+msgid "Merge"
+msgstr "Zusammenführen"
+
+msgid "Into"
+msgstr "In"
+
+msgid "Assign open tasks"
+msgstr "Offene Aufgaben zuweisen"
+
+## The row action of the projects whose one input is sensitive.
+
+msgid "Set budget"
+msgstr "Budget setzen"
+
 ## The table action that takes a file, and its field.
 
 msgid "Import"
@@ -664,3 +682,22 @@ msgstr "%{column} anzeigen"
 
 msgid "Hide %{column}"
 msgstr "%{column} verbergen"
+
+## At a sensitive value that can be emptied: the button in the editor of its
+## cell and at its field of the action panel, what the field says once it
+## was used, and the button that takes it back.
+
+msgid "Clear"
+msgstr "Leeren"
+
+msgid "Clear %{column}"
+msgstr "%{column} leeren"
+
+msgid "Keep"
+msgstr "Behalten"
+
+msgid "Keep %{column}"
+msgstr "%{column} behalten"
+
+msgid "Will be cleared."
+msgstr "Wird geleert."

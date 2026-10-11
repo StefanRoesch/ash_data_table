@@ -159,6 +159,7 @@ While a cell is being edited:
 | Escape | Gives the edit up. In an open menu, Escape closes the menu first. |
 | Tab, Shift+Tab | Save and leave the grid, forwards or backwards. Tab does not move to the next cell. |
 | Arrow keys, Home, End, Page Up, Page Down | Belong to the editor: in a slider they move it. |
+| Tab, in the editor of a sensitive cell that has "Clear" | Goes from the input to the button "Clear", without saving. Enter or Space there empties the cell; Shift+Tab goes back to the input; Tab from the button saves what was typed and leaves the grid. See [Sensitive columns](sensitive-columns.md#emptying-a-value). |
 
 **The editor of an array** has several controls in one cell: the boxes of a
 multiple choice, or a control and a button per value and the button that
@@ -237,6 +238,7 @@ be reached, and the browser keeps focus inside it.
 | Tab, Shift+Tab | Move through the panel's fields and its two buttons. |
 | Enter or Space, on the button "Choose" of a field that holds the key of a related record | Opens the picker, a second modal dialog on top of the panel. Escape there closes the picker alone, and focus is on the button again. |
 | Enter or Space, on the button "✕" of a record in a field that holds several related records | Takes the record out of the field's list. Focus goes to the button of the record that stands in its place, else to the one before it, else to "Choose". See [Relationships an action manages](managing-relationships.md#the-keyboard-and-what-assistive-technology-is-told). |
+| Enter or Space, on the button "Clear" under a sensitive field | Notes that the field is to be emptied when the action runs: the field says "Will be cleared.", the button says "Keep", and focus stays on it. Once more takes it back. See [Sensitive columns](sensitive-columns.md#emptying-a-value). |
 | Enter, in a field of one line | Runs the action, as "Run" does. In a text field of several lines it makes a new line. |
 | Enter or Space, on the file input of an argument that takes a file | Opens the browser's file dialog. The file is sent when the action is run. See [Files](files.md#the-field). |
 | Escape | Closes the panel, as "Cancel" does. Nothing runs. |
@@ -398,6 +400,8 @@ page and keeps the focus.
 | Cells that cannot be edited | `aria-readonly`, on a table that offers the person any editing. |
 | The editor of a cell | Named by its column. `aria-required` where the column's action cannot take the cell empty; not on a box, on the group of an array, or on the editor of a sensitive cell, which saves nothing when left empty. |
 | The limits of a number | `min`, `max` and `step` on the number input of a cell's editor, of a field of the action panel and of the argument line, from the resource's constraints: the browser passes them on as the least and the greatest value of the input. Nothing is checked against them in the browser. See [Inline editing](inline-editing.md#limits-an-editor-shows-before-saving). |
+| The length of a text | A text with a `max_length` is described by its counter (`aria-describedby`): "12/30", read when the control gets the focus. It is no live region, and is not read out at every key. Past the most it says a number greater than the most, in a heavier weight. In a cell's editor, on a field of the action panel and on the argument line. See [Inline editing](inline-editing.md#the-counter-of-a-text). |
+| The button that empties a sensitive value | Named with the column or the field: "Clear Budget". In the action panel it says "Keep" once it was used, named "Keep Budget" and described by "Will be cleared.". |
 | A save in progress | `aria-busy` on the cell. |
 | A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
@@ -561,7 +565,11 @@ action refused; with the
 argument line, with a value Ash refused at one of its inputs and with "Fill
 in … to see records." in place of the rows, in both themes, and with a list
 of values in it, in German, and with the line of a nested table and of a
-picker).
+picker; with the counter of a text in a cell, in the action panel and on the
+argument line, within the most and past it, in both themes; with "Clear" in
+the editor of a sensitive cell and in the action panel, before and after it
+is used, in both themes; and with the panel and the pickers of an action
+whose arguments refer to records, in both themes).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
@@ -570,6 +578,10 @@ landmarks around a table are the host page's and not the table's; see
 axe does not judge whether a focus ring can be seen, whether a state is shown
 by more than a colour, or what is left in forced colours. Those are measured
 by tests of their own, as [What was measured](#what-was-measured) says.
+
+The question a column asks before "Clear" empties a sensitive cell is
+tested with a question put onto the column's editor by the test: the demo's
+sensitive column has none.
 
 Two things about the action panel are covered more thinly than the rest: no
 panel of the demo has a datetime field, and no action of the demo has both a

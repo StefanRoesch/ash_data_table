@@ -99,6 +99,7 @@ defmodule AshTable.MixProject do
           AshTable.Resource.Column,
           AshTable.Resource.Relationship,
           AshTable.Resource.Action,
+          AshTable.Resource.Reference,
           AshTable.Resource.Argument,
           AshTable.Resource.Upload,
           AshTable.Resource.Ask,

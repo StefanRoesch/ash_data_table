@@ -6,8 +6,9 @@ it is a generic action: one that takes arguments and returns a value, and is
 given no record. After reading this guide you can declare a table action,
 predict whether its button runs it at once, asks first or opens the action
 panel, say what the table tells a person afterwards, turn a generic action
-into a row action with `record_argument`, and say what a table action in a
-nested table does and does not know.
+into a row action with `record_argument`, have a key argument chosen in the
+picker with `reference`, and say what a table action in a nested table does
+and does not know.
 
 The actions of a row, the action panel and its fields are in
 [Row actions and create](row-actions-and-create.md). The question an action
@@ -20,8 +21,10 @@ A note on words: "generic action" is what the action is on the resource.
 ## The smallest example
 
 An `action` in the `table` block that names a generic action is a button on
-the line of the table's name. The demo's labels have four, of which these
-are three; the fourth, "Import", takes a file and is in [Files](files.md)
+the line of the table's name. The demo's labels have five, of which these
+are three. "Merge" is under
+[An argument that holds the key of a record](#an-argument-that-holds-the-key-of-a-record),
+and "Import" takes a file and is in [Files](files.md)
 ([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
@@ -58,7 +61,7 @@ end
 
 **Try it:** `/labels` in the demo, as Ada Admin. On the line of the table's
 name, at the right, are "New label", "Count unused", "Recolour", "Remove
-unused" and "Import". Use "Count unused": above the grid the table says "Count unused:
+unused", "Merge" and "Import". Use "Count unused": above the grid the table says "Count unused:
 0", as every label of the seed is on some task. Make a label with "New
 label" and count again: "Count unused: 1".
 
@@ -84,6 +87,10 @@ what the action is there says what it is in the table:
 | `confirm` | none | A question asked before the action runs. |
 | `record_argument` | none | The argument that is given the primary key of a row. With it the action is a row action. |
 | `bulk?` | | For a row action only. `bulk? true` on a table action is reported. |
+
+Inside an `action`, `reference` says which resource a key argument refers
+to: see
+[An argument that holds the key of a record](#an-argument-that-holds-the-key-of-a-record).
 
 The buttons stand in the declared order, after the create button where the
 table has one. They are the same buttons as "New label": ordinary buttons of
@@ -157,12 +164,99 @@ that declare their fields. An optional argument without a field is left out.
 An action that requires one cannot be run from a table, and the compiler
 reports it.
 
-An argument that holds the key of another record is a plain text field. A
-generic action accepts no attribute and has no changes, so no relationship
-says which records it could be, and there is no picker for it: an argument
-is chosen where a `manage_relationship` change of a create, an update or a
-destroy action hands it to a relationship. See
-[Relationships an action manages](managing-relationships.md).
+## An argument that holds the key of a record
+
+An argument such as `argument :into, :uuid` holds the key of a record. Ash
+does not say of which resource: a generic action accepts no attribute and
+has no changes, so no relationship explains the argument. Without more, its
+field is a plain text field, and the key is typed.
+
+`reference` in the `action` says which resource it is. The demo's labels
+have "Merge"
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+
+<!-- source: demo/lib/demo/tracker/label.ex -->
+```elixir
+# Two arguments that hold keys of labels: one key, and a list of them.
+# `reference` says that they are labels, so both are chosen in the
+# picker, from this very table: one row for the first, any number of
+# rows for the second.
+action :merge do
+  reference :into, __MODULE__
+  reference :labels, __MODULE__
+end
+```
+
+<!-- source: demo/lib/demo/tracker/label.ex -->
+```elixir
+action :merge, :integer do
+  description "Puts one label in the place of others, and deletes those."
+  transaction? true
+
+  argument :into, :uuid, allow_nil?: false
+  argument :labels, {:array, :uuid}, allow_nil?: false
+
+  # ...
+end
+```
+
+`reference :argument, Resource` takes the argument's name and the resource
+its keys belong to. The field is then the one of a reference cell:
+
+- **The key is not typed.** The field says what the chosen record is
+  called, and its "Choose" button opens the picker, with the table of that
+  resource. See [Choosing a related record](choosing-a-related-record.md).
+- **One key chooses one record.** "None" is offered where the argument can
+  be empty.
+- **A list of keys (`{:array, :uuid}`) chooses any number of records**, as
+  an argument that a `manage_relationship` change hands to a relationship
+  does. See [Relationships an action manages](managing-relationships.md).
+- **The chosen records are read again before the action runs**, as the
+  person and through the read action of the picker's table. A key that
+  names no record they could have chosen runs nothing.
+- **An action with such an argument opens the action panel**, also where
+  the argument can be empty: choosing is what the field is for.
+- **The field is called by the argument's name in words.** Name the
+  argument for what it is: `:assignee` reads better than `:assignee_id`.
+
+It works for every `action` of the block: a table action, a generic action
+in a row (for its other arguments, not for the `record_argument`), an
+update action and a destroy action, and for a run on the selected rows.
+The demo's projects have a generic action in every row that takes a person
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+
+<!-- source: demo/lib/demo/tracker/project.ex -->
+```elixir
+action :assign_open_tasks do
+  record_argument :project_id
+  reference :assignee, Demo.Tracker.User
+end
+```
+
+What the declaration has to be, or it is reported:
+
+| The `reference` | |
+| --- | --- |
+| Names no argument of the action, or an attribute it accepts | Reported. The foreign key of a public belongs-to relationship is chosen in the picker without a declaration. |
+| Names an argument that is not `public?` | Reported. |
+| Names the action's `record_argument` | Reported: the table gives that one. |
+| Names an argument that is `sensitive?` | Reported: a picker shows what is chosen. |
+| Names an argument twice | Reported. |
+| Names an argument that a `manage_relationship` change hands to a relationship | Reported: the relationship says which resource it is. Leave the `reference` out. |
+| The resource has no table (it does not list `AshTable.Resource`) | Reported: the records are chosen from its table. |
+| The resource's table has no public read action | Reported. |
+| The resource's primary key is several attributes, or none | Reported: one argument holds one value. |
+| The argument is not stored as that primary key is, nor a list of it | Reported. |
+
+A `reference` is for an `action`. The table's `create_action` and a column's
+`update_action` are named by an option and have no block to put one in.
+
+**Try it:** `/labels` as Ada Admin, "Merge". The panel has "Into \*" and
+"Labels", each with a "Choose" button and no input. Choose one label for
+"Into" and two others for "Labels", and use "Run": the table says "Merge:
+2", and the two are gone. Then `/projects`: every row has "Assign open
+tasks", whose panel asks for the "Assignee" and opens the table of the
+people.
 
 ## What the table says afterwards
 
@@ -327,14 +421,14 @@ policy action(:count_unused) do
   authorize_if actor_present()
 end
 
-policy action([:recolour, :remove_unused, :copy, :import]) do
+policy action([:recolour, :remove_unused, :copy, :import, :merge]) do
   authorize_if actor_attribute_equals(:role, :admin)
 end
 ```
 
 | Actor on `/labels` | On the line of the table's name | In the rows |
 | --- | --- | --- |
-| Ada Admin | "New label", "Count unused", "Recolour", "Remove unused", "Import" | "Destroy", "Copy" |
+| Ada Admin | "New label", "Count unused", "Recolour", "Remove unused", "Merge", "Import" | "Destroy", "Copy" |
 | Max Member, Vera Viewer | "Count unused" | No actions column. |
 | Olga Outsider | As her role in Globex says, and every action counts and changes Globex's labels alone. | |
 | Nobody | Nothing. | |
@@ -368,8 +462,8 @@ does.
   not.
 
 **Try it:** `/tasks` as Ada Admin. Expand a row and open "Labels". On the
-line, after "Labels", are "Count unused", "Recolour", "Remove unused" and
-"Import".
+line, after "Labels", are "Count unused", "Recolour", "Remove unused",
+"Merge" and "Import".
 
 ## The keyboard
 
@@ -428,13 +522,16 @@ is read out when it changes. All keys of a table are in
   refuses.** It is there on every row; the action answers when it runs.
 - **`record_argument` on an update action.** It is for generic actions. An
   update action is given its record.
+- **A key argument that is a plain text field.** Nothing says which
+  resource it refers to. Say it with `reference` in the `action`.
 - **A check on an argument that hides the button from everybody.** It is
   asked without the argument first.
 
 ## Not in the first version
 
-No picker for an argument of a generic action, no way to give a table
-action in a nested table the row it is under, no table of returned records,
+No `reference` for an argument of the table's `create_action`, no label of
+its own for the field of an argument, no way to give a table action in a
+nested table the row it is under, no table of returned records,
 no file to download from an action, no progress while an action runs and no
 way to stop one, no result per record after a run on the selected rows, and
 no icons on the buttons. The later slices are listed in the

@@ -232,7 +232,8 @@ defmodule Demo.Support.Asked.Stock do
       argument :on, :date
       argument :at, :utc_datetime
       argument :key, :uuid
-      argument :names, {:array, :string}
+      # each of at most twelve characters: a row of the line counts its own
+      argument :names, {:array, :string}, constraints: [items: [max_length: 12]]
       argument :kinds, {:array, Kind}
       argument :secret, :string, public?: false
       argument :where, :map

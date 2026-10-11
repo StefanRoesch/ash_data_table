@@ -5,7 +5,8 @@ cells are masked. Each cell shows `••••••`, the same for every value
 "Show" button. The value itself is not in the page: the table asks the
 server for it when a person uses the button, for that one cell. This guide
 covers what a masked cell shows, how a value is shown and hidden again, how
-such a cell is edited, and what a table no longer does with the column.
+such a cell is edited and emptied, and what a table no longer does with the
+column.
 
 Nothing is declared in the `table` block for this. The table follows what
 the resource says.
@@ -114,9 +115,8 @@ save is on its way and when the save fails. What was typed is not sent back
 and not shown.
 
 **An editor that is left empty saves nothing.** Enter on an empty editor
-changes nothing, so a value is never emptied by accident. The other side of
-this: a sensitive value cannot be emptied in the cell. Use a row action for
-that.
+changes nothing, so a value is never emptied by accident. Emptying is asked
+for by name: see [Emptying a value](#emptying-a-value).
 
 Only text and numbers are edited this way, as a password input can hide
 them. A sensitive column of another type (a yes or no, a date, a choice, a
@@ -136,7 +136,7 @@ update :rotate do
   require_atomic? false
   accept [:token]
   argument :passphrase, :string, sensitive?: true, allow_nil?: false
-  argument :note, :string
+  argument :note, :string, constraints: [max_length: 50]
 
   # ...
 end
@@ -146,9 +146,73 @@ end
 - **A field that is left empty gives the action nothing.** An update keeps
   what the record has. A required argument that is left empty gets the
   action's own "is required".
+- An attribute of an update action that has a value can be emptied with the
+  button beside its field: see [Emptying a value](#emptying-a-value).
 - A sensitive input that is not text or a number has no field. It is left
   out when the action runs without it. An action that requires it cannot be
   run from a table.
+
+## Emptying a value
+
+An empty editor means "no change", so nothing typed can say "no value". A
+button says it: **"Clear"**. The demo's projects have a row action whose
+one input is the budget
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+
+<!-- source: demo/lib/demo/tracker/project.ex -->
+```elixir
+update :set_budget do
+  accept [:budget]
+end
+```
+
+**When "Clear" is offered.**
+
+| | The editor of a cell | A field of the action panel |
+| --- | --- | --- |
+| The action takes the attribute without a value (`allow_nil?`, and not in the action's `require_attributes`) | needed | needed |
+| The record has a value | needed: an empty cell has no button | needed |
+| The action | the column's update action | an update action of a row. Not a create, not a destroy, not an action on the selected rows, and not an argument |
+
+Nothing is declared for it.
+
+**In the editor of a cell** the button stands after the input and is named
+with the column: "Clear Budget".
+
+- Using it empties the cell at once, as a save does. A column with
+  `confirm` asks its question first.
+- What was typed into the input is given up.
+- The cell is then empty, with no mask and no button.
+
+| Key | In the editor of a sensitive cell |
+| --- | --- |
+| Tab, from the input | Goes to "Clear". The editor stays open and nothing is saved. |
+| Shift+Tab, from "Clear" | Goes back to the input, with what was typed. |
+| Enter or Space, on "Clear" | Empties the cell. Focus is on the cell. |
+| Escape, on "Clear" | Gives the edit up, as on the input. |
+| Tab, from "Clear" | Leaves the grid and saves what was typed, as Tab from any editor does. An empty input saves nothing. |
+
+A cell without a value has no "Clear": Tab from its input leaves the grid.
+
+**In the action panel** the button stands under the field: "Clear", named
+"Clear Budget".
+
+- Using it changes nothing yet. The field says "Will be cleared." in place
+  of its input, and the button says "Keep".
+- "Keep" takes it back: the input is there again, empty.
+- "Run" then runs the action with the attribute given without a value.
+  Cancel runs nothing.
+
+**The server decides.** "Clear" is an event of its own, and the panel keeps
+what was asked for: it is never read from an empty input, and nothing a form
+sends can ask for it. The record is read again, as the person, as for every
+save. The action is the one to say no: its message is shown at the cell or
+at the field, as for any save that fails. The value itself is still never
+sent to the browser.
+
+**Try it:** `/projects` as Max Member. Press Enter on a budget, then Tab and
+Enter: the cell is empty. On another row use "Set budget", then "Clear" and
+"Run".
 
 ## What a table does not do with a sensitive column
 
@@ -213,8 +277,10 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#sensitive-fields).
 
 - **"Sensitive" does not hide the column from anybody.** Add a field policy
   for that.
-- **The value cannot be emptied in the cell.** An empty editor means "no
-  change". Give the table a row action that clears the field.
+- **An empty editor does not empty the value.** It means "no change". Use
+  "Clear" in the editor.
+- **No "Clear" in the editor.** The cell has no value, or the column's
+  action does not take the attribute without one.
 - **The column lost its sort and its filter.** That is on purpose: both
   would give the values away.
 - **A `sensitive?` date or yes/no is read-only.** A table can hide typing
@@ -228,7 +294,8 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#sensitive-fields).
 
 ## Not in the first version
 
-- **Emptying a sensitive value in the cell.**
+- **Emptying a sensitive value on the selected rows**, and emptying a
+  sensitive argument, which holds nothing between two runs.
 - **Editing a sensitive date, choice, yes or no, or list in place.**
 - **Editing a value made of fields that has a sensitive input.**
 - **Showing every value of a column at once**, and showing a value for a

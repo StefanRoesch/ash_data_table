@@ -229,8 +229,9 @@ defmodule Demo.Tracker.Task do
     read :read do
       primary? true
 
-      # case-insensitive, as a `:ci_string` compares
-      argument :search, :ci_string
+      # case-insensitive, as a `:ci_string` compares; its input counts
+      # what is typed, as every text with a `max_length` does
+      argument :search, :ci_string, constraints: [max_length: 60]
 
       filter expr(
                is_nil(^arg(:search)) or contains(title, ^arg(:search)) or

@@ -360,6 +360,26 @@ or one of its arguments, and `ARG` the argument `record_argument` names.
 | The table changes records: it has editable columns, row actions or a create action. Ash loads what a create, an update or a destroy action returns through the primary read action, without arguments, and the primary read action \`NAME\` requires the argument \`ARG\`, so a row could not be shown again after one. Give the argument a default, make another read action the primary one, or leave the table read-only. | The primary read action has an argument with `allow_nil? false` and no default, the table edits, acts or creates, and one of its columns is a calculation, an aggregate or a reference cell. | Put the argument on a read action of its own and name it with `read_action`, or give it a default. |
 | The table has row actions or a create action and shows calculations, aggregates or reference columns (\`NAME\`), but the resource has no primary read action. After an action the row is shown with those fields, which Ash loads through the primary read action. Mark a read action \`primary? true\`. | The table reads through a non-primary action named with `read_action`, has an `action` or a `create_action`, and at least one column is a calculation, an aggregate or a reference cell. A table that has editable columns as well gets the finding about those instead. | Mark a read action `primary? true`. |
 
+A `reference` of an `action` says which resource an argument's keys belong
+to. `REF` is the argument it names and `DESTINATION` the resource. The path
+is that of its action, `table -> action -> NAME`.
+
+| Message starts with | Cause | Fix |
+| --- | --- | --- |
+| The action \`NAME\` says \`reference :REF\`, and has no argument named \`REF\`. | The action has no such argument. | Correct the name. |
+| The action \`NAME\` says \`reference :REF\`, and \`REF\` is an attribute the action accepts, not one of its arguments. … | A `reference` for an accepted attribute. | Remove it. The foreign key of a public belongs-to relationship is chosen in the picker without one. |
+| The action \`NAME\` says \`reference :REF\`, and its argument \`REF\` is not public. … | The argument is `public? false`. | Make it public, or remove the `reference`. |
+| The action \`NAME\` has more than one \`reference :REF\`. … | The same argument is named twice. | Declare it once. |
+| The action \`NAME\` says \`reference :REF\`, and \`REF\` is its \`record_argument\` … | The table gives that argument the key of the row. | Remove the `reference`. |
+| The action \`NAME\` says \`reference :REF\`, and its argument \`REF\` is declared \`sensitive?: true\`. … | A picker shows what is chosen. | Remove the `reference`. |
+| The action \`NAME\` says \`reference :REF\`, and a \`manage_relationship\` change of the action hands \`REF\` to the relationship \`RELATIONSHIP\`. … | The relationship says which resource the argument refers to. | Remove the `reference`: the argument is chosen in the picker without it. |
+| The action \`NAME\` says \`reference :REF, DESTINATION\`, and DESTINATION has no table … | `DESTINATION` is no resource, or does not list `AshTable.Resource`. | Give it a table, or name another resource. |
+| … and the table of DESTINATION has no public read action to read the records to choose from … | The read action behind that table is private, or missing. | Make it public, or name a public one with `read_action` in that block. |
+| … and the primary key of DESTINATION is \`A\`, \`B\`: several attributes. … / … has no primary key … | One argument holds one value. | Remove the `reference`. |
+| … and the argument is of the type TYPE, which is not stored as the primary key \`KEY\` of DESTINATION is (KEY_TYPE), nor a list of it. … | The argument cannot hold that key. Types that are stored alike (`:uuid`, `:uuid_v7`) are accepted. | Give the argument the key's type, or a list of it. |
+
+See [Table actions](table-actions.md#an-argument-that-holds-the-key-of-a-record).
+
 An input of a type without a field that the action does **not** require is
 no finding: it is left out of the panel. Which types have a field, and what
 counts as required, is in

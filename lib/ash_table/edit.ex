@@ -57,6 +57,54 @@ defmodule AshTable.Edit do
     end
   end
 
+  @doc """
+  Whether a cell of `column` can be emptied by asking for it: a sensitive
+  column, whose editor starts empty and saves nothing while it is empty
+  (`save/5`), so that nothing typed into it can say "no value". It is
+  emptied where an edit could leave it empty: the column is editable, and
+  its update action takes the attribute without a value (the column's
+  `required?`).
+  """
+  @spec clearable?(Column.t()) :: boolean
+  def clearable?(%Column{editable?: true, sensitive?: true, kind: :attribute, required?: false}),
+    do: true
+
+  def clearable?(%Column{}), do: false
+
+  @doc """
+  Empties the cell of a sensitive `column` on the record with the primary
+  key `key`: the column's update action, with the cell's attribute as its
+  only input, given nothing (nil). What `save/5` never does for such a
+  column, however empty its editor is: this is asked for by name.
+
+  The record is read again first, as the person, as for any save. A cell
+  that holds nothing already calls nothing, and one whose value is hidden
+  from the person on this record is not theirs to empty. Returns what
+  `save/5` returns. Takes the options of `AshTable.Query.read/3` that say
+  who is asking.
+  """
+  @spec clear(Model.t(), Column.t(), map, [Query.option()]) :: result
+  def clear(%Model{} = model, %Column{} = column, key, opts) when is_map(key) do
+    true = clearable?(column)
+    opts = Query.reader_opts(opts)
+
+    case Record.fetch(model, key, opts) do
+      {:ok, record} ->
+        case Map.get(record, column.name) do
+          %Ash.ForbiddenField{} ->
+            failed(model, record, Text.t(:edit_not_allowed), opts)
+
+          value ->
+            if AshTable.Sensitive.empty?(value),
+              do: unchanged(model, record, opts),
+              else: submit(model, column, record, nil, opts)
+        end
+
+      :error ->
+        {:error, nil, Text.t(:record_gone)}
+    end
+  end
+
   @typedoc """
   What became of a choice of a related record:
 

@@ -305,6 +305,316 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
     end
   end
 
+  describe "emptying a sensitive cell" do
+    setup %{conn: conn} do
+      {:ok, view, html} = conn |> as(:admin) |> live("/support/safes")
+      %{view: view, html: html}
+    end
+
+    # the editor of a column, as its `<template>` holds it
+    defp editor_content(html, field) do
+      [{"template", _attributes, children}] =
+        html
+        |> LazyHTML.from_fragment()
+        |> LazyHTML.query("template[id='safe-editor-#{field}']")
+        |> LazyHTML.to_tree()
+
+      LazyHTML.from_tree(children)
+    end
+
+    test "the editor has a button for it beside its input, named with the column", %{html: html} do
+      for {field, label} <- [{"token", "Token"}, {"pin", "Pin"}, {"seal", "Seal"}] do
+        content = editor_content(html, field)
+        button = LazyHTML.query(content, "button[data-clear]")
+
+        assert LazyHTML.attribute(button, "aria-label") == ["Clear #{label}"], field
+        assert button |> LazyHTML.text() |> String.trim() == "Clear"
+        assert LazyHTML.attribute(button, "type") == ["button"]
+        # one input, which is the editor's control and hides what is typed
+        assert LazyHTML.attribute(LazyHTML.query(content, "input"), "type") == ["password"]
+        assert LazyHTML.attribute(LazyHTML.query(content, "input"), "data-control") == [""]
+      end
+    end
+
+    test "empties the cell, which an empty editor never does", %{view: view, main: main} do
+      save(view, "safe", main.id, "token", "")
+      assert stored(main).token == @token
+
+      wire =
+        wire(view, fn ->
+          html = clear(view, "safe", main.id, "token")
+          assert_reply view, %{ok: true}
+
+          assert text(html, cell("safe", main.id, "token")) == ""
+          assert masked(html, "safe", main.id, "token") == nil
+          assert failure(html, "safe", main.id, "token") == nil
+        end)
+
+      refute_secrets(wire)
+      assert %{token: nil, pin: @pin, seal: @seal} = stored(main)
+    end
+
+    test "a cell that holds nothing is left as it is", %{view: view, void: void} do
+      before = stored(void)
+      clear(view, "safe", void.id, "token")
+      assert_reply view, %{ok: true}
+      assert stored(void) == before
+    end
+
+    test "what the action says is shown at the cell, which keeps its mask", %{conn: conn} do
+      pinned = Ash.Seed.seed!(Safe, %{name: "pinned", pin: 13_579})
+      {:ok, view, _html} = conn |> as(:admin) |> live("/support/safes")
+
+      html = clear(view, "safe", pinned.id, "pin")
+      assert_reply view, %{ok: false}
+
+      assert %{message: "stays on a pinned safe", shown: shown} =
+               failure(html, "safe", pinned.id, "pin")
+
+      assert shown =~ "••••••"
+      assert announcement(html, "safe") == "Pin was not saved: stays on a pinned safe"
+      refute html =~ "13579"
+      assert stored(pinned).pin == 13_579
+    end
+
+    test "is no event of a column that is not sensitive, not edited, or of no row", %{
+      view: view,
+      main: main
+    } do
+      for {key, field} <- [
+            {main.id, "name"},
+            {main.id, "locked"},
+            {main.id, "token_length"},
+            {main.id, "nothing"},
+            {Ash.UUID.generate(), "token"}
+          ] do
+        clear(view, "safe", key, field)
+        assert_reply view, %{ok: false}
+      end
+
+      assert %{name: "main", locked: false, token: @token} = stored(main)
+    end
+
+    test "is refused where the field is hidden from the person on the record", %{
+      conn: conn,
+      main: main,
+      open: open
+    } do
+      {:ok, view, _html} = conn |> as(:member) |> live("/support/safes")
+
+      # the PIN of "main" is an admin's: a member is told so, as for a save
+      html = clear(view, "safe", main.id, "pin")
+      assert_reply view, %{ok: false}
+      assert stored(main).pin == @pin
+      refute html =~ "48151623"
+
+      # the one of "open" is everybody's
+      clear(view, "safe", open.id, "pin")
+      assert_reply view, %{ok: true}
+      assert stored(open).pin == nil
+    end
+
+    test "a record that is gone is said at the cell, by the hook", %{view: view, main: main} do
+      Ash.destroy!(main, authorize?: false)
+
+      clear(view, "safe", main.id, "token")
+      assert_reply view, %{ok: false, error: "This record is no longer available."}
+    end
+  end
+
+  describe "emptying a sensitive field of the action panel" do
+    setup %{conn: conn, main: main} do
+      {:ok, view, _html} = conn |> as(:admin) |> live("/support/safes")
+      html = act(view, "safe", main.id, "rotate")
+      %{view: view, html: html}
+    end
+
+    defp clear_button(html, name) do
+      %{
+        text: text(html, "#safe-panel-f-#{name}-clear"),
+        label: List.first(attribute(html, "#safe-panel-f-#{name}-clear", "aria-label")),
+        described: List.first(attribute(html, "#safe-panel-f-#{name}-clear", "aria-describedby"))
+      }
+    end
+
+    test "has a button where the record has a value and the action takes none: \"Clear\", named with the field",
+         %{html: html} do
+      assert clear_button(html, "token") == %{text: "Clear", label: "Clear Token", described: nil}
+      assert attribute(html, "#safe-panel-f-token-clear", "type") == ["button"]
+      # a sensitive argument holds nothing to empty, and a plain field says "empty" itself
+      assert clear_button(html, "passphrase").text == nil
+      assert clear_button(html, "note").text == nil
+    end
+
+    test "has none where the record has nothing to empty", %{view: view, void: void} do
+      cancel_panel(view, "safe")
+      html = act(view, "safe", void.id, "rotate")
+
+      assert clear_button(html, "token").text == nil
+    end
+
+    test "has none for an attribute the action does not take empty, nor in the create panel", %{
+      view: view,
+      main: main
+    } do
+      cancel_panel(view, "safe")
+      html = act(view, "safe", main.id, "reissue")
+
+      assert Enum.map(panel(html, "safe").fields, &{&1.name, &1.required?}) ==
+               [{"token", true}, {"pin", false}, {"seal", false}]
+
+      assert clear_button(html, "token").text == nil
+      assert clear_button(html, "pin").text == "Clear"
+      assert clear_button(html, "seal") == %{text: "Clear", label: "Clear Seal", described: nil}
+
+      cancel_panel(view, "safe")
+      html = open_create(view, "safe")
+      assert attribute(html, "#safe-panel [id$='-clear']", "id") == []
+    end
+
+    test "used, the field says that it will be cleared in place of its input, and the button takes it back",
+         %{view: view, main: main} do
+      html = clear_in_panel(view, "safe", "token")
+
+      assert text(html, "#safe-panel-f-token-cleared") == "Will be cleared."
+      assert attribute(html, "#safe-panel-f-token", "type") == []
+
+      assert clear_button(html, "token") == %{
+               text: "Keep",
+               label: "Keep Token",
+               described: "safe-panel-f-token-cleared"
+             }
+
+      assert field(html, "token").control == "cleared"
+      # nothing has run
+      assert stored(main).token == @token
+      # the other fields are as they were
+      assert attribute(html, "#safe-panel-f-passphrase", "type") == ["password"]
+
+      html = clear_in_panel(view, "safe", "token")
+      assert text(html, "#safe-panel-f-token-cleared") == nil
+      assert attribute(html, "#safe-panel-f-token", "type") == ["password"]
+      assert clear_button(html, "token").text == "Clear"
+    end
+
+    test "the action is given the field without a value when it runs, and nothing else is emptied",
+         %{view: view, main: main} do
+      clear_in_panel(view, "safe", "token")
+
+      wire =
+        wire(view, fn ->
+          html = run_panel(view, "safe", passphrase: "open sesame")
+          assert panel(html, "safe") == nil
+          assert masked(html, "safe", main.id, "token") == nil
+        end)
+
+      refute_secrets(wire)
+      assert %{token: nil, seal: @seal, pin: @pin} = stored(main)
+    end
+
+    test "taken back, the field is left as it is when the action runs", %{view: view, main: main} do
+      clear_in_panel(view, "safe", "token")
+      clear_in_panel(view, "safe", "token")
+      run_panel(view, "safe", token: "", passphrase: "open sesame")
+
+      assert stored(main).token == @token
+    end
+
+    test "an untouched empty field still changes nothing", %{view: view, main: main} do
+      run_panel(view, "safe", token: "", passphrase: "open sesame")
+      assert %{token: @token, seal: @seal} = stored(main)
+    end
+
+    test "is the panel's to say: nothing the form sends empties a field", %{
+      view: view,
+      main: main
+    } do
+      send_panel(view, "safe", %{
+        "panel" => %{"token" => "", "passphrase" => "open sesame", "_clear" => ["token"]},
+        "cleared" => ["token"],
+        "input" => "token"
+      })
+
+      assert stored(main).token == @token
+    end
+
+    test "is an event for a field the panel offers it for, and no other", %{
+      view: view,
+      main: main
+    } do
+      for name <- ~w(passphrase note name pin bogus) do
+        html = view |> element("#safe-panel") |> render_hook("panel_clear", %{"input" => name})
+        # the panel notes nothing: no field says that it will be cleared
+        assert attribute(html, "#safe-panel [data-cleared]", "id") == []
+      end
+
+      html = run_panel(view, "safe", passphrase: "open sesame")
+      assert panel(html, "safe") == nil
+      assert %{name: "main", pin: @pin, token: @token} = stored(main)
+    end
+
+    test "stays asked for while the action says what is wrong, and is done once it runs", %{
+      view: view,
+      main: main
+    } do
+      clear_in_panel(view, "safe", "token")
+      html = run_panel(view, "safe", passphrase: "")
+
+      assert field(html, "passphrase").errors == ["is required"]
+      assert text(html, "#safe-panel-f-token-cleared") == "Will be cleared."
+      assert stored(main).token == @token
+
+      run_panel(view, "safe", passphrase: "open sesame")
+      assert stored(main).token == nil
+    end
+
+    test "what the action says of it is shown at the field", %{conn: conn} do
+      pinned = Ash.Seed.seed!(Safe, %{name: "pinned", pin: 13_579, token: "tok-pinned"})
+      {:ok, view, _html} = conn |> as(:admin) |> live("/support/safes")
+      act(view, "safe", pinned.id, "reissue")
+
+      clear_in_panel(view, "safe", "pin")
+      html = run_panel(view, "safe", token: "")
+
+      assert field(html, "pin").errors == ["stays on a pinned safe"]
+      assert text(html, "#safe-panel-f-pin-cleared") == "Will be cleared."
+      assert stored(pinned).pin == 13_579
+    end
+
+    test "is not offered for the selected rows: there is no one record to empty", %{
+      view: view,
+      main: main,
+      open: open
+    } do
+      cancel_panel(view, "safe")
+      html = bulk(view, "safe", "rotate", [main.id, open.id])
+
+      assert %{heading: "Rotate: 2 records"} = panel(html, "safe")
+      assert attribute(html, "#safe-panel [id$='-clear']", "id") == []
+    end
+
+    test "speaks German where the host translates it", %{conn: conn, main: main} do
+      {:ok, view, html} = conn |> as(:admin) |> in_locale("de") |> live("/support/safes")
+
+      assert LazyHTML.attribute(
+               LazyHTML.query(editor_content(html, "token"), "button[data-clear]"),
+               "aria-label"
+             ) == ["Token leeren"]
+
+      html = act(view, "safe", main.id, "rotate")
+
+      assert clear_button(html, "token") == %{
+               text: "Leeren",
+               label: "Token leeren",
+               described: nil
+             }
+
+      html = clear_in_panel(view, "safe", "token")
+      assert text(html, "#safe-panel-f-token-cleared") == "Wird geleert."
+      assert %{text: "Behalten", label: "Token behalten"} = clear_button(html, "token")
+    end
+  end
+
   describe "the create panel" do
     test "takes a sensitive attribute hidden, and a new row has its mask", %{conn: conn} do
       {:ok, view, _html} = conn |> as(:admin) |> live("/support/safes")

@@ -573,6 +573,13 @@ nothing: a number past them is sent, and Ash's message is shown as above.
 The length of text and its pattern are not put on the input. See
 [Inline editing](documentation/topics/inline-editing.md#limits-an-editor-shows-before-saving).
 
+**The counter of a text.** A text with a `max_length` has a counter beside
+its editor, "12/30", which follows what is typed: in a cell, on a field of
+the action panel and on the argument line. It counts as Ash counts (the
+text trimmed, in the unit of `length_count`), and stops nothing: a longer
+text is typed and sent, the counter says "34/30", and Ash refuses it. See
+[Inline editing](documentation/topics/inline-editing.md#the-counter-of-a-text).
+
 **Confirm.** A column with `confirm` asks its question in a dialog at the
 moment of saving, before the action runs. Confirm saves. Cancel, or Escape,
 returns to the cell, still in edit mode with what was typed.
@@ -937,6 +944,11 @@ table do
   action :copy do
     record_argument :label_id      # a row action: the table gives the row's key
   end
+
+  action :merge do
+    reference :into, MyApp.Label   # a key argument: chosen in the picker
+    reference :labels, MyApp.Label # a list of keys: any number is chosen
+  end
 end
 ```
 
@@ -958,6 +970,16 @@ end
   to be one attribute. Such an action is offered for the selected rows like
   any row action, and runs once per record; `bulk? false` keeps it to one
   row.
+- **`reference`** says which resource a key argument refers to
+  (`argument :into, :uuid`): Ash does not say it, and without it the key is
+  typed into a plain text field. With it the argument is chosen in the
+  [picker](#choosing-a-related-record), from the table of that resource:
+  one record for a key, any number for a list of keys. The chosen records
+  are read again, as the person, before the action runs. It is for every
+  `action` of the block, a row action too. An argument that a
+  `manage_relationship` change hands to a relationship needs none, and
+  takes none. See
+  [Table actions](documentation/topics/table-actions.md#an-argument-that-holds-the-key-of-a-record).
 - **It runs as the person**, in their tenant and with authorization,
   through `AshPhoenix.Form.for_action/3` and so `Ash.run_action/2`. A
   person who can never run it has no button. Ash is asked once per action
@@ -1218,8 +1240,10 @@ One page can be mounted without authorization, whatever its domain says:
 button; the value is not sent to the browser until a person asks for that
 one cell (the button, or Shift+Enter), and it is hidden again when focus
 leaves the cell. The editor hides what is typed and starts empty, and an
-editor left empty saves nothing. A table neither sorts nor filters by such
-a column. Sensitive is not hidden: who may read the field is said by a
+editor left empty saves nothing. A value is emptied with the button
+"Clear", in the editor and at the field of a row action's panel, where the
+action takes the attribute without a value. A table neither sorts nor
+filters by such a column. Sensitive is not hidden: who may read the field is said by a
 field policy. See
 [Sensitive columns](documentation/topics/sensitive-columns.md).
 

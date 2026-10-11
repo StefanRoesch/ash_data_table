@@ -371,7 +371,9 @@ Ash does:
   counts differently: UTF-16 code units of the text as typed, where Ash
   counts codepoints, graphemes or bytes of the trimmed text. Fifty emoji
   are fifty characters to Ash and a hundred to `maxlength`. So text can be
-  typed past its limit, and Ash's message says what is wrong.
+  typed past its limit, and Ash's message says what is wrong. A text with a
+  `max_length` has a counter instead: see
+  [The counter of a text](#the-counter-of-a-text).
 - **A pattern** (`match`). It is a regular expression of Erlang's. A browser
   reads it by other rules, and a text editor is a `<textarea>`, which has no
   `pattern`.
@@ -387,6 +389,69 @@ before.
 **Try it:** on `/specimens`, press Enter on a cell of "An integer", hold
 the up arrow past 1000, then type `5000` and press Enter. On `/tasks`, press
 the down arrow in "Due within: Days" until it stops at 0.
+
+## The counter of a text
+
+A text whose type says the most it can be long (`max_length`) has a counter
+beside its editor: how long the text is now, and the most it can be. A
+label's name takes 30 characters
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+
+<!-- source: demo/lib/demo/tracker/label.ex -->
+```elixir
+attribute :name, :string do
+  allow_nil? false
+  public? true
+  constraints min_length: 1, max_length: 30
+end
+```
+
+Its editor says `3/30` for "bug", and the number follows every key. Nothing
+is declared for it in the `table` block.
+
+**Only for a maximum.** A text without `max_length` has no counter. The
+counter says nothing of `min_length` or of `match`.
+
+**It counts as Ash counts**, so the counter and Ash never disagree:
+
+| Ash | The counter |
+| --- | --- |
+| Trims the text first, unless the type says `trim?: false` | Does not count the blanks and line breaks around the text. Those inside it count. |
+| Counts in the unit of `length_count`: `:codepoints`, `:graphemes` or `:bytes` | Counts in the same unit. |
+| Without `length_count`, counts as the application configures (`config :ash, default_string_length_count:`) | The same. The demo counts codepoints. |
+| Folds a `:ci_string` that has a `casing` before it counts | The same. |
+
+So a family emoji made of three people is 5 in codepoints and 1 in
+graphemes, and `é` is 1 in codepoints and 2 in bytes. The server counts what
+an editor starts with, in Elixir; the browser counts while a person types,
+and sends nothing for it.
+
+**It describes. It never stops a save.** There is still no `maxlength`. A
+text past the most is typed in full, the counter says `34/30`, in the weight
+of the text around it and no longer muted, and the save is sent. Ash refuses
+it, and its message is shown as described under
+[When a save fails](#when-a-save-fails).
+
+**Where it is.**
+
+| The text | The counter |
+| --- | --- |
+| In the editor of a cell | Under the cell, at its end. It floats on top of the page, as the message of a failed cell does, so the text keeps all its room: the row is as high and the column as wide as before. |
+| A value of an array of text | After the value, in its row. |
+| A field of the action panel, also inside a map cell, an embedded resource or a union | Under the field, at its end. |
+| An argument of the argument line | After its input, on the line. |
+
+A screen reader reads the counter when the editor gets the focus: it is the
+editor's description (`aria-describedby`). It is no live region, so it is
+not read out at every key.
+
+No counter: a sensitive text, which is typed hidden, and the editor of a
+column's `component`, which is given the constraints and can say them
+itself.
+
+**Try it:** on `/labels` as Ada Admin, press Enter on a name and type. Type
+past 30 characters and press Enter: the cell is marked, with "length must be
+less than or equal to 30". On `/tasks`, type into "Search" above the grid.
 
 ## Saving and cancelling
 
@@ -592,13 +657,18 @@ only runs actions.
 - **Expecting `min` and `max` on the input to stop a wrong number.** They
   say the limits; Ash refuses the value. See
   [Limits an editor shows before saving](#limits-an-editor-shows-before-saving).
+- **Expecting the counter to stop the typing at the most.** It counts. Ash
+  refuses the text. See [The counter of a text](#the-counter-of-a-text).
+- **A counter that says fewer characters than were typed.** The blanks
+  around the text are not counted, as Ash trims them before it counts.
 
 ## Not in the first version
 
 No editing of structs, keyword lists or tuples, nor of a map that
 declares no fields or of an array of unions; no sorting or filtering by an
-array, an embedded resource, a map or a union; no limit on the length of
-text or its pattern before a cell is saved (see
+array, an embedded resource, a map or a union; no limit that stops the
+typing of a text, and nothing that says its `min_length` or its pattern
+before a cell is saved (see
 [Limits an editor shows before saving](#limits-an-editor-shows-before-saving)),
 no hint beside an editor that says its limits in words, no bulk edits and no
 undo. A column's own editor is built: see

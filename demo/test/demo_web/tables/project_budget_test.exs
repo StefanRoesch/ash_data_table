@@ -283,6 +283,52 @@ defmodule DemoWeb.Tables.ProjectBudgetTest do
       assert failure(html, "project", rich.id, "budget") == nil
     end
 
+    test "\"Clear\" in the editor empties the budget, and nothing of it is sent", %{
+      view: view,
+      html: html,
+      rich: rich,
+      other: other
+    } do
+      assert html =~ ~s(aria-label="Clear Budget")
+
+      wire =
+        wire(view, fn ->
+          html = clear(view, "project", rich.id, "budget")
+          assert_reply view, %{ok: true}
+          assert text(html, cell("project", rich.id, "budget")) == ""
+          assert masked(html, "project", rich.id, "budget") == nil
+        end)
+
+      refute wire =~ "7654321"
+      assert stored(rich).budget == nil
+      assert Decimal.equal?(stored(other).budget, Decimal.new(@other))
+    end
+
+    test "\"Set budget\" has \"Clear\" for a project with a budget, which empties it when the action runs",
+         %{view: view, rich: rich, bare: bare} do
+      html = act(view, "project", bare.id, "set_budget")
+      assert text(html, "#project-panel-f-budget-clear") == nil
+      cancel_panel(view, "project")
+
+      html = act(view, "project", rich.id, "set_budget")
+      assert text(html, "#project-panel-f-budget-clear") == "Clear"
+      assert attribute(html, "#project-panel-f-budget-clear", "aria-label") == ["Clear Budget"]
+
+      html = clear_in_panel(view, "project", "budget")
+      assert text(html, "#project-panel-f-budget-cleared") == "Will be cleared."
+      assert Decimal.equal?(stored(rich).budget, Decimal.new(@budget))
+
+      wire =
+        wire(view, fn ->
+          html = run_panel(view, "project", %{})
+          assert panel(html, "project") == nil
+          assert masked(html, "project", rich.id, "budget") == nil
+        end)
+
+      refute wire =~ "7654321"
+      assert stored(rich).budget == nil
+    end
+
     test "the budget is spoken of in the person's language", %{conn: conn, rich: rich} do
       {:ok, _view, html} = conn |> in_locale("de") |> live("/projects")
 
@@ -374,6 +420,12 @@ defmodule DemoWeb.Tables.ProjectBudgetTest do
 
     test "a save of it all the same saves nothing", %{view: view, rich: rich} do
       save(view, "project", rich.id, "budget", "1")
+      assert_reply view, %{ok: false}
+      assert Decimal.equal?(stored(rich).budget, Decimal.new(@budget))
+    end
+
+    test "nor does emptying it", %{view: view, rich: rich} do
+      clear(view, "project", rich.id, "budget")
       assert_reply view, %{ok: false}
       assert Decimal.equal?(stored(rich).budget, Decimal.new(@budget))
     end

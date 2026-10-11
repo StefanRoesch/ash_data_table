@@ -183,4 +183,153 @@ defmodule AshTable.LimitsTest do
       refute Model.input(model, column(:place)).required?
     end
   end
+
+  describe "how the text of an input is counted" do
+    alias AshTable.Test.Limiting.Texts
+
+    defp text(name) do
+      attribute = Ash.Resource.Info.attribute(Texts, name)
+      {attribute.type, attribute.constraints}
+    end
+
+    defp counted_of(name) do
+      {type, constraints} = text(name)
+      Limits.counted(type, constraints)
+    end
+
+    # whether Ash takes the text for the attribute, as far as its length goes
+    defp ash_takes?(name, typed) do
+      {type, constraints} = text(name)
+
+      with {:ok, cast} <- Ash.Type.cast_input(type, typed, constraints),
+           {:ok, _value} <- Ash.Type.apply_constraints(type, cast, constraints) do
+        true
+      else
+        _refused -> false
+      end
+    end
+
+    test "is said where the type says the most it can be long: in Ash's unit, trimmed" do
+      assert Limits.counted(column(:title)) ==
+               %{max: 20, unit: :codepoints, trim?: true, casing: nil}
+
+      # the unit is the application's where the type names none
+      assert Application.get_env(:ash, :default_string_length_count) == :codepoints
+      assert counted_of(:plain) == %{max: 5, unit: :codepoints, trim?: true, casing: nil}
+    end
+
+    test "is as the type says: its unit, as typed, folded" do
+      assert %{unit: :graphemes, max: 3} = counted_of(:graphemes)
+      assert %{unit: :codepoints} = counted_of(:codepoints)
+      assert %{unit: :bytes, max: 6} = counted_of(:bytes)
+      assert %{trim?: false} = counted_of(:as_typed)
+      assert %{casing: :upper, trim?: true} = counted_of(:folded)
+      assert %{casing: :lower} = counted_of(:lowered)
+      assert %{casing: nil, max: 4} = counted_of(:unfolded)
+    end
+
+    test "is that of what a type is made of, and for an array that of each value" do
+      assert %{max: 12, unit: :codepoints} = counted_of(:slug)
+      assert %{max: 6} = counted_of(:words)
+    end
+
+    test "is not said without a most: for a least alone, a number, a date, no type" do
+      assert counted_of(:unlimited) == nil
+      assert Limits.counted(column(:note)) == nil
+      assert Limits.counted(column(:count)) == nil
+      assert Limits.counted(column(:due_on)) == nil
+      # the most an array holds is no length of a text
+      assert Limits.counted(column(:scores)) == nil
+      assert Limits.counted(nil, []) == nil
+    end
+
+    test "reaches a field of a map, an attribute of an embedded resource, and an argument" do
+      assert %{max: 10} = Limits.counted(field(column(:settings), :note))
+      assert %{max: 40} = Limits.counted(field(column(:place), :street))
+      assert %{max: 5} = Limits.counted(argument(:term))
+      assert %{max: 20} = Limits.counted(input(:update, :title))
+      assert Limits.counted(member(column(:value), :text)) == nil
+    end
+
+    test "counts in the unit: graphemes, codepoints, bytes" do
+      family = "👨‍👩‍👧"
+      assert Limits.count(family, counted_of(:graphemes)) == 1
+      assert Limits.count(family, counted_of(:codepoints)) == 5
+      assert Limits.count(family, counted_of(:bytes)) == 18
+      assert Limits.count("é", counted_of(:bytes)) == 2
+      assert Limits.count("e\u0301", counted_of(:graphemes)) == 1
+      assert Limits.count("e\u0301", counted_of(:codepoints)) == 2
+    end
+
+    test "counts the text once it is trimmed, unless the type takes it as typed" do
+      assert Limits.count("  ab \n", counted_of(:plain)) == 2
+      assert Limits.count("  ab \n", counted_of(:as_typed)) == 6
+      # inside the text nothing is taken away
+      assert Limits.count("a  b", counted_of(:plain)) == 4
+      assert Limits.count("   ", counted_of(:plain)) == 0
+    end
+
+    test "counts a folded text as it is once folded" do
+      assert Limits.count("straße", counted_of(:folded)) == 7
+      assert Limits.count("straße", counted_of(:unfolded)) == 6
+      assert Limits.count("İ", counted_of(:lowered)) == 2
+      assert Limits.count(Ash.CiString.new("straße"), counted_of(:folded)) == 7
+    end
+
+    test "counts what is no text as nothing" do
+      assert Limits.count(nil, counted_of(:plain)) == 0
+      assert Limits.count(12, counted_of(:plain)) == 0
+    end
+
+    test "never disagrees with Ash: more than the most is what Ash refuses" do
+      texts = [
+        "",
+        "   ",
+        "abc",
+        "abcd",
+        "abcde",
+        "abcdef",
+        "abcdefg",
+        "  abcde  ",
+        "abcde \n",
+        " abcdef",
+        "ab\ncd",
+        "ab\r\ncd",
+        "👨‍👩‍👧",
+        "👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧",
+        "👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧👨‍👩‍👧",
+        "🙂🙂🙂",
+        "🙂🙂🙂🙂",
+        "e\u0301e\u0301e\u0301",
+        "ééé",
+        "éééé",
+        "straße",
+        "ßßß",
+        "İİ",
+        "İİİ",
+        "\u0085abcde\u0085",
+        "\uFEFFabcde",
+        "\u00A0abcd\u3000"
+      ]
+
+      for name <- [
+            :plain,
+            :as_typed,
+            :graphemes,
+            :codepoints,
+            :bytes,
+            :folded,
+            :lowered,
+            :unfolded,
+            :slug
+          ],
+          typed <- texts do
+        counted = counted_of(name)
+
+        assert Limits.count(typed, counted) <= counted.max == ash_takes?(name, typed),
+               "#{name} and #{inspect(typed)}: counted #{Limits.count(typed, counted)} of #{counted.max}, " <>
+                 "and Ash #{if ash_takes?(name, typed), do: "takes", else: "refuses"} it"
+      end
+    end
+  end
 end

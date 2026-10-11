@@ -42,6 +42,12 @@ defmodule AshTable.Model.Input do
   #     and `related?` whether the argument is everything the relationship
   #     is to hold, so that its field starts with the records that are
   #     related now. See `AshTable.Resource.Referencing.managing/1`.
+  #
+  #     So is an argument whose resource the `action` of the block names
+  #     (`reference`): `reference` then has no `relationship` (nil), its
+  #     `destination` is the named resource, and its
+  #     `destination_attribute` that resource's primary key. See
+  #     `AshTable.Resource.Referencing.declared/4`.
   #   * `required?` says whether the action takes the input empty: as the
   #     attribute and the action say (`allow_nil?`, `allow_nil_input`,
   #     `require_attributes`), or the argument (`allow_nil?`).
@@ -100,7 +106,7 @@ defmodule AshTable.Model.Input do
           component: map | nil,
           reference:
             %{
-              relationship: atom,
+              relationship: atom | nil,
               destination: Ash.Resource.t(),
               source_attribute: atom | nil,
               destination_attribute: atom,

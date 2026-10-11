@@ -34,6 +34,12 @@ defmodule AshTable.Act do
   # create or an argument is given nothing, which the action answers as it
   # answers any input that is missing.
   #
+  # So a sensitive input cannot be emptied by leaving it empty. An update
+  # action is told to empty one by name: the panel says which of its fields
+  # a person asked to clear (`:cleared`), and those among them that can be
+  # cleared on the record as it is now (`clearable/3`) are given nil, as
+  # what the table gives itself. Nothing the form sends says so.
+  #
   # An input that takes a file is never taken from what the browser sent:
   # the table gives it, from the upload the panel holds, as what it gives
   # itself.
@@ -206,21 +212,34 @@ defmodule AshTable.Act do
   Runs a generic action with the inputs a person gave in its panel, and
   with `given`, what the table itself gives it.
 
-  Returns `{:done, value}`, `{:error, form}` with the action's errors, or
+  Returns `{:done, value}`, `{:error, form}` with the action's errors,
+  `{:unchosen, inputs}` as `submit_row/6` does (`opts` are then those of
+  `unchosen/4`), or
   `{:error, nil, message}` for a failure that is not of the action's
   saying: Ash raises what goes wrong inside a generic action, where it
   returns it for the others. That is for whoever runs the application, in
   the log.
   """
   @spec submit_generic(Model.t(), Action.t(), map, map, String.t(), keyword) ::
-          {:done, term} | {:error, form} | {:error, nil, String.t()}
+          {:done, term}
+          | {:error, form}
+          | {:unchosen, [Model.Input.t()]}
+          | {:error, nil, String.t()}
   def submit_generic(%Model{} = model, %Action{type: :action} = action, params, given, id, opts) do
-    form = open_generic(model, action, id, opts)
+    # an argument whose records are chosen (`reference` in the block) holds
+    # keys, and a key from the browser is a claim, as for any other action
+    case unchosen(action.inputs, params, nil, opts) do
+      [] ->
+        form = open_generic(model, action, id, opts)
 
-    case AshPhoenix.Form.submit(form, params: taken(action.inputs, params, given)) do
-      :ok -> {:done, nil}
-      {:ok, value} -> {:done, value}
-      {:error, form} -> {:error, form}
+        case AshPhoenix.Form.submit(form, params: taken(action.inputs, params, given)) do
+          :ok -> {:done, nil}
+          {:ok, value} -> {:done, value}
+          {:error, form} -> {:error, form}
+        end
+
+      unchosen ->
+        {:unchosen, unchosen}
     end
   rescue
     error ->
@@ -263,6 +282,37 @@ defmodule AshTable.Act do
 
   defp by_name(%{cell_type: :enum} = returns, value), do: Format.format(returns, value)
   defp by_name(_returns, value), do: Format.format(%{cell_type: :other}, value)
+
+  @doc """
+  The inputs of a row action that a person can ask to be emptied on this
+  record, by name: the sensitive attributes an update action accepts and
+  takes without a value (`required?`), which the record holds a value for
+  that this person sees. A sensitive field starts empty and gives the
+  action nothing while it is empty, so this is the one way to empty it.
+
+  None for any other action: a create has nothing to empty, a destroy
+  takes the record away, and an argument holds nothing between two runs.
+  """
+  @spec clearable(Action.t(), [Model.Input.t()], Ash.Resource.record() | nil) :: [atom]
+  def clearable(%Action{type: :update}, inputs, %_{} = record) do
+    for %{kind: :attribute, sensitive?: true, required?: false, name: name} <- inputs,
+        value = Map.get(record, name),
+        not is_struct(value, Ash.ForbiddenField),
+        not AshTable.Sensitive.empty?(value),
+        do: name
+  end
+
+  def clearable(%Action{}, _inputs, _record), do: []
+
+  # What the action is given for the inputs a person asked to clear: nil,
+  # for those that can be cleared on the record as it is now.
+  defp cleared(action, inputs, record, opts) do
+    asked = Keyword.get(opts, :cleared, [])
+
+    for name <- clearable(action, inputs, record), name in asked, into: %{} do
+      {Atom.to_string(name), nil}
+    end
+  end
 
   @doc """
   The inputs of a row action that the person has on this record: without
@@ -334,7 +384,9 @@ defmodule AshTable.Act do
 
   `opts` are those of `unchosen/4`, and `:files`: the files the panel's
   uploads hold, by the name of the argument each is for. They are the
-  table's to give, as what it gives itself.
+  table's to give, as what it gives itself. And `:cleared`: the names of
+  the inputs a person asked to empty, which an update action is given
+  without a value where they can be (`clearable/3`).
   """
   @spec submit_row(Model.t(), Action.t(), map, map, String.t(), keyword) ::
           {:ok, Ash.Resource.record()}
@@ -366,7 +418,11 @@ defmodule AshTable.Act do
             submit(
               model,
               form(record, action, id, opts),
-              taken(inputs, params, files(chooser)),
+              taken(
+                inputs,
+                params,
+                Map.merge(files(chooser), cleared(action, inputs, record, chooser))
+              ),
               opts
             )
 

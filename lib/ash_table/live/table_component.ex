@@ -1480,6 +1480,26 @@ defmodule AshTable.Live.TableComponent do
 
   def handle_event("save", _params, socket), do: {:reply, %{ok: false}, socket}
 
+  # Sent by the hook when a person uses "Clear" in the editor of a sensitive
+  # cell: the row by the key in its DOM id, and the column. Nothing typed
+  # says "no value" for such a cell (an empty editor saves nothing), so this
+  # is asked for by name, and is the save of a cell in everything else: the
+  # column has to be one this person edits and one that can be emptied, the
+  # row one of the page, and the record is read again, as the person.
+  def handle_event("clear", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+    %{model: model, rows: rows} = socket.assigns
+
+    with %{editable?: true} = column <- column(model, name),
+         true <- Edit.clearable?(column),
+         %{} = row <- rows[key] do
+      saved(Edit.clear(model, column, row.pk, reader(socket.assigns)), socket, key, column, "")
+    else
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  def handle_event("clear", _params, socket), do: {:reply, %{ok: false}, socket}
+
   # Sent by the hook when a person asks for the value of a sensitive cell:
   # the row by the key in its DOM id, and the column. The record is read
   # again, as the person, through the table's read action, and the answer
@@ -1755,6 +1775,35 @@ defmodule AshTable.Live.TableComponent do
 
   def handle_event("panel_unpick", _params, socket), do: {:reply, %{}, socket}
 
+  # Sent by the panel's hook for the button beside a sensitive field of a
+  # row action's panel: "Clear", and "Keep", which takes it back. The panel
+  # notes it, and the action is given the field without a value when it
+  # runs. Only for a field the panel offers it for
+  # (`AshTable.Act.clearable/3`). The answer says where focus goes: back to
+  # the button.
+  def handle_event(
+        "panel_clear",
+        %{"input" => name},
+        %{assigns: %{panel: %{clearable: clearable, cleared: cleared} = panel}} = socket
+      )
+      when is_binary(name) do
+    case Enum.find(clearable, &(Atom.to_string(&1) == name)) do
+      nil ->
+        {:reply, %{}, socket}
+
+      input ->
+        cleared =
+          if input in cleared,
+            do: MapSet.delete(cleared, input),
+            else: MapSet.put(cleared, input)
+
+        {:reply, %{focus: "#{socket.assigns.id}-panel-f-#{name}-clear"},
+         assign(socket, panel: %{panel | cleared: cleared})}
+    end
+  end
+
+  def handle_event("panel_clear", _params, socket), do: {:reply, %{}, socket}
+
   # Sent by the panel's hook for Cancel and Escape.
   def handle_event("panel_cancel", _params, socket),
     do: {:noreply, assign(socket, panel: nil, picker: nil)}
@@ -1988,7 +2037,14 @@ defmodule AshTable.Live.TableComponent do
   # Either way the row is put back with what is true now: the action's
   # result, or the record as it is and the cell marked with what was typed.
   defp save(socket, key, row, column, typed) do
-    case Edit.save(socket.assigns.model, column, row.pk, typed, reader(socket.assigns)) do
+    socket.assigns.model
+    |> Edit.save(column, row.pk, typed, reader(socket.assigns))
+    |> saved(socket, key, column, typed)
+  end
+
+  # What became of the save of a cell, as the row and the hook are told it.
+  defp saved(result, socket, key, column, typed) do
+    case result do
       {:ok, record} ->
         {:reply, %{ok: true},
          socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
@@ -2393,7 +2449,11 @@ defmodule AshTable.Live.TableComponent do
         groups: groups,
         touched: MapSet.new(),
         file_errors: %{},
-        refused_files: []
+        refused_files: [],
+        # the sensitive fields a person can ask to be emptied, and those
+        # they have asked for: of the panel of an update action on a row
+        clearable: [],
+        cleared: MapSet.new()
       },
       Map.delete(panel, :related)
     )
@@ -2576,7 +2636,8 @@ defmodule AshTable.Live.TableComponent do
             given: given,
             # an argument that is everything a relationship is to hold
             # starts with the records that are related now
-            related: Act.related(inputs, record, reader(socket.assigns))
+            related: Act.related(inputs, record, reader(socket.assigns)),
+            clearable: Act.clearable(action, inputs, record)
           })
 
         {:reply, %{ok: true, panel: true}, opened(socket, panel)}
@@ -2789,7 +2850,8 @@ defmodule AshTable.Live.TableComponent do
                row.pk,
                params,
                "#{id}-panel",
-               [files: files(panel)] ++ chooser(socket.assigns, panel)
+               [files: files(panel), cleared: MapSet.to_list(panel.cleared)] ++
+                 chooser(socket.assigns, panel)
              ) do
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
@@ -2822,13 +2884,16 @@ defmodule AshTable.Live.TableComponent do
                params,
                files(panel),
                "#{id}-panel",
-               reader(socket.assigns)
+               chooser(socket.assigns, panel)
              ) do
           {:done, value} ->
             {:noreply, socket |> assign(panel: nil) |> done(action, value)}
 
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
+
+          {:unchosen, inputs} ->
+            {:noreply, failed_panel(socket, panel, unchosen(inputs))}
 
           {:error, nil, message} ->
             {:noreply, failed_panel(socket, panel, message)}
@@ -3970,6 +4035,7 @@ defmodule AshTable.Live.TableComponent do
         >
           <.editor
             :if={column.editor not in [:reference, :group, :groups, :union]}
+            id={"#{@id}-editor-#{column.name}"}
             column={column}
             allow_nil?={allow_nil?(@model.resource, column)}
           />
@@ -4211,6 +4277,14 @@ defmodule AshTable.Live.TableComponent do
               try { named = JSON.parse(button.dataset.unpick) } catch (_error) { return }
               this.pushEventTo(dialog, "panel_unpick", {input: named[0], key: named[1]}, reply => this.into(reply && reply.focus))
             })
+            // A sensitive field that can be emptied: its button asks the
+            // server to note it, or to take it back, and has the focus
+            // again once the field is rendered anew.
+            dialog.addEventListener("click", e => {
+              const button = e.target.closest && e.target.closest("[data-clear-field]")
+              if (!button) return
+              this.pushEventTo(dialog, "panel_clear", {input: button.dataset.clearField}, reply => this.into(reply && reply.focus))
+            })
             // The panel of a cell asks the column's question only when
             // something was changed: what its form holds as it opens is
             // what the record has.
@@ -4265,7 +4339,14 @@ defmodule AshTable.Live.TableComponent do
           // The server says which values of an array the action refuses, on
           // the group around the field's rows; the rows are this hook's, so
           // their controls are marked here, after every answer.
-          updated() { this.mark() },
+          //
+          // A counter of a text comes as the server counted it, from what
+          // it had heard by then: it is counted again from what its
+          // control holds now.
+          updated() {
+            this.mark()
+            if (this.grid) this.grid.recountIn(this.el)
+          },
 
           mark() {
             if (!this.grid) return
@@ -4562,6 +4643,29 @@ defmodule AshTable.Live.TableComponent do
           } catch (_error) { return [] }
         }
 
+        // How long a text is, as Ash counts it when it checks `max_length`,
+        // from what a counter says of itself (`AshTable.Model.Limits`): a
+        // `:ci_string` that folds its case is folded first, the text is
+        // trimmed unless the type says otherwise, and what is left is
+        // counted in graphemes, codepoints or bytes. Trimmed as Elixir's
+        // `String.trim/1` trims, which is not quite what `trim()` takes
+        // away here (U+0085 and not U+FEFF).
+        const BLANK = "\\t-\\r \\u0085\\u00A0\\u1680\\u2000-\\u200A\\u2028\\u2029\\u202F\\u205F\\u3000"
+        const TRIMMED = new RegExp(`^[${BLANK}]+|[${BLANK}]+$`, "g")
+        const LENGTH = (text, {count, trim, casing}) => {
+          if (casing === "lower") text = text.toLowerCase()
+          else if (casing === "upper") text = text.toUpperCase()
+          if (trim !== undefined) text = text.replace(TRIMMED, "")
+          if (count === "bytes") return new TextEncoder().encode(text).length
+          if (count === "graphemes" && typeof Intl !== "undefined" && Intl.Segmenter) {
+            let graphemes = 0
+            for (const _grapheme of new Intl.Segmenter().segment(text)) graphemes++
+            return graphemes
+          }
+          // codepoints: a string is iterated by them
+          return Array.from(text).length
+        }
+
         // a control that text is typed into: typing on its cell replaces its value
         const TYPED = "textarea,input:is([type=text],[type=search],[type=tel],[type=url],[type=email],[type=password],[type=number],:not([type]))"
 
@@ -4619,6 +4723,21 @@ defmodule AshTable.Live.TableComponent do
             // several inputs without a button is not sent by Enter itself.
             this.onArgument = e => this.onArgumentKeydown(e)
             if (this.root) this.root.addEventListener("keydown", this.onArgument)
+            // The counter of a text follows what is typed, wherever in the
+            // table the text is: in a cell, in the argument line, in the
+            // action panel. Nothing is sent for it.
+            this.onTyped = e => this.onCount(e)
+            if (this.root) this.root.addEventListener("input", this.onTyped)
+            // A patch of the argument line brings its counters as the
+            // server counted them, from what it had heard by then, which
+            // need not be all that has been typed since: they are counted
+            // again from what the inputs hold. (The panel's hook does the
+            // same for the panel.)
+            const line = this.part("arguments")
+            if (line && line.querySelector("[data-count]")) {
+              this.counted = new MutationObserver(() => this.recountIn(line))
+              this.counted.observe(line, {subtree: true, childList: true, characterData: true})
+            }
             // the server says on which rows an action on the selection did
             // not run: those stay selected, and no others
             this.handleEvent("ash_table:bulk", ({table, failed}) => {
@@ -4663,7 +4782,7 @@ defmodule AshTable.Live.TableComponent do
             this.el.addEventListener("dblclick", own(e => this.onDblclick(e)))
             this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
             this.el.addEventListener("mouseleave", () => this.onPointer(null))
-            this.onScroll = () => this.showMessage()
+            this.onScroll = () => { this.showMessage(); this.placeCount() }
             window.addEventListener("scroll", this.onScroll, true)
             // updated() only runs when this element itself is patched; a
             // stream insert or reset touches the rows alone.
@@ -4697,9 +4816,64 @@ defmodule AshTable.Live.TableComponent do
 
           destroyed() {
             this.observer && this.observer.disconnect()
+            this.counted && this.counted.disconnect()
+            if (this.root) this.root.removeEventListener("input", this.onTyped)
             window.removeEventListener("scroll", this.onScroll, true)
             if (this.root) this.root.removeEventListener("click", this.onLine)
             if (this.root) this.root.removeEventListener("keydown", this.onArgument)
+          },
+
+          // ---- the counter of a text --------------------------------------
+
+          // Something was typed into a control: the counters it names as
+          // its description are counted again.
+          onCount(e) {
+            const control = e.target
+            if (!control || !control.getAttribute || control.value === undefined) return
+            for (const id of (control.getAttribute("aria-describedby") || "").split(/\s+/)) {
+              const counter = id && document.getElementById(id)
+              if (counter && counter.dataset.count !== undefined) this.recount(counter, control)
+            }
+            // the editor may be higher now, and its counter another width
+            this.placeCount()
+          },
+
+          // The counter of the text a cell's editor holds is a popover, as
+          // the message of a failed cell is: shown under the cell, at its
+          // end, for as long as the editor is open, without taking room
+          // from the text or making the row higher. It goes with the
+          // editor, which it is part of.
+          placeCount() {
+            const ed = this.editing
+            const count = ed && ed.count
+            if (!count || !count.isConnected || !count.showPopover) return
+            if (!count.matches(":popover-open")) count.showPopover()
+            const box = ed.cell.getBoundingClientRect()
+            count.style.top = `${box.bottom + 2}px`
+            count.style.left = `${Math.max(0, box.right - count.offsetWidth)}px`
+          },
+
+          // Writes how long the text of `control` is into its counter, and
+          // whether that is more than the most it can be. Nothing is
+          // written that is there already, so that whoever watches the
+          // counter is not told of a change that is none.
+          recount(counter, control) {
+            const max = Number(counter.dataset.max)
+            const length = LENGTH(control.value, counter.dataset)
+            const text = `${length}/${max}`
+            if (counter.textContent !== text) counter.textContent = text
+            if (length > max === counter.hasAttribute("data-over")) return
+            if (length > max) counter.setAttribute("data-over", "")
+            else counter.removeAttribute("data-over")
+          },
+
+          // Counts every counter in an element again, from what its control
+          // holds now: after a patch, and when an editor is filled in.
+          recountIn(scope) {
+            for (const counter of scope.querySelectorAll("[data-count][id]")) {
+              const control = scope.querySelector(`[aria-describedby~="${counter.id}"]`)
+              if (control && control.value !== undefined) this.recount(counter, control)
+            }
           },
 
           // Enter in an input of this table's argument line: the line's form
@@ -5105,6 +5279,8 @@ defmodule AshTable.Live.TableComponent do
             if (!cell || e.altKey) return
             if (this.editing && this.editing.list && this.editing.root.contains(e.target)) return this.onListKeydown(e)
             if (this.editing && e.target === this.editing.input) return this.onEditorKeydown(e)
+            // the "Clear" button of a sensitive cell's editor is of the editor
+            if (this.editing && this.editing.clear === e.target) return this.onEditorKeydown(e)
             const control = this.controlOf(e.target)
             if (control) return this.onControlKeydown(e, control)
             const rows = this.rows()
@@ -5628,6 +5804,8 @@ defmodule AshTable.Live.TableComponent do
             if (type === "choices" || type === "list") return this.startList(cell, template, root, key)
             const input = CONTROL(root)
             const current = this.valueOf(cell)
+            // whether a sensitive cell holds a value: it then has its mask
+            const held = !!this.secretOf(cell)
             const saved = Array.from(cell.childNodes)
             // LiveView leaves an element marked like this alone, so a patch of
             // the row, after another cell's save, does not take the editor away.
@@ -5662,15 +5840,37 @@ defmodule AshTable.Live.TableComponent do
               // A sensitive cell: nothing of its value is in the page, so
               // the editor opens empty, and what is typed is typed into
               // it by the browser, hidden. Left empty it saves nothing.
+              //
+              // So the cell is emptied by a button beside the input, where
+              // the column can be empty: "Clear". Tab goes from the input to
+              // it and on out of the grid, Shift+Tab back; Enter and Space
+              // use it. It is part of the editor: focus on it is focus in
+              // the editor, and leaving it saves what was typed, as leaving
+              // the input does. A cell that holds nothing has none.
+              const clear = root.querySelector("button[data-clear]")
+              if (clear && !held) clear.remove()
+              else if (clear) {
+                ed.clear = clear
+                clear.addEventListener("blur", () => this.onEditorBlur(ed))
+                clear.addEventListener("click", () => this.clearCell(ed))
+                // a click on the button or beside the input leaves the focus where it is
+                root.addEventListener("mousedown", e => { if (e.target !== input) e.preventDefault() })
+              }
               input.focus()
               handled = key === null
             } else if (type === "text") {
               input.addEventListener("input", () => this.fit(input))
+              // a text with a counter: a click on the counter leaves the
+              // focus in the control
+              if (root !== input) root.addEventListener("mousedown", e => { if (e.target !== input) e.preventDefault() })
               // typing replaces the text; the character itself is typed by the browser
               if (key !== null) { input.value = ""; handled = false }
+              ed.count = root.querySelector("[data-count][popover]")
+              this.recountIn(root)
               this.fit(input)
               input.focus()
               if (key === null) input.select()
+              this.placeCount()
             } else if (type === "number") {
               input.focus()
               if (key === null) input.select()
@@ -5908,6 +6108,7 @@ defmodule AshTable.Live.TableComponent do
             list.querySelector("[data-add]").before(item)
             this.hold(item)
             this.number(list)
+            this.recountIn(item)
             if (control.tagName === "TEXTAREA" && list.closest("td")) this.fit(control)
             return control
           },
@@ -5950,6 +6151,12 @@ defmodule AshTable.Live.TableComponent do
             this.items(list).forEach((item, index) => {
               const place = String(index + 1)
               this.controlIn(item).setAttribute("aria-label", list.dataset.valueLabel.replace("{n}", place))
+              // the counter of a text is named by the row's place, too
+              const counter = item.querySelector("[data-count]")
+              if (counter && list.id) {
+                counter.id = `${list.id}-count-${place}`
+                this.controlIn(item).setAttribute("aria-describedby", counter.id)
+              }
               item.querySelector("[data-remove]").setAttribute("aria-label", list.dataset.removeLabel.replace("{n}", place))
             })
           },
@@ -6030,6 +6237,8 @@ defmodule AshTable.Live.TableComponent do
                 this.finish(ed, false, true)
                 break
               case "Enter":
+                // on the editor's "Clear" button Enter uses the button
+                if (e.target === ed.clear) return
                 // a new line in text
                 if (ed.input.tagName === "TEXTAREA" && e.shiftKey) return
                 if (ed.input.tagName === "SELECT") {
@@ -6112,8 +6321,46 @@ defmodule AshTable.Live.TableComponent do
             if (!document.hasFocus()) return
             // Focus is on its way to somewhere else: nothing pulls it back.
             // The editor is taken out of the cell once focus has arrived,
-            // as Tab goes on from where the editor stands.
-            setTimeout(() => this.finish(ed, true, false), 0)
+            // as Tab goes on from where the editor stands. Unless it has
+            // arrived in the editor itself: on the button beside the
+            // control, or back on the control.
+            setTimeout(() => {
+              if (ed.root.contains(document.activeElement)) return
+              this.finish(ed, true, false)
+            }, 0)
+          },
+
+          // "Clear" in the editor of a sensitive cell: asks the server to
+          // empty the cell, after the column's question if it has one.
+          // What was typed is given up. The answer is a patch of the row,
+          // as after a save: with the cell empty, or marked as failed.
+          clearCell(ed) {
+            if (this.editing !== ed || ed.asking) return
+            const {cell} = ed
+            const run = () => {
+              const restore = () => cell.replaceChildren(...ed.saved)
+              this.detach(ed)
+              restore()
+              if (this.tree().activeId === cell.id) cell.tabIndex = 0
+              cell.focus()
+              cell.setAttribute("aria-busy", "true")
+              const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
+              this.pushEventTo(this.el, "clear", payload, reply => {
+                if (!cell.isConnected || !cell.hasAttribute("aria-busy")) return
+                cell.removeAttribute("aria-busy")
+                // the record is gone: there is no row to send, so the cell is marked here
+                if (reply && reply.error) this.mark(cell, "", "", reply.error, restore)
+              })
+            }
+            if (!ed.confirm) return run()
+            ed.asking = true
+            this.ask(ed.confirm).then(confirmed => {
+              ed.asking = false
+              if (this.editing !== ed) return
+              // Cancel: back in the editor, with what was typed
+              if (confirmed) run()
+              else ed.input.focus()
+            })
           },
 
           // What an editor holds: the value of its control, or the list of
@@ -6563,6 +6810,24 @@ defmodule AshTable.Live.TableComponent do
         limits: Limits.of(assigns.argument)
       )
 
+    # the counter of a text that has a most it can be long, as in the panel
+    counted =
+      case assigns.argument do
+        %{editor: :text} = argument -> Limits.counted(argument)
+        %{editor: :list, cell_type: {:array, :text}} = argument -> Limits.counted(argument)
+        _another_control -> nil
+      end
+
+    assigns =
+      assign(assigns,
+        counted: counted,
+        described:
+          described([
+            assigns.described,
+            counted && assigns.argument.editor == :text && "#{assigns.id}-count"
+          ])
+      )
+
     ~H"""
     <div class="flex flex-col" data-argument={@named}>
       <div class="flex min-h-8 flex-wrap items-center gap-2">
@@ -6616,6 +6881,12 @@ defmodule AshTable.Live.TableComponent do
           aria-describedby={@described}
           class={["input input-sm w-40", control_edge()]}
         />
+        <.count
+          :if={@counted && @argument.editor == :text}
+          id={"#{@id}-count"}
+          counted={@counted}
+          value={@value}
+        />
         <%!-- An array has several controls, and its label is for none of them
         alone: they are a group, which the label names. --%>
         <span :if={@array?} id={"#{@id}-label"} class="label text-sm text-base-content">
@@ -6664,8 +6935,10 @@ defmodule AshTable.Live.TableComponent do
               phx-debounce="blur"
               aria-label={Text.t(:value_position, column: @argument.label, position: at + 1)}
               aria-invalid={@errors != [] && "true"}
+              aria-describedby={@counted && "#{@id}-#{at}-count"}
               class={["input input-sm w-40", control_edge()]}
             />
+            <.count :if={@counted} id={"#{@id}-#{at}-count"} counted={@counted} value={value} />
             <button
               type="button"
               id={"#{@id}-#{at}-remove"}
@@ -6763,6 +7036,13 @@ defmodule AshTable.Live.TableComponent do
           errors={field_errors(@panel, input, upload_of(@uploads, input))}
           places={field_places(@panel, input)}
           chosen={@panel.chosen[input.name]}
+          clear={
+            cond do
+              input.name in @panel.cleared -> :asked
+              input.name in @panel.clearable -> :offered
+              true -> nil
+            end
+          }
           upload={upload_of(@uploads, input)}
           inside={
             %{
@@ -6976,6 +7256,7 @@ defmodule AshTable.Live.TableComponent do
   attr :errors, :list, required: true
   attr :places, :list, default: []
   attr :chosen, :any, default: nil
+  attr :clear, :atom, default: nil
   attr :upload, :any, default: nil
   attr :inside, :map, required: true
   attr :target, :any, default: nil
@@ -6990,16 +7271,34 @@ defmodule AshTable.Live.TableComponent do
         do: assign(assigns, errors: upload_errors_of(assigns.upload) ++ assigns.errors),
         else: assigns
 
+    # typed hidden: a password input in place of the control of its type
+    secret? = Sensitive.sensitive?(assigns.input)
+
+    # The counter of a text that has a most it can be long, and of each
+    # value of an array of such texts. Not of a sensitive one: nothing is
+    # said of what is typed hidden but what its control shows.
+    counted =
+      case assigns.input do
+        _typed_hidden when secret? -> nil
+        %{editor: :text} = input -> Limits.counted(input)
+        %{editor: :list, cell_type: {:array, :text}} = input -> Limits.counted(input)
+        _another_control -> nil
+      end
+
     assigns =
       assign(assigns,
-        described: assigns.errors != [] && "#{assigns.id}-error",
+        described:
+          described([
+            assigns.errors != [] && "#{assigns.id}-error",
+            counted && assigns.input.editor == :text && "#{assigns.id}-count"
+          ]),
+        counted: counted,
         array?: assigns.input.editor in [:choices, :list],
         # what the constraints of a number say of its control; of an array,
         # of the control of each value
         limits: Limits.of(assigns.input),
         group?: group?(assigns.input),
-        # typed hidden: a password input in place of the control of its type
-        secret?: Sensitive.sensitive?(assigns.input),
+        secret?: secret?,
         file?: assigns.input.editor == :file and not is_nil(assigns.upload),
         reference?: assigns.input.editor == :reference,
         references?: assigns.input.editor == :references,
@@ -7189,6 +7488,7 @@ defmodule AshTable.Live.TableComponent do
           label={@input.label}
           item={elem(@input.cell_type, 1)}
           limits={@limits}
+          counted={@counted}
           place={:panel}
           values={@value}
           name={@name <> "[]"}
@@ -7261,7 +7561,7 @@ defmodule AshTable.Live.TableComponent do
       action nothing (`AshTable.Act`). What it holds here is what was typed
       into it, which a patch has to bring back as it does for any field. --%>
       <input
-        :if={@secret?}
+        :if={@secret? and @clear != :asked}
         type="password"
         autocomplete="off"
         id={@id}
@@ -7272,6 +7572,32 @@ defmodule AshTable.Live.TableComponent do
         aria-describedby={@described}
         class={["input w-full", control_edge()]}
       />
+      <%!-- A sensitive field that is left empty changes nothing, so it cannot
+      say "no value". Where the record has a value and the action takes none,
+      a button says it: "Clear". The value is emptied when the action runs.
+      Until then the field says so in place of its input, and the button
+      takes it back: "Keep". Nothing of this is in the form: the panel
+      keeps it, and the server gives the action the field without a value.
+      The panel's hook sends it (`panel_clear`), and puts the focus back on
+      the button, which a patch that changes what stands before it takes off. --%>
+      <p :if={@clear == :asked} id={"#{@id}-cleared"} class="text-sm" data-cleared>
+        {Text.t(:will_be_cleared)}
+      </p>
+      <button
+        :if={@clear}
+        type="button"
+        id={"#{@id}-clear"}
+        class="btn btn-sm justify-self-start"
+        aria-label={
+          if @clear == :asked,
+            do: Text.t(:keep_value, column: @input.label),
+            else: Text.t(:clear_value, column: @input.label)
+        }
+        aria-describedby={@clear == :asked && "#{@id}-cleared"}
+        data-clear-field={@input.name}
+      >
+        {if @clear == :asked, do: Text.t(:keep), else: Text.t(:clear)}
+      </button>
       <textarea
         :if={@input.editor == :text and not @secret?}
         id={@id}
@@ -7282,6 +7608,15 @@ defmodule AshTable.Live.TableComponent do
         aria-describedby={@described}
         class={["textarea w-full", control_edge()]}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      <%!-- how long the text is, and the most it can be: under its control,
+      at the end, where the eye is when the text gets long --%>
+      <.count
+        :if={@counted && @input.editor == :text}
+        id={"#{@id}-count"}
+        counted={@counted}
+        value={@value}
+        class="justify-self-end"
+      />
       <select
         :if={@input.editor == :enum}
         id={@id}
@@ -8198,6 +8533,11 @@ defmodule AshTable.Live.TableComponent do
   # its cell type, without a name or a form, as the hook reads its value and
   # sends it. It takes the place of the cell's text, so it has the text's
   # size and no border of its own; the cell shows the focus.
+  #
+  # `id` is the id of the editor's `<template>`. What is in a template is
+  # not in the page, and one copy of it at most is: an id that starts with
+  # it is the id of one element.
+  attr :id, :string, required: true
   attr :column, :map, required: true
   attr :allow_nil?, :boolean, required: true
 
@@ -8219,27 +8559,75 @@ defmodule AshTable.Live.TableComponent do
 
   # A sensitive column, which is text or a number: a password input, so that
   # what is typed is not shown. The hook opens it empty.
+  #
+  # Left empty it saves nothing, so nothing typed into it empties the cell.
+  # Where the cell can be empty (`AshTable.Edit.clearable?/1`), a button
+  # beside the input does: "Clear", named with the column. The two are the
+  # editor then, and the input is its control. The hook takes the button
+  # out for a cell that holds nothing.
   defp editor(%{column: %{sensitive?: true}} = assigns) do
+    assigns = assign(assigns, clearable?: Edit.clearable?(assigns.column))
+
     ~H"""
     <input
+      :if={!@clearable?}
       type="password"
       autocomplete="off"
       aria-label={@column.label}
       class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"
     />
+    <div :if={@clearable?} class="flex w-full min-w-24 items-center gap-2">
+      <input
+        type="password"
+        autocomplete="off"
+        data-control
+        aria-label={@column.label}
+        class="block h-5 w-0 min-w-12 flex-1 bg-transparent p-0 text-sm outline-none"
+      />
+      <button
+        type="button"
+        data-clear
+        aria-label={Text.t(:clear_value, column: @column.label)}
+        class="btn btn-xs -my-1 shrink-0"
+      >
+        {Text.t(:clear)}
+      </button>
+    </div>
     """
   end
 
   # Text is edited in a textarea, so that text of several lines keeps its
   # lines. It is one line high until the text needs more.
+  #
+  # A text with a most it can be long has its counter with it. The textarea
+  # takes the place of the cell's text as before, to the last pixel: a
+  # counter beside it would take room from the text, and a text that fills
+  # its column would break into another line. So the counter is a popover,
+  # which the hook shows under the cell at its end while the editor is
+  # open, as it shows the message of a failed cell: neither the row nor the
+  # column moves. The two are the editor; the textarea is its control.
   defp editor(%{column: %{editor: :text}} = assigns) do
+    assigns = assign(assigns, counted: Limits.counted(assigns.column))
+
     ~H"""
     <textarea
+      :if={!@counted}
       rows="1"
       aria-label={@column.label}
       aria-required={@column.required? && "true"}
       class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none"
     ></textarea>
+    <div :if={@counted}>
+      <textarea
+        rows="1"
+        data-control
+        aria-label={@column.label}
+        aria-required={@column.required? && "true"}
+        aria-describedby={"#{@id}-count"}
+        class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none"
+      ></textarea>
+      <.count id={"#{@id}-count"} counted={@counted} value="" floats?={true} />
+    </div>
     """
   end
 
@@ -8287,11 +8675,13 @@ defmodule AshTable.Live.TableComponent do
 
     ~H"""
     <.list
+      id={"#{@id}-list"}
       role="group"
       aria-label={@column.label}
       label={@column.label}
       item={@item}
       limits={Limits.of(@column)}
+      counted={@item == :text && Limits.counted(@column)}
       place={:grid}
     />
     """
@@ -8316,6 +8706,70 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # How long a text is and the most it can be, beside the control the text
+  # is typed into: "12/30". Only for a text whose type says a `max_length`
+  # (`AshTable.Model.Limits.counted/1`).
+  #
+  # The server counts what the control holds as it renders it, and the
+  # grid's hook counts again whenever something is typed, and after every
+  # patch: the same way, from what the counter says of itself (`data-count`:
+  # the unit; `data-max`; `data-trim`; `data-casing`). Both count as Ash
+  # does, so the counter and Ash's answer never disagree.
+  #
+  # It describes and stops nothing: a text that is too long is typed, sent
+  # and refused by Ash. The counter then says a number greater than the
+  # most ("34/30"), and is set in the weight and the colour of the text
+  # around it instead of its own muted ones (`data-over`): the numbers say
+  # it, and the weight says it again without a colour.
+  #
+  # The control names it as its description (`aria-describedby`), so a
+  # screen reader reads it when the control gets the focus. It is no live
+  # region: it is not read out at every key.
+  #
+  # Beside a control it stands in the page as text. In the editor of a cell
+  # it floats (`floats?`): a popover, as the message of a failed cell is,
+  # with that message's edge and ground, which the hook shows and places.
+  attr :id, :string, default: nil
+  attr :counted, :map, required: true
+  attr :value, :any, default: ""
+  attr :floats?, :boolean, default: false
+  attr :class, :string, default: nil
+
+  defp count(assigns) do
+    length = Limits.count(assigns.value, assigns.counted)
+    assigns = assign(assigns, length: length, over?: length > assigns.counted.max)
+
+    ~H"""
+    <span
+      id={@id}
+      popover={@floats? && "manual"}
+      data-count={@counted.unit}
+      data-max={@counted.max}
+      data-trim={@counted.trim?}
+      data-casing={@counted.casing}
+      data-over={@over?}
+      class={[
+        "text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold",
+        if(@floats?,
+          do:
+            "inset-auto m-0 rounded border border-base-content/40 bg-base-100 px-1.5 py-0.5 text-base-content/70 shadow data-[over]:text-base-content",
+          else: "shrink-0 opacity-70 data-[over]:opacity-100"
+        ),
+        @class
+      ]}
+    >{@length}/{@counted.max}</span>
+    """
+  end
+
+  # What a control names as its description: the ids of what says something
+  # of it (its error message, its counter), or nothing.
+  defp described(ids) do
+    case Enum.filter(ids, &is_binary/1) do
+      [] -> false
+      ids -> Enum.join(ids, " ")
+    end
+  end
+
   # The editor of an array whose values each have a control of their own:
   # one row per value, with the control of the values' cell type and a button
   # that takes the value away, and after the rows a button that adds a value.
@@ -8335,14 +8789,17 @@ defmodule AshTable.Live.TableComponent do
   attr :label, :string, required: true
   attr :item, :atom, required: true
   attr :limits, :map, required: true
+  attr :counted, :any, default: nil
   attr :place, :atom, required: true
   attr :values, :list, default: []
   attr :name, :string, default: nil
+  attr :id, :string, default: nil
   attr :rest, :global
 
   defp list(assigns) do
     ~H"""
     <div
+      id={@id}
       data-list
       data-value-label={Text.t(:value_position, column: @label, position: "{n}")}
       data-remove-label={Text.t(:remove_value, column: @label, position: "{n}")}
@@ -8356,6 +8813,8 @@ defmodule AshTable.Live.TableComponent do
         label={@label}
         item={@item}
         limits={@limits}
+        counted={@counted}
+        list={@id}
         place={@place}
         name={@name}
         value=""
@@ -8366,6 +8825,8 @@ defmodule AshTable.Live.TableComponent do
         label={@label}
         item={@item}
         limits={@limits}
+        counted={@counted}
+        list={@id}
         place={@place}
         name={@name}
         value={value}
@@ -8394,7 +8855,13 @@ defmodule AshTable.Live.TableComponent do
         remove_label:
           assigns.position &&
             Text.t(:remove_value, column: assigns.label, position: assigns.position),
-        grid?: assigns.place == :grid
+        grid?: assigns.place == :grid,
+        # The counter of a value that is text with a most it can be long.
+        # Its id says the row's place, as what the row's controls are
+        # called does, and the hook numbers it with them.
+        count_id:
+          assigns.counted && assigns.position && assigns.list &&
+            "#{assigns.list}-count-#{assigns.position}"
       )
 
     ~H"""
@@ -8417,12 +8884,14 @@ defmodule AshTable.Live.TableComponent do
         rows="1"
         name={@name}
         aria-label={@value_label}
+        aria-describedby={@count_id}
         class={[
           "textarea min-h-0",
           if(@grid?, do: "textarea-xs w-48 resize-none", else: "flex-1"),
           control_edge()
         ]}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+      <.count :if={@item == :text && @counted} id={@count_id} counted={@counted} value={@value} />
       <input
         :if={@item in [:number, :date, :datetime]}
         type={input_type(@item)}

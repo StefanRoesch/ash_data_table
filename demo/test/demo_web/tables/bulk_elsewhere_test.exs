@@ -65,9 +65,20 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "has its button in the row, and none on the line", %{html: html, world: world} do
       [project | _] = world.projects
 
-      assert actions(html, "project", project.id) == ["Set status", "Destroy"]
+      assert actions(html, "project", project.id) == [
+               "Set status",
+               "Set budget",
+               "Destroy",
+               "Assign open tasks"
+             ]
 
-      assert ["Select all " <> _, "Clear selection", "Set status"] =
+      assert [
+               "Select all " <> _,
+               "Clear selection",
+               "Set status",
+               "Set budget",
+               "Assign open tasks"
+             ] =
                selection(html, "project").buttons
     end
 

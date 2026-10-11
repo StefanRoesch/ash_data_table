@@ -82,9 +82,14 @@ defmodule AshTable.Resource.Referencing do
   records is chosen, or one; `allow_nil?` whether the argument can be empty;
   and `related?` whether the argument is everything the relationship is to
   hold, so that its field starts with the records that are related now.
+
+  The same for an argument whose resource the block names (`reference`,
+  `declared/4`): there is no `relationship` then, the
+  `destination_attribute` is the destination's primary key, and nothing is
+  related already.
   """
   @type managing :: %{
-          relationship: atom,
+          relationship: atom | nil,
           destination: Ash.Resource.t(),
           destination_attribute: atom,
           read_action: atom,
@@ -298,6 +303,163 @@ defmodule AshTable.Resource.Referencing do
     end
   end
 
+  @typedoc """
+  What is wrong with a `reference` of an `action` of the block: the action,
+  the argument, and what keeps the argument from being chosen in a picker.
+  """
+  @type undeclarable ::
+          {:reference_not_found, atom, atom, :attribute | nil}
+          | {:reference_not_public, atom, atom}
+          | {:reference_twice, atom, atom}
+          | {:reference_record_argument, atom, atom}
+          | {:reference_sensitive, atom, atom}
+          | {:reference_managed, atom, atom, atom}
+          | {:reference_no_table, atom, atom, module}
+          | {:reference_no_read_action, atom, atom, module}
+          | {:reference_no_single_key, atom, atom, module, [atom]}
+          | {:reference_not_a_key, atom, atom, term, module, atom, term}
+
+  @doc """
+  What a person chooses the records with that an argument of an action
+  names by their keys, where the block says which resource they are of
+  (`reference`: `AshTable.Resource.Reference`), or what is wrong with the
+  declaration.
+
+  The records on offer are those of the destination's table, read through
+  the read action behind it, which has to be `public?`. What the argument
+  is given is the primary key of a chosen record, so the destination has
+  to have one of one attribute, and the argument has to be stored as that
+  attribute is, or be a list of such values: then any number is chosen.
+
+  The argument has to be one a person gives at all: an argument of the
+  action, `public?`, and not the one the table gives itself
+  (`record_argument`). A sensitive one is not chosen: a picker shows what
+  is chosen. And one that a `manage_relationship` change hands to a
+  relationship needs no declaration and takes none: the relationship says
+  which resource it is, and how the argument is read.
+  """
+  @spec declared(Ash.Resource.t() | Spark.Dsl.t(), struct, struct, atom | nil) ::
+          {:ok, managing} | {:error, undeclarable}
+  def declared(resource, action, %{name: name, destination: destination}, record_argument \\ nil) do
+    at = action.name
+
+    with {:ok, argument} <- referring_argument(resource, action, name),
+         :ok <- not_given_by_table(at, name, record_argument),
+         :ok <- not_managed(resource, action, name),
+         :ok <- shown(at, argument),
+         :ok <- declared_table(at, name, destination),
+         {:ok, read_action} <- declared_read_action(at, name, destination),
+         {:ok, key} <- single_key(at, name, destination),
+         {:ok, several?} <- holds_key(at, argument, destination, key) do
+      {:ok,
+       %{
+         relationship: nil,
+         destination: destination,
+         destination_attribute: key.name,
+         read_action: read_action.name,
+         several?: several?,
+         allow_nil?: argument.allow_nil? != false,
+         related?: false
+       }}
+    end
+  end
+
+  @doc """
+  The first `reference` among those of an action that cannot be used
+  (`declared/4`), or that names an argument another one names already.
+  `:ok` when there is none.
+  """
+  @spec undeclarable(Ash.Resource.t() | Spark.Dsl.t(), struct, [struct], atom | nil) ::
+          :ok | {:error, undeclarable}
+  def undeclarable(resource, action, references, record_argument \\ nil) do
+    names = Enum.map(references, & &1.name)
+
+    Enum.find_value(references, :ok, fn reference ->
+      cond do
+        reference.name in (names -- Enum.uniq(names)) ->
+          {:error, {:reference_twice, action.name, reference.name}}
+
+        true ->
+          with {:ok, _managing} <- declared(resource, action, reference, record_argument),
+               do: nil
+      end
+    end)
+  end
+
+  defp referring_argument(resource, action, name) do
+    case Enum.find(Map.get(action, :arguments) || [], &(&1.name == name)) do
+      nil ->
+        accepted? = name in (Map.get(action, :accept) || []) and Info.attribute(resource, name)
+        {:error, {:reference_not_found, action.name, name, if(accepted?, do: :attribute)}}
+
+      %{public?: false} ->
+        {:error, {:reference_not_public, action.name, name}}
+
+      argument ->
+        {:ok, argument}
+    end
+  end
+
+  defp not_given_by_table(action, name, name),
+    do: {:error, {:reference_record_argument, action, name}}
+
+  defp not_given_by_table(_action, _name, _record_argument), do: :ok
+
+  defp not_managed(resource, action, name) do
+    case AshTable.Resource.Managing.handed_to(resource, action, name) do
+      nil -> :ok
+      relationship -> {:error, {:reference_managed, action.name, name, relationship.name}}
+    end
+  end
+
+  defp shown(action, argument) do
+    if AshTable.Sensitive.sensitive?(argument),
+      do: {:error, {:reference_sensitive, action, argument.name}},
+      else: :ok
+  end
+
+  defp declared_table(action, name, destination) do
+    if Relating.table?(destination),
+      do: :ok,
+      else: {:error, {:reference_no_table, action, name, destination}}
+  end
+
+  defp declared_read_action(action, name, destination) do
+    case AshTable.Resource.Reading.read_action(destination) do
+      {:ok, read_action} ->
+        {:ok, read_action}
+
+      {:error, _private_or_none} ->
+        {:error, {:reference_no_read_action, action, name, destination}}
+    end
+  end
+
+  defp single_key(action, name, destination) do
+    case Info.primary_key(destination) do
+      [key] -> {:ok, Info.attribute(destination, key)}
+      keys -> {:error, {:reference_no_single_key, action, name, destination, keys}}
+    end
+  end
+
+  # Whether the argument holds one key, or a list of them: it is stored as
+  # the key is.
+  defp holds_key(action, %{type: type} = argument, destination, key) do
+    constraints = argument.constraints || []
+    stored = Ash.Type.storage_type(key.type, key.constraints || [])
+
+    {several?, of, with} =
+      case type do
+        {:array, item} -> {true, item, constraints[:items] || []}
+        one -> {false, one, constraints}
+      end
+
+    if Ash.Type.storage_type(of, with) == stored,
+      do: {:ok, several?},
+      else:
+        {:error,
+         {:reference_not_a_key, action, argument.name, type, destination, key.name, key.type}}
+  end
+
   defp public(%{public?: true}), do: :ok
   defp public(_relationship), do: {:error, :not_public}
 
@@ -396,6 +558,77 @@ defmodule AshTable.Resource.Referencing do
     do:
       "The argument is everything `#{relationship.name}` is to hold, so its field starts with the records that are related now, and those would be read through an action that is not a public read action: the relationship's own `read_action` or the primary read action of #{inspect(relationship.destination)}, or for a many-to-many that of the join resource. " <>
         AshTable.Resource.Reading.private_action()
+
+  @doc "What is wrong with a `reference` of an action, for a diagnostic."
+  @spec undeclarable_message(undeclarable) :: String.t()
+  def undeclarable_message({:reference_not_found, action, name, :attribute}),
+    do:
+      "The action `#{action}` says `reference :#{name}`, and `#{name}` is an attribute the action " <>
+        "accepts, not one of its arguments. A `reference` is for an argument. The foreign key of a " <>
+        "public belongs-to relationship is chosen in the picker without one: the relationship says " <>
+        "which resource it points at."
+
+  def undeclarable_message({:reference_not_found, action, name, nil}),
+    do: "The action `#{action}` says `reference :#{name}`, and has no argument named `#{name}`."
+
+  def undeclarable_message({:reference_not_public, action, name}),
+    do:
+      "The action `#{action}` says `reference :#{name}`, and its argument `#{name}` is not public. " <>
+        "A private argument is not given from the outside, and a table is the outside."
+
+  def undeclarable_message({:reference_twice, action, name}),
+    do:
+      "The action `#{action}` has more than one `reference :#{name}`. An argument refers to one resource."
+
+  def undeclarable_message({:reference_record_argument, action, name}),
+    do:
+      "The action `#{action}` says `reference :#{name}`, and `#{name}` is its `record_argument`: " <>
+        "the table gives it the key of the row, and nobody chooses it. Leave the `reference` out."
+
+  def undeclarable_message({:reference_sensitive, action, name}),
+    do:
+      "The action `#{action}` says `reference :#{name}`, and its argument `#{name}` is declared " <>
+        "`sensitive?: true`. A picker shows what is chosen, and a table shows nothing of a sensitive " <>
+        "input: it has no field for this one."
+
+  def undeclarable_message({:reference_managed, action, name, relationship}),
+    do:
+      "The action `#{action}` says `reference :#{name}`, and a `manage_relationship` change of the " <>
+        "action hands `#{name}` to the relationship `#{relationship}`. The relationship says which " <>
+        "resource the argument refers to, and the change how it is read. Leave the `reference` out."
+
+  def undeclarable_message({:reference_no_table, action, name, destination}),
+    do:
+      "The action `#{action}` says `reference :#{name}, #{inspect(destination)}`, and " <>
+        "#{inspect(destination)} has no table: it is no resource that lists `AshTable.Resource` in " <>
+        "its extensions. The records of a reference are chosen from the table of their resource."
+
+  def undeclarable_message({:reference_no_read_action, action, name, destination}),
+    do:
+      "The action `#{action}` says `reference :#{name}, #{inspect(destination)}`, and the table of " <>
+        "#{inspect(destination)} has no public read action to read the records to choose from: " <>
+        "the `read_action` of its `table` block, else its primary read action. " <>
+        AshTable.Resource.Reading.private_action()
+
+  def undeclarable_message({:reference_no_single_key, action, name, destination, []}),
+    do:
+      "The action `#{action}` says `reference :#{name}, #{inspect(destination)}`, and " <>
+        "#{inspect(destination)} has no primary key: there is nothing of a chosen record to give the argument."
+
+  def undeclarable_message({:reference_no_single_key, action, name, destination, keys}),
+    do:
+      "The action `#{action}` says `reference :#{name}, #{inspect(destination)}`, and the primary " <>
+        "key of #{inspect(destination)} is #{Enum.map_join(keys, ", ", &"`#{&1}`")}: several " <>
+        "attributes. One argument holds the primary key of a record only where that is one attribute."
+
+  def undeclarable_message(
+        {:reference_not_a_key, action, name, type, destination, key, key_type}
+      ),
+      do:
+        "The action `#{action}` says `reference :#{name}, #{inspect(destination)}`, and the argument " <>
+          "is of the type #{inspect(type)}, which is not stored as the primary key `#{key}` of " <>
+          "#{inspect(destination)} is (#{inspect(key_type)}), nor a list of it. The argument is given " <>
+          "the primary key of the chosen record as it is."
 
   @doc "What is wrong with a `label_field`, or with a column that names a relationship, for a diagnostic."
   @spec message(label_reason | reason) :: String.t()

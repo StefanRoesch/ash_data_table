@@ -394,6 +394,25 @@ defmodule AshTable.Resource do
   to be one attribute. Such an action is offered for the selected rows as
   every row action is, and runs once per record.
 
+  An argument that holds the key of a record of another resource is a key
+  like any other value to Ash: nothing says which resource it belongs to,
+  and its field is a plain text field. `reference` in the `action` says it:
+
+      table do
+        action :merge do
+          reference :into, MyApp.Tracker.Label
+          reference :labels, MyApp.Tracker.Label
+        end
+      end
+
+  The argument is then chosen in the picker, from the table of that
+  resource: one record for a key, any number for a list of keys. The chosen
+  records are read again, as the person, before the action runs. It is for
+  every `action` of the block, a row action among them, and not for the
+  `record_argument`, which the table gives. An argument that a
+  `manage_relationship` change hands to a relationship is chosen without
+  it, and a `reference` for one is reported.
+
   A person who can never run a generic action has no button for it. Ash is
   asked once per action and without arguments: a policy of a generic action
   has no record to look at. In a nested table a table action is the same
@@ -595,6 +614,30 @@ defmodule AshTable.Resource do
     schema: AshTable.Resource.Argument.schema()
   }
 
+  @reference %Spark.Dsl.Entity{
+    name: :reference,
+    describe: """
+    The resource an argument of the action refers to: the argument holds the primary key of one of that resource's records, or a list of such keys.
+
+    Ash has nothing that says which resource a key argument such as `argument :to_id, :uuid` belongs to, so without this its field is a plain text field, into which the key is typed. With it the argument is given as a reference cell is: its field says what the chosen record is called, and a button opens the picker, with the table of that resource. One key chooses one record, a list of keys any number.
+
+    Not for an argument that a `manage_relationship` change of the action hands to a relationship: the relationship says which resource it is, and the argument is chosen in the picker without a declaration.
+    """,
+    examples: [
+      "reference :to_id, MyApp.Accounts.User",
+      "reference :label_ids, MyApp.Tracker.Label"
+    ],
+    target: AshTable.Resource.Reference,
+    args: [:name, :destination],
+    # No `identifier`, for the reason given at `ask`. That an argument is
+    # referred once is checked with the action (`AshTable.Resource.Referencing`).
+    #
+    # Named without a dependency of the resource on the module, as Ash names
+    # the destination of a relationship: two resources may refer to each other.
+    no_depend_modules: [:destination],
+    schema: AshTable.Resource.Reference.schema()
+  }
+
   @action %Spark.Dsl.Entity{
     name: :action,
     describe: """
@@ -607,6 +650,8 @@ defmodule AshTable.Resource do
     A row action is also offered for the rows a person has selected, to run on all of them at once, unless it says `bulk? false`.
 
     A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
+
+    An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
     """,
     examples: [
       "action :archive",
@@ -631,11 +676,17 @@ defmodule AshTable.Resource do
       action :copy do
         record_argument :label_id
       end
+      """,
+      """
+      action :hand_over do
+        reference :to_id, MyApp.Accounts.User
+      end
       """
     ],
     target: AshTable.Resource.Action,
     args: [:name],
     identifier: :name,
+    entities: [references: [@reference]],
     schema: AshTable.Resource.Action.schema()
   }
 

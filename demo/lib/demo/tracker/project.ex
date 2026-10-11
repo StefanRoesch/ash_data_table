@@ -14,6 +14,8 @@ defmodule Demo.Tracker.Project do
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 
+  require Ash.Query
+
   postgres do
     table "projects"
     repo Demo.Repo
@@ -60,11 +62,26 @@ defmodule Demo.Tracker.Project do
     # one input, a choice: the panel shows it with the project's state in it
     action :set_status
 
+    # One input, which is sensitive: the panel hides what is typed and
+    # starts empty. Left empty it changes nothing, so the panel has a button
+    # that empties the budget of a project that has one: "Clear".
+    action :set_budget
+
     # A project is deleted with all its tasks: one at a time, from its own
     # row. `bulk? false` keeps the action off the line of the selected rows.
     action :destroy do
       confirm "Delete this project, with all its tasks?"
       bulk? false
+    end
+
+    # A generic action with two key arguments. `record_argument` names the
+    # one the table gives: the project of the row. Nothing in Ash says
+    # which resource the other key belongs to, so `reference` says it: the
+    # person chooses the assignee from the table of the people, in the
+    # picker, and types no key.
+    action :assign_open_tasks do
+      record_argument :project_id
+      reference :assignee, Demo.Tracker.User
     end
 
     # "New project"; and "New task" on the Tasks line of a project, where
@@ -97,6 +114,39 @@ defmodule Demo.Tracker.Project do
     update :set_status do
       accept [:status]
     end
+
+    update :set_budget do
+      accept [:budget]
+    end
+
+    # Gives the open tasks of a project that nobody has to one person, and
+    # returns how many those were. It reads and writes as the person who
+    # runs it, in their organization.
+    action :assign_open_tasks, :integer do
+      description "Gives the open tasks of a project that have no assignee to one person."
+      transaction? true
+
+      argument :project_id, :uuid, allow_nil?: false
+      argument :assignee, :uuid, allow_nil?: false
+
+      run fn input, context ->
+        opts = Ash.Context.to_opts(context)
+        %{project_id: project_id, assignee: assignee} = input.arguments
+
+        tasks =
+          Demo.Tracker.Task
+          |> Ash.Query.for_read(:unpaginated, %{}, opts)
+          |> Ash.Query.filter(
+            project_id == ^project_id and is_nil(assignee_id) and
+              status in ^Demo.Tracker.TaskStatus.open()
+          )
+          |> Ash.read!(opts)
+
+        Enum.each(tasks, &Ash.update!(&1, %{assignee_id: assignee}, opts))
+
+        {:ok, length(tasks)}
+      end
+    end
   end
 
   policies do
@@ -117,6 +167,11 @@ defmodule Demo.Tracker.Project do
     policy action_type(:update) do
       authorize_if actor_attribute_equals(:role, :admin)
       authorize_if actor_attribute_equals(:role, :member)
+    end
+
+    # A generic action takes no record, so its policy looks at the actor.
+    policy action(:assign_open_tasks) do
+      authorize_if actor_attribute_equals(:role, :admin)
     end
   end
 

@@ -230,6 +230,7 @@ input's type, and one more:
 | array of text, numbers, booleans, dates or datetimes | A row per value, with the control of its type and a button that takes the value away, and the button "Add value" under them. |
 | The key of a public belongs-to relationship whose destination has a table | What the related record is called, as plain text, and a button "Choose" that opens the picker. See below. |
 | An argument that the action hands to a relationship, as the key of a related record or a list of such keys | The picker too: what the record is called and "Choose" for one key; for a list, what each record is called, each with a button that takes it out, and "Choose". See [Relationships an action manages](managing-relationships.md). |
+| An argument that holds a key, or a list of keys, and whose `action` in the block says which resource they belong to (`reference`) | The same. See [Table actions](table-actions.md#an-argument-that-holds-the-key-of-a-record). |
 | A value written as one line of text that has no editor of its own: a UUID, an `:atom` without `one_of`, a time, a duration | A plain text field. What is typed is given to the action as it is, and Ash casts it. |
 | An embedded resource, a map that declares its fields, and an array of either | A group of the value's fields under the input's label, each with the control of its own type; for an array, a group per value. See [Maps and embedded resources](maps-and-embedded-resources.md#in-the-action-panel). |
 | A union whose every kind has a control | The choice of its kind, and under it that kind's value. See [Unions](unions.md#in-the-action-panel). |
@@ -250,6 +251,15 @@ in [Choosing a related record](choosing-a-related-record.md#in-the-action-panel)
 A key whose destination has no table, whose relationship is private or has
 a `filter`, or that is a key by name only, is a plain text field into which
 the key is typed or pasted, as any UUID is.
+
+An argument is a key by name only until something says which resource it
+refers to: a `manage_relationship` change of the action, or a `reference`
+in the `action` of the block. See
+[Table actions](table-actions.md#an-argument-that-holds-the-key-of-a-record).
+
+**The counter of a text.** A text field whose input has a `max_length` has
+a counter under it, at its end: "15/200". It follows what is typed and
+stops nothing. See [Inline editing](inline-editing.md#the-counter-of-a-text).
 
 **The field of an array** is a group of controls under one label, in a row
 action and in a create alike. On `/tasks`, "New task" has "Tags", a list of

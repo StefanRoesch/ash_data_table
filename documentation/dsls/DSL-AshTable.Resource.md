@@ -397,6 +397,25 @@ argument has to be `public?` and stored as the primary key is, which has
 to be one attribute. Such an action is offered for the selected rows as
 every row action is, and runs once per record.
 
+An argument that holds the key of a record of another resource is a key
+like any other value to Ash: nothing says which resource it belongs to,
+and its field is a plain text field. `reference` in the `action` says it:
+
+    table do
+      action :merge do
+        reference :into, MyApp.Tracker.Label
+        reference :labels, MyApp.Tracker.Label
+      end
+    end
+
+The argument is then chosen in the picker, from the table of that
+resource: one record for a key, any number for a list of keys. The chosen
+records are read again, as the person, before the action runs. It is for
+every `action` of the block, a row action among them, and not for the
+`record_argument`, which the table gives. An argument that a
+`manage_relationship` change hands to a relationship is chosen without
+it, and a `reference` for one is reported.
+
 A person who can never run a generic action has no button for it. Ash is
 asked once per action and without arguments: a policy of a generic action
 has no record to look at. In a nested table a table action is the same
@@ -486,6 +505,7 @@ How the resource is presented to people as a table.
    * ask
  * [relationship](#table-relationship)
  * [action](#table-action)
+   * reference
  * [argument](#table-argument)
  * [upload](#table-upload)
 
@@ -735,7 +755,11 @@ A row action is also offered for the rows a person has selected, to run on all o
 
 A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
 
+An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
 
+
+### Nested DSLs
+ * [reference](#table-action-reference)
 
 
 ### Examples
@@ -776,6 +800,13 @@ end
 
 ```
 
+```
+action :hand_over do
+  reference :to_id, MyApp.Accounts.User
+end
+
+```
+
 
 
 ### Arguments
@@ -792,6 +823,48 @@ end
 | [`bulk?`](#table-action-bulk?){: #table-action-bulk? } | `boolean` |  | Whether the action is also offered for the rows a person has selected, to run on all of them at once. Defaults to `true` for every action that can: one that accepts no attribute of which two records cannot hold the same value. `false` leaves it an action of one row; it can only switch off. A generic action without `record_argument` runs on no row, and has nothing to switch off. |
 | [`record_argument`](#table-action-record_argument){: #table-action-record_argument } | `atom` |  | For a generic action: the argument that is given the primary key of a row. The action is then a row action: its button stands in every row, the argument is filled in by the table and not asked for, and the action's other arguments are asked for in the action panel. The argument has to be public and of the type of the resource's primary key, which has to be one attribute. |
 
+
+### table.action.reference
+```elixir
+reference name, destination
+```
+
+
+The resource an argument of the action refers to: the argument holds the primary key of one of that resource's records, or a list of such keys.
+
+Ash has nothing that says which resource a key argument such as `argument :to_id, :uuid` belongs to, so without this its field is a plain text field, into which the key is typed. With it the argument is given as a reference cell is: its field says what the chosen record is called, and a button opens the picker, with the table of that resource. One key chooses one record, a list of keys any number.
+
+Not for an argument that a `manage_relationship` change of the action hands to a relationship: the relationship says which resource it is, and the argument is chosen in the picker without a declaration.
+
+
+
+
+### Examples
+```
+reference :to_id, MyApp.Accounts.User
+```
+
+```
+reference :label_ids, MyApp.Tracker.Label
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#table-action-reference-name){: #table-action-reference-name .spark-required} | `atom` |  | The argument: a public argument of the action that holds the primary key of a record of `destination`, or a list of such keys. |
+| [`destination`](#table-action-reference-destination){: #table-action-reference-destination .spark-required} | `module` |  | The resource the argument's keys belong to. It has to have a table (list `AshTable.Resource`), read through a public read action, and a primary key of one attribute, of the argument's type. |
+
+
+
+
+
+
+### Introspection
+
+Target: `AshTable.Resource.Reference`
 
 
 

@@ -120,6 +120,11 @@ defmodule AshTable.Text do
           | :hide
           | :show_value
           | :hide_value
+          | :clear
+          | :clear_value
+          | :keep
+          | :keep_value
+          | :will_be_cleared
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -406,4 +411,15 @@ defmodule AshTable.Text do
   defp msgid(:hide), do: dgettext_noop("ash_table", "Hide")
   defp msgid(:show_value), do: dgettext_noop("ash_table", "Show %{column}")
   defp msgid(:hide_value), do: dgettext_noop("ash_table", "Hide %{column}")
+
+  # At a sensitive value that can be emptied, in the editor of its cell and
+  # at its field of the action panel: the button that empties it, and what
+  # it is called, with the column. In the panel the value is emptied when
+  # the action runs: until then the field says so, and the button takes it
+  # back.
+  defp msgid(:clear), do: dgettext_noop("ash_table", "Clear")
+  defp msgid(:clear_value), do: dgettext_noop("ash_table", "Clear %{column}")
+  defp msgid(:keep), do: dgettext_noop("ash_table", "Keep")
+  defp msgid(:keep_value), do: dgettext_noop("ash_table", "Keep %{column}")
+  defp msgid(:will_be_cleared), do: dgettext_noop("ash_table", "Will be cleared.")
 end

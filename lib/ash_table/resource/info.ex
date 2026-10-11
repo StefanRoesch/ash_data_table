@@ -4,7 +4,8 @@ defmodule AshTable.Resource.Info do
   `columns/1` returns the declared columns (`AshTable.Resource.Column`),
   `relationships/1` the declared relationships
   (`AshTable.Resource.Relationship`), `actions/1` the declared row actions
-  (`AshTable.Resource.Action`), `arguments/1` the declared arguments of the
+  (`AshTable.Resource.Action`, each with its `references`:
+  `AshTable.Resource.Reference`), `arguments/1` the declared arguments of the
   read action (`AshTable.Resource.Argument`), `uploads/1` the declared
   uploads (`AshTable.Resource.Upload`) and `table/1` all of them, and there is a
   function per option, such as `table_read_action/1`. An option that was not

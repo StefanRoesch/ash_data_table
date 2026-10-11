@@ -88,6 +88,13 @@ defmodule AshTable.Model do
   # else (a map: a related record to create or to change) is the input it
   # would be without the change.
   #
+  # An argument that no change explains is a key like any other value to
+  # Ash: nothing says which resource it belongs to. The `action` of the
+  # block can say it (`reference :to_id, MyApp.User`), and the argument is
+  # then chosen the same way, from the table of that resource: one record
+  # for a key, any number for a list of keys
+  # (`AshTable.Resource.Referencing.declared/4`).
+  #
   # A reference column is editable through such an argument as well: where
   # its action does not accept the foreign key, and has an argument that
   # hands one key to the column's relationship and relates the record it
@@ -1263,7 +1270,8 @@ defmodule AshTable.Model do
               columns,
               declaration.label,
               declaration.confirm || nil,
-              declaration.record_argument
+              declaration.record_argument,
+              declaration.references
             )
 
           # a table action runs on no record, and so on no selection of them
@@ -1283,9 +1291,10 @@ defmodule AshTable.Model do
       {:error, {:declared_twice, name}}
     else
       with {:ok, kind, action} <- Acting.offered(resource, declaration) do
-        if Acting.unusable(resource, action, declaration.record_argument) == [],
-          do: {:ok, kind, action},
-          else: :unusable
+        if Acting.unusable(resource, action, declaration.record_argument, declaration.references) ==
+             [],
+           do: {:ok, kind, action},
+           else: :unusable
       end
     end
   end
@@ -1305,7 +1314,7 @@ defmodule AshTable.Model do
                 Acting.message(reason)
 
       {:ok, action} ->
-        create = action(resource, action, columns, "New #{name(resource)}", nil, nil)
+        create = action(resource, action, columns, "New #{name(resource)}", nil, nil, [])
 
         cond do
           Acting.unusable(resource, action) != [] ->
@@ -1390,10 +1399,10 @@ defmodule AshTable.Model do
   # An action as a table offers it, with the inputs a table has a field for.
   # `record_argument` is the argument of a generic action that the table
   # gives itself, which is no input.
-  defp action(resource, action, columns, label, confirm, record_argument) do
+  defp action(resource, action, columns, label, confirm, record_argument, references) do
     inputs =
       for %{editor: editor} = input when not is_nil(editor) <-
-            Acting.inputs(resource, action, record_argument) do
+            Acting.inputs(resource, action, record_argument, references) do
         Input
         |> struct!(Map.put(input, :label, input_label(input, columns)))
         |> with_reference(resource, columns)
@@ -1473,7 +1482,8 @@ defmodule AshTable.Model do
   end
 
   # An argument that hands keys to a relationship comes with what its
-  # records are chosen with (`AshTable.Resource.Acting.managing/3`). It is
+  # records are chosen with (`AshTable.Resource.Acting.managing/3`), and so
+  # does one whose resource the block names (`reference`). It is
   # called by its own name, in words: what an argument is for is the
   # action's to say ("Labels", "Add labels").
   defp with_reference(%Input{kind: :argument, reference: %{} = managing} = input, _, _columns) do

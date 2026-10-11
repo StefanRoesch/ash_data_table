@@ -83,6 +83,7 @@ defmodule AshTable.Test.Sensitive do
 
     action :rotate
     action :stamp
+    action :reissue
 
     action :destroy do
       confirm false
@@ -105,6 +106,13 @@ defmodule AshTable.Test.Sensitive do
       validate match(:token, ~r/^[a-z0-9-]*$/) do
         message "must be lower case"
       end
+    end
+
+    # an action that takes the token, and not without a value
+    update :reissue do
+      require_atomic? false
+      accept [:token, :pin]
+      require_attributes [:token]
     end
 
     # a sensitive attribute and sensitive arguments, of every kind of input
@@ -134,6 +142,15 @@ defmodule AshTable.Test.Sensitive do
       require_atomic? false
       accept []
       change set_attribute(:name, "stamped")
+    end
+  end
+
+  # a vault that is pinned does not give up its pin, whatever updates it
+  validations do
+    validate present(:pin) do
+      on [:update]
+      where attribute_equals(:name, "pinned")
+      message "stays on a pinned vault"
     end
   end
 

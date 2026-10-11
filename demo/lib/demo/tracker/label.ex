@@ -60,6 +60,15 @@ defmodule Demo.Tracker.Label do
       confirm "Delete every label that no task carries?"
     end
 
+    # Two arguments that hold keys of labels: one key, and a list of them.
+    # `reference` says that they are labels, so both are chosen in the
+    # picker, from this very table: one row for the first, any number of
+    # rows for the second.
+    action :merge do
+      reference :into, __MODULE__
+      reference :labels, __MODULE__
+    end
+
     # An argument that takes a file: the panel has a file input for it. The
     # upload takes what the block says here, one CSV file of 100 kB at most;
     # without an `upload` it would take any file of up to 8 MB.
@@ -171,6 +180,44 @@ defmodule Demo.Tracker.Label do
       end
     end
 
+    # Takes the key of one label and the keys of others: every task that
+    # carries one of the others is given the one, and the others are
+    # deleted. Returns how many labels it deleted.
+    action :merge, :integer do
+      description "Puts one label in the place of others, and deletes those."
+      transaction? true
+
+      argument :into, :uuid, allow_nil?: false
+      argument :labels, {:array, :uuid}, allow_nil?: false
+
+      run fn input, context ->
+        opts = Ash.Context.to_opts(context)
+        %{into: into, labels: labels} = input.arguments
+        merged = Enum.uniq(labels) -- [into]
+
+        with {:ok, kept} <- Ash.get(__MODULE__, into, Keyword.put(opts, :load, :tasks)) do
+          has = MapSet.new(kept.tasks, & &1.id)
+
+          others =
+            __MODULE__
+            |> Ash.Query.filter(id in ^merged)
+            |> Ash.Query.load(:tasks)
+            |> Ash.read!(opts)
+
+          others
+          |> Enum.flat_map(& &1.tasks)
+          |> Enum.map(& &1.id)
+          |> Enum.uniq()
+          |> Enum.reject(&MapSet.member?(has, &1))
+          |> Enum.each(&Ash.create!(Demo.Tracker.TaskLabel, %{task_id: &1, label_id: into}, opts))
+
+          Enum.each(others, &Ash.destroy!(&1, opts))
+
+          {:ok, length(others)}
+        end
+      end
+    end
+
     # Takes the key of a label and a name: a table gives the first from
     # the row the action is used on (`record_argument` in the block above).
     action :copy do
@@ -264,7 +311,7 @@ defmodule Demo.Tracker.Label do
       authorize_if actor_present()
     end
 
-    policy action([:recolour, :remove_unused, :copy, :import]) do
+    policy action([:recolour, :remove_unused, :copy, :import, :merge]) do
       authorize_if actor_attribute_equals(:role, :admin)
     end
   end

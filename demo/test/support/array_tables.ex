@@ -173,7 +173,7 @@ defmodule Demo.Support.Lists.Roster do
       allow_nil? false
       default []
       public? true
-      constraints max_length: 3, items: [min_length: 2]
+      constraints max_length: 3, items: [min_length: 2, max_length: 12]
     end
 
     attribute :numbers, {:array, :decimal}, public?: true

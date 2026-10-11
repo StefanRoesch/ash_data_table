@@ -16,8 +16,9 @@ demo's tasks are read through an action that takes a search term
 read :read do
   primary? true
 
-  # case-insensitive, as a `:ci_string` compares
-  argument :search, :ci_string
+  # case-insensitive, as a `:ci_string` compares; its input counts
+  # what is typed, as every text with a `max_length` does
+  argument :search, :ci_string, constraints: [max_length: 60]
 
   filter expr(
            is_nil(^arg(:search)) or contains(title, ^arg(:search)) or
@@ -59,6 +60,9 @@ on the argument line, in the action's order. Nothing is declared for it.
   that is a value. A box that is not ticked gives `false`.
 - An argument that is `allow_nil? false` is marked with `*` and
   `aria-required`, as a required field of the action panel is.
+- A text argument with a `max_length` has a counter after its input
+  ("5/60"), which follows what is typed. See
+  [Inline editing](inline-editing.md#the-counter-of-a-text).
 - An argument that is `public? false` is never on the line and never given.
 - An optional argument of a type without an input (a map, a union, a file)
   is left out. A read action that *requires* such an argument cannot be

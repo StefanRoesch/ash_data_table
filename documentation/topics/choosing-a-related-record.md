@@ -288,6 +288,7 @@ end
 | --- | --- |
 | An attribute that is the key of a public belongs-to relationship whose related record can be chosen (the last four rows of [the first table](#which-reference-cells-are-edited)) | What the record is called, as plain text, and a button "Choose" that opens the picker. Empty while the field holds no key, and where it holds the key of a record this person may not read. |
 | Any other key: its destination has no table, the relationship has a `filter` or is not public, or there is no relationship | A plain text field into which the key is typed, as before. |
+| An argument that holds a key and that no relationship explains, where the `action` of the block says which resource it refers to (`reference`) | The same field and the same picker, with the table of that resource. See [Table actions](table-actions.md#an-argument-that-holds-the-key-of-a-record). |
 
 The field is called what the table's column of the relationship is called
 ("Assignee"), else by the relationship's name in words. Where the table has

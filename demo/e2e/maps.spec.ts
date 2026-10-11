@@ -239,7 +239,8 @@ test.describe("saving an embedded resource from the side panel", () => {
 
     await expect(projects.panel).toBeVisible()
     await expect(box(client, "Name")).toHaveAttribute("aria-invalid", "true")
-    await expect(box(client, "Name")).toHaveAccessibleDescription(TOO_SHORT)
+    // the message, and after it the counter of a text with a most it can be long
+    await expect(box(client, "Name")).toHaveAccessibleDescription(`${TOO_SHORT} 1/60`)
     await expect(box(client, "Email")).toHaveAccessibleDescription("must be an email address")
     await expect(box(address, "City")).toHaveAccessibleDescription("is required")
     await expect(box(address, "Street")).not.toHaveAttribute("aria-invalid")
@@ -400,7 +401,9 @@ test.describe("an array of embedded resources in the side panel", () => {
 
     await expect(projects.panel).toBeVisible()
     await expect(box(second, "Title")).toHaveAttribute("aria-invalid", "true")
-    await expect(box(second, "Title")).toHaveAccessibleDescription("length must be greater than or equal to 3")
+    await expect(box(second, "Title")).toHaveAccessibleDescription(
+      "length must be greater than or equal to 3 1/60",
+    )
     await expect(box(group(list, "Milestones 1"), "Title")).not.toHaveAttribute("aria-invalid")
     await expectNoAxeViolations(page)
   })

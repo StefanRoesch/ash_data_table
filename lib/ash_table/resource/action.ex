@@ -6,6 +6,9 @@ defmodule AshTable.Resource.Action do
   This is the declaration as written, as `AshTable.Resource.Info.actions/1`
   returns it: an option that was not given is `nil`. The defaults are filled
   in when the table is rendered.
+
+  `references` holds the `reference`s of the action
+  (`AshTable.Resource.Reference`), in the declared order.
   """
 
   defstruct [
@@ -15,7 +18,8 @@ defmodule AshTable.Resource.Action do
     :bulk?,
     :record_argument,
     :__identifier__,
-    :__spark_metadata__
+    :__spark_metadata__,
+    references: []
   ]
 
   @type t :: %__MODULE__{
@@ -23,7 +27,8 @@ defmodule AshTable.Resource.Action do
           label: String.t() | nil,
           confirm: String.t() | false | nil,
           bulk?: boolean | nil,
-          record_argument: atom | nil
+          record_argument: atom | nil,
+          references: [AshTable.Resource.Reference.t()]
         }
 
   @schema [

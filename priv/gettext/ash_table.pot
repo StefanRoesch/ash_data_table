@@ -412,3 +412,23 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Show %{column}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Clear"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Clear %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Keep"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Keep %{column}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Will be cleared."
+msgstr ""

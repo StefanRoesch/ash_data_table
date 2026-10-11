@@ -132,7 +132,8 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
   defp usable(dsl, declaration) do
     with {:ok, kind, action} <- Acting.offered(dsl, declaration),
          {:ok, _action} <- bulk(dsl, kind, action, declaration),
-         [input | _] <- Acting.unusable(dsl, action, declaration.record_argument) do
+         [input | _] <-
+           Acting.unusable(dsl, action, declaration.record_argument, declaration.references) do
       {:error, no_field(dsl, kind, action, input)}
     end
   end

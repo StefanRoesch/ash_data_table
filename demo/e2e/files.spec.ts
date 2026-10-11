@@ -43,7 +43,7 @@ test.describe("the panel of an action with a file argument", () => {
       await labels.open()
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme)
 
-      await expect(labels.tableActions).toHaveText(["Count unused", "Recolour", "Remove unused", "Import"])
+      await expect(labels.tableActions).toHaveText(["Count unused", "Recolour", "Remove unused", "Merge", "Import"])
       await labels.tableAction("import").focus()
       await page.keyboard.press("Enter")
 

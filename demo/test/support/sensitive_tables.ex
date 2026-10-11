@@ -76,6 +76,7 @@ defmodule Demo.Support.Secrets.Safe do
     column :combination
 
     action :rotate
+    action :reissue
 
     action :destroy do
       confirm false
@@ -110,7 +111,7 @@ defmodule Demo.Support.Secrets.Safe do
       require_atomic? false
       accept [:token]
       argument :passphrase, :string, sensitive?: true, allow_nil?: false
-      argument :note, :string
+      argument :note, :string, constraints: [max_length: 50]
 
       validate fn changeset, _context ->
         if Ash.Changeset.get_argument(changeset, :passphrase) == "wrong",
@@ -125,11 +126,28 @@ defmodule Demo.Support.Secrets.Safe do
         end
       end
     end
+
+    # takes the token, and not without a value; the PIN and the seal may
+    # be empty
+    update :reissue do
+      require_atomic? false
+      accept [:token, :pin, :seal]
+      require_attributes [:token]
+    end
   end
 
   policies do
     policy always() do
       authorize_if always()
+    end
+  end
+
+  # a safe that is pinned does not give up its PIN, whatever updates it
+  validations do
+    validate present(:pin) do
+      on [:update]
+      where attribute_equals(:name, "pinned")
+      message "stays on a pinned safe"
     end
   end
 
@@ -139,7 +157,8 @@ defmodule Demo.Support.Secrets.Safe do
     attribute :token, :string, public?: true, sensitive?: true
     attribute :pin, :integer, public?: true, sensitive?: true
     attribute :locked, :boolean, public?: true, sensitive?: true
-    attribute :seal, :string, public?: true, sensitive?: true
+    # a text with a most it can be long, which is sensitive besides
+    attribute :seal, :string, public?: true, sensitive?: true, constraints: [max_length: 20]
     attribute :combination, Combination, public?: true
   end
 

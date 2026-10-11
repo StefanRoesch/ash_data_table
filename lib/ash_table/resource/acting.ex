@@ -22,6 +22,20 @@ defmodule AshTable.Resource.Acting do
   # written as one line of text: a key, a time, an atom.
   @plain [:uuid, :string, :ci_string, :citext, :text, :time, :time_usec, :duration]
 
+  # what is wrong with a `reference` of an action: `Referencing.undeclarable/0`
+  @undeclarable [
+    :reference_not_found,
+    :reference_not_public,
+    :reference_twice,
+    :reference_record_argument,
+    :reference_sensitive,
+    :reference_managed,
+    :reference_no_table,
+    :reference_no_read_action,
+    :reference_no_single_key,
+    :reference_not_a_key
+  ]
+
   @typedoc """
   An input of an action: an attribute it accepts or one of its arguments,
   with the control a table has for it (`editor`, nil when it has none).
@@ -29,8 +43,9 @@ defmodule AshTable.Resource.Acting do
   An argument that hands keys to a relationship, whose records can be
   chosen in a picker, is given by choosing them: its `editor` is
   `:reference` for one key and `:references` for a list of them, and
-  `reference` says what is chosen from (`managing/3`). Nil for every other
-  input.
+  `reference` says what is chosen from (`managing/3`). So is an argument
+  whose resource the block names with a `reference` (`referring/5`). Nil
+  for every other input.
 
   `sensitive?` is what the attribute or the argument says. Such an input
   has a control only where what is typed can be hidden
@@ -63,6 +78,7 @@ defmodule AshTable.Resource.Acting do
           | {:record_argument_not_public, atom, atom}
           | {:record_argument_no_single_key, atom, atom, [atom]}
           | {:record_argument_not_a_key, atom, atom, term, atom, term}
+          | Referencing.undeclarable()
           | {:no_field, :row | :table | :create, atom, input}
           | {:no_field, :row | :table | :create, atom, input, struct, Referencing.no_picker()}
           | {:not_a_create_action, atom, atom}
@@ -75,11 +91,25 @@ defmodule AshTable.Resource.Acting do
   row, and `:table` for a table action, which runs on the table as a whole.
 
   `declaration` is the `action` as written in the block
-  (`AshTable.Resource.Action`).
+  (`AshTable.Resource.Action`). A `reference` of it that cannot be used is
+  what is wrong with it, too (`AshTable.Resource.Referencing.declared/4`).
   """
   @spec offered(Ash.Resource.t() | Spark.Dsl.t(), struct) ::
           {:ok, :row | :table, struct} | {:error, reason}
-  def offered(resource, %{name: name} = declaration) do
+  def offered(resource, declaration) do
+    with {:ok, kind, action} <- named(resource, declaration),
+         :ok <-
+           Referencing.undeclarable(
+             resource,
+             action,
+             Map.get(declaration, :references) || [],
+             Map.get(declaration, :record_argument)
+           ) do
+      {:ok, kind, action}
+    end
+  end
+
+  defp named(resource, %{name: name} = declaration) do
     record_argument = Map.get(declaration, :record_argument)
 
     case Info.action(resource, name) do
@@ -163,10 +193,11 @@ defmodule AshTable.Resource.Acting do
 
   An argument that hands keys to a relationship is given by choosing the
   related records, where there is something to choose them with
-  (`managing/3`).
+  (`managing/3`). So is one whose resource the block names: `references`
+  are the `reference`s of the action's declaration (`referring/5`).
   """
-  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil) :: [input]
-  def inputs(resource, action, record_argument \\ nil) do
+  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct]) :: [input]
+  def inputs(resource, action, record_argument \\ nil, references \\ []) do
     attributes =
       for name <- Map.get(action, :accept) || [],
           attribute = Info.attribute(resource, name),
@@ -177,7 +208,11 @@ defmodule AshTable.Resource.Acting do
     arguments =
       for %{public?: true, name: name} = argument <- action.arguments,
           name != record_argument,
-          do: argument |> argument() |> managing(resource, action)
+          do:
+            argument
+            |> argument()
+            |> managing(resource, action)
+            |> referring(resource, action, references, record_argument)
 
     Enum.map(attributes ++ arguments, &hidden_as_typed/1)
   end
@@ -223,6 +258,29 @@ defmodule AshTable.Resource.Acting do
   end
 
   def managing(input, _resource, _action), do: input
+
+  @doc """
+  An argument as the input it is where the block says which resource its
+  keys belong to (`reference`), and the declaration can be used
+  (`AshTable.Resource.Referencing.declared/4`): its control is the picker,
+  as for an argument that hands keys to a relationship. Any other input is
+  the input it was.
+  """
+  @spec referring(input, Ash.Resource.t() | Spark.Dsl.t(), struct, [struct], atom | nil) :: input
+  def referring(%{kind: :argument, name: name} = input, resource, action, references, given) do
+    with [reference] <- Enum.filter(references, &(&1.name == name)),
+         {:ok, declared} <- Referencing.declared(resource, action, reference, given) do
+      %{
+        input
+        | editor: if(declared.several?, do: :references, else: :reference),
+          reference: declared
+      }
+    else
+      _not_declared_or_unusable -> input
+    end
+  end
+
+  def referring(input, _resource, _action, _references, _given), do: input
 
   @doc """
   Why an argument that hands keys to a relationship is not given by choosing
@@ -344,9 +402,10 @@ defmodule AshTable.Resource.Acting do
   The required inputs of an action that a table has no field for. An action
   with one cannot be run from a table.
   """
-  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil) :: [input]
-  def unusable(resource, action, record_argument \\ nil) do
-    for %{editor: nil, required?: true} = input <- inputs(resource, action, record_argument),
+  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct]) :: [input]
+  def unusable(resource, action, record_argument \\ nil, references \\ []) do
+    for %{editor: nil, required?: true} = input <-
+          inputs(resource, action, record_argument, references),
         do: input
   end
 
@@ -575,6 +634,9 @@ defmodule AshTable.Resource.Acting do
       "The action `#{name}` says `record_argument :#{argument}`, and that argument is of the type " <>
         "#{inspect(type)}, which is not stored as the primary key `#{key}` is (#{inspect(key_type)}). " <>
         "The argument is given the primary key of the row as it is, so it has to be of the key's type."
+
+  def message(reason) when elem(reason, 0) in @undeclarable,
+    do: Referencing.undeclarable_message(reason)
 
   def message({:no_field, what, name, %{name: input, sensitive?: true, type: {type, _}}}),
     do:

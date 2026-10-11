@@ -651,7 +651,8 @@ declared in the resource and mounted with one line in the router.
 - Such a column is neither sorted nor filtered by, has no component, and
   cannot be the `label_field`. It is edited where what is typed can be
   hidden, which is text and a number: the editor is a password input that
-  starts empty, and an editor left empty saves nothing. A sensitive column
+  starts empty, and an editor left empty saves nothing (a value is emptied
+  with "Clear": see "Emptying a sensitive value" below). A sensitive column
   of another type is read-only.
 - A sensitive input of an action is a password field in the action panel,
   starts empty, and left empty gives the action nothing. A sensitive
@@ -683,11 +684,92 @@ declared in the resource and mounted with one line in the router.
   same in a cell (`@control`).
 - Not put on an input, on purpose: the length of text (`max_length`,
   `min_length`: `maxlength` would stop the typing without a word, and
-  counts differently from Ash), `match`, the bounds `greater_than` and
+  counts differently from Ash; a text with a `max_length` has a counter
+  instead, see below), `match`, the bounds `greater_than` and
   `less_than`, and how many values an array takes. See "Limits an editor
   shows before saving" in the guide to inline editing.
 
+### The counter of a text
+
+- A text whose type says the most it can be long (`max_length` of
+  `:string` and `:ci_string`, also as a NewType) has a counter beside the
+  control it is typed into: how long it is now and the most it can be,
+  "12/30". It follows what is typed at every key, without the server. In
+  the editor of a cell (under the cell, floating as the message of a failed
+  cell does, so that neither the row nor the column moves), on each value
+  of an array of text, on a field of the action panel (also inside a map
+  cell, an embedded resource or a union) and on the argument line. Nothing is declared for it, and a text
+  without `max_length` has none.
+- It counts as Ash counts, in Elixir as the server renders it and in the
+  browser as a person types: the text trimmed unless the type says
+  `trim?: false`, a `:ci_string` folded by its `casing`, and what is left
+  in the unit of `length_count` (codepoints, graphemes or bytes), else in
+  the application's (`config :ash, :default_string_length_count`).
+- It describes and never stops a save, as the limits of a number: there is
+  still no `maxlength`. Past the most it says a number greater than the
+  most ("34/30") in a heavier weight, and Ash's message is shown as before.
+- The control names it as its description (`aria-describedby`); it is no
+  live region. A sensitive text has none, nor has the editor of a column's
+  `component`.
+
+### An argument that refers to a record
+
+- `reference`, an entity of `action` in the `table` section:
+  `reference :to_id, MyApp.User` says which resource an argument's keys
+  belong to, where nothing in Ash says it (an argument of a generic action,
+  or one of an update or a destroy action that no `manage_relationship`
+  change explains). The argument is then chosen in the picker, from the
+  table of that resource, where it was a plain text field: one record for a
+  key, any number for a list of keys. The chosen records are read again, as
+  the person, before the action runs, and a key that names none they could
+  have chosen runs nothing. For a table action, a generic action in a row
+  (not its `record_argument`), an update and a destroy action, and a run on
+  the selected rows. `AshTable.Resource.Info.actions/1` returns the
+  declarations with their action (`references`,
+  `AshTable.Resource.Reference`).
+- Reported when the resource is compiled, and refused when the table is
+  built: a `reference` that names no public argument of the action, an
+  accepted attribute, the `record_argument`, a sensitive argument, an
+  argument twice, or one a `manage_relationship` change hands to a
+  relationship (the relationship says it); a resource without a table,
+  without a public read action behind it, or with a primary key that is not
+  one attribute; and an argument that is not stored as that key is, nor a
+  list of it.
+- Not for the table's `create_action`, which is an option and has no block.
+
+### Emptying a sensitive value
+
+- The editor of a sensitive cell has a button, "Clear", named with the
+  column ("Clear Budget"), where the cell holds a value and the column's
+  update action takes the attribute without one. It empties the cell at
+  once, after the column's `confirm` question if it has one. Tab goes from
+  the input to the button without saving.
+- The field of a sensitive attribute in the panel of a row's update action
+  has the same button, where the record has a value. Used, the field says
+  "Will be cleared." and the button "Keep", which takes it back; the
+  attribute is given without a value when the action runs.
+- It is asked for by name: an event of its own for a cell, and what the
+  panel keeps for a field. An empty editor and an empty field change
+  nothing, as before, and nothing a form sends empties a value. The record
+  is read again as the person, and what the action says is shown as for
+  any save.
+- Not offered by a create action, a destroy action, an action on the
+  selected rows, or for an argument.
+- New texts: "Clear", "Clear %{column}", "Keep", "Keep %{column}", "Will be
+  cleared."
+
 ### Changed since sensitive columns were added
+
+- **The editor of a text column with a `max_length`, and of a sensitive
+  column that can be emptied, is an element around its control**, which
+  carries `data-control`, where it was the control itself. A host's test
+  that looked for a `textarea` or an `input` in the cell finds it as
+  before; one that took the editor's first element for the control does
+  not.
+- **A control with a counter names it in `aria-describedby`**, after its
+  error message where it has one.
+- **A generic action is now given no key that names a record the person
+  could not have chosen**, for an argument with a `reference`.
 
 - **The group of a map cell says "required" as the cell's update action
   says it** (`require_attributes` included), no longer as the attribute's

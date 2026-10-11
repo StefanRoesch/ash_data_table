@@ -548,8 +548,9 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       # the field says so to assistive technology too
       assert attribute(html, "#task-panel-f-reason", "aria-invalid") == ["true"]
 
+      # with its counter: the reason has a most it can be long
       assert attribute(html, "#task-panel-f-reason", "aria-describedby") == [
-               "task-panel-f-reason-error"
+               "task-panel-f-reason-error task-panel-f-reason-count"
              ]
 
       assert text(html, "#task-panel-f-reason-error") == error

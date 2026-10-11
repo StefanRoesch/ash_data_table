@@ -13,6 +13,42 @@ defmodule AshTable.Test.Limiting.Place do
   end
 end
 
+defmodule AshTable.Test.Limiting.Slug do
+  @moduledoc "A type made of text, with the length it gives it."
+  use Ash.Type.NewType, subtype_of: :string, constraints: [max_length: 12]
+end
+
+defmodule AshTable.Test.Limiting.Texts do
+  @moduledoc """
+  Texts with a most they can be long, counted in every way Ash counts:
+  in the unit the application configures and in each unit a type can name,
+  trimmed and as typed, folded and as typed.
+  """
+  use Ash.Resource, domain: AshTable.Test.Domain, data_layer: Ash.DataLayer.Ets
+
+  attributes do
+    uuid_primary_key :id
+    attribute :plain, :string, public?: true, constraints: [max_length: 5]
+    attribute :as_typed, :string, public?: true, constraints: [max_length: 5, trim?: false]
+
+    attribute :graphemes, :string,
+      public?: true,
+      constraints: [max_length: 3, length_count: :graphemes]
+
+    attribute :codepoints, :string,
+      public?: true,
+      constraints: [max_length: 3, length_count: :codepoints]
+
+    attribute :bytes, :string, public?: true, constraints: [max_length: 6, length_count: :bytes]
+    attribute :folded, :ci_string, public?: true, constraints: [max_length: 4, casing: :upper]
+    attribute :lowered, :ci_string, public?: true, constraints: [max_length: 4, casing: :lower]
+    attribute :unfolded, :ci_string, public?: true, constraints: [max_length: 4]
+    attribute :slug, AshTable.Test.Limiting.Slug, public?: true
+    attribute :words, {:array, :string}, public?: true, constraints: [items: [max_length: 6]]
+    attribute :unlimited, :string, public?: true, constraints: [min_length: 2]
+  end
+end
+
 defmodule AshTable.Test.Limiting do
   @moduledoc """
   A resource for the tests of what an input says of its limits before

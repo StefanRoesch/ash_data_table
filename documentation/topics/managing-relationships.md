@@ -337,7 +337,7 @@ from.
 | An action on the selected rows | The field starts empty. With `:append_and_remove`, every selected record is given exactly the records that are chosen: what each had before is taken away. With `:append` they are added to each. |
 | The create action | The field starts with the argument's default. Every key is looked up. |
 | A nested table | The same panel and the same picker, under the row. |
-| A table action | A generic action has no changes, and so manages no relationship: its keys are typed. |
+| A table action | A generic action has no changes, and so manages no relationship. Its key arguments are chosen in the picker where the `action` of the block says which resource they refer to (`reference`): see [Table actions](table-actions.md#an-argument-that-holds-the-key-of-a-record). |
 
 **Try it:** `/tasks` as Ada Admin. Select two rows, use "Set labels" on the
 line above the grid: the panel is headed "Set labels: 2 records" and its
@@ -423,7 +423,7 @@ All keys of a table are in
 No form for a related record that is created or changed with the action, no
 fields of the join resource of a many-to-many, no picker limited to the
 records that are related now, no picker for a relationship with a `filter`,
-no order the person gives the chosen records, no editing of several related
-records in a cell, and no picker for an argument of a generic action. The
+no order the person gives the chosen records, and no editing of several
+related records in a cell. The
 later slices are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

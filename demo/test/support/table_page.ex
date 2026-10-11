@@ -147,6 +147,34 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc """
+  Empties a sensitive cell as the table's hook does when a person uses
+  "Clear" in its editor: one `clear` event with the row's key and the
+  column. Returns the page.
+
+      clear(view, "project", project.id, "budget")
+  """
+  def clear(view, id \\ "task", key, field) do
+    view
+    |> element("##{id}-grid")
+    |> render_hook("clear", %{"row" => to_string(key), "column" => field})
+  end
+
+  @doc """
+  Uses the button beside a sensitive field of the open action panel, as the
+  panel's hook does: "Clear", and once it was used "Keep". One
+  `panel_clear` event with the field. Returns the page.
+  """
+  def clear_in_panel(view, id \\ "task", name) do
+    # the button is there, and says which field it is of
+    true =
+      view
+      |> element("[id='#{id}-panel-f-#{name}-clear'][data-clear-field='#{name}']")
+      |> Phoenix.LiveViewTest.has_element?()
+
+    view |> element("[id='#{id}-panel']") |> render_hook("panel_clear", %{"input" => name})
+  end
+
+  @doc """
   Gives up the edit of a cell whose save failed, as the table's hook does
   when a person presses Escape on it. Returns the page.
   """
@@ -591,6 +619,9 @@ defmodule DemoWeb.TablePage do
   The field of an argument that takes a file is a `"file"`, whose value is
   nothing: what it holds is the browser's to show.
 
+  A sensitive field that a person asked to be emptied is `"cleared"`, and
+  holds nothing.
+
   The field of a value made of fields is a `"group"`, whose value says
   whether the value is there, and that of an array of them is `"groups"`,
   whose value is how many there are. The fields in them follow, each named
@@ -740,6 +771,11 @@ defmodule DemoWeb.TablePage do
           end
 
         {"file", nil, required}
+
+      # a sensitive field a person asked to be emptied: it says so in place
+      # of its input, and holds nothing
+      Enum.any?(LazyHTML.query(field, "[data-cleared]")) ->
+        {"cleared", nil, false}
 
       true ->
         control = LazyHTML.query(field, "textarea, select, input:not([type=hidden])")

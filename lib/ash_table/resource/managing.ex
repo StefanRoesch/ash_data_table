@@ -105,6 +105,16 @@ defmodule AshTable.Resource.Managing do
         do: {name, managed(resource, action, name)}
   end
 
+  @doc """
+  The relationship a `manage_relationship` change of the action hands the
+  argument of that name to, whatever the argument holds. Nil where no change
+  hands it to a relationship of the resource.
+  """
+  @spec handed_to(Ash.Resource.t() | Spark.Dsl.t(), struct, atom) :: struct | nil
+  def handed_to(resource, action, name) do
+    with {relationship, _opts} <- change(resource, action, name), do: relationship
+  end
+
   # The relationship a change of the action hands the argument to, with the
   # options of the change as Ash reads them: those its `type` stands for,
   # and over them the ones the change says itself.

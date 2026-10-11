@@ -370,6 +370,188 @@ defmodule AshTable.SensitiveTest do
     end
   end
 
+  describe "emptying a sensitive cell" do
+    setup do
+      record = Ash.Seed.seed!(Vault, %{name: "Main", token: "tok-123", pin: 4711})
+      on_exit(fn -> AshTable.Test.Ets.stop([Vault, Owner]) end)
+      %{key: %{id: record.id}}
+    end
+
+    test "is offered for a column that is edited hidden and can be empty" do
+      assert Edit.clearable?(column(:token))
+      assert Edit.clearable?(column(:pin))
+      # not where the action takes no edit without a value
+      refute Edit.clearable?(%{column(:token) | required?: true})
+      # nor for a column that is not sensitive, whose editor says "empty" itself
+      refute Edit.clearable?(column(:name))
+      # nor for a sensitive column that is not edited: no editor, no button
+      refute Edit.clearable?(column(:locked))
+      refute Edit.clearable?(column(:token_length))
+    end
+
+    test "empties the value, which no empty editor does", %{key: key} do
+      assert {:ok, record} = Edit.save(model(), column(:token), key, "", actor: @admin)
+      assert record.token == "tok-123"
+
+      assert {:ok, cleared} = Edit.clear(model(), column(:token), key, actor: @admin)
+      assert cleared.token == nil
+      assert stored(key).token == nil
+      # and nothing else
+      assert stored(key).pin == 4711
+
+      assert {:ok, _cleared} = Edit.clear(model(), column(:pin), key, actor: @admin)
+      assert stored(key).pin == nil
+    end
+
+    test "calls nothing for a cell that holds nothing", %{key: key} do
+      assert {:ok, _cleared} = Edit.clear(model(), column(:token), key, actor: @admin)
+      updated_before = stored(key)
+
+      assert {:ok, record} = Edit.clear(model(), column(:token), key, actor: @admin)
+      assert record.token == nil
+      assert stored(key) == updated_before
+
+      # the action is not run: one that would refuse says nothing
+      pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: nil})
+      assert {:ok, _record} = Edit.clear(model(), column(:pin), %{id: pinned.id}, actor: @admin)
+    end
+
+    test "says what the action says where it refuses", %{} do
+      pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: 1})
+
+      assert {:error, record, "stays on a pinned vault", []} =
+               Edit.clear(model(), column(:pin), %{id: pinned.id}, actor: @admin)
+
+      assert record.pin == 1
+      assert stored(%{id: pinned.id}).pin == 1
+    end
+
+    test "is refused where the field is hidden from the person on the record", %{key: key} do
+      assert {:error, _record, "You are not allowed to change this.", []} =
+               Edit.clear(model(), column(:pin), key, actor: @member)
+
+      assert stored(key).pin == 4711
+    end
+
+    test "is the record's that is gone, and no column's that cannot be emptied", %{key: key} do
+      assert {:error, nil, "This record is no longer available."} =
+               Edit.clear(model(), column(:token), %{id: Ash.UUID.generate()}, actor: @admin)
+
+      assert_raise MatchError, fn ->
+        Edit.clear(model(), column(:name), key, actor: @admin)
+      end
+
+      assert_raise MatchError, fn ->
+        Edit.clear(model(), %{column(:token) | required?: true}, key, actor: @admin)
+      end
+    end
+  end
+
+  describe "emptying a sensitive input of an action" do
+    setup do
+      record = Ash.Seed.seed!(Vault, %{name: "Main", token: "tok-123", pin: 4711})
+      on_exit(fn -> AshTable.Test.Ets.stop([Vault, Owner]) end)
+      %{key: %{id: record.id}, record: record}
+    end
+
+    defp run(action, key, params, more) do
+      Act.submit_row(model(), action, key, params, "panel", [actor: @admin] ++ more)
+    end
+
+    test "is offered for the sensitive attributes an update action takes empty, where the record holds a value",
+         %{record: record} do
+      rotate = action(:rotate)
+      assert Act.clearable(rotate, rotate.inputs, record) == [:token]
+
+      # nothing to empty where the record holds nothing
+      assert Act.clearable(rotate, rotate.inputs, %{record | token: nil}) == []
+      assert Act.clearable(rotate, rotate.inputs, %{record | token: ""}) == []
+      # nor what is hidden from the person on the record
+      assert Act.clearable(rotate, rotate.inputs, %{record | token: %Ash.ForbiddenField{}}) == []
+
+      # an attribute the action requires is not emptied through it; one it does not is
+      reissue = action(:reissue)
+      assert Enum.map(reissue.inputs, &{&1.name, &1.required?}) == [token: true, pin: false]
+      assert Act.clearable(reissue, reissue.inputs, record) == [:pin]
+    end
+
+    test "is offered by no create action, no destroy action, and for no argument", %{
+      record: record
+    } do
+      create = model().create
+      assert Act.clearable(create, create.inputs, record) == []
+      assert Act.clearable(create, create.inputs, nil) == []
+
+      destroy = action(:destroy)
+      assert Act.clearable(destroy, destroy.inputs, record) == []
+
+      # the sensitive arguments of `rotate` are not among what it offers
+      rotate = action(:rotate)
+      refute :passphrase in Act.clearable(rotate, rotate.inputs, record)
+    end
+
+    test "gives the action the attribute without a value, when it was asked for", %{key: key} do
+      assert {:ok, saved} =
+               run(action(:rotate), key, %{"token" => "", "passphrase" => "open"},
+                 cleared: [:token]
+               )
+
+      assert saved.token == nil
+      assert stored(key).token == nil
+    end
+
+    test "an untouched empty field still changes nothing", %{key: key} do
+      assert {:ok, _saved} =
+               run(action(:rotate), key, %{"token" => "", "passphrase" => "open"}, [])
+
+      assert stored(key).token == "tok-123"
+
+      assert {:ok, _saved} =
+               run(action(:rotate), key, %{"token" => "", "passphrase" => "open"}, cleared: [])
+
+      assert stored(key).token == "tok-123"
+    end
+
+    test "is the table's to give: nothing the form sends empties a value", %{key: key} do
+      for sent <- [
+            %{"token" => nil},
+            %{"_clear" => ["token"]},
+            %{"cleared" => "token"},
+            %{"token" => ""}
+          ] do
+        assert {:ok, _saved} = run(action(:rotate), key, Map.put(sent, "passphrase", "open"), [])
+        assert stored(key).token == "tok-123"
+      end
+    end
+
+    test "empties only what can be emptied, whatever was asked for", %{key: key} do
+      # an attribute the action requires, a field of another action, a name of nothing
+      assert {:ok, _saved} =
+               run(action(:reissue), key, %{"token" => ""}, cleared: [:token, :name, :bogus])
+
+      assert stored(key).token == "tok-123"
+
+      assert {:ok, _saved} =
+               run(action(:rotate), key, %{"passphrase" => "open"},
+                 cleared: [:passphrase, :pin, :name]
+               )
+
+      assert stored(key).pin == 4711
+      assert stored(key).name == "Main"
+    end
+
+    test "says what the action says where it refuses" do
+      pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: 1, token: "t"})
+      reissue = action(:reissue)
+
+      assert {:error, form} =
+               run(reissue, %{id: pinned.id}, %{"token" => "t2"}, cleared: [:pin])
+
+      assert Act.errors(form, model(), reissue.inputs) == %{pin: ["stays on a pinned vault"]}
+      assert stored(%{id: pinned.id}).pin == 1
+    end
+  end
+
   describe "at compile time" do
     test "a component on a sensitive column is an error" do
       error =
