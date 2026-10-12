@@ -850,17 +850,46 @@ npm run browsers                # once: Playwright's Chromium
 npm test
 ```
 
-`npm test` does everything else by itself. It starts the demo through
-`e2e/server.sh` in a Mix environment of its own, `e2e` (`config/e2e.exs`):
-compiled once into `_build/e2e`, without code reloading or watchers, on port
-**4479** and on its own database, **`demo_e2e`**, which it creates, migrates
-and fills with the standard seed. A dev server on 4478 and `demo_dev` are not
-touched. When the tests are done the server is stopped. The first run
-compiles the demo for that environment, which takes a few minutes.
+`npm test` does everything else by itself, in a Mix environment of its own,
+`e2e` (`config/e2e.exs`): compiled once into `_build/e2e`, without code
+reloading or watchers. A dev server on 4478 and `demo_dev` are not touched.
+The first run compiles the demo for that environment, which takes a few
+minutes.
 
-While writing tests, `./server.sh` in a second terminal keeps the server
-running, and `npm test` uses it (`npx playwright test editing`,
-`npm run test:ui`, `npm run report` for the HTML report of the last run).
+The files run side by side, the tests of a file in their order. Each worker
+of Playwright has a server and a database to itself (`e2e/support/server.ts`):
+
+- Before the first worker, the demo is compiled, its assets are built, and
+  one database, **`demo_e2e_template`**, is created, migrated and filled
+  with the standard seed.
+- A worker starts its own server from that build when it starts
+  (`e2e/server/worker.exs`, nothing is compiled then): worker 0 on port
+  **4480** with the database **`demo_e2e_0`**, worker 1 on 4481 with
+  `demo_e2e_1`, and so on. The database is made anew as a copy of the
+  template (`CREATE DATABASE … TEMPLATE …`), so every worker has the same
+  records with the same ids.
+- A worker stops its server when it is done. A server also ends by itself
+  when its worker is gone, however that went, and one that is found on a
+  worker's port from an earlier run is stopped first. What the servers wrote
+  is in `e2e/.servers/<port>.log`; warnings and errors only.
+
+`E2E_WORKERS` sets how many workers there are; the default is half the cores
+and no more than six. A worker takes about 0.7 GB (a BEAM of 0.2 GB and a
+Chromium of 0.45 GB). `E2E_WORKERS=1 npm test` runs the files one after the
+other. `E2E_FIRST_PORT` moves the ports.
+
+A failed test leaves a screenshot of the page as it was. No trace is
+recorded: recording one costs about a third of a run. To see the steps of a
+failed test, run it again with a trace, `npm test -- editing.spec.ts:765
+--trace on`, and open it with `npx playwright show-trace …`.
+
+While writing tests, `./server.sh` in a second terminal keeps one server
+running, on port **4479** and the database **`demo_e2e`**, and
+`npm run test:server` runs against it, one test at a time, with nothing
+started or stopped (`npm run test:server -- editing`; it sets
+`E2E_BASE_URL=http://127.0.0.1:4479`). `npx playwright test editing` and
+`npm run test:ui` start servers of their own as `npm test` does;
+`npm run report` shows the HTML report of the last run.
 
 | File | What it covers |
 | --- | --- |
@@ -893,26 +922,29 @@ running, and `npm test` uses it (`npx playwright test editing`,
 | `arguments.spec.ts` | the argument line: its inputs as labelled tab stops before the grid; that typing sends nothing and Enter and leaving apply; the argument in the URL, reload, Back and Forward; a column's asked argument, its column sorted and filtered by with it; a value Ash refuses at its input, with the rows left as they are; `/deadlines` asking for its day in place of its rows; a box and a list from the keyboard; that the grid does not move; a nested table's line and a picker's; axe-core in each of these states, in both themes |
 | `hiding.spec.ts` | hiding columns: the "Columns" button and its list, a box that hides its column and shows it again; that the label column and the columns of the boxes, the expanders and the actions have no box; a table without a label column, which keeps one column; Escape, a click elsewhere and focus that moves on; the keyboard through the list; that the arrow keys, Home and End pass over hidden columns and that focus and the tab stop leave a column that is hidden; that hidden columns outlive a sort, a filter, a page, a save, an expanded row and a patch that brings no row, and are shown again after a reload; a hidden column that is filtered or sorted by, said on the button and at its box, and "Clear filters"; widths kept while hidden; an editor, a shown sensitive value and the message of a failed cell in a column that is hidden; a nested table, a picker's table and two tables on `/dashboard`, each on its own; that nothing is sent; German; axe in both themes |
 | `resizing.spec.ts` | column widths: dragging a column's handle narrower and wider with the mouse, that no other column moves and the handle stays under the pointer; that a drag and a click on it do not sort; a double click back to the width before; the narrowest and the widest; a narrow column cut off on one line with rows as high as before; F2 to the handle, the arrow keys, Home, End, Enter and Escape, and that the grid's keys are as they were; right-to-left; that the widths outlive a sort, a filter, a page, a save and an expanded row, and are gone after a reload and after leaving the page; a nested table, a picker's table and two tables on `/dashboard`, each on its own; that nothing is sent; German; axe in both themes |
-| `a11y.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, with nested tables open at every depth, and with the components of `/tasks`: at rest, a slider open, a failed one, and in the panels |
+| `a11y-tables.spec.ts`, `a11y-editing.spec.ts`, `a11y-nesting.spec.ts`, `a11y-actions.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, with nested tables open at every depth, and with the components of `/tasks`: at rest, a slider open, a failed one, and in the panels; in four files, so that they run side by side: the tables, the dashboard, German, each actor and the states of reading; the states of editing, the components and what a person may not see; nested tables; row actions and the action panel |
 | `contrast.spec.ts` | what axe does not judge, measured from the colours the browser computed, in the light and the dark theme: the focus ring of every kind of cell; the ring and the "!" of a failed cell, that they move nothing, and both rings on a failed cell with focus; the text of a saving cell and of a table that is reading; the muted text of the header and the filters; the edges of inputs, and of invalid ones; the label and the edge of a badge, the filled part of a progress bar against its track, and the track, the filled part and the thumb of a slider, read from the pixels the browser painted. In forced colours: that the focus ring, the failed cell, the expander's triangle, the current page, the edges of the dialog and the panel, and a badge, a bar and a slider are still drawn |
 
 How they are built (`e2e/support`):
 
 - **Actors.** The setup project (`actors.setup.ts`) becomes each of the five
-  actors once, through the actor switcher, and keeps the session cookie. A
+  actors once, through the actor switcher, and keeps the session cookie.
+  Every worker's server takes it: they have one secret, and the seed gives
+  the people the same ids in every database. A
   file or a test says who it is with `test.use({ actor: "member" })`; the
   admin is the default.
 - **Data.** The tests run on the standard seed, whose records, ids and
   values are the same in every VM (`Demo.Generator` draws them in a fixed
   order), so tests name them (`support/data.ts`). A test that changes
   anything says `test.use({ writes: true })`, and the database is seeded
-  again after it (under a second), so every test starts from the seed, in
+  again after it (half a second), so every test starts from the seed, in
   whatever order. Seeding goes through `POST /e2e/seed`, a route that exists
   in the `e2e` environment only (`e2e/server`, mounted by
   `config :demo, e2e_routes: true`), as do the one that deletes a task behind
   an open table's back, the two that make the reads of the comments fail
   and work again, and the page `/e2e/select`, whose tables let their rows be
-  selected with nothing to run on them. There is one database, so the tests run one at a time.
+  selected with nothing to run on them. A worker seeds its own database, so
+  the tests of one file run one at a time, and the files side by side.
 - **Language.** A test chooses German through the language switcher
   (`support/locale.ts`); the choice is in the session cookie, which every
   test has to itself.
@@ -925,6 +957,10 @@ How they are built (`e2e/support`):
   it), the colours at points of a picture of an element, for what no
   computed style tells (the filled part of a bar or of a slider), and the
   WCAG contrast ratio of two colours.
+- **axe.** `support/a11y.ts` runs every rule axe has by default on the whole
+  document. axe runs in the page and hands back the violations alone, in
+  full; listing the ten thousand nodes that passed and carrying them out of
+  the page took five seconds a check and more on `/tasks`.
 - **Console.** Every test fails if the browser reported an error it did not
   expect.
 

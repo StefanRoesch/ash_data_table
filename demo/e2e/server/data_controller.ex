@@ -5,7 +5,7 @@ defmodule DemoWeb.E2E.DataController do
   make the reads of one table fail.
 
   It is compiled and routed in the e2e environment only (`e2e/server`, and
-  `config :demo, e2e_routes: true`), whose database is `demo_e2e`.
+  `config :demo, e2e_routes: true`), whose databases are the tests' own.
   """
   use DemoWeb, :controller
 

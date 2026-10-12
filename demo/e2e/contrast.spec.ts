@@ -4,7 +4,7 @@ import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import type { Table } from "./support/table"
 
-// What axe-core does not judge (a11y.spec.ts): whether a state can be seen.
+// What axe-core does not judge (the a11y-*.spec.ts files): whether a state can be seen.
 // Each test here brings a table into a state, reads the colours the browser
 // computed for it, and holds their contrast against what WCAG 2 asks:
 //

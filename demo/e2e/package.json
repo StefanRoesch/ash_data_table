@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "test": "playwright test",
+    "test:server": "E2E_BASE_URL=http://127.0.0.1:${E2E_PORT:-4479} playwright test",
     "test:ui": "playwright test --ui",
     "shots": "playwright test --config playwright.shots.config.ts",
     "report": "playwright show-report",

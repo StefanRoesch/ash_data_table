@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Starts the demo for the browser tests. Playwright runs this (`webServer` in
-# playwright.config.ts) and stops it when the tests are done.
+# Starts one demo for the browser tests and keeps it running, for writing
+# tests: `npm run test:server` runs them against it, one at a time. `npm test`
+# does not use it: there every worker starts a server of its own
+# (support/server.ts).
 #
 # In the e2e environment (config/e2e.exs): creates and migrates the database
 # `demo_e2e`, fills it with the standard seed, builds the assets, and serves

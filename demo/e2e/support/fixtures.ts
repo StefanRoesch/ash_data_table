@@ -1,6 +1,7 @@
-import { test as base, expect, type Page } from "@playwright/test"
+import { expect, type Page } from "@playwright/test"
 import { storageStateOf, type Actor } from "./actors"
 import { reseed } from "./data"
+import { test as base } from "./server"
 import { Table } from "./table"
 
 /**

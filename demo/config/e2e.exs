@@ -5,16 +5,19 @@ import Config
 # or reloads, on a database of its own that the tests seed again and again.
 # It has its own build directory, so it never waits for a dev server's.
 
-# The database is fixed, as in config/test.exs: the tests empty it.
+# The database is one of the tests' own, as in config/test.exs: they empty
+# it. `demo_e2e` for `e2e/server.sh`; `npm test` names the one it seeds
+# (`demo_e2e_template`) and each worker's copy of it (`demo_e2e_0` and up).
 config :demo, Demo.Repo,
   username: System.get_env("POSTGRES_USER", "ash_table"),
   password: System.get_env("POSTGRES_PASSWORD", "ash_table"),
   hostname: System.get_env("POSTGRES_HOST", "localhost"),
   port: String.to_integer(System.get_env("POSTGRES_PORT", "5477")),
-  database: "demo_e2e",
+  database: System.get_env("E2E_DATABASE", "demo_e2e"),
   pool_size: 10
 
-# The port is set in config/runtime.exs from PORT; demo/e2e/server.sh sets it.
+# The port is set in config/runtime.exs from PORT; demo/e2e/server.sh and
+# demo/e2e/support/server.ts set it.
 config :demo, DemoWeb.Endpoint,
   http: [ip: {127, 0, 0, 1}],
   check_origin: false,

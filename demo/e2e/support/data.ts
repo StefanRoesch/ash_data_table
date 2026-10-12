@@ -7,7 +7,7 @@ import { expect, type APIRequestContext } from "@playwright/test"
 // are relative to today, so no test names a date of the seed.
 
 /**
- * Empties the database and seeds it again (under a second). It runs once
+ * Empties the worker's database and seeds it again (half a second). It runs once
  * before the tests (actors.setup.ts) and after every test that says
  * `test.use({ writes: true })` (support/fixtures.ts). The route exists in
  * the e2e environment only (demo/e2e/server).

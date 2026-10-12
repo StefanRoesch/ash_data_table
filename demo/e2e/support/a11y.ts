@@ -13,7 +13,16 @@ export async function expectNoAxeViolations(page: Page, within?: string): Promis
   // table and is gone a moment later.
   await expect(page.locator("body > canvas")).toBeHidden()
 
+  // Two things keep a check short on a page of 1,500 elements, where it
+  // would take five seconds and more. axe runs in the page itself and hands
+  // back what it found (`setLegacyMode`), in place of every node's raw result
+  // being carried to a second page to be put together there; the demo has no
+  // frames of another origin, which is all that mode leaves out. And only the
+  // violations come back in full (`resultTypes`): every rule still runs on
+  // every node, but the ten thousand nodes that passed are not listed.
   const builder = new AxeBuilder({ page })
+    .setLegacyMode(true)
+    .options({ resultTypes: ["violations"] })
   const results = await (within ? builder.include(within) : builder).analyze()
 
   const violations = results.violations.map((violation) => ({

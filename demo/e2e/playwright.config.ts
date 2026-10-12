@@ -1,27 +1,40 @@
 import { defineConfig, devices } from "@playwright/test"
+import { workerCount } from "./support/server"
 
-// The demo is started for the tests on a port and a database of their own
-// (server.sh, config/e2e.exs), so a dev server on 4478 is left alone.
-const port = Number(process.env.E2E_PORT ?? 4479)
-const baseURL = `http://127.0.0.1:${port}`
-
+// The files of the suite run side by side, the tests of a file in their
+// order. Each worker has a server and a database of its own, started by the
+// worker itself (support/server.ts): ports 4480 and up, databases
+// `demo_e2e_0` and up, each a copy of the one the global setup seeds. A dev
+// server on 4478 and a `./server.sh` on 4479 are left alone.
+//
+//   npm test                          as many workers as the machine carries
+//   E2E_WORKERS=4 npm test            four of them; 1 runs the files in turn
+//   npm run test:server -- editing    against a running `./server.sh`, one
+//                                     test at a time, with nothing started
 export default defineConfig({
   testDir: ".",
   testMatch: /\.spec\.ts$/,
-  // One database, and tests that seed it again: one test at a time.
+  // A test that writes seeds its worker's database again when it is done
+  // (support/fixtures.ts), so the tests of a file never run at the same time.
   fullyParallel: false,
-  workers: 1,
+  workers: workerCount(),
+  globalSetup: "./global.setup.ts",
   forbidOnly: !!process.env.CI,
   retries: 0,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   reporter: [["list"], ["html", { open: "never" }]],
+  // `baseURL` is the worker's own server: a fixture, in support/server.ts.
   use: {
-    baseURL,
-    trace: "retain-on-failure",
+    // No trace: recording one costs about a third of a run, for every test,
+    // to keep it for the few that fail. A failed test leaves a screenshot;
+    // run it again with `--trace on` to see its steps.
+    trace: "off",
+    screenshot: "only-on-failure",
   },
   projects: [
-    // Seeds the database and logs in once as each actor (support/actors.ts).
+    // Becomes each actor once and keeps the session cookies, which every
+    // worker's server takes: they have one secret, and the seed one set of ids.
     { name: "setup", testMatch: /actors\.setup\.ts$/ },
     {
       name: "chromium",
@@ -35,16 +48,4 @@ export default defineConfig({
       },
     },
   ],
-  webServer: {
-    command: "./server.sh",
-    url: baseURL,
-    // A server left running by `./server.sh` in another terminal is used as
-    // it is, which saves its start while writing tests. It must be this one:
-    // the tests need the e2e environment's routes.
-    reuseExistingServer: !process.env.CI,
-    // the first start compiles the demo and its dependencies
-    timeout: 600_000,
-    stdout: "ignore",
-    stderr: "pipe",
-  },
 })
