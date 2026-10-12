@@ -758,6 +758,31 @@ declared in the resource and mounted with one line in the router.
 - New texts: "Clear", "Clear %{column}", "Keep", "Keep %{column}", "Will be
   cleared."
 
+### Column widths
+
+- A person can change how wide a column is. Every column's header ends in a
+  handle: dragged with the pointer (built for mouse, pen and touch; tested
+  with the mouse in Chromium), or moved from the
+  keyboard once F2 on the header has put focus on it (Left and Right Arrow
+  by 10 pixels, Home and End to the narrowest and the widest, Enter back to
+  the width before, Escape back to the header). A double click on the handle
+  goes back to the width before as well. A column is between 48 and 1000
+  pixels wide. A click or a drag on the handle does not sort.
+- The widths are not remembered. They are kept in the browser while the page
+  is open, through every sort, filter, page, save and expanded row; a reload
+  forgets them. Nothing is sent to the server, nothing is in the URL, and
+  nothing is declared: there is no option for it.
+- With the first change every column keeps the width it has, and the table
+  is as wide as its columns from then on, so that only the dragged column
+  moves. Text that does not fit a narrow column is cut off with an ellipsis,
+  in the header too, and rows keep their height.
+- Each table has its own widths: a nested table, the table of a picker, each
+  of several tables on a page. The columns of the boxes, the expanders and
+  the row actions have no handle.
+- The handle is a `role="separator"` named "Resize %{column}" (a new message
+  of the template), with the width in `aria-valuenow`. A column's header now
+  has its label as `aria-label` too, so that its name stays the label alone.
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive

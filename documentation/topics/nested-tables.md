@@ -707,6 +707,11 @@ in a nested table for each of its rows.
   is open**: a row that is saved shows the cell as "Not available". Where the
   relationship says `allow_forbidden_field? false`, the refusal fails the
   whole read, and the table shows that as the refusal of its own read.
+- **Column widths.** A person changes the widths of a nested table's columns
+  as those of any table, and they are that nested table's alone. Closing
+  the line and opening it again brings the columns back as they were laid
+  out at first. See
+  [Columns and defaults](columns-and-defaults.md#column-widths).
 - **A join resource's policy does not restrict an aggregate over a
   many-to-many.** This was seen in one investigation and not verified
   independently. If the join resource's policy is what keeps a person from

@@ -126,6 +126,36 @@ export class Table {
     )
   }
 
+  /** The handle at the end of a column's header: it changes the column's width. */
+  resizer(column: string): Locator {
+    return this.byId(`${this.id}-resize-${column}`)
+  }
+
+  /** How wide a column's header is, in pixels. */
+  async width(column: string): Promise<number> {
+    return this.header(column).evaluate((cell) => cell.getBoundingClientRect().width)
+  }
+
+  /** How wide every cell of the header row is, the ones before and after the columns among them. */
+  async widths(): Promise<number[]> {
+    return this.headerCells.evaluateAll((cells) => cells.map((cell) => cell.getBoundingClientRect().width))
+  }
+
+  /**
+   * Drags a column's handle `by` pixels with the mouse: to the right when
+   * positive, and a little down, so that it is let go over another element
+   * than the handle.
+   */
+  async drag(column: string, by: number, steps = 4): Promise<void> {
+    const box = (await this.resizer(column).boundingBox())!
+    const x = box.x + box.width / 2
+    const y = box.y + box.height / 2
+    await this.page.mouse.move(x, y)
+    await this.page.mouse.down()
+    await this.page.mouse.move(x + by, y + 3, { steps })
+    await this.page.mouse.up()
+  }
+
   /** The `<tbody>` of each row: not the one under it, which holds what the row expands into. */
   get rows(): Locator {
     return this.grid.locator(":scope > tbody:not([data-detail])")

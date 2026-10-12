@@ -701,3 +701,6 @@ msgstr "%{column} behalten"
 
 msgid "Will be cleared."
 msgstr "Wird geleert."
+
+msgid "Resize %{column}"
+msgstr "Breite von %{column} ändern"

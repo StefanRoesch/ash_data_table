@@ -25,7 +25,8 @@ no HEEx.
 > field by field. A union is shown as the value it holds and edited there
 > too, its kind first. An action that takes a file has a file input in its
 > panel. A read action's arguments, and those of a calculation
-> column, are given in a line of inputs above the rows.
+> column, are given in a line of inputs above the rows. A person can drag
+> a column wider or narrower; the widths last until the page is reloaded.
 
 - [Install](#install)
 - [A first table](#a-first-table)
@@ -259,6 +260,12 @@ end
 > declares them. The compiler warns about a column that has none;
 > `exposes_protected_field? true` on the column says that it is meant. See
 > [Columns and defaults](documentation/topics/columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
+
+**Column widths** are not declared. A table lays its columns out by itself,
+and the person using it can drag the edge of a column's header to make the
+column narrower or wider, or do the same from the keyboard. The widths are
+kept in the browser until the page is reloaded or left; nothing is stored.
+See [Columns and defaults](documentation/topics/columns-and-defaults.md#column-widths).
 
 Mistakes in the block are reported when the resource is compiled. As with
 every Ash extension's verifiers, they surface as compile warnings. They fail
@@ -1348,6 +1355,7 @@ then the header. Nothing of this talks to the server.
 | Page Up, Page Down | Move by a screenful of rows |
 | Tab, Shift+Tab | Leave the grid |
 | Enter, on a header | Sort by the column |
+| F2, on a header | Go to the handle of the column's width: Left and Right Arrow change it, Home and End go to the narrowest and widest, Enter undoes, Escape returns |
 | Space, on a cell of a row | Where rows can be selected: select the row, or take it out. Nothing anywhere else |
 | Shift+Down Arrow, Shift+Up Arrow | Where rows can be selected: move a row and select as they go |
 

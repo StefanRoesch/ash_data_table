@@ -480,6 +480,48 @@ items separated by commas, and anything else as `inspect/1` prints it.
 **Try it:** `/specimens` in the demo has one column per built-in Ash type.
 No login is needed for that page.
 
+## Column widths
+
+A table lays its columns out by itself: it is as wide as the place it is in,
+and each column gets what its content asks for, up to `20rem`. Nothing in the
+`table` block sets a width.
+
+The person using the table can change a width. Every column's header ends in
+a handle, which is not seen until the pointer is over it or it has focus:
+
+- **Drag the handle** to make the column narrower or wider. It is built for
+  a mouse, a pen and a finger; only the mouse has been tried.
+- **Double-click the handle** to give the column the width it had before.
+- **From the keyboard:** F2 on the header moves focus to the handle. Left and
+  Right Arrow change the width by 10 pixels, Home and End go to the narrowest
+  and the widest, Enter gives the column its old width back, and Escape
+  returns to the header. See
+  [Keyboard and accessibility](keyboard-and-accessibility.md#column-widths-from-the-keyboard).
+
+What to know about it:
+
+- **A column is between 48 and 1000 pixels wide.** Text that does not fit is
+  cut off with an ellipsis, in the header as in the cells. Rows stay one line
+  high.
+- **The first change fixes every column.** Each column keeps the width it has
+  at that moment, and from then on the table is as wide as its columns
+  together: narrower than its place, or wider, in which case it scrolls
+  sideways as before. Only the column that is dragged changes. "The width it
+  had before" is the width from that moment.
+- **Widths are not remembered.** They live in the browser, for as long as the
+  page is open. They stay through sorting, filtering, paging, saving a cell
+  and expanding a row. A reload forgets them, and so does leaving the page.
+  Nothing is sent to the server and nothing is put in the URL.
+- **Each table has its own widths**: a nested table, the table in a picker,
+  and each of several tables on one page. A nested table that is closed and
+  opened again starts over.
+- **Which columns:** the table's own columns. The columns of the boxes that
+  select rows, of the expanders and of the row actions have no handle.
+- **There is no option** to switch this off or to set a starting width.
+
+**Try it:** drag the edge of "Title" on `/tasks` in the demo, then sort by
+another column.
+
 ## Edge cases
 
 - **A public foreign key shows the raw key.** `Task ID` on `/comments` is the
@@ -498,9 +540,11 @@ No login is needed for that page.
   `/task_labels` each row is identified by both parts of its key.
 - **An enum whose type has no label for a value** shows the value in words.
   An enum value that is no longer one of the type's values is shown as text.
-- **Width.** There is no width setting. Rows are one line high; a cell wider
-  than `20rem` is cut off with an ellipsis. The editor of a text cell is a
-  field that grows with the lines of its text.
+- **Width.** There is no width setting in the `table` block. Rows are one
+  line high; a cell wider than `20rem` is cut off with an ellipsis, until a
+  person makes the column wider: see [Column widths](#column-widths). The
+  editor of a text cell is a field that grows with the lines of its text. In
+  a column whose width a person set, an editor is as wide as the column.
 
 ## Things people trip over
 
@@ -522,7 +566,8 @@ No login is needed for that page.
 
 No reference cell for a has-one, no label that is a calculation, no choosing
 another related record in a reference cell, no dedicated cells for maps and
-embedded resources, no locale-aware formatting, no column widths,
+embedded resources, no locale-aware formatting, no column widths in the
+`table` block, no remembering of the widths a person set,
 and one table per resource. A column's own look and editor are built: see
 [Custom components](custom-components.md). The
 later slices are listed in the

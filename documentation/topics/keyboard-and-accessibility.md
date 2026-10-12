@@ -66,6 +66,7 @@ order, not 425.
 | Page Down, Page Up | Move by a screenful of rows. Page Up stops at the first row of records and does not enter the header rows. |
 | Tab, Shift+Tab | Leave the grid, forwards or backwards. |
 | Enter, on the heading of a sortable column | Sorts by the column: ascending, descending, none. Focus stays on the heading. |
+| F2, on the heading of a column | Goes to the handle that changes the column's width. See [Column widths from the keyboard](#column-widths-from-the-keyboard). |
 | Enter or F2, on a filter cell | Goes into the filter. |
 | Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. On a reference cell, opens the picker: see [Choosing a related record](choosing-a-related-record.md#the-keyboard). |
 | Enter or F2, on the actions cell of a row | Goes to its first button. See [Row actions and the action panel](#row-actions-and-the-action-panel). |
@@ -87,6 +88,38 @@ column, where a table has them: their filter cells are empty.
 
 With the pointer: a click moves focus to a cell, a click on a sortable
 heading sorts, and a double click on an editable cell starts editing.
+
+## Column widths from the keyboard
+
+The heading of every column ends in a handle that changes the column's
+width. It is not a stop of the arrow keys or of Tab. It is reached from its
+heading:
+
+| Key | Where | Effect |
+| --- | --- | --- |
+| F2 | On the heading of a column | Focus goes to the handle. |
+| Right Arrow, Left Arrow | On the handle | Make the column 10 pixels wider or narrower. Where text runs from right to left, the other way round. |
+| Home, End | On the handle | Make the column as narrow (48 pixels) and as wide (1000 pixels) as it can be. |
+| Enter | On the handle | Gives the column the width it had before any width was changed. |
+| Escape | On the handle | Returns to the heading. The width stays. |
+| Up Arrow, Down Arrow, Page Up, Page Down, Space | On the handle | Nothing. They do not move through the grid or scroll the page. |
+| Tab, Shift+Tab | On the handle | Tab leaves the grid. Shift+Tab returns to the heading. |
+
+Enter on a heading still sorts; that is why the handle is on F2. The handle
+that has focus shows a ring and a line at the column's edge.
+
+With the pointer the handle is dragged, and a double click on it does what
+Enter does. A click or a drag on the handle never sorts. What a width does
+to the table, and how long it lasts, is in
+[Columns and defaults](columns-and-defaults.md#column-widths).
+
+ARIA has no pattern for changing a column's width in a grid. The handle
+follows the nearest one, the
+[window splitter](https://www.w3.org/WAI/ARIA/apg/patterns/windowsplitter/):
+a separator that takes focus and is moved with the arrow keys. It sits
+inside the heading and is reached with F2, as the controls of a filter
+cell and of an actions cell are reached from their cell, so the grid stays
+one tab stop.
 
 ## The filter row from the keyboard
 
@@ -379,6 +412,7 @@ page and keeps the focus.
 | The grid and its name | `role="grid"` with `aria-label`: the table's name, such as "Tasks". |
 | Size and position | `aria-rowcount` (the total when the table knows it, counting the two header rows; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
 | Sort | `aria-sort` on every sortable heading: `ascending`, `descending` or `none`. |
+| The handle of a column's width | `role="separator"` with `aria-orientation="vertical"`, named "Resize Title". `aria-valuenow` is the column's width in pixels, between `aria-valuemin` (48) and `aria-valuemax` (1000). The heading has its column's label as `aria-label`, so the handle's name is not read as part of it. |
 | A read in progress | `aria-busy` on the grid. The previous rows stay. |
 | A filter's controls | An accessible name each: "Filter Title", "How to filter Title", "Clear the Title filter". |
 | A rejected filter value | `aria-invalid` on the input, described by "Not a valid value". |
@@ -568,8 +602,10 @@ of values in it, in German, and with the line of a nested table and of a
 picker; with the counter of a text in a cell, in the action panel and on the
 argument line, within the most and past it, in both themes; with "Clear" in
 the editor of a sensitive cell and in the action panel, before and after it
-is used, in both themes; and with the panel and the pickers of an action
-whose arguments refer to records, in both themes).
+is used, in both themes; with the panel and the pickers of an action
+whose arguments refer to records, in both themes; and with columns made
+narrower and wider, a handle of a column's width with focus, and the same
+in a nested table, in both themes).
 
 The suite requires that axe reports no violation in any of them. The
 landmarks around a table are the host page's and not the table's; see
@@ -663,6 +699,8 @@ technology, a report of what you find is welcome in the
   the buttons of its table actions.**
   Enter opens and closes the line. F2 goes to its controls.
 - **Expecting a filter to be a tab stop.** Move to its cell and press Enter.
+- **Expecting Enter on a heading to reach the handle of its width.** Enter
+  sorts. F2 goes to the handle.
 - **Treating "axe reports no violations" as "accessible".** See the table
   above.
 - **A theme whose colours do not contrast.** The table draws with the

@@ -31,6 +31,7 @@ sorted.
 | The parent a table is limited to: the full view of a nested table | Cells whose save failed |
 | | Which rows are expanded, and the sort, filters and page of the tables nested in them |
 | | The mark of a row action that failed, and a row that was created and still stands at the top |
+| | The widths a person gave the columns. They last until the page is reloaded or left: see [Columns and defaults](columns-and-defaults.md#column-widths) |
 | | Which rows are selected. A selection lasts through a sort and a change of page, is given up when a filter changes, and is gone after a reload: see [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-is-selected-and-for-how-long) |
 
 A default is left out: no sort, no filters and the first page give the plain

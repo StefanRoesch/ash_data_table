@@ -125,6 +125,7 @@ defmodule AshTable.Text do
           | :keep
           | :keep_value
           | :will_be_cleared
+          | :resize_column
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -422,4 +423,9 @@ defmodule AshTable.Text do
   defp msgid(:keep), do: dgettext_noop("ash_table", "Keep")
   defp msgid(:keep_value), do: dgettext_noop("ash_table", "Keep %{column}")
   defp msgid(:will_be_cleared), do: dgettext_noop("ash_table", "Will be cleared.")
+
+  # What the handle at the end of a column's header is called, with the
+  # column: a person drags it, or moves it with the arrow keys, to make the
+  # column wider or narrower.
+  defp msgid(:resize_column), do: dgettext_noop("ash_table", "Resize %{column}")
 end

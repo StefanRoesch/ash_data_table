@@ -432,3 +432,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Will be cleared."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Resize %{column}"
+msgstr ""
