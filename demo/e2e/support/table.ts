@@ -131,6 +131,80 @@ export class Table {
     return this.byId(`${this.id}-resize-${column}`)
   }
 
+  // ---- hiding columns -----------------------------------------------------
+
+  /** "Columns": the button above the grid that opens the list of the columns. */
+  get columnsButton(): Locator {
+    return this.byId(`${this.id}-columns-button`)
+  }
+
+  /** The list it opens: a box for every column that can be hidden. */
+  get columnsList(): Locator {
+    return this.byId(`${this.id}-columns`)
+  }
+
+  /** The box of one column in that list: ticked while the column is shown. */
+  columnBox(column: string): Locator {
+    return this.byId(`${this.id}-column-${column}`)
+  }
+
+  /** The line of one column in the list: its box, its name, and what is said of it while it is hidden. */
+  columnEntry(column: string): Locator {
+    return this.byId(`${this.id}-column-${column}-entry`)
+  }
+
+  /** What the line of a column says of it besides its name, while it is hidden: "(filtered)". */
+  columnFlag(column: string): Locator {
+    return this.columnEntry(column).locator("[data-flag]")
+  }
+
+  /** What is read out when a column is hidden or shown again. */
+  get columnsStatus(): Locator {
+    return this.byId(`${this.id}-columns-status`)
+  }
+
+  /** The columns the list offers, in order. */
+  async listedColumns(): Promise<string[]> {
+    const prefix = `${this.id}-column-`
+    return this.columnsList
+      .locator("input[type=checkbox]")
+      .evaluateAll((boxes, prefix) => boxes.map((box) => box.id.slice(prefix.length)), prefix)
+  }
+
+  /** Opens the list of the columns, if it is not open. */
+  async openColumns(): Promise<void> {
+    if ((await this.columnsButton.getAttribute("aria-expanded")) !== "true") await this.columnsButton.click()
+    await expect(this.columnsList).toBeVisible()
+  }
+
+  /** Hides columns with the pointer: opens the list and takes the tick out of each one's box. */
+  async hide(...columns: string[]): Promise<void> {
+    await this.openColumns()
+    for (const column of columns) {
+      await this.columnBox(column).uncheck()
+      await expect(this.header(column)).toBeHidden()
+    }
+  }
+
+  /** Shows hidden columns again with the pointer. */
+  async unhide(...columns: string[]): Promise<void> {
+    await this.openColumns()
+    for (const column of columns) {
+      await this.columnBox(column).check()
+      await expect(this.header(column)).toBeVisible()
+    }
+  }
+
+  /** The names of the columns that are shown, in order. */
+  async shownColumns(): Promise<string[]> {
+    const prefix = `${this.id}-head-`
+    return this.headers.evaluateAll(
+      (cells, prefix) =>
+        cells.filter((cell) => cell.getClientRects().length > 0).map((cell) => cell.id.slice(prefix.length)),
+      prefix,
+    )
+  }
+
   /** How wide a column's header is, in pixels. */
   async width(column: string): Promise<number> {
     return this.header(column).evaluate((cell) => cell.getBoundingClientRect().width)
@@ -773,13 +847,15 @@ export class Table {
         // the buttons of a nested table's line above its grid, which are not
         // shown while none of its rows is selected. The inputs of a nested
         // table's argument line are tab stops of their own, on purpose
-        // (arguments.spec.ts), and are no part of the grid's one.
+        // (arguments.spec.ts), and are no part of the grid's one. Nor is
+        // the "Columns" button of a nested table (hiding.spec.ts).
         .filter(
           (element) =>
             element.tabIndex >= 0 &&
             !(element as HTMLButtonElement).disabled &&
             !element.closest("dialog:not([open])") &&
             !element.closest("form[data-arguments]") &&
+            !element.closest("[data-columns-button]") &&
             element.getClientRects().length > 0,
         )
         .map((element) => element.id || element.tagName),

@@ -125,6 +125,7 @@ test.describe("opening the picker", () => {
     await expect(people.cell(kim, "name")).toBeFocused()
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "false")
     await expect(tasks.picker.getByRole("button")).toHaveText([
+      "Columns",
       "Previous",
       "1",
       "Next",

@@ -101,6 +101,40 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "the columns a person can hide" do
+    test "are all but the column of the label, in the table's order" do
+      model = Model.build(AshTable.Test.Private.Minute)
+
+      assert column_names(model) == [:title, :shouted, :folder]
+      assert Enum.map(Model.hideable(model), & &1.name) == [:shouted, :folder]
+      refute Model.keeps_one?(model)
+    end
+
+    test "the label's column stays wherever it stands among the columns" do
+      model = Model.build(AshTable.Test.Referring.Member)
+
+      assert column_names(model) == [:id, :name, :away?]
+      assert Enum.map(Model.hideable(model), & &1.name) == [:id, :away?]
+      refute Model.keeps_one?(model)
+    end
+
+    test "are all of them in a table without a label, of which one has to stay" do
+      model = Model.build(AshTable.Test.Task)
+
+      assert Model.hideable(model) == model.columns
+      assert Model.keeps_one?(model)
+    end
+
+    test "are all of them where the table has no column of its label" do
+      model = Model.build(AshTable.Test.Private.Minute)
+      # as for a person who does not see the label's field
+      model = %{model | columns: Enum.reject(model.columns, &(&1.name == :title))}
+
+      assert Enum.map(Model.hideable(model), & &1.name) == [:shouted, :folder]
+      assert Model.keeps_one?(model)
+    end
+  end
+
   describe "a column's kind" do
     test "tells attributes, calculations and aggregates apart" do
       model = Model.build(AshTable.Test.Issue)

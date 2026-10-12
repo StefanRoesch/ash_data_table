@@ -188,3 +188,20 @@ defmodule Demo.Support.Files.Scan do
     attribute :path, :string
   end
 end
+
+defmodule DemoWeb.Support.ScansLive do
+  @moduledoc """
+  A page of a host with the scans placed in it twice: two tables of one
+  LiveView, whose actions take a file under the same argument.
+  """
+  use Phoenix.LiveView
+
+  def mount(_params, _session, socket), do: {:ok, socket}
+
+  def render(assigns) do
+    ~H"""
+    <AshTable.table id="left" resource={Demo.Support.Files.Scan} />
+    <AshTable.table id="right" resource={Demo.Support.Files.Scan} />
+    """
+  end
+end

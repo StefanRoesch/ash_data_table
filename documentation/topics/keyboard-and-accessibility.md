@@ -44,7 +44,7 @@ order, not 425.
   its [table actions](table-actions.md) after it, the inputs of the
   [argument line](arguments.md), where the table has arguments, the buttons
   of the line above the grid ("Clear selection" and the bulk actions, while rows
-  are selected, and "Clear filters", while a filter applies), and the
+  are selected, "Clear filters", while a filter applies, and "Columns"), and the
   pagination buttons below it.
 - Moving about never contacts the server. Neither does selecting rows.
 - Where rows can be selected, the first cell of a row holds its box; where
@@ -120,6 +120,49 @@ a separator that takes focus and is moved with the arrow keys. It sits
 inside the heading and is reached with F2, as the controls of a filter
 cell and of an actions cell are reached from their cell, so the grid stays
 one tab stop.
+
+## Hiding columns from the keyboard
+
+"Columns", above the grid, is an ordinary button and a tab stop. It opens a
+list with a box per column; a column whose box is not ticked is hidden.
+What hiding does and does not do is in
+[Columns and defaults](columns-and-defaults.md#hiding-columns).
+
+| Key | Where | Effect |
+| --- | --- | --- |
+| Enter, Space | On "Columns" | Opens the list, or closes it. Focus stays on the button. |
+| Tab, Shift+Tab | On "Columns", with the list open | Tab goes to the first box, and on through the boxes. |
+| Space | On a box | Hides the column, or shows it again. The list stays open. |
+| Escape | On the button or in the list | Closes the list. Focus goes to the button. In a picker, the picker stays open. |
+| Tab | On the last box | Leaves the list, which closes. |
+
+A click anywhere outside the list closes it as well.
+
+In the grid, hidden columns are passed over:
+
+- Left and Right Arrow go to the next column that is shown. Home and End go
+  to the first and the last cell of the row that are shown.
+- A hidden cell never has focus and is never the tab stop. When the column
+  of the focused cell, or of the tab stop, is hidden, the next cell to the
+  right that is shown takes its place; where there is none, the next to the
+  left.
+
+It is a disclosure: a button with `aria-expanded` and `aria-controls`, and
+a group of labelled checkboxes named "Columns". It is not an ARIA menu. The
+button's text says how many columns are hidden, and how many of them the
+rows are filtered or sorted by: "Columns (2 hidden, 1 filtered)". Hiding
+or showing a column is read out once, politely: "Progress hidden",
+"Progress shown".
+
+A hidden column is not told to a screen reader: its cells are not
+displayed. The cells that are shown keep their `aria-colindex`, and the
+table keeps its `aria-colcount`, so column 5 of 12 is still announced as
+column 5 of 12 when column 4 is hidden. That is what ARIA has these two
+attributes for: a grid of which
+[not every column is there](https://www.w3.org/WAI/ARIA/apg/practices/grid-and-table-properties/).
+
+The "Columns" button of a nested table is a tab stop of its own, inside the
+grid around it: there is no other way to its list from the keyboard.
 
 ## The filter row from the keyboard
 

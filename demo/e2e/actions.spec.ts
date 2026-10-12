@@ -1040,9 +1040,11 @@ test.describe("creating a record", () => {
     tasks,
     frames,
   }) => {
-    // before the grid stand the inputs of the argument line, and before
-    // those the create button
+    // before the grid stand "Columns" (hiding.spec.ts) and the inputs of
+    // the argument line, and before those the create button
     await tasks.cell(FIRST, "title").focus()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.columnsButton).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
@@ -1109,8 +1111,9 @@ test.describe("creating a record", () => {
     await tasks.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.create).toBeFocused()
-    // the grid behind it is as it was, after the inputs of the argument line
-    for (let stops = 0; stops < 3; stops++) await page.keyboard.press("Tab")
+    // the grid behind it is as it was, after the inputs of the argument
+    // line and "Columns"
+    for (let stops = 0; stops < 4; stops++) await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
   })
 

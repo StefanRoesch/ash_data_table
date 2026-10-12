@@ -244,6 +244,11 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#uploads).
 
 ## Things people trip over
 
+- **Several tables in one LiveView can each take a file.** Two placed
+  tables, a table and its nested tables, a picker: each has its own upload,
+  also for arguments of the same name. The name LiveView knows an upload by
+  holds the table's id (`ID-file-ARGUMENT`); it is the `name` of the file
+  input.
 - **The file is gone after the action.** `Ash.Type.File.path/1` names a
   temporary file. Copy it, or store its content, inside the action.
 - **A larger file than 8 MB is refused though the action would take it.**

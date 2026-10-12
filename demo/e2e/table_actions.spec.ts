@@ -69,12 +69,15 @@ test.describe("the buttons", () => {
       right = own.x + own.width
     }
 
-    // Tab goes through them in that order, and then into the grid
+    // Tab goes through them in that order, then to "Columns"
+    // (hiding.spec.ts), and then into the grid
     await labels.create.focus()
     for (const name of ["count_unused", "recolour", "remove_unused", "merge", "import"]) {
       await page.keyboard.press("Tab")
       await expect(labels.tableAction(name)).toBeFocused()
     }
+    await page.keyboard.press("Tab")
+    await expect(labels.columnsButton).toBeFocused()
     await page.keyboard.press("Tab")
     expect(await labels.hasFocus()).toBe(true)
   })

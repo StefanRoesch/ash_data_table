@@ -916,6 +916,37 @@ defmodule AshTable.Model do
   end
 
   @doc """
+  The columns a person can hide, in the table's order: every column but the
+  one a record is called by, the attribute of the resource's `label_field`,
+  without which a row cannot be told from another. A table that has no
+  such column lets every column be hidden; one of them stays, whichever,
+  and that is the browser's to see to (`keeps_one?/1`).
+  """
+  @spec hideable(t) :: [Column.t()]
+  def hideable(%__MODULE__{columns: columns} = model) do
+    case label_column(model) do
+      nil -> columns
+      label -> List.delete(columns, label)
+    end
+  end
+
+  @doc """
+  Whether nothing but a rule keeps the table from being left without a
+  column: it has no column of its label, which stays whatever is hidden.
+  """
+  @spec keeps_one?(t) :: boolean
+  def keeps_one?(%__MODULE__{} = model), do: is_nil(label_column(model))
+
+  # The column of the attribute a record is called by, if the table has it.
+  defp label_column(%__MODULE__{resource: resource, columns: columns}) do
+    with {:ok, %{name: name}} <- Referencing.label_field(resource) do
+      Enum.find(columns, &(&1.kind == :attribute and &1.name == name))
+    else
+      _none_or_unusable -> nil
+    end
+  end
+
+  @doc """
   What a field of the resource is called in this table: the label of its
   column, or its humanised name when the table has no column for it.
   """

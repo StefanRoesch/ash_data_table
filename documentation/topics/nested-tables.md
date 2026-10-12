@@ -358,7 +358,8 @@ a nested table are rows of its grid and no tab stops of their own, so that
 Tab from anywhere in the tree leaves it. Its create button is on its line
 for the same reason, and so are the buttons of its table actions. The "Clear filters" button of a
 nested table is not reached from the keyboard; each filter is cleared from
-its own cell.
+its own cell. Its "Columns" button is a tab stop of its own: it is the only
+way to the list of the nested table's columns.
 
 Focus is kept through everything that patches the page. When a line or a
 row is closed while focus is inside it, focus goes to the line, or to the
@@ -707,6 +708,12 @@ in a nested table for each of its rows.
   is open**: a row that is saved shows the cell as "Not available". Where the
   relationship says `allow_forbidden_field? false`, the refusal fails the
   whole read, and the table shows that as the refusal of its own read.
+- **Hidden columns.** A nested table has its own "Columns" button, on a
+  line above its header, and what is hidden in it is that nested table's
+  alone. Closing the line and opening it again shows every column. Hiding
+  columns of the table around it leaves the line and the nested table as
+  wide as the columns that are still shown. See
+  [Columns and defaults](columns-and-defaults.md#hiding-columns).
 - **Column widths.** A person changes the widths of a nested table's columns
   as those of any table, and they are that nested table's alone. Closing
   the line and opening it again brings the columns back as they were laid

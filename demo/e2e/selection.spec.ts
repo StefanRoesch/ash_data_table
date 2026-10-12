@@ -390,7 +390,10 @@ test.describe("selecting from the keyboard", () => {
     tasks,
   }) => {
     await tasks.cell(FIRST, "title").focus()
+    // "Columns" (hiding.spec.ts) stands between the line's buttons and the grid
     await tasks.press("Space", "Shift+Tab")
+    expect(await tasks.focused()).toBe("task-columns-button")
+    await tasks.press("Shift+Tab")
     expect(await tasks.focused()).toBe("task-bulk-set_labels")
     await tasks.press("Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab")
     expect(await tasks.focused()).toBe("task-clear-selection")
@@ -919,6 +922,9 @@ test.describe("a nested table", () => {
     expect(await comments.selectedKeys()).toEqual([comment])
     expect(await tasks.selectedKeys()).toEqual([])
 
+    // its "Columns" button (hiding.spec.ts) stands between them and its grid
+    await page.keyboard.press("Shift+Tab")
+    expect(await tasks.focused()).toBe(`${comments.id}-columns-button`)
     await page.keyboard.press("Shift+Tab")
     expect(await tasks.focused()).toBe(`${comments.id}-bulk-destroy`)
   })

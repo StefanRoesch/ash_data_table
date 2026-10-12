@@ -184,6 +184,9 @@ test.describe("two grids on one page", () => {
     await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
+    // and its "Columns" button (hiding.spec.ts)
+    await page.keyboard.press("Tab")
+    await expect(tasks.columnsButton).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
     await page.keyboard.press("Tab")
@@ -191,6 +194,8 @@ test.describe("two grids on one page", () => {
 
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.columnsButton).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
@@ -248,11 +253,11 @@ test.describe("two grids on one page", () => {
     // Tab from the one comes to the cell the other was left on
     await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
     await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
-    // between the two grids: the pages of the first, and the create button
-    // and the two inputs of the argument line of the second
-    for (let stops = 0; stops < 5; stops++) await page.keyboard.press("Shift+Tab")
+    // between the two grids: the pages of the first, and the create button,
+    // the two inputs of the argument line and "Columns" of the second
+    for (let stops = 0; stops < 6; stops++) await page.keyboard.press("Shift+Tab")
     await expect(projects.actionsCell(projectKeys.at(-1)!)).toBeFocused()
-    for (let stops = 0; stops < 5; stops++) await page.keyboard.press("Tab")
+    for (let stops = 0; stops < 6; stops++) await page.keyboard.press("Tab")
     await expect(tasks.cell(taskKeys[1], "title")).toBeFocused()
     expect(await projects.tabStops()).toHaveLength(1)
     expect(await tasks.tabStops()).toHaveLength(1)

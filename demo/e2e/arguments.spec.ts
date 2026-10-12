@@ -71,9 +71,13 @@ test.describe("the line of /tasks", () => {
     await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
+    // between the line and the grid: "Columns" (hiding.spec.ts)
+    await page.keyboard.press("Tab")
+    await expect(tasks.columnsButton).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
     // and back
+    await page.keyboard.press("Shift+Tab")
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
 
@@ -316,6 +320,9 @@ test.describe("/deadlines: a read action that requires an argument", () => {
     await deadlines.argument("include_done?").focus()
     await page.keyboard.press("Tab")
     await expect(page.locator("#deadline-arg-tags-add")).toBeFocused()
+    // "Columns" stands between the line and the grid (hiding.spec.ts)
+    await page.keyboard.press("Tab")
+    await expect(deadlines.columnsButton).toBeFocused()
     await page.keyboard.press("Tab")
     expect(await deadlines.hasFocus()).toBe(true)
   })

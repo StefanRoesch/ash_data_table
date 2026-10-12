@@ -28,6 +28,11 @@ defmodule AshTable.Live.TableComponent do
   #   * the header cell of a column ends in the handle that changes the
   #     column's width, `ID-resize-FIELD` (`resizer/1`). The widths are the
   #     hook's and the server never hears of them;
+  #   * above the grid, `ID-columns-button` opens the list `ID-columns`, which
+  #     has a box per column that a person can hide, `ID-column-FIELD`, in
+  #     its label `ID-column-FIELD-entry` (`columns/1`). Which columns are
+  #     hidden is the hook's, and the server never hears of it: a hidden
+  #     column is rendered as any other;
   #   * `aria-colindex` is computed through `colindex/2`, which counts the
   #     leading columns in when the table has them: the boxes that select a
   #     row, then the expanders; the actions column goes after the last
@@ -188,7 +193,7 @@ defmodule AshTable.Live.TableComponent do
   #
   # An argument that takes a file is a field of the action panel that is an
   # upload of LiveView's (`live_file_input/1`), allowed by this component
-  # when a panel with such a field opens, under the name `file-ARGUMENT`.
+  # when a panel with such a field opens, under the name `ID-file-ARGUMENT`.
   # The input's id is LiveView's; its label points at it. The file is sent
   # by LiveView's client when the panel's form is submitted, and the action
   # runs while LiveView holds it (see "Files" among the functions below).
@@ -2968,16 +2973,21 @@ defmodule AshTable.Live.TableComponent do
   # button having been used is given up when the next panel opens
   # (`opened/2`).
 
-  # The name of the upload of a field.
-  defp upload_name(%{name: name}), do: "file-" <> Atom.to_string(name)
+  # The name of the upload of a field: with the table's id before the
+  # argument's name. LiveView wants the name of an upload to be one of a
+  # kind in its process, and the tables of a page are all of one process:
+  # two tables placed in a LiveView, a table and the tables nested in it,
+  # a picker. Two of them can have an action with an argument of the same
+  # name, and each a file for it at the same time.
+  defp upload_name(id, %{name: name}), do: id <> "-file-" <> Atom.to_string(name)
 
   defp file_inputs(%{inputs: inputs}), do: Enum.filter(inputs, &(&1.editor == :file))
 
   # The upload of a field, as LiveView keeps it; nil for any other field.
-  defp upload_of(uploads, %{editor: :file} = input) when is_map(uploads),
-    do: Map.get(uploads, upload_name(input))
+  defp upload_of(uploads, id, %{editor: :file} = input) when is_map(uploads),
+    do: Map.get(uploads, upload_name(id, input))
 
-  defp upload_of(_uploads, _input), do: nil
+  defp upload_of(_uploads, _id, _input), do: nil
 
   # The file of an upload, which holds one at most, as LiveView knows it
   # (an entry). A file that another has taken the place of is still among
@@ -3002,7 +3012,7 @@ defmodule AshTable.Live.TableComponent do
 
     socket =
       Enum.reduce(file_inputs(panel), socket, fn input, socket ->
-        name = upload_name(input)
+        name = upload_name(socket.assigns.id, input)
 
         if is_map_key(socket.assigns[:uploads] || %{}, name) do
           socket
@@ -3024,7 +3034,9 @@ defmodule AshTable.Live.TableComponent do
     spent = socket.assigns.spent
 
     Enum.reduce(socket.assigns[:uploads] || %{}, socket, fn
-      {"file-" <> _argument = name, %{entries: entries}}, socket ->
+      # every upload of this component is one of a panel's fields; what else
+      # the map holds is LiveView's own, under a key that is no name
+      {name, %{entries: entries}}, socket when is_binary(name) ->
         Enum.reduce(entries, socket, fn entry, socket ->
           if entry.cancelled? or entry.ref in spent,
             do: socket,
@@ -3048,7 +3060,10 @@ defmodule AshTable.Live.TableComponent do
     # comes without them was not sent by it
     waiting? =
       Enum.any?(inputs, fn input ->
-        match?(%{done?: false}, entry(upload_of(socket.assigns[:uploads], input)))
+        match?(
+          %{done?: false},
+          entry(upload_of(socket.assigns[:uploads], socket.assigns.id, input))
+        )
       end)
 
     cond do
@@ -3072,7 +3087,7 @@ defmodule AshTable.Live.TableComponent do
   defp attach(_socket, [], files, run), do: run.(files)
 
   defp attach(socket, [input | rest], files, run) do
-    case entry(upload_of(socket.assigns[:uploads], input)) do
+    case entry(upload_of(socket.assigns[:uploads], socket.assigns.id, input)) do
       %{done?: true} = entry ->
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
           file = %Plug.Upload{
@@ -3113,7 +3128,7 @@ defmodule AshTable.Live.TableComponent do
   # field, what is shown at the field.
   defp refused_files(socket, panel) do
     for input <- file_inputs(panel),
-        texts = upload_errors_of(upload_of(socket.assigns[:uploads], input)),
+        texts = upload_errors_of(upload_of(socket.assigns[:uploads], socket.assigns.id, input)),
         texts != [],
         do: {input.label, texts}
   end
@@ -3191,12 +3206,12 @@ defmodule AshTable.Live.TableComponent do
 
   # What is read out of a field when the panel stays open: for a file, what
   # is shown at its field; for the rest, what the action said.
-  defp said_of(panel, %{editor: :file} = input, uploads) do
-    upload = upload_of(uploads, input)
+  defp said_of(panel, %{editor: :file} = input, id, uploads) do
+    upload = upload_of(uploads, id, input)
     upload_errors_of(upload) ++ file_errors(panel, input, upload)
   end
 
-  defp said_of(panel, input, _uploads), do: Map.get(panel.errors, input && input.name, [])
+  defp said_of(panel, input, _id, _uploads), do: Map.get(panel.errors, input && input.name, [])
 
   # What the panel says of the fields whose key names a record the person
   # could not have chosen: nothing ran.
@@ -3299,7 +3314,7 @@ defmodule AshTable.Live.TableComponent do
         told =
           for input <- file_inputs(panel), into: %{} do
             {input.name,
-             {entry_ref(upload_of(socket.assigns[:uploads], input)),
+             {entry_ref(upload_of(socket.assigns[:uploads], socket.assigns.id, input)),
               Map.get(panel.errors, input.name, [])}}
           end
 
@@ -3315,7 +3330,7 @@ defmodule AshTable.Live.TableComponent do
 
     said =
       for input <- [nil | panel.inputs],
-          text <- said_of(panel, input, socket.assigns[:uploads]) do
+          text <- said_of(panel, input, socket.assigns.id, socket.assigns[:uploads]) do
         if input, do: Text.t(:error_on_field, field: input.label, message: text), else: text
       end
 
@@ -3665,9 +3680,9 @@ defmodule AshTable.Live.TableComponent do
       >
       </form>
       <%!-- The line above the grid: what is selected and what can be done with
-      it at one end, "Clear filters" at the other. As high as a button, so that
-      the table does not move when either appears; a nested table keeps no room
-      free for it. --%>
+      it at one end, "Clear filters" and "Columns" at the other. As high as a
+      button, so that the table does not move when one of them appears; a nested
+      table keeps no room free for it. --%>
       <div class={[
         "flex flex-wrap items-center gap-2",
         if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-between")
@@ -3696,6 +3711,14 @@ defmodule AshTable.Live.TableComponent do
         >
           {Text.t(:clear_filters)}
         </button>
+        <.columns
+          :if={length(@model.columns) > 1 and Model.hideable(@model) != []}
+          id={@id}
+          columns={Model.hideable(@model)}
+          keeps_one?={Model.keeps_one?(@model)}
+          state={@state}
+          class={not @nested? and @state.filters == %{} and "ms-auto"}
+        />
       </div>
       <%!-- Read out after each filter change, and when a save fails. A live region
       is only read when its content changes, so every other announcement ends in a
@@ -4601,7 +4624,8 @@ defmodule AshTable.Live.TableComponent do
         // outside a modal dialog can be reached while it is open.
         //
         // How wide the columns are is known here alone as well, once a
-        // person has changed a width (see "the widths of the columns").
+        // person has changed a width (see "the widths of the columns"), and
+        // so is which columns a person has hidden (see "hiding columns").
 
         // a key that types a character
         const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -4725,6 +4749,10 @@ defmodule AshTable.Live.TableComponent do
             // sheet that holds them.
             this.widths = null
             this.sheet = null
+            // the columns a person has hidden, by the id of their header,
+            // and where those stand now (`aria-colindex`)
+            this.hidden = new Set()
+            this.goneAt = new Set()
             // What is selected: `keys` holds the rows by the key in their
             // id, each with what the server is told of it (see `named`);
             // `all` says that every record the filters match is selected,
@@ -4748,6 +4776,16 @@ defmodule AshTable.Live.TableComponent do
             // action panel. Nothing is sent for it.
             this.onTyped = e => this.onCount(e)
             if (this.root) this.root.addEventListener("input", this.onTyped)
+            // and so is "Columns", with its list
+            this.onColumns = e => this.onColumnsEvent(e)
+            for (const type of ["click", "change", "keydown", "focusout"]) {
+              if (this.root) this.root.addEventListener(type, this.onColumns)
+            }
+            // a click anywhere else closes the list
+            this.onOutside = e => {
+              const control = this.part("columns-control")
+              if (!control || !control.contains(e.target)) this.closeColumns(false)
+            }
             // A patch of the argument line brings its counters as the
             // server counted them, from what it had heard by then, which
             // need not be all that has been typed since: they are counted
@@ -4803,8 +4841,9 @@ defmodule AshTable.Live.TableComponent do
             this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)))
             this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
             this.el.addEventListener("mouseleave", () => this.onPointer(null))
-            this.onScroll = () => { this.showMessage(); this.placeCount() }
+            this.onScroll = () => { this.showMessage(); this.placeCount(); this.placeColumns() }
             window.addEventListener("scroll", this.onScroll, true)
+            window.addEventListener("resize", this.onScroll)
             // updated() only runs when this element itself is patched; a
             // stream insert or reset touches the rows alone.
             //
@@ -4839,8 +4878,14 @@ defmodule AshTable.Live.TableComponent do
             this.unstyle()
             this.observer && this.observer.disconnect()
             this.counted && this.counted.disconnect()
+            this.listed && this.listed.disconnect()
+            document.removeEventListener("pointerdown", this.onOutside, true)
+            for (const type of ["click", "change", "keydown", "focusout"]) {
+              if (this.root) this.root.removeEventListener(type, this.onColumns)
+            }
             if (this.root) this.root.removeEventListener("input", this.onTyped)
             window.removeEventListener("scroll", this.onScroll, true)
+            window.removeEventListener("resize", this.onScroll)
             if (this.root) this.root.removeEventListener("click", this.onLine)
             if (this.root) this.root.removeEventListener("keydown", this.onArgument)
           },
@@ -4991,7 +5036,9 @@ defmodule AshTable.Live.TableComponent do
             const rows = this.rows()
             if (rows.length === 0) return null
             const row = rows[Math.max(0, Math.min(r, rows.length - 1))]
-            return row.cells[Math.max(0, Math.min(c, row.cells.length - 1))] || null
+            const cell = row.cells[Math.max(0, Math.min(c, row.cells.length - 1))]
+            // never a cell of a hidden column: the one beside it
+            return cell ? this.seenNear(cell) : null
           },
 
           setActive(cell) {
@@ -5025,6 +5072,7 @@ defmodule AshTable.Live.TableComponent do
           sync(records) {
             if (!records || records.some(record => record.attributeName !== "tabindex")) {
               this.paint()
+              this.watchColumns()
               this.fitColumns()
             }
             // a patch has brought the cell whose value was shown as the
@@ -5324,8 +5372,6 @@ defmodule AshTable.Live.TableComponent do
             const rows = this.rows()
             const head = this.headRows()
             const r = cell.parentElement.rowIndex
-            const c = cell.cellIndex
-            const lastC = cell.parentElement.cells.length - 1
             const lastR = rows.length - 1
             const ctrl = e.ctrlKey || e.metaKey
             let handled = true
@@ -5350,11 +5396,11 @@ defmodule AshTable.Live.TableComponent do
               // Arrow on one that is open closes it, as in a tree
               case "ArrowRight":
                 if (expands && !this.isOpen(cell)) this.open(cell)
-                else if (!this.spans(cell)) { this.col = Math.min(c + 1, lastC); this.move(r, this.col) }
+                else if (!this.spans(cell)) { this.col = this.step(cell, 1); this.move(r, this.col) }
                 break
               case "ArrowLeft":
                 if (expands && this.isOpen(cell)) this.open(cell)
-                else if (!this.spans(cell)) { this.col = Math.max(c - 1, 0); this.move(r, this.col) }
+                else if (!this.spans(cell)) { this.col = this.step(cell, -1); this.move(r, this.col) }
                 break
               case "ArrowDown": this.move(r + 1, this.col); break
               // from the first data row this reaches the filter row, then the header
@@ -5362,14 +5408,15 @@ defmodule AshTable.Live.TableComponent do
               case "PageDown": this.move(Math.min(r + this.pageRows(cell), lastR), this.col); break
               // stays in the data rows; the header rows are an Arrow Up further
               case "PageUp": this.move(r < head ? r : Math.max(r - this.pageRows(cell), head), this.col); break
+              // to the first column that is shown, and to the last
               case "Home":
-                this.col = 0
-                this.move(ctrl ? Math.min(head, lastR) : r, 0)
+                this.col = this.edge(rows[0], 1)
+                this.move(ctrl ? Math.min(head, lastR) : r, this.col)
                 break
               case "End": {
                 const row = ctrl ? rows[lastR] : cell.parentElement
-                if (!this.spans(row.cells[0])) this.col = row.cells.length - 1
-                this.move(row.rowIndex, row.cells.length - 1)
+                if (!this.spans(row.cells[0])) this.col = this.edge(row, -1)
+                this.move(row.rowIndex, this.edge(row, -1))
                 break
               }
               case "Enter":
@@ -5487,6 +5534,9 @@ defmodule AshTable.Live.TableComponent do
             if (this.widths) return true
             const widths = new Map()
             for (const th of this.headCells()) {
+              // a hidden column has no width to take: it is given one
+              // when it is shown again (`fitColumns`)
+              if (this.hidden.has(th.id)) continue
               const width = th.getBoundingClientRect().width
               if (!width) return false
               widths.set(th.id, {width, original: width})
@@ -5500,28 +5550,44 @@ defmodule AshTable.Live.TableComponent do
           // says, whatever its cells hold: what does not fit is cut off,
           // in the header and in the filter as in the cells, and nothing
           // in them insists on a width of its own.
+          //
+          // And the hidden columns: the header, the filter and the cells
+          // of one are not shown at all (`display: none`), which takes
+          // them out of what a screen reader is told as well.
           restyle() {
             const table = this.el.querySelector("table")
-            if (!this.widths || !table) return
+            if (!table || !table.tHead) return
+            const heads = this.headCells()
+            this.styled = this.headed(heads)
+            this.goneAt = new Set()
+            if (!this.widths && this.hidden.size === 0) {
+              if (this.sheet) this.sheet.replaceSync("")
+              return
+            }
             const at = `#${CSS.escape(table.id)}`
             const filters = table.tHead.rows[1]
-            let css = `${at}{width:auto;min-width:0;max-width:none}`
-            const heads = this.headCells()
+            let css = this.widths ? `${at}{width:auto;min-width:0;max-width:none}` : ""
             for (const th of heads) {
-              const entry = this.widths.get(th.id)
-              if (!entry) continue
+              const gone = this.hidden.has(th.id)
+              const entry = this.widths && this.widths.get(th.id)
+              if (!gone && !entry) continue
+              const place = th.getAttribute("aria-colindex")
               const head = `#${CSS.escape(th.id)}`
-              const cells = `${at}>tbody>tr>td[aria-colindex="${th.getAttribute("aria-colindex")}"]:not([colspan])`
+              const cells = `${at}>tbody>tr>td[aria-colindex="${place}"]:not([colspan])`
               const filter = filters && filters.cells[th.cellIndex] && filters.cells[th.cellIndex].id
                 ? `#${CSS.escape(filters.cells[th.cellIndex].id)}`
                 : null
               const all = [head, cells].concat(filter ? [filter] : [])
+              if (gone) {
+                this.goneAt.add(place)
+                css += `${all.join(",")}{display:none}`
+                continue
+              }
               const above = [head].concat(filter ? [filter] : [])
               css += `${all.join(",")}{width:${entry.width}px;min-width:${entry.width}px;max-width:${entry.width}px}`
               css += `${above.join(",")}{overflow:hidden;text-overflow:ellipsis}`
               css += `${all.map(one => `${one}>*,${one} :is(input,select,textarea)`).join(",")}{min-width:0}`
             }
-            this.styled = this.headed(heads)
             if (!this.sheet) {
               this.sheet = new CSSStyleSheet()
               document.adoptedStyleSheets = [...document.adoptedStyleSheets, this.sheet]
@@ -5545,18 +5611,23 @@ defmodule AshTable.Live.TableComponent do
           // the rules are written for the header as it is.
           fitColumns() {
             const heads = this.headCells()
-            if (this.widths && this.styled !== this.headed(heads)) {
-              this.restyle()
+            if (this.styled !== this.headed(heads)) this.restyle()
+            if (this.widths) {
+              // a column that has no width yet takes the one it has now:
+              // one the server has added, or one that was hidden when the
+              // others were given theirs
+              let added = false
               for (const th of heads) {
-                if (this.widths.has(th.id)) continue
+                if (this.widths.has(th.id) || this.hidden.has(th.id)) continue
                 const width = th.getBoundingClientRect().width
-                if (width) this.widths.set(th.id, {width, original: width})
+                if (width) { this.widths.set(th.id, {width, original: width}); added = true }
               }
-              this.restyle()
+              if (added) this.restyle()
             }
             for (const th of heads) {
               const handle = this.handleOf(th)
-              if (!handle) continue
+              // the handle of a hidden column says what it said last
+              if (!handle || this.hidden.has(th.id)) continue
               const [least, most] = this.limits(handle)
               const now = String(Math.round(Math.min(most, Math.max(least, th.getBoundingClientRect().width))))
               if (handle.getAttribute("aria-valuenow") !== now) handle.setAttribute("aria-valuenow", now)
@@ -5663,6 +5734,244 @@ defmodule AshTable.Live.TableComponent do
               default: return
             }
             e.preventDefault()
+          },
+
+          // ---- hiding columns ----------------------------------------------
+
+          // A person hides a column of the table, and shows it again, in
+          // the list that "Columns" opens above the grid: a box for every
+          // column that can be hidden. The server renders the button and
+          // the list, with every box ticked, and knows nothing of what is
+          // hidden: the column is read and rendered as before, and is
+          // hidden here, by a rule of the style sheet that holds the
+          // widths, written the same way (for the header by its id, for
+          // the cells under it by where they stand). So no patch brings a
+          // hidden column back, whatever it brings, and nothing is sent.
+          // What is hidden is gone with the hook: with the page, and with
+          // a nested table that is closed.
+          //
+          // A hidden column is still a column of the grid: the cells keep
+          // their place in the row and what they say of it
+          // (`aria-colindex`, and `aria-colcount` on the table), as ARIA
+          // has it for a grid of which not every column is there to be
+          // seen. They are not shown and not told to a screen reader, and
+          // focus never goes to one: the arrow keys, Home and End pass
+          // over them, and the tab stop is always a cell that is shown.
+          //
+          // What this hook writes outside its own style sheet: which
+          // boxes are ticked, the text of the button, and what is read
+          // out (see `columns/1` for what a patch does to them).
+
+          // Whether a cell is one of a hidden column. A cell that spans
+          // the table is of none.
+          gone(cell) {
+            return this.goneAt.size > 0 && !cell.hasAttribute("colspan") && this.goneAt.has(cell.getAttribute("aria-colindex"))
+          },
+
+          // A cell itself, or for one of a hidden column the nearest cell
+          // of its row that is shown: after it, else before it.
+          seenNear(cell) {
+            if (!this.gone(cell)) return cell
+            const cells = cell.parentElement.cells
+            for (let i = cell.cellIndex + 1; i < cells.length; i++) if (!this.gone(cells[i])) return cells[i]
+            for (let i = cell.cellIndex - 1; i >= 0; i--) if (!this.gone(cells[i])) return cells[i]
+            return cell
+          },
+
+          // Where the next cell that is shown stands in a cell's row, to
+          // one side of it (`by` is 1 or -1); where the cell stands itself
+          // when there is none.
+          step(cell, by) {
+            const cells = cell.parentElement.cells
+            for (let i = cell.cellIndex + by; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
+            return cell.cellIndex
+          },
+
+          // Where the first cell of a row that is shown stands (`by` is
+          // 1), or the last (-1).
+          edge(row, by) {
+            const cells = row.cells
+            const from = by > 0 ? 0 : cells.length - 1
+            for (let i = from; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
+            return from
+          },
+
+          // A patch may bring the list with another column or without
+          // one, say of a column that the rows are filtered or sorted by
+          // it now, or tick a box again, as the server renders every box:
+          // the list is watched for all of that, from when it is there (a
+          // table gets its list once it has two columns), and what this
+          // hook knows is put back before the page is drawn.
+          watchColumns() {
+            const list = this.part("columns")
+            if (!list || this.watched === list) return
+            this.watched = list
+            if (this.listed) this.listed.disconnect()
+            this.listed = new MutationObserver(() => this.applyColumns())
+            this.listed.observe(list, {
+              subtree: true,
+              childList: true,
+              attributes: true,
+              attributeFilter: ["data-filtered", "data-sorted", "checked", "disabled"]
+            })
+            this.applyColumns()
+          },
+
+          // The boxes of the list, one per column that can be hidden.
+          boxes() {
+            const list = this.part("columns")
+            return list ? Array.from(list.querySelectorAll("input[type=checkbox]")) : []
+          },
+
+          // Whether the list is open.
+          columnsOpen() {
+            const list = this.part("columns")
+            return !!list && list.matches(":popover-open")
+          },
+
+          // What happens at "Columns" and in its list, which are outside
+          // this element. Those of a table nested in this one are inside
+          // this table's element too, and are that table's.
+          onColumnsEvent(e) {
+            const target = e.target
+            const control = this.part("columns-control")
+            if (!control || !target || !target.closest || !control.contains(target)) return
+            const button = this.part("columns-button")
+            switch (e.type) {
+              case "click":
+                if (button.contains(target)) this.columnsOpen() ? this.closeColumns(false) : this.openColumns()
+                break
+              case "change":
+                if (target.dataset.head !== undefined) this.onColumnChange(target)
+                break
+              // Escape closes the list, and nothing else: not the dialog
+              // the table is in, which the browser closes for a key that
+              // nobody has dealt with
+              case "keydown":
+                if (e.key !== "Escape" || !this.columnsOpen()) return
+                e.preventDefault()
+                this.closeColumns(true)
+                break
+              // so does focus that goes on to somewhere else
+              case "focusout":
+                if (e.relatedTarget && !control.contains(e.relatedTarget)) this.closeColumns(false)
+                break
+            }
+          },
+
+          openColumns() {
+            const list = this.part("columns")
+            const button = this.part("columns-button")
+            if (!list || !button || !list.showPopover) return
+            list.showPopover()
+            button.setAttribute("aria-expanded", "true")
+            this.placeColumns()
+            document.addEventListener("pointerdown", this.onOutside, true)
+          },
+
+          // Closes the list. `refocus` puts focus on the button, for
+          // Escape; after a click elsewhere it is left where the person
+          // has put it.
+          closeColumns(refocus) {
+            const list = this.part("columns")
+            const button = this.part("columns-button")
+            document.removeEventListener("pointerdown", this.onOutside, true)
+            if (!list || !button || !this.columnsOpen()) return
+            list.hidePopover()
+            button.setAttribute("aria-expanded", "false")
+            if (refocus) button.focus()
+          },
+
+          // The list is shown under its button, and stays in the window.
+          placeColumns() {
+            if (!this.columnsOpen()) return
+            const list = this.part("columns")
+            const box = this.part("columns-button").getBoundingClientRect()
+            list.style.top = `${box.bottom + 2}px`
+            list.style.left = `${Math.max(0, Math.min(box.left, window.innerWidth - list.offsetWidth - 8))}px`
+          },
+
+          // A box of the list was used: its column is hidden, or shown
+          // again, and that is read out.
+          onColumnChange(box) {
+            if (box.checked) this.hidden.delete(box.dataset.head)
+            else this.hidden.add(box.dataset.head)
+            this.applyColumns()
+            const button = this.part("columns-button")
+            const status = this.part("columns-status")
+            const text = this.hidden.has(box.dataset.head) ? button.dataset.sayHidden : button.dataset.sayShown
+            if (status) status.textContent = text.replace("{column}", box.dataset.label)
+          },
+
+          // What is hidden has changed, or may have: the list, the rules,
+          // and where focus and the tab stop are follow.
+          applyColumns() {
+            // where focus is before its cell is taken out of sight, which
+            // takes focus away from it
+            const focused = this.cellOf(document.activeElement)
+            this.paintColumns()
+            this.restyle()
+            this.leaveHidden(focused)
+            this.fitColumns()
+            this.showMessage()
+            this.placeCount()
+          },
+
+          // Says in the list which columns are shown, and on the button
+          // how many are hidden, and how many of those the rows are
+          // filtered and sorted by: their filters are in the header row,
+          // out of sight with them. After every change of what is hidden,
+          // and of the list.
+          //
+          // Where one column has to stay (`data-keeps-one`), the box of
+          // the last column that is shown cannot be used; and should the
+          // server take the last one away, the first of the others is
+          // shown again.
+          paintColumns() {
+            const list = this.part("columns")
+            const button = this.part("columns-button")
+            if (!list || !button) return
+            const boxes = this.boxes()
+            const keepsOne = list.dataset.keepsOne !== undefined
+            const seen = () => boxes.filter(box => !this.hidden.has(box.dataset.head))
+            if (keepsOne && boxes.length > 0 && seen().length === 0) this.hidden.delete(boxes[0].dataset.head)
+            const last = keepsOne && seen().length === 1 ? seen()[0] : null
+            const counts = {hidden: 0, filtered: 0, sorted: 0}
+            for (const box of boxes) {
+              const on = !this.hidden.has(box.dataset.head)
+              // The attribute with the property: a patch ticks the box
+              // again by writing the attribute, which is what the list
+              // is watched for.
+              if (box.checked !== on) box.checked = on
+              if (box.hasAttribute("checked") !== on) box.toggleAttribute("checked", on)
+              if (box.disabled !== (box === last)) box.disabled = box === last
+              if (on) continue
+              counts.hidden++
+              if (box.dataset.filtered !== undefined) counts.filtered++
+              if (box.dataset.sorted !== undefined) counts.sorted++
+            }
+            const {text, textWith, textHidden, textFiltered, textSorted} = button.dataset
+            const details = [[counts.hidden, textHidden], [counts.filtered, textFiltered], [counts.sorted, textSorted]]
+              .filter(([count]) => count > 0)
+              .map(([count, words]) => words.replace("{n}", String(count)))
+            const says = details.length > 0 ? textWith.replace("{details}", details.join(", ")) : text
+            const shown = this.part("columns-text")
+            if (shown && shown.textContent !== says) shown.textContent = says
+          },
+
+          // Nothing stays in a column that is hidden now: focus and the
+          // tab stop move to the nearest cell that is shown. That is all
+          // it takes for what was open in the column: an editor is left
+          // as focus leaves it, which saves, and a sensitive value that
+          // is shown is hidden again, as it is shown for as long as
+          // focus is at its cell. `focused` is the cell focus was in
+          // before the column went.
+          leaveHidden(focused) {
+            if (this.goneAt.size === 0) return
+            if (focused && this.gone(focused)) this.seenNear(focused).focus({preventScroll: true})
+            const tree = this.tree()
+            const active = tree.owner === this.el && tree.activeId && document.getElementById(tree.activeId)
+            if (active && this.el.contains(active) && this.gone(active)) this.setActive(this.seenNear(active))
           },
 
           // ---- selecting ---------------------------------------------------
@@ -7294,7 +7603,7 @@ defmodule AshTable.Live.TableComponent do
           input={input}
           name={@form[input.name].name}
           value={panel_value(@panel, @form, input)}
-          errors={field_errors(@panel, input, upload_of(@uploads, input))}
+          errors={field_errors(@panel, input, upload_of(@uploads, @id, input))}
           places={field_places(@panel, input)}
           chosen={@panel.chosen[input.name]}
           clear={
@@ -7304,7 +7613,7 @@ defmodule AshTable.Live.TableComponent do
               true -> nil
             end
           }
-          upload={upload_of(@uploads, input)}
+          upload={upload_of(@uploads, @id, input)}
           inside={
             %{
               errors: @panel.errors,
@@ -8729,6 +9038,117 @@ defmodule AshTable.Live.TableComponent do
       ]}
     ></span>
     """
+  end
+
+  # "Columns": the button above the grid that opens the list of the table's
+  # columns, with a box each. A column whose box is not ticked is hidden.
+  #
+  # Hidden in the browser, and nowhere else: the server reads the column and
+  # renders it as before, and never hears which columns a person hid. The
+  # hook hides them with rules of its own style sheet, beside the widths
+  # (see "hiding columns" in the hook), and they are back when the page is
+  # loaded again. So what depends on it is the hook's to put in: the text
+  # of the button, which says how many are hidden, which boxes are ticked,
+  # and what is read out. The server renders the button with its plain
+  # text and every box ticked. Its patches leave the button's text, whether
+  # the list is open and where it stands alone; a box they tick again, which
+  # the hook sees and puts right before anything is drawn.
+  #
+  # It is a disclosure, not a menu: a button that says whether the list is
+  # open (`aria-expanded`), and a group of labelled boxes. The list is a
+  # popover, so that nothing around the table cuts it off: not the grid
+  # that scrolls sideways around a nested table, and not a dialog.
+  #
+  # `columns` are the columns that can be hidden (`AshTable.Model.hideable/1`).
+  # A column that is filtered or sorted by says so at its box, in text, for
+  # as long as it is hidden (`data-flag`, shown while the box is not
+  # ticked): its filter is in the header row, and goes out of sight with
+  # it. What the server says for the hook:
+  #
+  #   * `data-head` at a box is the id of the column's header;
+  #   * `data-filtered` and `data-sorted` at a box, that the rows are
+  #     filtered or sorted by its column;
+  #   * `data-keeps-one` at the list, that one column has to stay (the
+  #     table has no column of its label, which would);
+  #   * the texts, with `{n}`, `{details}` and `{column}` where the hook
+  #     puts something in.
+  attr :id, :string, required: true
+  attr :columns, :list, required: true
+  attr :keeps_one?, :boolean, required: true
+  attr :state, :map, required: true
+  attr :class, :any, default: nil
+
+  defp columns(assigns) do
+    ~H"""
+    <div id={"#{@id}-columns-control"} class={@class}>
+      <button
+        type="button"
+        id={"#{@id}-columns-button"}
+        aria-expanded="false"
+        aria-controls={"#{@id}-columns"}
+        phx-mounted={JS.ignore_attributes(["aria-expanded"])}
+        data-columns-button
+        data-text={Text.t(:columns)}
+        data-text-with={Text.t(:columns_with, details: "{details}")}
+        data-text-hidden={Text.t(:columns_hidden, count: "{n}")}
+        data-text-filtered={Text.t(:columns_filtered, count: "{n}")}
+        data-text-sorted={Text.t(:columns_sorted, count: "{n}")}
+        data-say-hidden={Text.t(:column_hidden, column: "{column}")}
+        data-say-shown={Text.t(:column_shown, column: "{column}")}
+        class="btn btn-sm"
+      >
+        <span id={"#{@id}-columns-text"} phx-update="ignore">{Text.t(:columns)}</span>
+      </button>
+      <%!-- with the edge and the ground of the table's other popovers --%>
+      <div
+        id={"#{@id}-columns"}
+        role="group"
+        aria-label={Text.t(:columns)}
+        popover="manual"
+        phx-mounted={JS.ignore_attributes(["style"])}
+        data-columns-list
+        data-keeps-one={@keeps_one?}
+        class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow"
+      >
+        <label
+          :for={column <- @columns}
+          id={"#{@id}-column-#{column.name}-entry"}
+          class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
+        >
+          <input
+            type="checkbox"
+            id={"#{@id}-column-#{column.name}"}
+            checked
+            data-head={"#{@id}-head-#{column.name}"}
+            data-label={column.label}
+            data-filtered={is_map_key(@state.filters, column.name)}
+            data-sorted={aria_sort(@state.sort, column) != "none"}
+            class={["peer checkbox checkbox-xs", box_edge()]}
+          />
+          <span>{column.label}</span>
+          <span :if={column_flag(@state, column)} data-flag class="peer-checked:hidden">
+            ({column_flag(@state, column)})
+          </span>
+        </label>
+      </div>
+      <%!-- What the hook says when a column is hidden or shown again. A live
+      region of its own: the one above the grid is rendered by the server,
+      and would say its last text once more when the next patch put it back. --%>
+      <p id={"#{@id}-columns-status"} role="status" phx-update="ignore" class="sr-only"></p>
+    </div>
+    """
+  end
+
+  # What a column's box in the list says of the column besides its name,
+  # while the column is hidden: that the rows are filtered by it, sorted by
+  # it, or both.
+  defp column_flag(state, column) do
+    case {is_map_key(state.filters, column.name), aria_sort(state.sort, column) != "none"} do
+      {true, true} -> Text.t(:column_filtered_sorted)
+      {true, false} -> Text.t(:column_filtered)
+      {false, true} -> Text.t(:column_sorted)
+      {false, false} -> nil
+    end
   end
 
   # The narrowest and the widest a person can make a column, in pixels.

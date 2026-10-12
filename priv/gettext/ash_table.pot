@@ -436,3 +436,43 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Resize %{column}"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{column} hidden"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{column} shown"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{count} filtered"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{count} hidden"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "%{count} sorted"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Columns"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Columns (%{details})"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "filtered"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "filtered, sorted"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "sorted"
+msgstr ""

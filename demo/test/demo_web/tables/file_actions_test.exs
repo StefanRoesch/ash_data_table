@@ -34,7 +34,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
   # LiveView's client does when the panel's button is used.
   defp upload(view, name, file, content, type \\ "text/plain") do
     input =
-      file_input(view, "[id='scan-panel-form']", "file-#{name}", [
+      file_input(view, "[id='scan-panel-form']", "scan-file-#{name}", [
         %{name: file, content: content, type: type}
       ])
 
@@ -82,7 +82,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
                ]
 
       # limited as the block says
-      assert file_inputs(html) == [{"file-file", ".txt,text/plain"}]
+      assert file_inputs(html) == [{"scan-file-file", ".txt,text/plain"}]
     end
 
     test "the action is given the file when \"Run\" is used: its content, the name the browser gave, and its type",
@@ -171,7 +171,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
       html = type_in_panel(view, "scan", title: "Page one")
       assert field(html, "file").errors == []
 
-      file_input(view, "[id='scan-panel-form']", "file-file", [
+      file_input(view, "[id='scan-panel-form']", "scan-file-file", [
         %{name: "notes.txt", content: "hello", type: "text/plain"}
       ])
       |> preflight_upload()
@@ -188,7 +188,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
       act(view, "scan", scan.id, "attach")
 
       # chosen, and not sent: LiveView's client sends the file before the form
-      file_input(view, "[id='scan-panel-form']", "file-file", [
+      file_input(view, "[id='scan-panel-form']", "scan-file-file", [
         %{name: "notes.txt", content: "hello", type: "text/plain"}
       ])
       |> preflight_upload()
@@ -278,7 +278,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
                {"rear", "file", false}
              ]
 
-      assert file_inputs(html) == [{"file-front", nil}, {"file-rear", nil}]
+      assert file_inputs(html) == [{"scan-file-front", nil}, {"scan-file-rear", nil}]
     end
 
     test "the action is given both, each as its own argument", %{view: view, scan: scan} do

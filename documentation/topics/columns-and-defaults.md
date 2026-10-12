@@ -522,6 +522,65 @@ What to know about it:
 **Try it:** drag the edge of "Title" on `/tasks` in the demo, then sort by
 another column.
 
+## Hiding columns
+
+A person can take columns out of sight and bring them back. Above the table,
+at the end of the line that also holds "Clear filters", is a button
+"Columns". It opens a list of the table's columns with a box each. A column
+whose box is not ticked is hidden.
+
+Hiding is for the eye only. **It is not a permission.** A hidden column is
+still read from the database and still in the page; anybody can show it
+again. What a person must not see is kept away by a policy, a field policy
+or `sensitive?`, as before: see [Authorization](authorization.md) and
+[Sensitive columns](sensitive-columns.md).
+
+What to know about it:
+
+- **Which columns can be hidden:** every column of the table but the label
+  column, the one of the resource's `label_field`. Without it a row could
+  not be told from another, so it has no box. The columns of the boxes that
+  select rows, of the expanders and of the row actions are not in the list.
+- **A table without a label column** lets every column be hidden, but one
+  always stays: the box of the last column that is shown cannot be used.
+  That is the case when the `table` block names no `label_field`, when the
+  label is not among the declared columns, or when this person may not see
+  it. A table with one column has no "Columns" button.
+- **A hidden column keeps its filter and its sort.** The rows do not change
+  when a column is hidden. Because a filter lives in the header row, it goes
+  out of sight with its column, so the button says it: "Columns (2 hidden,
+  1 filtered)", and "1 sorted" likewise. In the list the column reads
+  "Progress (filtered)" for as long as it is hidden. "Clear filters" clears
+  the filter of a hidden column too.
+- **Nothing is remembered.** What is hidden lives in the browser, for as
+  long as the page is open. It stays through sorting, filtering, paging,
+  saving a cell and expanding a row. A reload shows every column again, and
+  so does leaving the page. Nothing is sent to the server and nothing is put
+  in the URL.
+- **Each table has its own list**: a nested table, the table in a picker,
+  and each of several tables on one page. A nested table that is closed and
+  opened again shows every column.
+- **A hidden column keeps its width**, if a person gave it one. When the
+  other columns got their widths while it was hidden, it takes the width it
+  needs when it is shown.
+- **What was open in the column:** an editor that is open in a cell of the
+  column is left as when focus leaves it, so what was typed is saved. A
+  sensitive value that was shown is masked again. A cell whose save failed
+  stays marked; its message is read out when it fails and is shown again
+  when the column is.
+- **The action panel is not affected.** It shows the fields of an action,
+  whether or not their columns are shown. So are selecting rows and the
+  actions on them.
+- **There is no option** to keep a column from being hidden, or to start
+  with a column hidden.
+
+The list closes with Escape, with a click anywhere else, and when focus
+moves on. The keys are in
+[Keyboard and accessibility](keyboard-and-accessibility.md#hiding-columns-from-the-keyboard).
+
+**Try it:** on `/tasks` in the demo, filter "Progress", then hide it with
+"Columns".
+
 ## Edge cases
 
 - **A public foreign key shows the raw key.** `Task ID` on `/comments` is the
@@ -567,7 +626,8 @@ another column.
 No reference cell for a has-one, no label that is a calculation, no choosing
 another related record in a reference cell, no dedicated cells for maps and
 embedded resources, no locale-aware formatting, no column widths in the
-`table` block, no remembering of the widths a person set,
+`table` block, no remembering of the widths a person set or of the columns they hid, no
+option to forbid hiding a column or to start with one hidden,
 and one table per resource. A column's own look and editor are built: see
 [Custom components](custom-components.md). The
 later slices are listed in the

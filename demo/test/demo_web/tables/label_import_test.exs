@@ -35,7 +35,7 @@ defmodule DemoWeb.Tables.LabelImportTest do
 
   # Chooses a file in the panel's file input, as a person does.
   defp choose(view, name, content, type \\ "text/csv") do
-    file_input(view, "[id='label-panel-form']", "file-file", [
+    file_input(view, "[id='label-panel-form']", "label-file-file", [
       %{name: name, content: content, type: type}
     ])
   end
@@ -277,7 +277,7 @@ defmodule DemoWeb.Tables.LabelImportTest do
                panel(html, nested)
 
       file =
-        file_input(view, "[id='#{nested}-panel-form']", "file-file", [
+        file_input(view, "[id='#{nested}-panel-form']", "#{nested}-file-file", [
           %{name: "labels.csv", content: "idea\n", type: "text/csv"}
         ])
 

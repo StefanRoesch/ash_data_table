@@ -95,6 +95,9 @@ under keyset pagination, and when the action has no pagination.
 A filter that applies has a small ✕ button beside it, named "Clear the Title
 filter" for a column headed "Title". It removes that filter alone. While any
 filter applies, a button "Clear filters" above the table removes all of them.
+That includes the filter of a column a person has
+[hidden](columns-and-defaults.md#hiding-columns): a hidden column keeps its
+filter, and the "Columns" button says that it has one.
 Choosing "Any", or emptying an input and pressing Enter, clears that filter
 as well.
 

@@ -126,6 +126,16 @@ defmodule AshTable.Text do
           | :keep_value
           | :will_be_cleared
           | :resize_column
+          | :columns
+          | :columns_with
+          | :columns_hidden
+          | :columns_filtered
+          | :columns_sorted
+          | :column_filtered
+          | :column_sorted
+          | :column_filtered_sorted
+          | :column_hidden
+          | :column_shown
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -428,4 +438,22 @@ defmodule AshTable.Text do
   # column: a person drags it, or moves it with the arrow keys, to make the
   # column wider or narrower.
   defp msgid(:resize_column), do: dgettext_noop("ash_table", "Resize %{column}")
+
+  # Hiding columns. "Columns" is the button above the grid and the name of
+  # its list. With columns hidden the button says how many, and how many of
+  # those the rows are filtered and sorted by: "Columns (2 hidden, 1
+  # filtered)". The parts are put together in the browser, which alone knows
+  # what is hidden, with a comma between them.
+  defp msgid(:columns), do: dgettext_noop("ash_table", "Columns")
+  defp msgid(:columns_with), do: dgettext_noop("ash_table", "Columns (%{details})")
+  defp msgid(:columns_hidden), do: dgettext_noop("ash_table", "%{count} hidden")
+  defp msgid(:columns_filtered), do: dgettext_noop("ash_table", "%{count} filtered")
+  defp msgid(:columns_sorted), do: dgettext_noop("ash_table", "%{count} sorted")
+  # at the box of a hidden column in the list, in brackets after its name
+  defp msgid(:column_filtered), do: dgettext_noop("ash_table", "filtered")
+  defp msgid(:column_sorted), do: dgettext_noop("ash_table", "sorted")
+  defp msgid(:column_filtered_sorted), do: dgettext_noop("ash_table", "filtered, sorted")
+  # read out when a column is hidden, and when it is shown again
+  defp msgid(:column_hidden), do: dgettext_noop("ash_table", "%{column} hidden")
+  defp msgid(:column_shown), do: dgettext_noop("ash_table", "%{column} shown")
 end

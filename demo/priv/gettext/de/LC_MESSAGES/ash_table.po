@@ -704,3 +704,33 @@ msgstr "Wird geleert."
 
 msgid "Resize %{column}"
 msgstr "Breite von %{column} ändern"
+
+msgid "Columns"
+msgstr "Spalten"
+
+msgid "Columns (%{details})"
+msgstr "Spalten (%{details})"
+
+msgid "%{count} hidden"
+msgstr "%{count} ausgeblendet"
+
+msgid "%{count} filtered"
+msgstr "%{count} gefiltert"
+
+msgid "%{count} sorted"
+msgstr "%{count} sortiert"
+
+msgid "filtered"
+msgstr "gefiltert"
+
+msgid "sorted"
+msgstr "sortiert"
+
+msgid "filtered, sorted"
+msgstr "gefiltert, sortiert"
+
+msgid "%{column} hidden"
+msgstr "%{column} ausgeblendet"
+
+msgid "%{column} shown"
+msgstr "%{column} eingeblendet"

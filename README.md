@@ -26,7 +26,8 @@ no HEEx.
 > too, its kind first. An action that takes a file has a file input in its
 > panel. A read action's arguments, and those of a calculation
 > column, are given in a line of inputs above the rows. A person can drag
-> a column wider or narrower; the widths last until the page is reloaded.
+> a column wider or narrower, and hide columns; both last until the page is
+> reloaded.
 
 - [Install](#install)
 - [A first table](#a-first-table)
@@ -266,6 +267,14 @@ and the person using it can drag the edge of a column's header to make the
 column narrower or wider, or do the same from the keyboard. The widths are
 kept in the browser until the page is reloaded or left; nothing is stored.
 See [Columns and defaults](documentation/topics/columns-and-defaults.md#column-widths).
+
+**Hiding columns** is not declared either. The "Columns" button above a
+table opens a list with a box per column; a person unticks the columns they
+do not want to see. The label column always stays. A hidden column is still
+read and keeps its filter and sort, which the button then says. It is a
+convenience and not a permission, and it is forgotten when the page is
+reloaded.
+See [Columns and defaults](documentation/topics/columns-and-defaults.md#hiding-columns).
 
 Mistakes in the block are reported when the resource is compiled. As with
 every Ash extension's verifiers, they surface as compile warnings. They fail

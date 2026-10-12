@@ -138,6 +138,7 @@ defmodule DemoWeb.Router do
         live "/url", DemoWeb.Support.UrlLive
         live "/switch", DemoWeb.Support.SwitchLive
         live "/held-dockets", DemoWeb.Support.DocketsLive
+        live "/two-scans", DemoWeb.Support.ScansLive
 
         ash_table "/framed/guarded-notes", Demo.Support.Guarded.Note,
           layout: {DemoWeb.Support.Layouts, :frame}

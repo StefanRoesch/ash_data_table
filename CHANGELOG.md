@@ -783,6 +783,33 @@ declared in the resource and mounted with one line in the router.
   of the template), with the width in `aria-valuenow`. A column's header now
   has its label as `aria-label` too, so that its name stays the label alone.
 
+### Hiding columns
+
+- A person can hide columns and show them again. A "Columns" button above
+  the grid, beside "Clear filters", opens a list of the table's columns with
+  a box each. It is a disclosure (`aria-expanded`, `aria-controls`, a group
+  of labelled checkboxes), closes with Escape, with a click elsewhere and
+  when focus moves on, and is the same in a nested table and in a picker.
+- Hiding is done in the browser and is not a permission: the column is still
+  read and still in the page. Nothing is sent to the server, nothing is in
+  the URL, nothing is stored, and nothing is declared. A reload shows every
+  column again.
+- Every column can be hidden but the label column (`label_field`). A table
+  without one always keeps one column. The columns of the boxes, the
+  expanders and the row actions are not in the list.
+- A hidden column keeps its filter and its sort. The button says so
+  ("Columns (2 hidden, 1 filtered)"), and so does the column's line in the
+  list ("Progress (filtered)"). "Clear filters" clears it as well.
+- The arrow keys, Home and End pass over hidden columns, and a hidden cell
+  is never focused or the tab stop. `aria-colindex` and `aria-colcount`
+  keep counting hidden columns, whose cells are not displayed. Hiding and
+  showing a column is read out.
+- Hidden columns stay hidden through every sort, filter, page, save and
+  expanded row, and keep the width a person gave them.
+- New messages of the template: "Columns", "Columns (%{details})",
+  "%{count} hidden", "%{count} filtered", "%{count} sorted", "filtered",
+  "sorted", "filtered, sorted", "%{column} hidden", "%{column} shown".
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive
@@ -810,6 +837,13 @@ declared in the resource and mounted with one line in the router.
   in the middle of a statement, and its end was then shown as "The records
   could not be loaded." in place of "Fill in … to see records.". It is now
   left to finish, and what it brings is not shown.
+- Two tables of one LiveView can each take a file for an argument of the
+  same name: two placed tables, a table and its nested table, a picker.
+  Before, the second file that was chosen crashed the LiveView ("existing
+  upload for file-… already allowed in another component"), because every
+  table allowed its upload under the argument's name alone. The name now
+  holds the table's id: `ID-file-ARGUMENT`, which is also the `name` of the
+  file input.
 
 ### Custom components
 
