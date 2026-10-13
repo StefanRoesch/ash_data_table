@@ -561,8 +561,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert length(column(html, id, "title")) == 25
       assert hd(column(html, id, "title")) == "Task 30"
       assert text(html, "[id='#{id}-range']") == "1–25 of 30"
-      # 30 records and the two header rows
-      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["32"]
+      # 30 records, the two header rows and the footer row of the summaries
+      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["33"]
 
       view |> element("[id='#{id}-page-2']") |> render_click()
       html = render_async(view)
@@ -1240,7 +1240,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       html = toggle(view, "project", project.id, "tasks")
 
       assert text(html, "[id='#{id}-range']") == "1–4 of 4"
-      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["6"]
+      # four tasks, the two header rows and the footer row of the summaries
+      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["7"]
 
       html = filter(view, id, "title", v: "Hidden")
       assert text(html, "[id='#{id}-range']") == "1–3 of 3"

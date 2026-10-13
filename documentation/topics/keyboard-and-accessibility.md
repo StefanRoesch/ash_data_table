@@ -62,8 +62,8 @@ order, not 425.
 | Up Arrow, from the first row of records | Moves to the filter row, then to the header row, and stops there. |
 | Home, End | First and last cell of the row. |
 | Ctrl+Home | First cell of the first row of records. |
-| Ctrl+End | Last cell of the last row. |
-| Page Down, Page Up | Move by a screenful of rows. Page Up stops at the first row of records and does not enter the header rows. |
+| Ctrl+End | Last cell of the last row. In a table with [footer summaries](footer-summaries.md): of the last record. |
+| Page Down, Page Up | Move by a screenful of rows. Page Up stops at the first row of records and does not enter the header rows. Page Down stops at the last record: the footer row of the summaries is one Down Arrow further. |
 | Tab, Shift+Tab | Leave the grid, forwards or backwards. |
 | Enter, on the heading of a sortable column | Sorts by the column: ascending, descending, none. Focus stays on the heading. |
 | F2, on the heading of a column | Goes to the handle that changes the column's width. See [Column widths from the keyboard](#column-widths-from-the-keyboard). |
@@ -453,7 +453,7 @@ page and keeps the focus.
 | What | How |
 | --- | --- |
 | The grid and its name | `role="grid"` with `aria-label`: the table's name, such as "Tasks". |
-| Size and position | `aria-rowcount` (the total when the table knows it, counting the two header rows; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
+| Size and position | `aria-rowcount` (the total when the table knows it, counting the two header rows and the footer row of the summaries where the table has one; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
 | Sort | `aria-sort` on every sortable heading: `ascending`, `descending` or `none`. |
 | The handle of a column's width | `role="separator"` with `aria-orientation="vertical"`, named "Resize Title". `aria-valuenow` is the column's width in pixels, between `aria-valuemin` (48) and `aria-valuemax` (1000). The heading has its column's label as `aria-label`, so the handle's name is not read as part of it. |
 | A read in progress | `aria-busy` on the grid. The previous rows stay. |

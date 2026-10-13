@@ -258,11 +258,16 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
     test "keeps a field hidden that a field policy hides from the person",
          %{admin: admin, member: member, mine: mine, theirs: theirs} do
-      # the estimate is an admin's, and the assignee's on their own task
-      save(admin, theirs.id, "title", "Theirs, renamed")
-      save(admin, mine.id, "title", "Mine, renamed")
+      # The estimate is an admin's, and the assignee's on their own task.
+      # Everything the member's page is sent from the first change on: the
+      # table may hear of the first before the second is saved.
+      sent =
+        wire(member, fn ->
+          save(admin, theirs.id, "title", "Theirs, renamed")
+          save(admin, mine.id, "title", "Mine, renamed")
+          AshTable.Test.flush(member)
+        end)
 
-      sent = wire(member, fn -> AshTable.Test.flush(member) end)
       html = render(member)
 
       assert titles(html) == ["Theirs, renamed", "Mine, renamed"]

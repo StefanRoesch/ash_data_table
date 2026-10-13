@@ -72,6 +72,13 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; and the values made of fields, edited in the side panel: "An address" (an embedded resource), "Addresses" (an array of them, without a primary key) and "A typed map" (a map that declares its fields). "A map", which declares none, is shown from whatever it holds and is read-only; "A keyword", "A tuple" and "A struct" stay read-only text. "A union" is a number, a text, a shade or an address: its cell shows the value it holds, and it is edited in the side panel, the kind first. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 | http://localhost:4478/deadlines | `Deadline` | the tasks once more, as a resource of its own over the same table, read through an action that **requires** an argument: the day they are due by. Until "Due by" is given the table reads nothing and says "Fill in Due by to see records."; "Include done?" is an argument with a default, and "Tags" a list that is given value by value. "Due on" is edited in place: a task that is put off beyond the day stays in its row until the table reads again. "Assignee" is a reference cell that is edited through an argument: its action, `hand_over`, does not accept `assignee_id`; it takes the person as an argument and hands it to the relationship, and the cell opens the picker all the same (see "Row actions and create" below). A row expands into its comments |
 
+The tasks have **footer summaries**: under the last row, the average
+progress, the sum of the estimates, the latest due date and the number of
+completed tasks, each over every task that matches and not only the page
+(`summary` on four columns of `lib/demo/tracker/task.ex`). Max Member sees
+the estimate of his own tasks only, and has "Sum –" under that column. The
+tasks nested under a project on `/projects` end with the same row.
+
 The tasks and the comments have **live updates**: `live? true` in their
 `table` blocks, and `pub_sub Demo.PubSub` in the domain's
 (`lib/demo/tracker.ex`). Open `/tasks` in two browser windows, one of them

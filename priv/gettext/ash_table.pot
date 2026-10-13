@@ -484,3 +484,23 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "There are new or changed records."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Average"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Count"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Max"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Min"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Sum"
+msgstr ""

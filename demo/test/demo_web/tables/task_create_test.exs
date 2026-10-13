@@ -196,7 +196,8 @@ defmodule DemoWeb.Tables.TaskCreateTest do
 
       # counted in: one row more on the page, one record more in all
       assert text(html, "#task-range") == "1–3 of 3"
-      assert attribute(html, "#task-table", "aria-rowcount") == ["5"]
+      # with the two header rows and the footer row of the summaries
+      assert attribute(html, "#task-table", "aria-rowcount") == ["6"]
       assert attribute(html, "[id='task-row-#{new.id}-r']", "aria-rowindex") == ["3"]
     end
 

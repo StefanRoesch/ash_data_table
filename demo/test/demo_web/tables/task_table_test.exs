@@ -185,8 +185,8 @@ defmodule DemoWeb.Tables.TaskTableTest do
 
       assert column(html, "task", "title") == titles(60..36//-1)
       assert text(html, "#task-range") == "1–25 of 60"
-      # 60 tasks and the two header rows
-      assert attribute(html, "#task-table", "aria-rowcount") == ["62"]
+      # 60 tasks, the two header rows and the footer row of the summaries
+      assert attribute(html, "#task-table", "aria-rowcount") == ["63"]
       assert attribute(html, "#task-previous", "disabled") == [""]
       assert attribute(html, "#task-next", "disabled") == []
       assert attribute(html, "#task-pagination [aria-current=page]", "id") == ["task-page-1"]

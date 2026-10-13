@@ -491,6 +491,25 @@ A table-level `update_action` leaves a sensitive column that cannot be
 edited read-only, without a finding, as it does for every column it cannot
 save.
 
+## Summaries
+
+The `summary` of a column: one number under it, in the table's footer row.
+See [Footer summaries](footer-summaries.md).
+
+| Path | Message starts with | Cause | Fix |
+| --- | --- | --- | --- |
+| `table -> column -> NAME -> summary` | \`NAME\` is a calculation. / is an aggregate. / names a relationship. A summary is computed over an attribute of the resource … | `summary` on a column that shows something other than an attribute. | Remove `summary` from the column. |
+| `table -> column -> NAME -> summary` | \`summary :KIND\` does not fit \`NAME\`, which is of type \`TYPE\` … | A sum or an average of something that is no number, or a minimum or a maximum of something that is neither a number nor a date, a datetime or a time. | Use a kind that fits; `:count` fits every column. |
+| `table -> column -> NAME -> summary` | \`NAME\` is declared \`sensitive?: true\`. A table masks the cells of a sensitive column, and a summary would say what they hold … | `summary` on a sensitive column, of whatever kind. | Remove `summary` from the column. |
+| `table -> column -> NAME -> summary` | The table reads through \`ACTION\`, a manual read action … | The summary is computed by the data layer, which a manual read action is not read through. | Remove the summaries of this table, or read it through an action that is not manual. |
+| `table -> column -> NAME -> summary` | The data layer of the resource, \`LAYER\`, does not compute \`:KIND\` over the records of a query … | The resource's data layer has no such aggregate. | Remove `summary` from the column. |
+
+A kind that is none of the five is rejected by Spark while the module is
+compiled, as every value an option does not take.
+
+Compiled despite one of the first three, the table refuses to be built. With
+one of the last two it is built, and shows "–" in place of the number.
+
 ## Live updates
 
 Reported when the **domain** is compiled, at its `table` block: a resource

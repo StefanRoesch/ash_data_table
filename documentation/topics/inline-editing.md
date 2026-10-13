@@ -78,6 +78,7 @@ table do
   column :progress do
     update_action :set_progress
     component DemoWeb.Cells.Progress
+    # ...
   end
   # ...
   # `update` accepts it, the table does not offer it

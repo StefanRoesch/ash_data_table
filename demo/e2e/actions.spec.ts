@@ -437,7 +437,8 @@ test.describe("an action that asks first", () => {
   }) => {
     const total = SEED.tasks.acme
     await expect(tasks.range).toHaveText(`1–25 of ${total}`)
-    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 2))
+    // the records, the two header rows and the footer row of the summaries
+    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 3))
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 25 }, (_, index) => index + 3))
 
     await tasks.action(SECOND, "destroy").click()
@@ -453,7 +454,7 @@ test.describe("an action that asks first", () => {
     expect(await frames.count("act")).toBe(1)
 
     await expect(tasks.range).toHaveText(`1–24 of ${total - 1}`)
-    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 1))
+    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 2))
     await expect(tasks.status).toHaveText("Destroy: done")
     // every row says where it stands now, those that were not sent again too
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 24 }, (_, index) => index + 3))
@@ -515,7 +516,8 @@ test.describe("an action that asks first", () => {
     // no row is left to go to: the cell above where the first one was
     await expect(tasks.filterCell("title")).toBeFocused()
     expect(await tasks.tabStops()).toEqual(["task-filter-title"])
-    await expect(tasks.grid).toHaveAttribute("aria-rowcount", "2")
+    // the two header rows and the footer row of the summaries
+    await expect(tasks.grid).toHaveAttribute("aria-rowcount", "3")
   })
 })
 
@@ -1187,7 +1189,8 @@ test.describe("creating a record", () => {
 
     // counted in, and every row says where it stands now
     await expect(tasks.range).toHaveText(`1–26 of ${total + 1}`)
-    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 3))
+    // with the two header rows and the footer row of the summaries
+    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 4))
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 26 }, (_, index) => index + 3))
     await expect(tasks.status).toHaveText("Task created")
 
@@ -1209,7 +1212,7 @@ test.describe("creating a record", () => {
     expect(await tasks.rowKeys()).toEqual(before)
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 25 }, (_, index) => index + 3))
     await expect(tasks.range).toHaveText(`1–25 of ${total}`)
-    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 2))
+    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 3))
   })
 
   test("on a later page the new row is the first of that page, and the rows count on from the page's first", async ({

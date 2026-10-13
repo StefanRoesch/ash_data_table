@@ -8452,4 +8452,480 @@ defmodule AshTable.TableBlockTest do
       assert error.message =~ "`like`"
     end
   end
+
+  describe "summary" do
+    test "is accepted on an attribute column of a fitting type and read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Summarised do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+            attribute :tags, {:array, :string}, public?: true
+            attribute :estimate, :integer, public?: true
+            attribute :price, :decimal, public?: true
+            attribute :ratio, :float, public?: true
+            attribute :due_on, :date, public?: true
+            attribute :starts_at, :utc_datetime, public?: true
+            attribute :opens_at, :time, public?: true
+          end
+
+          actions do
+            defaults [:read]
+
+            read :other
+          end
+
+          table do
+            column :title do
+              summary :count
+            end
+
+            column :tags do
+              summary :count
+            end
+
+            column :estimate do
+              summary :sum
+            end
+
+            column :price do
+              summary :avg
+            end
+
+            column :ratio do
+              summary :max
+            end
+
+            column :due_on do
+              summary :min
+            end
+
+            column :starts_at do
+              summary :max
+            end
+
+            column :opens_at do
+              summary :min
+            end
+          end
+
+          tables do
+            table :other do
+              read_action :other
+
+              column :title
+
+              column :estimate do
+                summary :avg
+              end
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.Summarised
+
+      assert for(
+               column <- AshTable.Resource.Info.table(Summarised),
+               do: {column.name, column.summary}
+             ) ==
+               [
+                 title: :count,
+                 tags: :count,
+                 estimate: :sum,
+                 price: :avg,
+                 ratio: :max,
+                 due_on: :min,
+                 starts_at: :max,
+                 opens_at: :min
+               ]
+
+      assert {:ok, other} = AshTable.Resource.Info.table(Summarised, :other)
+
+      assert for(column <- other.columns, do: {column.name, column.summary}) == [
+               title: nil,
+               estimate: :avg
+             ]
+    end
+
+    test "a kind that is none of the five is an error" do
+      assert_raise Spark.Error.DslError,
+                   ~r/invalid value for :summary option: expected one of \[:count, :sum, :avg, :min, :max\], got: :median/,
+                   fn ->
+                     defmodule Elixir.AshTable.TableBlockTest.SummaryMedian do
+                       use Ash.Resource,
+                         domain: AshTable.Test.Domain,
+                         data_layer: Ash.DataLayer.Ets,
+                         extensions: [AshTable.Resource]
+
+                       attributes do
+                         uuid_primary_key :id
+                         attribute :estimate, :integer, public?: true
+                       end
+
+                       actions do
+                         defaults [:read]
+                       end
+
+                       table do
+                         column :estimate do
+                           summary :median
+                         end
+                       end
+                     end
+                   end
+    end
+
+    test "a sum or an average of something that is no number is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :title, :summary]} do
+          defmodule Elixir.AshTable.TableBlockTest.SummarySumOfText do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :title, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :title do
+                summary :sum
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`summary :sum` does not fit `title`, which is of type `Ash.Type.String`. `:sum` is for numbers: integer, float and decimal attributes. `:count`, the number of records that have a value here, fits every column."
+
+      # compiled despite the finding, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.SummarySumOfText: the `summary` of its column `title` cannot be used. " <>
+                     error.message,
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.SummarySumOfText) end
+    end
+
+    # a resource with one column of `type`, which has a summary of `kind`
+    defmacrop summarised(name, type, kind) do
+      quote do
+        defmodule unquote(name) do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :value, unquote(type), public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :value do
+              summary unquote(kind)
+            end
+          end
+        end
+      end
+    end
+
+    test "an average of a date is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :value, :summary]} do
+          summarised(SummaryAvgOfDate, :date, :avg)
+        end
+
+      assert error.message =~ "`summary :avg` does not fit `value`"
+      assert error.message =~ "`:avg` is for numbers: integer, float and decimal attributes"
+    end
+
+    test "a minimum of a text is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :value, :summary]} do
+          summarised(SummaryMinOfText, :string, :min)
+        end
+
+      assert error.message ==
+               "`summary :min` does not fit `value`, which is of type `Ash.Type.String`. `:min` is for numbers, dates, datetimes and times. `:count`, the number of records that have a value here, fits every column."
+    end
+
+    test "a maximum of a boolean is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :value, :summary]} do
+          summarised(SummaryMaxOfBoolean, :boolean, :max)
+        end
+
+      assert error.message =~ "`:max` is for numbers, dates, datetimes and times"
+    end
+
+    test "a sum of an array of numbers is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :value, :summary]} do
+          summarised(SummarySumOfArray, {:array, :integer}, :sum)
+        end
+
+      assert error.message =~ "`summary :sum` does not fit `value`"
+    end
+
+    test "on a column that shows a calculation, an aggregate or a related record it is an error, in a named table too" do
+      errors =
+        dsl_errors do
+          defmodule Elixir.AshTable.TableBlockTest.SummaryNotAnAttribute do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :estimate, :integer, public?: true
+            end
+
+            relationships do
+              belongs_to :author, AshTable.Test.Referencing.Person, public?: true
+              has_many :children, __MODULE__, destination_attribute: :estimate, public?: true
+            end
+
+            calculations do
+              calculate :doubled, :integer, expr(estimate * 2), public?: true
+            end
+
+            aggregates do
+              count :child_count, :children, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :doubled do
+                summary :sum
+              end
+
+              column :child_count do
+                summary :max
+              end
+
+              column :author do
+                summary :count
+              end
+            end
+
+            tables do
+              table :compact do
+                column :doubled do
+                  summary :avg
+                end
+              end
+            end
+          end
+        end
+
+      by_path =
+        Map.new(
+          for {_module, errors} <- errors, %{path: path, message: message} <- errors do
+            {path, message}
+          end
+        )
+
+      assert by_path[[:table, :column, :doubled, :summary]] ==
+               "`doubled` is a calculation. A summary is computed over an attribute of the resource: in this version a column that shows a calculation, an aggregate or a related record has none. Remove `summary` from this column."
+
+      assert by_path[[:table, :column, :child_count, :summary]] =~
+               "`child_count` is an aggregate."
+
+      assert by_path[[:table, :column, :author, :summary]] =~ "`author` names a relationship."
+
+      assert by_path[[:tables, :table, :compact, :column, :doubled, :summary]] =~
+               "`doubled` is a calculation."
+
+      assert_raise ArgumentError, ~r/the `summary` of its column `doubled` cannot be used/, fn ->
+        AshTable.Model.build(AshTable.TableBlockTest.SummaryNotAnAttribute)
+      end
+    end
+
+    test "on a sensitive column it is an error, and no model is built with it" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :salary, :summary]} do
+          defmodule Elixir.AshTable.TableBlockTest.SummarySensitive do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :salary, :integer, public?: true, sensitive?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :salary do
+                summary :sum
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "`salary` is declared `sensitive?: true`. A table masks the cells of a sensitive column, and a summary would say what they hold: a sum, a minimum or a maximum of them. Remove `summary` from this column."
+
+      assert_raise ArgumentError, ~r/the `summary` of its column `salary` cannot be used/, fn ->
+        AshTable.Model.build(AshTable.TableBlockTest.SummarySensitive)
+      end
+    end
+
+    test "even a count of a sensitive column is an error" do
+      assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :salary, :summary]} do
+        defmodule Elixir.AshTable.TableBlockTest.SummarySensitiveCount do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :salary, :integer, public?: true, sensitive?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            column :salary do
+              summary :count
+            end
+          end
+        end
+      end
+    end
+
+    test "in a table that reads through a manual action it is an error, and such a table shows no number" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :estimate, :summary]} do
+          defmodule Elixir.AshTable.TableBlockTest.SummaryManualRead do
+            defmodule Read do
+              use Ash.Resource.ManualRead
+
+              def read(_query, _data_layer_query, _opts, _context), do: {:ok, []}
+            end
+
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              data_layer: Ash.DataLayer.Ets,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :estimate, :integer, public?: true
+            end
+
+            actions do
+              defaults [:read, create: :*]
+
+              read :by_hand do
+                manual Read
+              end
+            end
+
+            table do
+              read_action :by_hand
+
+              column :estimate do
+                summary :sum
+              end
+            end
+
+            tables do
+              # through the primary read action: nothing wrong with it
+              table :plain do
+                column :estimate do
+                  summary :sum
+                end
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The table reads through `by_hand`, a manual read action. A summary is computed by the data layer, which a manual action is not read through: the number could disagree with the rows. Remove `summary` from the columns of this table, or read the table through an action that is not manual."
+
+      alias AshTable.TableBlockTest.SummaryManualRead
+
+      on_exit(fn -> AshTable.Test.Ets.stop(SummaryManualRead) end)
+      Ash.create!(SummaryManualRead, %{estimate: 5}, authorize?: false)
+
+      # the action gives no rows, and the data layer has one: no number is
+      # shown beside rows it may not be of
+      assert AshTable.Query.summaries(
+               AshTable.Model.build(SummaryManualRead),
+               %AshTable.State{},
+               nil,
+               authorize?: false
+             ) == {:ok, %{estimate: :unavailable}}
+
+      assert AshTable.Query.summaries(
+               AshTable.Model.build(SummaryManualRead, table: :plain),
+               %AshTable.State{},
+               nil,
+               authorize?: false
+             ) == {:ok, %{estimate: {:ok, 5}}}
+    end
+
+    test "on a resource whose data layer computes no such thing it is an error, and such a table shows no number" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :estimate, :summary]} do
+          defmodule Elixir.AshTable.TableBlockTest.SummaryNoDataLayer do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :estimate, :integer, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              column :estimate do
+                summary :sum
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The data layer of the resource, `Ash.DataLayer.Simple`, does not compute `:sum` over the records of a query (`{:query_aggregate, :sum}`), so this summary could never be shown. Remove `summary` from this column."
+
+      assert AshTable.Query.summaries(
+               AshTable.Model.build(AshTable.TableBlockTest.SummaryNoDataLayer),
+               %AshTable.State{},
+               nil,
+               authorize?: false
+             ) == {:ok, %{estimate: :unavailable}}
+    end
+  end
 end

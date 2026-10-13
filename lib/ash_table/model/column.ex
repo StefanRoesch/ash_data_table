@@ -100,6 +100,12 @@ defmodule AshTable.Model.Column do
   #     when a person asks for it; it is neither sorted nor filtered by,
   #     has no component, and its editor hides what is typed. See
   #     `AshTable.Sensitive`.
+  #   * `summary` is the kind of the column's summary, the number under the
+  #     column in the table's footer row (`:count`, `:sum`, `:avg`, `:min` or
+  #     `:max`), or nil for a column without one. Only ever on a column of
+  #     an attribute that is not `sensitive?`: see
+  #     `AshTable.Resource.Summarising`. The number is asked for with
+  #     `AshTable.Query.summaries/4`.
   #   * `partly_hidden?` is only ever `true` in a model from
   #     `AshTable.Model.for_actor/2`: the person sees the field on some records
   #     and not on others.
@@ -122,6 +128,7 @@ defmodule AshTable.Model.Column do
     :confirm,
     :component,
     :reference,
+    :summary,
     editable?: false,
     required?: false,
     apart?: false,
@@ -165,6 +172,7 @@ defmodule AshTable.Model.Column do
               value_attribute: atom
             }
             | nil,
+          summary: AshTable.Resource.Summarising.kind() | nil,
           apart?: boolean,
           partly_hidden?: boolean,
           sensitive?: boolean

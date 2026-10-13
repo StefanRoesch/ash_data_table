@@ -419,6 +419,9 @@ test.describe("focus", () => {
     await nested.cell(last, "title").focus()
     expect(await projects.tabStops()).toHaveLength(1)
 
+    // under the last task is the footer row of the tasks' summaries (footer.spec.ts)
+    await projects.press("ArrowDown")
+    await expect(nested.summary("title")).toBeFocused()
     await projects.press("ArrowDown")
     await expect(nested.pagerCell).toBeFocused()
     // under them, the link to the full view: the last row
@@ -449,7 +452,8 @@ test.describe("focus", () => {
 
     await projects.press("Escape")
     await expect(nested.pagerCell).toBeFocused()
-    await projects.press("ArrowUp")
+    // over the footer row of the summaries, back to the last task
+    await projects.press("ArrowUp", "ArrowUp")
     expect(await nested.focused()).toMatch(new RegExp(`^${nested.id}-row-.*-c-title$`))
     expect(await projects.tabStops()).toHaveLength(1)
   })

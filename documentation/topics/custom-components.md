@@ -106,6 +106,7 @@ defdelegate verify(column), to: AshTable.Components.Slider
 column :progress do
   update_action :set_progress
   component DemoWeb.Cells.Progress
+  # ...
 end
 ```
 
@@ -166,6 +167,7 @@ end
 # the demo's own component: the number with its unit
 column :estimate_hours do
   component DemoWeb.Cells.Hours
+  # ...
 end
 ```
 

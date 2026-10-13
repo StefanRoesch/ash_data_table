@@ -67,6 +67,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/nested-tables.md",
         "documentation/topics/named-tables.md",
         "documentation/topics/live-updates.md",
+        "documentation/topics/footer-summaries.md",
         "documentation/topics/custom-components.md",
         "documentation/topics/sensitive-columns.md",
         "documentation/topics/authorization.md",

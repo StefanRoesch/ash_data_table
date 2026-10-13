@@ -119,6 +119,31 @@ defmodule AshTable.Format do
   def format(%{cell_type: _}, value), do: other(value)
 
   @doc """
+  The text shown for the summary of `column`, of the kind its `summary`
+  says: a sum, a minimum and a maximum as a cell of the column shows a
+  value, a count as a whole number, and an average as a number with two
+  decimal places at most. Nil, the summary of no values, is empty.
+  """
+  @spec summary(Column.t(), term) :: String.t()
+  def summary(_column, nil), do: ""
+  def summary(%{summary: :count}, value) when is_integer(value), do: Integer.to_string(value)
+
+  def summary(%{summary: :avg}, %Decimal{} = value),
+    do: format(%{cell_type: :number}, value |> Decimal.round(2) |> Decimal.normalize())
+
+  def summary(%{summary: :avg}, value) when is_float(value) do
+    rounded = Float.round(value, 2)
+
+    # a whole number without ".0"
+    if rounded == Float.round(rounded),
+      do: Integer.to_string(round(rounded)),
+      else: format(%{cell_type: :number}, rounded)
+  end
+
+  def summary(%{summary: :avg}, value) when is_integer(value), do: Integer.to_string(value)
+  def summary(column, value), do: format(column, value)
+
+  @doc """
   The text the editor of a cell holds for `value`: what the cell shows, the
   value itself for a choice, and `"true"` or `"false"` for a boolean. Nil is
   empty.

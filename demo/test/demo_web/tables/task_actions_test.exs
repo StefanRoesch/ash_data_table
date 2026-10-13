@@ -366,7 +366,8 @@ defmodule DemoWeb.Tables.TaskActionsTest do
          %{view: view, html: before, first: first, second: second, third: third} do
       assert titles(before) == ["First", "Second", "Third"]
       assert text(before, "#task-range") == "1–3 of 3"
-      assert attribute(before, "#task-table", "aria-rowcount") == ["5"]
+      # three tasks, the two header rows and the footer row of the summaries
+      assert attribute(before, "#task-table", "aria-rowcount") == ["6"]
 
       html = act(view, second.id, "destroy")
 
@@ -377,7 +378,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
 
       # the total is one less, and so is everything said from it
       assert text(html, "#task-range") == "1–2 of 2"
-      assert attribute(html, "#task-table", "aria-rowcount") == ["4"]
+      assert attribute(html, "#task-table", "aria-rowcount") == ["5"]
       assert announcement(html) == "Destroy: done"
     end
 
@@ -417,7 +418,8 @@ defmodule DemoWeb.Tables.TaskActionsTest do
 
       assert titles(html) == []
       assert text(html, "#task-empty") == "No records"
-      assert attribute(html, "#task-table", "aria-rowcount") == ["2"]
+      # the two header rows and the footer row of the summaries
+      assert attribute(html, "#task-table", "aria-rowcount") == ["3"]
     end
 
     test "that is refused leaves the row, with the refusal on its actions cell",

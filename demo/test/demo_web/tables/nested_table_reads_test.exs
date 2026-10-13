@@ -62,6 +62,9 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     on_exit(fn -> :telemetry.detach(handler) end)
 
     {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
+    # the footer summaries of the tasks are asked for beside the rows: a
+    # test starts once they are there
+    render_async(view, 10_000)
     %{view: view, conn: conn, world: world, project: project, task: task, other: other}
   end
 
@@ -193,16 +196,24 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     expand(view, "project", project.id)
     toggle(view, "project", project.id, "tasks")
     id = nested("project", project.id, "tasks")
+    # the nested tasks have footer summaries, which are there by now
+    render_async(view, 10_000)
     forget()
 
     html = save(view, id, task.id, "title", "Write the summary")
+    # the summaries of the nested tasks are asked for again after the save
+    render_async(view, 10_000)
 
     assert text(html, cell(id, task.id, "title")) == "Write the summary"
     # The task is read again by its key and saved, and shown with the labels
     # of its reference columns: its project, its assignee and its reporter,
-    # each by its key. The projects' own table, around it, is not read again:
-    # that would be a page, and its count.
-    assert Enum.sort(reads(:read)) == [:project, :task, :user, :user]
-    assert Enum.frequencies(reads(:sql)) == %{"tasks" => 3, "users" => 2, "projects" => 1}
+    # each by its key. For the footer summaries of the nested tasks, their
+    # project is read once more by its key, with the keys of its tasks as
+    # its load. The projects' own table, around it, is not read again: that
+    # would be a page, and its count.
+    assert Enum.sort(reads(:read)) == [:project, :project, :task, :task, :user, :user]
+    # with the summaries: the project by its key, the keys of its tasks,
+    # and the statement that computes them
+    assert Enum.frequencies(reads(:sql)) == %{"tasks" => 5, "users" => 2, "projects" => 2}
   end
 end

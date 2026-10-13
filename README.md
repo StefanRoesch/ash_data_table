@@ -78,6 +78,7 @@ examples from the demo app and each topic's edge cases.
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Named tables](documentation/topics/named-tables.md)
 - [Live updates](documentation/topics/live-updates.md): `live? true` makes a table follow what other people change
+- [Footer summaries](documentation/topics/footer-summaries.md): `summary :sum` on a column shows one number under it, over every record that matches
 - [Custom components](documentation/topics/custom-components.md)
 - [Sensitive columns](documentation/topics/sensitive-columns.md)
 - [Authorization](documentation/topics/authorization.md)

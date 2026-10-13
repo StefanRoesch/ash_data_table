@@ -138,6 +138,11 @@ defmodule AshTable.Text do
           | :column_filtered_sorted
           | :column_hidden
           | :column_shown
+          | :summary_count
+          | :summary_sum
+          | :summary_avg
+          | :summary_min
+          | :summary_max
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
 
@@ -463,4 +468,13 @@ defmodule AshTable.Text do
   # read out when a column is hidden, and when it is shown again
   defp msgid(:column_hidden), do: dgettext_noop("ash_table", "%{column} hidden")
   defp msgid(:column_shown), do: dgettext_noop("ash_table", "%{column} shown")
+
+  # In the footer row, under a column with a summary: what the number is,
+  # before the number ("Sum 1240"). And what is read out in place of a
+  # number that cannot be shown to this person, where the cell shows "–".
+  defp msgid(:summary_count), do: dgettext_noop("ash_table", "Count")
+  defp msgid(:summary_sum), do: dgettext_noop("ash_table", "Sum")
+  defp msgid(:summary_avg), do: dgettext_noop("ash_table", "Average")
+  defp msgid(:summary_min), do: dgettext_noop("ash_table", "Min")
+  defp msgid(:summary_max), do: dgettext_noop("ash_table", "Max")
 end

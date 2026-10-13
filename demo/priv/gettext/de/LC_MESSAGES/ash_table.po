@@ -741,6 +741,23 @@ msgstr "%{column} ausgeblendet"
 msgid "%{column} shown"
 msgstr "%{column} eingeblendet"
 
+## Footer summaries: what the number under a column is.
+
+msgid "Count"
+msgstr "Anzahl"
+
+msgid "Sum"
+msgstr "Summe"
+
+msgid "Average"
+msgstr "Durchschnitt"
+
+msgid "Min"
+msgstr "Min."
+
+msgid "Max"
+msgstr "Max."
+
 ## The named tables: the columns of the compact comments (/comments/compact)
 ## and of the short labels, nested under a task of the board (/tasks/board).
 
