@@ -316,6 +316,16 @@ The path is `table -> label_field`.
 | \`NAME\` is a relationship. The label of a record is one of its own attributes: name an attribute of this resource. | `label_field` names a relationship. | Name an attribute. |
 | \`NAME\` is a calculation. The label of a record has to be an attribute: it is read with the record's key and nothing else. | `label_field` names a calculation, or an aggregate ("is an aggregate"). | Name an attribute. |
 
+## `sticky_label?`
+
+The path is `table -> sticky_label?`, or `tables -> table -> NAME -> sticky_label?` for a named table. See
+[Keeping the label column in view](columns-and-defaults.md#keeping-the-label-column-in-view).
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| The table says \`sticky_label? true\`, and the resource declares no \`label_field\`. \`sticky_label?\` keeps the label column in view while the table scrolls sideways: add \`label_field\` to the \`table\` block of the resource, or take \`sticky_label?\` out. | There is no label, so no column to keep. | Add `label_field`, or remove the option. |
+| The table says \`sticky_label? true\` and has no column of the label, \`NAME\`. \`sticky_label?\` keeps the label column in view while the table scrolls sideways: add \`column :NAME\`, or take \`sticky_label?\` out. | The table declares its columns, and the `label_field` is not one of them. | Add the column, or remove the option. |
+
 ## Named tables
 
 Every check of this guide runs for each table of a resource: the default

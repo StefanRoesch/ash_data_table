@@ -286,6 +286,27 @@ defmodule AshTable.Live.TableComponent do
   # table that renders it forgets it and stops its listener when it renders
   # it no longer (`close/1`).
   #
+  # ## Scrolling sideways
+  #
+  # Every table scrolls sideways in an area of its own, its grid `ID-grid`:
+  # the table on a page, every nested table, and the table of a picker. The
+  # cell of a nested table holds an element that stays at the left edge of
+  # the area around it and is as wide as what is seen of that area
+  # (`--ash-table-view`, which each grid's hook writes on its grid), so a
+  # nested table never scrolls with the table around it; so does what a
+  # relationship line holds.
+  #
+  # `ID-scrollbar` is the grid's scrollbar once more: the hook shows it at
+  # the bottom edge of the window while the grid's own is below it. It is
+  # for the pointer alone (`aria-hidden`, no tab stop).
+  #
+  # In a table that says `sticky_label? true` the header of the label column
+  # says so (`data-label`), and the hook keeps that column in view, with the
+  # cells that select and expand a row before it (see "scrolling sideways"
+  # in the hook). A table that does not say it has no such header, and
+  # nothing of it stays. The server knows nothing of where a table is
+  # scrolled to.
+  #
   # ## The full view
   #
   # The last row of a nested table's grid holds a link to the page the host's
@@ -528,6 +549,8 @@ defmodule AshTable.Live.TableComponent do
      |> assign(offered: model.table_actions)
      |> assign(depth_limit: depth_limit)
      |> assign(expandable?: expandable?)
+     # the column that stays in view when the table scrolls sideways
+     |> assign(label_column: Model.label_column(model))
      # the actions offered for the selected rows are this person's row
      # actions that run on several records
      |> assign(selecting: selecting, lead: lead(selecting, expandable?))
@@ -4252,7 +4275,14 @@ defmodule AshTable.Live.TableComponent do
         <span data-summary>{@result.summary}</span>
         <span :for={failure <- @result.failures} data-failure>{failure}</span>
       </p>
-      <%!-- `data-ash-table` marks the element a grid's hook is on, for the hooks
+      <%!-- The grid is the table's own scroll area: every table scrolls
+      sideways in its own, a nested table as the table on the page (see
+      "scrolling sideways" in the hook). A nested table that is scrolled to
+      its end does not go on to scroll the table around it. No tab stop
+      (`tabindex`), which a browser may make of an element that scrolls: the
+      tab stop of a grid is one of its cells.
+
+      `data-ash-table` marks the element a grid's hook is on, for the hooks
       of the tables nested in it and around it; `data-lead` is the number of
       columns before the first data column; `data-select` says whether rows can
       be selected, and how many at a time; `data-choose` that the table is one
@@ -4269,7 +4299,8 @@ defmodule AshTable.Live.TableComponent do
         data-select={@selecting}
         data-choose={not is_nil(@choose)}
         data-chosen-rows={@choose && @selecting == :multi && held(chosen_rows(@choose))}
-        class={not @nested? && "overflow-x-auto"}
+        tabindex="-1"
+        class={["overflow-x-auto outline-none", @nested? && "overscroll-x-contain"]}
       >
         <table
           id={"#{@id}-table"}
@@ -4313,25 +4344,26 @@ defmodule AshTable.Live.TableComponent do
               # one line per row: long text is cut off, not wrapped. Not in a cell
               # that spans the table: a line, or the cell a nested table is in.
               "[&>tbody>tr>td:not([colspan],[data-actions])]:max-w-80 [&>tbody>tr>td:not([colspan],[data-actions])]:truncate [&>tbody>tr>td[data-actions]]:whitespace-nowrap",
-              # the expander of a row and the button of a line. Their mark is a
+              # the expander of a row and the button of a line (which is in the
+              # element of its cell that stays in view). Their mark is a
               # triangle drawn in CSS, not a character: it turns about its own
               # centre, so it sits in the same place open and closed.
-              "[&>tbody>tr>td>button[aria-expanded]]:cursor-pointer [&>tbody>tr>td[data-expander]]:w-0 [&>tbody>tr>td[data-expander]>button]:px-1",
+              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&>tbody>tr>td[data-expander]]:w-0 [&>tbody>tr>td[data-expander]>button]:px-1",
               # the box that selects a row: its cell as narrow as the box, and
               # the box in the middle of it
               "[&>tbody>tr>td[data-selector]]:w-0 [&>tbody>tr>td[data-selector]>input]:block",
-              "[&>tbody>tr>td>button[aria-expanded]]:before:inline-block [&>tbody>tr>td>button[aria-expanded]]:before:size-0 [&>tbody>tr>td>button[aria-expanded]]:before:content-['']",
-              "[&>tbody>tr>td>button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>td>button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>td>button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>td>button[aria-expanded]]:before:border-s-current",
-              "[&>tbody>tr>td>button[aria-expanded]]:before:transition-transform [&>tbody>tr>td>button[aria-expanded=true]]:before:rotate-90",
+              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-['']",
+              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current",
+              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90",
               # forced colours would fill the two transparent sides of the triangle
               # and make it a square, which looks the same open and closed
-              "[&>tbody>tr>td>button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&>tbody>tr>td>button[aria-expanded]]:before:border-s-[CanvasText]",
+              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
               # a line's mark stands under its row's
-              "[&>tbody>tr>td[data-line]>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>button[aria-expanded]]:before:me-2",
+              "[&>tbody>tr>td[data-line]>div>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>div>button[aria-expanded]]:before:me-2",
               # the create button on a line, and the buttons of the nested table's
               # table actions, once the nested table under it has read
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>[data-read])>td[data-line]>button[data-create]]:inline-flex",
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>[data-read])>td[data-line]>button[data-table-action]]:inline-flex"
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>[data-read])>td[data-line]>div>button[data-create]]:inline-flex",
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>[data-read])>td[data-line]>div>button[data-table-action]]:inline-flex"
             ]
           }
           phx-update="stream"
@@ -4382,6 +4414,7 @@ defmodule AshTable.Live.TableComponent do
                 aria-sort={column.sortable? && aria_sort(@state.sort, column)}
                 aria-label={column.label}
                 tabindex="-1"
+                data-label={@model.sticky_label? and column == @label_column}
                 data-sort={column.sortable?}
                 phx-click={column.sortable? && "sort"}
                 phx-value-column={column.sortable? && column.name}
@@ -4519,7 +4552,8 @@ defmodule AshTable.Live.TableComponent do
           middle of the grid around it. The element stays where it is once it is there,
           as every child of a stream's container with an id does. --%>
           <%!-- In the text of the table: the range reads as it does under a table
-          on a page, not as a footer's heading. --%>
+          on a page, not as a footer's heading. What the two rows hold stays at
+          the left edge of the table's scroll area, as what a line holds does. --%>
           <tfoot
             :if={@nested?}
             id={"#{@id}-foot"}
@@ -4563,7 +4597,7 @@ defmodule AshTable.Live.TableComponent do
                   navigate={@full_view}
                   tabindex="-1"
                   aria-label={Text.t(:full_view_of, table: @label)}
-                  class="link text-sm"
+                  class="link sticky left-4 text-sm"
                 >
                   {Text.t(:full_view)}
                 </.link>
@@ -4595,6 +4629,22 @@ defmodule AshTable.Live.TableComponent do
         the hook has to mark the cell itself: the record is gone, so there is
         no row to send. --%>
         <template :if={@editing? or @acting?} id={"#{@id}-failure"}>{failure_message(nil, "")}</template>
+      </div>
+      <%!-- The scrollbar of the grid once more, for when the grid's own is
+      below the window: the hook shows it at the bottom edge of the window, as
+      wide as the grid, and keeps the two together. For the pointer alone: no
+      tab stop, and nothing a screen reader is told of, as the grid scrolls
+      with the focus. Patches leave it as the hook has it. --%>
+      <div
+        id={"#{@id}-scrollbar"}
+        phx-update="ignore"
+        aria-hidden="true"
+        tabindex="-1"
+        hidden
+        data-scrollbar
+        class="fixed z-10 overflow-x-scroll overflow-y-hidden"
+      >
+        <div class="h-px"></div>
       </div>
       <%!-- The one dialog of the table: it asks the question of a column with
       `confirm` before the cell is saved, that of a row action, and the one that
@@ -5235,6 +5285,43 @@ defmodule AshTable.Live.TableComponent do
         const HANDLE = "[data-resize]"
         const STEP = 10
 
+        // The scrollbars at the bottom edge of the window (see "scrolling
+        // sideways") are placed for all grids of the page at once, before
+        // the next frame is drawn: first every grid says whether it wants
+        // one, then each is given it or not. Of the grids that are in one
+        // another, the innermost that wants one has it: the bar at the
+        // bottom edge belongs to the table whose rows are seen above it.
+        let PLACING = 0
+        const PLACE = () => {
+          if (PLACING) return
+          PLACING = requestAnimationFrame(() => {
+            PLACING = 0
+            const hooks = Array.from(document.querySelectorAll(GRID)).map(grid => grid._ashTable).filter(Boolean)
+            const wanted = new Map(hooks.map(hook => [hook.el, hook.barWanted()]))
+            for (const hook of hooks) {
+              const inner = Array.from(hook.el.querySelectorAll(GRID)).some(grid => wanted.get(grid))
+              hook.placeBar(inner ? null : wanted.get(hook.el))
+            }
+          })
+        }
+
+        // Whether focus is moving with Tab just now: a cell that Tab comes
+        // to is brought into view as one the arrow keys come to is (see
+        // `intoView`). The key is heard before focus moves, and forgotten
+        // right after.
+        let TABBING = false
+        window.addEventListener("keydown", e => {
+          if (e.key !== "Tab") return
+          TABBING = true
+          setTimeout(() => { TABBING = false }, 0)
+        }, true)
+
+        // how high the scrollbar at the bottom edge is where the browser's
+        // scrollbars take no room (they lie over the content), in pixels,
+        // and how much of a grid has to be seen above it
+        const BAR = 12
+        const SEEN = 48
+
         export default {
           mounted() {
             // the table's id, which every id in it starts with
@@ -5372,9 +5459,26 @@ defmodule AshTable.Live.TableComponent do
             this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)))
             this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
             this.el.addEventListener("mouseleave", () => this.onPointer(null))
-            this.onScroll = () => { this.showMessage(); this.placeCount(); this.placeColumns() }
+            this.onScroll = () => { this.showMessage(); this.placeCount(); this.placeColumns(); PLACE() }
             window.addEventListener("scroll", this.onScroll, true)
             window.addEventListener("resize", this.onScroll)
+            // The grid scrolls sideways: its scrollbar at the bottom edge
+            // of the window follows, and the other way round; and what
+            // stays in view has an edge while something is under it.
+            this.pins = null
+            this.pinned = null
+            this.clips = []
+            this.inset = 0
+            this.bar = this.part("scrollbar")
+            this.onSideways = () => this.sideways()
+            this.onBar = () => this.fromBar()
+            this.el.addEventListener("scroll", this.onSideways, {passive: true})
+            if (this.bar) this.bar.addEventListener("scroll", this.onBar, {passive: true})
+            // how wide the grid is, and the table in it, is watched: for
+            // what a nested table is told, and for the scrollbar
+            this.measured = new ResizeObserver(() => this.measure())
+            this.measured.observe(this.el)
+            this.measured.observe(document.body)
             // updated() only runs when this element itself is patched; a
             // stream insert or reset touches the rows alone.
             //
@@ -5407,6 +5511,7 @@ defmodule AshTable.Live.TableComponent do
 
           destroyed() {
             this.unstyle()
+            this.unpin()
             this.observer && this.observer.disconnect()
             this.counted && this.counted.disconnect()
             this.listed && this.listed.disconnect()
@@ -5605,6 +5710,7 @@ defmodule AshTable.Live.TableComponent do
               this.paint()
               this.watchColumns()
               this.fitColumns()
+              this.measure()
             }
             // a patch has brought the cell whose value was shown as the
             // server renders it, or taken it away: nothing is shown any more
@@ -5639,7 +5745,9 @@ defmodule AshTable.Live.TableComponent do
 
           move(r, c) {
             const cell = this.cellAt(r, c)
-            if (cell) cell.focus()
+            if (!cell) return
+            cell.focus()
+            this.intoView(cell)
           },
 
           // The rows say where they stand among all rows (`aria-rowindex`).
@@ -5674,6 +5782,7 @@ defmodule AshTable.Live.TableComponent do
             if (!this.spans(cell)) this.col = cell.cellIndex
             this.setActive(cell)
             this.showMessage()
+            if (TABBING) this.intoView(cell)
           },
 
           onFocusout(e) {
@@ -6503,6 +6612,233 @@ defmodule AshTable.Live.TableComponent do
             const tree = this.tree()
             const active = tree.owner === this.el && tree.activeId && document.getElementById(tree.activeId)
             if (active && this.el.contains(active) && this.gone(active)) this.setActive(this.seenNear(active))
+          },
+
+          // ---- scrolling sideways -------------------------------------------
+
+          // Every table scrolls sideways in its own area, which is this
+          // element: the table on a page, a nested table, the table of a
+          // picker. The browser does the scrolling. What this hook adds is
+          // in a style sheet of its own, as the widths are, so that no
+          // patch takes it away and nothing is written to the page:
+          //
+          //   * how wide the area is (`--ash-table-view`): the cell of a
+          //     nested table holds an element that is that wide and stays
+          //     at the left edge of this area (the server renders it), so
+          //     a nested table is as wide as what is seen of the table
+          //     around it, at every depth, and does not move when that
+          //     table scrolls;
+          //   * what stays in view while the table scrolls, in a table
+          //     that says `sticky_label? true` (its header says which
+          //     column the label's is, `data-label`; without that nothing
+          //     stays): the cells that select and expand a row, and the
+          //     label column, each at the place it has when the cells
+          //     before it that stay are at the left edge. The label column
+          //     stays where it stands among the columns: a column before
+          //     it scrolls away under it. Nothing stays where it would
+          //     take more than half of what is seen. These cells have the
+          //     ground of the table (`--ash-table-ground`, else the
+          //     theme's) so that nothing shows through, and the last of
+          //     them an edge while something is under them.
+          //
+          // A cell that the keyboard moves focus to is brought into view in
+          // this area, beside the cells that stay and not under them, and
+          // above the scrollbar at the bottom edge (`intoView`). The browser
+          // brings a focused cell into view by itself, and knows of neither.
+          //
+          // A grid whose own scrollbar is below the window has it once
+          // more at the bottom edge of the window, `ID-scrollbar`: see
+          // `PLACE`, `barWanted` and `placeBar`. The two are kept
+          // together here.
+
+          // After every patch, and when the grid or the table in it is
+          // another size.
+          measure() {
+            const table = this.el.querySelector("table")
+            if (table !== this.sized) {
+              if (this.sized) this.measured.unobserve(this.sized)
+              if (table) this.measured.observe(table)
+              this.sized = table
+            }
+            // what cuts the grid off at the bottom, besides the window:
+            // whatever around it scrolls or clips
+            this.clips = []
+            for (let node = this.el.parentElement; node && node !== document.body && node !== document.documentElement; node = node.parentElement) {
+              if (getComputedStyle(node).overflowY !== "visible") this.clips.push(node)
+            }
+            // what a host keeps free at the bottom of the window
+            this.inset = parseFloat(getComputedStyle(this.el).getPropertyValue("--ash-table-bottom")) || 0
+            this.repin()
+            PLACE()
+          },
+
+          // The header cells that stay in view, left to right, each with
+          // where it stays; and how wide they are together.
+          stays() {
+            const heads = this.headCells()
+            const label = heads.find(th => th.dataset.label !== undefined)
+            if (!label) return [[], 0]
+            const pins = []
+            let left = 0
+            for (const th of heads.slice(0, this.lead()).concat([label])) {
+              pins.push([th, left])
+              left += th.getBoundingClientRect().width
+            }
+            return left <= this.el.clientWidth / 2 ? [pins, left] : [[], 0]
+          },
+
+          // Writes the rules, when they would be others than before.
+          repin() {
+            const table = this.el.querySelector("table")
+            if (!table) return
+            const view = this.el.clientWidth
+            const [pins, width] = this.stays()
+            this.kept = width
+            this.scrolled = this.el.scrollLeft > 0
+            const says = [view, width, this.scrolled].concat(pins.map(([th, left]) => `${th.id}:${th.getAttribute("aria-colindex")}:${left}`)).join()
+            if (says === this.pinned) return
+            this.pinned = says
+            const at = `#${CSS.escape(table.id)}`
+            const cells = th => {
+              const place = th.getAttribute("aria-colindex")
+              return `${at}>thead>tr>[aria-colindex="${place}"],${at}>tbody>tr>td[aria-colindex="${place}"]:not([colspan])`
+            }
+            let css = `#${CSS.escape(this.el.id)}{--ash-table-view:${view}px}`
+            if (pins.length > 0) {
+              for (const [th, left] of pins) {
+                css += `${cells(th)}{position:sticky;left:${left}px;z-index:1;background-color:var(--ash-table-ground,var(--color-base-100,Canvas))}`
+              }
+              const last = cells(pins[pins.length - 1][0])
+              const line = "color-mix(in oklab,var(--color-base-content,CanvasText) 20%,transparent)"
+              if (this.scrolled) {
+                css += `${last}{box-shadow:inset -1px 0 0 0 ${line}}`
+                // A cell that stays is not seen through while it is
+                // dimmed: its text is, as far as the cell would be.
+                const dimmed = pins.map(([th]) => `>tbody>tr>td[aria-colindex="${th.getAttribute("aria-colindex")}"]:not([colspan])`)
+                  .map(cell => `${at}${cell}[aria-busy],${at}[aria-busy]${cell}`)
+                css += `${dimmed.join(",")}{opacity:1;color:color-mix(in oklab,currentColor 70%,transparent)}`
+              }
+              // forced colours take the shadow away: there the edge is a border
+              css += `@media (forced-colors:active){${last}{border-inline-end:1px solid CanvasText}}`
+            }
+            if (!this.pins) {
+              this.pins = new CSSStyleSheet()
+              document.adoptedStyleSheets = [...document.adoptedStyleSheets, this.pins]
+            }
+            this.pins.replaceSync(css)
+          },
+
+          // Brings a cell that the keyboard has moved focus to into view,
+          // as far as the browser has not: sideways in this grid, out
+          // from under the cells that stay and to this side of the grid's
+          // end; and up, when it is at the bottom edge of the window, where
+          // a scrollbar may lie over it. Not a cell that stays, which is in
+          // view, nor sideways one that spans the table.
+          intoView(cell) {
+            const el = this.el
+            if (!this.spans(cell) && getComputedStyle(cell).position !== "sticky") {
+              const start = el.getBoundingClientRect().left + el.clientLeft
+              const from = start + (this.kept || 0)
+              const to = start + el.clientWidth
+              const box = cell.getBoundingClientRect()
+              // by whole pixels, and rather one too many: a browser may
+              // scroll to whole pixels only
+              if (box.left < from) el.scrollLeft = Math.floor(el.scrollLeft - (from - box.left))
+              else if (box.right > to) el.scrollLeft = Math.ceil(el.scrollLeft + Math.min(box.right - to, box.left - from))
+            }
+            const box = cell.getBoundingClientRect()
+            const over = Math.min(box.bottom - (this.bottomEdge() - this.barHeight()), box.top)
+            if (over <= 0) return
+            const scroller = this.clips.find(node => node.scrollHeight > node.clientHeight + 1 && /auto|scroll/.test(getComputedStyle(node).overflowY))
+            if (scroller) scroller.scrollTop += over
+            else window.scrollBy(0, over)
+          },
+
+          // How high the scrollbar at the bottom edge is: as the grid's own.
+          barHeight() { return (this.el.offsetHeight - this.el.clientHeight) || BAR },
+
+          unpin() {
+            this.measured && this.measured.disconnect()
+            this.el.removeEventListener("scroll", this.onSideways)
+            if (this.bar) this.bar.removeEventListener("scroll", this.onBar)
+            if (this.pins) document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== this.pins)
+            this.pins = null
+            // another grid's scrollbar may take the place of this one's
+            PLACE()
+          },
+
+          // The grid was scrolled sideways: its scrollbar at the bottom
+          // edge of the window goes with it.
+          sideways() {
+            if (this.bar && !this.bar.hidden) this.toBar()
+            if (this.el.scrollLeft > 0 !== this.scrolled) this.repin()
+          },
+
+          // Puts the scrollbar at the bottom edge where the grid is, and
+          // notes where that is (`barAt`): the bar says that it was
+          // scrolled whoever scrolled it, and when it is shown, and when
+          // it is another size.
+          toBar() {
+            const bar = this.bar
+            if (Math.abs(bar.scrollLeft - this.el.scrollLeft) > 0.5) bar.scrollLeft = this.el.scrollLeft
+            this.barAt = bar.scrollLeft
+          },
+
+          // And the other way round, when it was a person who moved the
+          // bar: it is somewhere else than this hook has put it. Neither
+          // is written what it holds already, so the two do not go on
+          // telling each other.
+          fromBar() {
+            const bar = this.bar
+            if (bar.hidden) return
+            const at = bar.scrollLeft
+            if (Math.abs(at - this.barAt) <= 0.5) return
+            this.barAt = at
+            if (Math.abs(this.el.scrollLeft - at) > 0.5) this.el.scrollLeft = at
+          },
+
+          // Where what is seen of the page ends at the bottom, for this
+          // grid: the bottom edge of the window, or of what cuts the grid
+          // off before that, less what the host keeps free there
+          // (`--ash-table-bottom`).
+          bottomEdge() {
+            let edge = document.documentElement.clientHeight
+            for (const node of this.clips) {
+              if (!node.isConnected) continue
+              edge = Math.min(edge, node.getBoundingClientRect().top + node.clientTop + node.clientHeight)
+            }
+            return edge - this.inset
+          },
+
+          // Whether this grid would have its scrollbar at the bottom edge,
+          // and where: it has something to scroll, its own scrollbar is
+          // below the edge, and enough of it is seen above the edge.
+          barWanted() {
+            const el = this.el
+            if (!this.bar || !el.isConnected || el.scrollWidth - el.clientWidth < 1) return null
+            const box = el.getBoundingClientRect()
+            if (!box.width || !box.height) return null
+            const edge = this.bottomEdge()
+            if (box.bottom <= edge || box.top + SEEN > edge) return null
+            const height = this.barHeight()
+            return {left: box.left + el.clientLeft, top: edge - height, width: el.clientWidth, height, scroll: el.scrollWidth}
+          },
+
+          // Shows the scrollbar at the bottom edge where `want` says, or
+          // hides it.
+          placeBar(want) {
+            const bar = this.bar
+            if (!bar || !bar.isConnected) return
+            if (!want) {
+              if (!bar.hidden) bar.hidden = true
+              return
+            }
+            const style = `left:${want.left}px;top:${want.top}px;width:${want.width}px;height:${want.height}px`
+            if (bar.getAttribute("style") !== style) bar.setAttribute("style", style)
+            const inner = bar.firstElementChild
+            if (inner && inner.style.width !== `${want.scroll}px`) inner.style.width = `${want.scroll}px`
+            if (bar.hidden) bar.hidden = false
+            this.toBar()
           },
 
           // ---- selecting ---------------------------------------------------
@@ -7804,52 +8140,58 @@ defmodule AshTable.Live.TableComponent do
           aria-colindex="1"
           tabindex="-1"
           data-line={relationship.name}
-          class="py-1"
+          class="px-0 py-1"
         >
-          <button
-            type="button"
-            id={"#{@row_id}-l-#{relationship.name}-b"}
-            tabindex="-1"
-            aria-expanded={to_string(relationship.name in @row.lines)}
-            class="font-medium"
-          >
-            {relationship.label}
-          </button>
-          <%!-- The create button of the nested table, on the line that names
-          it: after the label, since the line is as wide as the table around it
-          and its far end is usually out of sight. It is shown once the nested
-          table has read (the rule is with the table's classes), and as high as
-          the line's text, so the line is as high with it as without. --%>
-          <button
-            :if={relationship.name in @row.lines and @creates[relationship.name][:create]}
-            type="button"
-            id={"#{@row_id}-l-#{relationship.name}-create"}
-            tabindex="-1"
-            data-create
-            class="btn btn-xs ms-2 hidden h-5 align-top"
-            phx-click="create"
-            phx-target={"##{@row_id}-t-#{relationship.name}"}
-          >
-            {@creates[relationship.name].create}
-          </button>
-          <%!-- The table actions of the nested table, after it and looking as
-          it does: shown with it, and used on the nested table. --%>
-          <button
-            :for={
-              action <-
-                (relationship.name in @row.lines && @creates[relationship.name][:actions]) || []
-            }
-            type="button"
-            id={"#{@row_id}-l-#{relationship.name}-do-#{action.name}"}
-            tabindex="-1"
-            data-table-action={action.name}
-            class="btn btn-xs ms-2 hidden h-5 align-top"
-            phx-click="table_act"
-            phx-value-action={action.name}
-            phx-target={"##{@row_id}-t-#{relationship.name}"}
-          >
-            {action.label}
-          </button>
+          <%!-- What the line holds stays at the left edge of the table's
+          scroll area while the table scrolls sideways under it, as the nested
+          table under it does: the padding of the cell is this element's, so
+          that it stands in the same place stuck and not. --%>
+          <div class="sticky left-0 w-fit px-4">
+            <button
+              type="button"
+              id={"#{@row_id}-l-#{relationship.name}-b"}
+              tabindex="-1"
+              aria-expanded={to_string(relationship.name in @row.lines)}
+              class="font-medium"
+            >
+              {relationship.label}
+            </button>
+            <%!-- The create button of the nested table, on the line that names
+            it: after the label, since the line is as wide as the table around it
+            and its far end is usually out of sight. It is shown once the nested
+            table has read (the rule is with the table's classes), and as high as
+            the line's text, so the line is as high with it as without. --%>
+            <button
+              :if={relationship.name in @row.lines and @creates[relationship.name][:create]}
+              type="button"
+              id={"#{@row_id}-l-#{relationship.name}-create"}
+              tabindex="-1"
+              data-create
+              class="btn btn-xs ms-2 hidden h-5 align-top"
+              phx-click="create"
+              phx-target={"##{@row_id}-t-#{relationship.name}"}
+            >
+              {@creates[relationship.name].create}
+            </button>
+            <%!-- The table actions of the nested table, after it and looking as
+            it does: shown with it, and used on the nested table. --%>
+            <button
+              :for={
+                action <-
+                  (relationship.name in @row.lines && @creates[relationship.name][:actions]) || []
+              }
+              type="button"
+              id={"#{@row_id}-l-#{relationship.name}-do-#{action.name}"}
+              tabindex="-1"
+              data-table-action={action.name}
+              class="btn btn-xs ms-2 hidden h-5 align-top"
+              phx-click="table_act"
+              phx-value-action={action.name}
+              phx-target={"##{@row_id}-t-#{relationship.name}"}
+            >
+              {action.label}
+            </button>
+          </div>
         </td>
       </tr>
       <tr
@@ -7868,32 +8210,35 @@ defmodule AshTable.Live.TableComponent do
           data-expander-cell={"#{@row_id}-e"}
           class="p-0"
         >
-          <%!-- No wider than the cell for the layout of the table around it,
-          whatever the nested table would like: the columns around it stay as they
-          are. A nested table that is wider reaches out of the cell to the right,
-          and the grid on the page scrolls for it: one region that scrolls, the one
-          that holds the tab stop, and none inside it that the keyboard could not
-          reach with Tab. --%>
-          <div class="w-0 min-w-full">
-            <.live_component
-              module={__MODULE__}
-              id={"#{@row_id}-t-#{relationship.name}"}
-              resource={relationship.destination}
-              table={relationship.table}
-              via={relationship}
-              parent_key={@row.pk}
-              label={relationship.label}
-              labelledby={
-                Enum.join(
-                  ["#{@row_id}-l-#{relationship.name}-b"] ++
-                    if(@first, do: ["#{@row_id}-c-#{@first.name}"], else: []),
-                  " "
-                )
-              }
-              url={nil}
-              mounted?={false}
-              {@reader}
-            />
+          <%!-- A nested table is as wide as what is seen of the table around
+          it, and stays there while that table scrolls sideways under it: it
+          scrolls sideways in its own area (its grid), under its own rows. The
+          outer element takes no width, so the columns around stay as they are,
+          and holds its place at the left edge of the scroll area around it; the
+          inner one is as wide as that area, which its hook says
+          (`--ash-table-view`, see "scrolling sideways" in the hook). --%>
+          <div class="sticky left-0 w-0" data-pin>
+            <div class="w-[var(--ash-table-view)]">
+              <.live_component
+                module={__MODULE__}
+                id={"#{@row_id}-t-#{relationship.name}"}
+                resource={relationship.destination}
+                table={relationship.table}
+                via={relationship}
+                parent_key={@row.pk}
+                label={relationship.label}
+                labelledby={
+                  Enum.join(
+                    ["#{@row_id}-l-#{relationship.name}-b"] ++
+                      if(@first, do: ["#{@row_id}-c-#{@first.name}"], else: []),
+                    " "
+                  )
+                }
+                url={nil}
+                mounted?={false}
+                {@reader}
+              />
+            </div>
           </div>
         </td>
       </tr>
@@ -9498,7 +9843,7 @@ defmodule AshTable.Live.TableComponent do
       phx-hook=".Pagination"
       role="group"
       aria-label={Text.t(:pagination, table: @label)}
-      class="flex flex-wrap items-center justify-start gap-4"
+      class="sticky left-4 flex w-fit flex-wrap items-center justify-start gap-4"
     >
       <.pages {assigns} />
     </div>

@@ -27,7 +27,8 @@ no HEEx.
 > panel. A read action's arguments, and those of a calculation
 > column, are given in a line of inputs above the rows. A person can drag
 > a column wider or narrower, and hide columns; both last until the page is
-> reloaded.
+> reloaded. Every table, nested ones too, scrolls sideways on its own, and
+> `sticky_label? true` keeps the column that names a record in view.
 
 - [Install](#install)
 - [A first table](#a-first-table)

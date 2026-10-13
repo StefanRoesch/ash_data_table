@@ -20,6 +20,10 @@ defmodule AshTable.Resource.Referencing do
           | {:label_relationship, atom}
           | {:label_not_an_attribute, atom, :calculation | :aggregate}
 
+  @type sticky_reason ::
+          {:sticky_without_label, AshTable.Resource.Table.t()}
+          | {:sticky_label_no_column, AshTable.Resource.Table.t(), atom}
+
   @type reason ::
           {:not_belongs_to, atom, atom}
           | {:no_table, atom, Ash.Resource.t()}
@@ -635,8 +639,45 @@ defmodule AshTable.Resource.Referencing do
           "#{inspect(destination)} is (#{inspect(key_type)}), nor a list of it. The argument is given " <>
           "the primary key of the chosen record as it is."
 
-  @doc "What is wrong with a `label_field`, or with a column that names a relationship, for a diagnostic."
-  @spec message(label_reason | reason) :: String.t()
+  @doc """
+  Whether a table that says `sticky_label? true` has a label column to keep
+  in view: the resource names a `label_field`, and the table shows it, as a
+  column of its own or with the default set. A `label_field` that cannot be
+  used is reported for itself (`label_field/1`), and not here.
+  """
+  @spec sticky_label(Ash.Resource.t() | Spark.Dsl.t(), AshTable.Resource.Table.t()) ::
+          :ok | {:error, sticky_reason}
+  def sticky_label(_resource, %{sticky_label?: false}), do: :ok
+
+  def sticky_label(resource, %{columns: columns} = table) do
+    case label_field(resource) do
+      :none ->
+        {:error, {:sticky_without_label, table}}
+
+      {:ok, %{name: name}} ->
+        if columns == [] or Enum.any?(columns, &(&1.name == name)),
+          do: :ok,
+          else: {:error, {:sticky_label_no_column, table, name}}
+
+      {:error, _reported_for_itself} ->
+        :ok
+    end
+  end
+
+  @doc "What is wrong with a `label_field`, with `sticky_label?`, or with a column that names a relationship, for a diagnostic."
+  @spec message(label_reason | sticky_reason | reason) :: String.t()
+  def message({:sticky_without_label, table}),
+    do:
+      "#{sentence(AshTable.Resource.Table.in_words(table))} says `sticky_label? true`, and the resource declares no `label_field`. " <>
+        "`sticky_label?` keeps the label column in view while the table scrolls sideways: " <>
+        "add `label_field` to the `table` block of the resource, or take `sticky_label?` out."
+
+  def message({:sticky_label_no_column, table, name}),
+    do:
+      "#{sentence(AshTable.Resource.Table.in_words(table))} says `sticky_label? true` and has no column of the label, `#{name}`. " <>
+        "`sticky_label?` keeps the label column in view while the table scrolls sideways: " <>
+        "add `column :#{name}`, or take `sticky_label?` out."
+
   def message({:label_not_found, name}), do: "The resource has no attribute named `#{name}`."
 
   def message({:label_not_public, name}),
@@ -694,4 +735,6 @@ defmodule AshTable.Resource.Referencing do
   defp kind(:has_one), do: "a has-one"
   defp kind(:many_to_many), do: "a many-to-many"
   defp kind(type), do: "a #{type}"
+
+  defp sentence(<<first::utf8, rest::binary>>), do: String.upcase(<<first::utf8>>) <> rest
 end

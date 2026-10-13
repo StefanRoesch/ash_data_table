@@ -98,6 +98,43 @@ export class Table {
     return this.byId(`${this.id}-grid`)
   }
 
+  // ---- scrolling sideways ---------------------------------------------------
+
+  /** The table's scrollbar at the bottom edge of the window, shown while its own is below it. */
+  get scrollbar(): Locator {
+    return this.byId(`${this.id}-scrollbar`)
+  }
+
+  /** How far the table is scrolled sideways in its own area, in whole pixels. */
+  async scrollLeft(): Promise<number> {
+    return this.hookRoot.evaluate((grid) => Math.round(grid.scrollLeft))
+  }
+
+  /** Scrolls the table sideways in its own area, as far as it goes, and waits until it is there. */
+  async scrollTo(left: number): Promise<void> {
+    await this.hookRoot.evaluate((grid, left) => {
+      grid.scrollLeft = left
+    }, left)
+    await expect
+      .poll(() =>
+        this.hookRoot.evaluate(
+          (grid, left) =>
+            Math.abs(grid.scrollLeft - Math.min(left, grid.scrollWidth - grid.clientWidth)) < 1,
+          left,
+        ),
+      )
+      .toBe(true)
+  }
+
+  /** How wide what is seen of the table's own scroll area is, and how wide what scrolls in it. */
+  async area(): Promise<{ left: number; seen: number; all: number }> {
+    return this.hookRoot.evaluate((grid) => ({
+      left: Math.round(grid.getBoundingClientRect().left),
+      seen: grid.clientWidth,
+      all: grid.scrollWidth,
+    }))
+  }
+
   /** The one cell that Tab stops at, of the grid and of every grid nested in it. */
   get tabStop(): Locator {
     return this.grid.locator('[tabindex="0"]')
@@ -873,4 +910,27 @@ export class Table {
     if (text === "") await this.page.keyboard.press("Delete")
     else await this.page.keyboard.type(text)
   }
+}
+
+/**
+ * How many rules the tables of a page have written for the widths of columns
+ * and for hidden columns, in the style sheets their hooks own. Every grid has
+ * one such sheet from the start, for what its hook says of scrolling
+ * sideways; a width or a hidden column is a rule in a second one.
+ */
+export async function columnRules(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      document.adoptedStyleSheets
+        .flatMap((sheet) => Array.from(sheet.cssRules))
+        .filter((rule) => /max-width|display: none/.test(rule.cssText)).length,
+  )
+}
+
+/** How many style sheets the hooks of a page own, and how many grids the page has. */
+export async function ownedSheets(page: Page): Promise<{ sheets: number; grids: number }> {
+  return page.evaluate(() => ({
+    sheets: document.adoptedStyleSheets.length,
+    grids: document.querySelectorAll("[data-ash-table]").length,
+  }))
 }

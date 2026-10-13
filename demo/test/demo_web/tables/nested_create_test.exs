@@ -85,7 +85,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
 
       assert text(html, button) == "New comment"
       # in the line's cell, right after the button that opens the line
-      assert attribute(html, "[id='task-row-#{task.id}-l-comments-c'] > button", "id") == [
+      assert attribute(html, "[id='task-row-#{task.id}-l-comments-c'] > div > button", "id") == [
                "task-row-#{task.id}-l-comments-b",
                "task-row-#{task.id}-l-comments-create"
              ]

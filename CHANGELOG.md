@@ -33,6 +33,31 @@ declared in the resource and mounted with one line in the router.
   mounted tables. The layout is given the flash and who is asking, under the
   conventional assign names and under those the domain names.
 
+
+### Scrolling sideways
+
+- Every table scrolls sideways in an area of its own: the table on a page,
+  every nested table and the table of a picker. A nested table is as wide as
+  what is seen of the table around it and stays in place while that table
+  scrolls; the line that opens it, its "Columns" button and its pages stay
+  with it. A nested table scrolled to its end does not scroll the table
+  around it.
+- A table whose own scrollbar is below the window has a second one at the
+  bottom edge of the window, for the innermost table that is cut off there.
+  `--ash-table-bottom` keeps it above a host's fixed footer.
+- `sticky_label? true` in a `table` block or a named table keeps the label
+  column in view while the table scrolls sideways, with the cells that select
+  and expand a row. Off by default. Verified at compile time: the resource
+  has a `label_field`, and the table shows it. `--ash-table-ground` names the
+  colour behind a table for those cells.
+- A cell that the keyboard moves focus to is brought into view in its own
+  table's area, beside the cells that stay and above the second scrollbar.
+  The grids are no tab stops of their own in browsers that make one of every
+  element that scrolls.
+- Changed markup: what a relationship line holds is in an element of its own
+  (`td[data-line] > div > button`), and a nested table is two elements deep
+  in its cell.
+
 ### Reading
 
 - Sorting, filtering and pagination on the server, through the read action,

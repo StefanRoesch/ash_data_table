@@ -274,6 +274,70 @@ records".
 With `on_forbidden :message` in the resource's `table` block, both kinds of
 table show the message in place of the rows.
 
+## Scrolling sideways
+
+A table is as wide as the place it is in. When its columns need more, it
+scrolls sideways in an area of its own, and the page around it does not.
+
+- **Every table has its own area**: the table on a page, each
+  [nested table](nested-tables.md) at every depth, and the table of a
+  [picker](choosing-a-related-record.md). The scrollbar of a table is
+  directly under its own rows.
+- **A nested table is as wide as what is seen of the table around it**, not
+  as wide as that table. It stays in place while the table around it
+  scrolls under it, and scrolls by itself: a wide nested table in a wide
+  table are two things to scroll, each without the other. So do the line
+  that opens it, its "Columns" button and its pages.
+- **Shift and the mouse wheel** (or a sideways swipe) scroll the table under
+  the pointer, as the browser has it. A nested table that is scrolled to its
+  end does not go on to scroll the table around it. The wheel alone scrolls
+  the page, as everywhere.
+- **A scrollbar that stays in reach.** A table that is higher than the window
+  has its scrollbar below the window. While that is so, the table has a
+  second scrollbar at the bottom edge of the window, as wide as the table's
+  area. The two move together. It goes when the table's own scrollbar comes
+  into view, and it is not there for a table that has nothing to scroll.
+  Where tables are nested, the one bar belongs to the innermost table that is
+  cut off at the bottom edge and has something to scroll: the table whose
+  rows are seen above it. It is the browser's own scrollbar and looks like
+  it; where the system's scrollbars lie over the content and show only while
+  they are used, so does this one.
+- **With the keyboard** nothing is scrolled by hand: the table scrolls with
+  the focus. See
+  [Keyboard and accessibility](keyboard-and-accessibility.md#scrolling).
+- **Keeping a column in view** while the table scrolls is an option of the
+  table: `sticky_label?`, see
+  [Columns and defaults](columns-and-defaults.md#keeping-the-label-column-in-view).
+
+Nothing of this is declared, and the server does not know where a table is
+scrolled to: after a reload every table starts at its left edge.
+
+Two things a host can say in CSS, on the table's element or anything around
+it:
+
+| Custom property | What it says | Default |
+| --- | --- | --- |
+| `--ash-table-ground` | The colour behind the table, for the cells that stay in view with `sticky_label?`: they have to cover what scrolls under them. | The theme's `--color-base-100` |
+| `--ash-table-bottom` | How much of the bottom of the window the host covers with something of its own (a fixed footer), in pixels. The second scrollbar stays above it. | `0` |
+
+<!-- sketch -->
+```css
+/* a table on a card of another colour, in an app with a footer 48px high */
+.my-card { --ash-table-ground: var(--color-base-200); }
+:root { --ash-table-bottom: 48px; }
+```
+
+The second scrollbar is placed in the window (`position: fixed`), within
+what a scrolling element around the table shows of it. An element around the
+table that has a `transform`, a `filter` or `contain: paint` makes the
+browser place it relative to that element instead, which puts it in the
+wrong place: keep those off the elements around a table.
+
+**Try it:** `/tasks` in the demo. Expand the first row and open "Comments":
+the comments scroll under their own rows, and the tasks stay. Scroll the
+page until the comments reach below the window, and the scrollbar at the
+bottom edge is theirs.
+
 ## Edge cases
 
 - **The embedded table is asked again when its attributes change.** What a

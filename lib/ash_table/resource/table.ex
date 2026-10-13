@@ -30,6 +30,7 @@ defmodule AshTable.Resource.Table do
     on_forbidden: :not_found,
     max_depth: 3,
     live?: true,
+    sticky_label?: false,
     columns: [],
     relationships: [],
     actions: [],
@@ -46,6 +47,7 @@ defmodule AshTable.Resource.Table do
           on_forbidden: :not_found | :message,
           max_depth: non_neg_integer,
           live?: boolean,
+          sticky_label?: boolean,
           columns: [AshTable.Resource.Column.t()],
           relationships: [AshTable.Resource.Relationship.t()],
           actions: [AshTable.Resource.Action.t()],
@@ -86,6 +88,12 @@ defmodule AshTable.Resource.Table do
       default: 3,
       doc:
         "How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown."
+    ],
+    sticky_label?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Whether the label column stays in view while the table scrolls sideways: the column of the resource's `label_field`, with the cells before the columns that select and expand a row. The table then has to show that column. See \"Keeping the label column in view\" in the guide \"Columns and defaults\"."
     ],
     live?: [
       type: :boolean,

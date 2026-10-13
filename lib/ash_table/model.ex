@@ -309,7 +309,8 @@ defmodule AshTable.Model do
     max_depth: 3,
     table: :default,
     on_forbidden: :not_found,
-    live?: false
+    live?: false,
+    sticky_label?: false
   ]
 
   @type t :: %__MODULE__{
@@ -329,7 +330,8 @@ defmodule AshTable.Model do
           name: String.t(),
           max_depth: non_neg_integer,
           via: Relationship.t() | nil,
-          live?: boolean
+          live?: boolean,
+          sticky_label?: boolean
         }
 
   @default_page_size 25
@@ -451,7 +453,8 @@ defmodule AshTable.Model do
       max_depth: table.max_depth,
       on_forbidden: table.on_forbidden,
       via: via,
-      live?: live!(resource, table, opts[:live?])
+      live?: live!(resource, table, opts[:live?]),
+      sticky_label?: table.sticky_label?
     }
 
     if choose, do: chooser(model), else: model
@@ -993,8 +996,14 @@ defmodule AshTable.Model do
   @spec keeps_one?(t) :: boolean
   def keeps_one?(%__MODULE__{} = model), do: is_nil(label_column(model))
 
-  # The column of the attribute a record is called by, if the table has it.
-  defp label_column(%__MODULE__{resource: resource, columns: columns}) do
+  @doc """
+  The column of the attribute a record is called by (the resource's
+  `label_field`), if the table has it: the column that cannot be hidden, and
+  the one that stays in view when the table scrolls sideways where the table
+  says `sticky_label? true` (the model's `sticky_label?`).
+  """
+  @spec label_column(t) :: Column.t() | nil
+  def label_column(%__MODULE__{resource: resource, columns: columns}) do
     with {:ok, %{name: name}} <- Referencing.label_field(resource) do
       Enum.find(columns, &(&1.kind == :attribute and &1.name == name))
     else

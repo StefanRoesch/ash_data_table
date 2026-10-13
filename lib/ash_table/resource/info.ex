@@ -134,6 +134,7 @@ defmodule AshTable.Resource.Info do
       on_forbidden: table_on_forbidden!(resource),
       max_depth: table_max_depth!(resource),
       live?: table_live?(resource),
+      sticky_label?: table_sticky_label?(resource),
       columns: for(%AshTable.Resource.Column{} = column <- entities, do: column),
       relationships:
         for(%AshTable.Resource.Relationship{} = relationship <- entities, do: relationship),

@@ -89,6 +89,36 @@ column, where a table has them: their filter cells are empty.
 With the pointer: a click moves focus to a cell, a click on a sortable
 heading sorts, and a double click on an editable cell starts editing.
 
+## Scrolling
+
+Every table scrolls sideways in an area of its own (see
+[Layout and embedding](layout-and-embedding.md#scrolling-sideways)). From the
+keyboard there is nothing to scroll by hand: a table scrolls with the focus.
+
+- **A cell that the arrow keys, Home, End, Page Up, Page Down or Tab move
+  focus to is brought into view whole**, in the area of its own table. In a
+  nested table that is the nested table's area: the table around it does not
+  move.
+- **Never under what stays in view.** In a table with
+  [`sticky_label?`](columns-and-defaults.md#keeping-the-label-column-in-view)
+  the cell is brought out from under the label column, and it is kept above
+  the scrollbar at the bottom edge of the window (WCAG 2.2, "Focus Not
+  Obscured").
+- **The cells that stay are cells like the others.** They keep their place
+  in the row for the arrow keys and for a screen reader; only where they are
+  drawn changes. Focus on one of them does not scroll the table: Home on a
+  row that is scrolled far to the right moves focus to the row's first cell,
+  which is in view, and the table scrolls back when focus moves on into the
+  columns.
+- **An area that scrolls is no tab stop.** Some browsers make one of every
+  element that scrolls; the grids are taken out of the tab order
+  (`tabindex="-1"`), so that the tree of grids stays one stop.
+- **The scrollbar at the bottom edge of the window is for the pointer**: no
+  tab stop, and hidden from assistive technology (`aria-hidden`).
+- **Focus that a patch puts back is not scrolled to.** When a person has
+  scrolled the focused cell out of view with the wheel and a live update
+  renders its row again, the table stays where they scrolled it.
+
 ## Column widths from the keyboard
 
 The heading of every column ends in a handle that changes the column's
@@ -746,6 +776,11 @@ technology, a report of what you find is welcome in the
   sorts. F2 goes to the handle.
 - **Treating "axe reports no violations" as "accessible".** See the table
   above.
+- **axe reports "Scrollable region must have keyboard access" for a nested
+  table.** The rule asks that Tab stops in every area that scrolls. A nested
+  table is reached with Enter and the arrow keys, not with Tab, and its area
+  scrolls with the focus; the demo's checks leave this one finding out for
+  the grids of nested tables, and nothing else.
 - **A theme whose colours do not contrast.** The table draws with the
   theme's colours. See [What was measured](#what-was-measured) for what
   that leaves to the theme.

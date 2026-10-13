@@ -1,6 +1,6 @@
 # Architecture map
 
-Read this file before a build. It says where things are, so that you do not have to read every guide and the whole table component first. Paths are from the repository root. Line numbers are of the commit that added live updates and drift: each section says how to get them again.
+Read this file before a build. It says where things are, so that you do not have to read every guide and the whole table component first. Paths are from the repository root. Line numbers are of the commit that added scrolling sideways and drift: each section says how to get them again.
 
 The words used here (table, column, cell, picker, action panel, …) are defined in `CONTEXT.md`.
 
@@ -38,7 +38,7 @@ The rules of a declaration live in one module per topic. Each is shared by the v
 - `Resource.Acting`: row actions, table actions, create, and their inputs. `offered/2`, `create_action/2`, `inputs/4`, `record_argument/3`, `bulk?/3`.
 - `Resource.Arguing`: arguments of the read action and of calculation columns. `inputs/1`, `mistakes/3`, `declared_mistakes/2`.
 - `Resource.Relating`: relationships a row offers and the nested table. `offered/2`, `declared/2`, `nested/1`, `read_action/2`, `public_read/2`.
-- `Resource.Referencing`: reference cells, `label_field`, the picker. `label_field/1`, `reference/1`, `picking/2`, `declared/4`.
+- `Resource.Referencing`: reference cells, `label_field`, the picker, and `sticky_label?`. `label_field/1`, `sticky_label/2`, `reference/1`, `picking/2`, `declared/4`.
 - `Resource.Managing`: arguments that a `manage_relationship` change hands to a relationship. `managed/3`, `handed/3`.
 - `Resource.Embedding`: fields of a map cell, kinds of a union. `of/2`, `union/2`, `kind/2`.
 - `Resource.Presenting`: the `component` of a column. `column/4`, `component/2`.
@@ -46,7 +46,7 @@ The rules of a declaration live in one module per topic. Each is shared by the v
 - `Resource.Exposing`: columns that show a field a field policy protects. `exposures/2`.
 - `Resource.Listening`: live updates. `announces?/1` (the resource says `live? true`), `follows?/2` (a table of it listens), `pub_sub/1`. Its findings are reported by the domain's verifier, not by a resource's.
 
-Verifiers (`lib/ash_table/resource/verifiers/`), in the order `resource.ex` lists them: `VerifyTables` (names and duplicates in named tables), `VerifyReadAction`, `VerifyUpdateAction`, `VerifyLabelField`, `VerifyColumns`, `VerifyComponents`, `VerifyRelationships`, `VerifyActions`, `VerifyUploads`, `VerifyExposure` (warnings only).
+Verifiers (`lib/ash_table/resource/verifiers/`), in the order `resource.ex` lists them: `VerifyTables` (names and duplicates in named tables), `VerifyReadAction`, `VerifyUpdateAction`, `VerifyLabelField` (also `sticky_label?`), `VerifyColumns`, `VerifyComponents`, `VerifyRelationships`, `VerifyActions`, `VerifyUploads`, `VerifyExposure` (warnings only).
 
 A new diagnostic goes in two places. Put the rule and its `message/1` clause into the topic module above. Raise it from the verifier of that topic as a `Spark.Error.DslError`, with `Table.path/1` and `Table.anno/2` or `Table.option_anno/3` so that it points at the right line. A verifier checks every table of the resource: loop over `AshTable.Resource.Info.tables/1`. Then add it to `documentation/topics/mistakes-at-compile-time.md`.
 
@@ -54,7 +54,7 @@ A new diagnostic goes in two places. Put the rule and its `message/1` clause int
 
 The model:
 
-- `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `humanize/1`.
+- `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name.
 - `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key.
 - `Model.CellType`: Ash type to cell type. `of/2`, `classify/2`.
 - `Model.Operator`: filter operators per cell type. `available/2`, `to_ash/2`.
@@ -110,7 +110,7 @@ Texts and values:
 
 ## The table component
 
-`lib/ash_table/live/table_component.ex` is about 10,600 lines. It is a `Phoenix.LiveComponent`. The line ranges below come from this command:
+`lib/ash_table/live/table_component.ex` is about 10,900 lines. It is a `Phoenix.LiveComponent`. The line ranges below come from this command:
 
 ```sh
 grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|ColocatedHook\|// ---- \|^  defp [a-z_?]*(assigns)' lib/ash_table/live/table_component.ex
@@ -118,19 +118,19 @@ grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|Colocated
 
 | Lines | What |
 | --- | --- |
-| 1–303 | Comment: the markup contract (ids, `aria-colindex`, components) and one section per feature. Read the section of the feature you touch. |
-| 305–448 | Aliases and `mount/1`. Every assign is set here with a comment. |
-| 449–953 | `update/2` and what it calls: `selecting`, `relate`, `build`, `in_words`, `settle`, `read`, `reader`. Its first clause takes what a listener hands over (`live`). |
-| 954–1273 | Live updates: `listen`, `listener`, `tidy`, `close`, `follow`, `working`, `refresh`, `leave`, `redetail`, `put_fresh`, `notice`. |
-| 1274–1346 | `handle_async/3`: `:read` and `:bulk`. |
-| 1347–1760 | Showing a read: `unfilled`, `show`, `not_found`, `item`, `put_row`, `put_failure`, `remove_row`, `announce`. |
-| 1761–2492 | `handle_event/3`, all clauses. |
-| 2493–2519 | `defoverridable`, and `update/2`, `handle_event/3` and `handle_async/3` once more: each calls the clauses above and ends in `tidy/1`. |
-| 2520–4079 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 2625), panel (from 2899), bulk (from 3194), `submit` (from 3285), files (from 3451), after a create or a run (from 3713), arguments, `go` and the URL (from 3975). |
-| 4080–4671 | `render/1`: the markup of one table. |
-| 4672–7782 | The four hooks, inside `render/1`. |
-| 7783–10227 | Function components: `lines`, `argument`, `panel`, `picker`, `field`, `group`, `groups`, `union`, `members`, `related`, `selection`, `create`, `table_actions`, `pagination`, `pages`, `resizer`, `columns`, `filter`, `editor`, `count`, `list`. |
-| 10228–10557 | Small view helpers: `colindex`, `cell_attributes`, `cell_content`, `cell`, `page_numbers`. |
+| 1–324 | Comment: the markup contract (ids, `aria-colindex`, components) and one section per feature. Read the section of the feature you touch. |
+| 326–469 | Aliases and `mount/1`. Every assign is set here with a comment. |
+| 470–976 | `update/2` and what it calls: `selecting`, `relate`, `build`, `in_words`, `settle`, `read`, `reader`. Its first clause takes what a listener hands over (`live`). |
+| 977–1296 | Live updates: `listen`, `listener`, `tidy`, `close`, `follow`, `working`, `refresh`, `leave`, `redetail`, `put_fresh`, `notice`. |
+| 1297–1369 | `handle_async/3`: `:read` and `:bulk`. |
+| 1370–1783 | Showing a read: `unfilled`, `show`, `not_found`, `item`, `put_row`, `put_failure`, `remove_row`, `announce`. |
+| 1784–2515 | `handle_event/3`, all clauses. |
+| 2516–2542 | `defoverridable`, and `update/2`, `handle_event/3` and `handle_async/3` once more: each calls the clauses above and ends in `tidy/1`. |
+| 2543–4102 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 2648), panel (from 2922), bulk (from 3217), `submit` (from 3308), files (from 3474), after a create or a run (from 3736), arguments, `go` and the URL (from 3998). |
+| 4103–4720 | `render/1`: the markup of one table. |
+| 4721–8115 | The four hooks, inside `render/1`. |
+| 8116–10569 | Function components: `lines`, `argument`, `panel`, `picker`, `field`, `group`, `groups`, `union`, `members`, `related`, `selection`, `create`, `table_actions`, `pagination`, `pages`, `resizer`, `columns`, `filter`, `editor`, `count`, `list`. |
+| 10570–10899 | Small view helpers: `colindex`, `cell_attributes`, `cell_content`, `cell`, `page_numbers`. |
 
 ### Events
 
@@ -175,25 +175,28 @@ The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`
 
 They are colocated hooks. A host gets them from `phoenix-colocated/ash_table`.
 
-- `.Pagination` (from 4672): keeps focus on the pagination control that was used. No sections.
-- `.Panel` (from 4739): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
-- `.Picker` (from 4932): the picker dialog. Hears the selection of the table inside it and sends `picked`.
-- `.Grid` (from 5069): everything in the grid. It starts with a long comment and constants, then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
+- `.Pagination` (from 4721): keeps focus on the pagination control that was used. No sections.
+- `.Panel` (from 4788): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
+- `.Picker` (from 4981): the picker dialog. Hears the selection of the table inside it and sends `picked`.
+- `.Grid` (from 5118): everything in the grid. It starts with a long comment and constants (among them `PLACE`, which places the scrollbars at the bottom edge of the window for all grids of a page at once), then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
 
 | Line | Section | Owns |
 | --- | --- | --- |
-| 5424 | the counter of a text | the count beside a text with `max_length` |
-| 5492 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
-| 5851 | expanding | opening a row and going into a nested table |
-| 6026 | the widths of the columns | resizing; the server never hears of widths |
-| 6270 | hiding columns | the "Columns" list; the server never hears of it |
-| 6508 | selecting | which rows are selected, `selected()`, `bulk` |
-| 6794 | row actions | `act`, the question of an action, refocus |
-| 6854 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
-| 7187 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
-| 7605 | sensitive cells | `reveal`, `hide` |
-| 7720 | the dialog | `ask`: the table's question dialog |
-| 7741 | the message of a failed cell | `showMessage` |
+| 5528 | the counter of a text | the count beside a text with `max_length` |
+| 5596 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
+| 5959 | expanding | opening a row and going into a nested table |
+| 6134 | the widths of the columns | resizing; the server never hears of widths |
+| 6378 | hiding columns | the "Columns" list; the server never hears of it |
+| 6616 | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
+| 6841 | selecting | which rows are selected, `selected()`, `bulk` |
+| 7127 | row actions | `act`, the question of an action, refocus |
+| 7187 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
+| 7520 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
+| 7938 | sensitive cells | `reveal`, `hide` |
+| 8053 | the dialog | `ask`: the table's question dialog |
+| 8074 | the message of a failed cell | `showMessage` |
+
+A method of the `.Grid` hook has to have a name no other has: the hook is one object, and a second `fit` or `reveal` silently takes the place of the first. esbuild warns of it ("Duplicate key") when the demo's assets are built.
 
 ## Safety rules
 

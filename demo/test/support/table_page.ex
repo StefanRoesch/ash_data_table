@@ -219,7 +219,7 @@ defmodule DemoWeb.TablePage do
   @doc "What the lines under a row say, top to bottom; none while the row is not expanded."
   def lines(html, id \\ "task", key) do
     html
-    |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > button[aria-expanded]")
+    |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > div > button[aria-expanded]")
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
@@ -443,7 +443,7 @@ defmodule DemoWeb.TablePage do
   """
   def line_buttons(html, id \\ "task", key, relationship) do
     html
-    |> query("[id='#{id}-row-#{key}-l-#{relationship}-c'] > button:not([aria-expanded])")
+    |> query("[id='#{id}-row-#{key}-l-#{relationship}-c'] > div > button:not([aria-expanded])")
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 

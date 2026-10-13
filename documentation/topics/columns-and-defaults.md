@@ -581,6 +581,67 @@ moves on. The keys are in
 **Try it:** on `/tasks` in the demo, filter "Progress", then hide it with
 "Columns".
 
+## Keeping the label column in view
+
+A table that is wider than its place scrolls sideways (see
+[Scrolling sideways](layout-and-embedding.md#scrolling-sideways)), and the
+column that says which record a row is scrolls away with the others. A table
+keeps it in view when its block says `sticky_label? true`:
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+    # What a task is called where a table shows it as one value.
+    label_field :title
+```
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+    # The table has many columns and scrolls sideways: the title, by which
+    # a task is told from another, stays in view meanwhile, with the cells
+    # that select and expand its row.
+    sticky_label? true
+```
+
+- **What stays** is the label column, the column of the resource's
+  `label_field`: its header, its filter and its cells. With it stay the
+  narrow cells before the columns, where the table has them: the box that
+  selects a row and the expander of a row. Nothing else can be kept, and a
+  person cannot choose.
+- **Where it stays.** At the left edge of the table's own scroll area, after
+  the box and the expander. The label column keeps its place among the
+  columns: when it is not the first column, the columns before it scroll
+  away under it, and it stays once it reaches the left edge.
+- **The option is off unless it is written**, and each table says it for
+  itself: the `table` block for the default table, a
+  [named table](named-tables.md) in its own block. A nested table and the
+  table of a picker are tables of their resource, and do what that table's
+  block says. On `/tasks` the title stays; in the comments under a task
+  nothing does.
+- **It needs a label column.** `sticky_label? true` on a table of a resource
+  without `label_field`, or on a table that declares its columns and leaves
+  the label's out, is reported when the resource is compiled: see
+  [Mistakes at compile time](mistakes-at-compile-time.md#sticky_label).
+- **It does not stay where it would take more than half** of what is seen of
+  the table: in a narrow window, or when a person has made the column very
+  wide. Then the table scrolls as one without the option does.
+- **For a person who does not see the label's field** (a field policy), the
+  table has no label column, and nothing stays.
+- **Widths and hidden columns** work as before. The label column has its
+  handle and can be made wider or narrower; it cannot be hidden, with or
+  without the option.
+- **The cells that stay have the page's ground**, so that what scrolls under
+  them does not show through: the theme's `--color-base-100`. A table on
+  another ground is told so with `--ash-table-ground`: see
+  [Scrolling sideways](layout-and-embedding.md#scrolling-sideways). While
+  something is under them, the last of them has a thin edge.
+- **The header row does not stay at the top** when the page scrolls down.
+  There is no option for that yet: see
+  [Not in the first version](#not-in-the-first-version).
+
+**Try it:** `/tasks` in the demo. Hold Shift and turn the mouse wheel over
+the table, or drag the scrollbar at the bottom of the window: "Title" stays.
+On `/labels`, in a narrow window, nothing does.
+
 ## Edge cases
 
 - **A public foreign key shows the raw key.** `Task ID` on `/comments` is the
@@ -627,7 +688,9 @@ No reference cell for a has-one, no label that is a calculation, no choosing
 another related record in a reference cell, no dedicated cells for maps and
 embedded resources, no locale-aware formatting, no column widths in the
 `table` block, no remembering of the widths a person set or of the columns they hid, no
-option to forbid hiding a column or to start with one hidden,
+option to forbid hiding a column or to start with one hidden, no header row
+that stays at the top of the window while the page scrolls down, no choosing
+which columns stay in view,
 and one table per resource. A column's own look and editor are built: see
 [Custom components](custom-components.md). The
 later slices are listed in the

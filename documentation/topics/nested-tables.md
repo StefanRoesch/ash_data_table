@@ -723,8 +723,8 @@ in a nested table for each of its rows.
 - **Hidden columns.** A nested table has its own "Columns" button, on a
   line above its header, and what is hidden in it is that nested table's
   alone. Closing the line and opening it again shows every column. Hiding
-  columns of the table around it leaves the line and the nested table as
-  wide as the columns that are still shown. See
+  columns of the table around it leaves the nested table as wide as it
+  was: as wide as what is seen of the table around it. See
   [Columns and defaults](columns-and-defaults.md#hiding-columns).
 - **Column widths.** A person changes the widths of a nested table's columns
   as those of any table, and they are that nested table's alone. Closing

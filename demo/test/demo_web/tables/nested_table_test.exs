@@ -146,7 +146,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # every line is closed: no nested table yet
       assert attribute(
                html,
-               "[id='task-row-#{task.id}-x'] td[data-line] > button",
+               "[id='task-row-#{task.id}-x'] td[data-line] > div > button",
                "aria-expanded"
              )
              |> Enum.uniq() == ["false"]

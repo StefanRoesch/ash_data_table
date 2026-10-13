@@ -8452,4 +8452,127 @@ defmodule AshTable.TableBlockTest do
       assert error.message =~ "`like`"
     end
   end
+
+  describe "sticky_label?" do
+    test "is off unless a table says so, and each table says it for itself" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Sticky do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :name, :string, public?: true
+            attribute :note, :string, public?: true
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            label_field :name
+            sticky_label? true
+          end
+
+          tables do
+            table :plain do
+              column :name
+            end
+
+            table :kept do
+              sticky_label? true
+              column :note
+              column :name
+            end
+          end
+        end
+      end
+
+      assert AshTable.Resource.Info.table_sticky_label?(AshTable.TableBlockTest.Sticky)
+
+      assert [true, false, true] =
+               Enum.map(
+                 AshTable.Resource.Info.tables(AshTable.TableBlockTest.Sticky),
+                 & &1.sticky_label?
+               )
+
+      refute AshTable.Resource.Info.table_sticky_label?(AshTable.Test.Relating.Book)
+
+      assert AshTable.Model.build(AshTable.TableBlockTest.Sticky).sticky_label?
+      refute AshTable.Model.build(AshTable.TableBlockTest.Sticky, table: :plain).sticky_label?
+
+      kept = AshTable.Model.build(AshTable.TableBlockTest.Sticky, table: :kept)
+      assert kept.sticky_label?
+      assert AshTable.Model.label_column(kept).name == :name
+    end
+
+    test "on a table of a resource without a `label_field` is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :sticky_label?]} do
+          defmodule Elixir.AshTable.TableBlockTest.StickyWithoutLabel do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :name, :string, public?: true
+              attribute :note, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              sticky_label? true
+            end
+          end
+        end
+
+      assert error.message ==
+               "The table says `sticky_label? true`, and the resource declares no `label_field`. " <>
+                 "`sticky_label?` keeps the label column in view while the table scrolls sideways: " <>
+                 "add `label_field` to the `table` block of the resource, or take `sticky_label?` out."
+    end
+
+    test "on a table that has no column of the label is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:tables, :table, :notes, :sticky_label?]} do
+          defmodule Elixir.AshTable.TableBlockTest.StickyWithoutColumn do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+              attribute :name, :string, public?: true
+              attribute :note, :string, public?: true
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              label_field :name
+            end
+
+            tables do
+              table :notes do
+                sticky_label? true
+                column :note
+              end
+            end
+          end
+        end
+
+      assert error.message ==
+               "The table `:notes` says `sticky_label? true` and has no column of the label, `name`. " <>
+                 "`sticky_label?` keeps the label column in view while the table scrolls sideways: " <>
+                 "add `column :name`, or take `sticky_label?` out."
+    end
+  end
 end

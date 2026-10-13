@@ -74,6 +74,11 @@ defmodule Demo.Tracker.Task do
     # reload, in every table of the tasks.
     live? true
 
+    # The table has many columns and scrolls sideways: the title, by which
+    # a task is told from another, stays in view meanwhile, with the cells
+    # that select and expand its row.
+    sticky_label? true
+
     # text
     column :title
 
