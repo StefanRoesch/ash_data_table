@@ -44,9 +44,10 @@ The rules of a declaration live in one module per topic. Each is shared by the v
 - `Resource.Presenting`: the `component` of a column. `column/4`, `component/2`.
 - `Resource.Uploading`: limits of a file argument. `limits/2`, `mistakes/3`.
 - `Resource.Exposing`: columns that show a field a field policy protects. `exposures/2`.
+- `Resource.Summarising`: the `summary` of a column (footer summaries). `kinds/0`, `column/2` (an attribute, not sensitive, a kind that fits the type), `action/1` (not a manual read action), `data_layer/2`, `fits?/2`.
 - `Resource.Listening`: live updates. `announces?/1` (the resource says `live? true`), `follows?/2` (a table of it listens), `pub_sub/1`. Its findings are reported by the domain's verifier, not by a resource's.
 
-Verifiers (`lib/ash_table/resource/verifiers/`), in the order `resource.ex` lists them: `VerifyTables` (names and duplicates in named tables), `VerifyReadAction`, `VerifyUpdateAction`, `VerifyLabelField` (also `sticky_label?`), `VerifyColumns`, `VerifyComponents`, `VerifyRelationships`, `VerifyActions`, `VerifyUploads`, `VerifyExposure` (warnings only).
+Verifiers (`lib/ash_table/resource/verifiers/`), in the order `resource.ex` lists them: `VerifyTables` (names and duplicates in named tables), `VerifyReadAction`, `VerifyUpdateAction`, `VerifyLabelField` (also `sticky_label?`), `VerifyColumns`, `VerifyComponents`, `VerifyRelationships`, `VerifyActions`, `VerifyUploads`, `VerifyExposure` (warnings only), `VerifySummaries`.
 
 A new diagnostic goes in two places. Put the rule and its `message/1` clause into the topic module above. Raise it from the verifier of that topic as a `Spark.Error.DslError`, with `Table.path/1` and `Table.anno/2` or `Table.option_anno/3` so that it points at the right line. A verifier checks every table of the resource: loop over `AshTable.Resource.Info.tables/1`. Then add it to `documentation/topics/mistakes-at-compile-time.md`.
 
@@ -54,7 +55,7 @@ A new diagnostic goes in two places. Put the rule and its `message/1` clause int
 
 The model:
 
-- `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name.
+- `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `summarised/1` (the columns with a `summary`), `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name.
 - `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key.
 - `Model.CellType`: Ash type to cell type. `of/2`, `classify/2`.
 - `Model.Operator`: filter operators per cell type. `available/2`, `to_ash/2`; `takes/1` (no value, one, several, a range), `predicates/2`, `negated?/1`.
@@ -69,7 +70,7 @@ State and URL:
 
 Reads:
 
-- `AshTable.Query` (`query.ex`): every read through the table's read action. `read/3` (one page), `read_related/4` (a nested table), `get/5` (one record by key), `matching/3` and `records/3` (a selection), `related_records/5`, `load/3`, `arguments/2`, `rows/4` and `any?/5` (live updates). Returns `%Query.Page{}`.
+- `AshTable.Query` (`query.ex`): every read through the table's read action. `read/3` (one page), `read_related/4` (a nested table), `get/5` (one record by key), `matching/3` and `records/3` (a selection), `related_records/5`, `load/3`, `arguments/2`, `rows/4` and `any?/5` (live updates), `summaries/4` (footer summaries: one `Ash.aggregate/3` over everything that matches). Returns `%Query.Page{}`.
 - `AshTable.Record` (`record.ex`): the record of one row, read again as the person. `fetch/3`, `key/2`, `load/3`.
 - `AshTable.Pick` (`pick.ex`): the record a person chose in the picker. `chosen/3`, `current/3`, `value/2`, `reader/2`.
 
@@ -89,7 +90,7 @@ Writes:
 
 Texts and values:
 
-- `AshTable.Format` (`format.ex`): what a cell shows. `format/2`, `input/2`.
+- `AshTable.Format` (`format.ex`): what a cell shows. `format/2`, `input/2`; `summary/2` for a footer summary.
 - `AshTable.Text` (`text.ex`): every text a person reads. `t/2` and `n/3` for the table's own messages, by key; `label/1` for the resource's wording; `error/1` for an action's message.
 - `AshTable.Gettext` (`gettext.ex`): the default backend, without translations. The template is `priv/gettext/ash_table.pot`.
 - `AshTable.Errors` (`errors.ex`): what an error says to a person and at which field. `of_read/2`, `of_action/3`, `of_form/4`, `at_field/4`.
@@ -165,11 +166,13 @@ The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`
 - `panel`, `picker`: the open action panel and picker, or nil.
 - `selecting`, `bulk`, `lead`, `running`, `result`: selection and its actions. Which rows are selected is known to the hook only.
 - `spent`, `running_files`: uploads.
+- `summarised?`, `summary`, `summing?`, `summed`, `summary_due`: footer summaries. `summary` holds by column `{:ok, value}` or `:unavailable`; `summary_due` (`:changed` after a read, `:force` after a write or a live batch) is answered in `tidy/1` by `summarise/1`.
 
 ### Async reads and the stream
 
 - `start_async(:read, …)` in `read/1`. The first read of a table on the page runs in place, so the first render has rows. Later reads, and every read of a nested table, run async with `busy?` set.
 - `start_async(:bulk, …)` in `run_bulk`, which calls `AshTable.Bulk.run/5`.
+- `start_async(:summary, …)` in `summarise/1`, which calls `AshTable.Query.summaries/4`: beside the read of the rows, never before them. `read/1`, `put_row`, `remove_row`, `add_row` and `follow` say that it is due (`due/2`); `tidy/1` starts it once. Its answer also runs `redetail/1`, for the page as a LiveView test holds it.
 - One stream, `:rows`, configured with `dom_id`. An item is a row (`item/8`) or the detail under an expanded row (`detail`). A new read resets it. `put_row` and `put_detail` insert one item; `remove_row` deletes a row and its detail. The server does not keep the records.
 
 ### The four hooks
@@ -200,6 +203,10 @@ They are colocated hooks. A host gets them from `phoenix-colocated/ash_table`.
 
 A method of the `.Grid` hook has to have a name no other has: the hook is one object, and a second `fit` or `reveal` silently takes the place of the first. esbuild warns of it ("Duplicate key") when the demo's assets are built.
 
+### The footer row
+
+A table with a `summary` on one of its columns has a `<tfoot>` whose first row, `ID-summaries`, holds a `gridcell` per column (`ID-summary-FIELD`); a nested table's pages and its link to the full view are the rows after it. The row is counted in `aria-rowcount`. The hook's style rules for hidden and resized columns cover `tbody` and `tfoot` cells alike (`restyle`), and Page Down and Ctrl+End end at the last record (`onKeydown`). See "Footer summaries" in the comment at the top of the component.
+
 ## Safety rules
 
 Every change must keep these. They are what part 2 is for.
@@ -209,6 +216,7 @@ Every change must keep these. They are what part 2 is for.
 - **`authorize?`.** Every call to Ash passes the reader options (`scope`, `actor`, `tenant`, `authorize?`; `reader/1` in the component, `Query.reader_opts/1`). `authorize?` comes from the domain unless the table is told otherwise. The table adds no rule of its own and hides nothing by itself: it asks Ash (`Model.Access`).
 - **Nothing sensitive reaches the browser before "Show".** A row is rendered from a record that went through `AshTable.Sensitive.scrub/2`. The value is sent only as the reply to `reveal`, after the record was read again. An editor of a sensitive column opens empty.
 - **An announcement is a claim too.** A live update names a primary key and nothing else. The table shows only what its own read returns for that key, as the person (`Query.rows/4`), and says that there are new or changed records only after asking, as the person and with their filters, whether one is theirs to see (`Query.any?/5`). The notifier never sends a record.
+- **A summary says no more than the rows.** `Query.summaries/4` asks `Ash.aggregate/3` with `authorize_fields?: true` and with the table's read action as each aggregate's `read_action` (Ash would otherwise judge field policies as the primary read action meets them), and asks for nothing over a column that is `partly_hidden?` for the person: its footer cell is a dash. `summary` is refused on a `sensitive?` column.
 - **Values from the browser are claims.** A row key, a column name, an action name, a picked record and a selection are looked up or read again before they are used. Sort and filter go through `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. What a person typed goes to the action as typed; Ash casts and validates it. Text from outside never becomes an atom.
 
 ## Adding a feature

@@ -23,6 +23,7 @@ defmodule AshTable.Resource.Column do
     :component,
     :exposes_protected_field?,
     :arguments,
+    :summary,
     :__identifier__,
     :__spark_metadata__,
     asks: []
@@ -40,6 +41,7 @@ defmodule AshTable.Resource.Column do
           component: module | nil,
           exposes_protected_field?: boolean | nil,
           arguments: keyword | nil,
+          summary: :count | :sum | :avg | :min | :max | nil,
           asks: [AshTable.Resource.Ask.t()]
         }
 
@@ -95,6 +97,11 @@ defmodule AshTable.Resource.Column do
       type: :keyword_list,
       doc:
         "The arguments the column's calculation is computed with, fixed here: `arguments currency: :eur`. For a column that names a calculation; each key an argument of it. An argument that a person is to give is declared with `ask` instead."
+    ],
+    summary: [
+      type: {:one_of, [:count, :sum, :avg, :min, :max]},
+      doc:
+        "One number under the column, in a footer row of the table: over every record the table matches, not only those of the page. `:count` is the number of records that have a value in this column; `:sum` and `:avg` are for integer, float and decimal attributes; `:min` and `:max` for numbers, dates, datetimes and times. For a column that shows an attribute, not a `sensitive?` one, in a table whose read action is not manual. It counts only values the person may see; where a field policy hides the attribute from them on some records, the footer says \"–\" in place of a number. See the guide \"Footer summaries\"."
     ]
   ]
 

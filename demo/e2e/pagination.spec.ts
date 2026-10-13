@@ -23,8 +23,9 @@ test.describe("offset pages: /tasks", () => {
     await expect(tasks.pageButton(2)).not.toHaveAttribute("aria-current")
     await expect(tasks.pageButton(13), "the last page is offered").toBeVisible()
 
-    // the rows are numbered with the two header rows counted
-    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(SEED.tasks.acme + 2))
+    // the rows are numbered with the two header rows counted; the footer row
+    // of the summaries is one row more
+    await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(SEED.tasks.acme + 3))
     await expect(tasks.rows.first().getByRole("row")).toHaveAttribute("aria-rowindex", "3")
   })
 

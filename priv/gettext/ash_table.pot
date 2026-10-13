@@ -512,3 +512,23 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "to"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Average"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Count"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Max"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Min"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Sum"
+msgstr ""

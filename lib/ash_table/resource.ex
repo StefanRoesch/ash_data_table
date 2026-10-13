@@ -656,6 +656,11 @@ defmodule AshTable.Resource do
         as :price_in_any
         ask :currency, default: :usd
       end
+      """,
+      """
+      column :estimate_hours do
+        summary :sum
+      end
       """
     ],
     target: AshTable.Resource.Column,
@@ -925,6 +930,7 @@ defmodule AshTable.Resource do
       AshTable.Resource.Verifiers.VerifyRelationships,
       AshTable.Resource.Verifiers.VerifyActions,
       AshTable.Resource.Verifiers.VerifyUploads,
-      AshTable.Resource.Verifiers.VerifyExposure
+      AshTable.Resource.Verifiers.VerifyExposure,
+      AshTable.Resource.Verifiers.VerifySummaries
     ]
 end

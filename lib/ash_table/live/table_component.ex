@@ -324,6 +324,39 @@ defmodule AshTable.Live.TableComponent do
   # it says what it shows (`ID-related`: the heading `ID-related-heading`
   # and the control `ID-related-clear`, which takes the limit away).
   #
+  # ## Footer summaries
+  #
+  # A table one of whose columns has a `summary` has one more row after its
+  # last record: `ID-summaries`, the first row of the `<tfoot>` `ID-foot`
+  # (which a nested table also keeps its pages and its link to the full view
+  # in, after it). A table without a summary has no such row, and a table of
+  # its own then has no `<tfoot>` at all.
+  #
+  # The row is a row of the grid like any other: a `gridcell` under every
+  # column, with the column's `aria-colindex`, so that a number stands under
+  # its column, is hidden and resized with it by the hook's rules, and is
+  # reached with the arrow keys. The cell under a column is
+  # `ID-summary-FIELD`; under the leading and the actions columns the cells
+  # `ID-summaries-select`, `ID-summaries-expander` and `ID-summaries-actions`
+  # are empty, as is the cell of a column without a summary. A cell with a
+  # summary says its kind in `data-summary`, and holds the kind's name
+  # (`[data-summary-kind]`) and after it the number
+  # (`[data-summary-value]`), or a dash that is read out as "Not available"
+  # (`[data-summary-unavailable]`). The row is the
+  # last of all rows: `aria-rowcount` counts it, and its `aria-rowindex` is
+  # that count. Arrow Down from the last record reaches it; Page Down and
+  # Ctrl+End end at the last record.
+  #
+  # The numbers are over every record the table matches, not over the page
+  # (`AshTable.Query.summaries/4`, which also says what is never shown: a
+  # number over a field the person sees on some records only). They are
+  # asked for beside the read of the rows (`start_async(:summary, …)`), which
+  # never waits for them: with every read but one that only sorts, after
+  # everything the table writes, and once per batch of live updates
+  # (`summarise/1`, from `tidy/1`). Until the answer is there the cells keep
+  # what they showed and are `aria-busy`. An answer that fails puts the dash
+  # into every cell and is logged; the rows are not touched.
+  #
   # Use it through `AshTable.table/1`.
   use Phoenix.LiveComponent
 
@@ -465,6 +498,16 @@ defmodule AshTable.Live.TableComponent do
      |> assign(live_given: nil, live: nil, waiting: [], held: [], notice?: false)
      # the rows that go once the hook says that no cell of them is edited
      |> assign(leaving: MapSet.new())
+     # The footer row (see "Footer summaries" at the top). `summary` holds,
+     # by column, what the last answer said: `{:ok, value}` or
+     # `:unavailable`; nil before the first answer, and while an argument
+     # the read action requires is empty. `summing?` says that an answer is
+     # on its way, `summed` what the last question was of, and `summary_due`
+     # that there is one to ask once this update is done (`tidy/1`):
+     # `:changed` after a read, `:force` after something was written or
+     # announced.
+     |> assign(summary: nil, summing?: false, summed: nil, summary_due: nil)
+     |> assign(summarised?: false)
      # The tables this one is rendered in, nested in a row or in a picker:
      # their ids, from the table on the page down to the one that renders
      # this one. A table stops the listeners of the tables under it that it
@@ -557,6 +600,8 @@ defmodule AshTable.Live.TableComponent do
      |> assign(lines: lines(socket.assigns.lines, model, state, refused))
      # whether the rows have an actions cell: the last column of the grid
      |> assign(acting?: model.actions != [])
+     # whether the grid has a footer row: a column of this person's has a summary
+     |> assign(summarised?: Model.summarised(model) != [])
      # the table actions are offered once the table has read, as create is
      |> assign(offered: model.table_actions)
      |> assign(depth_limit: depth_limit)
@@ -959,6 +1004,11 @@ defmodule AshTable.Live.TableComponent do
           fn -> Query.read(model, state, opts) end
       end
 
+    # with every read the summaries are asked for again (`summarise/1`): in
+    # any case when the table reads again as it is, else when what they are
+    # of has changed
+    due = if socket.assigns.read == :again, do: :force, else: :changed
+
     cond do
       read == socket.assigns.read ->
         socket
@@ -966,23 +1016,88 @@ defmodule AshTable.Live.TableComponent do
       # an argument the read action requires is empty: it is not run
       socket.assigns.missing != [] ->
         first_or_later = if is_nil(socket.assigns.read), do: :first, else: :later
-        socket |> assign(read: read) |> unfilled(first_or_later)
+        socket |> assign(read: read) |> due(due) |> unfilled(first_or_later)
 
       socket.assigns.read == :again ->
-        socket |> assign(read: read, busy?: true) |> start_async(:read, fetch)
+        socket |> assign(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
 
       socket.assigns.nested? ->
         socket
         |> assign(read: read, busy?: true, loading?: is_nil(socket.assigns.read))
+        |> due(due)
         |> start_async(:read, fetch)
 
       is_nil(socket.assigns.read) ->
-        socket |> assign(read: read) |> show(fetch.(), :first)
+        socket |> assign(read: read) |> due(due) |> show(fetch.(), :first)
 
       true ->
-        socket |> assign(read: read, busy?: true) |> start_async(:read, fetch)
+        socket |> assign(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
     end
   end
+
+  # ---- footer summaries ------------------------------------------------
+  #
+  # See "Footer summaries" at the top.
+
+  # Notes that the summaries are to be asked for again. What was written or
+  # announced (`:force`) is not undone by a read that follows it.
+  defp due(socket, nil), do: socket
+  defp due(%{assigns: %{summary_due: :force}} = socket, _due), do: socket
+  defp due(socket, due) when due in [:changed, :force], do: assign(socket, summary_due: due)
+
+  # Asks for the summaries, when there is something to ask: beside the
+  # process, and beside the read of the rows, which never waits for it. What
+  # was shown stays, marked busy, until the answer is there; an answer to an
+  # earlier question that comes later is dropped by LiveView, which keeps
+  # the last task of a name.
+  #
+  # After a read (`:changed`) only when what they are of has changed: the
+  # sort a person chose says nothing about which records match.
+  defp summarise(%{assigns: %{summary_due: nil}} = socket), do: socket
+
+  defp summarise(%{assigns: %{summarised?: false}} = socket),
+    do: assign(socket, summary_due: nil)
+
+  # while an argument the read action requires is empty nothing is read,
+  # and nothing summed
+  defp summarise(%{assigns: %{missing: [_ | _]}} = socket),
+    do: assign(socket, summary_due: nil, summary: nil, summing?: false, summed: nil)
+
+  defp summarise(socket) do
+    %{model: model, state: state, parent_key: parent, summary_due: due} = socket.assigns
+    opts = read_opts(socket.assigns)
+    of = {model, %{state | sort: nil}, opts, parent}
+    socket = assign(socket, summary_due: nil)
+
+    if due == :changed and of == socket.assigns.summed do
+      socket
+    else
+      socket
+      |> assign(summing?: true, summed: of)
+      |> start_async(:summary, fn -> Query.summaries(model, state, parent, opts) end)
+    end
+  end
+
+  # A summary that could not be computed says so in its cell, and the rows
+  # are as they are. What the table's read is refused for is said by the
+  # read; anything else is logged.
+  defp unsummed(socket, reason) do
+    %{model: model} = socket.assigns
+
+    if not expected?(reason) do
+      Logger.error(
+        "ash_table: the summaries of the table of #{inspect(model.resource)} could not be " <>
+          "computed: #{inspect(reason)}"
+      )
+    end
+
+    unavailable = Map.new(Model.summarised(model), &{&1.name, :unavailable})
+    assign(socket, summary: unavailable, summing?: false)
+  end
+
+  defp expected?(reason) when reason in [:parent_gone, :forbidden], do: true
+  defp expected?(%Ash.Error.Forbidden{}), do: true
+  defp expected?(_reason), do: false
 
   # Who is reading and saving.
   #
@@ -1072,7 +1187,7 @@ defmodule AshTable.Live.TableComponent do
     before = tables()
     was_open? = match?(%{open?: true}, before[id])
 
-    socket = socket |> close() |> follow() |> close()
+    socket = socket |> close() |> follow() |> close() |> summarise()
 
     open? = not is_nil(panel) or not is_nil(picker)
 
@@ -1178,6 +1293,9 @@ defmodule AshTable.Live.TableComponent do
 
     socket
     |> assign(waiting: [], held: held)
+    # whatever was announced may have changed what the summaries are of,
+    # on this page or another: they are asked for again, once per batch
+    |> due(if(waiting != [], do: :force))
     |> refresh(free)
     |> notice(for {type, key} <- others, type != :destroy, uniq: true, do: key)
   end
@@ -1328,6 +1446,20 @@ defmodule AshTable.Live.TableComponent do
   def handle_async(:read, {:exit, reason}, socket) do
     {:noreply, socket |> assign(busy?: false, loading?: false) |> show({:error, reason}, :later)}
   end
+
+  # The summaries, or why there are none (see "Footer summaries" at the
+  # top). An answer that comes while the table waits for an argument is of
+  # other arguments, as a read is.
+  def handle_async(:summary, _result, %{assigns: %{missing: [_ | _]}} = socket),
+    do: {:noreply, socket}
+
+  def handle_async(:summary, {:ok, {:ok, summary}}, socket),
+    do: {:noreply, assign(socket, summary: summary, summing?: false)}
+
+  def handle_async(:summary, {:ok, {:error, reason}}, socket),
+    do: {:noreply, unsummed(socket, reason)}
+
+  def handle_async(:summary, {:exit, reason}, socket), do: {:noreply, unsummed(socket, reason)}
 
   # What became of an action that ran on the selected rows: said above the
   # grid and read out, and the hook is told on which rows it did not run,
@@ -1616,8 +1748,10 @@ defmodule AshTable.Live.TableComponent do
     current? = current?(socket.assigns.choose, model, record)
     record = Sensitive.scrub(record, model.columns)
 
-    stream_insert(
-      socket,
+    # a row is put back after something was done with its record
+    socket
+    |> due(:force)
+    |> stream_insert(
       :rows,
       item(
         id,
@@ -1698,6 +1832,7 @@ defmodule AshTable.Live.TableComponent do
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}")
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}-x")
       |> unselect(key)
+      |> due(:force)
 
     if rows == %{}, do: reread(socket), else: socket
   end
@@ -2570,7 +2705,11 @@ defmodule AshTable.Live.TableComponent do
   @impl true
   def handle_async(name, result, socket) do
     {:noreply, socket} = super(name, result, socket)
-    {:noreply, tidy(socket)}
+    socket = tidy(socket)
+
+    # the answer to the summaries renders the table again without any of
+    # its rows, as what a listener hands over does: see `redetail/1`
+    {:noreply, if(name == :summary, do: redetail(socket), else: socket)}
   end
 
   # The value of one sensitive cell, as text: of the record as it is read
@@ -3824,6 +3963,7 @@ defmodule AshTable.Live.TableComponent do
       rows = Map.put(rows, key, %{rowindex: first, pk: primary_key(model, record)})
 
       socket
+      |> due(:force)
       |> assign(rows: rows, row_count: map_size(rows))
       |> assign(page: page && %{page | total: page.total && page.total + 1})
       # the detail first: each goes to the top, so the row ends up above it
@@ -4343,7 +4483,7 @@ defmodule AshTable.Live.TableComponent do
           role="grid"
           aria-label={is_nil(@labelledby) && @label}
           aria-labelledby={@labelledby}
-          aria-rowcount={aria_rowcount(@page)}
+          aria-rowcount={aria_rowcount(@page, @summarised?)}
           aria-colcount={length(@model.columns) + @lead + trail(@acting?)}
           aria-multiselectable={@selecting && to_string(@selecting == :multi)}
           aria-busy={(@busy? or not is_nil(@running)) && "true"}
@@ -4592,12 +4732,63 @@ defmodule AshTable.Live.TableComponent do
           on a page, not as a footer's heading. What the two rows hold stays at
           the left edge of the table's scroll area, as what a line holds does. --%>
           <tfoot
-            :if={@nested?}
+            :if={@nested? or @summarised?}
             id={"#{@id}-foot"}
             class="font-normal text-base-content"
-            hidden={not pages?(@page, @model) and not full_view?(@page, @full_view)}
+            hidden={
+              not (@summarised? and not is_nil(@page)) and
+                not (@nested? and (pages?(@page, @model) or full_view?(@page, @full_view)))
+            }
           >
-            <tr :if={pages?(@page, @model)} id={"#{@id}-foot-row"} role="row">
+            <%!-- The summaries: one more row of the grid after the last record,
+            with a cell under every column, so that each number stands under its
+            column, is hidden and resized with it, and is reached with the arrow keys
+            as any cell is. A cell under a column without a summary is empty. See
+            "Footer summaries" at the top. --%>
+            <tr
+              :if={@summarised? and @page}
+              id={"#{@id}-summaries"}
+              role="row"
+              aria-rowindex={summary_rowindex(@page)}
+              data-summaries
+            >
+              <td
+                :if={@selecting}
+                id={"#{@id}-summaries-select"}
+                role="gridcell"
+                aria-colindex="1"
+                tabindex="-1"
+              >
+              </td>
+              <td
+                :if={@expandable?}
+                id={"#{@id}-summaries-expander"}
+                role="gridcell"
+                aria-colindex={@lead}
+                tabindex="-1"
+              >
+              </td>
+              <td
+                :for={{column, index} <- Enum.with_index(@model.columns)}
+                id={"#{@id}-summary-#{column.name}"}
+                role="gridcell"
+                aria-colindex={colindex(index, @lead)}
+                aria-busy={column.summary && @summing? && "true"}
+                tabindex="-1"
+                data-summary={column.summary}
+                class="whitespace-nowrap"
+                phx-no-format
+              ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} /></td>
+              <td
+                :if={@acting?}
+                id={"#{@id}-summaries-actions"}
+                role="gridcell"
+                aria-colindex={length(@model.columns) + @lead + 1}
+                tabindex="-1"
+              >
+              </td>
+            </tr>
+            <tr :if={@nested? and pages?(@page, @model)} id={"#{@id}-foot-row"} role="row">
               <td
                 id={"#{@id}-pager"}
                 role="gridcell"
@@ -4620,7 +4811,7 @@ defmodule AshTable.Live.TableComponent do
             </tr>
             <%!-- The link to the full view is the last row of a nested table's grid,
             for the same reason: reached with the arrow keys and followed with Enter. --%>
-            <tr :if={full_view?(@page, @full_view)} id={"#{@id}-view-row"} role="row">
+            <tr :if={@nested? and full_view?(@page, @full_view)} id={"#{@id}-view-row"} role="row">
               <td
                 id={"#{@id}-view"}
                 role="gridcell"
@@ -5718,6 +5909,20 @@ defmodule AshTable.Live.TableComponent do
             return cell && this.owns(cell) ? cell : null
           },
 
+          // The last row that is not the footer row of the summaries: the
+          // last record, or in a nested table the row of its pages or of
+          // its link.
+          lastRow(rows) {
+            const foot = rows.length - 1
+            return foot > 0 && is(rows[foot], "summaries") ? foot - 1 : foot
+          },
+
+          // The cell at the place of one that is gone, as `cellAt`, but
+          // never in the footer row of the summaries: where the last record
+          // went, focus goes to the row before it, and to the filter row
+          // when no record is left.
+          cellBack(r, c) { return this.cellAt(Math.min(r, this.lastRow(this.rows())), c) },
+
           cellAt(r, c) {
             const rows = this.rows()
             if (rows.length === 0) return null
@@ -5774,11 +5979,11 @@ defmodule AshTable.Live.TableComponent do
             if (cell && !top.contains(cell)) cell = null
             if (!cell && tree.owner && tree.owner.isConnected && top.contains(tree.owner) && tree.owner._ashTable) {
               const owner = tree.owner._ashTable
-              cell = owner.cellAt(owner.pos.r, owner.pos.c)
+              cell = owner.cellBack(owner.pos.r, owner.pos.c)
             }
             if (!cell) {
               const id = tree.trail.find(id => id && document.getElementById(id) && top.contains(document.getElementById(id)))
-              cell = id ? document.getElementById(id) : hook.cellAt(hook.pos.r, hook.pos.c)
+              cell = id ? document.getElementById(id) : hook.cellBack(hook.pos.r, hook.pos.c)
             }
             const owner = cell && cell.closest(GRID)._ashTable
             if (!owner) return
@@ -6074,7 +6279,11 @@ defmodule AshTable.Live.TableComponent do
             const rows = this.rows()
             const head = this.headRows()
             const r = cell.parentElement.rowIndex
-            const lastR = rows.length - 1
+            // Where Page Down and Ctrl+End end: at the last row, but for
+            // the footer row of the summaries, which is an Arrow Down
+            // further, as the header rows are an Arrow Up further from
+            // Page Up and Ctrl+Home.
+            const lastR = this.lastRow(rows)
             const ctrl = e.ctrlKey || e.metaKey
             let handled = true
             // the expander of a row, and a line under it
@@ -6107,7 +6316,7 @@ defmodule AshTable.Live.TableComponent do
               case "ArrowDown": this.move(r + 1, this.col); break
               // from the first data row this reaches the filter row, then the header
               case "ArrowUp": this.move(r - 1, this.col); break
-              case "PageDown": this.move(Math.min(r + this.pageRows(cell), lastR), this.col); break
+              case "PageDown": this.move(Math.max(r, Math.min(r + this.pageRows(cell), lastR)), this.col); break
               // stays in the data rows; the header rows are an Arrow Up further
               case "PageUp": this.move(r < head ? r : Math.max(r - this.pageRows(cell), head), this.col); break
               // to the first column that is shown, and to the last
@@ -6275,7 +6484,8 @@ defmodule AshTable.Live.TableComponent do
               if (!gone && !entry) continue
               const place = th.getAttribute("aria-colindex")
               const head = `#${CSS.escape(th.id)}`
-              const cells = `${at}>tbody>tr>td[aria-colindex="${place}"]:not([colspan])`
+              // of the rows, and of the footer row of the summaries
+              const cells = `${at}>:is(tbody,tfoot)>tr>td[aria-colindex="${place}"]:not([colspan])`
               const filter = filters && filters.cells[th.cellIndex] && filters.cells[th.cellIndex].id
                 ? `#${CSS.escape(filters.cells[th.cellIndex].id)}`
                 : null
@@ -7343,7 +7553,7 @@ defmodule AshTable.Live.TableComponent do
             const body = [acted.next, acted.previous].map(id => id && document.getElementById(id)).find(body => body && body.rows[0])
             const cell = body
               ? body.rows[0].cells[Math.min(acted.c, body.rows[0].cells.length - 1)]
-              : this.cellAt(this.headRows(), this.lead())
+              : this.cellBack(this.headRows(), this.lead())
             if (cell) cell.focus({preventScroll: true})
           },
 
@@ -10104,6 +10314,35 @@ defmodule AshTable.Live.TableComponent do
     """
   end
 
+  # The summary of a column in the footer row: what it is ("Sum") and the
+  # number, as a cell of the column shows a value. The space between them is
+  # part of the name's text, so that the two are read as two words. Nothing after the name
+  # while there is no answer yet, and for a sum, an average, a minimum or a
+  # maximum of no values. A dash, read out as "Not available", for a number
+  # that cannot be shown to this person: the column's field is hidden from
+  # them on some records, or the summary could not be computed.
+  attr :column, :map, required: true
+  attr :summary, :any, required: true
+
+  defp summary(assigns) do
+    ~H"""
+    <span data-summary-kind class="text-xs">{Text.t(summary_text(@column.summary)) <> " "}</span><span
+      :if={@summary == :unavailable}
+      data-summary-unavailable
+    ><span aria-hidden="true">–</span><span class="sr-only">{Text.t(:not_available)}</span></span><span
+      :if={match?({:ok, _value}, @summary)}
+      data-summary-value
+      class="font-medium"
+    >{Format.summary(@column, elem(@summary, 1))}</span>
+    """
+  end
+
+  defp summary_text(:count), do: :summary_count
+  defp summary_text(:sum), do: :summary_sum
+  defp summary_text(:avg), do: :summary_avg
+  defp summary_text(:min), do: :summary_min
+  defp summary_text(:max), do: :summary_max
+
   # "Columns": the button above the grid that opens the list of the table's
   # columns, with a box each. A column whose box is not ticked is hidden.
   #
@@ -10871,8 +11110,17 @@ defmodule AshTable.Live.TableComponent do
   defp first_row(_page), do: @header_rows + 1
 
   # The header rows are counted. -1 says the total is not known.
-  defp aria_rowcount(%{total: total}) when is_integer(total), do: total + @header_rows
-  defp aria_rowcount(_page), do: -1
+  # The rows of the grid in all pages: the header rows, the records, and
+  # the footer row of the summaries where there is one. -1 says "unknown".
+  defp aria_rowcount(%{total: total}, summarised?) when is_integer(total),
+    do: total + @header_rows + if(summarised?, do: 1, else: 0)
+
+  defp aria_rowcount(_page, _summarised?), do: -1
+
+  # The footer row of the summaries is the last row of all: after the
+  # records of every page. Where their number is not known it says nothing.
+  defp summary_rowindex(%{total: total}) when is_integer(total), do: total + @header_rows + 1
+  defp summary_rowindex(_page), do: nil
 
   defp aria_sort({name, :asc}, %{name: name}), do: "ascending"
   defp aria_sort({name, :desc}, %{name: name}), do: "descending"

@@ -44,6 +44,7 @@ defmodule AshTable.Query do
   alias AshTable.Model
   alias AshTable.Model.Argument
   alias AshTable.Model.Operator
+  alias AshTable.Resource.Summarising
   alias AshTable.State
   alias AshTable.Text
 
@@ -357,6 +358,123 @@ defmodule AshTable.Query do
     end
   rescue
     _error -> false
+  end
+
+  @doc """
+  The summaries of the table's columns (`AshTable.Model.summarised/1`):
+  by column name, `{:ok, value}` or `:unavailable`.
+
+  Each is over every record `state` matches for the person asking, not over
+  a page: through the table's read action, with its arguments, the
+  person's filters, actor and tenant, as a page is read, and without a
+  limit, an offset or a sort. All of them are computed by the data layer in
+  one call (`Ash.aggregate/3`).
+
+  A summary never says what the person may not see:
+
+    * every aggregate is asked for with `authorize_fields?: true`, which
+      makes Ash count only the records on which the person sees the field,
+      and with the table's read action as its own `read_action`: Ash would
+      otherwise look at the field policies as the primary read action meets
+      them (ash 3.34.4), which need not be the ones the rows are read
+      under;
+
+    * a column the person sees on some records only (`partly_hidden?`, in a
+      model from `AshTable.Model.for_actor/2`) is not asked for at all, and
+      is `:unavailable`: a number over the rest would pass for the whole.
+
+  Without authorization (`authorize?: false`) it is computed as the rows
+  are read: over everything.
+
+  Also `:unavailable` is every summary of a table that reads through a
+  manual action, which the data layer is not asked through, and one of a
+  kind the data layer does not compute.
+
+  The records of a nested table are those related to the record with the
+  primary key `parent`: their keys are read through that record, as
+  `related_records/5` reads them, and the summaries are over the records
+  with those keys. So what "related" means stays Ash's loader's to say.
+
+  Takes the options of `read_related/4`. An empty result gives 0 for a
+  count and nil for every other kind.
+  """
+  @spec summaries(Model.t(), State.t(), map | nil, keyword) ::
+          {:ok, %{optional(atom) => {:ok, term} | :unavailable}}
+          | {:error, :parent_gone | :forbidden | term}
+  def summaries(%Model{} = model, %State{} = state, parent, opts) do
+    read_opts = reader_opts(opts)
+    columns = Model.summarised(model)
+    action = Ash.Resource.Info.action(model.resource, model.read_action)
+
+    asked =
+      Enum.filter(columns, fn column ->
+        not column.partly_hidden? and column.kind == :attribute and not column.sensitive? and
+          Summarising.action(action) == :ok and
+          Summarising.data_layer(model.resource, column.summary) == :ok
+      end)
+
+    unavailable = Map.new(columns, &{&1.name, :unavailable})
+
+    # no sort, and no page: every record that matches
+    matching = query(%{model | via: nil}, %{state | sort: nil}, [], read_opts)
+
+    with [_ | _] <- asked,
+         {:ok, matching} <- limited(matching, model, parent, read_opts, opts),
+         {:ok, values} <- aggregate(matching, asked, model, read_opts) do
+      {:ok, Map.merge(unavailable, values)}
+    else
+      [] -> {:ok, unavailable}
+      :none -> {:ok, Map.merge(unavailable, Map.new(asked, &{&1.name, {:ok, nothing(&1)}}))}
+      {:error, error} -> {:error, error}
+    end
+  rescue
+    error -> {:error, error}
+  end
+
+  # What a summary of no records is.
+  defp nothing(%{summary: :count}), do: 0
+  defp nothing(_column), do: nil
+
+  # A table of its own summarises what its query matches. A nested one
+  # summarises the records with the keys that its parent's relationship
+  # gives; `:none` when it gives none, or when a record has no key to be
+  # told by.
+  defp limited(matching, %Model{via: nil}, _parent, _read_opts, _opts), do: {:ok, matching}
+  defp limited(_matching, %Model{primary_key: []}, _parent, _read_opts, _opts), do: :none
+
+  defp limited(matching, %Model{via: via} = model, parent, read_opts, opts) when is_map(parent) do
+    related = Ash.Query.select(matching, model.primary_key)
+
+    case through_parent(via, related, parent, read_opts, opts) do
+      {:ok, []} ->
+        :none
+
+      {:ok, records} ->
+        {:ok, by_keys(matching, model, Enum.map(records, &Map.take(&1, model.primary_key)))}
+
+      {:error, error} ->
+        {:error, error}
+    end
+  end
+
+  defp limited(_matching, _model, _parent, _read_opts, _opts), do: {:error, :parent_gone}
+
+  defp aggregate(matching, asked, model, read_opts) do
+    aggregates =
+      for column <- asked do
+        {column.name, column.summary, field: column.field, read_action: model.read_action}
+      end
+
+    # the query says who is asking; what marks a table's own writes
+    # (`origin/2`) is of no use to a read
+    opts = [authorize_fields?: true] ++ Keyword.delete(read_opts, :context)
+
+    with {:ok, values} <- Ash.aggregate(matching, aggregates, opts) do
+      {:ok,
+       Map.new(asked, fn column ->
+         {column.name, {:ok, Map.get(values, column.name, nothing(column)) || nothing(column)}}
+       end)}
+    end
   end
 
   # The records of a query, read to the end in batches: by keyset or by

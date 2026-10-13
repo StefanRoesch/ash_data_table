@@ -907,6 +907,29 @@ declared in the resource and mounted with one line in the router.
   follow.
 - See the guide [Live updates](documentation/topics/live-updates.md).
 
+### Footer summaries
+
+- `summary` on a column (`:count`, `:sum`, `:avg`, `:min` or `:max`) shows
+  one number under the column, in a footer row after the last record: over
+  every record the table matches, not over the page. It is computed with
+  `Ash.aggregate/3`, in one more query beside the read of the rows, through
+  the table's read action with its arguments, the person's filters, actor
+  and tenant. A table without a summary has no footer row.
+- A summary never says more than the rows: every aggregate is asked for
+  with `authorize_fields?: true` and with the table's own read action, and a
+  field that a field policy hides from the person on some records has a
+  dash ("Not available") in place of a number.
+- The numbers are asked for again with every read but one that only sorts,
+  after everything the table writes, and once per batch of live updates.
+  Meanwhile the old number stays, marked `aria-busy`.
+- Reported when the resource is compiled: `summary` on a column that is no
+  attribute, a kind that does not fit the type, `summary` on a `sensitive?`
+  column, in a table with a manual read action, and on a data layer that
+  cannot compute it.
+- The footer row is counted in the grid's `aria-rowcount`. Arrow Down from
+  the last record reaches it; Page Down and Ctrl+End end at the last record.
+- See the guide [Footer summaries](documentation/topics/footer-summaries.md).
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive

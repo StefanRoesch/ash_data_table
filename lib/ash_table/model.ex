@@ -288,6 +288,7 @@ defmodule AshTable.Model do
   alias AshTable.Resource.Reading
   alias AshTable.Resource.Referencing
   alias AshTable.Resource.Relating
+  alias AshTable.Resource.Summarising
   alias AshTable.Resource.Table
   alias AshTable.Sensitive
 
@@ -925,6 +926,16 @@ defmodule AshTable.Model do
         []
     end)
   end
+
+  @doc """
+  The columns of the table that have a summary, in the table's order: each
+  with its kind as `summary`. In a model from `for_actor/2` they are the
+  columns this person has; whether a number can be shown under one is
+  `AshTable.Query.summaries/4`'s to say.
+  """
+  @spec summarised(%__MODULE__{}) :: [Column.t()]
+  def summarised(%__MODULE__{columns: columns}),
+    do: Enum.reject(columns, &is_nil(&1.summary))
 
   @doc """
   The aggregates of the table's columns, which are put onto the records of
@@ -1729,6 +1740,7 @@ defmodule AshTable.Model do
     {:ok, %{label: label, read_action: read_action}} = Referencing.reference(relationship)
     {type, constraints} = CellType.type(destination, label)
     {cell_type, values} = CellType.classify(type, constraints)
+    summary!(resource, table, relationship, declared)
 
     # the action an edit runs, and what a choice gives it
     {update_action, written} =
@@ -1798,6 +1810,7 @@ defmodule AshTable.Model do
       members: members(cell_type, type, constraints),
       confirm: update_action && declared && declared.confirm,
       component: component,
+      summary: summary!(resource, table, field, declared),
       name: name,
       field: field.name,
       kind: kind(field),
@@ -1946,6 +1959,24 @@ defmodule AshTable.Model do
         raise ArgumentError,
               "cannot build the #{whose(resource, table)}: the `component` of its column " <>
                 "`#{field.name}` cannot be used. " <> Presenting.message(reason)
+    end
+  end
+
+  # The kind of a column's summary, as far as the block gives it one. One
+  # that cannot be is refused, though the verifier reports it: a number
+  # under a column must never say what the column's cells do not.
+  defp summary!(_resource, _table, _field, nil), do: nil
+  defp summary!(_resource, _table, _field, %{summary: nil}), do: nil
+
+  defp summary!(resource, table, field, %{summary: kind}) do
+    case Summarising.column(field, kind) do
+      :ok ->
+        kind
+
+      {:error, reason} ->
+        raise ArgumentError,
+              "cannot build the #{whose(resource, table)}: the `summary` of its column " <>
+                "`#{field.name}` cannot be used. " <> Summarising.message(reason)
     end
   end
 

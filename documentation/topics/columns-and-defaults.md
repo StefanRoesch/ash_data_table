@@ -87,9 +87,7 @@ the declared order. The table at `/tasks` is declared this way
 ```elixir
 # a boolean
 column :billable?
-# a date and a datetime, both of which can be empty
-column :due_on
-column :completed_at
+# ...
 # an expression calculation: sortable and filterable, never editable
 column :overdue?
 

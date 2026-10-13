@@ -71,9 +71,12 @@ test("arrow keys move one cell and do not wrap", async ({ tasks }) => {
   await tasks.press("ArrowRight")
   await expect(tasks.actionsCell(first), "the last cell of a row is where Right ends").toBeFocused()
 
+  // under the last record is the footer row of the summaries (footer.spec.ts)
   await tasks.cell(last, SECOND).focus()
   await tasks.press("ArrowDown")
-  await expect(tasks.cell(last, SECOND), "the last row is where Down ends").toBeFocused()
+  await expect(tasks.summary(SECOND)).toBeFocused()
+  await tasks.press("ArrowDown")
+  await expect(tasks.summary(SECOND), "the last row is where Down ends").toBeFocused()
 })
 
 test("Home and End go to the ends of the row, with Ctrl to the corners of the data", async ({

@@ -101,18 +101,32 @@ defmodule Demo.Tracker.Task do
     column :progress do
       update_action :set_progress
       component DemoWeb.Cells.Progress
+      # Footer summaries: one number under the column, over every task the
+      # table matches and not only those of the page. Here the average.
+      summary :avg
     end
 
     # the demo's own component: the number with its unit
     column :estimate_hours do
       component DemoWeb.Cells.Hours
+      # The sum is shown to a person who sees the estimate of every task (an
+      # admin); for anybody else the footer says "–".
+      summary :sum
     end
 
     # a boolean
     column :billable?
-    # a date and a datetime, both of which can be empty
-    column :due_on
-    column :completed_at
+
+    # a date and a datetime, both of which can be empty: the latest date,
+    # and how many tasks have been completed
+    column :due_on do
+      summary :max
+    end
+
+    column :completed_at do
+      summary :count
+    end
+
     # an expression calculation: sortable and filterable, never editable
     column :overdue?
 

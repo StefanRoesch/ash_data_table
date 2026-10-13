@@ -392,8 +392,8 @@ defmodule DemoWeb.Tables.TaskFilterTest do
       assert attribute(html, "#task-pagination button", "id") ==
                ["task-previous", "task-page-1", "task-page-2", "task-next"]
 
-      # 30 tasks and the two header rows
-      assert attribute(html, "#task-table", "aria-rowcount") == ["32"]
+      # 30 tasks, the two header rows and the footer row of the summaries
+      assert attribute(html, "#task-table", "aria-rowcount") == ["33"]
     end
 
     test "stays while paging", %{conn: conn} do

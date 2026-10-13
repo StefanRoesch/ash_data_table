@@ -70,6 +70,7 @@ defmodule DemoWeb.Router do
   # unions (`union_tables.ex`), one whose actions take files
   # (`file_tables.ex`), one with sensitive columns (`sensitive_tables.ex`),
   # one whose numbers have limits where the demo has none (`limit_tables.ex`),
+  # one whose columns have summaries (`summary_tables.ex`),
   # those that announce their changes for live updates (`live_tables.ex`),
   # those of a domain whose policies allow nothing, mounted with and without
   # authorization (`unchecked_tables.ex`), one whose
@@ -132,6 +133,20 @@ defmodule DemoWeb.Router do
         ash_table "/scans", Demo.Support.Files.Scan, layout: false
         ash_table "/safes", Demo.Support.Secrets.Safe, layout: false
         ash_table "/meters", Demo.Support.Limits.Meter, layout: false
+
+        # Footer summaries (`summary_tables.ex`): the efforts as their
+        # domain says and without authorization, through the primary read
+        # action, through one that requires an argument, and with a summary
+        # that the database cannot compute.
+        ash_table "/efforts", Demo.Support.Sums.Effort, layout: false
+
+        ash_table "/open/efforts", Demo.Support.Sums.Effort,
+          layout: false,
+          authorize?: false
+
+        ash_table "/efforts/primary", Demo.Support.Sums.Effort, table: :primary, layout: false
+        ash_table "/efforts/above", Demo.Support.Sums.Effort, table: :above, layout: false
+        ash_table "/efforts/broken", Demo.Support.Sums.Effort, table: :broken, layout: false
 
         # Live updates (`live_tables.ex`): the bulletins as their domain
         # says, without authorization, and without live updates; their

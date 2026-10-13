@@ -36,6 +36,7 @@ spark_locals_without_parens = [
   scope_assign: 1,
   sortable?: 1,
   sticky_label?: 1,
+  summary: 1,
   table: 1,
   table: 2,
   tenant_assign: 1,

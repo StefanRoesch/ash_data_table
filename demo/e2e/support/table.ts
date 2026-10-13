@@ -807,6 +807,16 @@ export class Table {
     return new Table(this.page, `${this.id}-row-${key}-t-${relationship}`, this.path)
   }
 
+  /** The footer row of the summaries: the row after the last record. */
+  get summaries(): Locator {
+    return this.byId(`${this.id}-summaries`)
+  }
+
+  /** The cell of that row under a column: its summary, or nothing. */
+  summary(column: string): Locator {
+    return this.byId(`${this.id}-summary-${column}`)
+  }
+
   /** The cell in the last row of a nested table's grid that holds its pages. */
   get pagerCell(): Locator {
     return this.byId(`${this.id}-pager`)
