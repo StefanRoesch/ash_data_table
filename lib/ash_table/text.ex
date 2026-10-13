@@ -58,6 +58,8 @@ defmodule AshTable.Text do
           | :invalid_filter
           | :clear_filter
           | :clear_filters
+          | :changed_records
+          | :read_again
           | :results_updated
           | :record_gone
           | :error_on_field
@@ -259,6 +261,11 @@ defmodule AshTable.Text do
   defp msgid(:invalid_filter), do: dgettext_noop("ash_table", "Not a valid value")
   defp msgid(:clear_filter), do: dgettext_noop("ash_table", "Clear the %{column} filter")
   defp msgid(:clear_filters), do: dgettext_noop("ash_table", "Clear filters")
+
+  defp msgid(:changed_records),
+    do: dgettext_noop("ash_table", "There are new or changed records.")
+
+  defp msgid(:read_again), do: dgettext_noop("ash_table", "Read again")
   defp msgid(:results_updated), do: dgettext_noop("ash_table", "Results updated")
 
   defp msgid(:record_gone),

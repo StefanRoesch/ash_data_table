@@ -1,6 +1,6 @@
 # Architecture map
 
-Read this file before a build. It says where things are, so that you do not have to read every guide and the whole table component first. Paths are from the repository root. Line numbers are of commit `729eeaa` and drift: each section says how to get them again.
+Read this file before a build. It says where things are, so that you do not have to read every guide and the whole table component first. Paths are from the repository root. Line numbers are of the commit that added live updates and drift: each section says how to get them again.
 
 The words used here (table, column, cell, picker, action panel, …) are defined in `CONTEXT.md`.
 
@@ -10,8 +10,8 @@ The extension has four parts. This is the target structure agreed with the owner
 
 | Part | What it is | Where it is today |
 | --- | --- | --- |
-| 1. Table declaration | The `table` and `tables` blocks of a resource, the `table` block of a domain, and the checks at compile time. | `lib/ash_table/resource.ex`, `lib/ash_table/resource/**`, `lib/ash_table/domain.ex`, `lib/ash_table/domain/info.ex` |
-| 2. Table internals | Logic and state, no markup. This part keeps the table safe. | `lib/ash_table/model.ex`, `lib/ash_table/model/**`, `state.ex`, `query.ex`, `record.ex`, `related.ex`, `pick.ex`, `edit.ex`, `act.ex`, `bulk.ex`, `errors.ex`, `format.ex`, `text.ex`, `sensitive.ex` (all in `lib/ash_table/`) |
+| 1. Table declaration | The `table` and `tables` blocks of a resource, the `table` block of a domain, and the checks at compile time. | `lib/ash_table/resource.ex`, `lib/ash_table/resource/**`, `lib/ash_table/domain.ex`, `lib/ash_table/domain/**` |
+| 2. Table internals | Logic and state, no markup. This part keeps the table safe. | `lib/ash_table/model.ex`, `lib/ash_table/model/**`, `state.ex`, `query.ex`, `record.ex`, `related.ex`, `pick.ex`, `edit.ex`, `act.ex`, `bulk.ex`, `errors.ex`, `format.ex`, `text.ex`, `sensitive.ex`, `notifier.ex`, `listener.ex` (all in `lib/ash_table/`) |
 | 3. Table UI components | Markup and the browser hooks. | `render/1`, the function components and the four hooks in `lib/ash_table/live/table_component.ex`; the behaviour `lib/ash_table/component.ex` and the shipped components in `lib/ash_table/components/` |
 | 4. Ready-made wiring | The router line, the page and the live component that connect 2 and 3. | `lib/ash_table/router.ex`, `lib/ash_table/routes.ex`, `lib/ash_table/live/page.ex`, `AshTable.table/1` in `lib/ash_table.ex`, and `mount/1`, `update/2`, `handle_event/3`, `handle_async/3` of the table component |
 
@@ -27,7 +27,8 @@ One line per module. The functions named are the ones other modules call.
 - `AshTable.Resource.Table` (`resource/table.ex`): one table as written. `options/0` is the option schema that the `table` block and a named table share. `path/1`, `anno/2`, `option_anno/3` find where an error points to. `in_words/1` names the table in a message.
 - `AshTable.Resource.Column`, `.Ask`, `.Relationship`, `.Action`, `.Reference`, `.Argument`, `.Upload` (`resource/*.ex`): the structs of the entities, each with `schema/0`.
 - `AshTable.Resource.Info` (`resource/info.ex`): read a declaration. `tables/1`, `table/2`, `table!/2`, `no_table/2`; for the default table `columns/1`, `relationships/1`, `actions/1`, `arguments/1`, `uploads/1` and the generated `table_*` functions.
-- `AshTable.Domain` and `AshTable.Domain.Info`: the domain's `table` block (`authorize?`, `scope_assign`, `actor_assign`, `tenant_assign`). `Info.authorize?/1`, `Info.reader/2`, `Info.assign_names/1`.
+- `AshTable.Domain` and `AshTable.Domain.Info`: the domain's `table` block (`authorize?`, `scope_assign`, `actor_assign`, `tenant_assign`, `pub_sub`). `Info.authorize?/1`, `Info.reader/2`, `Info.assign_names/1`, `Info.pub_sub/1`. Its one verifier, `Domain.Verifiers.VerifyPubSub` (`domain/verifiers/`), reports a domain that names no `pub_sub` and has a resource that says `live? true`.
+- `AshTable.Resource.Transformers.Announce` (`resource/transformers/announce.ex`): the extension's one transformer. It gives a resource that says `live? true` the notifier `AshTable.Notifier`.
 - `Mix.Tasks.AshTable.Install` (`lib/mix/tasks/ash_table.install.ex`): the Igniter installer.
 
 The rules of a declaration live in one module per topic. Each is shared by the verifiers (which report a mistake) and the model (which builds on the answer). Most return `{:error, reason}` and turn the reason into text with `message/1`.
@@ -43,6 +44,7 @@ The rules of a declaration live in one module per topic. Each is shared by the v
 - `Resource.Presenting`: the `component` of a column. `column/4`, `component/2`.
 - `Resource.Uploading`: limits of a file argument. `limits/2`, `mistakes/3`.
 - `Resource.Exposing`: columns that show a field a field policy protects. `exposures/2`.
+- `Resource.Listening`: live updates. `announces?/1` (the resource says `live? true`), `follows?/2` (a table of it listens), `pub_sub/1`. Its findings are reported by the domain's verifier, not by a resource's.
 
 Verifiers (`lib/ash_table/resource/verifiers/`), in the order `resource.ex` lists them: `VerifyTables` (names and duplicates in named tables), `VerifyReadAction`, `VerifyUpdateAction`, `VerifyLabelField`, `VerifyColumns`, `VerifyComponents`, `VerifyRelationships`, `VerifyActions`, `VerifyUploads`, `VerifyExposure` (warnings only).
 
@@ -67,9 +69,16 @@ State and URL:
 
 Reads:
 
-- `AshTable.Query` (`query.ex`): every read through the table's read action. `read/3` (one page), `read_related/4` (a nested table), `get/5` (one record by key), `matching/3` and `records/3` (a selection), `related_records/5`, `load/3`, `arguments/2`. Returns `%Query.Page{}`.
+- `AshTable.Query` (`query.ex`): every read through the table's read action. `read/3` (one page), `read_related/4` (a nested table), `get/5` (one record by key), `matching/3` and `records/3` (a selection), `related_records/5`, `load/3`, `arguments/2`, `rows/4` and `any?/5` (live updates). Returns `%Query.Page{}`.
 - `AshTable.Record` (`record.ex`): the record of one row, read again as the person. `fetch/3`, `key/2`, `load/3`.
 - `AshTable.Pick` (`pick.ex`): the record a person chose in the picker. `chosen/3`, `current/3`, `value/2`, `reader/2`.
+
+Live updates:
+
+- `AshTable.Notifier` (`notifier.ex`): the Ash notifier of a resource that says `live? true`. Broadcasts `{:ash_table, resource, action_type, primary_key, tenant}` and nothing else. `topic/2` is the topic of a resource and a tenant.
+- `AshTable.Listener` (`listener.ex`): the process through which one table hears. `start/3` subscribes and hands batches (100 ms) to the table with `send_update`; `stop/1`; `flush/1` and `of/1` for tests. It ends with the LiveView.
+- `AshTable.Test` (`test.ex`): public help for a host's tests. `flush/1` hands a page what was announced so far.
+- In `AshTable.Query`: `rows/4` reads announced keys again as rows are read, `any?/5` asks whether one of them is the person's to see under their filters. `reader_opts/1` passes a table's own listener on as `context` (`origin`), so that the notifier leaves it out.
 
 Writes:
 
@@ -101,7 +110,7 @@ Texts and values:
 
 ## The table component
 
-`lib/ash_table/live/table_component.ex` is about 10,000 lines. It is a `Phoenix.LiveComponent`. The line ranges below come from this command:
+`lib/ash_table/live/table_component.ex` is about 10,600 lines. It is a `Phoenix.LiveComponent`. The line ranges below come from this command:
 
 ```sh
 grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|ColocatedHook\|// ---- \|^  defp [a-z_?]*(assigns)' lib/ash_table/live/table_component.ex
@@ -109,17 +118,19 @@ grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|Colocated
 
 | Lines | What |
 | --- | --- |
-| 1–262 | Comment: the markup contract (ids, `aria-colindex`, components) and one section per feature. Read the section of the feature you touch. |
-| 264–377 | Aliases and `mount/1`. Every assign is set here with a comment. |
-| 379–860 | `update/2` and what it calls: `selecting`, `relate`, `build`, `in_words`, `settle`, `read`, `reader`. |
-| 861–932 | `handle_async/3`: `:read` and `:bulk`. |
-| 934–1331 | Showing a read: `unfilled`, `show`, `not_found`, `item`, `put_row`, `put_failure`, `remove_row`, `announce`. |
-| 1333–2038 | `handle_event/3`, all clauses. |
-| 2040–3598 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 2145), panel (from 2419), bulk (from 2714), `submit` (from 2805), files (from 2971), after a create or a run (from 3233), arguments, `go` and the URL (from 3495). |
-| 3600–4172 | `render/1`: the markup of one table. |
-| 4173–7242 | The four hooks, inside `render/1`. |
-| 7257–9663 | Function components: `lines`, `argument`, `panel`, `picker`, `field`, `group`, `groups`, `union`, `members`, `related`, `selection`, `create`, `table_actions`, `pagination`, `pages`, `resizer`, `columns`, `filter`, `editor`, `count`, `list`. |
-| 9664–10022 | Small view helpers: `colindex`, `cell_attributes`, `cell_content`, `cell`, `page_numbers`. |
+| 1–303 | Comment: the markup contract (ids, `aria-colindex`, components) and one section per feature. Read the section of the feature you touch. |
+| 305–448 | Aliases and `mount/1`. Every assign is set here with a comment. |
+| 449–953 | `update/2` and what it calls: `selecting`, `relate`, `build`, `in_words`, `settle`, `read`, `reader`. Its first clause takes what a listener hands over (`live`). |
+| 954–1273 | Live updates: `listen`, `listener`, `tidy`, `close`, `follow`, `working`, `refresh`, `leave`, `redetail`, `put_fresh`, `notice`. |
+| 1274–1346 | `handle_async/3`: `:read` and `:bulk`. |
+| 1347–1760 | Showing a read: `unfilled`, `show`, `not_found`, `item`, `put_row`, `put_failure`, `remove_row`, `announce`. |
+| 1761–2492 | `handle_event/3`, all clauses. |
+| 2493–2519 | `defoverridable`, and `update/2`, `handle_event/3` and `handle_async/3` once more: each calls the clauses above and ends in `tidy/1`. |
+| 2520–4079 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 2625), panel (from 2899), bulk (from 3194), `submit` (from 3285), files (from 3451), after a create or a run (from 3713), arguments, `go` and the URL (from 3975). |
+| 4080–4671 | `render/1`: the markup of one table. |
+| 4672–7782 | The four hooks, inside `render/1`. |
+| 7783–10227 | Function components: `lines`, `argument`, `panel`, `picker`, `field`, `group`, `groups`, `union`, `members`, `related`, `selection`, `create`, `table_actions`, `pagination`, `pages`, `resizer`, `columns`, `filter`, `editor`, `count`, `list`. |
+| 10228–10557 | Small view helpers: `colindex`, `cell_attributes`, `cell_content`, `cell`, `page_numbers`. |
 
 ### Events
 
@@ -134,12 +145,16 @@ All arrive in `handle_event/3`. A name from the browser is looked up as text (`c
 - Selection: `bulk`, `bulk_run`, `bulk_seen`.
 - Action panel: `panel_validate`, `panel_submit`, `panel_add`, `panel_remove`, `panel_unpick`, `panel_clear`, `panel_cancel`.
 - Picker: `pick` (from a cell), `pick_input` (from the panel), `picked`, `picker_cancel`.
+- Live updates: `read_again` (the button beside the notice), `left` (the hook's answer to `ash_table:leaving`: no cell of that row is being edited, it can go). No event says which cell is edited: the hook alone knows, and it leaves that cell alone when a live update puts its row back.
 
-The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`, `ash_table:bulk`, `ash_table:unselect`. The hooks tell each other with DOM events on the grid: `ash_table:selection`, `ash_table:choose`.
+`handle_event/3`, `update/2` and `handle_async/3` are each defined twice: the clauses, then `defoverridable`, then one definition that calls them (`super`) and ends in `tidy/1`. A new clause goes above `defoverridable`. `tidy/1` looks at what was announced, forgets the nested tables and pickers that are no longer rendered and stops their listeners, notes in `@tables` whether the table has a panel or picker open, and tells the tables around it that hold a row back for it when it has none any more.
+
+The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`, `ash_table:bulk`, `ash_table:unselect`, `ash_table:leaving` (a row whose record a live update found gone). The hooks tell each other with DOM events on the grid: `ash_table:selection`, `ash_table:choose`.
 
 ### Assigns that matter
 
-- Given by the caller (`update/2`): `id`, `resource`, `table`, `scope`, `actor`, `tenant`, `authorize?`, `url`, `label`, `heading`, `mounted?`, `select`, `choose`, `page_assigns`; for a nested table `via`, `parent_key`, `parent_authorize?`, `parent_arguments`, `depth`, `depth_limit`.
+- Given by the caller (`update/2`): `id`, `resource`, `table`, `scope`, `actor`, `tenant`, `authorize?`, `live?` (kept as `live_given`), `url`, `label`, `heading`, `mounted?`, `select`, `choose`, `page_assigns`; for a nested table `via`, `parent_key`, `parent_authorize?`, `parent_arguments`, `depth`, `depth_limit`, and for a nested table and a picker `lineage`.
+- `live`, `waiting`, `held`, `notice?`: live updates. `live` is the table's listener and topic, nil for a table that does not follow. `leaving` are the rows that go once the hook answers. Every table of a page is also noted in the process dictionary of the LiveView (`@tables`): the ids of the tables around it, its listener, whether a panel or picker is open in it, whether it holds rows back. A table reads it to know what is open under its rows; nothing is told by `send_update`, which would render the table around again.
 - `built`: the models as `Model.build/2` gives them, kept for the life of the component. `model`: the model for this person, made on every update.
 - `state`: the `%AshTable.State{}`. `read`: what the last read was of; a read runs only when this changes.
 - `page`, `row_count`, `busy?`, `loading?`, `error`, `gone?`.
@@ -160,25 +175,25 @@ The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`
 
 They are colocated hooks. A host gets them from `phoenix-colocated/ash_table`.
 
-- `.Pagination` (from 4173): keeps focus on the pagination control that was used. No sections.
-- `.Panel` (from 4240): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
-- `.Picker` (from 4433): the picker dialog. Hears the selection of the table inside it and sends `picked`.
-- `.Grid` (from 4570): everything in the grid. It starts with a long comment and constants, then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
+- `.Pagination` (from 4672): keeps focus on the pagination control that was used. No sections.
+- `.Panel` (from 4739): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
+- `.Picker` (from 4932): the picker dialog. Hears the selection of the table inside it and sends `picked`.
+- `.Grid` (from 5069): everything in the grid. It starts with a long comment and constants, then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
 
 | Line | Section | Owns |
 | --- | --- | --- |
-| 4915 | the counter of a text | the count beside a text with `max_length` |
-| 4983 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
-| 5342 | expanding | opening a row and going into a nested table |
-| 5517 | the widths of the columns | resizing; the server never hears of widths |
-| 5761 | hiding columns | the "Columns" list; the server never hears of it |
-| 5999 | selecting | which rows are selected, `selected()`, `bulk` |
-| 6285 | row actions | `act`, the question of an action, refocus |
-| 6345 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
-| 6678 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `save` |
-| 7079 | sensitive cells | `reveal`, `hide` |
-| 7194 | the dialog | `ask`: the table's question dialog |
-| 7215 | the message of a failed cell | `showMessage` |
+| 5424 | the counter of a text | the count beside a text with `max_length` |
+| 5492 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
+| 5851 | expanding | opening a row and going into a nested table |
+| 6026 | the widths of the columns | resizing; the server never hears of widths |
+| 6270 | hiding columns | the "Columns" list; the server never hears of it |
+| 6508 | selecting | which rows are selected, `selected()`, `bulk` |
+| 6794 | row actions | `act`, the question of an action, refocus |
+| 6854 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
+| 7187 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
+| 7605 | sensitive cells | `reveal`, `hide` |
+| 7720 | the dialog | `ask`: the table's question dialog |
+| 7741 | the message of a failed cell | `showMessage` |
 
 ## Safety rules
 
@@ -188,11 +203,12 @@ Every change must keep these. They are what part 2 is for.
 - **Every action a table runs is `public?`.** Read, update, create, destroy and generic actions, and the read action of a nested table or a picker. The verifiers refuse a private one (`Reading.read_action/2`, `Reading.private_read/2`, `Relating.public_read/2`, `Acting.unusable/4`; the sentence they share is `Reading.private_action/0`).
 - **`authorize?`.** Every call to Ash passes the reader options (`scope`, `actor`, `tenant`, `authorize?`; `reader/1` in the component, `Query.reader_opts/1`). `authorize?` comes from the domain unless the table is told otherwise. The table adds no rule of its own and hides nothing by itself: it asks Ash (`Model.Access`).
 - **Nothing sensitive reaches the browser before "Show".** A row is rendered from a record that went through `AshTable.Sensitive.scrub/2`. The value is sent only as the reply to `reveal`, after the record was read again. An editor of a sensitive column opens empty.
+- **An announcement is a claim too.** A live update names a primary key and nothing else. The table shows only what its own read returns for that key, as the person (`Query.rows/4`), and says that there are new or changed records only after asking, as the person and with their filters, whether one is theirs to see (`Query.any?/5`). The notifier never sends a record.
 - **Values from the browser are claims.** A row key, a column name, an action name, a picked record and a selection are looked up or read again before they are used. Sort and filter go through `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. What a person typed goes to the action as typed; Ash casts and validates it. Text from outside never becomes an atom.
 
 ## Adding a feature
 
-1. **DSL option.** A table option goes into `@options` in `lib/ash_table/resource/table.ex`. An option of a column, action or other entity goes into that entity in `lib/ash_table/resource.ex` and its struct in `lib/ash_table/resource/`.
+1. **DSL option.** A table option goes into `@options` in `lib/ash_table/resource/table.ex` (one that means something else in a named table also into `@follows` there). A domain option goes into `lib/ash_table/domain.ex`. An option of a column, action or other entity goes into that entity in `lib/ash_table/resource.ex` and its struct in `lib/ash_table/resource/`.
 2. **Regenerate**, in the repository root: `mix spark.formatter` (writes `.formatter.exs`) and `mix spark.cheat_sheets` (writes `documentation/dsls/`).
 3. **Verifier.** See "A new diagnostic" above.
 4. **Model.** Put the answer into `AshTable.Model` or one of its structs. What depends on the person belongs in `for_actor/2`.
@@ -201,7 +217,7 @@ Every change must keep these. They are what part 2 is for.
 7. **Demo.** Resources are in `demo/lib/demo/tracker/` and `demo/lib/demo/kitchen_sink/`, routes in `demo/lib/demo_web/router.ex`, seeds in `demo/priv/repo/seeds.exs`. A resource that exists for tests only goes into `demo/test/support/*_tables.ex` and under `/support` in the router. Describe a new page in `demo/README.md`.
 8. **Tests**, at three boundaries:
    - `test/` in the root: declaration, verifiers, model and the modules of part 2, against the resources in `test/support/`.
-   - `demo/test/demo_web/tables/`: the rendered table through LiveView tests, with the helpers of `DemoWeb.TablePage` (`demo/test/support/table_page.ex`).
+   - `demo/test/demo_web/tables/`: the rendered table through LiveView tests, with the helpers of `DemoWeb.TablePage` (`demo/test/support/table_page.ex`). A test that changes a record of a live resource and then looks at an open page calls `AshTable.Test.flush(view)`; it never sleeps for the 100 ms.
    - `demo/e2e/*.spec.ts`: the browser, with the `Table` class of `demo/e2e/support/table.ts` and `demo/e2e/support/actors.ts`.
 9. **Guide.** One file in `documentation/topics/`. A new guide is added to the list in `test/documentation_test.exs` and to `extras` in `mix.exs`. Every code block needs `<!-- source: path/from/root -->` on the line above it, or `<!-- sketch -->`. The test checks that the block is in that file, that links resolve, and that a guide ends with its three closing sections.
 

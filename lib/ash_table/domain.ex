@@ -46,6 +46,21 @@ defmodule AshTable.Domain do
 
   A table placed with `AshTable.table/1` follows this setting unless it is
   given `authorize?` itself.
+
+  ## Live updates
+
+  `pub_sub` names the `Phoenix.PubSub` server through which the resources
+  of the domain that say `live? true` announce their changes, and through
+  which their tables hear of them:
+
+      table do
+        pub_sub MyApp.PubSub
+      end
+
+  It is the name the server was started under (`{Phoenix.PubSub, name:
+  MyApp.PubSub}` in the application's supervisor). A resource that says
+  `live? true` in a domain that names none is an error when the domain is
+  compiled. See the guide "Live updates".
   """
 
   @table %Spark.Dsl.Section{
@@ -82,9 +97,16 @@ defmodule AshTable.Domain do
         type: :atom,
         default: :current_tenant,
         doc: "The socket assign holding the tenant, used when there is no scope."
+      ],
+      pub_sub: [
+        type: :atom,
+        doc:
+          "The name of the `Phoenix.PubSub` server that carries the live updates of this domain's resources: those whose `table` block says `live? true` announce their changes through it, and their tables listen to it."
       ]
     ]
   }
 
-  use Spark.Dsl.Extension, sections: [@table]
+  use Spark.Dsl.Extension,
+    sections: [@table],
+    verifiers: [AshTable.Domain.Verifiers.VerifyPubSub]
 end

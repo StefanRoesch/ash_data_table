@@ -6,7 +6,7 @@ defmodule AshTable.Resource.Table do
   This is what `AshTable.Resource.Info.table/2` and
   `AshTable.Resource.Info.tables/1` return, in one shape for both kinds:
   `name` is `:default` for the default table. An option that was not given is
-  `nil`, unless it has a default (`on_forbidden`, `max_depth`); the other
+  `nil`, unless it has a default (`on_forbidden`, `max_depth`, `live?`); the other
   defaults are filled in when the table is rendered. `columns`,
   `relationships`, `actions`, `arguments` and `uploads` are the declarations
   of the table, each in the declared order.
@@ -29,6 +29,7 @@ defmodule AshTable.Resource.Table do
     :__spark_metadata__,
     on_forbidden: :not_found,
     max_depth: 3,
+    live?: true,
     columns: [],
     relationships: [],
     actions: [],
@@ -44,6 +45,7 @@ defmodule AshTable.Resource.Table do
           create_action: atom | nil,
           on_forbidden: :not_found | :message,
           max_depth: non_neg_integer,
+          live?: boolean,
           columns: [AshTable.Resource.Column.t()],
           relationships: [AshTable.Resource.Relationship.t()],
           actions: [AshTable.Resource.Action.t()],
@@ -84,6 +86,23 @@ defmodule AshTable.Resource.Table do
       default: 3,
       doc:
         "How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown."
+    ],
+    live?: [
+      type: :boolean,
+      default: false,
+      doc:
+        "Live updates. `true` makes the resource announce every create, update and destroy through the `pub_sub` its domain names (`AshTable.Domain`), and makes its tables follow them: a row that another person changed is read again for the person who is looking at it. See the guide \"Live updates\"."
+    ]
+  ]
+
+  # In a named table the same word says less: whether this table follows
+  # what the resource announces.
+  @follows [
+    live?: [
+      type: :boolean,
+      default: true,
+      doc:
+        "Whether this table follows the resource's live updates. It has them only where the `table` block of the resource says `live? true`; `false` here leaves this one table as it was read."
     ]
   ]
 
@@ -111,7 +130,7 @@ defmodule AshTable.Resource.Table do
   ]
 
   @doc false
-  def schema, do: @name ++ @options ++ @misplaced
+  def schema, do: @name ++ Keyword.merge(@options, @follows) ++ @misplaced
 
   @doc false
   # Where a table is in the DSL, for the path of a diagnostic.

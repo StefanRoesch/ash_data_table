@@ -70,6 +70,7 @@ defmodule DemoWeb.Router do
   # unions (`union_tables.ex`), one whose actions take files
   # (`file_tables.ex`), one with sensitive columns (`sensitive_tables.ex`),
   # one whose numbers have limits where the demo has none (`limit_tables.ex`),
+  # those that announce their changes for live updates (`live_tables.ex`),
   # those of a domain whose policies allow nothing, mounted with and without
   # authorization (`unchecked_tables.ex`), one whose
   # resources have private actions (`private_tables.ex`, and the tables of
@@ -131,6 +132,23 @@ defmodule DemoWeb.Router do
         ash_table "/scans", Demo.Support.Files.Scan, layout: false
         ash_table "/safes", Demo.Support.Secrets.Safe, layout: false
         ash_table "/meters", Demo.Support.Limits.Meter, layout: false
+
+        # Live updates (`live_tables.ex`): the bulletins as their domain
+        # says, without authorization, and without live updates; their
+        # table that does not follow; the replies, whose picker shows the
+        # bulletins; a resource that announces nothing, mounted as if it
+        # did; and one whose primary key is two attributes.
+        ash_table "/bulletins", Demo.Support.Live.Bulletin, layout: false
+
+        ash_table "/open/bulletins", Demo.Support.Live.Bulletin,
+          layout: false,
+          authorize?: false
+
+        ash_table "/still/bulletins", Demo.Support.Live.Bulletin, layout: false, live?: false
+        ash_table "/quiet/bulletins", Demo.Support.Live.Bulletin, layout: false, table: :quiet
+        ash_table "/replies", Demo.Support.Live.Reply, layout: false
+        ash_table "/stamps", Demo.Support.Live.Stamp, layout: false, live?: true
+        ash_table "/pins", Demo.Support.Live.Pin, layout: false
 
         # The same tables twice: as their domain says, which authorizes, and
         # mounted without authorization. Under `/support` and in the test

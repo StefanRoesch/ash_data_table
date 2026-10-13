@@ -847,6 +847,34 @@ declared in the resource and mounted with one line in the router.
   resource. Every check holds for it, and a finding points at the
   fragment's file and line. See the guide "Named tables".
 
+### Live updates
+
+- `live? true` in a resource's `table` block makes its tables follow what
+  other people change. The resource gets a notifier, `AshTable.Notifier`,
+  which announces every create, update and destroy through the
+  `Phoenix.PubSub` server that the domain's `table` block names with the new
+  option `pub_sub`. An announcement holds the resource, the kind of action,
+  the primary key and the tenant, and nothing of the record. A domain with
+  such a resource and no `pub_sub` is an error when it is compiled.
+- A table that hears a key reads the record again as the person, through
+  its read action: a row of the page is updated in place, or goes when the
+  read does not return it. A record that is no row of the page is not put
+  in: the table says "There are new or changed records." with a "Read
+  again" button, and only when at least one of them is a record that person
+  would be shown.
+- Nothing a person is working on changes under them. A cell that is being
+  edited keeps what was typed. A row is left as it is while the action panel
+  or the picker is open for it, or a panel or picker is open in a table
+  nested under it, at any depth. A row whose record is gone stays while a
+  cell of it is edited: the table asks the browser about that one row
+  before it takes it away.
+- `AshTable.Test.flush/1` hands a page what was announced so far, for a test
+  that changes a record and then looks at the page.
+- Nested tables and pickers follow their own resource. A named table says
+  `live? false`, and a page or a placed table `live?: false`, not to
+  follow.
+- See the guide [Live updates](documentation/topics/live-updates.md).
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive

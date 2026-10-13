@@ -83,6 +83,7 @@ defmodule AshTable.Query do
           | {:actor, term}
           | {:tenant, term}
           | {:authorize?, boolean}
+          | {:origin, pid | nil}
 
   @doc """
   Reads the page `state` points at.
@@ -258,6 +259,13 @@ defmodule AshTable.Query do
         keys -> model |> query(%State{}, [], read_opts) |> by_keys(model, keys)
       end
 
+    through_parent(via, related, key, read_opts, opts)
+  end
+
+  # What a query of related records gives for the record with the primary
+  # key `key`: that record is read, as `read_related/4` reads it, with the
+  # relationship loaded through the query.
+  defp through_parent(via, related, key, read_opts, opts) do
     parent_opts =
       Keyword.put(
         read_opts,
@@ -279,6 +287,76 @@ defmodule AshTable.Query do
       {:ok, nil} -> {:error, :parent_gone}
       {:error, error} -> {:error, error}
     end
+  end
+
+  @doc """
+  The records with the primary keys `keys` as the rows of a page are made
+  of them: read as `records/3` reads them (as `related_records/5` does for
+  a nested table, whose parent has the primary key `parent`), without the
+  person's filters, and with everything the table's columns show loaded
+  onto them as onto the records of a page (`load/3`, through the table's
+  read action).
+
+  This is how a table follows a change that was announced to it
+  (`AshTable.Notifier`): a key that names nothing the person may read
+  through the table is not among the records, and nothing says why.
+
+  Takes the options of `read_related/4`.
+  """
+  @spec rows(Model.t(), map | nil, [map], keyword) ::
+          {:ok, [Ash.Resource.record()]} | {:error, term}
+  def rows(%Model{} = model, parent, keys, opts) do
+    read_opts = reader_opts(opts)
+
+    read =
+      case model.via do
+        nil -> {:ok, records(model, keys, opts)}
+        %{} -> related_records(model, %State{}, parent, keys, opts)
+      end
+
+    with {:ok, records} <- read do
+      load(records, model, [action: model.read_action] ++ read_opts)
+    end
+  rescue
+    error -> {:error, error}
+  end
+
+  @doc """
+  Whether at least one of the records with the primary keys `keys` is
+  among what `state` matches for the person asking: read through the
+  table's read action with their filters and its arguments, and for a
+  nested table through its parent, in one read that asks for one record.
+  A read that fails says no.
+
+  It is what lets a table say that there are new or changed records: only
+  a record the person would be shown is spoken of.
+
+  Takes the options of `read_related/4`.
+  """
+  @spec any?(Model.t(), State.t(), map | nil, [map], keyword) :: boolean
+  def any?(%Model{}, %State{}, _parent, [], _opts), do: false
+
+  def any?(%Model{} = model, %State{} = state, parent, keys, opts) do
+    read_opts = reader_opts(opts)
+
+    matching =
+      model
+      |> query(%{state | sort: nil}, [], read_opts)
+      |> by_keys(model, keys)
+      |> Ash.Query.select(model.primary_key)
+
+    case model.via do
+      nil ->
+        matching |> stream(model, read_opts) |> Enum.take(1) != []
+
+      %{} = via ->
+        match?(
+          {:ok, [_ | _]},
+          through_parent(via, Ash.Query.limit(matching, 1), parent, read_opts, opts)
+        )
+    end
+  rescue
+    _error -> false
   end
 
   # The records of a query, read to the end in batches: by keyset or by
@@ -535,7 +613,17 @@ defmodule AshTable.Query do
     context
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Keyword.put(:authorize?, Keyword.get(opts, :authorize?, true))
+    |> origin(opts[:origin])
   end
+
+  # A table that follows live updates says of what it runs that it ran it:
+  # `origin` is its listener (`AshTable.Listener`), which the notifier then
+  # leaves out when it announces the change (`AshTable.Notifier`). The table
+  # has shown what its action returned. It is in the context of that one
+  # action, and not shared with the actions it runs in turn: what those
+  # change besides is announced to the table like anything else.
+  defp origin(reader, nil), do: reader
+  defp origin(reader, pid), do: Keyword.put(reader, :context, %{ash_table_origin: pid})
 
   # The two functions below look like a repetition of what `AshTable.State`
   # already does, and they are meant to be one: they are the last guard for

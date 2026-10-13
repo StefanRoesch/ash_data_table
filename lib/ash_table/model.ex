@@ -283,10 +283,12 @@ defmodule AshTable.Model do
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Embedding
   alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Listening
   alias AshTable.Resource.Presenting
   alias AshTable.Resource.Reading
   alias AshTable.Resource.Referencing
   alias AshTable.Resource.Relating
+  alias AshTable.Resource.Table
   alias AshTable.Sensitive
 
   @enforce_keys [:resource, :primary_key, :read_action, :pagination, :columns]
@@ -306,7 +308,8 @@ defmodule AshTable.Model do
     read_arguments: %{},
     max_depth: 3,
     table: :default,
-    on_forbidden: :not_found
+    on_forbidden: :not_found,
+    live?: false
   ]
 
   @type t :: %__MODULE__{
@@ -325,7 +328,8 @@ defmodule AshTable.Model do
           create: Action.t() | nil,
           name: String.t(),
           max_depth: non_neg_integer,
-          via: Relationship.t() | nil
+          via: Relationship.t() | nil,
+          live?: boolean
         }
 
   @default_page_size 25
@@ -352,6 +356,13 @@ defmodule AshTable.Model do
     * `:choose` - the name of a public read action of the resource. The
       model is then that of the table as a picker shows it, read through
       that action: see "Choosing a related record" above.
+
+    * `:live?` - what the page or the place of the table says about live
+      updates: `false` for a table that does not follow them, `true` for
+      one that has to, which is refused when the resource announces none.
+      Left out, the table follows them where the resource says `live? true`
+      and the table itself does not say `live? false`. The answer is the
+      model's `live?`.
 
   Raises `ArgumentError` for a resource without the extension, and for a
   `table` block with a mistake of the compile-time checks that leaves the
@@ -439,11 +450,30 @@ defmodule AshTable.Model do
       name: name(resource),
       max_depth: table.max_depth,
       on_forbidden: table.on_forbidden,
-      via: via
+      via: via,
+      live?: live!(resource, table, opts[:live?])
     }
 
     if choose, do: chooser(model), else: model
   end
+
+  # Whether the table follows live updates (`AshTable.Resource.Listening`).
+  # Only a resource that announces its changes can be followed: a table
+  # that is told to follow one that does not is refused, as there would be
+  # nothing to hear, and nothing would say so.
+  defp live!(_resource, _table, false), do: false
+
+  defp live!(resource, table, true) do
+    if not Listening.announces?(resource) do
+      raise ArgumentError,
+            "cannot build #{Table.in_words(table)} of #{inspect(resource)}: " <>
+              Listening.message({:not_announced, resource})
+    end
+
+    true
+  end
+
+  defp live!(resource, table, nil), do: Listening.follows?(resource, table)
 
   # The table as a picker shows it: for choosing a record, and for nothing
   # else. No cell of it is edited, it has no row actions, no table actions

@@ -77,6 +77,7 @@ examples from the demo app and each topic's edge cases.
 - [Files](documentation/topics/files.md)
 - [Nested tables](documentation/topics/nested-tables.md)
 - [Named tables](documentation/topics/named-tables.md)
+- [Live updates](documentation/topics/live-updates.md): `live? true` makes a table follow what other people change
 - [Custom components](documentation/topics/custom-components.md)
 - [Sensitive columns](documentation/topics/sensitive-columns.md)
 - [Authorization](documentation/topics/authorization.md)

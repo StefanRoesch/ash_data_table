@@ -566,6 +566,33 @@ defmodule AshTable.Resource do
   not exist, is no component, or says that it cannot serve the column is
   reported once the application is compiled, and the table refuses to be
   built with it. A column that names a relationship has no component.
+
+  ## Live updates
+
+  A table shows what it read. With `live? true` in the `table` block it
+  also follows what others change:
+
+      table do
+        live? true
+      end
+
+  The resource then announces every create, update and destroy
+  (`AshTable.Notifier`) through the `Phoenix.PubSub` server its domain
+  names (`pub_sub MyApp.PubSub` in the domain's `table` block:
+  `AshTable.Domain`), and every table of the resource listens: on a page,
+  placed in a LiveView, nested in a row, and in a picker. An announcement
+  holds the primary key and nothing else of the record. The table reads
+  that record again, as the person who is looking at it and through its own
+  read action, and shows what that read returns: a row of the page is
+  updated in place, or goes when the record is gone or no longer theirs to
+  read. A record that is no row of the page is never put into it: the table
+  says "There are new or changed records." with a button that reads the
+  page again, and only when at least one of them is a record that person
+  would be shown.
+
+  A named table says `live? false` not to follow, and a page or a placed
+  table `live?: false` (`AshTable.Router.ash_table/3`, `AshTable.table/1`).
+  See the guide "Live updates".
   """
 
   @ask %Spark.Dsl.Entity{
@@ -887,6 +914,7 @@ defmodule AshTable.Resource do
 
   use Spark.Dsl.Extension,
     sections: [@table, @tables],
+    transformers: [AshTable.Resource.Transformers.Announce],
     verifiers: [
       AshTable.Resource.Verifiers.VerifyTables,
       AshTable.Resource.Verifiers.VerifyReadAction,

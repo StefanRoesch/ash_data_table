@@ -90,6 +90,13 @@ defmodule AshTable.Resource.Info do
     end
   end
 
+  @doc """
+  Whether the resource announces its changes for live updates: its `table`
+  block says `live? true`.
+  """
+  @spec live?(Ash.Resource.t() | Spark.Dsl.t()) :: boolean
+  def live?(resource), do: table_live?(resource)
+
   @doc false
   # What is said of a table that a resource does not have, wherever it is
   # named: by a relationship, in the router, where a table is placed.
@@ -126,6 +133,7 @@ defmodule AshTable.Resource.Info do
       create_action: option(table_create_action(resource)),
       on_forbidden: table_on_forbidden!(resource),
       max_depth: table_max_depth!(resource),
+      live?: table_live?(resource),
       columns: for(%AshTable.Resource.Column{} = column <- entities, do: column),
       relationships:
         for(%AshTable.Resource.Relationship{} = relationship <- entities, do: relationship),

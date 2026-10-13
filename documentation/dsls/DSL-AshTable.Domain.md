@@ -50,6 +50,21 @@ and `tenant`, as attributes and does not look at the assign names.
 A table placed with `AshTable.table/1` follows this setting unless it is
 given `authorize?` itself.
 
+## Live updates
+
+`pub_sub` names the `Phoenix.PubSub` server through which the resources
+of the domain that say `live? true` announce their changes, and through
+which their tables hear of them:
+
+    table do
+      pub_sub MyApp.PubSub
+    end
+
+It is the name the server was started under (`{Phoenix.PubSub, name:
+MyApp.PubSub}` in the application's supervisor). A resource that says
+`live? true` in a domain that names none is an error when the domain is
+compiled. See the guide "Live updates".
+
 
 ## table
 How the tables of this domain's resources authorize and find who is asking.
@@ -77,6 +92,7 @@ end
 | [`scope_assign`](#table-scope_assign){: #table-scope_assign } | `atom` | `:current_scope` | The socket assign holding an `Ash.Scope`. When it is assigned and not nil, a mounted table passes it to Ash as the scope. |
 | [`actor_assign`](#table-actor_assign){: #table-actor_assign } | `atom` | `:current_user` | The socket assign holding the actor, used when there is no scope. |
 | [`tenant_assign`](#table-tenant_assign){: #table-tenant_assign } | `atom` | `:current_tenant` | The socket assign holding the tenant, used when there is no scope. |
+| [`pub_sub`](#table-pub_sub){: #table-pub_sub } | `atom` |  | The name of the `Phoenix.PubSub` server that carries the live updates of this domain's resources: those whose `table` block says `live? true` announce their changes through it, and their tables listen to it. |
 
 
 

@@ -245,6 +245,47 @@ defmodule AshTable.Live.TableComponent do
   # `depth` counts from the table on the page, which is at 0, and
   # `depth_limit` is that table's `max_depth`.
   #
+  # ## Live updates
+  #
+  # A table whose resource announces its changes (`live? true`) follows
+  # them, unless it is told not to. It listens through a process of its
+  # own (`AshTable.Listener`), which hands it what was announced in batches
+  # (`update/2`, with `live`): the primary keys of records that were
+  # created, updated or destroyed, and nothing else of them
+  # (`AshTable.Notifier`). Nothing of an announcement is shown. Each key is
+  # read again as the person, through the table's read action
+  # (`follow/1`): a row of the page is put back as that read returns it, or
+  # taken away when it returns nothing; a record that is no row of the page
+  # is never put into it.
+  #
+  # For those the table has a notice on the line above the grid,
+  # `ID-notice`, with the button `ID-read-again` (`read_again`), which is
+  # also said through the live region. It is only there when at least one
+  # of the records is one this person would be shown, and goes with the
+  # next read.
+  #
+  # Nothing a person is working on changes under them. A row is left as it
+  # is while the action panel or the picker is open for it, or a panel or a
+  # picker is open in a table under it, at whatever depth: every table notes
+  # in the process of the page whether it has one open (`@tables`), and
+  # tells the tables around it that hold a row back when it has none any
+  # more (`live: :released`). A cell that is being edited is left alone by
+  # the hook, as by every patch of its row (`beforeUpdate`): it keeps what
+  # was typed, and shows what the server sent once the editor is gone
+  # without a save. The server is not told which cell is edited, here as
+  # elsewhere.
+  #
+  # A row whose record the read does not return is not taken away at once,
+  # as an editor may be open in it. The hook is asked about that one row
+  # (`ash_table:leaving`), and answers `left`: at once, or when the editor
+  # in the row is gone without a save. A save from it is answered as any
+  # save into a record that is gone, and the row then stays.
+  #
+  # The tables a table renders, nested in a row or in a picker, listen for
+  # themselves. Each is told which tables it is in (`lineage`), and the
+  # table that renders it forgets it and stops its listener when it renders
+  # it no longer (`close/1`).
+  #
   # ## The full view
   #
   # The last row of a nested table's grid holds a link to the page the host's
@@ -270,15 +311,18 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Edit
   alias AshTable.Errors
   alias AshTable.Format
+  alias AshTable.Listener
   alias AshTable.Model
   alias AshTable.Model.Limits
   alias AshTable.Model.Operator
   alias AshTable.Model.Relationship
+  alias AshTable.Notifier
   alias AshTable.Pick
   alias AshTable.Query
   alias AshTable.Record
   alias AshTable.Related
   alias AshTable.Resource.Embedding
+  alias AshTable.Resource.Listening
   alias AshTable.Routes
   alias AshTable.Sensitive
   alias AshTable.State
@@ -287,6 +331,15 @@ defmodule AshTable.Live.TableComponent do
 
   # The rows above the data rows: the header and the filter row.
   @header_rows 2
+
+  # Where the tables of a page are noted, by their ids: for each, where it
+  # is (the ids from the table on the page down to its own), its listener
+  # while it follows live updates, whether a panel or a picker is open in
+  # it, and whether it holds rows back for something that is open. In the
+  # process of the page, which every table of it runs in, and not in a
+  # table: a table that told the one around it by an update would have that
+  # one rendered again every time. It goes with the process.
+  @tables {__MODULE__, :tables}
 
   @impl true
   def mount(socket) do
@@ -372,10 +425,36 @@ defmodule AshTable.Live.TableComponent do
      |> assign(select: nil, selecting: nil, bulk: [], lead: 0)
      # The action that is running on the selected rows, while it does, and
      # what the last one came to, until the person selects something else.
-     |> assign(running: nil, result: nil)}
+     |> assign(running: nil, result: nil)
+     # Live updates (see "Live updates" at the top). `live_given` is what the
+     # table was told about them, and `live` its listener while it follows
+     # them: the process and the topic it listens to. `waiting` is what was
+     # announced and not looked at yet, and `held` the keys of the rows that
+     # are read again once the person is done with them. `notice?` says
+     # that there are new or changed records to read again for.
+     |> assign(live_given: nil, live: nil, waiting: [], held: [], notice?: false)
+     # the rows that go once the hook says that no cell of them is edited
+     |> assign(leaving: MapSet.new())
+     # The tables this one is rendered in, nested in a row or in a picker:
+     # their ids, from the table on the page down to the one that renders
+     # this one. A table stops the listeners of the tables under it that it
+     # no longer renders (`close/1`).
+     |> assign(lineage: [])}
   end
 
+  # What a listener hands over (`AshTable.Listener`): a batch of what was
+  # announced, each the action's type and the record's primary key. It is
+  # looked at once this update is done (`tidy/1`).
   @impl true
+  def update(%{live: {:heard, batch}}, socket) do
+    {:ok, assign(socket, waiting: socket.assigns.waiting ++ batch)}
+  end
+
+  # Something that was open under one of this table's rows is open no
+  # longer, and the table holds a row back for it: it looks again
+  # (`tidy/1`).
+  def update(%{live: :released}, socket), do: {:ok, socket}
+
   def update(assigns, socket) do
     socket =
       assign(
@@ -384,9 +463,12 @@ defmodule AshTable.Live.TableComponent do
           assigns,
           [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
-            [:select, :choose, :page_assigns, :parent_arguments]
+            [:select, :choose, :page_assigns, :parent_arguments, :lineage]
         )
       )
+
+    # what the table was told about live updates: nil where it was told nothing
+    socket = assign(socket, live_given: assigns[:live?])
 
     # Unless the table is told, it authorizes as its resource's domain says.
     # What it was told is kept as it was given, for the tables nested in it.
@@ -451,6 +533,8 @@ defmodule AshTable.Live.TableComponent do
      |> assign(selecting: selecting, lead: lead(selecting, expandable?))
      |> assign(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
      |> creates()
+     # before the read: what changes from here on is heard
+     |> listen()
      |> read()}
   end
 
@@ -520,12 +604,13 @@ defmodule AshTable.Live.TableComponent do
   # A table to choose from is built for the read action it is told.
   defp build(%{assigns: %{resource: resource, table: table, via: via, built: built}} = socket) do
     read = socket.assigns.choose && socket.assigns.choose.read_action
+    live = socket.assigns.live_given
 
-    if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read}, built) and
+    if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read, live: ^live}, built) and
          not reloading?(socket) do
       socket
     else
-      model = Model.build(resource, table: table, via: via, choose: read)
+      model = Model.build(resource, table: table, via: via, choose: read, live?: live)
 
       assign(socket,
         built: %{
@@ -533,6 +618,7 @@ defmodule AshTable.Live.TableComponent do
           table: table,
           via: via,
           choose: read,
+          live: live,
           model: model,
           nested: %{}
         }
@@ -852,7 +938,334 @@ defmodule AshTable.Live.TableComponent do
   end
 
   # Who is reading and saving.
-  defp reader(assigns), do: Map.to_list(Map.take(assigns, [:scope, :actor, :tenant, :authorize?]))
+  #
+  # A table that follows live updates also says which listener is its own
+  # (`origin`): what it changes itself is not announced to it, as it shows
+  # what its action returned (`AshTable.Query.reader_opts/1`).
+  defp reader(assigns) do
+    reader = Map.to_list(Map.take(assigns, [:scope, :actor, :tenant, :authorize?]))
+
+    case assigns[:live] do
+      %{pid: pid} -> [origin: pid] ++ reader
+      _not_listening -> reader
+    end
+  end
+
+  # ---- live updates ----------------------------------------------------
+  #
+  # See "Live updates" at the top.
+
+  # Starts to listen where the table follows live updates, on the topic of
+  # its resource and of the tenant it reads in; stops where it no longer
+  # does, and listens anew when the topic is another. Only once the page is
+  # connected: the request that renders it first has nothing to update.
+  defp listen(socket) do
+    %{resource: resource, model: model, live: live} = socket.assigns
+
+    topic =
+      if connected?(socket) and model.live? and model.primary_key != [],
+        do: Notifier.topic(resource, tenant(socket.assigns))
+
+    if (live && live.topic) == topic and (is_nil(live) or Process.alive?(live.pid)) do
+      socket
+    else
+      if live, do: Listener.stop(live.pid)
+      assign(socket, live: topic && listener(socket, topic))
+    end
+  end
+
+  defp listener(socket, topic) do
+    %{resource: resource, myself: myself} = socket.assigns
+    view = self()
+
+    pub_sub =
+      case Listening.pub_sub(resource) do
+        {:ok, pub_sub} ->
+          pub_sub
+
+        {:error, reason} ->
+          raise ArgumentError,
+                "cannot follow the changes of #{inspect(resource)}: " <> Listening.message(reason)
+      end
+
+    relay = fn batch -> Phoenix.LiveView.send_update(view, myself, live: {:heard, batch}) end
+
+    case Listener.start(pub_sub, topic, relay) do
+      {:ok, pid} ->
+        %{pid: pid, topic: topic}
+
+      {:error, _not_running} ->
+        raise ArgumentError,
+              "cannot follow the changes of #{inspect(resource)}: the `table` block of " <>
+                "#{inspect(Ash.Resource.Info.domain(resource))} names the Phoenix.PubSub server " <>
+                "`#{inspect(pub_sub)}`, and no server of that name is running. Start it in the " <>
+                "application's supervisor, before the endpoint: " <>
+                "`{Phoenix.PubSub, name: #{inspect(pub_sub)}}`."
+    end
+  end
+
+  # The tenant the table reads in.
+  defp tenant(%{scope: nil, tenant: tenant}), do: tenant
+  defp tenant(%{scope: scope}), do: Keyword.get(Ash.Scope.to_opts(scope), :tenant)
+
+  # What is done after every update, event and answer of the table:
+  #
+  #   * the tables under it that it no longer renders are forgotten, and
+  #     their listeners stopped (`close/1`);
+  #   * what was announced is looked at (`follow/1`), which may take rows
+  #     away, and so tables under them;
+  #   * the table notes what the others need to know of it (`@tables`);
+  #   * and when something that was open in it or under it is open no
+  #     longer, the tables around it that hold a row back for that are told
+  #     to look again.
+  defp tidy(socket) do
+    %{id: id, lineage: lineage, myself: myself, live: live, panel: panel, picker: picker} =
+      socket.assigns
+
+    before = tables()
+    was_open? = match?(%{open?: true}, before[id])
+
+    socket = socket |> close() |> follow() |> close()
+
+    open? = not is_nil(panel) or not is_nil(picker)
+
+    entry = %{
+      path: lineage ++ [id],
+      cid: myself,
+      listener: live && live.pid,
+      open?: open?,
+      held?: socket.assigns.held != []
+    }
+
+    Process.put(@tables, Map.put(tables(), id, entry))
+
+    # something under this table that was open is gone with its table
+    closed_under? =
+      Enum.any?(before, fn {other, %{open?: was}} ->
+        was and other != id and not is_map_key(tables(), other)
+      end)
+
+    if (was_open? and not open?) or closed_under? do
+      for around <- lineage, %{held?: true, cid: cid} <- [tables()[around]] do
+        send_update(cid, live: :released)
+      end
+    end
+
+    socket
+  end
+
+  defp tables, do: Process.get(@tables, %{})
+
+  # Forgets the tables under this one that it no longer renders, and stops
+  # their listeners: a nested table whose line or row was closed or is gone,
+  # the table of a picker that was closed, and every table inside those. The
+  # server is not told when a component is taken out of the page, and
+  # these would listen on until the page is left.
+  defp close(socket) do
+    %{id: id} = socket.assigns
+    rendered = rendered(socket.assigns)
+
+    for {other, %{path: path, listener: listener}} <- tables(),
+        other != id,
+        [^id, child | _] <- [Enum.drop_while(path, &(&1 != id))],
+        child not in rendered do
+      if listener, do: Listener.stop(listener)
+      Process.put(@tables, Map.delete(tables(), other))
+    end
+
+    socket
+  end
+
+  # The ids of the tables this table renders now: the nested tables of its
+  # open lines, and the table of its picker.
+  defp rendered(%{id: id, open: open, picker: picker}) do
+    for({key, lines} <- open, name <- lines, do: "#{id}-row-#{key}-t-#{name}") ++
+      if(picker, do: ["#{id}-pick-#{picker.name}"], else: [])
+  end
+
+  # Looks at what was announced. Nothing of an announcement is shown: it
+  # names records, and each is read again as the person
+  # (`AshTable.Query.rows/4`).
+  #
+  #   * A record that is a row of the page is read again, without the
+  #     person's filters, as a row is before something is done with it: what
+  #     comes back is put in its place, and a row that does not come back
+  #     goes, once the hook has said that no cell of it is being edited
+  #     (`leave/2`). All of them in one read.
+  #   * The row the action panel or the picker is open for, or under which
+  #     one is open in a nested table, is left as it is until that is
+  #     closed (`held`, `working/1`). Which cell a person is editing is
+  #     the hook's to know, and the server never hears of it: the row is
+  #     put back, and the hook leaves the cell that is being edited alone,
+  #     as it does when another cell's save puts the row back
+  #     (`beforeUpdate`).
+  #   * A record that is no row of the page is never put into it. The table
+  #     says that there are new or changed records, once, and only when at
+  #     least one of them is a record this person would be shown: one more
+  #     read, with their filters, that asks for one record.
+  #
+  # While a read is on its way, or an action on the selected rows, which
+  # ends in one, it waits for that: the rows are then other rows. A table
+  # that shows no rows has nothing to follow.
+  defp follow(%{assigns: %{waiting: [], held: []}} = socket), do: socket
+
+  defp follow(%{assigns: %{busy?: busy?, running: running}} = socket)
+       when busy? or not is_nil(running),
+       do: socket
+
+  defp follow(%{assigns: %{page: nil}} = socket), do: assign(socket, waiting: [], held: [])
+
+  defp follow(socket) do
+    %{model: model, rows: rows, waiting: waiting, held: held} = socket.assigns
+
+    {shown, others} =
+      Enum.split_with(waiting, fn {_type, key} -> shown?(model, rows, key) end)
+
+    working = working(socket.assigns)
+
+    {held, free} =
+      (held ++ Enum.map(shown, &elem(&1, 1)))
+      |> Enum.uniq()
+      |> Enum.filter(&shown?(model, rows, &1))
+      |> Enum.split_with(&(row_key(model, &1, 0) in working))
+
+    socket
+    |> assign(waiting: [], held: held)
+    |> refresh(free)
+    |> notice(for {type, key} <- others, type != :destroy, uniq: true, do: key)
+  end
+
+  # Whether the record with this primary key is a row of the page.
+  defp shown?(model, rows, key), do: match?(%{pk: ^key}, rows[row_key(model, key, 0)])
+
+  # The rows a person is working on, by the key in their id: the row the
+  # action panel or the picker of this table is open for, and every row
+  # under which a panel or a picker is open, in a nested table at whatever
+  # depth (`@tables`).
+  defp working(%{id: id, open: open, panel: panel, picker: picker}) do
+    of_panel =
+      case panel do
+        %{key: key} when is_binary(key) -> [key]
+        _no_row -> []
+      end
+
+    of_picker =
+      case picker do
+        %{for: {:cell, key, _column}} -> [key]
+        _no_row -> []
+      end
+
+    under =
+      for {other, %{open?: true, path: path}} <- tables(),
+          other != id,
+          [^id, child | _] <- [Enum.drop_while(path, &(&1 != id))],
+          {key, lines} <- open,
+          name <- lines,
+          child == "#{id}-row-#{key}-t-#{name}",
+          do: key
+
+    of_panel ++ of_picker ++ under
+  end
+
+  # What a read of the table is given besides who is asking: for a nested
+  # table, how the row it belongs to is read.
+  defp read_opts(assigns) do
+    [
+      parent_authorize?: assigns.parent_authorize?,
+      parent_arguments: assigns.parent_arguments
+    ] ++ reader(assigns)
+  end
+
+  # Reads rows of the page again, by their primary keys, and shows what
+  # comes back. A read that fails says nothing about any of them: the page
+  # is read again, which says what a read of it says.
+  defp refresh(socket, []), do: socket
+
+  defp refresh(socket, keys) do
+    %{model: model, parent_key: parent} = socket.assigns
+
+    case Query.rows(model, parent, keys, read_opts(socket.assigns)) do
+      {:ok, records} ->
+        found = Map.new(records, &{primary_key(model, &1), &1})
+
+        Enum.reduce(keys, socket, fn key, socket ->
+          row = row_key(model, key, 0)
+
+          cond do
+            # the page is being read again: a row before this one was its last
+            not is_map_key(socket.assigns.rows, row) -> socket
+            record = found[key] -> socket |> stay(row) |> put_fresh(row, record)
+            true -> leave(socket, row)
+          end
+        end)
+
+      {:error, _error} ->
+        reread(socket)
+    end
+  end
+
+  # A row whose record the read did not return: gone, or no longer this
+  # person's to read. It is not taken away at once. Only the hook knows
+  # whether a cell of the row is being edited, and the server is not to
+  # learn which cell is (see "Editing" at the top): so the hook is asked
+  # for this one row, and answers `left` at once, or when the editor in the
+  # row is gone without a save. Until then the row is `leaving`. Nothing of
+  # the record is sent again meanwhile, and whatever the person does with
+  # the row reads the record first, and finds it gone.
+  defp leave(socket, row) do
+    %{id: id, leaving: leaving} = socket.assigns
+
+    socket
+    |> assign(leaving: MapSet.put(leaving, row))
+    |> push_event("ash_table:leaving", %{table: id, row: row})
+  end
+
+  # A row that was on its way out, and whose record is the person's to read
+  # again.
+  defp stay(socket, row),
+    do: assign(socket, leaving: MapSet.delete(socket.assigns.leaving, row))
+
+  # A table that is rendered again for what a listener handed over puts
+  # the details of its expanded rows into the stream again, with the nested
+  # tables in them. Those stay as they are, and read nothing for it. It is
+  # for the page as a test holds it (`Phoenix.LiveViewTest`), which makes
+  # the page anew from everything that was rendered, and so loses sight of
+  # a nested table that a later rendering of this table does not hold; a
+  # browser patches a nested table where it stands.
+  defp redetail(socket) do
+    %{rows: rows, open: open} = socket.assigns
+
+    Enum.reduce(open, socket, fn {key, lines}, socket ->
+      if lines != [] and is_map_key(rows, key), do: put_detail(socket, key), else: socket
+    end)
+  end
+
+  # A row with its record as it was read again. What has failed in the row
+  # is still shown, on the record as it is now.
+  defp put_fresh(socket, key, record) do
+    socket =
+      case socket.assigns.failed[key] do
+        %{} = failures -> put_failed(socket, key, record, Map.take(failures, [:cells, :action]))
+        nil -> socket
+      end
+
+    put_row(socket, key, record)
+  end
+
+  # Says that there are new or changed records, when at least one of these
+  # is a record the person would be shown; nothing otherwise, and nothing
+  # twice. A page that is being read again will show what there is.
+  defp notice(socket, []), do: socket
+  defp notice(%{assigns: %{notice?: true}} = socket, _keys), do: socket
+  defp notice(%{assigns: %{busy?: true}} = socket, _keys), do: socket
+
+  defp notice(socket, keys) do
+    %{model: model, state: state, parent_key: parent} = socket.assigns
+
+    if Query.any?(model, state, parent, keys, read_opts(socket.assigns)),
+      do: socket |> assign(notice?: true) |> say(Text.t(:changed_records)),
+      else: socket
+  end
 
   # A read that came back, or went down, while the table waits for an
   # argument its read action requires: it was of other arguments, and
@@ -946,7 +1359,7 @@ defmodule AshTable.Live.TableComponent do
       socket
       |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
       |> assign(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
-      |> assign(fill: text)
+      |> assign(fill: text, notice?: false, held: [], leaving: MapSet.new())
       |> stream(:rows, [], reset: true)
       |> say(text)
     end
@@ -988,6 +1401,9 @@ defmodule AshTable.Live.TableComponent do
     |> assign(page: %{page | records: [], parent: nil}, row_count: length(rows))
     |> assign(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
     |> assign(fill: nil)
+    # what was announced before this read is in it: there is nothing left
+    # to read again for, and no row is waiting for its person
+    |> assign(notice?: false, held: [], leaving: MapSet.new())
     # the rows are other rows now: a panel never acts on a record that the
     # table no longer shows, and neither does a picker
     |> assign(panel: nil, picker: nil)
@@ -1057,7 +1473,7 @@ defmodule AshTable.Live.TableComponent do
     |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     # nothing is said of a record that was not read for this person
     |> assign(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
-    |> assign(fill: nil)
+    |> assign(fill: nil, notice?: false, held: [], leaving: MapSet.new())
     |> stream(:rows, [], reset: true)
   end
 
@@ -1149,12 +1565,23 @@ defmodule AshTable.Live.TableComponent do
   defp put_row(socket, key, record) do
     %{id: id, model: model, rows: rows, failed: failed, open: open} = socket.assigns
     names = names(model, record, key)
+    # in a table to choose from: whether this is the record chosen now
+    current? = current?(socket.assigns.choose, model, record)
     record = Sensitive.scrub(record, model.columns)
 
     stream_insert(
       socket,
       :rows,
-      item(id, key, record, rows[key].rowindex, failed[key] || %{}, is_map_key(open, key), names)
+      item(
+        id,
+        key,
+        record,
+        rows[key].rowindex,
+        failed[key] || %{},
+        is_map_key(open, key),
+        names,
+        current?
+      )
     )
   end
 
@@ -1219,6 +1646,7 @@ defmodule AshTable.Live.TableComponent do
       |> assign(rows: rows, row_count: map_size(rows))
       |> assign(failed: Map.delete(socket.assigns.failed, key))
       |> assign(open: Map.delete(socket.assigns.open, key))
+      |> assign(leaving: MapSet.delete(socket.assigns.leaving, key))
       |> assign(page: %{page | total: page.total && max(page.total - 1, 0)})
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}")
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}-x")
@@ -2033,6 +2461,58 @@ defmodule AshTable.Live.TableComponent do
   end
 
   def handle_event("dismiss", _params, socket), do: {:noreply, socket}
+
+  # Sent by the hook for a row it was asked about (`ash_table:leaving`): no
+  # cell of the row is being edited, and it can go. Only a row that is on
+  # its way out is taken away, and only while nothing is open in it or
+  # under it: then it waits, and is asked about again when that is closed.
+  def handle_event("left", %{"row" => row}, socket) when is_binary(row) do
+    %{leaving: leaving, rows: rows} = socket.assigns
+
+    cond do
+      not MapSet.member?(leaving, row) or not is_map_key(rows, row) ->
+        {:noreply, socket}
+
+      row in working(socket.assigns) ->
+        held = Enum.uniq([rows[row].pk | socket.assigns.held])
+        {:noreply, socket |> stay(row) |> assign(held: held)}
+
+      true ->
+        {:noreply, socket |> stay(row) |> remove_row(row)}
+    end
+  end
+
+  def handle_event("left", _params, socket), do: {:noreply, socket}
+
+  # Sent by "Read again", beside the notice that there are new or changed
+  # records: the page is read again as it is asked for now, with its sort,
+  # filters and position.
+  def handle_event("read_again", _params, socket), do: {:noreply, reread(socket)}
+
+  # Every update, event and answer ends the same way: see `tidy/1`.
+  defoverridable update: 2, handle_event: 3, handle_async: 3
+
+  @impl true
+  def update(assigns, socket) do
+    {:ok, socket} = super(assigns, socket)
+    socket = tidy(socket)
+
+    {:ok, if(is_map_key(assigns, :live), do: redetail(socket), else: socket)}
+  end
+
+  @impl true
+  def handle_event(event, params, socket) do
+    case super(event, params, socket) do
+      {:noreply, socket} -> {:noreply, tidy(socket)}
+      {:reply, reply, socket} -> {:reply, reply, tidy(socket)}
+    end
+  end
+
+  @impl true
+  def handle_async(name, result, socket) do
+    {:noreply, socket} = super(name, result, socket)
+    {:noreply, tidy(socket)}
+  end
 
   # The value of one sensitive cell, as text: of the record as it is read
   # now, for this person. A calculation or an aggregate is loaded onto it as
@@ -3719,6 +4199,25 @@ defmodule AshTable.Live.TableComponent do
           bulk={@bulk}
           running?={not is_nil(@running)}
         />
+        <%!-- What others have changed that the page does not show: said once
+        through the live region below, and here for as long as it holds, with the
+        button that reads the page again. The button goes away with the notice,
+        so focus is sent on to the grid. --%>
+        <p :if={@notice?} id={"#{@id}-notice"} class="flex items-center gap-2 text-sm">
+          <span>{Text.t(:changed_records)}</span>
+          <button
+            type="button"
+            id={"#{@id}-read-again"}
+            tabindex={@nested? && "-1"}
+            class="btn btn-sm"
+            phx-click={
+              JS.push("read_again", target: @myself)
+              |> JS.focus(to: "##{@id}-table [tabindex='0']")
+            }
+          >
+            {Text.t(:read_again)}
+          </button>
+        </p>
         <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
         <button
           :if={@state.filters != %{}}
@@ -4823,6 +5322,16 @@ defmodule AshTable.Live.TableComponent do
             this.handleEvent("ash_table:bulk", ({table, failed}) => {
               if (table !== this.id) return
               if (failed) this.select(new Map(failed), false, false)
+            })
+            // The server says that a row is to go: its record is gone, or
+            // no longer this person's to read (a live update). A row with
+            // an open editor stays until that is closed: see `released`.
+            this.leaving = new Set()
+            this.handleEvent("ash_table:leaving", ({table, row}) => {
+              if (table !== this.id) return
+              const ed = this.editing
+              if (ed && ed.cell.isConnected && this.rowKey(ed.cell) === row) this.leaving.add(row)
+              else this.pushEventTo(this.el, "left", {row})
             })
             // and when a row is gone, which is then selected no longer
             this.handleEvent("ash_table:unselect", ({table, row}) => {
@@ -6900,6 +7409,7 @@ defmodule AshTable.Live.TableComponent do
             ed.old = old
             const focused = ed.root.contains(document.activeElement)
             this.detach(ed)
+            this.released(cell, true)
             cell.replaceChildren(...ed.saved)
             // the record is gone: there is no row to send, so the cell is marked here
             if (reply && reply.error) this.mark(cell, value, old, reply.error, () => cell.replaceChildren(...ed.saved))
@@ -6932,6 +7442,7 @@ defmodule AshTable.Live.TableComponent do
             const run = () => {
               const restore = () => cell.replaceChildren(...ed.saved)
               this.detach(ed)
+              this.released(cell, true)
               restore()
               if (this.tree().activeId === cell.id) cell.tabIndex = 0
               cell.focus()
@@ -6993,6 +7504,18 @@ defmodule AshTable.Live.TableComponent do
             cell.removeAttribute("phx-update")
           },
 
+          // The editor of a cell is gone. Where its row was to go
+          // meanwhile (`ash_table:leaving`), it goes now, unless something
+          // was saved from the editor: the answer to that save says on the
+          // cell that the record is no longer available, and the row
+          // stays for it to be read, as after any such save.
+          released(cell, saved) {
+            if (!this.leaving.size || !cell.isConnected) return
+            const row = this.rowKey(cell)
+            if (!this.leaving.delete(row) || saved) return
+            setTimeout(() => { if (this.el.isConnected) this.pushEventTo(this.el, "left", {row}) }, 0)
+          },
+
           close(ed, save, refocus) {
             const {cell, input} = ed
             const value = this.held(ed)
@@ -7009,15 +7532,18 @@ defmodule AshTable.Live.TableComponent do
             if (save && !SAME(value, ed.old)) {
               typed()
               this.save(cell, value, ed.old, restore)
+              this.released(cell, true)
             } else if (ed.pending) {
               // a save of this editor is on its way still: its answer puts
               // the cell right, as the answer to any save does
               typed()
+              this.released(cell, true)
             } else {
               // given up, or back at the value the record has: nothing is
               // saved, and a failed edit of the cell is given up with it
               restore()
               if (failed) this.discard(cell)
+              this.released(cell, false)
             }
             // the cell is the grid's tab stop again, unless focus has gone to another cell
             if (this.tree().activeId === cell.id) cell.tabIndex = 0
@@ -8683,9 +9209,16 @@ defmodule AshTable.Live.TableComponent do
       actor: assigns.actor,
       tenant: assigns.tenant,
       authorize?: assigns.authorize_given,
-      page_assigns: assigns.page_assigns
+      page_assigns: assigns.page_assigns,
+      lineage: assigns.lineage ++ [assigns.id],
+      live?: passed_on(assigns.live_given)
     }
   end
+
+  # A table that was told not to follow live updates says the same to the
+  # tables it renders. That it was told to follow them is about itself.
+  defp passed_on(false), do: false
+  defp passed_on(_other), do: nil
 
   # What a nested table is given of the table it is in: who is asking, how
   # deep it is, how the table around it authorizes, and what its read action
@@ -8702,7 +9235,9 @@ defmodule AshTable.Live.TableComponent do
       parent_arguments: assigns.model.read_arguments,
       page_assigns: assigns.page_assigns,
       depth: assigns.depth + 1,
-      depth_limit: assigns.depth_limit
+      depth_limit: assigns.depth_limit,
+      lineage: assigns.lineage ++ [assigns.id],
+      live?: passed_on(assigns.live_given)
     }
   end
 

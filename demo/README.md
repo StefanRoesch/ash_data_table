@@ -72,6 +72,15 @@ demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
 | http://localhost:4478/specimens | `Specimen` | no columns declared: how every built-in type is shown, and the filter each gets by default. With `update_action :update`, every type with an editor is editable, beside the read-only ones: among them the arrays "Strings" and "Integers", edited value by value, and "Shades", a multiple choice; and the values made of fields, edited in the side panel: "An address" (an embedded resource), "Addresses" (an array of them, without a primary key) and "A typed map" (a map that declares its fields). "A map", which declares none, is shown from whatever it holds and is read-only; "A keyword", "A tuple" and "A struct" stay read-only text. "A union" is a number, a text, a shade or an address: its cell shows the value it holds, and it is edited in the side panel, the kind first. `A string` is case-sensitive, `A ci string` beside it is not; the `opt_*` columns offer "is empty" |
 | http://localhost:4478/deadlines | `Deadline` | the tasks once more, as a resource of its own over the same table, read through an action that **requires** an argument: the day they are due by. Until "Due by" is given the table reads nothing and says "Fill in Due by to see records."; "Include done?" is an argument with a default, and "Tags" a list that is given value by value. "Due on" is edited in place: a task that is put off beyond the day stays in its row until the table reads again. "Assignee" is a reference cell that is edited through an argument: its action, `hand_over`, does not accept `assignee_id`; it takes the person as an argument and hands it to the relationship, and the cell opens the picker all the same (see "Row actions and create" below). A row expands into its comments |
 
+The tasks and the comments have **live updates**: `live? true` in their
+`table` blocks, and `pub_sub Demo.PubSub` in the domain's
+(`lib/demo/tracker.ex`). Open `/tasks` in two browser windows, one of them
+private, as Ada Admin and as Max Member, and change a title as Ada: Max sees
+it without a reload. Create a task as Ada: Max's table says "There are new
+or changed records." and offers "Read again". In one window, `/named` shows
+the same between two tables of the comments. The projects and the labels
+announce nothing, and their tables stay as they were read.
+
 Three more pages show **named tables**: a resource with a second table
 beside its default one.
 
@@ -79,7 +88,7 @@ beside its default one.
 | --- | --- | --- |
 | http://localhost:4478/tasks/board | `Task`, table `:board` | a second table of the tasks, declared in a file of its own (`lib/demo/tracker/task/board_table.ex`, a fragment of the resource): four columns, "Title" and "State" edited in place, one row action ("Archive"), no "New task". Its id is `task_board`. A row expands into "Comments", which nests the compact table of the comments and links to its full view at `/comments/compact`, and into "Labels", which nests the short table of the labels (`:short`, declared in `label.ex`): that table is mounted nowhere, so it has no "Open in full view", although `/labels` exists. The assignee is chosen in the picker, which shows the people's default table |
 | http://localhost:4478/comments/compact | `Comment`, table `:compact` | a second table of the comments, in a file of its own too (`lib/demo/tracker/comment/compact_table.ex`): "Body", "Author" (the author's name, where `/comments` shows the key) and "Inserted at"; nothing is edited, there is no row action and no "New comment", and rows do not expand. Its id is `comment_compact`. For nobody it says "You are not allowed to see these records.": the named table says `on_forbidden :message` itself, since it takes nothing over from the default table |
-| http://localhost:4478/named | `Comment`, both tables | a LiveView of the demo's own (`DemoWeb.NamedLive`) with the default table and the compact table of the comments, placed with `<AshTable.table>` and no `id`. Sort both: the address holds `comment[sort]=…` and `comment_compact[sort]=…` side by side |
+| http://localhost:4478/named | `Comment`, both tables | a LiveView of the demo's own (`DemoWeb.NamedLive`) with the default table and the compact table of the comments, placed with `<AshTable.table>` and no `id`. Sort both: the address holds `comment[sort]=…` and `comment_compact[sort]=…` side by side. The comments have **live updates** (`live? true`), so the two tables follow each other: change a comment's text in the first and the same row changes in the second; create one in the first and the second says "There are new or changed records." with "Read again"; delete one and its row goes from both |
 
 http://localhost:4478/dashboard is a LiveView of the demo's own
 (`DemoWeb.DashboardLive`) with two tables placed in it with

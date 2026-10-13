@@ -123,6 +123,17 @@ defmodule AshTable.Live.Page do
   by its primary key, as the person, before the action runs on it, and a
   key that names nothing they may read through the table runs nothing.
 
+  ## Live updates
+
+  Where the resource's `table` block says `live? true`, the page follows
+  what others change (see "Live updates" in `AshTable.Resource`), unless its
+  route says `live?: false`. What is announced is a primary key. The record
+  is read again as the person who mounted the page, through the table's
+  read action and with its arguments, so everything above holds for a row
+  that is updated this way as for one that was read with the page; and the
+  page says that there are new or changed records only when at least one of
+  them is a record that person would be shown.
+
   ## Arguments
 
   The line of inputs above the grid holds the arguments of the table's read
@@ -253,6 +264,7 @@ defmodule AshTable.Live.Page do
           label={@page_title}
           heading={1}
           authorize?={@table.authorize?}
+          live?={@table.live?}
           mounted?={true}
           page_assigns={page_assigns(assigns)}
           {reader(@table.resource, assigns)}
@@ -328,7 +340,8 @@ defmodule AshTable.Live.Page do
 
         # what the route says about authorization, and nothing else does:
         # nil where it says nothing, which leaves it to the domain
-        Map.put_new(table, :authorize?, nil)
+        # and about live updates: nil leaves it to the resource
+        table |> Map.put_new(:authorize?, nil) |> Map.put_new(:live?, nil)
 
       _other ->
         raise ArgumentError,

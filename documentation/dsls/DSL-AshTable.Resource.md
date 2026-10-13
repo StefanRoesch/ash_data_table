@@ -570,6 +570,33 @@ not exist, is no component, or says that it cannot serve the column is
 reported once the application is compiled, and the table refuses to be
 built with it. A column that names a relationship has no component.
 
+## Live updates
+
+A table shows what it read. With `live? true` in the `table` block it
+also follows what others change:
+
+    table do
+      live? true
+    end
+
+The resource then announces every create, update and destroy
+(`AshTable.Notifier`) through the `Phoenix.PubSub` server its domain
+names (`pub_sub MyApp.PubSub` in the domain's `table` block:
+`AshTable.Domain`), and every table of the resource listens: on a page,
+placed in a LiveView, nested in a row, and in a picker. An announcement
+holds the primary key and nothing else of the record. The table reads
+that record again, as the person who is looking at it and through its own
+read action, and shows what that read returns: a row of the page is
+updated in place, or goes when the record is gone or no longer theirs to
+read. A record that is no row of the page is never put into it: the table
+says "There are new or changed records." with a button that reads the
+page again, and only when at least one of them is a record that person
+would be shown.
+
+A named table says `live? false` not to follow, and a page or a placed
+table `live?: false` (`AshTable.Router.ash_table/3`, `AshTable.table/1`).
+See the guide "Live updates".
+
 
 ## table
 How the resource is presented to people as a table.
@@ -617,6 +644,7 @@ end
 | [`create_action`](#table-create_action){: #table-create_action } | `atom` |  | The create action behind the table's create button: a public create action of the resource. The button opens the action panel with the action's inputs, and the new record is shown as the first row of the page. Without it the table has no create button. |
 | [`on_forbidden`](#table-on_forbidden){: #table-on_forbidden } | `:not_found \| :message` | `:not_found` | What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a "not allowed" message in place of the rows. |
 | [`max_depth`](#table-max_depth){: #table-max_depth } | `non_neg_integer` | `3` | How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown. |
+| [`live?`](#table-live?){: #table-live? } | `boolean` | `false` | Live updates. `true` makes the resource announce every create, update and destroy through the `pub_sub` its domain names (`AshTable.Domain`), and makes its tables follow them: a row that another person changed is read again for the person who is looking at it. See the guide "Live updates". |
 | [`label_field`](#table-label_field){: #table-label_field } | `atom` |  | The attribute a record of this resource is called by where it is shown as one value: in a reference cell of another table (a `column` naming a belongs-to relationship to this resource), and in the heading of a table limited to the records related to it. A public attribute. It belongs to the resource and not to one of its tables: it is written here, in the default table's block, and names the record whichever table shows it. |
 
 
@@ -1130,6 +1158,7 @@ end
 | [`create_action`](#tables-table-create_action){: #tables-table-create_action } | `atom` |  | The create action behind the table's create button: a public create action of the resource. The button opens the action panel with the action's inputs, and the new record is shown as the first row of the page. Without it the table has no create button. |
 | [`on_forbidden`](#tables-table-on_forbidden){: #tables-table-on_forbidden } | `:not_found \| :message` | `:not_found` | What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a "not allowed" message in place of the rows. |
 | [`max_depth`](#tables-table-max_depth){: #tables-table-max_depth } | `non_neg_integer` | `3` | How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown. |
+| [`live?`](#tables-table-live?){: #tables-table-live? } | `boolean` | `true` | Whether this table follows the resource's live updates. It has them only where the `table` block of the resource says `live? true`; `false` here leaves this one table as it was read. |
 
 
 ### tables.table.column

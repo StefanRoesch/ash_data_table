@@ -146,6 +146,11 @@ defmodule AshTable do
     doc:
       "Whether reads and saves are authorized. Defaults to the `authorize?` of the resource's domain (see `AshTable.Domain`), which is `true` unless the domain says otherwise."
 
+  attr :live?, :boolean,
+    default: nil,
+    doc:
+      "Live updates. `false` places the table without them: it does not follow what others change, and neither do the tables nested in its rows and its pickers. `true` says that it has to, and is an error for a resource that announces none. Left out, the table follows them where the resource's `table` block says `live? true`."
+
   attr :url, :string,
     default: nil,
     doc: "The current URL of the page. When given, sort, filters and page are kept in it."
@@ -199,6 +204,7 @@ defmodule AshTable do
       actor={@actor}
       tenant={@tenant}
       authorize?={@authorize?}
+      live?={@live?}
       url={@url}
       label={@grid_label}
       heading={@heading}

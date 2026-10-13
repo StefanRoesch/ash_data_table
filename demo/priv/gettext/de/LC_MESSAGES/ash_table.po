@@ -38,6 +38,12 @@ msgstr "Abbrechen"
 msgid "Clear filters"
 msgstr "Filter zurücksetzen"
 
+msgid "There are new or changed records."
+msgstr "Es gibt neue oder geänderte Einträge."
+
+msgid "Read again"
+msgstr "Neu lesen"
+
 msgid "Clear the %{column} filter"
 msgstr "Filter %{column} zurücksetzen"
 

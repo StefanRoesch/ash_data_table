@@ -63,6 +63,13 @@ defmodule AshTable.Router do
       the domain says otherwise. Written in the router, and taken from
       nowhere else. See "Without authorization" below.
 
+    * `:live?` - `false` mounts the table without live updates: it does not
+      follow what others change, and neither do the tables nested in its
+      rows and its pickers. `true` says that it has to follow them, and is
+      an error when the page is opened for a resource that announces none.
+      Left out, the table follows them where the resource's `table` block
+      says `live? true`. See the guide "Live updates".
+
   ## Without authorization
 
       scope "/admin", MyAppWeb do
@@ -118,7 +125,7 @@ defmodule AshTable.Router do
             "ash_table expects a resource module as its second argument, got: #{inspect(resource)}"
     end
 
-    case Keyword.keys(opts) -- [:id, :layout, :authorize?, :table] do
+    case Keyword.keys(opts) -- [:id, :layout, :authorize?, :table, :live?] do
       [] -> :ok
       unknown -> raise ArgumentError, "unknown options for ash_table: #{inspect(unknown)}"
     end
@@ -160,6 +167,14 @@ defmodule AshTable.Router do
             "the :authorize? of ash_table must be `true` or `false`, got: #{inspect(authorize?)}"
     end
 
+    # nil leaves it to the resource, which is asked when the page is rendered
+    live? = Keyword.get(opts, :live?)
+
+    if live? not in [nil, true, false] do
+      raise ArgumentError,
+            "the :live? of ash_table must be `true` or `false`, got: #{inspect(live?)}"
+    end
+
     [
       # only used by hosts that still generate route helpers
       as: String.to_atom("ash_table_" <> String.replace(id, "-", "_")),
@@ -169,7 +184,8 @@ defmodule AshTable.Router do
           table: table,
           id: id,
           layout: layout,
-          authorize?: authorize?
+          authorize?: authorize?,
+          live?: live?
         }
       }
     ]

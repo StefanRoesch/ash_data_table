@@ -86,8 +86,16 @@ table do
   authorize? true
   actor_assign :current_user
   tenant_assign :current_tenant
+
+  # Live updates: the resources that say `live? true` (the tasks and the
+  # comments) announce their changes through this server, and their
+  # tables listen to it.
+  pub_sub Demo.PubSub
 end
 ```
+
+(`pub_sub` is about [live updates](live-updates.md), and has no say in
+authorization.)
 
 | Option | Default | Meaning |
 | --- | --- | --- |

@@ -491,6 +491,20 @@ A table-level `update_action` leaves a sensitive column that cannot be
 edited read-only, without a finding, as it does for every column it cannot
 save.
 
+## Live updates
+
+Reported when the **domain** is compiled, at its `table` block: a resource
+is compiled before its domain and cannot read the domain's block. See
+[Live updates](live-updates.md).
+
+| Path | Message starts with | Cause | Fix |
+| --- | --- | --- | --- |
+| `table -> pub_sub` (of the domain) | RESOURCE says \`live? true\`, but the \`table\` block of DOMAIN names no \`pub_sub\` … | A resource of the domain announces its changes, and the domain does not say through which `Phoenix.PubSub` server. | Add `pub_sub MyApp.PubSub` to the domain's `table` block. |
+
+A domain that does not list `AshTable.Domain` is not checked. The table
+then refuses to be opened, with the same sentence. So does a page or a
+placed table that says `live?: true` for a resource that announces nothing.
+
 ## A private action
 
 A table runs only actions that the resource declares `public?`, however it

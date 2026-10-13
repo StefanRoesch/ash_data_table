@@ -70,6 +70,10 @@ defmodule Demo.Tracker.Task do
     # What a task is called where a table shows it as one value.
     label_field :title
 
+    # Live updates: what another person changes shows here without a
+    # reload, in every table of the tasks.
+    live? true
+
     # text
     column :title
 

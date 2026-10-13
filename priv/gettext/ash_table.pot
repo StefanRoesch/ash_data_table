@@ -476,3 +476,11 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "sorted"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Read again"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "There are new or changed records."
+msgstr ""

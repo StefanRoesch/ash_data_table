@@ -47,6 +47,9 @@ defmodule Demo.Tracker.Comment do
     update_action :update
     on_forbidden :message
 
+    # Live updates, also where the comments are nested under a task.
+    live? true
+
     action :destroy do
       confirm "Delete this comment?"
     end

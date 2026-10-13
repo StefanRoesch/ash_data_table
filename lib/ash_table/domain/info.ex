@@ -56,4 +56,19 @@ defmodule AshTable.Domain.Info do
         }
     end
   end
+
+  @doc """
+  The name of the `Phoenix.PubSub` server that carries the live updates of
+  `resource`: the `pub_sub` of its domain. Nil where the domain names none,
+  and for a resource without a domain.
+  """
+  @spec pub_sub(Ash.Resource.t()) :: atom | nil
+  def pub_sub(resource) do
+    with domain when not is_nil(domain) <- Ash.Resource.Info.domain(resource),
+         {:ok, pub_sub} <- table_pub_sub(domain) do
+      pub_sub
+    else
+      _none -> nil
+    end
+  end
 end
