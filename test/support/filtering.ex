@@ -152,6 +152,8 @@ defmodule AshTable.Test.Filtering.SimpleEquality do
   attributes do
     uuid_primary_key :id
     attribute :code, :string, public?: true, filterable?: :simple_equality
+    attribute :rank, :integer, public?: true, filterable?: :simple_equality
+    attribute :status, AshTable.Test.Status, public?: true, filterable?: :simple_equality
   end
 
   actions do

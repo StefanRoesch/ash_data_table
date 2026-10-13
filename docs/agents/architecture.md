@@ -57,13 +57,13 @@ The model:
 - `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name.
 - `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key.
 - `Model.CellType`: Ash type to cell type. `of/2`, `classify/2`.
-- `Model.Operator`: filter operators per cell type. `available/2`, `to_ash/2`.
+- `Model.Operator`: filter operators per cell type. `available/2`, `to_ash/2`; `takes/1` (no value, one, several, a range), `predicates/2`, `negated?/1`.
 - `Model.Limits`: `min`, `max`, `step` and the text counter. `of/2`, `counted/2`.
 - `Model.Access`: what Ash says the person may see and do, before any read. `hidden_fields/4`, `partly_hidden_fields/4`, `forbidden_actions/3`.
 
 State and URL:
 
-- `AshTable.State` (`state.ex`): sort, filters, arguments, page position. `from_params/2` and `to_params/2` are the URL format. `fit/2` drops what the model does not allow. `cycle_sort/3`, `filter/3`, `clear_filter/2`, `clear_filters/1`, `argue/3`, `put_argument/4`, `to_page/2`.
+- `AshTable.State` (`state.ex`): sort, filters, arguments, page position. `from_params/2` and `to_params/2` are the URL format. `fit/2` drops what the model does not allow. `cycle_sort/3`, `filter/3`, `pending/2` (what the filter row was sent, an operator without its value among it), `value?/2`, `clear_filter/2`, `clear_filters/1`, `argue/3`, `put_argument/4`, `to_page/2`.
 - `AshTable.Related` (`related.ex`): the URL parameter `of` that limits a table to the records of one row (the full view). `from_params/5`, `to_param/2`, `path/5`.
 - `AshTable.Routes` (`routes.ex`): where the host's router mounts a table. `default_id/2`, `table/4`.
 
@@ -161,6 +161,7 @@ The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`
 - `rows`: by the key in a row's DOM id, the primary key and row index. An event names a row by that key, and it is looked up here.
 - `failed`: edits that failed, by row. `open`: expanded rows.
 - `missing`, `fill`, `refused`, `lines`: the argument line.
+- `rejected`, `pending`: what the filter row shows beside the filters of the state: a value that was typed and is none, and the operators that were chosen without a value yet (`shown_filter/4`).
 - `panel`, `picker`: the open action panel and picker, or nil.
 - `selecting`, `bulk`, `lead`, `running`, `result`: selection and its actions. Which rows are selected is known to the hook only.
 - `spent`, `running_files`: uploads.
@@ -188,6 +189,7 @@ They are colocated hooks. A host gets them from `phoenix-colocated/ash_table`.
 | 6134 | the widths of the columns | resizing; the server never hears of widths |
 | 6378 | hiding columns | the "Columns" list; the server never hears of it |
 | 6616 | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
+| after "scrolling sideways" | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
 | 6841 | selecting | which rows are selected, `selected()`, `bulk` |
 | 7127 | row actions | `act`, the question of an action, refocus |
 | 7187 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |

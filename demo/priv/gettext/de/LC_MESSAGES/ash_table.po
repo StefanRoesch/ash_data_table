@@ -295,6 +295,27 @@ msgstr "größer als"
 msgid "is"
 msgstr "ist"
 
+msgid "is any of"
+msgstr "ist eines von"
+
+msgid "is none of"
+msgstr "ist keines von"
+
+msgid "between"
+msgstr "zwischen"
+
+msgid "from"
+msgstr "von"
+
+msgid "to"
+msgstr "bis"
+
+msgid "Filter %{column}, from"
+msgstr "%{column} filtern, von"
+
+msgid "Filter %{column}, to"
+msgstr "%{column} filtern, bis"
+
 msgid "is empty"
 msgstr "ist leer"
 

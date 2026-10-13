@@ -329,11 +329,13 @@ the browser.
 | Column type | Filter | Operators (the first applies when a value is simply typed) |
 | --- | --- | --- |
 | `:string`, `:ci_string` | text input | contains, equals, starts with, is empty |
-| `:integer`, `:float`, `:decimal` | number input | equals, greater than, less than, at least, at most, is empty |
-| `:date` | date input | on, before, after, is empty |
-| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input | before, after, is empty |
+| `:integer`, `:float`, `:decimal` | number input | equals, greater than, less than, at least, at most, between, is empty |
+| `:date` | date input | on, before, after, between, is empty |
+| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input | before, after, between, is empty |
 | `:boolean` | choice | any, yes, no |
-| an `Ash.Type.Enum`, an `:atom` with `one_of` | choice | any, or one of the values |
+| an `Ash.Type.Enum`, an `:atom` with `one_of` | choice | any, or one of the values; is any of, is none of |
+
+"between" has two inputs, from and to, either of which may stay empty, and both ends belong to the range; "is any of" and "is none of" open a list of the column's values to tick. See [Filtering](documentation/topics/filtering.md#several-values-and-a-range).
 
 A NewType filters as the type it is made of. "Is empty" is offered only for a
 field that can be nil, and never for a boolean or an enum column.

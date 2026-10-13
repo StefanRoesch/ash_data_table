@@ -923,6 +923,7 @@ started or stopped (`npm run test:server -- editing`; it sets
 | `sorting.spec.ts` | the cycle by click and by Enter, `aria-sort`, what cannot be sorted, the sort in the URL |
 | `pagination.spec.ts` | offset pages, keyset pages, no pages; the page in the URL, reload, a shared link, the back button; that focus stays on the control that was used, and where it goes when that control is disabled or gone |
 | `filtering.spec.ts` | every kind of filter and operator; a printable key on a filter cell, for each kind of control; Enter, leaving and choosing; Escape; clearing; what is read out; a value that is none; filters in the URL |
+| `filter_values.spec.ts` | the filters that take more than one value: "is any of" and "is none of" by mouse and by keyboard (the list of boxes, that a tick asks the server nothing, Enter, Escape, Tab), "between" for a date and a number with one and both ends, the URL after each, a reload, "Clear filters", a narrow column, axe in both themes with the list open |
 | `editing.spec.ts` | starting, giving up and saving an edit in every editor; the question before saving; a save that fails; a save that returns while another cell is typed in; a record that is gone |
 | `authorization.spec.ts` | `/tasks` as each of the five actors; the member's hidden cells and refused save; the viewer; switching; reads that are refused |
 | `tables.spec.ts` | that each mounted table opens and works, with what makes it different |

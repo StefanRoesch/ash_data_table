@@ -78,7 +78,14 @@ defmodule DemoWeb.Tables.SpecimenFilterTest do
     test "numbers, a NewType of one among them", %{html: html} do
       for field <- ["an_integer", "a_float", "a_decimal", "a_percentage"] do
         assert filter_controls(html, "specimen", field) == %{
-                 operators: ["equals", "greater than", "less than", "at least", "at most"],
+                 operators: [
+                   "equals",
+                   "greater than",
+                   "less than",
+                   "at least",
+                   "at most",
+                   "between"
+                 ],
                  input: "number",
                  choices: nil
                }
@@ -91,18 +98,20 @@ defmodule DemoWeb.Tables.SpecimenFilterTest do
       assert filter_controls(html, "specimen", "a_boolean").choices == ["Any", "Yes", "No"]
       assert filter_controls(html, "specimen", "opt_boolean").choices == ["Any", "Yes", "No"]
       assert filter_controls(html, "specimen", "a_date").input == "date"
-      assert filter_controls(html, "specimen", "a_date").operators == ["on", "before", "after"]
+
+      assert filter_controls(html, "specimen", "a_date").operators ==
+               ["on", "before", "after", "between"]
 
       for field <- ~w(a_utc_datetime a_utc_datetime_usec a_datetime a_naive_datetime) do
         assert filter_controls(html, "specimen", field) == %{
-                 operators: ["before", "after"],
+                 operators: ["before", "after", "between"],
                  input: "datetime-local",
                  choices: nil
                }
       end
 
       assert filter_controls(html, "specimen", "opt_utc_datetime").operators ==
-               ["before", "after", "is empty"]
+               ["before", "after", "between", "is empty"]
     end
 
     test "enums: an Ash.Type.Enum, an atom limited to values, a built-in one", %{html: html} do

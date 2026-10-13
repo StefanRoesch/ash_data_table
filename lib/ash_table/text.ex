@@ -52,6 +52,14 @@ defmodule AshTable.Text do
           | :operator_before
           | :operator_after
           | :operator_is
+          | :operator_any_of
+          | :operator_none_of
+          | :operator_between
+          | :filter_from
+          | :filter_to
+          | :range_from
+          | :range_to
+          | :values_chosen
           | :any
           | :filter
           | :filter_operator
@@ -255,6 +263,16 @@ defmodule AshTable.Text do
   defp msgid(:operator_before), do: dgettext_noop("ash_table", "before")
   defp msgid(:operator_after), do: dgettext_noop("ash_table", "after")
   defp msgid(:operator_is), do: dgettext_noop("ash_table", "is")
+  defp msgid(:operator_any_of), do: dgettext_noop("ash_table", "is any of")
+  defp msgid(:operator_none_of), do: dgettext_noop("ash_table", "is none of")
+  defp msgid(:operator_between), do: dgettext_noop("ash_table", "between")
+  # the two inputs of a range: what stands before each, and its name
+  defp msgid(:range_from), do: dgettext_noop("ash_table", "from")
+  defp msgid(:range_to), do: dgettext_noop("ash_table", "to")
+  defp msgid(:filter_from), do: dgettext_noop("ash_table", "Filter %{column}, from")
+  defp msgid(:filter_to), do: dgettext_noop("ash_table", "Filter %{column}, to")
+  # what the button of a filter for several values says of more than one
+  defp msgid(:values_chosen), do: dgettext_noop("ash_table", "%{count} selected")
   defp msgid(:any), do: dgettext_noop("ash_table", "Any")
   defp msgid(:filter), do: dgettext_noop("ash_table", "Filter %{column}")
   defp msgid(:filter_operator), do: dgettext_noop("ash_table", "How to filter %{column}")

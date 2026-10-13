@@ -21,15 +21,23 @@ defmodule AshTable.Model.Operator do
           | :yes
           | :no
           | :is
+          | :any_of
+          | :none_of
+          | :between
+
+  # What a person gives an operator: nothing, one value as it was typed,
+  # several values of the column's own ("is any of"), or the two ends of a
+  # range, either of which may be nil ("between").
+  @type value :: nil | String.t() | [String.t()] | {String.t() | nil, String.t() | nil}
 
   # Per cell type, the default operator first.
   @of_cell_type %{
     text: [:contains, :equals, :starts_with, :is_empty],
-    number: [:equals, :greater_than, :less_than, :at_least, :at_most, :is_empty],
-    date: [:on, :before, :after, :is_empty],
-    datetime: [:before, :after, :is_empty],
+    number: [:equals, :greater_than, :less_than, :at_least, :at_most, :between, :is_empty],
+    date: [:on, :before, :after, :between, :is_empty],
+    datetime: [:before, :after, :between, :is_empty],
     boolean: [:yes, :no],
-    enum: [:is]
+    enum: [:is, :any_of, :none_of]
   }
 
   # What each operator is in Ash: the operator or function module, whose
@@ -49,11 +57,22 @@ defmodule AshTable.Model.Operator do
     before: {Ash.Query.Operator.LessThan, :less_than},
     at_least: {Ash.Query.Operator.GreaterThanOrEqual, :greater_than_or_equal},
     at_most: {Ash.Query.Operator.LessThanOrEqual, :less_than_or_equal},
-    is_empty: {Ash.Query.Operator.IsNil, :is_nil}
+    is_empty: {Ash.Query.Operator.IsNil, :is_nil},
+    any_of: {Ash.Query.Operator.In, :in},
+    none_of: {Ash.Query.Operator.In, :in}
   }
+
+  # An operator that is several of Ash's at once, on the one field: a range
+  # is "at least" its first end and "at most" its last.
+  @made_of %{between: [:at_least, :at_most]}
 
   # Operators that are complete without a value.
   @without_value [:is_empty, :yes, :no]
+
+  # Operators that take several of the column's values, and the one that
+  # takes the two ends of a range.
+  @with_values [:any_of, :none_of]
+  @with_range [:between]
 
   @doc """
   The operators the resource allows a person to filter `field` by, the default
@@ -69,6 +88,8 @@ defmodule AshTable.Model.Operator do
     * only those whose Ash operator or function accepts the field's type and
       is supported by the data layer;
     * "is empty" only when the field can be nil;
+    * "between" only when both of its ends can be asked for, and "is none
+      of" only when the data layer can negate;
     * none for a field that is declared `sensitive?`: which rows a filter
       leaves would say what the mask in its cells hides
       (`AshTable.Sensitive`).
@@ -82,12 +103,13 @@ defmodule AshTable.Model.Operator do
       @of_cell_type
       |> Map.get(cell_type, [])
       |> Enum.filter(fn operator ->
-        {module, _key} = Map.fetch!(@in_ash, operator)
-
         (operator != :is_empty or allow_nil?(field)) and
-          (field.filterable? != :simple_equality or module == Ash.Query.Operator.Eq) and
-          accepts?(module, type) and
-          Ash.DataLayer.data_layer_can?(resource, {:filter_expr, struct(module)})
+          (operator != :none_of or Ash.DataLayer.data_layer_can?(resource, :boolean_filter)) and
+          Enum.all?(modules(operator), fn module ->
+            (field.filterable? != :simple_equality or module == Ash.Query.Operator.Eq) and
+              accepts?(module, type) and
+              Ash.DataLayer.data_layer_can?(resource, {:filter_expr, struct(module)})
+          end)
       end)
     else
       []
@@ -99,15 +121,56 @@ defmodule AshTable.Model.Operator do
   def takes_value?(operator), do: operator not in @without_value
 
   @doc """
-  The operator with its value as the predicate of a field in a filter given
-  to `Ash.Query.filter_input/2`: `%{field => %{key => value}}`. The value is
-  passed on as it was typed; casting it is Ash's.
+  What a person gives the operator: `:none`, `:one` value, `:many` of the
+  column's values, or the two ends of a `:range`.
   """
-  @spec to_ash(t, String.t() | nil) :: {atom, term}
+  @spec takes(t) :: :none | :one | :many | :range
+  def takes(operator) when operator in @without_value, do: :none
+  def takes(operator) when operator in @with_values, do: :many
+  def takes(operator) when operator in @with_range, do: :range
+  def takes(_operator), do: :one
+
+  @doc """
+  Whether the operator finds the records its predicates do not match: "is
+  none of" is "is any of", negated.
+  """
+  @spec negated?(t) :: boolean
+  def negated?(operator), do: operator == :none_of
+
+  @doc """
+  The operator with its value as the predicates of a field in a filter given
+  to `Ash.Query.filter_input/2`: `%{field => %{key => value, …}}`, which Ash
+  combines with AND. The values are passed on as they were typed; casting
+  them is Ash's.
+
+  A range is "at least" its first end and "at most" its last, so both ends
+  are part of it; an end that is nil is left open. For a negated operator
+  (`negated?/1`) they are the predicates of what it leaves out.
+  """
+  @spec predicates(t, value) :: [{atom, term}]
+  def predicates(:between, {from, to}) do
+    for {operator, end_of} <- [at_least: from, at_most: to],
+        not is_nil(end_of),
+        do: to_ash(operator, end_of)
+  end
+
+  def predicates(operator, value), do: [to_ash(operator, value)]
+
+  @doc """
+  An operator of one predicate with its value as that predicate: the key it
+  has in a filter given to `Ash.Query.filter_input/2`, and the value.
+  """
+  @spec to_ash(t, String.t() | [String.t()] | nil) :: {atom, term}
   def to_ash(:is_empty, _value), do: {:is_nil, true}
   def to_ash(:yes, _value), do: {:eq, true}
   def to_ash(:no, _value), do: {:eq, false}
   def to_ash(operator, value), do: {elem(Map.fetch!(@in_ash, operator), 1), value}
+
+  # The Ash operators and functions an operator is made of.
+  defp modules(operator) do
+    for part <- Map.get(@made_of, operator, [operator]),
+        do: elem(Map.fetch!(@in_ash, part), 0)
+  end
 
   defp filterable?(_resource, %{filterable?: false}), do: false
 

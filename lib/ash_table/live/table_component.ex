@@ -23,8 +23,10 @@ defmodule AshTable.Live.TableComponent do
   #     the form `ID-filters`, which sits outside the table;
   #   * ids are stable and built from names, never from positions:
   #     `ID-head-FIELD` for a header cell, `ID-filter-FIELD` for a filter cell
-  #     (its controls end in `-operator`, `-value` and `-clear`), `ID-row-KEY`
-  #     for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
+  #     (its controls end in `-operator`, `-value` and `-clear`; a range has
+  #     `-value` and `-to`, and a filter for several values the button
+  #     `-value`, the list `-values` and a box `-value-VALUE` for each),
+  #     `ID-row-KEY` for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
   #   * the header cell of a column ends in the handle that changes the
   #     column's width, `ID-resize-FIELD` (`resizer/1`). The widths are the
   #     hook's and the server never hears of them;
@@ -400,6 +402,13 @@ defmodule AshTable.Live.TableComponent do
      # What a person typed into a filter that is not a value of its column:
      # shown in the filter, marked, and not applied.
      |> assign(rejected: %{})
+     # What the filter row was last sent, by column (`State.pending/2`): an
+     # operator that was chosen without its value is no filter, but shown,
+     # as "is any of" and "between" have controls of their own, which are
+     # there to be used only once the operator is. `among` are the filters
+     # they were chosen among, before and after: once the table is filtered
+     # by anything else, they are forgotten (`shown_filter/4`).
+     |> assign(pending: %{controls: %{}, among: []})
      # The rows that are expanded, by row key: the names of their open
      # lines. A new read forgets them.
      |> assign(open: %{})
@@ -541,6 +550,9 @@ defmodule AshTable.Live.TableComponent do
     {:ok,
      socket
      |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     |> assign(
+       pending: awaited(socket.assigns.pending, socket.assigns.state.filters, state.filters)
+     )
      |> assign(missing: missing, refused: refused)
      |> assign(lines: lines(socket.assigns.lines, model, state, refused))
      # whether the rows have an actions cell: the last column of the grid
@@ -883,6 +895,18 @@ defmodule AshTable.Live.TableComponent do
       settle(model, State.withdraw(state, Map.keys(said)), reader, refused)
     end
   end
+
+  # What the filter row shows beside the filters that apply (`pending`),
+  # when an update brings the filters: kept while they are as they were, and
+  # when they are the ones the row's last change was to give, which is then
+  # all they are shown among. Filters from anywhere else (the back button, a
+  # link) are shown as they are.
+  defp awaited(pending, filters, filters), do: pending
+
+  defp awaited(%{among: [_before, filters]} = pending, _old, filters),
+    do: %{pending | among: [filters]}
+
+  defp awaited(_pending, _old, _filters), do: %{controls: %{}, among: []}
 
   # What an argument's input shows: what was typed and refused, else what
   # the person chose, else what it holds with nothing chosen.
@@ -1799,19 +1823,31 @@ defmodule AshTable.Live.TableComponent do
         _other -> %{}
       end
 
-    {state, rejected} = State.filter(state, model, form)
+    {filtered, rejected} = State.filter(state, model, form)
+    pending = %{controls: State.pending(model, form), among: [state.filters, filtered.filters]}
 
-    {:noreply, socket |> assign(rejected: rejected) |> refilter(state)}
+    {:noreply, socket |> assign(rejected: rejected, pending: pending) |> refilter(filtered)}
   end
 
   def handle_event("clear_filter", %{"column" => name}, socket) when is_binary(name) do
-    {:noreply, refilter(socket, State.clear_filter(socket.assigns.state, name))}
+    %{state: state, pending: pending} = socket.assigns
+    cleared = State.clear_filter(state, name)
+
+    # the other columns keep the controls they show
+    pending = %{
+      controls:
+        Map.reject(pending.controls, fn {column, _} -> Atom.to_string(column) == name end),
+      among: [state.filters, cleared.filters]
+    }
+
+    {:noreply, socket |> assign(pending: pending) |> refilter(cleared)}
   end
 
   def handle_event("clear_filters", _params, socket) do
     state = State.clear_filters(socket.assigns.state)
 
-    {:noreply, socket |> assign(rejected: %{}) |> refilter(state)}
+    {:noreply,
+     socket |> assign(rejected: %{}, pending: %{controls: %{}, among: []}) |> refilter(state)}
   end
 
   # Sent by the form of the argument line when one of its controls changes
@@ -4467,8 +4503,9 @@ defmodule AshTable.Live.TableComponent do
                   id={"#{@id}-filter-#{column.name}"}
                   form={"#{@id}-filters"}
                   column={column}
-                  filter={@rejected[column.name] || @state.filters[column.name]}
+                  filter={shown_filter(@rejected, @pending, @state, column.name)}
                   rejected?={is_map_key(@rejected, column.name)}
+                  applied?={is_map_key(@state.filters, column.name)}
                   target={@myself}
                 />
               </td>
@@ -5394,6 +5431,13 @@ defmodule AshTable.Live.TableComponent do
               const control = this.part("columns-control")
               if (!control || !control.contains(e.target)) this.closeColumns(false)
             }
+            // and so does a click anywhere but in the list of a filter for
+            // several values, which applies what was ticked
+            this.choosing = null
+            this.onOutsideChoices = e => {
+              const now = this.choosing
+              if (now && !now.list.contains(e.target) && !now.button.contains(e.target)) this.closeChoices(true, false)
+            }
             // A patch of the argument line brings its counters as the
             // server counted them, from what it had heard by then, which
             // need not be all that has been typed since: they are counted
@@ -5457,9 +5501,14 @@ defmodule AshTable.Live.TableComponent do
             this.el.addEventListener("mousedown", own(e => this.onMousedown(e)))
             this.el.addEventListener("dblclick", own(e => this.onDblclick(e)))
             this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)))
+            // a box of a filter for several values is ticked: the filter
+            // row's form does not hear of it before the list is closed
+            for (const type of ["change", "input"]) {
+              this.el.addEventListener(type, own(e => { if (e.target.closest("[data-choices]")) e.stopPropagation() }))
+            }
             this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
             this.el.addEventListener("mouseleave", () => this.onPointer(null))
-            this.onScroll = () => { this.showMessage(); this.placeCount(); this.placeColumns(); PLACE() }
+            this.onScroll = () => { this.showMessage(); this.placeCount(); this.placeColumns(); this.placeChoices(); PLACE() }
             window.addEventListener("scroll", this.onScroll, true)
             window.addEventListener("resize", this.onScroll)
             // The grid scrolls sideways: its scrollbar at the bottom edge
@@ -5516,6 +5565,7 @@ defmodule AshTable.Live.TableComponent do
             this.counted && this.counted.disconnect()
             this.listed && this.listed.disconnect()
             document.removeEventListener("pointerdown", this.onOutside, true)
+            document.removeEventListener("pointerdown", this.onOutsideChoices, true)
             for (const type of ["click", "change", "keydown", "focusout"]) {
               if (this.root) this.root.removeEventListener(type, this.onColumns)
             }
@@ -5791,6 +5841,12 @@ defmodule AshTable.Live.TableComponent do
             // focus leaves the cell whose value is shown: it is hidden again
             const shown = this.revealed && this.revealed.cell
             if (shown && shown.contains(e.target) && !(e.relatedTarget && shown.contains(e.relatedTarget))) this.hide()
+            // focus goes on from the list of a filter for several values:
+            // the list closes, and what was ticked applies. A click on the
+            // name of a box takes focus to the cell on its way to the box.
+            const now = this.choosing
+            if (now && e.relatedTarget && e.relatedTarget !== now.cell &&
+                !now.list.contains(e.relatedTarget) && e.relatedTarget !== now.button) this.closeChoices(true, false)
             if (e.relatedTarget) {
               if (!top.contains(e.relatedTarget)) tree.hadFocus = false
             } else {
@@ -5847,6 +5903,11 @@ defmodule AshTable.Live.TableComponent do
               this.reveal(cell)
               return
             }
+            // the button of a filter for several values opens its list, and
+            // closes it again, which applies what was ticked
+            const chooser = e.target.closest("[data-choices-button]")
+            if (chooser) return this.choosing ? this.closeChoices(true, false) : this.openChoices(chooser)
+            if (e.target.closest("[data-choices]")) return
             // a click on a filter's control or in an editor leaves focus there
             if (this.controlOf(e.target)) return
             if (this.editing && this.editing.cell === cell) return
@@ -5910,6 +5971,7 @@ defmodule AshTable.Live.TableComponent do
           onControlKeydown(e, control) {
             const cell = this.cellOf(control)
             const input = control.tagName === "INPUT"
+            if (this.onChoicesKeydown(e, control)) return
             switch (e.key) {
               // back to the cell, giving up what was typed and not applied
               case "Escape":
@@ -6839,6 +6901,104 @@ defmodule AshTable.Live.TableComponent do
             if (inner && inner.style.width !== `${want.scroll}px`) inner.style.width = `${want.scroll}px`
             if (bar.hidden) bar.hidden = false
             this.toBar()
+          },
+
+          // ---- several values of a filter ----------------------------------
+
+          // A filter for several of a column's values ("is any of") has a
+          // button in its filter cell and a list of boxes that the button
+          // opens (`choices/1`), built and placed as "Columns" and its list
+          // are. The boxes belong to the filter row's form. A filter that
+          // is typed applies on Enter and when its input is left, and not
+          // while typing; so here: ticking a box changes nothing yet (the
+          // form does not hear of it, see `mounted`), and what is ticked
+          // applies when the list is closed, by Enter, by the button, or by
+          // going on to something else. Escape closes the list and gives
+          // up what was ticked and not applied, as it does in an input.
+          //
+          // `choosing` is the list that is open: {cell, button, list, was},
+          // where `was` are the values that applied when it was opened.
+          // While it is open no patch touches the list (`phx-update`), so
+          // that what was ticked and has not been sent stays.
+          choiceBoxes(list) { return Array.from(list.querySelectorAll("input[type=checkbox]")) },
+
+          openChoices(button) {
+            const cell = this.cellOf(button)
+            const list = cell && cell.querySelector("[data-choices]")
+            if (!list || !list.showPopover) return
+            this.closeChoices(true, false)
+            const boxes = this.choiceBoxes(list)
+            this.choosing = {cell, button, list, was: new Set(boxes.filter(box => box.checked).map(box => box.value))}
+            list.setAttribute("phx-update", "ignore")
+            list.showPopover()
+            button.setAttribute("aria-expanded", "true")
+            this.placeChoices()
+            document.addEventListener("pointerdown", this.onOutsideChoices, true)
+            if (boxes[0]) boxes[0].focus()
+          },
+
+          // Closes the list. `apply` sends what is ticked, when that is not
+          // what applied before; without it the boxes are as they were.
+          // `refocus` puts focus on the button.
+          closeChoices(apply, refocus) {
+            const now = this.choosing
+            if (!now) return
+            this.choosing = null
+            document.removeEventListener("pointerdown", this.onOutsideChoices, true)
+            const boxes = this.choiceBoxes(now.list)
+            if (!apply) for (const box of boxes) box.checked = now.was.has(box.value)
+            const ticked = boxes.filter(box => box.checked)
+            const changed = ticked.length !== now.was.size || ticked.some(box => !now.was.has(box.value))
+            now.list.removeAttribute("phx-update")
+            if (now.list.isConnected && now.list.matches(":popover-open")) now.list.hidePopover()
+            now.button.setAttribute("aria-expanded", "false")
+            if (refocus && now.button.isConnected) now.button.focus()
+            const form = boxes[0] && boxes[0].form
+            if (apply && changed && form) form.requestSubmit()
+          },
+
+          // The list is shown under its button, and stays in the window.
+          placeChoices() {
+            const now = this.choosing
+            if (!now || !now.button.isConnected) return
+            const box = now.button.getBoundingClientRect()
+            now.list.style.top = `${box.bottom + 2}px`
+            now.list.style.left = `${Math.max(0, Math.min(box.left, window.innerWidth - now.list.offsetWidth - 8))}px`
+          },
+
+          // The keys of the button and of the boxes that are not left to
+          // the browser (Space ticks a box, and Enter and Space use the
+          // button) or to the filter cell (Tab goes through its controls).
+          // Says whether the key was dealt with.
+          onChoicesKeydown(e, control) {
+            const now = this.choosing
+            const button = control.dataset.choicesButton !== undefined
+            const inList = !!now && now.list.contains(control)
+            if (!button && !inList) return false
+            const boxes = now ? this.choiceBoxes(now.list) : []
+            switch (e.key) {
+              case "Escape":
+                if (!now) return false
+                this.closeChoices(false, true)
+                break
+              case "Enter":
+                if (!inList) return false
+                this.closeChoices(true, true)
+                break
+              case "ArrowDown":
+              case "ArrowUp": {
+                if (!now) { if (e.key === "ArrowUp") return false; this.openChoices(control); break }
+                const at = boxes.indexOf(control)
+                const next = boxes[e.key === "ArrowDown" ? at + 1 : at - 1]
+                if (next) next.focus()
+                else if (inList && e.key === "ArrowUp") now.button.focus()
+                break
+              }
+              default:
+                return false
+            }
+            e.preventDefault()
+            return true
           },
 
           // ---- selecting ---------------------------------------------------
@@ -10060,12 +10220,36 @@ defmodule AshTable.Live.TableComponent do
   # is there because a separator says where it stands between two ends.
   defp resize_limits, do: {48, 1000}
 
+  # What a column's filter shows: what was typed and rejected; else what
+  # the row was last sent, an operator without its value among it, while the
+  # table is filtered by what it was sent among (the filters before it, and
+  # after: a change of the filters goes through the URL, and is not in the
+  # state at once); else the filter that applies.
+  defp shown_filter(rejected, pending, state, name) do
+    rejected[name] || (state.filters in pending.among && pending.controls[name]) ||
+      state.filters[name]
+  end
+
   # The controls of one column's filter, showing the filter that applies.
   # They are out of the tab order: the grid is one tab stop, and the hook
   # moves focus into a filter cell.
+  #
+  # What the value is given with follows from the operator
+  # (`Operator.takes/1`): one control for one value; for a range two inputs,
+  # one above the other, so that the column needs no more room than for one;
+  # for several values a button that opens the list of the column's values,
+  # a box for each (`choices/1`).
   defp filter(assigns) do
     {operator, value} = assigns.filter || {nil, nil}
-    assigns = assign(assigns, operator: operator, value: value)
+    takes = if(operator, do: Operator.takes(operator), else: :one)
+
+    assigns =
+      assign(assigns,
+        operator: operator,
+        value: value,
+        takes: takes,
+        clears?: assigns.applied? and not assigns.rejected?
+      )
 
     ~H"""
     <div class="flex items-center gap-1">
@@ -10097,7 +10281,7 @@ defmodule AshTable.Live.TableComponent do
         </option>
       </select>
       <select
-        :if={@column.cell_type == :enum}
+        :if={@column.cell_type == :enum and @takes == :one}
         id={"#{@id}-value"}
         name={"filter[#{@column.name}][v]"}
         form={@form}
@@ -10114,12 +10298,10 @@ defmodule AshTable.Live.TableComponent do
           {label}
         </option>
       </select>
+      <.choices :if={@takes == :many} id={@id} form={@form} column={@column} chosen={@value} />
       <%!-- an operator such as "is empty" is complete without a value --%>
       <input
-        :if={
-          @column.cell_type not in [:boolean, :enum] and
-            (is_nil(@operator) or Operator.takes_value?(@operator))
-        }
+        :if={@column.cell_type not in [:boolean, :enum] and @takes == :one}
         type={input_type(@column.cell_type)}
         step={input_step(@column.cell_type)}
         id={"#{@id}-value"}
@@ -10133,8 +10315,41 @@ defmodule AshTable.Live.TableComponent do
         aria-describedby={@rejected? && "#{@id}-error"}
         class={["input input-xs w-32", control_edge()]}
       />
+      <%!-- The two ends of a range, one above the other, each with the word
+      that says which it is. They are applied as one input is: on Enter and
+      when one is left. Rows that shrink, as an input beside a menu does once
+      a person has made the column narrower. --%>
+      <div :if={@takes == :range} class="flex min-w-0 flex-col gap-0.5">
+        <div
+          :for={
+            {end_of, suffix, word, name, typed} <- [
+              {"from", "value", :range_from, :filter_from, elem(@value, 0)},
+              {"to", "to", :range_to, :filter_to, elem(@value, 1)}
+            ]
+          }
+          class="flex min-w-0 items-center justify-between gap-1"
+        >
+          <span aria-hidden="true" class="shrink-0 text-xs font-normal">{Text.t(word)}</span>
+          <input
+            type={input_type(@column.cell_type)}
+            step={input_step(@column.cell_type)}
+            id={"#{@id}-#{suffix}"}
+            name={"filter[#{@column.name}][#{end_of}]"}
+            form={@form}
+            value={typed}
+            phx-debounce="blur"
+            tabindex="-1"
+            aria-label={Text.t(name, column: @column.label)}
+            aria-invalid={
+              @rejected? && not is_nil(typed) && not State.value?(@column, typed) && "true"
+            }
+            aria-describedby={@rejected? && "#{@id}-error"}
+            class={["input input-xs w-32", control_edge()]}
+          />
+        </div>
+      </div>
       <button
-        :if={@filter && not @rejected?}
+        :if={@clears?}
         type="button"
         id={"#{@id}-clear"}
         tabindex="-1"
@@ -10151,6 +10366,84 @@ defmodule AshTable.Live.TableComponent do
     <p :if={@rejected?} id={"#{@id}-error"} class="mt-1 text-xs">
       {Text.t(:invalid_filter)}
     </p>
+    """
+  end
+
+  # The control of a filter for several of a column's values: a button that
+  # says what is chosen, and the list it opens, a box for each value. Built
+  # as "Columns" is (`columns/1`): a disclosure, not a menu, and the list a
+  # popover, so that nothing around the table cuts it off.
+  #
+  # The values are the column's own, from its type. Nothing is read for
+  # them, so the list says nothing of the records.
+  #
+  # The boxes belong to the form of the filter row, and are sent with it
+  # whether the list is open or not. Ticking one changes no filter: the hook
+  # keeps the change from the form, and submits the form when the list is
+  # closed (`.Grid`, "several values of a filter"). Until then the button
+  # says what applies.
+  attr :id, :string, required: true
+  attr :form, :string, required: true
+  attr :column, :map, required: true
+  attr :chosen, :list, required: true
+
+  defp choices(assigns) do
+    labels =
+      for {value, label} <- assigns.column.values, to_string(value) in assigns.chosen, do: label
+
+    says =
+      case labels do
+        [] -> Text.t(:any)
+        [label] -> label
+        labels -> Text.t(:values_chosen, count: length(labels))
+      end
+
+    assigns = assign(assigns, says: says, labels: labels)
+
+    ~H"""
+    <button
+      type="button"
+      id={"#{@id}-value"}
+      tabindex="-1"
+      aria-expanded="false"
+      aria-controls={"#{@id}-values"}
+      aria-label={"#{Text.t(:filter, column: @column.label)}: #{@says}"}
+      title={@labels != [] && Enum.join(@labels, ", ")}
+      phx-mounted={JS.ignore_attributes(["aria-expanded"])}
+      data-choices-button
+      class={[
+        "select select-xs w-32 min-w-0 justify-start text-start",
+        control_edge()
+      ]}
+    >
+      <span class="truncate">{@says}</span>
+    </button>
+    <div
+      id={"#{@id}-values"}
+      role="group"
+      aria-label={Text.t(:filter, column: @column.label)}
+      popover="manual"
+      phx-mounted={JS.ignore_attributes(["style"])}
+      data-choices
+      class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm font-normal text-base-content shadow"
+    >
+      <label
+        :for={{value, label} <- @column.values}
+        class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
+      >
+        <input
+          type="checkbox"
+          id={"#{@id}-value-#{value}"}
+          name={"filter[#{@column.name}][in][]"}
+          value={value}
+          form={@form}
+          checked={to_string(value) in @chosen}
+          tabindex="-1"
+          class={["checkbox checkbox-xs", box_edge()]}
+        />
+        <span>{label}</span>
+      </label>
+    </div>
     """
   end
 

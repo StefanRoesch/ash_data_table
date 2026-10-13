@@ -1212,26 +1212,28 @@ defmodule AshTable.ModelTest do
              ]
     end
 
-    test "for a number are equals, the four comparisons, and is empty when the field allows nil" do
+    test "for a number are equals, the four comparisons, between, and is empty when the field allows nil" do
+      comparisons = [:equals, :greater_than, :less_than, :at_least, :at_most, :between]
+
       assert operators(AshTable.Test.Filtering, [:visits, :weight, :balance, :percentage]) == [
-               visits: [:equals, :greater_than, :less_than, :at_least, :at_most],
-               weight: [:equals, :greater_than, :less_than, :at_least, :at_most, :is_empty],
-               balance: [:equals, :greater_than, :less_than, :at_least, :at_most, :is_empty],
-               percentage: [:equals, :greater_than, :less_than, :at_least, :at_most]
+               visits: comparisons,
+               weight: comparisons ++ [:is_empty],
+               balance: comparisons ++ [:is_empty],
+               percentage: comparisons
              ]
     end
 
-    test "for a date are on, before, after, and is empty when the field allows nil" do
+    test "for a date are on, before, after, between, and is empty when the field allows nil" do
       assert operators(AshTable.Test.Filtering, [:born_on, :left_on]) == [
-               born_on: [:on, :before, :after],
-               left_on: [:on, :before, :after, :is_empty]
+               born_on: [:on, :before, :after, :between],
+               left_on: [:on, :before, :after, :between, :is_empty]
              ]
     end
 
-    test "for a datetime are before, after, and is empty when the field allows nil" do
+    test "for a datetime are before, after, between, and is empty when the field allows nil" do
       assert operators(AshTable.Test.Filtering, [:seen_at, :archived_at]) == [
-               seen_at: [:before, :after],
-               archived_at: [:before, :after, :is_empty]
+               seen_at: [:before, :after, :between],
+               archived_at: [:before, :after, :between, :is_empty]
              ]
     end
 
@@ -1242,8 +1244,11 @@ defmodule AshTable.ModelTest do
              ]
     end
 
-    test "for an enum is `is`, whether or not the field allows nil" do
-      assert operators(AshTable.Test.Filtering, [:status, :size]) == [status: [:is], size: [:is]]
+    test "for an enum are is, is any of and is none of, whether or not the field allows nil" do
+      assert operators(AshTable.Test.Filtering, [:status, :size]) == [
+               status: [:is, :any_of, :none_of],
+               size: [:is, :any_of, :none_of]
+             ]
     end
 
     test "are none for a column shown as read-only text" do
@@ -1289,8 +1294,8 @@ defmodule AshTable.ModelTest do
 
     test "of an aggregate follow its type, with is empty only for a kind that can be nil" do
       assert operators(AshTable.Test.Filtering, [:note_count, :last_note_at, :first_note]) == [
-               note_count: [:equals, :greater_than, :less_than, :at_least, :at_most],
-               last_note_at: [:before, :after, :is_empty],
+               note_count: [:equals, :greater_than, :less_than, :at_least, :at_most, :between],
+               last_note_at: [:before, :after, :between, :is_empty],
                first_note: [:contains, :equals, :starts_with, :is_empty]
              ]
     end
@@ -1406,7 +1411,10 @@ defmodule AshTable.ModelTest do
       before: :<,
       at_least: :>=,
       at_most: :<=,
-      is_empty: :is_nil
+      is_empty: :is_nil,
+      any_of: :in,
+      none_of: :in,
+      between: [:>=, :<=]
     }
 
     defp manifest_fields(resource, read_action) do
@@ -1426,7 +1434,7 @@ defmodule AshTable.ModelTest do
         for column <- model.columns, column.operators != [] do
           field = Map.fetch!(fields, column.name)
           reported = Enum.map(field.filter_operators ++ field.filter_functions, & &1.name)
-          offered = Enum.map(column.operators, &Map.fetch!(@name_in_manifest, &1))
+          offered = Enum.flat_map(column.operators, &List.wrap(Map.fetch!(@name_in_manifest, &1)))
 
           assert Enum.reject(offered, &(&1 in reported)) == [],
                  "#{column.name}: offers #{inspect(column.operators)}, " <>

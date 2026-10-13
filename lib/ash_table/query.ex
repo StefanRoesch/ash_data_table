@@ -669,19 +669,23 @@ defmodule AshTable.Query do
   defp sort(query, nil, %{sort: sort}) when sort not in [nil, []], do: Ash.Query.sort(query, sort)
   defp sort(query, nil, _via), do: query
 
-  # One filter with a predicate per column, which Ash combines with AND. The
-  # values go in as they were typed: casting them, and what they match, is
-  # the resource's.
+  # One filter with the predicates of each column, which Ash combines with
+  # AND. The values go in as they were typed: casting them, and what they
+  # match, is the resource's.
   #
   # A calculation column that gives arguments is filtered by with them, as
   # the input of its calculation, and in a filter of its own: two columns
   # can show one calculation, and a filter holds a field once.
+  #
+  # So is a column whose operator leaves out what its predicates match ("is
+  # none of"): its filter is those predicates under `not`.
   defp filter(query, []), do: query
 
   defp filter(query, filters) do
-    {plain, argued} =
-      Enum.split_with(filters, fn {column, _filter} ->
-        column.arguments == %{} and column.field == column.name
+    {plain, apart} =
+      Enum.split_with(filters, fn {column, {operator, _value}} ->
+        column.arguments == %{} and column.field == column.name and
+          not Operator.negated?(operator)
       end)
 
     query =
@@ -693,17 +697,27 @@ defmodule AshTable.Query do
           Ash.Query.filter_input(
             query,
             Map.new(plain, fn {column, {operator, value}} ->
-              {column.field, Map.new([Operator.to_ash(operator, value)])}
+              {column.field, Map.new(Operator.predicates(operator, value))}
             end)
           )
       end
 
-    Enum.reduce(argued, query, fn {column, {operator, value}}, query ->
-      Ash.Query.filter_input(query, %{
-        column.field => Map.new([Operator.to_ash(operator, value), {"input", column.arguments}])
-      })
+    Enum.reduce(apart, query, fn {column, {operator, value}}, query ->
+      predicates = Map.new(Operator.predicates(operator, value) ++ input(column))
+      statement = %{column.field => predicates}
+
+      Ash.Query.filter_input(
+        query,
+        if(Operator.negated?(operator), do: %{not: statement}, else: statement)
+      )
     end)
   end
+
+  defp input(%{arguments: arguments, field: field, name: name})
+       when arguments == %{} and field == name,
+       do: []
+
+  defp input(%{arguments: arguments}), do: [{"input", arguments}]
 
   defp page_opts(%{pagination: %{strategy: :none}}, _state), do: false
 

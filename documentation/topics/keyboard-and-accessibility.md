@@ -205,6 +205,7 @@ A filter's controls are not tab stops. They are reached from their cell:
 | Arrow keys, Home, End | In a filter's control | Belong to the control. They do not move through the grid. |
 | Enter | In a filter's input | Applies what was typed. Focus stays in the input. |
 | Escape | In a filter's control | Gives up what was typed and not yet applied, and returns to the cell. |
+| Enter, Space, Down Arrow | On the button of "is any of" and "is none of" | Opens the list of values, with focus on its first box. In the list, Space ticks a box, the arrow keys go from box to box, Enter closes the list and applies what is ticked, and Escape closes it and gives the ticks up. See [Filtering](filtering.md#is-any-of-is-none-of). |
 | Tab, Shift+Tab | In a filter's control | Move through the controls of this one filter: the operator menu, the value, the clear button. Tab from the last one leaves the grid. Shift+Tab from the first one returns to the cell. |
 
 After a filter is cleared with its own button, focus goes to its cell. After
