@@ -9,12 +9,15 @@
 # the one build in `_build/e2e`.
 
 database = System.fetch_env!("E2E_DATABASE")
-template = "demo_e2e_template"
 
-# what is dropped here is a worker's database and nothing else
-unless database =~ ~r/\Ademo_e2e_\d+\z/ do
-  raise "E2E_DATABASE must be demo_e2e_<number>, got: #{inspect(database)}"
+# what is dropped here is a worker's database and nothing else: `demo_e2e_0`,
+# or `demo_e2e_NAME_0` where a working copy has given its tests a name
+# (E2E_NAME, support/server.ts)
+unless database =~ ~r/\Ademo_e2e(_[a-z]+)?_\d+\z/ do
+  raise "E2E_DATABASE must be demo_e2e_<number> or demo_e2e_<name>_<number>, got: #{inspect(database)}"
 end
+
+template = String.replace(database, ~r/_\d+\z/, "_template")
 
 # Mix started the logger before it read the configuration; started again, it
 # is the one of config/e2e.exs, as under `mix phx.server`.

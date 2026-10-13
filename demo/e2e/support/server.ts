@@ -32,6 +32,19 @@ export const EXTERNAL: string | undefined = process.env.E2E_BASE_URL || undefine
 const FIRST_PORT = Number(process.env.E2E_FIRST_PORT ?? 4480)
 
 /**
+ * What the databases are called: `demo_e2e_template`, `demo_e2e_0` and up.
+ * E2E_NAME puts a word of small letters in: `demo_e2e_NAME_template`,
+ * `demo_e2e_NAME_0`. A second working copy of the repository that runs its
+ * tests at the same time gives itself a name, and other ports with
+ * E2E_FIRST_PORT.
+ */
+const NAME = process.env.E2E_NAME
+if (NAME !== undefined && !/^[a-z]+$/.test(NAME)) {
+  throw new Error(`E2E_NAME must be small letters only, got: ${NAME}`)
+}
+const DATABASE = NAME ? `demo_e2e_${NAME}` : "demo_e2e"
+
+/**
  * How many workers, and so how many servers and databases: E2E_WORKERS, or
  * half the cores and no more than six. A worker is a BEAM (about 0.2 GB), a
  * Chromium with its pages (about 0.45 GB) and the sessions of its database.
@@ -60,7 +73,7 @@ export function prepare(): void {
   const done = spawnSync(
     "mix",
     ["do", "ash.setup", "--quiet", "+", "run", "priv/repo/seeds.exs", "+", "assets.setup", "+", "assets.build"],
-    { cwd: DEMO, env: { ...env, E2E_DATABASE: "demo_e2e_template" }, stdio: ["ignore", out, out] },
+    { cwd: DEMO, env: { ...env, E2E_DATABASE: `${DATABASE}_template` }, stdio: ["ignore", out, out] },
   )
   closeSync(out)
 
@@ -103,7 +116,7 @@ async function start(index: number): Promise<Server> {
     ["run", "--no-compile", "--no-deps-check", "--no-start", "--no-halt", "e2e/server/worker.exs"],
     {
       cwd: DEMO,
-      env: { ...env, PORT: String(port), E2E_DATABASE: `demo_e2e_${index}` },
+      env: { ...env, PORT: String(port), E2E_DATABASE: `${DATABASE}_${index}` },
       // The server ends when its standard input is closed (worker.exs): when
       // this process is gone, whichever way it went.
       stdio: ["pipe", out, out],
