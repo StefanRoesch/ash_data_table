@@ -11,3 +11,7 @@ The five default triage labels are used as-is: `needs-triage`, `needs-info`, `re
 ### Domain docs
 
 Single-context: one `CONTEXT.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Architecture map
+
+Read `docs/agents/architecture.md` before a build: where every module is, the table component's sections, the safety rules, the recipe for a feature and the commands.

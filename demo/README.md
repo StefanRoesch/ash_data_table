@@ -26,6 +26,14 @@ mix phx.server   # http://localhost:4478
 `mix test` runs the tests against the database `demo_test` on the same
 Postgres, in the Ecto sandbox.
 
+### Tidewave
+
+In development the demo has [Tidewave](https://hexdocs.pm/tidewave): an MCP
+endpoint for coding agents (logs, evaluating code, SQL, documentation) at
+http://127.0.0.1:4478/tidewave/mcp, over streamable HTTP. It answers requests
+from this machine only, and no other environment has it. For Claude Code:
+`claude mcp add --transport http tidewave http://127.0.0.1:4478/tidewave/mcp`.
+
 ### Without Elixir on the host
 
 ```sh

@@ -33,22 +33,31 @@
   <body>
     <%!--
       The header lives in the root layout, so it is on every page, including
-      the LiveViews a library mounts. Switching the actor is a full page load.
-      So does the main landmark: a table mounted with `layout: false` is
-      rendered straight into this layout and brings no landmark of its own.
+      the LiveViews a library mounts. So does the main landmark: a table
+      mounted with `layout: false` is rendered straight into this layout and
+      brings no landmark of its own.
+
+      The links navigate live: all the pages they lead to are in one
+      live_session, so a click swaps the LiveView and keeps the page and its
+      socket (a full page load cuts the socket while the old page is still
+      shown, and the connection toasts flash). This layout is rendered once
+      and not again on live navigation: nothing in it may depend on the
+      path. The two switchers are given the path of the first page as a
+      fallback and take the current address when they are submitted
+      (`Layouts.actor_switcher`); switching is a full page load.
     --%>
     <header class="navbar gap-4 border-b border-base-300 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
         <nav aria-label="Main" class="flex items-center gap-4">
-          <a href={~p"/"} class="font-semibold">ash_table demo</a>
-          <a href={~p"/tasks"}>Tasks</a>
-          <a href={~p"/deadlines"}>Deadlines</a>
-          <a href={~p"/projects"}>Projects</a>
-          <a href={~p"/comments"}>Comments</a>
-          <a href={~p"/labels"}>Labels</a>
-          <a href={~p"/specimens"}>Specimens</a>
-          <a href={~p"/dashboard"}>Dashboard</a>
-          <a href={~p"/named"}>Named tables</a>
+          <.link navigate={~p"/"} class="font-semibold">ash_table demo</.link>
+          <.link navigate={~p"/tasks"}>Tasks</.link>
+          <.link navigate={~p"/deadlines"}>Deadlines</.link>
+          <.link navigate={~p"/projects"}>Projects</.link>
+          <.link navigate={~p"/comments"}>Comments</.link>
+          <.link navigate={~p"/labels"}>Labels</.link>
+          <.link navigate={~p"/specimens"}>Specimens</.link>
+          <.link navigate={~p"/dashboard"}>Dashboard</.link>
+          <.link navigate={~p"/named"}>Named tables</.link>
         </nav>
       </div>
       <Layouts.actor_switcher

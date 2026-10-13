@@ -27,6 +27,15 @@ defmodule DemoWeb.Endpoint do
     only: DemoWeb.static_paths(),
     raise_on_missing_only: code_reloading?
 
+  # Tidewave: an MCP endpoint into the running demo for coding agents, at
+  # /tidewave/mcp. The dependency is `only: :dev`, so no other environment
+  # has the plug. It answers requests from this machine only
+  # (`allow_remote_access` is false by default). Without the toolbar: with it,
+  # every page would load a script from tidewave.ai.
+  if Code.ensure_loaded?(Tidewave) do
+    plug Tidewave, toolbar: false
+  end
+
   # Code reloading can be explicitly enabled under the
   # :code_reloader configuration of your endpoint.
   if code_reloading? do
