@@ -7,8 +7,11 @@ defmodule AshTable.State do
   #   * `sort` is `{column_name, :asc | :desc}` or nil; nil leaves the read
   #     action's own sort in charge.
   #   * `filters` holds, by column name, the operator a person chose and the
-  #     value as it was typed; nil for an operator that takes none. All of
-  #     them apply at once.
+  #     value as it was typed; nil for an operator that takes none. An
+  #     operator that takes several of the column's values ("is any of")
+  #     holds the list of them, in the order the column has them, each once;
+  #     a range ("between") holds `{from, to}`, either of which is nil for
+  #     an end left open, but not both. All of them apply at once.
   #   * `arguments` holds, by the key of an argument of the argument line
   #     (`AshTable.Model.Argument.key/1`), what a person typed or picked for
   #     it: text, or for an array the texts of its values. An argument that
@@ -24,7 +27,7 @@ defmodule AshTable.State do
   defstruct sort: nil, filters: %{}, arguments: %{}, page: 1, after: nil, before: nil
 
   @type sort :: {atom, :asc | :desc} | nil
-  @type filter :: {Operator.t(), String.t() | nil}
+  @type filter :: {Operator.t(), Operator.value()}
   @type t :: %__MODULE__{
           sort: sort,
           filters: %{optional(atom) => filter},
@@ -109,13 +112,16 @@ defmodule AshTable.State do
   The filters are under `"f"`, by column name. A filter with its column's
   default operator is the value alone, another one is the operator with its
   value, and a choice between operators without a value is the operator
-  alone:
+  alone. Several values are a list, in the order the column has them, and a
+  range is its ends under `"from"` and `"to"`, without the one left open:
 
       %{"f" => %{
         "title" => "report",
         "progress" => %{"at_least" => "50"},
         "due_on" => %{"is_empty" => ""},
-        "billable?" => "yes"
+        "billable?" => "yes",
+        "status" => %{"any_of" => ["todo", "done"]},
+        "estimate_hours" => %{"between" => %{"from" => "2", "to" => "8"}}
       }}
 
   The arguments of the read action are under `"a"`, by name, and those a
@@ -158,7 +164,9 @@ defmodule AshTable.State do
   @doc """
   The state after a person changed the filter row. `form` is what the row's
   form sends: by column name, the operator under `"o"` and the value under
-  `"v"`, either of which a column's filter may lack.
+  `"v"`, either of which a column's filter may lack; for an operator that
+  takes several values the list of them under `"in"`, and for a range its
+  ends under `"from"` and `"to"`.
 
   The filters are exactly those of the form. Any change of them returns to
   the first page; the sort stays.
@@ -171,11 +179,88 @@ defmodule AshTable.State do
     parsed =
       for %{operators: [_ | _]} = column <- model.columns,
           %{} = entry <- [form[Atom.to_string(column.name)]],
-          {outcome, filter} <- [parse_filter(column, entry["o"], entry["v"])],
+          {outcome, filter} <- [parse_entry(column, entry)],
           do: {outcome, {column.name, filter}}
 
     {put_filters(state, Map.new(Keyword.get_values(parsed, :ok))),
      Map.new(Keyword.get_values(parsed, :rejected))}
+  end
+
+  @doc """
+  What the filter row shows after `form`, by column name: for every column
+  the operator that was chosen for it, with its value as far as the form
+  holds one, and without where it does not: "starts with" before a text is
+  typed, "is any of" before a value is ticked, "between" before an end is
+  given. `form` is what `filter/3` takes. A value that is rejected is not
+  among them, and neither is a column that is as it is with nothing chosen.
+
+  An operator without its value is no filter and is not in the state. The
+  table shows it all the same: it is what the person chose, and "is any
+  of" and "between" have controls of their own, which are there to be used
+  only once the operator is chosen.
+  """
+  @spec pending(Model.t(), map) :: %{optional(atom) => filter}
+  def pending(%Model{} = model, form) when is_map(form) do
+    for %{operators: [default | _]} = column <- model.columns,
+        %{} = entry <- [form[Atom.to_string(column.name)]],
+        operator = operator(column, entry["o"]),
+        {outcome, filter} <- [parse_entry(column, entry)],
+        outcome in [:ok, :none],
+        not (is_nil(filter) and operator == default),
+        into: %{},
+        do: {column.name, filter || {operator, empty(operator)}}
+  end
+
+  defp empty(operator) do
+    case Operator.takes(operator) do
+      :many -> []
+      :range -> {nil, nil}
+      _one -> nil
+    end
+  end
+
+  @doc """
+  Whether the text is a value of the column's type. Text is; a choice has
+  to be one of the values; a number, date or datetime is whatever Ash casts
+  to the type. Nothing is changed: the text itself goes into the filter.
+  """
+  @spec value?(Model.Column.t(), term) :: boolean
+  def value?(_column, text) when not is_binary(text), do: false
+  def value?(%{cell_type: :text}, _text), do: true
+
+  def value?(%{cell_type: :enum, values: values}, text),
+    do: Enum.any?(values, fn {value, _label} -> to_string(value) == text end)
+
+  def value?(%{type: {type, constraints}}, text),
+    do: match?({:ok, _value}, Ash.Type.cast_input(type, text, constraints))
+
+  # What the row's form holds for a column, with the value where the
+  # operator it names looks for it. A person who goes from "is" to "is any
+  # of" keeps the value that was chosen, and back again when it is one.
+  defp parse_entry(column, entry) do
+    operator = operator(column, entry["o"])
+
+    value =
+      case operator && Operator.takes(operator) do
+        :many ->
+          case entry do
+            %{"in" => values} -> values
+            %{"v" => value} when is_binary(value) and value != "" -> [value]
+            _nothing -> []
+          end
+
+        :range ->
+          Map.take(entry, ["from", "to"])
+
+        _one_or_none ->
+          case entry do
+            %{"v" => value} -> value
+            %{"in" => [value]} -> value
+            _nothing -> nil
+          end
+      end
+
+    parse_filter(column, entry["o"], value)
   end
 
   @doc """
@@ -309,28 +394,75 @@ defmodule AshTable.State do
   # A filter from the outside, where both the operator and the value are
   # text. No operator named means the column's default one, when that is one
   # which takes a value.
+  #
+  # Every value is a claim: the operator has to be one the column offers,
+  # and each value one of the column's type. Several values are a list of
+  # the column's own values and nothing else; they are kept in the order the
+  # column has them, each once, so that one filter is written one way. A
+  # range is a map of its ends, `"from"` and `"to"`, each text or missing.
+  # Anything of another shape is no filter.
   defp parse_filter(column, operator, value) do
     operator = operator(column, operator)
 
+    case operator && Operator.takes(operator) do
+      nil -> {:none, nil}
+      :none -> {:ok, {operator, nil}}
+      :one -> parse_one(column, operator, value)
+      :many -> parse_many(column, operator, value)
+      :range -> parse_range(column, operator, value)
+    end
+  end
+
+  defp parse_one(column, operator, value) do
     cond do
-      is_nil(operator) -> {:none, nil}
-      not Operator.takes_value?(operator) -> {:ok, {operator, nil}}
       not is_binary(value) or value == "" -> {:none, nil}
       value?(column, value) -> {:ok, {operator, value}}
       true -> {:rejected, {operator, value}}
     end
   end
 
-  # Whether the text is a value of the column's type. Text is; a choice has
-  # to be one of the values; a number, date or datetime is whatever Ash casts
-  # to the type. Nothing is changed: the text itself goes into the filter.
-  defp value?(%{cell_type: :text}, _text), do: true
+  defp parse_many(%{values: [_ | _] = values} = column, operator, chosen) when is_list(chosen) do
+    if Enum.all?(chosen, &value?(column, &1)) do
+      case for({value, _label} <- values, text = to_string(value), text in chosen, do: text) do
+        [] -> {:none, nil}
+        chosen -> {:ok, {operator, chosen}}
+      end
+    else
+      {:none, nil}
+    end
+  end
 
-  defp value?(%{cell_type: :enum, values: values}, text),
-    do: Enum.any?(values, fn {value, _label} -> to_string(value) == text end)
+  defp parse_many(_column, _operator, _other), do: {:none, nil}
 
-  defp value?(%{type: {type, constraints}}, text),
-    do: match?({:ok, _value}, Ash.Type.cast_input(type, text, constraints))
+  defp parse_range(column, operator, %{} = ends) do
+    with [] <- Map.keys(ends) -- ["from", "to"],
+         {:ok, from} <- range_end(ends, "from"),
+         {:ok, to} <- range_end(ends, "to") do
+      cond do
+        is_nil(from) and is_nil(to) ->
+          {:none, nil}
+
+        Enum.all?([from, to], &(is_nil(&1) or value?(column, &1))) ->
+          {:ok, {operator, {from, to}}}
+
+        true ->
+          {:rejected, {operator, {from, to}}}
+      end
+    else
+      _malformed -> {:none, nil}
+    end
+  end
+
+  defp parse_range(_column, _operator, _other), do: {:none, nil}
+
+  # An end of a range: text, or nil for one that is left open.
+  defp range_end(ends, key) do
+    case Map.get(ends, key) do
+      blank when blank in [nil, ""] -> {:ok, nil}
+      text when is_binary(text) -> {:ok, text}
+      _other -> :error
+    end
+  end
 
   defp operator(%{operators: [default | _]}, blank) when blank in [nil, ""],
     do: if(Operator.takes_value?(default), do: default)
@@ -413,13 +545,20 @@ defmodule AshTable.State do
       param =
         cond do
           operator == default -> value || Atom.to_string(operator)
-          Operator.takes_value?(default) -> %{Atom.to_string(operator) => value || ""}
+          Operator.takes_value?(default) -> %{Atom.to_string(operator) => encode_value(value)}
           true -> Atom.to_string(operator)
         end
 
       {Atom.to_string(column.name), param}
     end
   end
+
+  defp encode_value(nil), do: ""
+
+  defp encode_value({from, to}),
+    do: Map.reject(%{"from" => from, "to" => to}, fn {_end, text} -> is_nil(text) end)
+
+  defp encode_value(value), do: value
 
   @doc "The state on another page of an offset-paginated table."
   @spec to_page(t, pos_integer) :: t

@@ -209,8 +209,10 @@ test.describe("in German", () => {
       "kleiner als",
       "mindestens",
       "höchstens",
+      "zwischen",
     ])
-    await expect(operators("due_on")).toHaveText(["am", "vor", "nach", "ist leer"])
+    await expect(operators("due_on")).toHaveText(["am", "vor", "nach", "zwischen", "ist leer"])
+    await expect(operators("status")).toHaveText(["ist", "ist eines von", "ist keines von"])
     await expect(tasks.filterValue("status").locator("option")).toHaveText([
       "Alle",
       "Rückstand",

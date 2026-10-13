@@ -28,29 +28,45 @@ defmodule DemoWeb.Tables.TaskFilterTest do
     test "offers a number its operators and a number input, with is empty only when it can be nil",
          %{html: html} do
       assert filter_controls(html, "task", "progress") == %{
-               operators: ["equals", "greater than", "less than", "at least", "at most"],
+               operators: [
+                 "equals",
+                 "greater than",
+                 "less than",
+                 "at least",
+                 "at most",
+                 "between"
+               ],
                input: "number",
                choices: nil
              }
 
       assert filter_controls(html, "task", "estimate_hours").operators ==
-               ["equals", "greater than", "less than", "at least", "at most", "is empty"]
+               [
+                 "equals",
+                 "greater than",
+                 "less than",
+                 "at least",
+                 "at most",
+                 "between",
+                 "is empty"
+               ]
     end
 
     test "offers a date and a datetime their operators and native inputs", %{html: html} do
       assert filter_controls(html, "task", "due_on") == %{
-               operators: ["on", "before", "after", "is empty"],
+               operators: ["on", "before", "after", "between", "is empty"],
                input: "date",
                choices: nil
              }
 
       assert filter_controls(html, "task", "completed_at") == %{
-               operators: ["before", "after", "is empty"],
+               operators: ["before", "after", "between", "is empty"],
                input: "datetime-local",
                choices: nil
              }
 
-      assert filter_controls(html, "task", "inserted_at").operators == ["before", "after"]
+      assert filter_controls(html, "task", "inserted_at").operators ==
+               ["before", "after", "between"]
     end
 
     test "offers a boolean a choice of any, yes and no", %{html: html} do
@@ -63,7 +79,7 @@ defmodule DemoWeb.Tables.TaskFilterTest do
 
     test "offers an enum a choice of any and its values by their labels", %{html: html} do
       assert filter_controls(html, "task", "status") == %{
-               operators: nil,
+               operators: ["is", "is any of", "is none of"],
                input: nil,
                choices: [
                  "Any",
@@ -81,7 +97,14 @@ defmodule DemoWeb.Tables.TaskFilterTest do
       assert filter_controls(html, "task", "overdue?").choices == ["Any", "Yes", "No"]
 
       assert filter_controls(html, "task", "comment_count") == %{
-               operators: ["equals", "greater than", "less than", "at least", "at most"],
+               operators: [
+                 "equals",
+                 "greater than",
+                 "less than",
+                 "at least",
+                 "at most",
+                 "between"
+               ],
                input: "number",
                choices: nil
              }
@@ -105,7 +128,9 @@ defmodule DemoWeb.Tables.TaskFilterTest do
     test "names every control for people who cannot see where it is", %{html: html} do
       assert attribute(html, "#task-filter-title input", "aria-label") == ["Filter Title"]
       assert attribute(html, "#task-filter-title select", "aria-label") == ["How to filter Title"]
-      assert attribute(html, "#task-filter-status select", "aria-label") == ["Filter State"]
+
+      assert attribute(html, "#task-filter-status select", "aria-label") ==
+               ["How to filter State", "Filter State"]
     end
   end
 

@@ -51,11 +51,15 @@ is simply typed; a small menu in the filter cell changes it.
 | Cell type | Control | Operators, the default first | In Ash |
 | --- | --- | --- | --- |
 | text | text input | contains, equals, starts with, is empty | `contains`, `eq`, `string_starts_with`, `is_nil` |
-| number | number input | equals, greater than, less than, at least, at most, is empty | `eq`, `greater_than`, `less_than`, `greater_than_or_equal`, `less_than_or_equal`, `is_nil` |
-| date | date input | on, before, after, is empty | `eq`, `less_than`, `greater_than`, `is_nil` |
-| datetime | datetime input, to the second | before, after, is empty | `less_than`, `greater_than`, `is_nil` |
+| number | number input | equals, greater than, less than, at least, at most, between, is empty | `eq`, `greater_than`, `less_than`, `greater_than_or_equal`, `less_than_or_equal`, the last two together, `is_nil` |
+| date | date input | on, before, after, between, is empty | `eq`, `less_than`, `greater_than`, `greater_than_or_equal` with `less_than_or_equal`, `is_nil` |
+| datetime | datetime input, to the second | before, after, between, is empty | `less_than`, `greater_than`, `greater_than_or_equal` with `less_than_or_equal`, `is_nil` |
 | boolean | a choice of Any, Yes, No | | `eq` |
-| enum | a choice of Any and the values, by their labels | | `eq` |
+| enum | a choice of Any and the values, by their labels | is, is any of, is none of | `eq`, `in`, `not` around `in` |
+
+"between", "is any of" and "is none of" take more than one value and have
+controls of their own: see
+[Several values, and a range](#several-values-and-a-range).
 
 [Columns and defaults](columns-and-defaults.md#how-each-type-is-displayed)
 says which Ash types belong to which cell type. A NewType filters as the type
@@ -70,7 +74,7 @@ The list is shortened to what Ash supports for the field:
   has. A count aggregate is never nil. A boolean or an enum column has no
   "is empty", whether or not it can be nil.
 - **A field declared `filterable?: :simple_equality`** is offered "equals"
-  only.
+  only, and an enum "is" only: Ash takes neither a range nor a list for it.
 - **An operator the data layer cannot run** for the field is left out.
 
 A datetime is filtered in the terms it is shown in: UTC, to the second. A
@@ -84,11 +88,88 @@ value picked to the minute means the start of that minute.
 | A choice (boolean, enum) | When it is picked. |
 | The operator menu | When another operator is picked and the input holds a value. An operator picked while the input is empty changes nothing yet. |
 | "is empty" | When it is picked. It needs no value, so the input goes away. |
+| An end of a range ("between") | As an input: on Enter, and when it is left. |
+| The list of "is any of" and "is none of" | When the list is closed: by Enter, by its button, or by going on to something else. Not on each tick. |
 
 After each change the result is put into a live region for screen readers:
 "12 results" when the table knows the total, otherwise "Results updated". The
 table knows the total when the read action is `countable`, under offset and
 under keyset pagination, and when the action has no pagination.
+
+## Several values, and a range
+
+Two kinds of filter take more than one value. Nothing is declared for them:
+they are operators in the menu of the columns that can have them.
+
+### Is any of, is none of
+
+A column with a known set of values, an `Ash.Type.Enum` or an `:atom` with
+`one_of`, offers "is any of" and "is none of" beside "is". Picking one puts
+a button in place of the single choice. The button opens a list with a box
+for each value. Tick the values, then close the list: with Enter, with the
+button, or by clicking or tabbing on. The filter applies then, once, and
+the button says what is chosen: the value's label, or "2 selected".
+
+Ticking alone changes nothing, as typing into a text filter changes nothing
+before Enter. Escape closes the list and gives up the ticks that were not
+applied. In the list, Space ticks, the arrow keys go from box to box, and
+Tab goes on through the filter's controls.
+
+**Try it:** `/tasks` in the demo. Under "State", pick "is any of", press the
+button beside it, tick "To do" and "Done", and click anywhere else. The
+table shows the tasks in one of the two states, and the address ends in:
+
+<!-- sketch -->
+```text
+/tasks?task[f][status][any_of][]=todo&task[f][status][any_of][]=done
+```
+
+"is none of" finds the records that have a value and it is not one of the
+ticked ones. A record without a value is found by neither of the two; "is
+empty" is for those, where the column offers it.
+
+The values in the list come from the column's type. Nothing is read from
+the database for them, so the list tells nobody which values the records
+hold.
+
+### Between
+
+A number, a date and a datetime offer "between". Picking it shows two
+inputs, one above the other: "from" and "to".
+
+- **Both ends belong to the range.** "from 10 to 50" finds 10 and finds 50.
+  In Ash it is `greater_than_or_equal` and `less_than_or_equal` on the one
+  field.
+- **Either end may stay empty.** Only "from" means at least, only "to"
+  means at most. With both empty there is no filter.
+- **A "from" past the "to" is not a mistake.** It finds nothing, and the
+  table says "0 results".
+- **Each end is checked as any filter value is.** One that is not a value of
+  the column's type is marked, and nothing of the range applies.
+- **A datetime end is a moment, to the second.** "to 10:00" ends at
+  10:00:00, so a record of 10:00:30 is outside.
+
+**Try it:** on `/tasks`, pick "between" under "Due on", give a date as
+"from" and press Enter: every task due on that day or later. Give a second
+date as "to": the tasks due from the first day to the second. `/specimens`
+has the same for "A decimal" and for every kind of datetime.
+
+<!-- sketch -->
+```text
+/tasks?task[f][due_on][between][from]=2026-03-01&task[f][due_on][between][to]=2026-03-31
+```
+
+### Which columns have them
+
+| Column | Is any of, is none of | Between |
+| --- | --- | --- |
+| enum (`Ash.Type.Enum`, `:atom` with `one_of`) | yes | no |
+| number, date, datetime | no | yes |
+| a calculation or an aggregate of such a type, a calculation with arguments among them | as its type | as its type |
+| text, boolean | no | no |
+| a reference column ("Assignee"), an array, a map, an embedded resource, a union | no: these have no filter at all | no |
+| a `sensitive?` column, a column declared `filterable? false` | no | no |
+| a field declared `filterable?: :simple_equality` | no | no |
 
 ## Clearing
 
@@ -235,7 +316,12 @@ values.
 - **A column the person can never see has no filter**, and a filter for it in
   the URL is ignored.
 - **An invalid value in the URL is dropped without a mark.** Only a value
-  typed into the row is shown as rejected.
+  typed into the row is shown as rejected. A list in the URL with one value
+  the column does not have is dropped as a whole, and so is a range with
+  one end that is no value of the column's type.
+- **A list has one way to be written.** The values are kept in the order
+  the column has them, each once, whatever order they were ticked in. The
+  same filter gives the same address.
 - **A table whose read action is not `countable` announces "Results
   updated".** It has no total to report. That holds under offset and under
   keyset pagination alike; the demo's keyset table, `/comments`, counts.
@@ -261,8 +347,9 @@ values.
 
 ## Not in the first version
 
-No search across columns, no filter builder with OR, no multiple choice for
-enums, no filter for an array, no date ranges in one control, and no filters from the arguments of a
+No search across columns, no filter builder with OR, no filter for an array,
+no "is any of" for typed text or numbers, no filter by a related record
+("Assignee is Ada or Max"), and no filters from the arguments of a
 read action. Search, facets and a filter builder are expected from a separate
 extension. See the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

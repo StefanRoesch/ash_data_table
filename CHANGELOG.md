@@ -46,6 +46,13 @@ declared in the resource and mounted with one line in the router.
   the last of them.
 - A filter row with one filter per column and a short list of operators per
   type: text, number, date, datetime, boolean and enum.
+- Filters for several values and for ranges. An enum column offers "is any
+  of" and "is none of": a button opens a list of the column's values to
+  tick, and what is ticked applies when the list is closed. A number, a
+  date and a datetime offer "between", with two inputs, from and to, either
+  of which may stay empty; both ends belong to the range. In the URL they
+  are `ID[f][COLUMN][any_of][]=VALUE` and
+  `ID[f][COLUMN][between][from]=VALUE`.
 - **Arguments.** Every `public?` argument of the table's read action has an
   input in the argument line, above the rows, with the control of its type:
   text, number, boolean, date, datetime, enum, a multiple choice for an

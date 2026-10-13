@@ -290,6 +290,16 @@ export class Table {
     return this.byId(`${this.id}-filter-${column}-value`)
   }
 
+  /** The last end of a filter that is a range; its first end is `filterValue`. */
+  filterTo(column: string): Locator {
+    return this.byId(`${this.id}-filter-${column}-to`)
+  }
+
+  /** The list of boxes of a filter for several values, which `filterValue` opens. */
+  filterChoices(column: string): Locator {
+    return this.byId(`${this.id}-filter-${column}-values`)
+  }
+
   /** The menu of a filter's operators. */
   filterOperator(column: string): Locator {
     return this.byId(`${this.id}-filter-${column}-operator`)

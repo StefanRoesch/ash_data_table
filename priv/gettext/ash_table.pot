@@ -484,3 +484,31 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "There are new or changed records."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Filter %{column}, from"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Filter %{column}, to"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "between"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "from"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "is any of"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "is none of"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "to"
+msgstr ""

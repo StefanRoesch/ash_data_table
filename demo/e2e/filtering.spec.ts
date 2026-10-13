@@ -57,19 +57,20 @@ test.describe("the controls of the filter row", () => {
       "is empty",
     ])
     // numbers
-    const number = ["equals", "greater than", "less than", "at least", "at most"]
+    const number = ["equals", "greater than", "less than", "at least", "at most", "between"]
     await expect(operators("progress")).toHaveText(number)
     await expect(operators("estimate_hours")).toHaveText([...number, "is empty"])
     await expect(operators("comment_count"), "an aggregate").toHaveText(number)
     // a date and datetimes
-    await expect(operators("due_on")).toHaveText(["on", "before", "after", "is empty"])
-    await expect(operators("completed_at")).toHaveText(["before", "after", "is empty"])
-    await expect(operators("inserted_at")).toHaveText(["before", "after"])
-    // a boolean and a choice have no operator menu: the choice is the filter
+    await expect(operators("due_on")).toHaveText(["on", "before", "after", "between", "is empty"])
+    await expect(operators("completed_at")).toHaveText(["before", "after", "between", "is empty"])
+    await expect(operators("inserted_at")).toHaveText(["before", "after", "between"])
+    // a boolean has no operator menu: the choice is the filter
     await expect(tasks.filterOperator("billable?")).toHaveCount(0)
     await expect(choices("billable?")).toHaveText(["Any", "Yes", "No"])
     await expect(choices("overdue?"), "a calculation").toHaveText(["Any", "Yes", "No"])
-    await expect(tasks.filterOperator("status")).toHaveCount(0)
+    // a choice is one of its values, or several of them
+    await expect(operators("status")).toHaveText(["is", "is any of", "is none of"])
     await expect(choices("status")).toHaveText([
       "Any",
       "Backlog",

@@ -57,6 +57,8 @@ cannot collide with the page's own parameters or with another table's.
 | A filter whose operator takes no value | `ID[f][COLUMN][OPERATOR]=` | `task[f][due_on][is_empty]=` |
 | A yes-or-no choice | `ID[f][COLUMN]=yes` or `=no` | `task[f][billable%3F]=yes` |
 | A choice of an enum value | `ID[f][COLUMN]=VALUE` | `task[f][status]=in_review` |
+| Several enum values | `ID[f][COLUMN][any_of][]=VALUE`, once per value; `none_of` likewise | `task[f][status][any_of][]=todo&task[f][status][any_of][]=done` |
+| A range | `ID[f][COLUMN][between][from]=VALUE` and `[to]=VALUE`; an end left open is left out | `task[f][progress][between][from]=10&task[f][progress][between][to]=50` |
 | An argument of the read action | `ID[a][ARGUMENT]=VALUE` | `task[a][search]=login` |
 | An argument a column asks for | `ID[c][COLUMN][ARGUMENT]=VALUE` | `task[c][due_within][days]=14` |
 | An argument that is a list | `ID[a][ARGUMENT][]=VALUE`, once per value | `deadline[a][tags][]=api` |
@@ -66,7 +68,8 @@ cannot collide with the page's own parameters or with another table's.
 [Arguments](arguments.md) has what an argument's value is and when it is
 applied. The operators are named `contains`, `equals`,
 `starts_with`, `is_empty`, `greater_than`, `less_than`, `at_least`,
-`at_most`, `on`, `before` and `after`; [Filtering](filtering.md) says which
+`at_most`, `on`, `before`, `after`, `between`, `is`, `any_of` and `none_of`;
+[Filtering](filtering.md) says which
 column offers which, and which one is the default. A cursor is the opaque
 value Ash returns for a record and is not meant to be written by hand.
 
@@ -147,6 +150,7 @@ person meets it is dropped silently, and the rest is applied.
 | A filter on a column without a filter | `task[f][description]=x` | No filter |
 | An operator the column does not offer | `task[f][title][at_least]=x` | No filter |
 | A value that is not one of the column's type | `task[f][progress]=abc` | No filter |
+| A list with a value the column does not have, or a range with an end that is no value | `task[f][status][any_of][]=todo&task[f][status][any_of][]=closed` | No filter |
 | Two operators for one column | `task[f][title][contains]=a&task[f][title][equals]=b` | No filter |
 | A column the person can never see | `task[f][external_ref]=EXT`, as Max Member | No filter |
 | An argument the read action does not take from the outside, or a column does not ask for | `task[a][secret]=x`, `task[c][due_within%3F][days]=1` | Not given |
