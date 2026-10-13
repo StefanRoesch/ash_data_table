@@ -191,7 +191,12 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
   end
 
   test "a save in a nested table reads and writes that record with what its row shows, and not the table around it",
-       %{conn: conn, world: world, project: project, task: task} do
+       %{view: tasks_page, conn: conn, world: world, project: project, task: task} do
+    # The page of the tasks that the setup opened is closed first. Tasks are
+    # live: it would hear of the save below and read the task again, a
+    # moment later, and those reads would be counted here or not.
+    GenServer.stop(tasks_page.pid)
+
     {:ok, view, _html} = conn |> log_in(world.admin) |> live("/projects")
     expand(view, "project", project.id)
     toggle(view, "project", project.id, "tasks")
