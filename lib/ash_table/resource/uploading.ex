@@ -15,7 +15,7 @@ defmodule AshTable.Resource.Uploading do
 
   alias Ash.Resource.Info
   alias AshTable.Resource.Acting
-  alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Table
 
   # LiveView's own limit (`Phoenix.LiveView.UploadConfig`)
   @max_file_size 8_000_000
@@ -35,9 +35,9 @@ defmodule AshTable.Resource.Uploading do
   What the upload of the argument `name` is limited to: what the `upload`
   of the block says for it, else LiveView's own limits.
   """
-  @spec limits(Ash.Resource.t() | Spark.Dsl.t(), atom) :: limits
-  def limits(resource, name) do
-    declared = Enum.find(TableInfo.uploads(resource), &(&1.name == name))
+  @spec limits(Table.t(), atom) :: limits
+  def limits(%Table{uploads: uploads}, name) do
+    declared = Enum.find(uploads, &(&1.name == name))
 
     %{
       accept: (declared && declared.accept) || :any,
@@ -55,11 +55,11 @@ defmodule AshTable.Resource.Uploading do
   else when the panel opens: a file name extension with a known MIME type,
   a known MIME type, or one of the wildcards for media files.
   """
-  @spec mistakes(Ash.Resource.t() | Spark.Dsl.t(), AshTable.Resource.Upload.t()) ::
+  @spec mistakes(Ash.Resource.t() | Spark.Dsl.t(), Table.t(), AshTable.Resource.Upload.t()) ::
           [{:accept | nil, reason}]
-  def mistakes(resource, %{name: name} = declaration) do
+  def mistakes(resource, table, %{name: name} = declaration) do
     arguments =
-      for action <- offered(resource),
+      for action <- offered(resource, table),
           %{name: ^name, public?: true} = argument <- action.arguments,
           do: {action, argument}
 
@@ -94,15 +94,15 @@ defmodule AshTable.Resource.Uploading do
 
   # The actions the table offers a person: those its `action`s name, and
   # its create action.
-  defp offered(resource) do
+  defp offered(resource, table) do
     named =
-      for %{name: name} <- TableInfo.actions(resource),
+      for %{name: name} <- table.actions,
           action = Info.action(resource, name),
           do: action
 
-    case TableInfo.table_create_action(resource) do
-      {:ok, name} -> named ++ List.wrap(Info.action(resource, name))
-      :error -> named
+    case table.create_action do
+      nil -> named
+      name -> named ++ List.wrap(Info.action(resource, name))
     end
   end
 

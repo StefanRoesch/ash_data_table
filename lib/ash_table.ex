@@ -3,8 +3,9 @@ defmodule AshTable do
   Presents an Ash resource to people as a table in Phoenix LiveView.
 
   A resource gets a table by listing the extension `AshTable.Resource`, and
-  optionally describing the table in a `table do … end` block. The table
-  reaches a page in one of two ways:
+  optionally describing the table in a `table do … end` block: its default
+  table. It can have further, named tables beside it (`tables do table
+  :compact do … end end`). A table reaches a page in one of two ways:
 
     * mounted as a page of its own, with one line in the router: see
       `AshTable.Router.ash_table/3`;
@@ -54,6 +55,17 @@ defmodule AshTable do
 
       <AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 
+  That is the resource's default table. `table` places one of its named
+  tables (see "Named tables" in `AshTable.Resource`):
+
+      <AshTable.table resource={MyApp.Tracker.Task} table={:board} scope={@current_scope} />
+
+  The `id` can be left out: it is then the last part of the resource's
+  module name, underscored, followed by `_` and the table's name for a
+  named table (`task`, `task_board`). So the tables of one resource can
+  stand on one page without an id being written; two placements of the
+  same table need one each.
+
   The table reads through the resource's read action, saves through its
   update actions, and runs the row actions and the create action its block
   declares. Pass who is reading as `scope` (an `Ash.Scope`), or as
@@ -87,7 +99,7 @@ defmodule AshTable do
   argument that is a function is given `assigns`.
 
   A nested table links to its full view wherever the host's router mounts
-  the destination's table with `AshTable.Router.ash_table/3`, also from a
+  the table that is nested with `AshTable.Router.ash_table/3`, also from a
   table placed here.
 
   ## The line of the table's name
@@ -112,12 +124,18 @@ defmodule AshTable do
   whose read is refused outright renders nothing, this line included.
   """
   attr :id, :string,
-    required: true,
-    doc: "Unique on the page. It prefixes every DOM id of the table and names its URL parameters."
+    default: nil,
+    doc:
+      "Unique on the page. It prefixes every DOM id of the table and names its URL parameters. Defaults to the last part of the resource's module name, underscored (`\"task\"`), and for a named table to that, `_` and the table's name (`\"task_board\"`)."
 
   attr :resource, :atom,
     required: true,
     doc: "An Ash resource that lists the extension `AshTable.Resource`."
+
+  attr :table, :atom,
+    default: nil,
+    doc:
+      "Which of the resource's tables is placed: the name of one of its named tables (a `table` of its `tables` block), such as `:compact`. Left out, or `:default`, it is the resource's default table, the one of its `table` block."
 
   attr :scope, :any, default: nil, doc: "An `Ash.Scope` carrying actor and tenant."
   attr :actor, :any, default: nil, doc: "The actor, used when no `scope` is given."
@@ -149,6 +167,21 @@ defmodule AshTable do
 
   def table(assigns) do
     assigns = assign_new(assigns, :grid_label, fn -> assigns.label || label(assigns.resource) end)
+    table = assigns.table || :default
+
+    # (a resource without the extension is the table model's to refuse)
+    if AshTable.Resource.Relating.table?(assigns.resource) and
+         AshTable.Resource.Info.table(assigns.resource, table) == :error do
+      raise ArgumentError,
+            "<AshTable.table> was given `table={#{inspect(table)}}`, but " <>
+              AshTable.Resource.Info.no_table(assigns.resource, table)
+    end
+
+    assigns =
+      assign(assigns,
+        table: table,
+        id: assigns.id || AshTable.Routes.default_id(assigns.resource, table)
+      )
 
     if assigns.heading not in [true, false, 1, 2, 3, 4, 5, 6] do
       raise ArgumentError,
@@ -161,6 +194,7 @@ defmodule AshTable do
       module={AshTable.Live.TableComponent}
       id={@id}
       resource={@resource}
+      table={@table}
       scope={@scope}
       actor={@actor}
       tenant={@tenant}

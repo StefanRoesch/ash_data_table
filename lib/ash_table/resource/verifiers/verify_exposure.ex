@@ -25,8 +25,21 @@ defmodule AshTable.Resource.Verifiers.VerifyExposure do
   def verify(dsl) do
     module = Verifier.get_persisted(dsl, :module)
 
+    # of every table of the resource, each by itself
+    warnings =
+      for table <- AshTable.Resource.Info.tables(dsl),
+          warning <- warnings(dsl, module, table),
+          do: warning
+
+    case warnings do
+      [] -> :ok
+      warnings -> {:warn, Enum.map(warnings, &located/1)}
+    end
+  end
+
+  defp warnings(dsl, module, table) do
     columns =
-      for column <- AshTable.Resource.Info.columns(dsl),
+      for column <- table.columns,
           field = Info.calculation(dsl, column.name) || Info.aggregate(dsl, column.name),
           do: {column, field}
 
@@ -45,10 +58,7 @@ defmodule AshTable.Resource.Verifiers.VerifyExposure do
           not (column.sortable? == false and column.filterable? == false),
           do: {apart(field, calculation), Spark.Dsl.Entity.anno(column)}
 
-    case exposed ++ apart do
-      [] -> :ok
-      warnings -> {:warn, Enum.map(warnings, &located/1)}
-    end
+    exposed ++ apart
   end
 
   # A warning without a place in the source is the text alone.

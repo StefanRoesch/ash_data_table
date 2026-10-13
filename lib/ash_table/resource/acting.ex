@@ -17,6 +17,7 @@ defmodule AshTable.Resource.Acting do
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Managing
   alias AshTable.Resource.Referencing
+  alias AshTable.Resource.Table
 
   # What a value that has no editor of its own is stored as, where it can be
   # written as one line of text: a key, a time, an atom.
@@ -167,21 +168,20 @@ defmodule AshTable.Resource.Acting do
   defp stored_as(%{type: type, constraints: constraints}),
     do: Ash.Type.storage_type(type, constraints || [])
 
-  @doc "The create action of the table: `:none` when the block names none."
-  @spec create_action(Ash.Resource.t() | Spark.Dsl.t()) ::
+  @doc """
+  The create action of `table` (an `AshTable.Resource.Table`): `:none` when
+  its block names none.
+  """
+  @spec create_action(Ash.Resource.t() | Spark.Dsl.t(), Table.t()) ::
           {:ok, Ash.Resource.Actions.Create.t()} | :none | {:error, reason}
-  def create_action(resource) do
-    case AshTable.Resource.Info.table_create_action(resource) do
-      {:ok, name} ->
-        case Info.action(resource, name) do
-          nil -> {:error, {:not_found, name}}
-          %{type: type} when type != :create -> {:error, {:not_a_create_action, name, type}}
-          %{public?: false} -> {:error, {:not_public, name}}
-          action -> {:ok, action}
-        end
+  def create_action(_resource, %Table{create_action: nil}), do: :none
 
-      :error ->
-        :none
+  def create_action(resource, %Table{create_action: name}) do
+    case Info.action(resource, name) do
+      nil -> {:error, {:not_found, name}}
+      %{type: type} when type != :create -> {:error, {:not_a_create_action, name, type}}
+      %{public?: false} -> {:error, {:not_public, name}}
+      action -> {:ok, action}
     end
   end
 
@@ -463,8 +463,8 @@ defmodule AshTable.Resource.Acting do
   `columns` are the fields of the table's columns, each with its column as
   written in the block (nil for a column of the default set).
   """
-  @spec unloadable_after_action(Ash.Resource.t(), [{struct, struct | nil}]) :: [atom]
-  def unloadable_after_action(resource, columns) do
+  @spec unloadable_after_action(Ash.Resource.t(), Table.t(), [{struct, struct | nil}]) :: [atom]
+  def unloadable_after_action(resource, table, columns) do
     loaded =
       for {%struct{name: name}, _declared} <- columns,
           struct in [
@@ -475,11 +475,10 @@ defmodule AshTable.Resource.Acting do
           do: name
 
     acting? =
-      record_actions?(resource) or
-        AshTable.Resource.Info.table_create_action(resource) != :error
+      record_actions?(resource, table) or not is_nil(table.create_action)
 
     if acting? and is_nil(Info.primary_action(resource, :read)) and
-         Editing.unloadable_after_save(resource, columns) == [],
+         Editing.unloadable_after_save(resource, table, columns) == [],
        do: loaded,
        else: []
   end
@@ -499,10 +498,10 @@ defmodule AshTable.Resource.Acting do
   The table changes records when it has an editable column, a row action
   or a create action.
   """
-  @spec private_result_read(Ash.Resource.t()) :: atom | nil
-  def private_result_read(resource) do
+  @spec private_result_read(Ash.Resource.t(), Table.t()) :: atom | nil
+  def private_result_read(resource, table) do
     with %{public?: false, name: name} <- Info.primary_action(resource, :read),
-         true <- changes?(resource) do
+         true <- changes?(resource, table) do
       name
     else
       _public_or_none_or_read_only -> nil
@@ -516,16 +515,16 @@ defmodule AshTable.Resource.Acting do
   the argument. Nil when nothing is wrong.
 
   Ash loads what a create, an update or a destroy action returns through
-  the primary read action, without arguments (`private_result_read/1`), so
+  the primary read action, without arguments (`private_result_read/2`), so
   a row could never be shown again after one.
   """
-  @spec unanswered_result_read(Ash.Resource.t()) :: {atom, atom} | nil
-  def unanswered_result_read(resource) do
+  @spec unanswered_result_read(Ash.Resource.t(), Table.t()) :: {atom, atom} | nil
+  def unanswered_result_read(resource, table) do
     with %{name: name, arguments: arguments} <- Info.primary_action(resource, :read),
          %{name: argument} <-
            Enum.find(arguments, &(&1.allow_nil? == false and is_nil(&1.default))),
-         true <- changes?(resource),
-         true <- Enum.any?(columns(resource), fn {field, _declared} -> loaded?(field) end) do
+         true <- changes?(resource, table),
+         true <- Enum.any?(columns(resource, table), fn {field, _declared} -> loaded?(field) end) do
       {name, argument}
     else
       _nothing_wrong -> nil
@@ -542,8 +541,8 @@ defmodule AshTable.Resource.Acting do
 
   # The fields of the table's columns, each with its column as written in
   # the block (nil for a column of the default set).
-  defp columns(resource) do
-    case AshTable.Resource.Info.columns(resource) do
+  defp columns(resource, table) do
+    case table.columns do
       [] ->
         Enum.map(Info.public_attributes(resource), &{&1, nil})
 
@@ -552,21 +551,21 @@ defmodule AshTable.Resource.Acting do
     end
   end
 
-  defp changes?(resource) do
-    columns = columns(resource)
+  defp changes?(resource, table) do
+    columns = columns(resource, table)
 
-    record_actions?(resource) or
-      AshTable.Resource.Info.table_create_action(resource) != :error or
+    record_actions?(resource, table) or
+      not is_nil(table.create_action) or
       Enum.any?(columns, fn {field, declared} ->
-        Editing.update_action(resource, field, declared) != :none
+        Editing.update_action(resource, table, field, declared) != :none
       end)
   end
 
   # Whether the block names an action that returns a record, which the row
   # is then shown from: an update or a destroy action. A generic action
   # returns no row: the table reads again after it.
-  defp record_actions?(resource) do
-    Enum.any?(AshTable.Resource.Info.actions(resource), fn %{name: name} ->
+  defp record_actions?(resource, table) do
+    Enum.any?(table.actions, fn %{name: name} ->
       not match?(%{type: :action}, Info.action(resource, name))
     end)
   end

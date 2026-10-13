@@ -136,6 +136,7 @@ test.describe("in German", () => {
       "Labels",
       "Specimens",
       "Dashboard",
+      "Named tables",
     ])
     await expect(page.getByLabel("Acting as")).toBeVisible()
   })

@@ -11,6 +11,13 @@ defmodule AshTable.Related do
   # resource, the name of its relationship, and the parent's primary key; the
   # key by attribute where it has several.
   #
+  # A resource has several tables, and each offers relationships of its own:
+  # the parent is the table that offers the relationship. A named table of
+  # the parent is named by the resource's short name, `_` and the table's
+  # name (`comment[of][task_board][comments]=…`), and the relationship has to
+  # be one that nests this very table: a page of a named table is the full
+  # view of the nested tables that show that named table, and of no other.
+  #
   # What is named is only ever looked up, never made: the parent among the
   # resources the application knows, by its short name as text, and only one
   # whose table offers this person that relationship to this table's
@@ -42,19 +49,20 @@ defmodule AshTable.Related do
   def param, do: @param
 
   @doc """
-  The limit that a table's parameters name, for the table of `resource` and
-  the person `reader` says is asking. Nil when they name none, or one that
-  is not to be had: see above.
+  The limit that a table's parameters name, for the table `table` of
+  `resource` (`:default` for its default table) and the person `reader`
+  says is asking. Nil when they name none, or one that is not to be had:
+  see above.
 
   `endpoint` is the host's, which says whose application's resources are
   looked through.
   """
-  @spec from_params(Ash.Resource.t(), term, keyword, module | nil) :: t | nil
-  def from_params(resource, %{@param => %{} = named}, reader, endpoint) do
+  @spec from_params(Ash.Resource.t(), atom, term, keyword, module | nil) :: t | nil
+  def from_params(resource, table, %{@param => %{} = named}, reader, endpoint) do
     with [{parent_name, %{} = relationships}] <- Map.to_list(named),
          [{relationship_name, key}] <- Map.to_list(relationships),
          %Relationship{} = via <-
-           offered(resource, parent_name, relationship_name, reader, endpoint),
+           offered({resource, table}, parent_name, relationship_name, reader, endpoint),
          {:ok, key} <- cast_key(via.source, key),
          {:ok, param} <- to_param(via, key) do
       %{via: via, key: key, param: param}
@@ -63,7 +71,7 @@ defmodule AshTable.Related do
     end
   end
 
-  def from_params(_resource, _params, _reader, _endpoint), do: nil
+  def from_params(_resource, _table, _params, _reader, _endpoint), do: nil
 
   @doc """
   The limit as the parameter `of` holds it, for a table reached through
@@ -72,27 +80,34 @@ defmodule AshTable.Related do
   @spec to_param(Relationship.t(), map) :: {:ok, map} | :error
   def to_param(%Relationship{} = via, key) when is_map(key) do
     with {:ok, value} <- key_param(via.source, key) do
-      {:ok, %{name(via.source) => %{Atom.to_string(via.name) => value}}}
+      {:ok, %{name(via.source, via.source_table) => %{Atom.to_string(via.name) => value}}}
     end
   end
 
   @doc """
   Where the records of a nested table are shown in the full view: the page
-  the router mounts the destination's table at, with the limit in the
-  table's parameters. Nil when the router mounts no such page, and when that
-  page could not tell which record is meant.
+  the router mounts the nested table at (the table of the destination that
+  the relationship nests, and no other of its tables), with the limit in
+  the table's parameters. Nil when the router mounts no such page, and when
+  that page could not tell which record is meant.
 
   `authorize?` is what the nested table was told about authorization, nil
   for nothing: the page is one that is mounted the same way
-  (`AshTable.Routes.table/3`).
+  (`AshTable.Routes.table/4`).
   """
   @spec path(module | nil, module | nil, Relationship.t(), map, boolean | nil) ::
           String.t() | nil
   def path(router, endpoint, %Relationship{} = via, key, authorize? \\ nil) do
-    with %{path: path, id: id} <- Routes.table(router, via.destination, authorize?),
+    with %{path: path, id: id} <- Routes.table(router, via.destination, via.table, authorize?),
          {:ok, param} <- to_param(via, key),
          # the page has to find the parent again by the name it is given
-         [_one] <- named(via.destination, name(via.source), via.name, endpoint) do
+         [_one] <-
+           named(
+             {via.destination, via.table},
+             name(via.source, via.source_table),
+             via.name,
+             endpoint
+           ) do
       path <> "?" <> Plug.Conn.Query.encode(%{id => %{@param => param}})
     else
       _ -> nil
@@ -102,10 +117,10 @@ defmodule AshTable.Related do
   # The relationship of that name which the table of a resource of that
   # short name offers this person, to this table's resource. Looked up as
   # text, so that text from the outside is never turned into an atom.
-  defp offered(resource, parent_name, relationship_name, reader, endpoint) do
-    case named(resource, parent_name, relationship_name, endpoint) do
+  defp offered({resource, table} = shown, parent_name, relationship_name, reader, endpoint) do
+    case named(shown, parent_name, relationship_name, endpoint) do
       [model] ->
-        with %Relationship{destination: ^resource} = via <-
+        with %Relationship{destination: ^resource, table: ^table} = via <-
                model |> Model.for_actor(reader) |> Model.relationship(relationship_name),
              do: via
 
@@ -114,33 +129,37 @@ defmodule AshTable.Related do
     end
   end
 
-  # The resources of that short name whose table has such a relationship to
-  # this resource, and lets its rows expand at all: the models of their
-  # tables, as they are for everybody.
+  # The tables of that name (a resource's short name, with `_` and the
+  # table's name for a named table) that have such a relationship to this
+  # table of this resource, and let their rows expand at all: their models,
+  # as they are for everybody.
   #
   # Not one whose read action requires an argument: the full view reads the
   # parent through that action, and a URL that names a record says nothing
   # of what the parent's table was given when the record was found.
-  defp named(resource, parent_name, relationship_name, endpoint)
+  defp named({resource, table}, parent_name, relationship_name, endpoint)
        when is_binary(parent_name) and
               (is_binary(relationship_name) or is_atom(relationship_name)) do
     relationship_name = to_string(relationship_name)
 
     for parent <- known(resource, endpoint),
-        name(parent) == parent_name,
+        # a name can only be one that starts with the resource's own
+        String.starts_with?(parent_name, name(parent, :default)),
         Relating.table?(parent),
-        model = Model.build(parent),
+        %{name: parent_table} <- AshTable.Resource.Info.tables(parent),
+        name(parent, parent_table) == parent_name,
+        model = Model.build(parent, table: parent_table),
         model.max_depth > 0,
         not needs_argument?(parent, model.read_action),
         match?(
-          %Relationship{destination: ^resource},
+          %Relationship{destination: ^resource, table: ^table},
           Model.relationship(model, relationship_name)
         ) do
       model
     end
   end
 
-  defp named(_resource, _parent_name, _relationship_name, _endpoint), do: []
+  defp named(_shown, _parent_name, _relationship_name, _endpoint), do: []
 
   defp needs_argument?(resource, read_action) do
     resource
@@ -169,8 +188,10 @@ defmodule AshTable.Related do
     end
   end
 
-  # What a resource is called in a URL: its short name.
-  defp name(resource), do: resource |> Info.short_name() |> Atom.to_string()
+  # What a table of a resource is called in a URL: the resource's short
+  # name, and for a named table that, `_` and the table's name.
+  defp name(resource, :default), do: resource |> Info.short_name() |> Atom.to_string()
+  defp name(resource, table), do: name(resource, :default) <> "_" <> Atom.to_string(table)
 
   # The primary key from a URL: the one value of a key of one attribute, the
   # values by attribute of a key of several, each cast to its attribute's type.

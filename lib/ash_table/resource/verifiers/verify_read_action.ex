@@ -4,6 +4,7 @@ defmodule AshTable.Resource.Verifiers.VerifyReadAction do
 
   alias AshTable.Resource.Arguing
   alias AshTable.Resource.Reading
+  alias AshTable.Resource.Table
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
@@ -11,44 +12,61 @@ defmodule AshTable.Resource.Verifiers.VerifyReadAction do
   def verify(dsl) do
     module = Verifier.get_persisted(dsl, :module)
 
-    with {:ok, action} <- Reading.read_action(module),
-         {:ok, _strategy} <- Reading.strategy(module, action) do
-      case argument_errors(dsl, module, action) do
-        [] -> :ok
-        errors -> {:error, errors}
-      end
+    # every table of the resource reads through an action of its own
+    errors =
+      for table <- AshTable.Resource.Info.tables(dsl),
+          error <- errors(dsl, module, table),
+          do: error
+
+    case errors do
+      [] -> :ok
+      errors -> {:error, errors}
+    end
+  end
+
+  defp errors(dsl, module, table) do
+    with {:ok, action} <- Reading.read_action(module, table),
+         {:ok, _strategy} <- Reading.strategy(table, action) do
+      argument_errors(dsl, module, table, action)
     else
       {:error, {:unsupported, strategy}} ->
-        {:ok, action} = Reading.read_action(module)
+        {:ok, action} = Reading.read_action(module, table)
 
-        {:error,
-         error(
-           dsl,
-           module,
-           :paginate_with,
-           "The read action `#{action.name}` does not support #{strategy} pagination. #{supported(action)}"
-         )}
+        [
+          error(
+            dsl,
+            module,
+            table,
+            :paginate_with,
+            "The read action `#{action.name}` does not support #{strategy} pagination. #{supported(action)}"
+          )
+        ]
 
       {:error, reason} ->
-        {:error, error(dsl, module, :read_action, Reading.message(reason))}
+        [error(dsl, module, table, :read_action, Reading.message(reason))]
     end
   end
 
   # The arguments of the read action are the person's to give, in the
   # argument line: one the action does not run without has to have an input
   # there, and an `argument` of the block names one of them.
-  defp argument_errors(dsl, module, action) do
+  defp argument_errors(dsl, module, table, action) do
     unanswerable =
       for input <- Arguing.unanswerable(action) do
-        error(dsl, module, :read_action, Arguing.message({:no_input, :read, action.name, input}))
+        error(
+          dsl,
+          module,
+          table,
+          :read_action,
+          Arguing.message({:no_input, :read, action.name, input})
+        )
       end
 
     declared =
-      for {declaration, reason} <-
-            Arguing.declared_mistakes(action, AshTable.Resource.Info.arguments(dsl)) do
+      for {declaration, reason} <- Arguing.declared_mistakes(action, table.arguments) do
         DslError.exception(
           module: module,
-          path: [:table, :argument, declaration.name],
+          path: Table.path(table) ++ [:argument, declaration.name],
           message: Arguing.message(reason),
           location: Spark.Dsl.Entity.anno(declaration)
         )
@@ -64,12 +82,14 @@ defmodule AshTable.Resource.Verifiers.VerifyReadAction do
     end
   end
 
-  defp error(dsl, module, option, message) do
+  # At the option where the block gives it, else at the table: a table
+  # that names no read action is read through the primary one.
+  defp error(dsl, module, table, option, message) do
     DslError.exception(
       module: module,
-      path: [:table, option],
+      path: Table.path(table) ++ [option],
       message: message,
-      location: Spark.Dsl.Transformer.get_opt_anno(dsl, [:table], option)
+      location: Table.option_anno(dsl, table, option) || Table.anno(dsl, table)
     )
   end
 end

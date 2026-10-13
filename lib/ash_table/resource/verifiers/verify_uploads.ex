@@ -4,6 +4,7 @@ defmodule AshTable.Resource.Verifiers.VerifyUploads do
   # accepts what LiveView takes.
   use Spark.Dsl.Verifier
 
+  alias AshTable.Resource.Table
   alias AshTable.Resource.Uploading
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
@@ -13,11 +14,12 @@ defmodule AshTable.Resource.Verifiers.VerifyUploads do
     module = Verifier.get_persisted(dsl, :module)
 
     errors =
-      for declaration <- AshTable.Resource.Info.uploads(dsl),
-          {option, reason} <- Uploading.mistakes(dsl, declaration) do
+      for table <- AshTable.Resource.Info.tables(dsl),
+          declaration <- table.uploads,
+          {option, reason} <- Uploading.mistakes(dsl, table, declaration) do
         DslError.exception(
           module: module,
-          path: [:table, :upload, declaration.name] ++ List.wrap(option),
+          path: Table.path(table) ++ [:upload, declaration.name] ++ List.wrap(option),
           message: Uploading.message(reason),
           location:
             if(option,

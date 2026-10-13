@@ -6,7 +6,12 @@ defmodule AshTable.Model do
   # block (see ADR 0001). Building is cheap and the result is not cached
   # here: a table keeps the one it shows for as long as its page lives.
   #
-  #   * `resource` and its `primary_key`;
+  #   * `resource` and its `primary_key`, and `table`: the name of the
+  #     table of the resource that this is the model of, `:default` for the
+  #     default table (the `table` block), else that of a named table (a
+  #     `table` of the `tables` block). A resource has a model per table;
+  #   * `on_forbidden`, what the table shows a person whose read is refused
+  #     outright;
   #   * `read_action`, the name of the read action behind the table;
   #   * `pagination`, an `AshTable.Model.Pagination`;
   #   * `columns`, the ordered list of `AshTable.Model.Column`;
@@ -299,11 +304,15 @@ defmodule AshTable.Model do
     table_actions: [],
     arguments: [],
     read_arguments: %{},
-    max_depth: 3
+    max_depth: 3,
+    table: :default,
+    on_forbidden: :not_found
   ]
 
   @type t :: %__MODULE__{
           resource: Ash.Resource.t(),
+          table: atom,
+          on_forbidden: :not_found | :message,
           primary_key: [atom],
           read_action: atom,
           pagination: Pagination.t(),
@@ -322,16 +331,23 @@ defmodule AshTable.Model do
   @default_page_size 25
 
   @doc """
-  Builds the table model of a resource.
+  Builds the model of a table of a resource: of its default table, or of
+  the named table that `:table` names.
 
   The resource must list the extension `AshTable.Resource`. The model is the
   same whoever asks; `for_actor/2` gives the one a person meets.
 
   ## Options
 
+    * `:table` - which of the resource's tables: `:default` (or nothing) for
+      its default table, else the name of one of its named tables. A table
+      the resource does not have is refused, with the tables it has.
+
     * `:via` - the `AshTable.Model.Relationship` of another table's model
       whose destination this resource is. The model is then that of the
       nested table of the records related to one row: see "Nested" above.
+      It is the table of the resource that the relationship nests (its
+      `table`); a `:table` beside it has to name the same.
 
     * `:choose` - the name of a public read action of the resource. The
       model is then that of the table as a picker shows it, read through
@@ -363,31 +379,36 @@ defmodule AshTable.Model do
     ensure_table!(resource)
 
     via = via!(resource, opts[:via])
+    table = table!(resource, opts[:table], via)
     choose = opts[:choose]
 
     read_action =
-      if choose, do: choose_action!(resource, choose), else: read_action!(resource, via)
+      if choose,
+        do: choose_action!(resource, table, choose),
+        else: read_action!(resource, table, via)
 
-    source_read_action!(resource, via)
+    source_read_action!(resource, table, via)
 
     pagination =
       if choose,
-        do: choose_pagination(resource, read_action),
-        else: pagination(resource, read_action, via)
+        do: choose_pagination(table, read_action),
+        else: pagination(resource, table, read_action, via)
 
-    update_actions!(resource)
+    update_actions!(resource, table)
 
     # each field with its column as written in the block, or nil for a
     # column of the default set
     fields =
-      case TableInfo.columns(resource) do
+      case table.columns do
         [] -> Enum.map(Info.public_attributes(resource), &{&1, nil})
-        declared -> Enum.map(declared, &{field!(resource, &1.name), &1})
+        declared -> Enum.map(declared, &{field!(resource, table, &1.name), &1})
       end
 
-    for {field, declared} <- fields, do: arguments!(resource, field, declared)
+    declared_once!(resource, table)
 
-    row_refresh!(resource, fields)
+    for {field, declared} <- fields, do: arguments!(resource, table, field, declared)
+
+    row_refresh!(resource, table, fields)
 
     apart =
       for {name, _calculation} <- Reading.apart(resource, Enum.map(fields, &elem(&1, 0))),
@@ -396,26 +417,28 @@ defmodule AshTable.Model do
     columns =
       Enum.map(fields, fn {field, declared} ->
         resource
-        |> column(field, declared, pagination)
+        |> column(table, field, declared, pagination)
         |> arrangeable(via)
         |> apart(field.name in apart)
       end)
 
-    offered = actions!(resource, columns)
+    offered = actions!(resource, table, columns)
 
     model = %__MODULE__{
       resource: resource,
+      table: table.name,
       primary_key: Info.primary_key(resource),
       read_action: read_action.name,
       pagination: pagination,
       columns: columns,
-      arguments: arguments(resource, read_action, fields),
-      relationships: relationships!(resource, read_action),
+      arguments: arguments(table, read_action, fields),
+      relationships: relationships!(resource, table, read_action),
       actions: for({:row, action} <- offered, do: action),
       table_actions: for({:table, action} <- offered, do: action),
-      create: create!(resource, columns, via),
+      create: create!(resource, table, columns, via),
       name: name(resource),
-      max_depth: TableInfo.table_max_depth!(resource),
+      max_depth: table.max_depth,
+      on_forbidden: table.on_forbidden,
       via: via
     }
 
@@ -904,11 +927,14 @@ defmodule AshTable.Model do
   them holds something this person may see is known once a record is read.
   """
   @spec naming(t) :: [Column.t()]
-  def naming(%__MODULE__{resource: resource, columns: columns, pagination: pagination}) do
+  def naming(%__MODULE__{resource: resource, columns: columns, pagination: pagination} = model) do
     label =
       case Referencing.label_field(resource) do
-        {:ok, attribute} -> [column(resource, attribute, nil, pagination)]
-        _none_or_unusable -> []
+        {:ok, attribute} ->
+          [column(resource, TableInfo.table!(resource, model.table), attribute, nil, pagination)]
+
+        _none_or_unusable ->
+          []
       end
 
     # never by a sensitive one: a name is shown to whoever sees the record
@@ -969,6 +995,51 @@ defmodule AshTable.Model do
 
   def relationship(%__MODULE__{}, _name), do: nil
 
+  # Which table of the resource is built: the one that is named, and for a
+  # nested table the one its relationship nests. `:default`, or nothing, is
+  # the default table.
+  defp table!(resource, name, via) do
+    nested = via && via.table
+
+    if name not in [nil, nested] and not is_nil(via) do
+      raise ArgumentError,
+            "cannot build the nested table of #{inspect(resource)}: its relationship " <>
+              "`#{via.name}` nests the table `#{inspect(nested)}`, and the table " <>
+              "`#{inspect(name)}` was asked for"
+    end
+
+    case TableInfo.table(resource, name || nested || :default) do
+      {:ok, table} ->
+        table
+
+      :error ->
+        raise ArgumentError,
+              "cannot build a table of #{inspect(resource)}: " <>
+                TableInfo.no_table(resource, name || nested)
+    end
+  end
+
+  # "table of MyApp.Task", and "table `:board` of MyApp.Task" for a named one
+  defp whose(resource, %AshTable.Resource.Table{name: :default}),
+    do: "table of #{inspect(resource)}"
+
+  defp whose(resource, %AshTable.Resource.Table{name: name}),
+    do: "table `#{inspect(name)}` of #{inspect(resource)}"
+
+  # A named table that declares something twice: Spark reports it for the
+  # `table` block, and the verifier (`VerifyTables`) for a named table.
+  defp declared_once!(resource, table) do
+    keys = Enum.map(table.columns, & &1.key)
+
+    with [key | _] <- keys -- Enum.uniq(keys) do
+      raise ArgumentError,
+            "cannot build the #{whose(resource, table)}: it declares the column `#{key}` more " <>
+              "than once"
+    end
+
+    :ok
+  end
+
   defp ensure_table!(resource) do
     if not Relating.table?(resource) do
       raise ArgumentError,
@@ -980,12 +1051,12 @@ defmodule AshTable.Model do
   # The verifiers report the mistakes below when the resource is compiled.
   # They are raised here for a resource that was compiled despite them.
 
-  defp read_action!(resource, nil) do
-    case Reading.read_action(resource) do
+  defp read_action!(resource, table, nil) do
+    case Reading.read_action(resource, table) do
       {:ok, action} ->
         with [input | _] <- Arguing.unanswerable(action) do
           raise ArgumentError,
-                "cannot build the table of #{inspect(resource)}: its read action cannot be used. " <>
+                "cannot build the #{whose(resource, table)}: its read action cannot be used. " <>
                   Arguing.message({:no_input, :read, action.name, input})
         end
 
@@ -994,12 +1065,12 @@ defmodule AshTable.Model do
       # the primary read action the table would fall back to is private
       {:error, {:primary_not_public, _name} = reason} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: its read action cannot be used. " <>
+              "cannot build the #{whose(resource, table)}: its read action cannot be used. " <>
                 Reading.message(reason)
 
       {:error, reason} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: " <>
+              "cannot build the #{whose(resource, table)}: " <>
                 "no usable read action (#{inspect(reason)})"
     end
   end
@@ -1010,8 +1081,8 @@ defmodule AshTable.Model do
   # resource was compiled again, is refused and never read through another
   # action in its place. The table's own is checked all the same: a table
   # that cannot be built is refused wherever it is shown.
-  defp read_action!(resource, %Relationship{read_action: name} = via) do
-    read_action!(resource, nil)
+  defp read_action!(resource, table, %Relationship{read_action: name} = via) do
+    read_action!(resource, table, nil)
 
     case Info.action(resource, name) do
       %{type: :read, public?: true} = action ->
@@ -1019,7 +1090,7 @@ defmodule AshTable.Model do
 
       found ->
         raise ArgumentError,
-              "cannot build the nested table of #{inspect(resource)}: the relationship " <>
+              "cannot build the nested #{whose(resource, table)}: the relationship " <>
                 "`#{via.name}` it is reached through reads through `#{name}`, " <>
                 unusable(found, resource)
     end
@@ -1029,8 +1100,8 @@ defmodule AshTable.Model do
   # relationship names, or the one of this table. It is looked up once more,
   # as the action of a nested table is, and the table's own is checked all
   # the same.
-  defp choose_action!(resource, name) do
-    read_action!(resource, nil)
+  defp choose_action!(resource, table, name) do
+    read_action!(resource, table, nil)
 
     case Info.action(resource, name) do
       %{type: :read, public?: true} = action ->
@@ -1038,7 +1109,7 @@ defmodule AshTable.Model do
 
       found ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)} to choose a record from: it would " <>
+              "cannot build the #{whose(resource, table)} to choose a record from: it would " <>
                 "be read through `#{name}`, " <> unusable(found, resource)
     end
   end
@@ -1046,8 +1117,8 @@ defmodule AshTable.Model do
   # The strategy the block names when the action that is read through
   # supports it, which a relationship's own action need not; else what that
   # action supports, and no pages when it declares none.
-  defp choose_pagination(resource, read_action) do
-    case Reading.strategy(resource, read_action) do
+  defp choose_pagination(table, read_action) do
+    case Reading.strategy(table, read_action) do
       {:ok, strategy} ->
         pagination(read_action, strategy)
 
@@ -1061,16 +1132,19 @@ defmodule AshTable.Model do
 
   # The row a nested table belongs to is read again through the read action
   # of the table that shows it, which has to be a public read action too.
-  defp source_read_action!(_resource, nil), do: :ok
+  defp source_read_action!(_resource, _table, nil), do: :ok
 
-  defp source_read_action!(resource, %Relationship{source: source, source_read_action: name}) do
+  defp source_read_action!(resource, table, %Relationship{
+         source: source,
+         source_read_action: name
+       }) do
     case Info.action(source, name) do
       %{type: :read, public?: true} ->
         :ok
 
       found ->
         raise ArgumentError,
-              "cannot build the nested table of #{inspect(resource)}: the row it belongs to " <>
+              "cannot build the nested #{whose(resource, table)}: the row it belongs to " <>
                 "would be read through `#{name}` of #{inspect(source)}, " <>
                 unusable(found, source)
     end
@@ -1092,26 +1166,26 @@ defmodule AshTable.Model do
             "of a table model whose destination it is, got: #{inspect(other)}"
   end
 
-  defp pagination(resource, read_action, nil) do
-    case Reading.strategy(resource, read_action) do
+  defp pagination(resource, table, read_action, nil) do
+    case Reading.strategy(table, read_action) do
       {:ok, strategy} ->
         pagination(read_action, strategy)
 
       {:error, {:unsupported, strategy}} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: its read action " <>
+              "cannot build the #{whose(resource, table)}: its read action " <>
                 "`#{read_action.name}` does not support #{strategy} pagination"
     end
   end
 
   # What Ash cannot page comes back in full, whatever the action declares.
-  defp pagination(_resource, read_action, %Relationship{pageable?: false}),
+  defp pagination(_resource, _table, read_action, %Relationship{pageable?: false}),
     do: pagination(read_action, :none)
 
   # The strategy the block names when the action that runs supports it, which
   # the relationship's own action need not.
-  defp pagination(resource, read_action, %Relationship{}) do
-    case Reading.strategy(resource, read_action) do
+  defp pagination(_resource, table, read_action, %Relationship{}) do
+    case Reading.strategy(table, read_action) do
       {:ok, strategy} ->
         pagination(read_action, strategy)
 
@@ -1136,11 +1210,12 @@ defmodule AshTable.Model do
 
   # The relationships of the block, or the default set, each with what its
   # nested table can do. The destination is looked at, never built.
-  defp relationships!(resource, source_read_action) do
-    case Relating.offered(resource) do
+  defp relationships!(resource, table, source_read_action) do
+    case Relating.offered(resource, table) do
       {:ok, offered} ->
         for {relationship, declared} <- offered do
-          read_action = relationship_read_action!(resource, relationship)
+          nested = Relating.nested(declared)
+          read_action = relationship_read_action!(resource, table, relationship, nested)
           arrangeable? = Relating.arrangeable?(relationship)
 
           %Relationship{
@@ -1149,9 +1224,12 @@ defmodule AshTable.Model do
             kind: relationship.type,
             cardinality: relationship.cardinality,
             source: resource,
+            source_table: table.name,
             # the row of a nested table is read again as this table reads it
             source_read_action: source_read_action.name,
             destination: relationship.destination,
+            # which of the destination's tables is nested
+            table: nested,
             read_action: read_action.name,
             sort: relationship.sort,
             link: Relating.link(relationship),
@@ -1163,18 +1241,18 @@ defmodule AshTable.Model do
 
       {:error, reason} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: " <> relationship_message(reason)
+              "cannot build the #{whose(resource, table)}: " <> relationship_message(reason)
     end
   end
 
-  defp relationship_read_action!(resource, relationship) do
-    case Relating.read_action(relationship) do
+  defp relationship_read_action!(resource, table, relationship, nested) do
+    case Relating.read_action(relationship, nested) do
       {:ok, action} ->
         action
 
       {:error, reason} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: its relationship " <>
+              "cannot build the #{whose(resource, table)}: its relationship " <>
                 "`#{relationship.name}` has no usable read action on " <>
                 "#{inspect(relationship.destination)} (#{inspect(reason)})"
     end
@@ -1184,6 +1262,9 @@ defmodule AshTable.Model do
     do:
       "it declares the relationship `#{name}`, but its destination #{inspect(destination)} " <>
         "does not list `AshTable.Resource` in its extensions, so it has no table"
+
+  defp relationship_message({:no_such_table, _name, _destination, _table} = reason),
+    do: "its relationship cannot be offered. " <> Relating.message(reason)
 
   defp relationship_message({:declared_twice, name}),
     do: "it declares the relationship `#{name}` more than once"
@@ -1216,27 +1297,27 @@ defmodule AshTable.Model do
     }
   end
 
-  defp field!(resource, name) do
+  defp field!(resource, table, name) do
     field =
       Info.public_attribute(resource, name) ||
         Info.public_calculation(resource, name) ||
         Info.public_aggregate(resource, name) ||
         Info.public_relationship(resource, name) ||
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: it declares the column `#{name}`, " <>
+              "cannot build the #{whose(resource, table)}: it declares the column `#{name}`, " <>
                 "but the resource has no public attribute, calculation, aggregate or belongs-to " <>
                 "relationship of that name"
 
     with true <- Referencing.relationship?(field),
          {:error, reason} <- Referencing.reference(field) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: its column `#{name}` cannot be shown. " <>
+            "cannot build the #{whose(resource, table)}: its column `#{name}` cannot be shown. " <>
               Referencing.message(reason)
     end
 
     with {:column_read_not_public, _, _, _} = reason <- Reading.private_read(resource, field) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: its column `#{name}` cannot be shown. " <>
+            "cannot build the #{whose(resource, table)}: its column `#{name}` cannot be shown. " <>
               Reading.message(reason)
     end
 
@@ -1247,10 +1328,10 @@ defmodule AshTable.Model do
   # cannot be computed without is missing, one is named that it does not
   # have, a value is not one of its type. And a column of anything else that
   # gives arguments at all.
-  defp arguments!(resource, field, declared) do
+  defp arguments!(resource, table, field, declared) do
     with [{_option, reason} | _] <- Arguing.mistakes(resource, field, declared) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: its column " <>
+            "cannot build the #{whose(resource, table)}: its column " <>
               "`#{(declared && declared.key) || field.name}` cannot be shown. " <>
               Arguing.message(reason)
     end
@@ -1261,18 +1342,17 @@ defmodule AshTable.Model do
   # An `update_action` that names no public update action of the resource,
   # at the table or at a column. What such an action cannot save is another
   # matter: those columns are read-only (see `AshTable.Resource.Editing`).
-  defp update_actions!(resource) do
-    with {:error, reason} <- Editing.table_action(resource) do
+  defp update_actions!(resource, table) do
+    with {:error, reason} <- Editing.table_action(resource, table) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: its `update_action` cannot be used. " <>
+            "cannot build the #{whose(resource, table)}: its `update_action` cannot be used. " <>
               Editing.message(reason)
     end
 
-    for %{name: column, update_action: name} when name not in [nil, false] <-
-          TableInfo.columns(resource),
+    for %{name: column, update_action: name} when name not in [nil, false] <- table.columns,
         {:error, reason} <- [Editing.action(resource, name)] do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: the `update_action` of its column " <>
+            "cannot build the #{whose(resource, table)}: the `update_action` of its column " <>
               "`#{column}` cannot be used. " <> Editing.message(reason)
     end
 
@@ -1283,8 +1363,8 @@ defmodule AshTable.Model do
   # table action. One that names no public update, destroy or generic action
   # of the resource is refused, and so is a `record_argument` that cannot
   # take a row's primary key.
-  defp actions!(resource, columns) do
-    declared = TableInfo.actions(resource)
+  defp actions!(resource, table, columns) do
+    declared = table.actions
     names = Enum.map(declared, & &1.name)
 
     for %{name: name} = declaration <- declared,
@@ -1297,6 +1377,7 @@ defmodule AshTable.Model do
           built =
             action(
               resource,
+              table,
               action,
               columns,
               declaration.label,
@@ -1311,7 +1392,7 @@ defmodule AshTable.Model do
 
         {:error, reason} ->
           raise ArgumentError,
-                "cannot build the table of #{inspect(resource)}: its action `#{name}` cannot " <>
+                "cannot build the #{whose(resource, table)}: its action `#{name}` cannot " <>
                   "be used. " <> Acting.message(reason)
       end
     end
@@ -1334,18 +1415,18 @@ defmodule AshTable.Model do
   # creates only where it can say what joins the new record to its row: in a
   # has-many joined by attributes, through an action that accepts the
   # attribute. It fills that one in itself, so it is no input.
-  defp create!(resource, columns, via) do
-    case Acting.create_action(resource) do
+  defp create!(resource, table, columns, via) do
+    case Acting.create_action(resource, table) do
       :none ->
         nil
 
       {:error, reason} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: its `create_action` cannot be used. " <>
+              "cannot build the #{whose(resource, table)}: its `create_action` cannot be used. " <>
                 Acting.message(reason)
 
       {:ok, action} ->
-        create = action(resource, action, columns, "New #{name(resource)}", nil, nil, [])
+        create = action(resource, table, action, columns, "New #{name(resource)}", nil, nil, [])
 
         cond do
           Acting.unusable(resource, action) != [] ->
@@ -1374,8 +1455,8 @@ defmodule AshTable.Model do
   # table reads through, in the action's order, then the arguments the
   # columns ask for, in the order of the columns. An argument the line has
   # no input for is not on it.
-  defp arguments(resource, read_action, fields) do
-    labels = Map.new(TableInfo.arguments(resource), &{&1.name, &1.label})
+  defp arguments(table, read_action, fields) do
+    labels = Map.new(table.arguments, &{&1.name, &1.label})
 
     read =
       for %{editor: editor} = input when not is_nil(editor) <- Arguing.inputs(read_action) do
@@ -1430,7 +1511,7 @@ defmodule AshTable.Model do
   # An action as a table offers it, with the inputs a table has a field for.
   # `record_argument` is the argument of a generic action that the table
   # gives itself, which is no input.
-  defp action(resource, action, columns, label, confirm, record_argument, references) do
+  defp action(resource, table, action, columns, label, confirm, record_argument, references) do
     inputs =
       for %{editor: editor} = input when not is_nil(editor) <-
             Acting.inputs(resource, action, record_argument, references) do
@@ -1438,7 +1519,7 @@ defmodule AshTable.Model do
         |> struct!(Map.put(input, :label, input_label(input, columns)))
         |> with_reference(resource, columns)
         |> with_component(columns)
-        |> with_upload(resource)
+        |> with_upload(table)
       end
 
     %Action{
@@ -1467,10 +1548,10 @@ defmodule AshTable.Model do
   # An argument that takes a file is given by uploading one, within what
   # the block says for its name (`upload`), else within LiveView's own
   # limits.
-  defp with_upload(%Input{editor: :file, name: name} = input, resource),
-    do: %{input | upload: AshTable.Resource.Uploading.limits(resource, name)}
+  defp with_upload(%Input{editor: :file, name: name} = input, table),
+    do: %{input | upload: AshTable.Resource.Uploading.limits(table, name)}
 
-  defp with_upload(input, _resource), do: input
+  defp with_upload(input, _table), do: input
 
   # An attribute that is the foreign key of a public belongs-to relationship
   # whose related record can be chosen is given by choosing: its field shows
@@ -1565,28 +1646,28 @@ defmodule AshTable.Model do
 
   defp input_label(%{name: name}, _columns), do: humanize(name)
 
-  defp row_refresh!(resource, fields) do
-    with name when not is_nil(name) <- Acting.private_result_read(resource) do
+  defp row_refresh!(resource, table, fields) do
+    with name when not is_nil(name) <- Acting.private_result_read(resource, table) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: " <>
+            "cannot build the #{whose(resource, table)}: " <>
               Acting.message({:result_read_not_public, name})
     end
 
-    with [_ | _] = loaded <- Acting.unloadable_after_action(resource, fields) do
+    with [_ | _] = loaded <- Acting.unloadable_after_action(resource, table, fields) do
       raise ArgumentError,
-            "cannot build the table of #{inspect(resource)}: it has row actions or a create action " <>
+            "cannot build the #{whose(resource, table)}: it has row actions or a create action " <>
               "and shows calculations, aggregates or reference columns " <>
               "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the " <>
               "resource has no primary read action, which Ash loads those fields through after an action."
     end
 
-    case Editing.unloadable_after_save(resource, fields) do
+    case Editing.unloadable_after_save(resource, table, fields) do
       [] ->
         :ok
 
       loaded ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: it has editable columns and shows " <>
+              "cannot build the #{whose(resource, table)}: it has editable columns and shows " <>
                 "calculations, aggregates or reference columns " <>
                 "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the " <>
                 "resource has no primary read action, which Ash loads those fields through after a save."
@@ -1601,6 +1682,7 @@ defmodule AshTable.Model do
   # is something to choose with.
   defp column(
          resource,
+         table,
          %Ash.Resource.Relationships.BelongsTo{destination: destination} = relationship,
          declared,
          _pagination
@@ -1611,7 +1693,7 @@ defmodule AshTable.Model do
 
     # the action an edit runs, and what a choice gives it
     {update_action, written} =
-      case Editing.edit(resource, relationship, declared) do
+      case Editing.edit(resource, table, relationship, declared) do
         {:ok, name, written} -> {name, written}
         :none -> {nil, nil}
       end
@@ -1647,12 +1729,12 @@ defmodule AshTable.Model do
 
   # `declared` is the column as written in the block, or nil for a column of
   # the default set.
-  defp column(resource, field, declared, pagination) do
+  defp column(resource, table, field, declared, pagination) do
     {type, constraints} = CellType.type(resource, field)
     {cell_type, values} = CellType.classify(type, constraints)
 
     update_action =
-      case Editing.update_action(resource, field, declared) do
+      case Editing.update_action(resource, table, field, declared) do
         {:ok, name} -> name
         :none -> nil
       end
@@ -1660,7 +1742,7 @@ defmodule AshTable.Model do
     # what the column is called, where the block gives it another name
     name = (declared && declared.as) || field.name
     label = (declared && declared.label) || humanize(name)
-    component = component!(resource, field, declared, label, not is_nil(update_action))
+    component = component!(resource, table, field, declared, label, not is_nil(update_action))
     fixed = Map.new((declared && declared.arguments) || [])
 
     %Column{
@@ -1804,26 +1886,26 @@ defmodule AshTable.Model do
 
   # The component of a column, as far as the block names one, with what it
   # is told about the column, which is all it is told.
-  defp component!(_resource, _field, %{component: module}, _label, _editable?)
+  defp component!(_resource, _table, _field, %{component: module}, _label, _editable?)
        when is_nil(module),
        do: nil
 
-  defp component!(_resource, _field, nil, _label, _editable?), do: nil
+  defp component!(_resource, _table, _field, nil, _label, _editable?), do: nil
 
-  defp component!(resource, %{sensitive?: true} = field, _declared, _label, _editable?) do
+  defp component!(resource, table, %{sensitive?: true} = field, _declared, _label, _editable?) do
     raise ArgumentError,
-          "cannot build the table of #{inspect(resource)}: the `component` of its column " <>
+          "cannot build the #{whose(resource, table)}: the `component` of its column " <>
             "`#{field.name}` cannot be used. " <> Presenting.message({:sensitive, field.name})
   end
 
-  defp component!(resource, field, %{component: module}, label, editable?) do
+  defp component!(resource, table, field, %{component: module}, label, editable?) do
     case Presenting.component(module, Presenting.column(resource, field, label, editable?)) do
       {:ok, component} ->
         component
 
       {:error, reason} ->
         raise ArgumentError,
-              "cannot build the table of #{inspect(resource)}: the `component` of its column " <>
+              "cannot build the #{whose(resource, table)}: the `component` of its column " <>
                 "`#{field.name}` cannot be used. " <> Presenting.message(reason)
     end
   end

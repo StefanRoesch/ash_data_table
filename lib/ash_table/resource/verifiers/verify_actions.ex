@@ -5,39 +5,44 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
   use Spark.Dsl.Verifier
 
   alias AshTable.Resource.Acting
+  alias AshTable.Resource.Table
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
   @impl true
   def verify(dsl) do
     module = Verifier.get_persisted(dsl, :module)
+    tables = AshTable.Resource.Info.tables(dsl)
 
-    errors =
-      for declaration <- AshTable.Resource.Info.actions(dsl),
-          {:error, reason} <- [usable(dsl, declaration)] do
-        DslError.exception(
-          module: module,
-          path: [:table, :action, declaration.name],
-          message: Acting.message(reason),
-          location: Spark.Dsl.Entity.anno(declaration)
-        )
-      end
+    errors = Enum.flat_map(tables, &errors(dsl, module, &1))
 
-    errors =
-      errors ++
-        create_errors(dsl, module) ++
-        row_refresh_errors(dsl, module) ++ result_read_errors(dsl, module)
-
-    case {errors, one_click_deletes(dsl)} do
+    case {errors, Enum.flat_map(tables, &one_click_deletes(dsl, &1))} do
       {[], []} -> :ok
       {[], warnings} -> {:warn, warnings}
       {errors, _warnings} -> {:error, errors}
     end
   end
 
-  defp create_errors(dsl, module) do
+  defp errors(dsl, module, table) do
+    declared =
+      for declaration <- table.actions,
+          {:error, reason} <- [usable(dsl, declaration)] do
+        DslError.exception(
+          module: module,
+          path: Table.path(table) ++ [:action, declaration.name],
+          message: Acting.message(reason),
+          location: Spark.Dsl.Entity.anno(declaration)
+        )
+      end
+
+    declared ++
+      create_errors(dsl, module, table) ++
+      row_refresh_errors(dsl, module, table) ++ result_read_errors(dsl, module, table)
+  end
+
+  defp create_errors(dsl, module, table) do
     reason =
-      case Acting.create_action(dsl) do
+      case Acting.create_action(dsl, table) do
         {:error, reason} ->
           reason
 
@@ -57,9 +62,9 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
         [
           DslError.exception(
             module: module,
-            path: [:table, :create_action],
+            path: Table.path(table) ++ [:create_action],
             message: Acting.message(reason),
-            location: Spark.Dsl.Transformer.get_opt_anno(dsl, [:table], :create_action)
+            location: Table.option_anno(dsl, table, :create_action)
           )
         ]
     end
@@ -68,9 +73,9 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
   # After an action the row is shown from the action's result, with the
   # table's calculations, aggregates and reference columns loaded onto it.
   # Ash loads those through the primary read action.
-  defp row_refresh_errors(dsl, module) do
+  defp row_refresh_errors(dsl, module, table) do
     columns =
-      for column <- AshTable.Resource.Info.columns(dsl),
+      for column <- table.columns,
           field =
             Ash.Resource.Info.attribute(module, column.name) ||
               Ash.Resource.Info.calculation(module, column.name) ||
@@ -78,7 +83,7 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
               Ash.Resource.Info.relationship(module, column.name),
           do: {field, column}
 
-    case Acting.unloadable_after_action(module, columns) do
+    case Acting.unloadable_after_action(module, table, columns) do
       [] ->
         []
 
@@ -86,13 +91,13 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
         [
           DslError.exception(
             module: module,
-            path: [:table],
+            path: Table.path(table),
             message:
               "The table has row actions or a create action and shows calculations, aggregates or reference columns " <>
                 "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the resource has no primary read action. " <>
                 "After an action the row is shown with those fields, which Ash loads through the primary read action. " <>
                 "Mark a read action `primary? true`.",
-            location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
+            location: Table.anno(dsl, table)
           )
         ]
     end
@@ -101,16 +106,16 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
   # What an action returns is loaded by Ash through the primary read action,
   # which the table then runs with the action. Here, and not with the
   # editing, because it is the same for an edit, a row action and a create.
-  defp result_read_errors(dsl, module) do
+  defp result_read_errors(dsl, module, table) do
     private =
-      case Acting.private_result_read(module) do
+      case Acting.private_result_read(module, table) do
         nil -> []
         name -> [{:result_read_not_public, name}]
       end
 
     # and through that action as it is: without arguments
     unanswered =
-      case Acting.unanswered_result_read(module) do
+      case Acting.unanswered_result_read(module, table) do
         nil -> []
         {name, argument} -> [{:result_read_needs_argument, name, argument}]
       end
@@ -118,9 +123,9 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
     for reason <- private ++ unanswered do
       DslError.exception(
         module: module,
-        path: [:table],
+        path: Table.path(table),
         message: Acting.message(reason),
-        location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
+        location: Table.anno(dsl, table)
       )
     end
   end
@@ -164,8 +169,8 @@ defmodule AshTable.Resource.Verifiers.VerifyActions do
 
   # A destroy action that runs at one click is a choice the block has to
   # make visibly: with a question, or with `confirm false`.
-  defp one_click_deletes(dsl) do
-    for %{confirm: nil} = declaration <- AshTable.Resource.Info.actions(dsl),
+  defp one_click_deletes(dsl, table) do
+    for %{confirm: nil} = declaration <- table.actions,
         match?({:ok, :row, %{type: :destroy}}, Acting.offered(dsl, declaration)) do
       message =
         "The row action `#{declaration.name}` is a destroy action without `confirm`: one click " <>

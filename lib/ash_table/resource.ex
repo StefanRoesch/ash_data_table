@@ -1,6 +1,6 @@
 defmodule AshTable.Resource do
   @moduledoc """
-  The Ash extension that gives a resource a table.
+  The Ash extension that gives a resource a table, or several.
 
       defmodule MyApp.Tracker.Task do
         use Ash.Resource,
@@ -214,6 +214,80 @@ defmodule AshTable.Resource do
   The last row of a nested table links to its full view, where the host's
   router mounts the destination's table (`AshTable.Router.ash_table/3`):
   that page, limited to the same records. See `AshTable.Live.Page`.
+
+  ## Named tables
+
+  The `table` block is the resource's default table. A resource can have
+  further tables beside it, each under a name:
+
+      table do
+        label_field :body
+        update_action :update
+      end
+
+      tables do
+        table :compact do
+          max_depth 0
+
+          column :body
+          column :author
+        end
+      end
+
+  A named table has every option and declaration of the `table` block but
+  `label_field`, which says what a record of the resource is called
+  whichever table shows it, and is written in the `table` block. It takes
+  nothing over from the default table: what it does not say has the
+  default, as in a `table` block. A resource has its default table with or
+  without a `table` block.
+
+  A name is an atom of lower-case letters, digits and `_` that starts with
+  a letter. `:default` is the default table's: no named table can have it,
+  and it names the default table wherever a table is named.
+
+  A named table is mounted with
+  `ash_table "/comments/compact", MyApp.Comment, table: :compact`, placed
+  with `<AshTable.table resource={MyApp.Comment} table={:compact} />`, and
+  nested by a `relationship` of another table that names it:
+
+      relationship :comments do
+        table :compact
+      end
+
+  Without `table`, a relationship nests the destination's default table.
+  The full view of a nested table is the mounted page of the same table;
+  where that table is mounted nowhere the nested table has no link. The
+  picker shows the destination's default table.
+
+  Everything in this module holds for each table by itself, and every
+  mistake is reported for each: a finding in a named table has the path
+  `tables -> table -> NAME`. `AshTable.Resource.Info.tables/1` and
+  `AshTable.Resource.Info.table/2` return a resource's tables.
+
+  A table can be declared in a file of its own, as a fragment of the
+  resource:
+
+      defmodule MyApp.Comment.CompactTable do
+        use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+
+        tables do
+          table :compact do
+            column :body
+          end
+        end
+      end
+
+      defmodule MyApp.Comment do
+        use Ash.Resource,
+          extensions: [AshTable.Resource],
+          fragments: [MyApp.Comment.CompactTable]
+      end
+
+  The default `table` block can be in a fragment too. A fragment is checked
+  as part of the resource that lists it, and a finding points at the
+  fragment's file. Keep each table whole in one place: Spark adds up what a
+  block declares in several places, and warns when an option is given two
+  values, of which the fragment's wins.
 
   ## Row actions and create
 
@@ -733,51 +807,88 @@ defmodule AshTable.Resource do
       end
       """
     ],
-    schema: [
-      read_action: [
-        type: :atom,
-        doc:
-          "The read action behind the table: a `public?` read action. Defaults to the resource's primary read action, which then has to be `public?` too."
-      ],
-      paginate_with: [
-        type: {:one_of, [:offset, :keyset]},
-        doc:
-          "The pagination strategy. Defaults to `:offset` if the read action supports it, else `:keyset`."
-      ],
-      update_action: [
-        type: :atom,
-        doc:
-          "The update action behind inline editing: every column whose attribute this action accepts becomes editable. Without it, and without an `update_action` on a column, the table is read-only."
-      ],
-      create_action: [
-        type: :atom,
-        doc:
-          "The create action behind the table's create button: a public create action of the resource. The button opens the action panel with the action's inputs, and the new record is shown as the first row of the page. Without it the table has no create button."
-      ],
-      on_forbidden: [
-        type: {:one_of, [:not_found, :message]},
-        default: :not_found,
-        doc:
-          "What a person is shown whose read the resource refuses outright. `:not_found` answers as if the page did not exist (404); `:message` shows a \"not allowed\" message in place of the rows."
-      ],
-      label_field: [
-        type: :atom,
-        doc:
-          "The attribute a record of this resource is called by where it is shown as one value: in a reference cell of another table (a `column` naming a belongs-to relationship to this resource), and in the heading of a table limited to the records related to it. A public attribute."
-      ],
-      max_depth: [
-        type: :non_neg_integer,
-        default: 3,
-        doc:
-          "How deep a person can expand rows into nested tables, counted from the table on the page: its own nested tables are at depth 1. The tables at this depth have no expanders. It is the setting of the table on the page that counts for everything beneath it; `0` means the rows of this table never expand, wherever the table is shown."
-      ]
-    ],
+    schema:
+      AshTable.Resource.Table.options() ++
+        [
+          label_field: [
+            type: :atom,
+            doc:
+              "The attribute a record of this resource is called by where it is shown as one value: in a reference cell of another table (a `column` naming a belongs-to relationship to this resource), and in the heading of a table limited to the records related to it. A public attribute. It belongs to the resource and not to one of its tables: it is written here, in the default table's block, and names the record whichever table shows it."
+          ]
+        ],
     entities: [@column, @relationship, @action, @argument, @upload]
   }
 
+  @named_table %Spark.Dsl.Entity{
+    name: :table,
+    describe: """
+    A named table: another table of the resource, beside the default table of the `table` block.
+
+    It has the options and the declarations of the `table` block, and takes nothing over from it: its columns, relationships, actions, arguments and uploads are its own, and with no `column` it shows the default set, as the default table does. The one thing it does not have is `label_field`, which says what a record of the resource is called and belongs to the resource: it is written in the `table` block.
+
+    A `relationship` of another table names it to nest it (`table :compact`), the router to mount it (`ash_table "/comments/compact", MyApp.Comment, table: :compact`) and `AshTable.table/1` to place it (`table={:compact}`).
+    """,
+    examples: [
+      """
+      table :compact do
+        read_action :recent
+        max_depth 0
+
+        column :body
+        column :author
+      end
+      """
+    ],
+    target: AshTable.Resource.Table,
+    args: [:name],
+    identifier: :name,
+    # The declarations of the `table` block, without their `identifier`:
+    # Spark (2.7.6) looks for the identifier of an entity nested in another
+    # among the entities around it, here among the named tables, and would
+    # take two tables for one column. That a named table declares nothing
+    # twice is checked with the table (`VerifyTables`).
+    entities: [
+      columns: [%{@column | identifier: nil}],
+      relationships: [%{@relationship | identifier: nil}],
+      actions: [%{@action | identifier: nil}],
+      arguments: [%{@argument | identifier: nil}],
+      uploads: [%{@upload | identifier: nil}]
+    ],
+    schema: AshTable.Resource.Table.schema()
+  }
+
+  @tables %Spark.Dsl.Section{
+    name: :tables,
+    describe: """
+    The named tables of the resource: further tables beside the default table of the `table` block.
+
+    A resource has one default table, with or without a `table` block, and any number of named ones. Each is a table of its own: it reads, edits and acts as it declares, and nothing of the default table carries over to it.
+    """,
+    examples: [
+      """
+      tables do
+        table :compact do
+          column :body
+          column :author
+        end
+
+        table :board do
+          read_action :open
+          update_action :update
+
+          column :title
+          column :status
+        end
+      end
+      """
+    ],
+    entities: [@named_table]
+  }
+
   use Spark.Dsl.Extension,
-    sections: [@table],
+    sections: [@table, @tables],
     verifiers: [
+      AshTable.Resource.Verifiers.VerifyTables,
       AshTable.Resource.Verifiers.VerifyReadAction,
       AshTable.Resource.Verifiers.VerifyUpdateAction,
       AshTable.Resource.Verifiers.VerifyLabelField,

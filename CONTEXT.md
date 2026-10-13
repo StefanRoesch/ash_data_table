@@ -8,6 +8,14 @@ An Ash extension that presents resources to humans as an editable table in the b
 A declared, human-facing view of one resource's records as rows and columns, with its own read behaviour and editing rules.
 _Avoid_: Datatable, grid, data grid
 
+**Default table**:
+The table a resource has without anything being named: the one that is shown wherever a table of the resource is asked for and none is named.
+_Avoid_: Main table, primary table, base table
+
+**Named table**:
+A further table of a resource, beside its default table and told apart by a name; it is a table of its own and takes nothing over from the default table.
+_Avoid_: View, variant, layout, preset
+
 **Column**:
 One field of the resource as it appears in a table, together with how it is shown and whether and how it can be edited.
 _Avoid_: Field (that is the resource's term), header
@@ -36,7 +44,7 @@ The editor of an array of enum values: one box per value of the enum, of which a
 _Avoid_: Multi-select, checkbox group, tag picker
 
 **Nested table**:
-The table of a related resource, shown inside an expanded row and limited to the records related to that row.
+A table of a related resource, shown inside an expanded row and limited to the records related to that row: the related resource's default table, unless the relationship line's declaration names another.
 _Avoid_: Sub-table, detail view, child grid
 
 **Relationship line**:
@@ -48,15 +56,15 @@ A cell that stands for a related record and shows that record's label in place o
 _Avoid_: Lookup, link cell, foreign-key cell
 
 **Label**:
-What a record is called where a table shows it as one value: the attribute its resource's table names as `label_field`.
+What a record is called where a table shows it as one value: the attribute its resource names as `label_field`. It is the resource's, and the same whichever of its tables shows the record.
 _Avoid_: Display name, title field, name field
 
 **Picker**:
-The dialog in which a person chooses the related record of a reference cell, or the related record or records of an input of an action, from the related resource's own table.
+The dialog in which a person chooses the related record of a reference cell, or the related record or records of an input of an action, from the related resource's default table.
 _Avoid_: Lookup, dropdown, type-ahead, relation selector
 
 **Full view**:
-The records of a nested table shown on the page of their own resource's table, limited to the same row and relationship.
+The records of a nested table shown on a page of their own, in the same table that was nested, limited to the same row and relationship.
 _Avoid_: Detail page, drill-down, scoped page
 
 **Row action**:

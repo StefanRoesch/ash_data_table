@@ -89,7 +89,9 @@ The parameter `of` limits a table to the records related to one record:
 under a heading that says so. This is the full view of a nested table, and
 the link in the last row of a nested table writes it.
 
-- `PARENT` is the short name of the parent's resource, `RELATIONSHIP` the
+- `PARENT` is the short name of the parent's resource (followed by `_` and
+  the table's name where a [named table](named-tables.md) of the parent
+  offers the relationship: `task_board`), `RELATIONSHIP` the
   name of its relationship, and `KEY` its primary key. A key of several
   attributes is written by attribute:
   `ID[of][PARENT][RELATIONSHIP][ATTRIBUTE]=VALUE`.
@@ -120,6 +122,11 @@ ash_table "/specimens", Demo.KitchenSink.Specimen
 
 The ids are `task`, `project`, `comment`, `label`, `task_label` and
 `specimen`. The path plays no part: `/tasks` has the id `task`.
+
+A [named table](named-tables.md) has the resource's id followed by `_` and
+the table's name: `ash_table "/tasks/board", Demo.Tracker.Task, table:
+:board` has the id `task_board`, and its parameters are
+`task_board[sort]=title`.
 
 `ash_table "/tasks", Demo.Tracker.Task, id: "tasks"` sets another id. It is
 a string of lower-case letters, digits, `_` and `-` that starts with a
@@ -224,7 +231,10 @@ LiveView rendered inside another one has no URL of its own to hand down.
 
 ## Several tables on one page
 
-Each table needs an `id` that is unique on the page. Because the parameters
+Each table needs an `id` that is unique on the page. Two tables of one
+resource, its default table and a named one, have different ids without one
+being written (`comment` and `comment_compact`); the same table placed
+twice needs an `id` for each. Because the parameters
 are nested under the id, several tables with `url` share one address without
 touching each other's state, and each leaves the other's parameters and the
 page's own in place when it patches. On the page above, paging the tickets

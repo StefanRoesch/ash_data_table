@@ -164,8 +164,9 @@ a section of its own:
 
 | Attribute | Required | Meaning |
 | --- | --- | --- |
-| `id` | yes | Unique on the page. It prefixes every DOM id of the table. |
+| `id` | | Unique on the page. It prefixes every DOM id of the table. Defaults to the last part of the resource's module name, underscored (`task`), followed by `_` and the table's name for a named table (`task_board`). |
 | `resource` | yes | A resource that lists `AshTable.Resource`. |
+| `table` | | Which of the resource's tables is placed: the name of a [named table](named-tables.md). Left out, it is the default table. |
 | `scope` | | An `Ash.Scope` carrying actor and tenant. |
 | `actor`, `tenant` | | Used when no `scope` is given. |
 | `authorize?` | | Overrides the domain's `authorize?` for this table, either way. |

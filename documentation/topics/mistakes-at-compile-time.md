@@ -316,6 +316,41 @@ The path is `table -> label_field`.
 | \`NAME\` is a relationship. The label of a record is one of its own attributes: name an attribute of this resource. | `label_field` names a relationship. | Name an attribute. |
 | \`NAME\` is a calculation. The label of a record has to be an attribute: it is read with the record's key and nothing else. | `label_field` names a calculation, or an aggregate ("is an aggregate"). | Name an attribute. |
 
+## Named tables
+
+Every check of this guide runs for each table of a resource: the default
+table and every [named table](named-tables.md). A finding in a named table
+is the same message, and its path says which table it is in: where this
+guide says `table -> column -> NAME`, a named table has
+`tables -> table -> TABLE -> column -> NAME`.
+
+<!-- sketch -->
+```text
+warning: ** (Spark.Error.DslError) [MyApp.Comment]
+tables -> table -> compact -> column -> nothing defined in lib/my_app/comment.ex:41::
+  The resource has no attribute, calculation, aggregate or belongs-to relationship named `nothing`.
+```
+
+A table that is declared in a file of its own (a fragment) is checked as
+part of its resource: the module in brackets is the resource, and the file
+and line are the fragment's.
+
+The findings about the tables themselves have the path
+`tables -> table -> TABLE`:
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| \`:NAME\` cannot be the name of a table. A table's name is part of its id and of the parameters of its URL: an atom of lower-case letters, digits and \`_\` that starts with a letter, such as \`:compact\`. | The name has a capital letter, a `-`, or starts with a digit. | Rename the table. |
+| \`:default\` is the name of the default table, the one of the \`table\` block, and no named table can have it. Write this table in the \`table\` block, or give it another name. | A named table is called `:default`. | Move it into the `table` block, or rename it. |
+| Got duplicate AshTable.Resource.Table: NAME | Two tables of one name, in one file or in two fragments. This one is Spark's, with the path `tables -> NAME`. | Rename one, or put them together. |
+| The column \`NAME\` is declared more than once in the table \`:TABLE\`. | A named table declares the same `column` twice. Also said of a `relationship`, an `action`, an `argument` and an `upload`. In the `table` block Spark reports this itself ("Got duplicate …"). | Declare it once. A calculation shown twice needs `as` on the second column. |
+| \`label_field\` says what a record of the resource is called, whichever of its tables shows it, so it is no option of a named table. Write \`label_field :NAME\` in the \`table\` block of the resource. | `label_field` inside a named table. The path ends in `-> label_field`. | Move it to the `table` block. |
+
+A table that the router or `<AshTable.table>` names and the resource does
+not have is not found at compile time: the router does not look at the
+resource. It raises when the page is opened or the component rendered, and
+lists the resource's tables.
+
 ## Relationships
 
 The path is `table -> relationship -> NAME`.
@@ -326,6 +361,7 @@ The path is `table -> relationship -> NAME`.
 | \`NAME\` is not public. Only \`public?\` relationships can be offered by a table. | The relationship is private. | Make it `public? true` if its records may be shown, or leave it out. |
 | The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshTable.Resource\` in its extensions. A row can only be expanded into the table of a resource that has one. | The destination resource does not list the extension. | Add the extension to the destination, or leave the relationship out. |
 | Got duplicate AshTable.Resource.Relationship: NAME | The block declares the same `relationship` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
+| \`NAME\` is to show the table \`:TABLE\` of its destination, but DESTINATION has no table named \`:TABLE\`. Its tables: \`:A\`, \`:B\`, and the default table. | The `table` of a `relationship` names a table the destination does not have. For a destination without named tables it ends "It has the default table only." | Correct the name, or declare the table on the destination. |
 
 With no `relationship` declared, a relationship whose destination has no
 table is simply not offered: nothing is reported.

@@ -3743,7 +3743,12 @@ defmodule AshTable.ModelTest do
       assert Editing.given({:argument, :owner, %{}}) == [:owner]
       assert Editing.given({:attribute, :reviewer_id, %{}}) == []
 
-      assert Editing.update_action(Ticket, relationship.(:owner), %{update_action: :assign}) ==
+      assert Editing.update_action(
+               Ticket,
+               AshTable.Resource.Info.table!(Ticket, :default),
+               relationship.(:owner),
+               %{update_action: :assign}
+             ) ==
                {:ok, :assign}
     end
   end
@@ -4363,6 +4368,22 @@ defmodule AshTable.ModelTest do
                Record.load(reading(%{{nil, :at_least} => "5"}), apple, authorize?: false)
 
       assert {loaded.amount_in, loaded.calculations.amount_asked} == {2, 3}
+    end
+  end
+
+  describe "a resource with several tables" do
+    # The model is built per table of a resource: `AshTable.NamedTablesTest`
+    # has what each table's own is.
+    alias AshTable.Test.Naming.Comment
+
+    test "has a model per table, and the default table's unless one is named" do
+      assert Model.build(Comment).table == :default
+      assert Enum.map(Model.build(Comment).columns, & &1.name) == [:body, :rating, :author]
+
+      compact = Model.build(Comment, table: :compact)
+      assert compact.table == :compact
+      assert Enum.map(compact.columns, & &1.name) == [:body, :rating]
+      assert compact.read_action == :recent
     end
   end
 end

@@ -734,3 +734,15 @@ msgstr "%{column} ausgeblendet"
 
 msgid "%{column} shown"
 msgstr "%{column} eingeblendet"
+
+## The named tables: the columns of the compact comments (/comments/compact)
+## and of the short labels, nested under a task of the board (/tasks/board).
+
+msgid "Body"
+msgstr "Text"
+
+msgid "Author"
+msgstr "Verfasst von"
+
+msgid "Colour"
+msgstr "Farbe"

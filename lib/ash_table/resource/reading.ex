@@ -5,7 +5,7 @@ defmodule AshTable.Resource.Reading do
   # (which report a mistake) and the table model (which builds on the answer).
 
   alias Ash.Resource.Info
-  alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Table
   alias AshTable.Resource.Relating
 
   @type strategy :: :offset | :keyset | :none
@@ -19,27 +19,27 @@ defmodule AshTable.Resource.Reading do
           | private_read
 
   @doc """
-  The read action behind the table: the one named in the block, else the
+  The read action behind a table of the resource (`table`, an
+  `AshTable.Resource.Table`): the one named in its block, else the
   primary read action. Either has to be `public?`: a table runs no private
   action, however it came by it.
   """
-  @spec read_action(Ash.Resource.t()) :: {:ok, Ash.Resource.Actions.Read.t()} | {:error, reason}
-  def read_action(resource) do
-    case TableInfo.table_read_action(resource) do
-      {:ok, name} ->
-        case Info.action(resource, name) do
-          nil -> {:error, {:not_found, name}}
-          %{type: :read, public?: false} -> {:error, {:not_public, name}}
-          %{type: :read} = action -> {:ok, action}
-          %{type: type} -> {:error, {:not_a_read_action, name, type}}
-        end
+  @spec read_action(Ash.Resource.t(), Table.t()) ::
+          {:ok, Ash.Resource.Actions.Read.t()} | {:error, reason}
+  def read_action(resource, %Table{read_action: nil}) do
+    case Info.primary_action(resource, :read) do
+      nil -> {:error, :no_primary_read_action}
+      %{public?: false, name: name} -> {:error, {:primary_not_public, name}}
+      action -> {:ok, action}
+    end
+  end
 
-      :error ->
-        case Info.primary_action(resource, :read) do
-          nil -> {:error, :no_primary_read_action}
-          %{public?: false, name: name} -> {:error, {:primary_not_public, name}}
-          action -> {:ok, action}
-        end
+  def read_action(resource, %Table{read_action: name}) do
+    case Info.action(resource, name) do
+      nil -> {:error, {:not_found, name}}
+      %{type: :read, public?: false} -> {:error, {:not_public, name}}
+      %{type: :read} = action -> {:ok, action}
+      %{type: type} -> {:error, {:not_a_read_action, name, type}}
     end
   end
 
@@ -121,17 +121,17 @@ defmodule AshTable.Resource.Reading do
   defp kind(type), do: "a #{type}"
 
   @doc "The pagination strategy: the one named in the block, else offset if the action supports it, else keyset."
-  @spec strategy(Ash.Resource.t(), Ash.Resource.Actions.Read.t()) ::
+  @spec strategy(Table.t(), Ash.Resource.Actions.Read.t()) ::
           {:ok, strategy} | {:error, {:unsupported, :offset | :keyset}}
-  def strategy(resource, %{pagination: pagination}) do
+  def strategy(%Table{paginate_with: named}, %{pagination: pagination}) do
     supported = supported_strategies(pagination)
 
-    case TableInfo.table_paginate_with(resource) do
-      {:ok, strategy} ->
-        if strategy in supported, do: {:ok, strategy}, else: {:error, {:unsupported, strategy}}
-
-      :error ->
+    case named do
+      nil ->
         {:ok, List.first(supported, :none)}
+
+      strategy ->
+        if strategy in supported, do: {:ok, strategy}, else: {:error, {:unsupported, strategy}}
     end
   end
 

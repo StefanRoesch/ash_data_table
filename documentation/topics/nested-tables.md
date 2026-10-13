@@ -45,6 +45,11 @@ for them: `/specimens` in the demo.
 
 ## Which relationships a row offers
 
+What follows is said per table. A resource with [named tables](named-tables.md)
+has a set of relationships for each, and a `relationship` can say which of
+the destination's tables it nests (`table :compact`); without that it is
+the destination's default table.
+
 With no `relationship` in the `table` block, a row offers every relationship
 of the resource that
 
@@ -382,10 +387,17 @@ same sort. "Show all records" above the table takes the limit away.
 
 ### When the link is there
 
-The link is there when the host's router mounts the destination's table
-with an `ash_table` line. The library looks through the router's routes
+The link is there when the host's router mounts the table that is nested
+with an `ash_table` line. That is the destination's default table, unless
+the `relationship` names another (`table :compact`): then it is the page of
+that named table, and no other. A nested named table that is mounted
+nowhere has no link, although the destination's default table may be
+mounted. See [Named tables](named-tables.md#the-full-view-of-a-nested-named-table).
+
+For the default table, the library looks through the router's routes
 (`Phoenix.Router.routes/1`) for the first one, in the router's order, whose
-`ash_table` names the destination resource and whose path has no parameter.
+`ash_table` names the destination resource without `table:` and whose path
+has no parameter.
 The demo's router mounts five tracker tables
 ([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
 
@@ -420,7 +432,7 @@ The limit is one more parameter of the table, under its id like the others:
 | --- | --- |
 | `comment` | the id of the table on the page |
 | `of` | the parameter |
-| `task` | the short name of the parent's resource (`Ash.Resource.Info.short_name/1`) |
+| `task` | the short name of the parent's resource (`Ash.Resource.Info.short_name/1`); followed by `_` and the table's name where a named table of the parent offers the relationship (`task_board`) |
 | `comments` | the name of the parent's relationship |
 | the value | the parent's primary key |
 

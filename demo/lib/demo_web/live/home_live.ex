@@ -27,7 +27,12 @@ defmodule DemoWeb.HomeLive do
        {"/deadlines",
         "the tasks that are due by a day: a resource of its own over the same table, " <>
           "read through an action that requires the day. Until it is given, the table " <>
-          "asks for it in place of its rows"}
+          "asks for it in place of its rows"},
+       {"/tasks/board",
+        "a named table of the tasks (`:board`), declared in a file of its own: four " <>
+          "columns, the title and the state edited in place, one row action. A row expands " <>
+          "into the compact comments, which link to their full view, and into a short " <>
+          "table of the labels, which is mounted nowhere and has no such link"}
      ]},
     {Demo.Tracker.Project, "Aggregates over tasks. Its read is refused outright for nobody.",
      [
@@ -45,7 +50,10 @@ defmodule DemoWeb.HomeLive do
           "its author; for nobody, a message (on_forbidden). " <>
           "A row expands into its task and its author. \"Destroy\", which asks first and " <>
           "is refused on a comment that is not yours, and \"New comment\", for admins and " <>
-          "members"}
+          "members"},
+       {"/comments/compact",
+        "a named table of the comments (`:compact`), declared in a file of its own: " <>
+          "three columns, nothing to edit or run, rows that never expand"}
      ]},
     {Demo.Tracker.Label, "No pagination.",
      [
@@ -111,6 +119,13 @@ defmodule DemoWeb.HomeLive do
           Every table below is a page of its own. The
           <.link navigate={~p"/dashboard"} class="link">dashboard</.link>
           shows two tables placed in a LiveView of the demo's own.
+        </p>
+        <p id="named" class="text-base-content/70">
+          A resource can have several tables: its default table and named ones. The page
+          <.link navigate={~p"/named"} class="link">named tables</.link>
+          shows two tables of the comments side by side, and <code class="text-xs">/tasks/board</code>
+          and <code class="text-xs">/comments/compact</code>
+          are named tables mounted as pages.
         </p>
         <p id="nesting" class="text-base-content/70">
           Rows expand: the mark at the start of a row shows one line per relationship, and a

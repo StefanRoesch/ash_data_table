@@ -65,6 +65,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/table-actions.md",
         "documentation/topics/files.md",
         "documentation/topics/nested-tables.md",
+        "documentation/topics/named-tables.md",
         "documentation/topics/custom-components.md",
         "documentation/topics/sensitive-columns.md",
         "documentation/topics/authorization.md",
@@ -96,6 +97,7 @@ defmodule AshTable.MixProject do
         Translation: [AshTable.Gettext],
         Introspection: [
           AshTable.Resource.Info,
+          AshTable.Resource.Table,
           AshTable.Resource.Column,
           AshTable.Resource.Relationship,
           AshTable.Resource.Action,

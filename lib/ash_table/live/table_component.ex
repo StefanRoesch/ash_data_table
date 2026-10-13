@@ -279,7 +279,6 @@ defmodule AshTable.Live.TableComponent do
   alias AshTable.Record
   alias AshTable.Related
   alias AshTable.Resource.Embedding
-  alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Routes
   alias AshTable.Sensitive
   alias AshTable.State
@@ -334,6 +333,10 @@ defmodule AshTable.Live.TableComponent do
      # through and the primary key of the row it belongs to. `depth` counts
      # from the table on the page; `depth_limit` is that table's `max_depth`.
      |> assign(via: nil, parent_key: nil, parent_authorize?: true, depth: 0, depth_limit: nil)
+     # Which of the resource's tables this is: `:default` for its default
+     # table, else the name of a named table. A nested table is the one its
+     # relationship nests, and the table in a picker the default table.
+     |> assign(table: :default)
      # The ids of the elements that name a nested table's grid, in place of
      # `label`; and whether its first read is still on its way.
      |> assign(labelledby: nil, loading?: false)
@@ -379,7 +382,7 @@ defmodule AshTable.Live.TableComponent do
         socket,
         Map.take(
           assigns,
-          [:id, :resource, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
+          [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
             [:select, :choose, :page_assigns, :parent_arguments]
         )
@@ -396,6 +399,9 @@ defmodule AshTable.Live.TableComponent do
             authorize? -> authorize?
           end
       )
+
+    # nil is the default table, as `:default` is
+    socket = assign(socket, table: socket.assigns.table || :default)
 
     socket = socket |> assign(nested?: socket.assigns.depth > 0) |> relate() |> build()
 
@@ -470,11 +476,11 @@ defmodule AshTable.Live.TableComponent do
     )
   end
 
-  defp relate(%{assigns: %{url: url, id: id, resource: resource}} = socket)
+  defp relate(%{assigns: %{url: url, id: id, resource: resource, table: table}} = socket)
        when is_binary(url) do
     params = url |> query_params() |> Map.get(id)
 
-    case Related.from_params(resource, params, reader(socket.assigns), socket.endpoint) do
+    case Related.from_params(resource, table, params, reader(socket.assigns), socket.endpoint) do
       nil ->
         assign(socket, via: nil, parent_key: nil, related: nil, related_title: nil)
 
@@ -500,8 +506,8 @@ defmodule AshTable.Live.TableComponent do
 
   # The table's model as its resource and block say it, which is the same
   # whoever asks, and so is built once and kept for as long as the component
-  # lives and shows the same table: of the same resource, reached through
-  # the same relationship. Nothing of it depends on who is asking; what
+  # lives and shows the same table: the same table of the same resource,
+  # reached through the same relationship. Nothing of it depends on who is asking; what
   # does is asked of Ash on every update, and never kept.
   #
   # It is kept in the assigns and nowhere else, so that it goes with the
@@ -512,17 +518,24 @@ defmodule AshTable.Live.TableComponent do
   # be what the block says now.
   #
   # A table to choose from is built for the read action it is told.
-  defp build(%{assigns: %{resource: resource, via: via, built: built}} = socket) do
+  defp build(%{assigns: %{resource: resource, table: table, via: via, built: built}} = socket) do
     read = socket.assigns.choose && socket.assigns.choose.read_action
 
-    if match?(%{resource: ^resource, via: ^via, choose: ^read}, built) and
+    if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read}, built) and
          not reloading?(socket) do
       socket
     else
-      model = Model.build(resource, via: via, choose: read)
+      model = Model.build(resource, table: table, via: via, choose: read)
 
       assign(socket,
-        built: %{resource: resource, via: via, choose: read, model: model, nested: %{}}
+        built: %{
+          resource: resource,
+          table: table,
+          via: via,
+          choose: read,
+          model: model,
+          nested: %{}
+        }
       )
     end
   end
@@ -539,7 +552,9 @@ defmodule AshTable.Live.TableComponent do
         {model, socket}
 
       _not_yet ->
-        model = Model.build(relationship.destination, via: relationship)
+        model =
+          Model.build(relationship.destination, table: relationship.table, via: relationship)
+
         nested = Map.put(built.nested, relationship, model)
         {model, assign(socket, built: %{built | nested: nested})}
     end
@@ -998,7 +1013,7 @@ defmodule AshTable.Live.TableComponent do
   # than that the records are not available otherwise. Never "No records".
   defp show(%{assigns: %{nested?: true}} = socket, {:error, refusal}, _read)
        when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
-    case TableInfo.table_on_forbidden!(socket.assigns.resource) do
+    case socket.assigns.model.on_forbidden do
       :message -> show_message(socket, Text.t(:not_allowed))
       :not_found -> show_message(socket, Text.t(:records_not_available))
     end
@@ -1008,7 +1023,7 @@ defmodule AshTable.Live.TableComponent do
   # person that there is a table, so it says something in every case, as a
   # nested table does.
   defp show(%{assigns: %{choose: %{}}} = socket, {:error, %Ash.Error.Forbidden{}}, _read) do
-    case TableInfo.table_on_forbidden!(socket.assigns.resource) do
+    case socket.assigns.model.on_forbidden do
       :message -> show_message(socket, Text.t(:not_allowed))
       :not_found -> show_message(socket, Text.t(:records_not_available))
     end
@@ -1025,7 +1040,7 @@ defmodule AshTable.Live.TableComponent do
   # nothing of it is rendered, and a table that is a page of its own answers
   # as a page that does not exist.
   defp show(socket, {:error, %Ash.Error.Forbidden{} = error}, read) do
-    case TableInfo.table_on_forbidden!(socket.assigns.resource) do
+    case socket.assigns.model.on_forbidden do
       :message -> show_error(socket, error)
       :not_found -> socket |> show_error(error) |> assign(gone?: true) |> not_found(read)
     end
@@ -1229,7 +1244,7 @@ defmodule AshTable.Live.TableComponent do
   # on this record. Taken from the record as it was read for them, and from
   # nothing else: a record that was not read has no name here.
   defp related_title(%{related: %{via: via}}, %Query.Page{parent: %_{} = parent}),
-    do: via.source |> Model.build() |> in_words() |> title_of(parent)
+    do: via.source |> Model.build(table: via.source_table) |> in_words() |> title_of(parent)
 
   defp related_title(_assigns, _page), do: nil
 
@@ -3625,7 +3640,14 @@ defmodule AshTable.Live.TableComponent do
         id={@id}
         via={@related.via}
         title={@related_title}
-        parent={Routes.table(@socket.router, @related.via.source, @authorize_given)}
+        parent={
+          Routes.table(
+            @socket.router,
+            @related.via.source,
+            @related.via.source_table,
+            @authorize_given
+          )
+        }
         clear={path(@url, @id, %{})}
         create={@page && @model.create}
         actions={if @page, do: @offered, else: []}
@@ -7331,6 +7353,7 @@ defmodule AshTable.Live.TableComponent do
               module={__MODULE__}
               id={"#{@row_id}-t-#{relationship.name}"}
               resource={relationship.destination}
+              table={relationship.table}
               via={relationship}
               parent_key={@row.pk}
               label={relationship.label}
@@ -7682,6 +7705,7 @@ defmodule AshTable.Live.TableComponent do
         module={__MODULE__}
         id={"#{@id}-pick-#{@picker.name}"}
         resource={@picker.reference.destination}
+        table={:default}
         select={if @picker.several?, do: :multi, else: :single}
         choose={
           %{

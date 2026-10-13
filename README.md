@@ -41,6 +41,7 @@ no HEEx.
 - [Table actions](#table-actions)
 - [Files](#files)
 - [Nested tables](#nested-tables)
+- [Named tables](#named-tables)
 - [Custom components](#custom-components)
 - [Who is reading, and what they may see and do](#who-is-reading-and-what-they-may-see-and-do)
 - [The keyboard](#the-keyboard)
@@ -75,6 +76,7 @@ examples from the demo app and each topic's edge cases.
 - [Table actions](documentation/topics/table-actions.md)
 - [Files](documentation/topics/files.md)
 - [Nested tables](documentation/topics/nested-tables.md)
+- [Named tables](documentation/topics/named-tables.md)
 - [Custom components](documentation/topics/custom-components.md)
 - [Sensitive columns](documentation/topics/sensitive-columns.md)
 - [Authorization](documentation/topics/authorization.md)
@@ -1133,6 +1135,61 @@ out, and a hidden field is "Not available".
 The guide [Nested tables](documentation/topics/nested-tables.md) has all of
 this in detail, with the full view, the reference cell and what a person
 sees for each restriction.
+
+## Named tables
+
+A resource can have several tables. The `table` block is its **default
+table**; the `tables` block declares **named tables** beside it:
+
+```elixir
+table do
+  label_field :body
+  update_action :update
+  create_action :create
+end
+
+tables do
+  table :compact do
+    max_depth 0
+
+    column :body
+    column :author
+  end
+end
+```
+
+A named table has every option and declaration of the `table` block except
+`label_field`, which says what a record is called and belongs to the
+resource. It takes nothing over from the default table: its columns,
+actions and settings are its own.
+
+```elixir
+# mounted
+ash_table "/comments/compact", MyApp.Comment, table: :compact
+
+# nested under another resource's rows
+relationship :comments do
+  table :compact
+end
+```
+
+```heex
+<AshTable.table resource={MyApp.Comment} table={:compact} scope={@current_scope} />
+```
+
+- The id of a named table defaults to the resource's, `_` and the table's
+  name (`comment_compact`), so two tables of one resource share a page and a
+  URL without an `id` being written.
+- "Open in full view" on a nested named table leads to the mounted page of
+  the same table, and is not there when that table is mounted nowhere.
+- The picker shows the destination's default table.
+- A table can be declared in a file of its own, as a Spark fragment of the
+  resource (`use Spark.Dsl.Fragment, of: Ash.Resource, extensions:
+  [AshTable.Resource]`, listed as `fragments:`). Every compile-time check
+  holds, and a finding points at the fragment's file.
+
+The guide [Named tables](documentation/topics/named-tables.md) has the
+rules, the ids and the fragment pattern.
 
 ## Custom components
 

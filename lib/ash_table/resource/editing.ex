@@ -7,7 +7,7 @@ defmodule AshTable.Resource.Editing do
   alias Ash.Resource.Info
   alias AshTable.Model.CellType
   alias AshTable.Resource.Embedding
-  alias AshTable.Resource.Info, as: TableInfo
+  alias AshTable.Resource.Table
   alias AshTable.Resource.Managing
   alias AshTable.Resource.Referencing
   alias AshTable.Sensitive
@@ -20,15 +20,14 @@ defmodule AshTable.Resource.Editing do
           | {:not_an_update_action, atom, atom}
           | {:not_public, atom}
 
-  @doc "The table-level update action: `:none` when the block names none."
-  @spec table_action(Ash.Resource.t()) ::
+  @doc """
+  The table-level update action of `table` (an `AshTable.Resource.Table`):
+  `:none` when its block names none.
+  """
+  @spec table_action(Ash.Resource.t(), Table.t()) ::
           {:ok, Ash.Resource.Actions.Update.t()} | :none | {:error, reason}
-  def table_action(resource) do
-    case TableInfo.table_update_action(resource) do
-      {:ok, name} -> action(resource, name)
-      :error -> :none
-    end
-  end
+  def table_action(_resource, %Table{update_action: nil}), do: :none
+  def table_action(resource, %Table{update_action: name}), do: action(resource, name)
 
   @doc "The public update action of that name."
   @spec action(Ash.Resource.t(), atom) ::
@@ -47,10 +46,10 @@ defmodule AshTable.Resource.Editing do
   that can never be edited. `declared` is the column as written in the block,
   or nil for a column of the default set.
   """
-  @spec update_action(Ash.Resource.t(), struct, AshTable.Resource.Column.t() | nil) ::
+  @spec update_action(Ash.Resource.t(), Table.t(), struct, AshTable.Resource.Column.t() | nil) ::
           {:ok, atom} | :none
-  def update_action(resource, field, declared) do
-    case edit(resource, field, declared) do
+  def update_action(resource, table, field, declared) do
+    case edit(resource, table, field, declared) do
       {:ok, name, _written} -> {:ok, name}
       :none -> :none
     end
@@ -76,12 +75,12 @@ defmodule AshTable.Resource.Editing do
   @doc """
   The update action an inline edit of a column runs, with what the edit
   gives it; `:none` for a column that can never be edited. `declared` is as
-  for `update_action/3`.
+  for `update_action/4`.
   """
-  @spec edit(Ash.Resource.t(), struct, AshTable.Resource.Column.t() | nil) ::
+  @spec edit(Ash.Resource.t(), Table.t(), struct, AshTable.Resource.Column.t() | nil) ::
           {:ok, atom, written} | :none
-  def edit(resource, field, declared) do
-    with {:ok, action} <- behind(resource, declared),
+  def edit(resource, table, field, declared) do
+    with {:ok, action} <- behind(resource, table, declared),
          {:ok, written} <- written(resource, action, field),
          [] <- required_arguments(action) -- given(written) do
       {:ok, action.name, written}
@@ -104,12 +103,12 @@ defmodule AshTable.Resource.Editing do
   it: the column's own `update_action`, else the table's. `:none` where
   neither names one, or the column switches editing off.
   """
-  @spec behind(Ash.Resource.t(), AshTable.Resource.Column.t() | nil) ::
+  @spec behind(Ash.Resource.t(), Table.t(), AshTable.Resource.Column.t() | nil) ::
           {:ok, Ash.Resource.Actions.Update.t()} | :none | {:error, reason}
-  def behind(resource, declared) do
+  def behind(resource, table, declared) do
     case declared && declared.update_action do
       false -> :none
-      nil -> table_action(resource)
+      nil -> table_action(resource, table)
       name -> action(resource, name)
     end
   end
@@ -283,9 +282,11 @@ defmodule AshTable.Resource.Editing do
   `columns` are the fields of the table's columns, each with its column as
   written in the block (nil for a column of the default set).
   """
-  @spec unloadable_after_save(Ash.Resource.t(), [{struct, AshTable.Resource.Column.t() | nil}]) ::
+  @spec unloadable_after_save(Ash.Resource.t(), Table.t(), [
+          {struct, AshTable.Resource.Column.t() | nil}
+        ]) ::
           [atom]
-  def unloadable_after_save(resource, columns) do
+  def unloadable_after_save(resource, table, columns) do
     loaded =
       for {%struct{name: name}, _declared} <- columns,
           struct in [
@@ -297,7 +298,7 @@ defmodule AshTable.Resource.Editing do
 
     editable? =
       Enum.any?(columns, fn {field, declared} ->
-        update_action(resource, field, declared) != :none
+        update_action(resource, table, field, declared) != :none
       end)
 
     if editable? and is_nil(Info.primary_action(resource, :read)), do: loaded, else: []

@@ -43,6 +43,15 @@ defmodule DemoWeb.Router do
       # The labels once more, without the app layout that the configuration
       # (`config :ash_table, layout: …`) puts around the tables above.
       ash_table "/bare/labels", Demo.Tracker.Label, layout: false
+
+      # Named tables: a second table of the tasks and one of the comments,
+      # each beside the resource's default table above. The short table of
+      # the labels (`:short`) is mounted nowhere.
+      ash_table "/tasks/board", Demo.Tracker.Task, table: :board
+      ash_table "/comments/compact", Demo.Tracker.Comment, table: :compact
+
+      # Two tables of one resource on one page, placed without an id.
+      live "/named", NamedLive
     end
   end
 
@@ -139,6 +148,13 @@ defmodule DemoWeb.Router do
         live "/switch", DemoWeb.Support.SwitchLive
         live "/held-dockets", DemoWeb.Support.DocketsLive
         live "/two-scans", DemoWeb.Support.ScansLive
+
+        # A route that names a table its resource does not have: the router
+        # does not look, and the page says so when it is opened.
+        ash_table "/wrong-table", Demo.Tracker.Comment,
+          table: :compakt,
+          id: "wrong",
+          layout: false
 
         ash_table "/framed/guarded-notes", Demo.Support.Guarded.Note,
           layout: {DemoWeb.Support.Layouts, :frame}

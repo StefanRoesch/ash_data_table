@@ -67,7 +67,7 @@ defmodule AshTable.Record do
   Loaded as Ash loads what a create, an update or a destroy action returns:
   through the primary read action. A table that changes records is only
   built over a resource whose primary read action is `public?`
-  (`AshTable.Resource.Acting.private_result_read/1`).
+  (`AshTable.Resource.Acting.private_result_read/2`).
   """
   @spec load(Model.t(), Ash.Resource.record(), keyword) :: {:ok, Ash.Resource.record()} | :error
   def load(%Model{} = model, record, opts) do

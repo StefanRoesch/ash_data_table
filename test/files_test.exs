@@ -86,7 +86,11 @@ defmodule AshTable.FilesTest do
     test "LiveView's own limits for what the block leaves out: any kind of file, 8 MB" do
       assert input(:pair, :front).upload == %{accept: :any, max_file_size: 50_000_000}
       assert input(:pair, :rear).upload == %{accept: :any, max_file_size: 8_000_000}
-      assert Uploading.limits(Files, :unheard_of) == %{accept: :any, max_file_size: 8_000_000}
+
+      assert Uploading.limits(AshTable.Resource.Info.table!(Files, :default), :unheard_of) == %{
+               accept: :any,
+               max_file_size: 8_000_000
+             }
     end
 
     test "is said of no other input" do

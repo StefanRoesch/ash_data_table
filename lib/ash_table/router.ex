@@ -10,12 +10,14 @@ defmodule AshTable.Router do
         live_session :default, on_mount: [{MyAppWeb.UserAuth, :mount_current_scope}] do
           ash_table "/tasks", MyApp.Tracker.Task
           ash_table "/projects", MyApp.Tracker.Project
+          ash_table "/tasks/board", MyApp.Tracker.Task, table: :board
         end
       end
   """
 
   @doc """
-  Mounts the table of `resource` at `path`.
+  Mounts a table of `resource` at `path`: its default table, or the named
+  table that `table:` names.
 
   Expands to a `live` route for `AshTable.Live.Page`. The route sits in
   whichever scope, pipeline and live session surround it, renders in the
@@ -27,15 +29,26 @@ defmodule AshTable.Router do
 
   A mounted table is also where the nested tables of that resource are
   opened in their full view: a nested table links to the first route, in the
-  router's order, that mounts its resource at a path without parameters. See
+  router's order, that mounts the same table of its resource at a path
+  without parameters. A nested table that shows a named table links to a
+  page of that named table, and has no link when none is mounted. See
   `AshTable.Live.Page`.
 
   ## Options
 
+    * `:table` - the name of the table that is mounted: one of the
+      resource's named tables (a `table` of its `tables` block), such as
+      `:compact`. Left out, or `:default`, it is the resource's default
+      table, the one of its `table` block. The router does not look at the
+      resource, so a name the resource has no table for is an error when the
+      page is opened, which lists the resource's tables.
+
     * `:id` - the table's id, a string. It prefixes the DOM ids of the table
       and names its URL parameters (`?task[sort]=title`). Defaults to the last
       part of the resource's module name, underscored: `"task"` for
-      `MyApp.Tracker.Task`. It must be unique among the tables of a page.
+      `MyApp.Tracker.Task`; for a named table, followed by `_` and the
+      table's name: `"task_board"`. It must be unique among the tables of a
+      page.
 
     * `:layout` - the layout the page is rendered in: `{module, function}`
       naming a function component, such as `{MyAppWeb.Layouts, :app}`, or
@@ -105,12 +118,21 @@ defmodule AshTable.Router do
             "ash_table expects a resource module as its second argument, got: #{inspect(resource)}"
     end
 
-    case Keyword.keys(opts) -- [:id, :layout, :authorize?] do
+    case Keyword.keys(opts) -- [:id, :layout, :authorize?, :table] do
       [] -> :ok
       unknown -> raise ArgumentError, "unknown options for ash_table: #{inspect(unknown)}"
     end
 
-    id = Keyword.get_lazy(opts, :id, fn -> default_id(resource) end)
+    # nil and `:default` both name the default table
+    table = Keyword.get(opts, :table) || :default
+
+    if table != :default and not AshTable.Resource.Verifiers.VerifyTables.name?(table) do
+      raise ArgumentError,
+            "the :table of ash_table must be the name of a table of the resource, an atom such " <>
+              "as `:compact`, or `:default` for its default table, got: #{inspect(opts[:table])}"
+    end
+
+    id = Keyword.get_lazy(opts, :id, fn -> AshTable.Routes.default_id(resource, table) end)
 
     if not (is_binary(id) and id =~ ~r/\A[a-z][a-z0-9_-]*\z/) do
       raise ArgumentError,
@@ -142,12 +164,14 @@ defmodule AshTable.Router do
       # only used by hosts that still generate route helpers
       as: String.to_atom("ash_table_" <> String.replace(id, "-", "_")),
       metadata: %{
-        ash_table: %{resource: resource, id: id, layout: layout, authorize?: authorize?}
+        ash_table: %{
+          resource: resource,
+          table: table,
+          id: id,
+          layout: layout,
+          authorize?: authorize?
+        }
       }
     ]
-  end
-
-  defp default_id(resource) do
-    resource |> Module.split() |> List.last() |> Macro.underscore()
   end
 end

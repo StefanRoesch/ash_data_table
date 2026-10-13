@@ -6,6 +6,7 @@ defmodule AshTable.Resource.Verifiers.VerifyRelationships do
   use Spark.Dsl.Verifier
 
   alias AshTable.Resource.Relating
+  alias AshTable.Resource.Table
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
@@ -14,11 +15,12 @@ defmodule AshTable.Resource.Verifiers.VerifyRelationships do
     module = Verifier.get_persisted(dsl, :module)
 
     errors =
-      for declaration <- AshTable.Resource.Info.relationships(dsl),
-          {:error, reason} <- [offerable(dsl, declaration.name)] do
+      for table <- AshTable.Resource.Info.tables(dsl),
+          declaration <- table.relationships,
+          {:error, reason} <- [offerable(dsl, declaration)] do
         DslError.exception(
           module: module,
-          path: [:table, :relationship, declaration.name],
+          path: Table.path(table) ++ [:relationship, declaration.name],
           message: Relating.message(reason),
           location: Spark.Dsl.Entity.anno(declaration)
         )
@@ -30,12 +32,13 @@ defmodule AshTable.Resource.Verifiers.VerifyRelationships do
     end
   end
 
-  # A public relationship to a resource with a table, whose nested table
-  # runs a public read action. A relationship of the default set is not
-  # looked at here: one that cannot be offered is left out of it.
-  defp offerable(dsl, name) do
-    with {:ok, relationship} <- Relating.declared(dsl, name) do
-      Relating.public_read(relationship)
+  # A public relationship to a resource with a table, and with the table
+  # that the declaration names, whose nested table runs a public read
+  # action. A relationship of the default set is not looked at here: one
+  # that cannot be offered is left out of it.
+  defp offerable(dsl, declaration) do
+    with {:ok, relationship} <- Relating.declared(dsl, declaration) do
+      Relating.public_read(relationship, Relating.nested(declaration))
     end
   end
 end

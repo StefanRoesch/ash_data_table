@@ -810,6 +810,43 @@ declared in the resource and mounted with one line in the router.
   "%{count} hidden", "%{count} filtered", "%{count} sorted", "filtered",
   "sorted", "filtered, sorted", "%{column} hidden", "%{column} shown".
 
+### Named tables
+
+- A resource can have several tables. The `table` block stays its default
+  table; the new `tables` section declares named tables beside it
+  (`tables do table :compact do … end end`). A named table has every option
+  and entity of the `table` block except `label_field`, which belongs to the
+  resource, and takes nothing over from the default table. A resource has
+  its default table with or without a `table` block, as before.
+- `relationship` has a new option, `table`: which of the destination's
+  tables is nested (`relationship :comments do table :compact end`). Without
+  it the destination's default table is nested.
+- `ash_table "/comments/compact", MyApp.Comment, table: :compact` mounts a
+  named table, and `<AshTable.table resource={…} table={:compact} />` places
+  one. A name the resource has no table for raises when the page is opened
+  or the component rendered, with the resource's tables. `:default` names
+  the default table wherever a table is named.
+- The id of a named table defaults to the resource's, `_` and the table's
+  name (`comment_compact`). The `id` of `<AshTable.table>` is no longer
+  required: it defaults as the id of a mounted table does.
+- "Open in full view" on a nested table leads to the mounted page of the
+  same table, and is not there when that table is mounted nowhere. In the
+  parameter `of`, a named table of the parent that offers the relationship
+  is named with the resource: `comment_compact[of][task_board][comments]=KEY`.
+- The picker shows the destination's default table.
+- Every compile-time check runs for each table of a resource; a finding in
+  a named table has the path `tables -> table -> NAME -> …`. New findings: a
+  name that is no lower-case atom, the reserved name `:default`,
+  `label_field` in a named table, a declaration made twice in a named
+  table, and a `relationship` that names a table its destination does not
+  have.
+- `AshTable.Resource.Info.tables/1`, `table/2` and `table!/2` return the
+  tables of a resource as `AshTable.Resource.Table`, in one shape for the
+  default table and a named one.
+- A table can be declared in a file of its own, as a Spark fragment of the
+  resource. Every check holds for it, and a finding points at the
+  fragment's file and line. See the guide "Named tables".
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive

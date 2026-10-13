@@ -7,6 +7,7 @@ defmodule AshTable.Resource.Verifiers.VerifyUpdateAction do
 
   alias Ash.Resource.Info
   alias AshTable.Resource.Editing
+  alias AshTable.Resource.Table
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
@@ -14,46 +15,60 @@ defmodule AshTable.Resource.Verifiers.VerifyUpdateAction do
   def verify(dsl) do
     module = Verifier.get_persisted(dsl, :module)
 
-    case Editing.table_action(module) do
+    errors =
+      for table <- AshTable.Resource.Info.tables(dsl),
+          error <- errors(dsl, module, table),
+          do: error
+
+    case errors do
+      [] -> :ok
+      errors -> {:error, errors}
+    end
+  end
+
+  defp errors(dsl, module, table) do
+    case Editing.table_action(module, table) do
       {:error, reason} ->
-        {:error,
-         DslError.exception(
-           module: module,
-           path: [:table, :update_action],
-           message: Editing.message(reason),
-           location: Spark.Dsl.Transformer.get_opt_anno(dsl, [:table], :update_action)
-         )}
+        [
+          DslError.exception(
+            module: module,
+            path: Table.path(table) ++ [:update_action],
+            message: Editing.message(reason),
+            location: Table.option_anno(dsl, table, :update_action)
+          )
+        ]
 
       _ ->
-        verify_row_refresh(dsl, module)
+        row_refresh_errors(dsl, module, table)
     end
   end
 
   # After a save the row is shown from the action's result, with the table's
   # calculations, aggregates and reference columns loaded onto it. Ash loads
   # those through the primary read action.
-  defp verify_row_refresh(dsl, module) do
+  defp row_refresh_errors(dsl, module, table) do
     columns =
-      for column <- AshTable.Resource.Info.columns(dsl),
+      for column <- table.columns,
           field = field(module, column.name),
           do: {field, column}
 
-    case Editing.unloadable_after_save(module, columns) do
+    case Editing.unloadable_after_save(module, table, columns) do
       [] ->
-        :ok
+        []
 
       loaded ->
-        {:error,
-         DslError.exception(
-           module: module,
-           path: [:table],
-           message:
-             "The table has editable columns and shows calculations, aggregates or reference columns " <>
-               "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the resource has no primary read action. " <>
-               "After a save the row is refreshed with those fields, which Ash loads through the primary read action. " <>
-               "Mark a read action `primary? true`.",
-           location: Spark.Dsl.Transformer.get_section_anno(dsl, [:table])
-         )}
+        [
+          DslError.exception(
+            module: module,
+            path: Table.path(table),
+            message:
+              "The table has editable columns and shows calculations, aggregates or reference columns " <>
+                "(#{Enum.map_join(loaded, ", ", &"`#{&1}`")}), but the resource has no primary read action. " <>
+                "After a save the row is refreshed with those fields, which Ash loads through the primary read action. " <>
+                "Mark a read action `primary? true`.",
+            location: Table.anno(dsl, table)
+          )
+        ]
     end
   end
 

@@ -8,6 +8,7 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
   alias AshTable.Resource.Editing
   alias AshTable.Resource.Presenting
   alias AshTable.Resource.Referencing
+  alias AshTable.Resource.Table
   alias Spark.Dsl.Verifier
   alias Spark.Error.DslError
 
@@ -16,12 +17,12 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
     module = Verifier.get_persisted(dsl, :module)
 
     errors =
-      for %{component: component} = column when not is_nil(component) <-
-            AshTable.Resource.Info.columns(dsl),
-          message <- messages(column, field(dsl, column.name), module) do
+      for table <- AshTable.Resource.Info.tables(dsl),
+          %{component: component} = column when not is_nil(component) <- table.columns,
+          message <- messages(column, field(dsl, column.name), module, table) do
         DslError.exception(
           module: module,
-          path: [:table, :column, column.key, :component],
+          path: Table.path(table) ++ [:column, column.key, :component],
           message: message,
           location: Spark.Dsl.Entity.property_anno(column, :component)
         )
@@ -34,10 +35,10 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
   end
 
   # a column that names nothing, or nothing public: `VerifyColumns` says so
-  defp messages(_column, nil, _module), do: []
-  defp messages(_column, %{public?: false}, _module), do: []
+  defp messages(_column, nil, _module, _table), do: []
+  defp messages(_column, %{public?: false}, _module, _table), do: []
 
-  defp messages(column, field, module) do
+  defp messages(column, field, module, table) do
     cond do
       Referencing.relationship?(field) ->
         [
@@ -49,14 +50,14 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
         [Presenting.message({:sensitive, column.name})]
 
       true ->
-        editable? = Editing.update_action(module, field, column) != :none
+        editable? = Editing.update_action(module, table, field, column) != :none
         label = column.label || AshTable.Model.humanize(column.name)
 
         case Presenting.component(
                column.component,
                Presenting.column(module, field, label, editable?)
              ) do
-          {:ok, component} -> never_used(component, column, field, module)
+          {:ok, component} -> never_used(component, column, field, module, table)
           {:error, reason} -> [Presenting.message(reason)]
         end
     end
@@ -65,8 +66,8 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
   # A component with both parts is at home on a column nobody edits: its
   # editor is not used there, and its cell is. One that only edits does
   # nothing at all on such a column.
-  defp never_used(%{cell?: false} = component, column, field, module) do
-    case Editing.update_action(module, field, column) do
+  defp never_used(%{cell?: false} = component, column, field, module, table) do
+    case Editing.update_action(module, table, field, column) do
       {:ok, _action} ->
         []
 
@@ -79,7 +80,7 @@ defmodule AshTable.Resource.Verifiers.VerifyComponents do
     end
   end
 
-  defp never_used(_component, _column, _field, _module), do: []
+  defp never_used(_component, _column, _field, _module, _table), do: []
 
   defp field(dsl, name) do
     Ash.Resource.Info.attribute(dsl, name) ||

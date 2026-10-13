@@ -7,6 +7,10 @@ defmodule AshTable.Model.Relationship do
   #     table, and `label` what its line says.
   #   * `kind` is what the relationship is on the resource, and `cardinality`
   #     whether it holds `:one` record (belongs-to, has-one) or `:many`.
+  #   * `source_table` is the name of the table of `source` that offers the
+  #     relationship (`:default` for its default table), and `table` the
+  #     name of the table of `destination` that is nested: the one the
+  #     `relationship` of the block names, else the default table.
   #   * `source_read_action` is the read action the row's record is read
   #     again through, by its key and as the person, before its related
   #     records are read or one is created under it: the one the table that
@@ -43,6 +47,8 @@ defmodule AshTable.Model.Relationship do
     :read_action,
     :sort,
     :link,
+    source_table: :default,
+    table: :default,
     pageable?: false,
     sortable?: false,
     filterable?: false
@@ -54,6 +60,8 @@ defmodule AshTable.Model.Relationship do
           kind: :belongs_to | :has_one | :has_many | :many_to_many,
           cardinality: :one | :many,
           source: Ash.Resource.t(),
+          source_table: atom,
+          table: atom,
           source_read_action: atom,
           destination: Ash.Resource.t(),
           read_action: atom,

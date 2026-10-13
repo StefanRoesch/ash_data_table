@@ -425,7 +425,11 @@ defmodule AshTable.Resource.Referencing do
   end
 
   defp declared_read_action(action, name, destination) do
-    case AshTable.Resource.Reading.read_action(destination) do
+    # the picker shows the destination's default table
+    case AshTable.Resource.Reading.read_action(
+           destination,
+           TableInfo.table!(destination, :default)
+         ) do
       {:ok, read_action} ->
         {:ok, read_action}
 
@@ -495,9 +499,10 @@ defmodule AshTable.Resource.Referencing do
   defp has_table(destination),
     do: if(Relating.table?(destination), do: :ok, else: {:error, :no_table})
 
-  # As a nested table of the relationship reads: `Relating.read_action/1`.
+  # As a nested table of the relationship reads that shows the destination's
+  # default table, which is the one in the picker: `Relating.read_action/2`.
   defp picker_read_action(relationship) do
-    case Relating.read_action(relationship) do
+    case Relating.read_action(relationship, :default) do
       {:ok, action} -> {:ok, action.name}
       {:error, _private_or_none} -> {:error, :no_read_action}
     end

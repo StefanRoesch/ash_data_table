@@ -2,6 +2,9 @@ defmodule Demo.Tracker.Comment do
   @moduledoc """
   A comment on a task. Its primary read is keyset-only.
 
+  It has two tables: the default one below, and a named one, `:compact`, in
+  `Demo.Tracker.Comment.CompactTable`.
+
   As with `Demo.Tracker.Project`, its read is refused outright for an
   anonymous visitor. Its table says so (`on_forbidden :message`), where the
   one of projects answers as a page that does not exist.
@@ -12,6 +15,9 @@ defmodule Demo.Tracker.Comment do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTable.Resource],
+    # A second table of the comments, declared in a file of its own:
+    # `comment/compact_table.ex`.
+    fragments: [Demo.Tracker.Comment.CompactTable],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 

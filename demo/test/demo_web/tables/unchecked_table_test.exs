@@ -344,20 +344,21 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
     test "a table without authorization is sent to a page mounted without, and any other never to one" do
       router = DemoWeb.Router
 
-      assert AshTable.Routes.table(router, Entry, false) ==
+      assert AshTable.Routes.table(router, Entry, :default, false) ==
                %{path: "/support/open/entries", id: "entry"}
 
       for told <- [nil, true] do
-        assert AshTable.Routes.table(router, Entry, told) ==
+        assert AshTable.Routes.table(router, Entry, :default, told) ==
                  %{path: "/support/closed/entries", id: "entry"}
       end
 
       # the keepers are mounted without authorization alone: no other table links there
-      assert AshTable.Routes.table(router, Keeper, false) ==
+      assert AshTable.Routes.table(router, Keeper, :default, false) ==
                %{path: "/support/open/keepers", id: "keeper"}
 
-      assert AshTable.Routes.table(router, Keeper, nil) == nil
-      assert AshTable.Routes.table(router, Keeper) == nil
+      assert AshTable.Routes.table(router, Keeper, :default, nil) == nil
+      # nor one of another table of the resource than the one that is mounted
+      assert AshTable.Routes.table(router, Keeper, :compact, false) == nil
     end
   end
 

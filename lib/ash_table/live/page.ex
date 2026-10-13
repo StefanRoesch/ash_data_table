@@ -1,11 +1,14 @@
 defmodule AshTable.Live.Page do
   @moduledoc """
-  The ready-made LiveView behind `AshTable.Router.ash_table/3`: one resource's
-  table as a page of its own.
+  The ready-made LiveView behind `AshTable.Router.ash_table/3`: one table of
+  a resource as a page of its own. That is the resource's default table,
+  or the named table the route names (`table: :compact`).
 
-  It is not used directly. It finds its resource in the metadata of the route
-  it was reached through, so one module serves every `ash_table` line of a
-  router.
+  It is not used directly. It finds its resource and the table's name in the
+  metadata of the route it was reached through, so one module serves every
+  `ash_table` line of a router. A route that names a table the resource
+  does not have is an error when the page is opened, which lists the tables
+  the resource has.
 
   ## Who is reading
 
@@ -192,7 +195,12 @@ defmodule AshTable.Live.Page do
   relationship, and the parent's primary key (by attribute where it has
   several: `task[of][task_label][task][task_id]=…`). This is the full view
   of a nested table, which the link in a nested table's last row leads to
-  when the router mounts the destination's table. Sort, filters and page
+  when the router mounts the table that is nested: the same table of the
+  destination, so a nested table that shows a named table links to a page
+  of that named table (`ash_table "/comments/compact", Comment, table:
+  :compact`) and to no other. Where the relationship is offered by a named
+  table of the parent, the parent is named with that table:
+  `comment[of][task_board][comments]=KEY`. Sort, filters and page
   work beside it, and it stays in the URL through them.
 
   The page then reads as a nested table does: the parent is read again by
@@ -207,7 +215,7 @@ defmodule AshTable.Live.Page do
   its short name, as text, among the resources of the application's domains
   (`config :my_app, ash_domains: […]`, for the app of the endpoint) and of
   the table's own domain, and counts only when its table offers this person
-  that relationship to this table's resource. Anything else is no limit: the
+  that relationship to this table of this table's resource. Anything else is no limit: the
   page shows the table as if nothing had been asked. A parent that is gone or
   not the person's to read shows "This record is no longer available." and
   names no record; a destination whose read is refused is the page's own
@@ -240,6 +248,7 @@ defmodule AshTable.Live.Page do
           module={AshTable.Live.TableComponent}
           id={@table.id}
           resource={@table.resource}
+          table={@table.table}
           url={@url}
           label={@page_title}
           heading={1}
@@ -300,7 +309,23 @@ defmodule AshTable.Live.Page do
     uri = URI.parse(url)
 
     case Phoenix.Router.route_info(socket.router, "GET", uri.path || "/", uri.host || "") do
-      %{ash_table: %{resource: _, id: _, layout: _} = table} ->
+      %{ash_table: %{resource: resource, id: _, layout: _} = table} ->
+        # which of the resource's tables the route mounts: its default
+        # table where it names none
+        table = Map.put_new(table, :table, :default)
+
+        # The router does not look at the resource, so that it does not
+        # depend on it at compile time: a table the resource does not have
+        # is found here. (A resource without the extension is the table
+        # model's to refuse.)
+        if AshTable.Resource.Relating.table?(resource) and
+             AshTable.Resource.Info.table(resource, table.table) == :error do
+          raise ArgumentError,
+                "`ash_table` mounts the table `#{inspect(table.table)}` of #{inspect(resource)} " <>
+                  "at #{inspect(uri.path)}, but " <>
+                  AshTable.Resource.Info.no_table(resource, table.table)
+        end
+
         # what the route says about authorization, and nothing else does:
         # nil where it says nothing, which leaves it to the domain
         Map.put_new(table, :authorize?, nil)

@@ -64,6 +64,66 @@ defmodule AshTable.TableBlockTest do
     end
   end
 
+  describe "the `tables` block" do
+    # Named tables: every check of this file runs for each of them, under
+    # the table's name. That is `AshTable.NamedTablesTest`, and a table in a
+    # file of its own is `AshTable.FragmentsTest`.
+    test "compiles beside the `table` block, and both are read through AshTable.Resource.Info" do
+      refute_dsl_errors do
+        defmodule Elixir.AshTable.TableBlockTest.Named do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            data_layer: Ash.DataLayer.Ets,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+            attribute :title, :string, public?: true
+            attribute :estimate, :integer, public?: true
+          end
+
+          actions do
+            defaults [:read, update: [:title]]
+          end
+
+          table do
+            label_field :title
+            column :title
+          end
+
+          tables do
+            table :compact do
+              update_action :update
+              max_depth 0
+
+              column :estimate
+              column :title
+            end
+          end
+        end
+      end
+
+      alias AshTable.TableBlockTest.Named
+
+      assert [
+               %AshTable.Resource.Table{name: :default, update_action: nil, max_depth: 3},
+               %AshTable.Resource.Table{
+                 name: :compact,
+                 update_action: :update,
+                 max_depth: 0,
+                 columns: [
+                   %AshTable.Resource.Column{name: :estimate},
+                   %AshTable.Resource.Column{name: :title}
+                 ]
+               }
+             ] = AshTable.Resource.Info.tables(Named)
+
+      # what was there before is about the default table
+      assert [%AshTable.Resource.Column{name: :title}] = AshTable.Resource.Info.table(Named)
+      assert AshTable.Resource.Info.table_label_field(Named) == {:ok, :title}
+    end
+  end
+
   describe "inline editing" do
     test "`update_action` is accepted at both levels, `false` and `confirm` on a column" do
       refute_dsl_errors do

@@ -80,6 +80,18 @@ defmodule Demo.Tracker.Label do
     end
   end
 
+  # A named table beside the default one, written here in the resource: the
+  # name and the colour, and nothing to do. It is mounted nowhere; the board
+  # of the tasks nests it (`Demo.Tracker.Task.BoardTable`).
+  tables do
+    table :short do
+      max_depth 0
+
+      column :name
+      column :colour
+    end
+  end
+
   actions do
     defaults [:destroy, create: [:name, :colour], update: [:name, :colour]]
 

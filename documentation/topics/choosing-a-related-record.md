@@ -139,7 +139,9 @@ table does not go looking for the page that record is on.
 
 ## The table in the picker
 
-It is the table of the destination resource as that resource declares it:
+It is the default table of the destination resource (its `table` block,
+never one of its [named tables](named-tables.md), from whichever table the
+picker is opened), as that resource declares it:
 its columns and their labels, its filter row, its sorting and its pages,
 and its [argument line](arguments.md) where the action it reads through
 takes arguments: in the demo the tasks to choose from can be searched. A

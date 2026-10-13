@@ -11,11 +11,13 @@ defmodule AshTable.Resource.Relating do
   alias Ash.Resource.Info
   alias AshTable.Resource.Info, as: TableInfo
   alias AshTable.Resource.Reading
+  alias AshTable.Resource.Table
 
   @type reason ::
           {:not_found, atom}
           | {:not_public, atom}
           | {:no_table, atom, Ash.Resource.t()}
+          | {:no_such_table, atom, Ash.Resource.t(), atom}
           | {:declared_twice, atom}
           | private_read
 
@@ -45,20 +47,25 @@ defmodule AshTable.Resource.Relating do
         }
 
   @doc """
-  The relationships a row offers, each with its declaration in the block
-  (nil for one of the default set), or what is wrong with the first declared
-  one that cannot be offered.
+  The relationships a row of `table` (an `AshTable.Resource.Table` of the
+  resource) offers, each with its declaration in the block (nil for one of
+  the default set), or what is wrong with the first declared one that cannot
+  be offered.
 
   With no `relationship` in the block: every public relationship whose
   destination has a table, in the order of the resource, except manual
   relationships and those whose nested table would run a private read
   action. Once one is declared: exactly the declared ones, in the declared
   order; one of them that would run a private read action is a mistake.
+
+  A relationship of the default set nests the destination's default table.
+  A declared one nests the table of the destination that it names
+  (`table`), else the default table too.
   """
-  @spec offered(Ash.Resource.t()) ::
+  @spec offered(Ash.Resource.t(), Table.t()) ::
           {:ok, [{struct, AshTable.Resource.Relationship.t() | nil}]} | {:error, reason}
-  def offered(resource) do
-    case TableInfo.relationships(resource) do
+  def offered(resource, %Table{relationships: declared}) do
+    case declared do
       [] ->
         {:ok,
          for relationship <- Info.public_relationships(resource),
@@ -71,8 +78,8 @@ defmodule AshTable.Resource.Relating do
       declared ->
         with :ok <- declared_once(declared) do
           Enum.reduce_while(declared, {:ok, []}, fn declaration, {:ok, found} ->
-            with {:ok, relationship} <- declared(resource, declaration.name),
-                 :ok <- public_read(relationship) do
+            with {:ok, relationship} <- declared(resource, declaration),
+                 :ok <- public_read(relationship, nested(declaration)) do
               {:cont, {:ok, found ++ [{relationship, declaration}]}}
             else
               {:error, reason} -> {:halt, {:error, reason}}
@@ -82,9 +89,14 @@ defmodule AshTable.Resource.Relating do
     end
   end
 
-  @doc "The relationship a `relationship` of the block names, or what is wrong with it."
-  @spec declared(Ash.Resource.t() | Spark.Dsl.t(), atom) :: {:ok, struct} | {:error, reason}
-  def declared(resource, name) do
+  @doc """
+  The relationship a `relationship` of the block names, or what is wrong
+  with it: a public relationship of the resource, to a resource that has a
+  table, and has the table the declaration names.
+  """
+  @spec declared(Ash.Resource.t() | Spark.Dsl.t(), AshTable.Resource.Relationship.t()) ::
+          {:ok, struct} | {:error, reason}
+  def declared(resource, %{name: name} = declaration) do
     case Info.relationship(resource, name) do
       nil ->
         {:error, {:not_found, name}}
@@ -93,11 +105,27 @@ defmodule AshTable.Resource.Relating do
         {:error, {:not_public, name}}
 
       %{destination: destination} = relationship ->
-        if table?(destination),
-          do: {:ok, relationship},
-          else: {:error, {:no_table, name, destination}}
+        cond do
+          not table?(destination) ->
+            {:error, {:no_table, name, destination}}
+
+          TableInfo.table(destination, nested(declaration)) == :error ->
+            {:error, {:no_such_table, name, destination, declaration.table}}
+
+          true ->
+            {:ok, relationship}
+        end
     end
   end
+
+  @doc """
+  The name of the destination's table that a `relationship` of the block
+  nests: the one it names, else the default table. Nil stands for a
+  relationship of the default set.
+  """
+  @spec nested(AshTable.Resource.Relationship.t() | nil) :: atom
+  def nested(%{table: name}) when not is_nil(name), do: name
+  def nested(_declaration_or_nil), do: :default
 
   defp declared_once(declared) do
     names = Enum.map(declared, & &1.name)
@@ -118,17 +146,24 @@ defmodule AshTable.Resource.Relating do
   @doc """
   The read action a nested table of the relationship runs: the relationship's
   own `read_action` when it declares one, which says which records it means,
-  else the read action of the destination's table.
+  else the read action of the destination's table of the name `table`: the
+  one that is nested.
   """
-  @spec read_action(struct) :: {:ok, Ash.Resource.Actions.Read.t()} | {:error, term}
-  def read_action(%{read_action: nil, destination: destination} = relationship) do
-    with {:error, {private, name}} when private in [:not_public, :primary_not_public] <-
-           Reading.read_action(destination) do
-      {:error, {:read_action_not_public, relationship.name, destination, name, :table}}
+  @spec read_action(struct, atom) :: {:ok, Ash.Resource.Actions.Read.t()} | {:error, term}
+  def read_action(%{read_action: nil, destination: destination} = relationship, table) do
+    case TableInfo.table(destination, table) do
+      {:ok, nested} ->
+        with {:error, {private, name}} when private in [:not_public, :primary_not_public] <-
+               Reading.read_action(destination, nested) do
+          {:error, {:read_action_not_public, relationship.name, destination, name, :table}}
+        end
+
+      :error ->
+        {:error, {:no_such_table, relationship.name, destination, table}}
     end
   end
 
-  def read_action(%{read_action: name, destination: destination} = relationship) do
+  def read_action(%{read_action: name, destination: destination} = relationship, _table) do
     case Info.action(destination, name) do
       %{type: :read, public?: false} ->
         {:error, {:read_action_not_public, relationship.name, destination, name, :own}}
@@ -207,9 +242,9 @@ defmodule AshTable.Resource.Relating do
   that Ash runs on the way to them. Anything else that keeps its read action
   from being used is the destination's to report, and the model's to refuse.
   """
-  @spec public_read(struct) :: :ok | {:error, private_read}
-  def public_read(relationship) do
-    case read_action(relationship) do
+  @spec public_read(struct, atom) :: :ok | {:error, private_read}
+  def public_read(relationship, table) do
+    case read_action(relationship, table) do
       {:error, {:read_action_not_public, _name, _destination, _action, _whose} = reason} ->
         {:error, reason}
 
@@ -231,7 +266,8 @@ defmodule AshTable.Resource.Relating do
     end
   end
 
-  defp private_read?(relationship), do: public_read(relationship) != :ok
+  # of a relationship of the default set, which nests the default table
+  defp private_read?(relationship), do: public_read(relationship, :default) != :ok
 
   @doc "Whether the relationship is fetched by a module of the resource's own."
   @spec manual?(struct) :: boolean
@@ -291,6 +327,11 @@ defmodule AshTable.Resource.Relating do
   def message({:no_table, name, destination}),
     do:
       "The destination of `#{name}`, #{inspect(destination)}, has no table: it does not list `AshTable.Resource` in its extensions. A row can only be expanded into the table of a resource that has one."
+
+  def message({:no_such_table, name, destination, table}),
+    do:
+      "`#{name}` is to show the table `#{inspect(table)}` of its destination, but " <>
+        TableInfo.no_table(destination, table)
 
   def message({:declared_twice, name}), do: "`#{name}` is declared more than once."
 

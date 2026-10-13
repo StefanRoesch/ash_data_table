@@ -9,6 +9,9 @@ defmodule Demo.Tracker.Task do
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
     extensions: [AshTable.Resource],
+    # A second table of the tasks, declared in a file of its own:
+    # `task/board_table.ex`.
+    fragments: [Demo.Tracker.Task.BoardTable],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 
@@ -56,7 +59,7 @@ defmodule Demo.Tracker.Task do
     end
   end
 
-  # The table at /tasks: chosen columns in a chosen order. Its page size and
+  # The default table, at /tasks: chosen columns in a chosen order. Its page size and
   # default sort are those of the primary read action. Every column the
   # resource allows to be filtered has a filter, unless switched off here.
   table do

@@ -7,9 +7,9 @@ defmodule AshTable.Resource.Relationship do
   given is `nil`. The defaults are filled in when the table is rendered.
   """
 
-  defstruct [:name, :label, :__identifier__, :__spark_metadata__]
+  defstruct [:name, :label, :table, :__identifier__, :__spark_metadata__]
 
-  @type t :: %__MODULE__{name: atom, label: String.t() | nil}
+  @type t :: %__MODULE__{name: atom, label: String.t() | nil, table: atom | nil}
 
   # The later parts of nested tables add their options here; each needs a
   # struct field above and a key below.
@@ -24,6 +24,11 @@ defmodule AshTable.Resource.Relationship do
       type: :string,
       doc:
         "What the relationship is called on its line under a row. Defaults to the humanised relationship name."
+    ],
+    table: [
+      type: :atom,
+      doc:
+        "Which of the destination's tables is nested: the name of one of its named tables (a `table` of its `tables` block). Defaults to the destination's default table, the one of its `table` block."
     ]
   ]
 

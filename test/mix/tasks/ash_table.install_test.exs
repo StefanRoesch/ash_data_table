@@ -3,8 +3,14 @@ defmodule Mix.Tasks.AshTable.InstallTest do
   The installer applied to a project: `mix ash_table.install` on the files of
   a fresh Phoenix 1.8 application, and on files that do not look as one
   expects.
+
+  Not async: while it works on a project, Igniter puts that project's
+  configuration into the application environment of this virtual machine
+  (`config :ash_table, gettext_backend: TestWeb.Gettext` among it), where a
+  test that runs beside it would look for a Gettext backend that does not
+  exist.
   """
-  use ExUnit.Case, async: true
+  use ExUnit.Case, async: false
 
   import Igniter.Test
 
