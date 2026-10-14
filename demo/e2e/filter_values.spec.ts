@@ -233,12 +233,18 @@ test.describe("between", () => {
     expect(to.y).toBeGreaterThanOrEqual(from.y + from.height)
     await tasks.filterValue("progress").fill("50")
     await tasks.filterTo("progress").fill("50")
-    await tasks.reads(() => tasks.filterTo("progress").press("Enter"))
+    await tasks.filterTo("progress").press("Enter")
 
-    expect(params(page)).toEqual({
-      "task[f][progress][between][from]": "50",
-      "task[f][progress][between][to]": "50",
-    })
+    // Leaving "from" already read the table with "from" alone; the read that
+    // has both ends may come after the one that is waited for, so the
+    // address is waited for itself.
+    await expect
+      .poll(() => params(page))
+      .toEqual({
+        "task[f][progress][between][from]": "50",
+        "task[f][progress][between][to]": "50",
+      })
+    await tasks.ready()
     expect(await total(tasks)).toBe(fifty)
   })
 })
