@@ -517,6 +517,8 @@ test.describe("each table on its own", () => {
     await tasks.line(FIRST, "comments").click()
     await expect(comments.grid).toHaveCount(0)
     await tasks.line(FIRST, "comments").click()
+    // measured once its first read is behind it, as it was the first time
+    await comments.loaded()
     expect(await comments.width("body")).toBe(body)
   })
 
