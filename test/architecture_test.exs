@@ -13,13 +13,31 @@ defmodule AshDataTable.ArchitectureTest do
   Checked as well:
 
     * every file that is compile-connected is of the declaration (5.3);
+    * a verifier or transformer reads, of the declaration, only the modules
+      that are pure functions over the DSL and Ash's info modules: the topic
+      modules, the info modules, `Resource.Table`, the entities, `CellType`,
+      `Operator`, `Words` and `Exposing` (5.3, rule 1). Never the extension
+      itself, nor the notifier;
     * no cycle holds files of two parts, and no cycle has a compile edge
       but those Spark requires (an extension and its entities, verifiers and
       transformers; an info module and its extension) (5.4, V10);
     * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.PubSub`,
-      Gettext or a module of the words, which xref cannot see. A router is
-      allowed, for `AshDataTable.Routes` (F15);
+      Gettext or a module of the words, which xref cannot see, also not
+      inside a multi-alias (`alias AshDataTable.{Format, Text}`). A router
+      is allowed, for `AshDataTable.Routes` (F15);
     * only `Query`, `Record`, `Pick` and `Bulk` read from Ash (S1, Q11).
+
+  What it cannot see (5.5): coupling through data, not through a call.
+  Known today, and expected until the stage named:
+
+    * the live component gives the parts itself, as `component={__MODULE__}`
+      (`Parts.Grid`, `Parts.Picker`): part 3 renders the live component of
+      2b, for a nested table and for a picker (until stage 4 and 5);
+    * the parts name the hooks of the live component by their names, as
+      strings (`phx-hook="AshDataTable.Live.TableComponent.Grid"`), and the
+      hooks stay in the component (until stage 1b);
+    * `Parts.Panel` draws from the `AshPhoenix.Form` of the panel, through
+      `to_form/1`, and not from what `Present` gives it (until stage 3a).
 
   It reports and does not fail until the end of stage 3c of the refactor,
   when `@report_only` becomes false.
@@ -36,6 +54,17 @@ defmodule AshDataTable.ArchitectureTest do
   @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex)
   # the files that may read from Ash (S1)
   @readers ~w(query.ex record.ex pick.ex bulk.ex)
+
+  # the entities of the extension, which Spark compiles it with (5.3)
+  @entities ~w(action argument ask column reference relationship table upload)
+
+  # 5.3, rule 1: what a verifier or transformer may read of the declaration
+  @pure_declaration Enum.map(
+                      ~w(info table cell_type operator words exposing) ++
+                        ~w(acting arguing editing embedding listening managing presenting) ++
+                        ~w(reading referencing relating summarising uploading) ++ @entities,
+                      &"resource/#{&1}.ex"
+                    ) ++ ["domain/info.ex"]
 
   # 5.1: what a part may depend on, of the library
   @allowed %{
@@ -134,6 +163,14 @@ defmodule AshDataTable.ArchitectureTest do
           uniq: true,
           do: file
 
+    impure =
+      for {from, sinks} <- graph,
+          part(from) == "1v",
+          {to, label} <- sinks,
+          from(part(to) || "?") in ~w(1 1v),
+          String.replace_prefix(to, @lib <> "/", "") not in @pure_declaration,
+          do: "#{from} -> #{to}, #{label}"
+
     cycles =
       for cycle <- cycles(graph), reason = cycle_problem(cycle, graph), do: reason
 
@@ -141,6 +178,7 @@ defmodule AshDataTable.ArchitectureTest do
       {"files no rule places", unplaced},
       {"dependencies the parts do not allow (5.1)", Enum.sort(wrong)},
       {"compile-connected files outside the declaration (5.3)", Enum.sort(connected)},
+      {"verifiers or transformers reading what is not pure (5.3, rule 1)", Enum.sort(impure)},
       {"cycles across parts or with a compile edge Spark does not need (5.4)", cycles},
       {"2a naming LiveView, PubSub, Gettext or the words (5.5)", data_layer_mentions()},
       {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
@@ -206,8 +244,12 @@ defmodule AshDataTable.ArchitectureTest do
 
   # What Spark makes a compile dependency of: an extension of its entities,
   # verifiers and transformers, and an info module of its extension.
-  defp spark?(@lib <> "/resource.ex", @lib <> "/resource/" <> _), do: true
-  defp spark?(@lib <> "/domain.ex", @lib <> "/domain/" <> _), do: true
+  defp spark?(@lib <> "/resource.ex", @lib <> "/resource/" <> to) do
+    String.starts_with?(to, ~w(verifiers/ transformers/)) or
+      String.replace_suffix(to, ".ex", "") in @entities
+  end
+
+  defp spark?(@lib <> "/domain.ex", @lib <> "/domain/verifiers/" <> _), do: true
   defp spark?(@lib <> "/resource/info.ex", @lib <> "/resource.ex"), do: true
   defp spark?(@lib <> "/domain/info.ex", @lib <> "/domain.ex"), do: true
   defp spark?(_from, _to), do: false
@@ -225,11 +267,37 @@ defmodule AshDataTable.ArchitectureTest do
   defp data_layer_mentions do
     for file <- Path.wildcard("lib/**/*.ex"),
         part(file) == "2a",
-        {line, number} <- file |> File.read!() |> String.split("\n") |> Enum.with_index(1),
-        code = line |> String.split("#", parts: 2) |> hd(),
+        {number, named} <- named_in(file),
         name <- @forbidden_in_data,
-        code =~ ~r/(^|[^\w.])#{Regex.escape(name)}\b/,
+        named =~ ~r/(^|[^\w.])#{Regex.escape(name)}\b/,
+        uniq: true,
         do: "#{file}:#{number}: #{name}"
+  end
+
+  # What each line of a file names, comments left out: the line itself, and
+  # each module of a multi-alias in full (`alias AshDataTable.{Format, Text}`
+  # names `AshDataTable.Format` and `AshDataTable.Text`), at the line where
+  # it starts.
+  defp named_in(file) do
+    lines =
+      file
+      |> File.read!()
+      |> String.split("\n")
+      |> Enum.map(&(&1 |> String.split("#", parts: 2) |> hd()))
+
+    code = Enum.join(lines, "\n")
+
+    multi =
+      for [{at, _length}, {prefix_at, prefix_length}, {names_at, names_length}] <-
+            Regex.scan(~r/([A-Z][\w.]*)\.\{([^}]*)\}/, code, return: :index),
+          prefix = binary_part(code, prefix_at, prefix_length),
+          name <- code |> binary_part(names_at, names_length) |> String.split([",", "\n"]),
+          name = String.trim(name),
+          name != "" do
+        {code |> binary_part(0, at) |> String.split("\n") |> length(), prefix <> "." <> name}
+      end
+
+    Enum.with_index(lines, &{&2 + 1, &1}) ++ multi
   end
 
   @read ~r/\bAsh\.(read|read_one|get|load|aggregate|count|exists|stream|page|calculate)!?\??\(/
