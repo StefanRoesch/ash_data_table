@@ -34,7 +34,7 @@ defmodule AshDataTable.Components.Badge do
   def verify(%{cell_type: cell_type}) do
     {:error,
      "a badge shows the label of a choice, and this field is shown as " <>
-       "#{AshDataTable.Resource.Presenting.shown_as(cell_type)}. It needs an `Ash.Type.Enum`, or an " <>
+       "#{AshDataTable.Component.shown_as(cell_type)}. It needs an `Ash.Type.Enum`, or an " <>
        "`:atom` with `constraints one_of: [...]`."}
   end
 

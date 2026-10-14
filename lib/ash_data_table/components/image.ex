@@ -47,7 +47,7 @@ defmodule AshDataTable.Components.Image do
   def verify(%{cell_type: cell_type}) do
     {:error,
      "a picture is shown from the location a text holds, and this field is shown as " <>
-       "#{AshDataTable.Resource.Presenting.shown_as(cell_type)}. It needs a text: a `:string` that holds " <>
+       "#{AshDataTable.Component.shown_as(cell_type)}. It needs a text: a `:string` that holds " <>
        "an `http://` or `https://` address, or a path that starts with `/`."}
   end
 

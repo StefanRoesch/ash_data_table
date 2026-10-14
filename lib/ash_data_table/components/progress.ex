@@ -48,7 +48,7 @@ defmodule AshDataTable.Components.Progress do
   def verify(%{cell_type: cell_type}) do
     {:error,
      "a progress bar needs a number with a minimum and a maximum, and this field is shown " <>
-       "as #{AshDataTable.Resource.Presenting.shown_as(cell_type)}."}
+       "as #{AshDataTable.Component.shown_as(cell_type)}."}
   end
 
   attr :value, :any, required: true, doc: "the value as the record holds it"

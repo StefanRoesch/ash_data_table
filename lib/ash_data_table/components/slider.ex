@@ -59,7 +59,7 @@ defmodule AshDataTable.Components.Slider do
   def verify(%{cell_type: cell_type}) do
     {:error,
      "a slider needs a number with a minimum and a maximum, and this field is shown as " <>
-       "#{AshDataTable.Resource.Presenting.shown_as(cell_type)}."}
+       "#{AshDataTable.Component.shown_as(cell_type)}."}
   end
 
   defp needs do
