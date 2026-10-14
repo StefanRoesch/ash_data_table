@@ -1004,8 +1004,10 @@ defmodule AshDataTable.Model do
   @doc false
   # A facade for the duration of the refactor: which columns a person can
   # hide is the drawing's (`AshDataTable.Parts.Grid.hideable/1`, stage 1),
-  # and the tests still ask the model. Removed in a later stage.
-  defdelegate hideable(model), to: AshDataTable.Parts.Grid
+  # and the tests still ask the model. The part is named as an atom, so that
+  # the data layer does not depend on the drawing for the tests' sake.
+  # Removed in a later stage.
+  def hideable(model), do: apply(:"Elixir.AshDataTable.Parts.Grid", :hideable, [model])
 
   @doc """
   Whether nothing but a rule keeps the table from being left without a
