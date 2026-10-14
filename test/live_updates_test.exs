@@ -154,7 +154,8 @@ defmodule AshDataTable.LiveUpdatesTest do
   # process that runs it, before it returns.
   defp heard(sofar \\ []) do
     receive do
-      {:ash_data_table, _resource, _type, _key, _tenant} = message -> heard([message | sofar])
+      {:ash_data_table_changed, _resource, _type, _key, _tenant} = message ->
+        heard([message | sofar])
     after
       0 -> Enum.reverse(sofar)
     end
@@ -385,9 +386,9 @@ defmodule AshDataTable.LiveUpdatesTest do
       messages = heard()
 
       assert messages == [
-               {:ash_data_table, Note, :create, %{id: note.id}, nil},
-               {:ash_data_table, Note, :update, %{id: note.id}, nil},
-               {:ash_data_table, Note, :destroy, %{id: note.id}, nil}
+               {:ash_data_table_changed, Note, :create, %{id: note.id}, nil},
+               {:ash_data_table_changed, Note, :update, %{id: note.id}, nil},
+               {:ash_data_table_changed, Note, :destroy, %{id: note.id}, nil}
              ]
 
       refute inspect(messages) =~ "s3cret"
@@ -409,8 +410,8 @@ defmodule AshDataTable.LiveUpdatesTest do
 
       lodger = Ash.create!(Lodger, %{name: "Ann"}, tenant: "acme")
 
-      assert heard() == [{:ash_data_table, Lodger, :create, %{id: lodger.id}, "acme"}]
-      assert said(all) == [{:ash_data_table, Lodger, :create, %{id: lodger.id}, "acme"}]
+      assert heard() == [{:ash_data_table_changed, Lodger, :create, %{id: lodger.id}, "acme"}]
+      assert said(all) == [{:ash_data_table_changed, Lodger, :create, %{id: lodger.id}, "acme"}]
       assert said(other) == []
     end
 
@@ -427,7 +428,7 @@ defmodule AshDataTable.LiveUpdatesTest do
       note = Ash.create!(Note, %{title: "Mine"}, opts)
 
       assert heard() == []
-      assert said(another) == [{:ash_data_table, Note, :create, %{id: note.id}, nil}]
+      assert said(another) == [{:ash_data_table_changed, Note, :create, %{id: note.id}, nil}]
     end
 
     test "lets a write through where the domain names no server" do
@@ -460,7 +461,12 @@ defmodule AshDataTable.LiveUpdatesTest do
       {:ok, two} = Listener.start(@pub_sub, topic, &send(test, {:batch, &1}))
       assert Enum.sort(Listener.of(self())) == Enum.sort([one, two])
 
-      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, :update, %{id: 1}, nil})
+      Phoenix.PubSub.broadcast(
+        @pub_sub,
+        topic,
+        {:ash_data_table_changed, Note, :update, %{id: 1}, nil}
+      )
+
       for listener <- Listener.of(self()), do: Listener.flush(listener)
 
       assert_received {:batch, [update: %{id: 1}]}
@@ -499,17 +505,31 @@ defmodule AshDataTable.LiveUpdatesTest do
 
       # subscribed by the time it is started: nothing is missed
       for n <- 1..1000, type <- [:update, :update] do
-        Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, type, %{id: n}, nil})
+        Phoenix.PubSub.broadcast(
+          @pub_sub,
+          topic,
+          {:ash_data_table_changed, Note, type, %{id: n}, nil}
+        )
       end
 
       assert [batch] = batches(listener)
       assert batch == for(n <- 1..1000, do: {:update, %{id: n}})
 
-      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, :destroy, %{id: 1}, nil})
+      Phoenix.PubSub.broadcast(
+        @pub_sub,
+        topic,
+        {:ash_data_table_changed, Note, :destroy, %{id: 1}, nil}
+      )
+
       assert batches(listener) == [[destroy: %{id: 1}]]
 
       # and by itself, a moment after the first thing it hears
-      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, :create, %{id: 2}, nil})
+      Phoenix.PubSub.broadcast(
+        @pub_sub,
+        topic,
+        {:ash_data_table_changed, Note, :create, %{id: 2}, nil}
+      )
+
       assert_receive {:batch, [create: %{id: 2}]}, 1_000
       # nothing twice: the timer of a batch that was handed over early brings none
       assert batches(listener) == []

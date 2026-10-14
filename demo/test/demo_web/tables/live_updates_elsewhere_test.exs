@@ -297,8 +297,8 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       Ash.update!(first, %{note: "First, edited"}, authorize?: false)
 
-      assert_receive {:ash_data_table, _resource, _type, _key, _tenant} = message
-      assert message == {:ash_data_table, Pin, :update, %{board: "north", slot: 1}, nil}
+      assert_receive {:ash_data_table_changed, _resource, _type, _key, _tenant} = message
+      assert message == {:ash_data_table_changed, Pin, :update, %{board: "north", slot: 1}, nil}
     end
 
     test "names the row that is updated, and the row that goes", %{

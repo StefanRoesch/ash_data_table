@@ -112,7 +112,7 @@ defmodule AshDataTable.Listener do
         send(from, {ref, :flushed})
         idle(state)
 
-      {:ash_data_table, _resource, type, key, _tenant} ->
+      {:ash_data_table_changed, _resource, type, key, _tenant} ->
         Process.send_after(self(), :relay, @window)
         gather(state, [{type, key}])
 
@@ -127,7 +127,7 @@ defmodule AshDataTable.Listener do
 
   defp gather(state, heard) do
     receive do
-      {:ash_data_table, _resource, type, key, _tenant} ->
+      {:ash_data_table_changed, _resource, type, key, _tenant} ->
         gather(state, [{type, key} | heard])
 
       :relay ->

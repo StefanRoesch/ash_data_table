@@ -14,7 +14,7 @@ defmodule AshDataTable.Notifier do
   One message per changed record, and nothing of the record but its primary
   key:
 
-      {:ash_data_table, resource, action_type, primary_key, tenant}
+      {:ash_data_table_changed, resource, action_type, primary_key, tenant}
 
   `action_type` is `:create`, `:update` or `:destroy`; `primary_key` is a
   map of the primary key's attributes; `tenant` is the tenant of the record,
@@ -48,7 +48,7 @@ defmodule AshDataTable.Notifier do
 
   @typedoc "What a table hears of a changed record."
   @type message ::
-          {:ash_data_table, Ash.Resource.t(), :create | :update | :destroy, map, term}
+          {:ash_data_table_changed, Ash.Resource.t(), :create | :update | :destroy, map, term}
 
   @impl Ash.Notifier
   def notify(%Ash.Notifier.Notification{
@@ -61,7 +61,7 @@ defmodule AshDataTable.Notifier do
     with {:ok, pub_sub} <- Listening.pub_sub(resource),
          [_ | _] = fields <- Ash.Resource.Info.primary_key(resource) do
       tenant = tenant(resource, record, changeset)
-      message = {:ash_data_table, resource, type, Map.take(record, fields), tenant}
+      message = {:ash_data_table_changed, resource, type, Map.take(record, fields), tenant}
 
       for topic <- Enum.uniq([topic(resource, nil), topic(resource, tenant)]) do
         broadcast(pub_sub, origin(changeset), topic, message)

@@ -99,7 +99,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
   defp announcements(sofar \\ []) do
     receive do
-      {:ash_data_table, _resource, _type, _key, _tenant} = message ->
+      {:ash_data_table_changed, _resource, _type, _key, _tenant} = message ->
         announcements([message | sofar])
     after
       0 -> Enum.reverse(sofar)
@@ -128,17 +128,21 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
         )
 
       assert_receive message
-      assert message == {:ash_data_table, Task, :create, %{id: created.id}, world.organization.id}
+
+      assert message ==
+               {:ash_data_table_changed, Task, :create, %{id: created.id}, world.organization.id}
 
       Ash.update!(created, %{title: "Announced"}, as(world.admin))
       assert_receive message
-      assert message == {:ash_data_table, Task, :update, %{id: created.id}, world.organization.id}
+
+      assert message ==
+               {:ash_data_table_changed, Task, :update, %{id: created.id}, world.organization.id}
 
       Ash.destroy!(created, as(world.admin))
       assert_receive message
 
       assert message ==
-               {:ash_data_table, Task, :destroy, %{id: created.id}, world.organization.id}
+               {:ash_data_table_changed, Task, :destroy, %{id: created.id}, world.organization.id}
 
       assert announcements() == []
     end
@@ -170,7 +174,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       # announced by the time the action returns: in the process that ran it
       send(listener.pid, :say)
 
-      assert_receive {:ash_data_table, Task, :update, %{id: id}, tenant}
+      assert_receive {:ash_data_table_changed, Task, :update, %{id: id}, tenant}
       assert {id, tenant} == {task.id, world.organization.id}
       assert Elixir.Task.await(listener) == []
     end
@@ -186,7 +190,9 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
           [notify?: true, strategy: [:atomic, :stream]] ++ as(world.admin)
         )
 
-      keys = for {:ash_data_table, Task, :update, key, _tenant} <- announcements(), do: key.id
+      keys =
+        for {:ash_data_table_changed, Task, :update, key, _tenant} <- announcements(), do: key.id
+
       assert Enum.sort(keys) == Enum.sort(Enum.map(tasks, & &1.id))
 
       %Ash.BulkResult{status: :success} =
@@ -221,7 +227,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
                  announcements()
                end)
 
-      assert_receive {:ash_data_table, Task, :update, %{id: id}, _tenant}
+      assert_receive {:ash_data_table_changed, Task, :update, %{id: id}, _tenant}
       assert id == task.id
     end
   end
@@ -478,7 +484,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
         Phoenix.PubSub.broadcast(
           Demo.PubSub,
           Notifier.topic(Task, world.other_organization.id),
-          {:ash_data_table, Task, type, %{id: theirs.id}, world.other_organization.id}
+          {:ash_data_table_changed, Task, type, %{id: theirs.id}, world.other_organization.id}
         )
       end
 
@@ -860,7 +866,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       ])
 
       topic = Notifier.topic(Task, world.organization.id)
-      message = {:ash_data_table, Task, :update, %{id: task.id}, world.organization.id}
+      message = {:ash_data_table_changed, Task, :update, %{id: task.id}, world.organization.id}
       Phoenix.PubSub.broadcast(Demo.PubSub, topic, message)
       AshDataTable.Test.flush(member)
       assert_push_event(member, "ash_data_table:leaving", %{row: _row})
@@ -901,7 +907,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       Phoenix.PubSub.broadcast(
         Demo.PubSub,
         Notifier.topic(Task, world.organization.id),
-        {:ash_data_table, Task, :update, %{id: task.id}, world.organization.id}
+        {:ash_data_table_changed, Task, :update, %{id: task.id}, world.organization.id}
       )
 
       AshDataTable.Test.flush(member)
