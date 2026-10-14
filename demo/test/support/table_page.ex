@@ -521,10 +521,22 @@ defmodule DemoWeb.TablePage do
   @doc """
   The page once an action on the selected rows has run and the table has
   read again: after `run_bulk/4`, and after the panel of such an action.
+
+  It waits until nothing is in flight: until no table of the page says
+  `aria-busy`, which a table says while it reads, while an action runs on
+  it, and in a footer cell while its summary is asked for. However many
+  steps the work takes on the way.
   """
-  def ran(view) do
-    render_async(view, 10_000)
-    render_async(view, 10_000)
+  def ran(view), do: idle(view, 1)
+
+  defp idle(view, round) do
+    html = render_async(view, 10_000)
+
+    cond do
+      not Enum.any?(query(html, "[aria-busy]")) -> html
+      round < 20 -> idle(view, round + 1)
+      true -> raise "the page is still busy after #{round} rounds of async work"
+    end
   end
 
   defp selected(:all), do: %{"all" => true}
