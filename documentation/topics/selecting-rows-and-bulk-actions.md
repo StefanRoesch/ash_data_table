@@ -21,7 +21,7 @@ kind to declare.
 There is nothing to declare. A table that has a row action has the boxes,
 and every row action is offered for a selection. The demo's tasks declare
 five, of which these are the first four
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -198,7 +198,7 @@ exceptions.
 
 `bulk? false` on an `action` keeps it off the line. The demo's projects use
 it
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -230,7 +230,7 @@ action that accepts such an attribute is not offered for a selection:
 An identity of several attributes is no reason: each of them can be the
 same on many records. The demo's tables have no such action; the library's
 own tests do
-([`test/support/acting.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/acting.ex),
+([`test/support/acting.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/acting.ex),
 `AshDataTable.Test.Acting.Sheet`).
 
 `bulk? true` on such an action is reported when the resource is compiled:
@@ -421,7 +421,7 @@ as the person, and each record is read first as the person.
   [Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 The demo's tasks say who may change which
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -557,4 +557,4 @@ reload, no inversion of a selection, no progress while a run is on its way
 and no way to stop one, no undo, no bulk edit of cells, no bulk create, no
 per-row inputs, and no export of the selected rows. The later slices are
 listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

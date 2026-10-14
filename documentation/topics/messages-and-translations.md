@@ -17,7 +17,7 @@ them is missing.
 
 Two keys under `config :ash_data_table`. The installer sets both for a new Phoenix
 app. In the demo
-([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs)):
+([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/config/config.exs)):
 
 <!-- source: demo/config/config.exs -->
 ```elixir
@@ -40,7 +40,7 @@ recompilation of the dependency.
 The table translates in the locale of the process it runs in: whatever your
 plug and your `on_mount` hook put there with `Gettext.put_locale/1`. It has
 no locale setting of its own. The demo's hook
-([`demo/lib/demo_web/locale.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/locale.ex)):
+([`demo/lib/demo_web/locale.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/locale.ex)):
 
 <!-- source: demo/lib/demo_web/locale.ex -->
 ```elixir
@@ -84,7 +84,7 @@ removes from your templates the messages it does not find in your code.
 
 A message without a translation is shown in English. From the demo's German
 file
-([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
 <!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
@@ -104,7 +104,7 @@ msgstr "Filter zurücksetzen"
 ```
 
 These are all the messages of the template
-([`priv/gettext/ash_data_table.pot`](https://github.com/StefanRoesch/ash_table/blob/main/priv/gettext/ash_data_table.pot)):
+([`priv/gettext/ash_data_table.pot`](https://github.com/StefanRoesch/ash_data_table/blob/main/priv/gettext/ash_data_table.pot)):
 
 | Where | Messages |
 | --- | --- |
@@ -259,7 +259,7 @@ function named by `translate_error` as `{message, variables}`. That is what
 the `translate_error/1` of a Phoenix app's core components takes, so a table
 shows an action's message in the same words as your forms do. The demo's is
 the one the Phoenix generator wrote
-([`demo/lib/demo_web/components/core_components.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/components/core_components.ex)):
+([`demo/lib/demo_web/components/core_components.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/components/core_components.ex)):
 
 <!-- source: demo/lib/demo_web/components/core_components.ex -->
 ```elixir
@@ -276,7 +276,7 @@ end
 It looks the message up in the domain `errors` and fills in the variables.
 The translation key is the message as the action wrote it, with its
 placeholders. From the demo's
-[`errors.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/errors.po):
+[`errors.po`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/errors.po):
 
 <!-- source: demo/priv/gettext/de/LC_MESSAGES/errors.po -->
 ```po
@@ -292,7 +292,7 @@ its variables filled in.
 
 A `message` of your own is a translation key like any other. The demo's
 tasks have a validation with one
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -405,4 +405,4 @@ English, and the resource's own wording.
 
 No locale-aware formatting of numbers, dates and datetimes, and none of the
 types `ash_localize` adds: that comes with the "remaining cell types" slice.
-See the [specification](https://github.com/StefanRoesch/ash_table/issues/21).
+See the [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

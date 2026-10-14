@@ -2,7 +2,7 @@
 
 ### Issue tracker
 
-Issues live in this repo's GitHub Issues (`StefanRoesch/ash_table`), managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+Issues live in this repo's GitHub Issues (`StefanRoesch/ash_data_table`), managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
 
 ### Triage labels
 

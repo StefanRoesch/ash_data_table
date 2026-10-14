@@ -16,7 +16,7 @@ that needs more than one value, deleting a record and creating one are in
 
 One line makes a table editable: `update_action` in the `table` block. The
 demo's task labels
-([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
+([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
 
 <!-- source: demo/lib/demo/tracker/task_label.ex -->
 ```elixir
@@ -57,7 +57,7 @@ either.
 | nothing in a `column` | The column follows the table. |
 
 The task table uses all of them
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -222,7 +222,7 @@ an editor, beside the read-only ones.
 An array is edited as a whole. Its editor holds all of its values, and one
 save sends all of them, as the one input of the column's action. The demo's
 tasks have two
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -322,7 +322,7 @@ with Space, move with the arrow keys, and press Enter. `/specimens` has
 A number's editor says what the attribute's constraints say, before
 anything is saved. The demo's specimens have a whole number between -1000
 and 1000
-([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
+([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
 
 <!-- source: demo/lib/demo/kitchen_sink/specimen.ex -->
 ```elixir
@@ -396,7 +396,7 @@ the down arrow in "Due within: Days" until it stops at 0.
 A text whose type says the most it can be long (`max_length`) has a counter
 beside its editor: how long the text is now, and the most it can be. A
 label's name takes 30 characters
-([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
@@ -674,6 +674,6 @@ before a cell is saved (see
 no hint beside an editor that says its limits in words, no bulk edits and no
 undo. A column's own editor is built: see
 [Custom components](custom-components.md). They are later slices in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).
 Creating and deleting records, and actions with several inputs, are not
 inline edits: see [Row actions and create](row-actions-and-create.md).

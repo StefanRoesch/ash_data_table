@@ -76,7 +76,7 @@ Reads:
 
 Live updates:
 
-- `AshDataTable.Notifier` (`notifier.ex`): the Ash notifier of a resource that says `live? true`. Broadcasts `{:ash_data_table, resource, action_type, primary_key, tenant}` and nothing else. `topic/2` is the topic of a resource and a tenant.
+- `AshDataTable.Notifier` (`notifier.ex`): the Ash notifier of a resource that says `live? true`. Broadcasts `{:ash_data_table_changed, resource, action_type, primary_key, tenant}` and nothing else. `topic/2` is the topic of a resource and a tenant.
 - `AshDataTable.Listener` (`listener.ex`): the process through which one table hears. `start/3` subscribes and hands batches (100 ms) to the table with `send_update`; `stop/1`; `flush/1` and `of/1` for tests. It ends with the LiveView.
 - `AshDataTable.Test` (`test.ex`): public help for a host's tests. `flush/1` hands a page what was announced so far.
 - In `AshDataTable.Query`: `rows/4` reads announced keys again as rows are read, `any?/5` asks whether one of them is the person's to see under their filters. `reader_opts/1` passes a table's own listener on as `context` (`origin`), so that the notifier leaves it out.
@@ -278,7 +278,7 @@ Known traps:
 
 ## Where decisions live
 
-- The specification is issue #21 of `StefanRoesch/ash_table` on GitHub.
+- The specification is issue #21 of `StefanRoesch/ash_data_table` on GitHub.
 - Its comment "Built in the owner's absence" holds every decision since 2026-10-09.
 - The glossary is `CONTEXT.md`. Architecture decisions are in `docs/adr/`.
 - The other agent documents are in `docs/agents/`.

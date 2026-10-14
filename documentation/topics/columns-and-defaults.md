@@ -16,7 +16,7 @@ Sorting, filtering and editing are each a guide of their own:
 A resource has a table as soon as it lists the extension, and that table
 has columns without a `column` being declared. `Demo.Tracker.Project`
 declares none
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -81,7 +81,7 @@ not declared, sorted or filtered.
 
 Once one `column` is declared, the table has exactly the declared columns in
 the declared order. The table at `/tasks` is declared this way
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -226,7 +226,7 @@ Otherwise everyone who can read a row reads those values. In a table that
 means a column to look at, to sort by and to filter by.
 
 The demo's people have such an aggregate, protected
-([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/user.ex)).
+([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/user.ex)).
 It adds up the estimates of a person's tasks, and a task's estimate is seen
 by admins and by the task's own assignee:
 
@@ -336,7 +336,7 @@ loads the relationship in a statement of its own.
 
 The demo has no column of this kind. The library's tests have one, on
 Postgres
-([`demo/test/support/ledger_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/ledger_tables.ex)):
+([`demo/test/support/ledger_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/ledger_tables.ex)):
 
 <!-- source: demo/test/support/ledger_tables.ex -->
 ```elixir
@@ -764,4 +764,4 @@ which columns stay in view,
 and one table per resource. A column's own look and editor are built: see
 [Custom components](custom-components.md). The
 later slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

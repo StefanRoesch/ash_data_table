@@ -161,8 +161,30 @@ defmodule DemoWeb.MarkupSnapshotTest do
       Regex.compile!("[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}"),
       &"uuid-#{uuids[&1]}"
     )
+    |> sort_attributes()
     |> String.replace("><", ">\n<")
     |> Kernel.<>("\n")
+  end
+
+  # The order in which a tag's attributes come out is not part of the markup:
+  # some are rendered from a map, whose order follows the atom table, and so
+  # which modules happened to be loaded first. Each tag's attributes are put
+  # in the order of their names.
+  defp sort_attributes(html) do
+    Regex.replace(
+      ~r/<([a-zA-Z][a-zA-Z0-9.-]*)((?:\s+[^\s=>\/]+(?:="[^"]*")?)+)(\s*\/?)>/,
+      html,
+      fn
+        _all, tag, attributes, close ->
+          sorted =
+            ~r/\s+([^\s=>\/]+(?:="[^"]*")?)/
+            |> Regex.scan(attributes, capture: :all_but_first)
+            |> List.flatten()
+            |> Enum.sort()
+
+          "<" <> tag <> Enum.map_join(sorted, &(" " <> &1)) <> close <> ">"
+      end
+    )
   end
 
   # ---- the states ---------------------------------------------------------

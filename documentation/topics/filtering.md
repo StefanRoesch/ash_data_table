@@ -191,7 +191,7 @@ case-sensitive: "report" does not find "Report". For a `:ci_string`
 attribute it is not.
 
 The kitchen-sink resource of the demo has one of each
-([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
+([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
 
 <!-- source: demo/lib/demo/kitchen_sink/specimen.ex -->
 ```elixir
@@ -250,7 +250,7 @@ end
 
 The demo has no field that the resource itself declares unfilterable. The
 library's test resources have
-([`test/support/filtering.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/filtering.ex)):
+([`test/support/filtering.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/filtering.ex)):
 
 <!-- source: test/support/filtering.ex -->
 ```elixir
@@ -353,4 +353,4 @@ no "is any of" for typed text or numbers, no filter by a related record
 ("Assignee is Ada or Max"), and no filters from the arguments of a
 read action. Search, facets and a filter builder are expected from a separate
 extension. See the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

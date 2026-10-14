@@ -70,7 +70,7 @@ The action is the demo's own. The demo's tasks keep `reassign` to show what
 cannot be behind a column, and no column of its table names it. The table
 offers it as a row action instead, where the action panel asks for the
 reason
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -480,7 +480,7 @@ warning: The row action `destroy` is a destroy action without `confirm`: one cli
 It is answered in the block, in one of two ways. Both are in the demo, which
 therefore compiles without it: a question on the tasks' action, and
 `confirm false` on the task labels'
-([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
+([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
 
 <!-- source: demo/lib/demo/tracker/task_label.ex -->
 ```elixir
@@ -845,4 +845,4 @@ place.
 Nothing checks what a component renders: that its editor holds a control
 with `{@control}` on it, or that its cell stays one line high. Those are in
 [Custom components](custom-components.md). The later slices are listed in
-the [specification](https://github.com/StefanRoesch/ash_table/issues/21).
+the [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

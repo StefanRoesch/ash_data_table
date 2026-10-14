@@ -28,7 +28,7 @@ another attribute with `value_is_key`.
 
 Nothing is declared for the picker. The demo's tasks have an action that
 takes a task's labels
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -94,7 +94,7 @@ What the change does with the keys does not decide whether they are chosen.
 It decides what the field starts with.
 
 The library's tests have an argument of each kind
-([`test/support/managing.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/managing.ex)):
+([`test/support/managing.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/managing.ex)):
 
 <!-- source: test/support/managing.ex -->
 ```elixir
@@ -187,7 +187,7 @@ read action of the picker's table:
 - A record this person may not read is not in the field, and Ash does not
   find it either when the action runs for them. It stays related. The demo
   has no such label; the tests have a skill that is secret
-  ([`demo/test/support/relation_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/relation_tables.ex)).
+  ([`demo/test/support/relation_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/relation_tables.ex)).
 
 The table runs that read itself, so both read actions have to be
 `public?`, and for a many-to-many the one of the join resource. Where one
@@ -232,7 +232,7 @@ list.
 A reference cell is edited when the column's update action accepts the
 relationship's key, or when it has such an argument. The demo's deadlines
 edit their assignee the second way
-([`demo/lib/demo/tracker/deadline.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/deadline.ex)):
+([`demo/lib/demo/tracker/deadline.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/deadline.ex)):
 
 <!-- source: demo/lib/demo/tracker/deadline.ex -->
 ```elixir
@@ -426,4 +426,4 @@ records that are related now, no picker for a relationship with a `filter`,
 no order the person gives the chosen records, and no editing of several
 related records in a cell. The
 later slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

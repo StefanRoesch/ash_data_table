@@ -10,7 +10,7 @@ A resource has one table without anything being named: its **default
 table**, the one of the `table` block. A **named table** is another table of
 the same resource, declared in the `tables` block under a name. The demo's
 labels have both
-([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
@@ -86,7 +86,7 @@ wherever a table is named, `:default` names the default table:
 ## Mounting a named table
 
 `ash_data_table` takes the name as `table:`
-([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
@@ -120,7 +120,7 @@ letter) raises when the router is compiled.
 
 `<AshDataTable.table>` takes the name as `table`. The demo's page `/named`
 places two tables of the comments
-([`demo/lib/demo_web/live/named_live.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/live/named_live.ex)):
+([`demo/lib/demo_web/live/named_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/named_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/named_live.ex -->
 ```heex
@@ -172,7 +172,7 @@ placement. [State in the URL](state-in-the-url.md) has the parameters.
 
 A `relationship` of a table says which of the destination's tables it nests
 with `table`. The board of the tasks
-([`demo/lib/demo/tracker/task/board_table.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task/board_table.ex)):
+([`demo/lib/demo/tracker/task/board_table.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task/board_table.ex)):
 
 <!-- source: demo/lib/demo/tracker/task/board_table.ex -->
 ```elixir
@@ -245,7 +245,7 @@ this library.
 
 The fragment is a module that says what it is a fragment of, and lists the
 extension. The compact table of the comments
-([`demo/lib/demo/tracker/comment/compact_table.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/comment/compact_table.ex)):
+([`demo/lib/demo/tracker/comment/compact_table.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment/compact_table.ex)):
 
 <!-- source: demo/lib/demo/tracker/comment/compact_table.ex -->
 ```elixir
@@ -274,7 +274,7 @@ end
 ```
 
 The resource lists it
-([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/comment.ex)):
+([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment.ex)):
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
 ```elixir
@@ -409,4 +409,4 @@ shows; it is always the default table. A named table has no name of its own
 for people: its heading is the resource's unless `label` says otherwise. A
 relationship of the default set cannot be told to nest a named table: declare
 the `relationship`. The roadmap is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

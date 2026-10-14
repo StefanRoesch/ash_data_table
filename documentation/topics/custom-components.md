@@ -15,7 +15,7 @@ What a column is, how it is sorted and filtered, is in
 ## The smallest example
 
 The demo's tasks show their state as a badge
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -87,7 +87,7 @@ end
 
 A column names one module. To show a number as a bar and edit it with a
 slider, a module takes one part from each
-([`demo/lib/demo_web/components/cells/progress.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/components/cells/progress.ex)):
+([`demo/lib/demo_web/components/cells/progress.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/components/cells/progress.ex)):
 
 <!-- source: demo/lib/demo_web/components/cells/progress.ex -->
 ```elixir
@@ -122,7 +122,7 @@ task. Press Escape: the slider closes, and the cell shows the saved value.
 ## Writing your own
 
 The demo's "Estimate hours" has a component of the demo's own
-([`demo/lib/demo_web/components/cells/hours.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/components/cells/hours.ex)).
+([`demo/lib/demo_web/components/cells/hours.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/components/cells/hours.ex)).
 It shows the number with its unit, and edits it in a number input that
 knows the attribute's minimum:
 
@@ -355,9 +355,9 @@ draws is the author's:
 
 The demo's browser tests hold the three shipped components to this, in the
 light and the dark theme and in forced colours
-([`demo/e2e/contrast.spec.ts`](https://github.com/StefanRoesch/ash_table/blob/main/demo/e2e/contrast.spec.ts)
+([`demo/e2e/contrast.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/contrast.spec.ts)
 and
-[`demo/e2e/components.spec.ts`](https://github.com/StefanRoesch/ash_table/blob/main/demo/e2e/components.spec.ts)).
+[`demo/e2e/components.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/components.spec.ts)).
 The numbers are in
 [Keyboard and accessibility](keyboard-and-accessibility.md#what-was-measured).
 
@@ -488,4 +488,4 @@ cell; no component for a reference cell, the actions column, the header or
 the filter row; no editor of a component for an array; and no editor for a
 type the table shows as read-only text.
 The later slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

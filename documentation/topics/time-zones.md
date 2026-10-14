@@ -9,7 +9,7 @@ time that the clocks skip or repeat becomes, and what a shared link means.
 A table is in UTC unless the page says otherwise. A table you place in a
 LiveView is given the zone as `time_zone`. The demo's dashboard gives each
 of its tables the zone of the page
-([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
+([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```elixir
@@ -25,7 +25,7 @@ of its tables the zone of the page
 
 A zone other than UTC needs a time zone database. Elixir brings none; add
 one to the application and configure it
-([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs)):
+([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/config/config.exs)):
 
 <!-- sketch -->
 ```elixir
@@ -61,7 +61,7 @@ Nil, nothing and `"UTC"` are UTC.
 A mounted table finds the zone in the assign its domain names, as it finds
 who is asking. The default name is `time_zone`; a domain names another
 with `time_zone_assign`
-([`demo/test/support/zone_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/zone_tables.ex)):
+([`demo/test/support/zone_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/zone_tables.ex)):
 
 <!-- source: demo/test/support/zone_tables.ex -->
 ```elixir
@@ -75,7 +75,7 @@ The usual source is the person: a setting of their account, which your
 `on_mount` hook assigns. The demo takes the zone of the browser instead, as
 a convenience: `assets/js/app.js` sends it when the LiveView connects, and
 an `on_mount` hook checks it
-([`demo/lib/demo_web/zone.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/zone.ex)):
+([`demo/lib/demo_web/zone.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/zone.ex)):
 
 <!-- source: demo/assets/js/app.js -->
 ```javascript
@@ -204,4 +204,4 @@ that says what to add. UTC needs no database.
   browser's; the demo shows how a host takes it.
 
 Further work on what a table offers is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

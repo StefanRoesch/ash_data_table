@@ -13,7 +13,7 @@ place of its key.
 There is nothing to declare. A row offers every public relationship of the
 resource whose destination resource has a table. The demo's projects have
 one
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -69,7 +69,7 @@ name in words.
 Once one `relationship` is declared, the row offers exactly the declared
 ones, in the declared order. This is the rule columns follow: explicit wins.
 The demo's tasks declare theirs
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -151,7 +151,7 @@ shown.
 
 The demo has no `no_attributes?` and no manual relationship. The library's
 own tests have both
-([`test/support/relating.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/relating.ex)):
+([`test/support/relating.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/relating.ex)):
 
 <!-- source: test/support/relating.ex -->
 ```elixir
@@ -212,7 +212,7 @@ It is the setting of the table **on the page** that counts for everything
 beneath it. A second meaning belongs to `0` alone: the rows of a table with
 `max_depth 0` never expand, wherever that table is shown. The demo's people
 say so
-([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/user.ex)):
+([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/user.ex)):
 
 <!-- source: demo/lib/demo/tracker/user.ex -->
 ```elixir
@@ -399,7 +399,7 @@ For the default table, the library looks through the router's routes
 `ash_data_table` names the destination resource without `table:` and whose path
 has no parameter.
 The demo's router mounts five tracker tables
-([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
@@ -506,7 +506,7 @@ the relationship alone. Where the router mounts the parent's own table, the
 record's name is a link to that page.
 
 The demo's labels declare what they are called by
-([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
@@ -552,7 +552,7 @@ table it belongs to also keeps the panel's form and, for a row action, the
 record it was opened with.
 
 Statements for one read, counted on Postgres with the demo's data
-([`demo/perf/NESTED.md`](https://github.com/StefanRoesch/ash_table/blob/main/demo/perf/NESTED.md)
+([`demo/perf/NESTED.md`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/perf/NESTED.md)
 has the run in a browser that the times are from; the statement counts are
 those of the library as it is now):
 
@@ -573,7 +573,7 @@ browser, not the server, is where many open tables cost.
 
 A column that names a belongs-to relationship shows the related record's
 **label** in place of its key. The demo's tasks have three
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -596,7 +596,7 @@ end
 
 The label is declared where the record lives: `label_field` in the `table`
 block of the destination. A person is called by their name
-([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/user.ex)):
+([`demo/lib/demo/tracker/user.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/user.ex)):
 
 <!-- source: demo/lib/demo/tracker/user.ex -->
 ```elixir
@@ -650,7 +650,7 @@ load. Whichever of the two it is has to be `public?`. A destination whose
 primary read action is private can still be shown in a reference cell: the
 relationship says which public action reads it. This one is from a
 resource of the demo's tests
-([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/private_tables.ex)):
+([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/private_tables.ex)):
 
 <!-- source: demo/test/support/private_tables.ex -->
 ```elixir
@@ -767,4 +767,4 @@ row: see [Relationships an action manages](managing-relationships.md)), no
 sorting or filtering by a reference cell, no label that is a calculation, no
 link from a reference cell to its record, and nothing of a nested table in
 the address but its full view. The later slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

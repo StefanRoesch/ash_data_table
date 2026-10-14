@@ -12,7 +12,7 @@ question appears and what each answer does.
 
 `confirm` takes the question as a string. On the demo's tasks a change of
 state asks first
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -113,7 +113,7 @@ Three things differ from a column's `confirm`:
   [Mistakes at compile time](mistakes-at-compile-time.md#a-destroy-action-without-confirm).
 - **`confirm false`** says that an action runs without a question on
   purpose, which silences that warning. The demo's task labels do so
-  ([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
+  ([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
 
 <!-- source: demo/lib/demo/tracker/task_label.ex -->
 ```elixir
@@ -145,7 +145,7 @@ The question is the resource's wording, so the table looks it up as a
 message in the host's Gettext backend and shows it as written when there is
 no translation. This holds for a column's question and for an action's. The
 demo translates them into German
-([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
 <!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
@@ -206,4 +206,4 @@ No question of your own wording for an action on several rows (the number
 is added to the action's `confirm`), no question that depends on the value
 or on the record, no confirm for a whole table, and no type-to-confirm, where a person has to type a word
 before a delete. See the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -27,7 +27,7 @@ points at (`assignee_id`). Ash calls it the relationship's
 There is nothing to declare for the picker itself. A reference column is
 edited when an update action of the table accepts its key. The demo's tasks
 have three reference columns, of which two are edited
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -183,7 +183,7 @@ picker reads in the person's tenant, as every read of a table does, so the
 records of another tenant are not on offer and cannot be chosen.
 
 The library's tests have a relationship of each kind
-([`test/support/picking.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/picking.ex)):
+([`test/support/picking.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/picking.ex)):
 
 <!-- source: test/support/picking.ex -->
 ```elixir
@@ -270,7 +270,7 @@ name, is marked, and says "You are not allowed to change this."
 An input of an action that is such a key is given the same way: in the
 panel of a row action, of an action on the selected rows, and of the create
 action. The demo's "Reassign" takes one
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -357,7 +357,7 @@ and saves the attribute the relationship names. The two need not be the
 same. In the demo's tests a stop points at its zone by the zone's code,
 while a zone's primary key is a country and a number; and at its bay by a
 number
-([`demo/test/support/picker_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/picker_tables.ex)):
+([`demo/test/support/picker_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/picker_tables.ex)):
 
 <!-- source: demo/test/support/picker_tables.ex -->
 ```elixir
@@ -491,4 +491,4 @@ creating a record from the picker, no picker for a relationship with a
 `filter`, no going to the page of the record that is chosen now, and no
 link from a reference cell to its record. The later
 slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

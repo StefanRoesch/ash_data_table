@@ -10,7 +10,7 @@ refused read does in each.
 
 **Mounted.** A line in the router, and one setting so that the page gets your
 app's layout
-([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs)):
+([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/config/config.exs)):
 
 <!-- source: demo/config/config.exs -->
 ```elixir
@@ -23,7 +23,7 @@ config :ash_data_table,
 for translations.)
 
 **Embedded.** A tag in a LiveView's template
-([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
+([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```heex
@@ -63,7 +63,7 @@ This fits the `app/1` that Phoenix 1.8 generates. With the default names the
 last row adds nothing to the two above it. A domain that names its own
 assigns has a layout that expects them under those names, and gets them. The
 demo's domains keep the defaults, so this example is from the demo's tests
-([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/guarded_tables.ex)).
+([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/guarded_tables.ex)).
 The domain:
 
 <!-- source: demo/test/support/guarded_tables.ex -->
@@ -105,7 +105,7 @@ name of the table.
 
 The router line overrides the setting for its table. The demo mounts its
 labels a second time without the layout
-([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
@@ -218,7 +218,7 @@ mounted tables only.
 The dashboard passes the actor and the tenant. A page whose app has a scope
 passes that instead. The demo's own pages have no scope, so this example is
 from a LiveView that exists for the demo's tests
-([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/plain_tables.ex)):
+([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/plain_tables.ex)):
 
 <!-- source: demo/test/support/plain_tables.ex -->
 ```heex
@@ -403,4 +403,4 @@ bottom edge is theirs.
 
 No slots for a toolbar or a custom heading on the mounted page, no theming,
 and no single router line for all resources of a domain. See
-the [specification](https://github.com/StefanRoesch/ash_table/issues/21).
+the [specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -9,7 +9,7 @@ missing or wrong.
 
 A read action with an argument needs nothing in the `table` block. The
 demo's tasks are read through an action that takes a search term
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -70,7 +70,7 @@ on the argument line, in the action's order. Nothing is declared for it.
 
 The demo's deadlines are the tasks that are due by a day, read through an
 action with three arguments
-([`demo/lib/demo/tracker/deadline.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/deadline.ex)):
+([`demo/lib/demo/tracker/deadline.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/deadline.ex)):
 
 <!-- source: demo/lib/demo/tracker/deadline.ex -->
 ```elixir
@@ -274,7 +274,7 @@ A function is given the assigns of the page. For a mounted table those are
 the assigns of its socket, which the host's `on_mount` hooks set. A table
 placed with `<AshDataTable.table>` is given them as `assigns`. The example is
 from a domain that exists for the demo's tests
-([`demo/test/support/argument_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/argument_tables.ex)):
+([`demo/test/support/argument_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/argument_tables.ex)):
 
 <!-- source: demo/test/support/argument_tables.ex -->
 ```elixir
@@ -411,4 +411,4 @@ No input on the argument line for a value made of fields (an embedded
 resource, a map), no picker for an argument that is the key of a related
 record, no arguments of an aggregate, and no memory of what a person gave
 beyond the address. The roadmap is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

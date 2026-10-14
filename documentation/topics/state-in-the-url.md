@@ -111,7 +111,7 @@ the page shows for a parent that is not the person's to read, is in
 
 The id of a mounted table defaults to the last part of the resource's module
 name, underscored. The demo's router
-([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
@@ -181,7 +181,7 @@ in its own component state. They last as long as the LiveView does and are
 gone after a reload.
 
 The demo's dashboard has two tables of this kind
-([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
+([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```heex
@@ -204,7 +204,7 @@ address stays `/dashboard`, and neither table moves when the other does.
 To keep an embedded table's state in the URL, pass the page's current URL as
 `url`. The demo's own pages do not do this, so the example is from a LiveView
 that exists for the demo's tests
-([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/plain_tables.ex)).
+([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/plain_tables.ex)).
 The LiveView assigns the URL that `handle_params/3` receives:
 
 <!-- source: demo/test/support/plain_tables.ex -->
@@ -228,7 +228,7 @@ Each table then patches the page's URL, with its parameters under its id
 This is the mechanism the mounted page uses, and everything above holds for
 it: the format, what is ignored, reload, the back button and shared links.
 The tests of this page
-([`demo/test/demo_web/tables/embedded_url_table_test.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/demo_web/tables/embedded_url_table_test.exs))
+([`demo/test/demo_web/tables/embedded_url_table_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/tables/embedded_url_table_test.exs))
 sort, filter and page both tables and open the addresses they arrive at.
 
 `handle_params/3` is called for a LiveView that is mounted in the router. A
@@ -293,4 +293,4 @@ and then the entries gives:
 No saved views, no per-user memory of a table's state, no sort by several
 columns in the address, and nothing of a nested table in the address but its
 full view. The roadmap is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -2,7 +2,7 @@ defmodule AshDataTable.MixProject do
   use Mix.Project
 
   @version "0.1.0"
-  @source_url "https://github.com/StefanRoesch/ash_table"
+  @source_url "https://github.com/StefanRoesch/ash_data_table"
   @extensions "AshDataTable.Resource,AshDataTable.Domain"
 
   def project do

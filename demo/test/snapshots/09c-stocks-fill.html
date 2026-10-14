@@ -1,13 +1,13 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
-<meta name="viewport" content="width=device-width, initial-scale=1"/>
-<meta name="csrf-token" content="CSRF"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<meta content="CSRF" name="csrf-token"/>
 <title data-default="Demo" data-suffix=" · ash_table demo">
       Stock
      · ash_table demo</title>
-<link phx-track-static="" rel="stylesheet" href="/assets/css/app.css"/>
-<script defer="" phx-track-static="" type="text/javascript" src="/assets/js/app.js">
+<link href="/assets/css/app.css" phx-track-static="" rel="stylesheet"/>
+<script defer="" phx-track-static="" src="/assets/js/app.js" type="text/javascript">
 </script>
 <script>
       (() => {
@@ -33,7 +33,7 @@
 <header class="navbar gap-4 border-b border-base-300 px-4 sm:px-6 lg:px-8">
 <div class="flex-1">
 <nav aria-label="Main" class="flex items-center gap-4">
-<a href="/" class="font-semibold">ash_table demo</a>
+<a class="font-semibold" href="/">ash_table demo</a>
 <a href="/tasks">Tasks</a>
 <a href="/deadlines">Deadlines</a>
 <a href="/projects">Projects</a>
@@ -44,11 +44,11 @@
 <a href="/named">Named tables</a>
 </nav>
 </div>
-<form id="actor-switcher" action="/actor" method="post" class="flex items-center gap-2" onsubmit="this.return_to.value = location.pathname + location.search">
-<input type="hidden" name="_csrf_token" value="CSRF"/>
-<input type="hidden" name="return_to" value="/support/stocks"/>
-<label for="actor-switcher-select" class="text-sm">Acting as</label>
-<select id="actor-switcher-select" name="actor" class="select select-sm w-auto" onchange="this.form.requestSubmit()">
+<form action="/actor" class="flex items-center gap-2" id="actor-switcher" method="post" onsubmit="this.return_to.value = location.pathname + location.search">
+<input name="_csrf_token" type="hidden" value="CSRF"/>
+<input name="return_to" type="hidden" value="/support/stocks"/>
+<label class="text-sm" for="actor-switcher-select">Acting as</label>
+<select class="select select-sm w-auto" id="actor-switcher-select" name="actor" onchange="this.form.requestSubmit()">
 <option value="uuid-1">
       Ada Admin · admin · acme
     </option>
@@ -61,19 +61,19 @@
 <option value="uuid-4">
       Olga Outsider · member · globex
     </option>
-<option value="" selected="">Nobody · not logged in</option>
+<option selected="" value="">Nobody · not logged in</option>
 </select>
-<button type="submit" class="btn btn-sm">Switch</button>
+<button class="btn btn-sm" type="submit">Switch</button>
 </form>
-<form id="locale-switcher" action="/locale" method="post" class="flex items-center gap-2" onsubmit="this.return_to.value = location.pathname + location.search">
-<input type="hidden" name="_csrf_token" value="CSRF"/>
-<input type="hidden" name="return_to" value="/support/stocks"/>
-<label for="locale-switcher-select" class="text-sm">Language</label>
-<select id="locale-switcher-select" name="locale" class="select select-sm w-auto" onchange="this.form.requestSubmit()">
-<option value="en" lang="en" selected="">
+<form action="/locale" class="flex items-center gap-2" id="locale-switcher" method="post" onsubmit="this.return_to.value = location.pathname + location.search">
+<input name="_csrf_token" type="hidden" value="CSRF"/>
+<input name="return_to" type="hidden" value="/support/stocks"/>
+<label class="text-sm" for="locale-switcher-select">Language</label>
+<select class="select select-sm w-auto" id="locale-switcher-select" name="locale" onchange="this.form.requestSubmit()">
+<option lang="en" selected="" value="en">
       English
     </option>
-<option value="de" lang="de">
+<option lang="de" value="de">
       Deutsch
     </option>
 </select>
@@ -81,15 +81,15 @@
 <div class="card relative flex flex-row items-center border-2 border-base-300 bg-base-300 rounded-full">
 <div class="absolute w-1/3 h-full rounded-full border-1 border-base-200 bg-base-100 brightness-200 left-0 [[data-theme=light]_&amp;]:left-1/3 [[data-theme=dark]_&amp;]:left-2/3 transition-[left]">
 </div>
-<button class="flex p-2 cursor-pointer w-1/3" phx-click="[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;phx:set-theme&quot;}]]" aria-label="Use the system theme">
+<button aria-label="Use the system theme" class="flex p-2 cursor-pointer w-1/3" phx-click="[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;phx:set-theme&quot;}]]">
 <span class="hero-computer-desktop-micro size-4 opacity-75 hover:opacity-100">
 </span>
 </button>
-<button class="flex p-2 cursor-pointer w-1/3" phx-click="[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;phx:set-theme&quot;}]]" aria-label="Use the light theme">
+<button aria-label="Use the light theme" class="flex p-2 cursor-pointer w-1/3" phx-click="[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;phx:set-theme&quot;}]]">
 <span class="hero-sun-micro size-4 opacity-75 hover:opacity-100">
 </span>
 </button>
-<button class="flex p-2 cursor-pointer w-1/3" phx-click="[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;phx:set-theme&quot;}]]" aria-label="Use the dark theme">
+<button aria-label="Use the dark theme" class="flex p-2 cursor-pointer w-1/3" phx-click="[[&quot;dispatch&quot;,{&quot;event&quot;:&quot;phx:set-theme&quot;}]]">
 <span class="hero-moon-micro size-4 opacity-75 hover:opacity-100">
 </span>
 </button>
@@ -98,39 +98,39 @@
 <main id="main">
 <div id="phx-ID">
 <div id="stock-page">
-<div id="stock" class="ash-data-table">
-<div id="stock-header" class="mb-4 flex min-h-8 items-center justify-between gap-2">
-<h1 id="stock-name" class="text-lg font-semibold">
+<div class="ash-data-table" id="stock">
+<div class="mb-4 flex min-h-8 items-center justify-between gap-2" id="stock-header">
+<h1 class="text-lg font-semibold" id="stock-name">
       Stock
     </h1>
 </div>
-<form id="stock-arguments" phx-change="arguments" phx-submit="arguments" phx-target="T" novalidate="" data-arguments="" class="flex flex-wrap items-start gap-x-4 gap-y-2 mb-2">
+<form class="flex flex-wrap items-start gap-x-4 gap-y-2 mb-2" data-arguments="" id="stock-arguments" novalidate="" phx-change="arguments" phx-submit="arguments" phx-target="T">
 <div class="flex flex-col" data-argument="term">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-term" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-term">
 <span data-label="">Search for</span>
 </label>
-<input type="text" id="stock-arg-term" name="arguments[a][term]" value="" phx-debounce="blur" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-term" name="arguments[a][term]" phx-debounce="blur" type="text" value=""/>
 </div>
 </div>
 <div class="flex flex-col" data-argument="at_least">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-at_least" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-at_least">
 <span data-label="">At least</span>
 <span aria-hidden="true">*</span>
 </label>
-<input type="number" step="1" min="0" id="stock-arg-at_least" name="arguments[a][at_least]" value="" phx-debounce="blur" aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-at_least" min="0" name="arguments[a][at_least]" phx-debounce="blur" step="1" type="number" value=""/>
 </div>
 </div>
 <div class="flex flex-col" data-argument="kind">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-kind" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-kind">
 <span data-label="">Kind</span>
 </label>
-<select id="stock-arg-kind" name="arguments[a][kind]" class="select select-sm w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select class="select select-sm w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-kind" name="arguments[a][kind]">
 <option value="">
 </option>
-<option value="plain" selected="">
+<option selected="" value="plain">
         Plain
       </option>
 <option value="fancy">
@@ -141,45 +141,45 @@
 </div>
 <div class="flex flex-col" data-argument="any_kind?">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<input type="hidden" name="arguments[a][any_kind?]" value="false"/>
-<label for="stock-arg-any_kind?" class="label text-sm text-base-content">
-<input type="checkbox" id="stock-arg-any_kind?" name="arguments[a][any_kind?]" value="true" class="checkbox checkbox-sm border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input name="arguments[a][any_kind?]" type="hidden" value="false"/>
+<label class="label text-sm text-base-content" for="stock-arg-any_kind?">
+<input class="checkbox checkbox-sm border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-any_kind?" name="arguments[a][any_kind?]" type="checkbox" value="true"/>
 <span data-label="">Any kind?</span>
 </label>
 </div>
 </div>
 <div class="flex flex-col" data-argument="on">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-on" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-on">
 <span data-label="">On</span>
 </label>
-<input type="date" id="stock-arg-on" name="arguments[a][on]" value="" phx-debounce="blur" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-on" name="arguments[a][on]" phx-debounce="blur" type="date" value=""/>
 </div>
 </div>
 <div class="flex flex-col" data-argument="at">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-at" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-at">
 <span data-label="">At</span>
 </label>
-<input type="datetime-local" step="1" id="stock-arg-at" name="arguments[a][at]" value="" phx-debounce="blur" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-at" name="arguments[a][at]" phx-debounce="blur" step="1" type="datetime-local" value=""/>
 </div>
 </div>
 <div class="flex flex-col" data-argument="key">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-key" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-key">
 <span data-label="">Key</span>
 </label>
-<input type="text" id="stock-arg-key" name="arguments[a][key]" value="" phx-debounce="blur" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-key" name="arguments[a][key]" phx-debounce="blur" type="text" value=""/>
 </div>
 </div>
 <div class="flex flex-col" data-argument="names">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<span id="stock-arg-names-label" class="label text-sm text-base-content">
+<span class="label text-sm text-base-content" id="stock-arg-names-label">
 <span data-label="">Names</span>
 </span>
-<div id="stock-arg-names" role="group" aria-labelledby="stock-arg-names-label" class="flex flex-wrap items-center gap-2">
-<input type="hidden" name="arguments[a][names][]" value=""/>
-<button type="button" id="stock-arg-names-add" class="btn btn-sm" phx-click="argument_add" phx-value-argument="names" phx-target="T">
+<div aria-labelledby="stock-arg-names-label" class="flex flex-wrap items-center gap-2" id="stock-arg-names" role="group">
+<input name="arguments[a][names][]" type="hidden" value=""/>
+<button class="btn btn-sm" id="stock-arg-names-add" phx-click="argument_add" phx-target="T" phx-value-argument="names" type="button">
         Add value
       </button>
 </div>
@@ -187,17 +187,17 @@
 </div>
 <div class="flex flex-col" data-argument="kinds">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<span id="stock-arg-kinds-label" class="label text-sm text-base-content">
+<span class="label text-sm text-base-content" id="stock-arg-kinds-label">
 <span data-label="">Kinds</span>
 </span>
-<div id="stock-arg-kinds" role="group" aria-labelledby="stock-arg-kinds-label" class="flex flex-wrap items-center gap-2">
-<input type="hidden" name="arguments[a][kinds][]" value=""/>
+<div aria-labelledby="stock-arg-kinds-label" class="flex flex-wrap items-center gap-2" id="stock-arg-kinds" role="group">
+<input name="arguments[a][kinds][]" type="hidden" value=""/>
 <label class="label text-sm text-base-content">
-<input type="checkbox" name="arguments[a][kinds][]" value="plain" class="checkbox checkbox-sm border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input class="checkbox checkbox-sm border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" name="arguments[a][kinds][]" type="checkbox" value="plain"/>
         Plain
       </label>
 <label class="label text-sm text-base-content">
-<input type="checkbox" name="arguments[a][kinds][]" value="fancy" class="checkbox checkbox-sm border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input class="checkbox checkbox-sm border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" name="arguments[a][kinds][]" type="checkbox" value="fancy"/>
         Fancy
       </label>
 </div>
@@ -205,22 +205,22 @@
 </div>
 <div class="flex flex-col" data-argument="amount_asked-rate">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-amount_asked-rate" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-amount_asked-rate">
 <span data-label="">Amount asked: Rate</span>
 <span aria-hidden="true">*</span>
 </label>
-<input type="number" step="1" min="1" id="stock-arg-amount_asked-rate" name="arguments[c][amount_asked][rate]" value="3" phx-debounce="blur" aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-amount_asked-rate" min="1" name="arguments[c][amount_asked][rate]" phx-debounce="blur" step="1" type="number" value="3"/>
 </div>
 </div>
 <div class="flex flex-col" data-argument="amount_asked-currency">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-amount_asked-currency" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-amount_asked-currency">
 <span data-label="">Amount asked: Currency</span>
 </label>
-<select id="stock-arg-amount_asked-currency" name="arguments[c][amount_asked][currency]" class="select select-sm w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select class="select select-sm w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-amount_asked-currency" name="arguments[c][amount_asked][currency]">
 <option value="">
 </option>
-<option value="eur" selected="">
+<option selected="" value="eur">
         Eur
       </option>
 <option value="usd">
@@ -231,128 +231,128 @@
 </div>
 <div class="flex flex-col" data-argument="amount_fn-rate">
 <div class="flex min-h-8 flex-wrap items-center gap-2">
-<label for="stock-arg-amount_fn-rate" class="label text-sm text-base-content">
+<label class="label text-sm text-base-content" for="stock-arg-amount_fn-rate">
 <span data-label="">Exchange rate</span>
 <span aria-hidden="true">*</span>
 </label>
-<input type="number" step="1" min="1" id="stock-arg-amount_fn-rate" name="arguments[c][amount_fn][rate]" value="5" phx-debounce="blur" aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="stock-arg-amount_fn-rate" min="1" name="arguments[c][amount_fn][rate]" phx-debounce="blur" step="1" type="number" value="5"/>
 </div>
 </div>
 </form>
 <form id="stock-filters" phx-change="filter" phx-submit="filter" phx-target="T">
 </form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
-<div id="stock-selection" role="group" aria-label="Selected rows" data-selection="" data-scope="31832193" data-selected="{n} selected" data-all="All that match are selected" class="flex flex-wrap items-center gap-2">
-<p id="stock-selected" role="status" phx-update="ignore" class="text-sm">
+<div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All that match are selected" data-scope="31832193" data-selected="{n} selected" data-selection="" id="stock-selection" role="group">
+<p class="text-sm" id="stock-selected" phx-update="ignore" role="status">
 </p>
-<div id="stock-selection-controls" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" class="flex flex-wrap items-center gap-2">
-<button type="button" id="stock-select-all" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" data-select-all="" class="btn btn-sm">
+<div class="flex flex-wrap items-center gap-2" hidden="" id="stock-selection-controls" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]">
+<button class="btn btn-sm" data-select-all="" hidden="" id="stock-select-all" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" type="button">
       Select all that match
     </button>
-<button type="button" id="stock-clear-selection" data-clear="" class="btn btn-sm">
+<button class="btn btn-sm" data-clear="" id="stock-clear-selection" type="button">
       Clear selection
     </button>
-<button type="button" id="stock-bulk-rename" data-bulk="rename" class="btn btn-sm ">
+<button class="btn btn-sm " data-bulk="rename" id="stock-bulk-rename" type="button">
       Rename
     </button>
-<button type="button" id="stock-bulk-move" data-bulk="move" class="btn btn-sm ">
+<button class="btn btn-sm " data-bulk="move" id="stock-bulk-move" type="button">
       Move
     </button>
-<button type="button" id="stock-bulk-destroy" data-bulk="destroy" data-destructive="" class="btn btn-sm ">
+<button class="btn btn-sm " data-bulk="destroy" data-destructive="" id="stock-bulk-destroy" type="button">
       Destroy
     </button>
 </div>
 </div>
-<div id="stock-columns-control" class="ms-auto">
-<button type="button" id="stock-columns-button" aria-expanded="false" aria-controls="stock-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" data-columns-button="" data-text="Columns" data-text-with="Columns ({details})" data-text-hidden="{n} hidden" data-text-filtered="{n} filtered" data-text-sorted="{n} sorted" data-say-hidden="{column} hidden" data-say-shown="{column} shown" class="btn btn-sm">
+<div class="ms-auto" id="stock-columns-control">
+<button aria-controls="stock-columns" aria-expanded="false" class="btn btn-sm" data-columns-button="" data-say-hidden="{column} hidden" data-say-shown="{column} shown" data-text-filtered="{n} filtered" data-text-hidden="{n} hidden" data-text-sorted="{n} sorted" data-text-with="Columns ({details})" data-text="Columns" id="stock-columns-button" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" type="button">
 <span id="stock-columns-text" phx-update="ignore">Columns</span>
 </button>
-<div id="stock-columns" role="group" aria-label="Columns" popover="manual" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" data-columns-list="" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow">
-<label id="stock-column-amount-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="stock-column-amount" checked="" data-head="stock-head-amount" data-label="Amount" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<div aria-label="Columns" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow" data-columns-list="" id="stock-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" popover="manual" role="group">
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="stock-column-amount-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="stock-head-amount" data-label="Amount" id="stock-column-amount" type="checkbox"/>
 <span>Amount</span>
 </label>
-<label id="stock-column-shelf-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="stock-column-shelf" checked="" data-head="stock-head-shelf" data-label="Shelf" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="stock-column-shelf-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="stock-head-shelf" data-label="Shelf" id="stock-column-shelf" type="checkbox"/>
 <span>Shelf</span>
 </label>
-<label id="stock-column-amount_in-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="stock-column-amount_in" checked="" data-head="stock-head-amount_in" data-label="Amount in" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="stock-column-amount_in-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="stock-head-amount_in" data-label="Amount in" id="stock-column-amount_in" type="checkbox"/>
 <span>Amount in</span>
 </label>
-<label id="stock-column-amount_asked-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="stock-column-amount_asked" checked="" data-head="stock-head-amount_asked" data-label="Amount asked" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="stock-column-amount_asked-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="stock-head-amount_asked" data-label="Amount asked" id="stock-column-amount_asked" type="checkbox"/>
 <span>Amount asked</span>
 </label>
-<label id="stock-column-amount_fn-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="stock-column-amount_fn" checked="" data-head="stock-head-amount_fn" data-label="Converted" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="stock-column-amount_fn-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="stock-head-amount_fn" data-label="Converted" id="stock-column-amount_fn" type="checkbox"/>
 <span>Converted</span>
 </label>
-<label id="stock-column-lot_count-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="stock-column-lot_count" checked="" data-head="stock-head-lot_count" data-label="Lot count" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="stock-column-lot_count-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="stock-head-lot_count" data-label="Lot count" id="stock-column-lot_count" type="checkbox"/>
 <span>Lot count</span>
 </label>
 </div>
-<p id="stock-columns-status" role="status" phx-update="ignore" class="sr-only">
+<p class="sr-only" id="stock-columns-status" phx-update="ignore" role="status">
 </p>
 </div>
 </div>
-<p id="stock-status" role="status" aria-live="polite" class="sr-only">Fill in At least to see records. </p>
-<div id="stock-grid" phx-hook=".Grid" phx-target="T" data-ash-data-table="" data-lead="2" data-select="multi" tabindex="-1" class="overflow-x-auto outline-none ">
-<table id="stock-table" role="grid" aria-label="Stock" aria-rowcount="-1" aria-colcount="10" aria-multiselectable="true" data-first-row="3" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" phx-update="stream">
+<p aria-live="polite" class="sr-only" id="stock-status" role="status">Fill in At least to see records. </p>
+<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" id="stock-grid" phx-hook=".Grid" phx-target="T" tabindex="-1">
+<table aria-colcount="10" aria-label="Stock" aria-multiselectable="true" aria-rowcount="-1" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" data-first-row="3" id="stock-table" phx-update="stream" role="grid">
 <thead id="stock-head">
-<tr id="stock-head-row" role="row" aria-rowindex="1">
-<th id="stock-select-head" role="columnheader" scope="col" aria-colindex="1" tabindex="-1" data-select-page="" class="w-0">
-<input type="checkbox" tabindex="-1" aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<tr aria-rowindex="1" id="stock-head-row" role="row">
+<th aria-colindex="1" class="w-0" data-select-page="" id="stock-select-head" role="columnheader" scope="col" tabindex="-1">
+<input aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" tabindex="-1" type="checkbox"/>
 </th>
-<th id="stock-expander-head" role="columnheader" scope="col" aria-colindex="2" tabindex="-1" class="w-0">
+<th aria-colindex="2" class="w-0" id="stock-expander-head" role="columnheader" scope="col" tabindex="-1">
 <span class="sr-only">Related records</span>
 </th>
-<th id="stock-head-name" role="columnheader" scope="col" aria-colindex="3" aria-sort="none" aria-label="Name" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="name" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Name<span aria-hidden="true">
+<th aria-colindex="3" aria-label="Name" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="stock-head-name" phx-click="sort" phx-target="T" phx-value-column="name" role="columnheader" scope="col" tabindex="-1">Name<span aria-hidden="true">
 </span>
-<span id="stock-resize-name" role="separator" aria-orientation="vertical" aria-label="Resize Name" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
-</span>
-</th>
-<th id="stock-head-amount" role="columnheader" scope="col" aria-colindex="4" aria-sort="none" aria-label="Amount" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="amount" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Amount<span aria-hidden="true">
-</span>
-<span id="stock-resize-amount" role="separator" aria-orientation="vertical" aria-label="Resize Amount" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<span aria-label="Resize Name" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-name" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="stock-head-shelf" role="columnheader" scope="col" aria-colindex="5" aria-label="Shelf" tabindex="-1" class="relative whitespace-nowrap ">Shelf<span id="stock-resize-shelf" role="separator" aria-orientation="vertical" aria-label="Resize Shelf" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<th aria-colindex="4" aria-label="Amount" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="stock-head-amount" phx-click="sort" phx-target="T" phx-value-column="amount" role="columnheader" scope="col" tabindex="-1">Amount<span aria-hidden="true">
+</span>
+<span aria-label="Resize Amount" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-amount" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="stock-head-amount_in" role="columnheader" scope="col" aria-colindex="6" aria-sort="none" aria-label="Amount in" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="amount_in" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Amount in<span aria-hidden="true">
-</span>
-<span id="stock-resize-amount_in" role="separator" aria-orientation="vertical" aria-label="Resize Amount in" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<th aria-colindex="5" aria-label="Shelf" class="relative whitespace-nowrap " id="stock-head-shelf" role="columnheader" scope="col" tabindex="-1">Shelf<span aria-label="Resize Shelf" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-shelf" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="stock-head-amount_asked" role="columnheader" scope="col" aria-colindex="7" aria-sort="none" aria-label="Amount asked" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="amount_asked" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Amount asked<span aria-hidden="true">
+<th aria-colindex="6" aria-label="Amount in" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="stock-head-amount_in" phx-click="sort" phx-target="T" phx-value-column="amount_in" role="columnheader" scope="col" tabindex="-1">Amount in<span aria-hidden="true">
 </span>
-<span id="stock-resize-amount_asked" role="separator" aria-orientation="vertical" aria-label="Resize Amount asked" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
-</span>
-</th>
-<th id="stock-head-amount_fn" role="columnheader" scope="col" aria-colindex="8" aria-sort="none" aria-label="Converted" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="amount_fn" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Converted<span aria-hidden="true">
-</span>
-<span id="stock-resize-amount_fn" role="separator" aria-orientation="vertical" aria-label="Resize Converted" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<span aria-label="Resize Amount in" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-amount_in" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="stock-head-lot_count" role="columnheader" scope="col" aria-colindex="9" aria-sort="none" aria-label="Lot count" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="lot_count" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Lot count<span aria-hidden="true">
+<th aria-colindex="7" aria-label="Amount asked" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="stock-head-amount_asked" phx-click="sort" phx-target="T" phx-value-column="amount_asked" role="columnheader" scope="col" tabindex="-1">Amount asked<span aria-hidden="true">
 </span>
-<span id="stock-resize-lot_count" role="separator" aria-orientation="vertical" aria-label="Resize Lot count" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<span aria-label="Resize Amount asked" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-amount_asked" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="stock-actions-head" role="columnheader" scope="col" aria-colindex="10" tabindex="-1" class="whitespace-nowrap">
+<th aria-colindex="8" aria-label="Converted" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="stock-head-amount_fn" phx-click="sort" phx-target="T" phx-value-column="amount_fn" role="columnheader" scope="col" tabindex="-1">Converted<span aria-hidden="true">
+</span>
+<span aria-label="Resize Converted" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-amount_fn" role="separator" tabindex="-1">
+</span>
+</th>
+<th aria-colindex="9" aria-label="Lot count" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="stock-head-lot_count" phx-click="sort" phx-target="T" phx-value-column="lot_count" role="columnheader" scope="col" tabindex="-1">Lot count<span aria-hidden="true">
+</span>
+<span aria-label="Resize Lot count" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="stock-resize-lot_count" role="separator" tabindex="-1">
+</span>
+</th>
+<th aria-colindex="10" class="whitespace-nowrap" id="stock-actions-head" role="columnheader" scope="col" tabindex="-1">
             Actions
           </th>
 </tr>
-<tr id="stock-filter-row" role="row" aria-rowindex="2">
-<td id="stock-select-filter" role="gridcell" aria-colindex="1" tabindex="-1">
+<tr aria-rowindex="2" id="stock-filter-row" role="row">
+<td aria-colindex="1" id="stock-select-filter" role="gridcell" tabindex="-1">
 </td>
-<td id="stock-expander-filter" role="gridcell" aria-colindex="2" tabindex="-1">
+<td aria-colindex="2" id="stock-expander-filter" role="gridcell" tabindex="-1">
 </td>
-<td id="stock-filter-name" role="gridcell" aria-colindex="3" tabindex="-1" data-filter="">
+<td aria-colindex="3" data-filter="" id="stock-filter-name" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="stock-filter-name-operator" name="filter[name][o]" form="stock-filters" tabindex="-1" aria-label="How to filter Name" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Name" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-name-operator" name="filter[name][o]" tabindex="-1">
 <option value="contains">
       contains
     </option>
@@ -366,12 +366,12 @@
       is empty
     </option>
 </select>
-<input type="text" id="stock-filter-name-value" name="filter[name][v]" form="stock-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Name" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Name" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-name-value" name="filter[name][v]" phx-debounce="blur" tabindex="-1" type="text"/>
 </div>
 </td>
-<td id="stock-filter-amount" role="gridcell" aria-colindex="4" tabindex="-1" data-filter="">
+<td aria-colindex="4" data-filter="" id="stock-filter-amount" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="stock-filter-amount-operator" name="filter[amount][o]" form="stock-filters" tabindex="-1" aria-label="How to filter Amount" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Amount" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount-operator" name="filter[amount][o]" tabindex="-1">
 <option value="equals">
       equals
     </option>
@@ -394,14 +394,14 @@
       is empty
     </option>
 </select>
-<input type="number" step="any" id="stock-filter-amount-value" name="filter[amount][v]" form="stock-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Amount" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Amount" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount-value" name="filter[amount][v]" phx-debounce="blur" step="any" tabindex="-1" type="number"/>
 </div>
 </td>
-<td id="stock-filter-shelf" role="gridcell" aria-colindex="5" tabindex="-1">
+<td aria-colindex="5" id="stock-filter-shelf" role="gridcell" tabindex="-1">
 </td>
-<td id="stock-filter-amount_in" role="gridcell" aria-colindex="6" tabindex="-1" data-filter="">
+<td aria-colindex="6" data-filter="" id="stock-filter-amount_in" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="stock-filter-amount_in-operator" name="filter[amount_in][o]" form="stock-filters" tabindex="-1" aria-label="How to filter Amount in" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Amount in" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount_in-operator" name="filter[amount_in][o]" tabindex="-1">
 <option value="equals">
       equals
     </option>
@@ -424,12 +424,12 @@
       is empty
     </option>
 </select>
-<input type="number" step="any" id="stock-filter-amount_in-value" name="filter[amount_in][v]" form="stock-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Amount in" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Amount in" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount_in-value" name="filter[amount_in][v]" phx-debounce="blur" step="any" tabindex="-1" type="number"/>
 </div>
 </td>
-<td id="stock-filter-amount_asked" role="gridcell" aria-colindex="7" tabindex="-1" data-filter="">
+<td aria-colindex="7" data-filter="" id="stock-filter-amount_asked" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="stock-filter-amount_asked-operator" name="filter[amount_asked][o]" form="stock-filters" tabindex="-1" aria-label="How to filter Amount asked" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Amount asked" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount_asked-operator" name="filter[amount_asked][o]" tabindex="-1">
 <option value="equals">
       equals
     </option>
@@ -452,12 +452,12 @@
       is empty
     </option>
 </select>
-<input type="number" step="any" id="stock-filter-amount_asked-value" name="filter[amount_asked][v]" form="stock-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Amount asked" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Amount asked" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount_asked-value" name="filter[amount_asked][v]" phx-debounce="blur" step="any" tabindex="-1" type="number"/>
 </div>
 </td>
-<td id="stock-filter-amount_fn" role="gridcell" aria-colindex="8" tabindex="-1" data-filter="">
+<td aria-colindex="8" data-filter="" id="stock-filter-amount_fn" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="stock-filter-amount_fn-operator" name="filter[amount_fn][o]" form="stock-filters" tabindex="-1" aria-label="How to filter Converted" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Converted" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount_fn-operator" name="filter[amount_fn][o]" tabindex="-1">
 <option value="equals">
       equals
     </option>
@@ -480,12 +480,12 @@
       is empty
     </option>
 </select>
-<input type="number" step="any" id="stock-filter-amount_fn-value" name="filter[amount_fn][v]" form="stock-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Converted" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Converted" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-amount_fn-value" name="filter[amount_fn][v]" phx-debounce="blur" step="any" tabindex="-1" type="number"/>
 </div>
 </td>
-<td id="stock-filter-lot_count" role="gridcell" aria-colindex="9" tabindex="-1" data-filter="">
+<td aria-colindex="9" data-filter="" id="stock-filter-lot_count" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="stock-filter-lot_count-operator" name="filter[lot_count][o]" form="stock-filters" tabindex="-1" aria-label="How to filter Lot count" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Lot count" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-lot_count-operator" name="filter[lot_count][o]" tabindex="-1">
 <option value="equals">
       equals
     </option>
@@ -505,47 +505,47 @@
       between
     </option>
 </select>
-<input type="number" step="any" id="stock-filter-lot_count-value" name="filter[lot_count][v]" form="stock-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Lot count" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Lot count" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="stock-filters" id="stock-filter-lot_count-value" name="filter[lot_count][v]" phx-debounce="blur" step="any" tabindex="-1" type="number"/>
 </div>
 </td>
-<td id="stock-actions-filter" role="gridcell" aria-colindex="10" tabindex="-1">
+<td aria-colindex="10" id="stock-actions-filter" role="gridcell" tabindex="-1">
 </td>
 </tr>
 </thead>
 </table>
-<template id="stock-editor-name" data-editor="text">
-<textarea rows="1" aria-label="Name" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none">
+<template data-editor="text" id="stock-editor-name">
+<textarea aria-label="Name" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none" rows="1">
 </textarea>
 </template>
-<template id="stock-editor-amount" data-editor="number">
-<input type="number" step="1" aria-label="Amount" class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"/>
+<template data-editor="number" id="stock-editor-amount">
+<input aria-label="Amount" class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none" step="1" type="number"/>
 </template>
-<template id="stock-editor-shelf" data-editor="reference">
+<template data-editor="reference" id="stock-editor-shelf">
 </template>
 <template id="stock-failure">
-<span popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">
+<span class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow" popover="manual">
 </span>
 </template>
 </div>
-<div id="stock-scrollbar" phx-update="ignore" aria-hidden="true" tabindex="-1" hidden="" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="">
+<div aria-hidden="true" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="" hidden="" id="stock-scrollbar" phx-update="ignore" tabindex="-1">
 <div class="h-px">
 </div>
 </div>
-<div id="stock-whole" popover="manual" phx-update="ignore" aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="">
+<div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="stock-whole" phx-update="ignore" popover="manual">
 </div>
 <div id="stock-dialogs" phx-update="ignore">
-<dialog id="stock-dialog" aria-labelledby="stock-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border">
+<dialog aria-labelledby="stock-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="stock-dialog">
 <form method="dialog">
 <p id="stock-dialog-question">
 </p>
 <div class="mt-6 flex justify-end gap-2">
-<button value="cancel" class="btn">Cancel</button>
-<button value="confirm" class="btn btn-primary">Confirm</button>
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary" value="confirm">Confirm</button>
 </div>
 </form>
 </dialog>
 </div>
-<p id="stock-fill" class="py-8 text-center text-sm opacity-70">
+<p class="py-8 text-center text-sm opacity-70" id="stock-fill">
     Fill in At least to see records.
   </p>
 </div>

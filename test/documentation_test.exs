@@ -30,7 +30,7 @@ defmodule AshDataTable.DocumentationTest do
   use ExUnit.Case, async: true
 
   @root Path.expand("..", __DIR__)
-  @repository "https://github.com/StefanRoesch/ash_table"
+  @repository "https://github.com/StefanRoesch/ash_data_table"
 
   @guides [@root, "documentation/{tutorials,topics}/*.md"]
           |> Path.join()

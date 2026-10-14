@@ -14,7 +14,7 @@ action panel, and [Authorization](authorization.md) for who may do what.
 ## The smallest example
 
 A project of the demo has a client
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -24,7 +24,7 @@ attribute :client, Demo.Tracker.Client, public?: true
 ```
 
 The client is an embedded resource
-([`demo/lib/demo/tracker/embedded/client.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/embedded/client.ex)):
+([`demo/lib/demo/tracker/embedded/client.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/embedded/client.ex)):
 
 <!-- source: demo/lib/demo/tracker/embedded/client.ex -->
 ```elixir
@@ -77,7 +77,7 @@ address as a group among them. Change the city and use "Save".
 
 The demo has one of each. A task's "Repeats" is a map that declares its
 fields
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -340,7 +340,7 @@ is: an embedded resource with policies of its own can refuse.
 Three things follow.
 
 **Identity in an array.** A milestone has a public primary key
-([`demo/lib/demo/tracker/embedded/milestone.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/embedded/milestone.ex)):
+([`demo/lib/demo/tracker/embedded/milestone.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/embedded/milestone.ex)):
 
 <!-- source: demo/lib/demo/tracker/embedded/milestone.ex -->
 ```elixir
@@ -438,7 +438,7 @@ table's own editor.
 The label of a field is your resource's wording, looked up in the Gettext
 domain `ash_data_table` of your backend, as a column's label is. The demo
 translates the fields of a task's recurrence
-([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
 <!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
@@ -525,4 +525,4 @@ translated once, for a column and for a field of a client alike.
 - **Showing constraints before saving**, as for every editor.
 
 The display of constraints is a later slice in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

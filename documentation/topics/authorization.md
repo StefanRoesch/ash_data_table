@@ -12,7 +12,7 @@ action.
 There is nothing to declare in the `table` block. A mounted table reads who
 is asking from the socket assigns that your `on_mount` hook sets. In the demo
 the hook is `DemoWeb.Actor`
-([`demo/lib/demo_web/actor.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/actor.ex)):
+([`demo/lib/demo_web/actor.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/actor.ex)):
 
 <!-- source: demo/lib/demo_web/actor.ex -->
 ```elixir
@@ -73,7 +73,7 @@ A table placed in your own LiveView is given `scope`, or `actor` and
 The assign names, and whether the tables authorize at all, are settings of
 the resource's domain, with the extension `AshDataTable.Domain`. The demo's
 tracker writes the defaults out
-([`demo/lib/demo/tracker.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker.ex)):
+([`demo/lib/demo/tracker.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker.ex)):
 
 <!-- source: demo/lib/demo/tracker.ex -->
 ```elixir
@@ -110,7 +110,7 @@ with these defaults.
 An app whose assigns have other names says so once per domain. The demo's
 own domains keep the defaults, so this example is from a domain that exists
 for the demo's tests
-([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/guarded_tables.ex)):
+([`demo/test/support/guarded_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/guarded_tables.ex)):
 
 <!-- source: demo/test/support/guarded_tables.ex -->
 ```elixir
@@ -149,7 +149,7 @@ as an admin area that the router already restricts.
 The same can be said for one mounted page, in the router. The demo's test
 routes mount a table twice, once as its domain says and once without
 authorization
-([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
@@ -243,7 +243,7 @@ end
 ```
 
 The projects' read policy refuses
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -334,7 +334,7 @@ exposed by API extensions". Ash itself does not hold anybody to that. It
 runs a private action for whoever the policies allow, and the policy that
 its documentation gives for a private action allows everybody. This one is
 from a resource of the demo's tests
-([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/private_tables.ex)):
+([`demo/test/support/private_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/private_tables.ex)):
 
 <!-- source: demo/test/support/private_tables.ex -->
 ```elixir
@@ -477,7 +477,7 @@ By default a person whose read is refused outright is not told that the
 table exists. The mounted page raises `AshDataTable.NotFoundError`, which Phoenix
 renders as it renders a missing route. `on_forbidden :message` tells them
 instead. The demo's comments do
-([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/comment.ex)):
+([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment.ex)):
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
 ```elixir
@@ -667,4 +667,4 @@ No per-table authorization setting beside the domain's, no hiding of single
 rows' edit affordance ahead of a save or of a row's buttons ahead of an
 action, and no login or session handling: that is the host's. The roadmap
 is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

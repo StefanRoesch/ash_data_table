@@ -15,7 +15,7 @@ and for the ARIA pattern it follows. Everywhere else the thing is a table.
 There is nothing to declare. The keyboard is handled in the browser by
 JavaScript hooks that ship with the library, so the only requirement is that
 they are registered, which is one import. In the demo
-([`demo/assets/js/app.js`](https://github.com/StefanRoesch/ash_table/blob/main/demo/assets/js/app.js)):
+([`demo/assets/js/app.js`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/assets/js/app.js)):
 
 <!-- source: demo/assets/js/app.js -->
 ```js
@@ -594,7 +594,7 @@ shadow, which forced colours would take away.
 Contrast was measured in Chromium, from the colours the browser computed for
 each state and painted over what is behind them, in the demo's two themes,
 which are those of a new Phoenix 1.8 application. The demo's browser tests
-([`demo/e2e/contrast.spec.ts`](https://github.com/StefanRoesch/ash_table/blob/main/demo/e2e/contrast.spec.ts))
+([`demo/e2e/contrast.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/contrast.spec.ts))
 measure the same and hold each line at what WCAG 2 asks.
 
 | | WCAG asks | Light | Dark |
@@ -645,7 +645,7 @@ What these numbers do not cover:
 ## What has been tested, and what has not
 
 The behaviour described in this guide is covered by the demo's browser tests
-([`demo/e2e`](https://github.com/StefanRoesch/ash_table/tree/main/demo/e2e)):
+([`demo/e2e`](https://github.com/StefanRoesch/ash_data_table/tree/main/demo/e2e)):
 scripted keyboard tests in Playwright, and automated checks with axe-core on
 every demo table and in every state a table can be in (sorted, filtered,
 empty, failed, with each editor open, the two editors of an array among
@@ -728,7 +728,7 @@ table is pleasant, or even workable, with a screen reader. The ARIA
 attributes above are what the grid pattern prescribes; how each screen
 reader reads them is unverified. If you use the table with assistive
 technology, a report of what you find is welcome in the
-[issue tracker](https://github.com/StefanRoesch/ash_table/issues).
+[issue tracker](https://github.com/StefanRoesch/ash_data_table/issues).
 
 ## Edge cases
 
@@ -793,4 +793,4 @@ technology, a report of what you find is welcome in the
 
 No keyboard shortcuts of the host's choosing, and no
 tested screen reader support. The roadmap is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

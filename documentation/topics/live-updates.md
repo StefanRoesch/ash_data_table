@@ -8,7 +8,7 @@ and what never.
 
 A table shows what it read. Two lines make it follow what others change: one
 in the resource
-([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/comment.ex)),
+([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment.ex)),
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
 ```elixir
@@ -22,7 +22,7 @@ table do
 
 and one in its domain, which names the `Phoenix.PubSub` server that carries
 the announcements
-([`demo/lib/demo/tracker.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker.ex)):
+([`demo/lib/demo/tracker.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker.ex)):
 
 <!-- source: demo/lib/demo/tracker.ex -->
 ```elixir
@@ -240,4 +240,4 @@ resource on the same page.
 - **Hearing of a change made without an Ash action.**
 
 Further work on what a table offers is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -24,7 +24,7 @@ and [Keyboard and accessibility](keyboard-and-accessibility.md).
 ## The smallest example
 
 The demo's projects have a budget
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -127,7 +127,7 @@ still change it.
 
 An input of an action that is sensitive, an attribute or an argument, is a
 password field too. The demo's test support has an action with both
-([`demo/test/support/sensitive_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/sensitive_tables.ex)):
+([`demo/test/support/sensitive_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/sensitive_tables.ex)):
 
 <!-- source: demo/test/support/sensitive_tables.ex -->
 ```elixir
@@ -157,7 +157,7 @@ end
 An empty editor means "no change", so nothing typed can say "no value". A
 button says it: **"Clear"**. The demo's projects have a row action whose
 one input is the budget
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -306,4 +306,4 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#sensitive-fields).
   off the field instead.
 
 Further work on what a table offers is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

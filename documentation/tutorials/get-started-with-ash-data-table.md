@@ -6,10 +6,10 @@ chose, one column they can edit in place, and a save that the resource's
 policy refuses for the wrong person. You write no HEEx for it.
 
 Every step shows the code of the demo app in
-[`demo/`](https://github.com/StefanRoesch/ash_table/tree/main/demo), an issue
+[`demo/`](https://github.com/StefanRoesch/ash_data_table/tree/main/demo), an issue
 tracker that ships with the library, and names the demo page where you can
 see the step working. Do the same in your own app with your own resource.
-[The demo's README](https://github.com/StefanRoesch/ash_table/blob/main/demo/README.md)
+[The demo's README](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/README.md)
 says how to start it; it then runs at `http://localhost:4478`, and the
 "Acting as" switcher in the page header chooses who you are.
 
@@ -43,7 +43,7 @@ AshDataTable is not on Hex yet, so the installer is given the repository:
 
 <!-- sketch -->
 ```sh
-mix igniter.install ash_data_table@github:StefanRoesch/ash_table
+mix igniter.install ash_data_table@github:StefanRoesch/ash_data_table
 ```
 
 Once the package is published this is `mix igniter.install ash_data_table`. With
@@ -68,7 +68,7 @@ is, and the step is printed for you to take by hand. The
 [README](../../README.md#by-hand) lists the manual steps.
 
 This is what the result looks like in the demo. The hooks, in
-[`demo/assets/js/app.js`](https://github.com/StefanRoesch/ash_table/blob/main/demo/assets/js/app.js):
+[`demo/assets/js/app.js`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/assets/js/app.js):
 
 <!-- source: demo/assets/js/app.js -->
 ```js
@@ -87,7 +87,7 @@ panel. All ship with the library as colocated hooks behind the one import.
 There is nothing to install from npm.
 
 The configuration, in
-[`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs):
+[`demo/config/config.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/config/config.exs):
 
 <!-- source: demo/config/config.exs -->
 ```elixir
@@ -120,7 +120,7 @@ app already does that. Run `mix assets.build` now.
 
 List the extension on the resource. This is all `Demo.Tracker.Project`
 needs for its table, in
-[`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex):
+[`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -150,7 +150,7 @@ tables of other resources. See step 5,
 
 Import `AshDataTable.Router` and add one line per table, inside the
 `live_session` whose `on_mount` hooks assign who is logged in. From
-[`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex):
+[`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
@@ -198,7 +198,7 @@ The default columns rarely fit: they include the `id` and leave out every
 calculation and aggregate. A `table` block with `column` entries says exactly
 which columns the table has, in which order. Part of the block of
 `Demo.Tracker.Task`, in
-[`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex):
+[`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -360,4 +360,4 @@ This tutorial stops at a table that reads and edits cells. Row actions,
 creating records, nested tables and a column's own component are built and
 have guides of their own, linked above. The later slices are listed in
 order in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

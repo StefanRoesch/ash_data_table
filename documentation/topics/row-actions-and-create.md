@@ -22,7 +22,7 @@ who is acting is summed up here and explained in
 An `action` in the `table` block is a button in every row, and
 `create_action` is a button above the table. The demo's comments have one of
 each
-([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/comment.ex)):
+([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment.ex)):
 
 <!-- source: demo/lib/demo/tracker/comment.ex -->
 ```elixir
@@ -61,7 +61,7 @@ action because the resource happens to have it.
 Each `action` names an action of the resource. The buttons stand in the
 declared order, in a last column headed "Actions". The demo's tasks declare
 five, of which these are the first four
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -89,7 +89,7 @@ end
 | `record_argument` | none | For a generic action alone: the argument that is given the row's primary key. See [Table actions](table-actions.md#a-generic-action-in-a-row). |
 
 The demo's task labels use both
-([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
+([`demo/lib/demo/tracker/task_label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task_label.ex)):
 
 <!-- source: demo/lib/demo/tracker/task_label.ex -->
 ```elixir
@@ -374,7 +374,7 @@ an array of unions.
 So an action whose only inputs have no field, all of them optional, runs
 straight away. The demo's actions have no such input; the library's own
 tests do
-([`test/support/acting.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/acting.ex)).
+([`test/support/acting.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/acting.ex)).
 
 ### Inputs a person may not see
 
@@ -388,7 +388,7 @@ either, as it does for a cell:
 - **An attribute hidden from them on this record** is left out of that
   record's panel. The demo's row actions accept no such attribute; the
   demo's tests have a resource whose do
-  ([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/plain_tables.ex),
+  ([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/plain_tables.ex),
   `Demo.Support.Plain.Order`).
 - **A value sent for such a field all the same is dropped.** The server
   takes the values by the names of the inputs the person has on the record,
@@ -776,4 +776,4 @@ No form for a related record that an action creates or changes, no fields
 for arrays of unions, nor for several files, no create under a many-to-many or a
 has-one, no type-to-confirm, no custom buttons or icons, and no undo.
 The later slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -1,29 +1,29 @@
 <div id="phx-ID">
-<div id="app-layout" class="px-4 py-8 sm:px-6 lg:px-8">
+<div class="px-4 py-8 sm:px-6 lg:px-8" id="app-layout">
 <div class="mx-auto max-w-7xl space-y-6">
 <div id="label-page">
-<div id="label" class="ash-data-table" data-read="">
-<div id="label-header" class="mb-4 flex min-h-8 items-center justify-between gap-2">
-<h1 id="label-name" class="text-lg font-semibold">
+<div class="ash-data-table" data-read="" id="label">
+<div class="mb-4 flex min-h-8 items-center justify-between gap-2" id="label-header">
+<h1 class="text-lg font-semibold" id="label-name">
       Labels
     </h1>
 <div class="ms-auto flex flex-wrap items-center justify-end gap-2">
-<button type="button" id="label-create" class="btn btn-sm" phx-click="create" phx-target="T">
+<button class="btn btn-sm" id="label-create" phx-click="create" phx-target="T" type="button">
   New label
 </button>
-<button type="button" id="label-do-count_unused" class="btn btn-sm" data-table-action="count_unused" phx-click="table_act" phx-value-action="count_unused" phx-target="T">
+<button class="btn btn-sm" data-table-action="count_unused" id="label-do-count_unused" phx-click="table_act" phx-target="T" phx-value-action="count_unused" type="button">
   Count unused
 </button>
-<button type="button" id="label-do-recolour" class="btn btn-sm" data-table-action="recolour" phx-click="table_act" phx-value-action="recolour" phx-target="T">
+<button class="btn btn-sm" data-table-action="recolour" id="label-do-recolour" phx-click="table_act" phx-target="T" phx-value-action="recolour" type="button">
   Recolour
 </button>
-<button type="button" id="label-do-remove_unused" class="btn btn-sm" data-table-action="remove_unused" phx-click="table_act" phx-value-action="remove_unused" phx-target="T">
+<button class="btn btn-sm" data-table-action="remove_unused" id="label-do-remove_unused" phx-click="table_act" phx-target="T" phx-value-action="remove_unused" type="button">
   Remove unused
 </button>
-<button type="button" id="label-do-merge" class="btn btn-sm" data-table-action="merge" phx-click="table_act" phx-value-action="merge" phx-target="T">
+<button class="btn btn-sm" data-table-action="merge" id="label-do-merge" phx-click="table_act" phx-target="T" phx-value-action="merge" type="button">
   Merge
 </button>
-<button type="button" id="label-do-import" class="btn btn-sm" data-table-action="import" phx-click="table_act" phx-value-action="import" phx-target="T">
+<button class="btn btn-sm" data-table-action="import" id="label-do-import" phx-click="table_act" phx-target="T" phx-value-action="import" type="button">
   Import
 </button>
 </div>
@@ -31,82 +31,82 @@
 <form id="label-filters" phx-change="filter" phx-submit="filter" phx-target="T">
 </form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
-<div id="label-selection" role="group" aria-label="Selected rows" data-selection="" data-scope="31832193" data-selected="{n} selected" data-all="All 3 that match are selected" class="flex flex-wrap items-center gap-2">
-<p id="label-selected" role="status" phx-update="ignore" class="text-sm">
+<div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 3 that match are selected" data-scope="31832193" data-selected="{n} selected" data-selection="" id="label-selection" role="group">
+<p class="text-sm" id="label-selected" phx-update="ignore" role="status">
 </p>
-<div id="label-selection-controls" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" class="flex flex-wrap items-center gap-2">
-<button type="button" id="label-select-all" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" data-select-all="" class="btn btn-sm">
+<div class="flex flex-wrap items-center gap-2" hidden="" id="label-selection-controls" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]">
+<button class="btn btn-sm" data-select-all="" hidden="" id="label-select-all" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" type="button">
       Select all 3 that match
     </button>
-<button type="button" id="label-clear-selection" data-clear="" class="btn btn-sm">
+<button class="btn btn-sm" data-clear="" id="label-clear-selection" type="button">
       Clear selection
     </button>
-<button type="button" id="label-bulk-destroy" data-bulk="destroy" data-destructive="" class="btn btn-sm ">
+<button class="btn btn-sm " data-bulk="destroy" data-destructive="" id="label-bulk-destroy" type="button">
       Destroy
     </button>
 </div>
 </div>
-<div id="label-columns-control" class="ms-auto">
-<button type="button" id="label-columns-button" aria-expanded="false" aria-controls="label-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" data-columns-button="" data-text="Columns" data-text-with="Columns ({details})" data-text-hidden="{n} hidden" data-text-filtered="{n} filtered" data-text-sorted="{n} sorted" data-say-hidden="{column} hidden" data-say-shown="{column} shown" class="btn btn-sm">
+<div class="ms-auto" id="label-columns-control">
+<button aria-controls="label-columns" aria-expanded="false" class="btn btn-sm" data-columns-button="" data-say-hidden="{column} hidden" data-say-shown="{column} shown" data-text-filtered="{n} filtered" data-text-hidden="{n} hidden" data-text-sorted="{n} sorted" data-text-with="Columns ({details})" data-text="Columns" id="label-columns-button" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" type="button">
 <span id="label-columns-text" phx-update="ignore">Columns</span>
 </button>
-<div id="label-columns" role="group" aria-label="Columns" popover="manual" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" data-columns-list="" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow">
-<label id="label-column-id-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="label-column-id" checked="" data-head="label-head-id" data-label="ID" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<div aria-label="Columns" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow" data-columns-list="" id="label-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" popover="manual" role="group">
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="label-column-id-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="label-head-id" data-label="ID" id="label-column-id" type="checkbox"/>
 <span>ID</span>
 </label>
-<label id="label-column-colour-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
-<input type="checkbox" id="label-column-colour" checked="" data-head="label-head-colour" data-label="Colour" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="label-column-colour-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="label-head-colour" data-label="Colour" id="label-column-colour" type="checkbox"/>
 <span>Colour</span>
 </label>
 </div>
-<p id="label-columns-status" role="status" phx-update="ignore" class="sr-only">
+<p class="sr-only" id="label-columns-status" phx-update="ignore" role="status">
 </p>
 </div>
 </div>
-<p id="label-status" role="status" aria-live="polite" class="sr-only">Count unused: 3 </p>
-<p id="label-result" class="mb-2 text-sm">
+<p aria-live="polite" class="sr-only" id="label-status" role="status">Count unused: 3 </p>
+<p class="mb-2 text-sm" id="label-result">
 <span data-summary="">Count unused: 3</span>
 </p>
-<div id="label-grid" phx-hook=".Grid" phx-target="T" data-ash-data-table="" data-lead="2" data-select="multi" tabindex="-1" class="overflow-x-auto outline-none ">
-<table id="label-table" role="grid" aria-label="Labels" aria-rowcount="5" aria-colcount="6" aria-multiselectable="true" data-first-row="3" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" phx-update="stream">
+<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" id="label-grid" phx-hook=".Grid" phx-target="T" tabindex="-1">
+<table aria-colcount="6" aria-label="Labels" aria-multiselectable="true" aria-rowcount="5" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" data-first-row="3" id="label-table" phx-update="stream" role="grid">
 <thead id="label-head">
-<tr id="label-head-row" role="row" aria-rowindex="1">
-<th id="label-select-head" role="columnheader" scope="col" aria-colindex="1" tabindex="-1" data-select-page="" class="w-0">
-<input type="checkbox" tabindex="-1" aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<tr aria-rowindex="1" id="label-head-row" role="row">
+<th aria-colindex="1" class="w-0" data-select-page="" id="label-select-head" role="columnheader" scope="col" tabindex="-1">
+<input aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" tabindex="-1" type="checkbox"/>
 </th>
-<th id="label-expander-head" role="columnheader" scope="col" aria-colindex="2" tabindex="-1" class="w-0">
+<th aria-colindex="2" class="w-0" id="label-expander-head" role="columnheader" scope="col" tabindex="-1">
 <span class="sr-only">Related records</span>
 </th>
-<th id="label-head-id" role="columnheader" scope="col" aria-colindex="3" aria-sort="none" aria-label="ID" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="id" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">ID<span aria-hidden="true">
+<th aria-colindex="3" aria-label="ID" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-id" phx-click="sort" phx-target="T" phx-value-column="id" role="columnheader" scope="col" tabindex="-1">ID<span aria-hidden="true">
 </span>
-<span id="label-resize-id" role="separator" aria-orientation="vertical" aria-label="Resize ID" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
-</span>
-</th>
-<th id="label-head-name" role="columnheader" scope="col" aria-colindex="4" aria-sort="none" aria-label="Name" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="name" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Name<span aria-hidden="true">
-</span>
-<span id="label-resize-name" role="separator" aria-orientation="vertical" aria-label="Resize Name" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<span aria-label="Resize ID" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="label-resize-id" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="label-head-colour" role="columnheader" scope="col" aria-colindex="5" aria-sort="none" aria-label="Colour" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="colour" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Colour<span aria-hidden="true">
+<th aria-colindex="4" aria-label="Name" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-name" phx-click="sort" phx-target="T" phx-value-column="name" role="columnheader" scope="col" tabindex="-1">Name<span aria-hidden="true">
 </span>
-<span id="label-resize-colour" role="separator" aria-orientation="vertical" aria-label="Resize Colour" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+<span aria-label="Resize Name" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="label-resize-name" role="separator" tabindex="-1">
 </span>
 </th>
-<th id="label-actions-head" role="columnheader" scope="col" aria-colindex="6" tabindex="-1" class="whitespace-nowrap">
+<th aria-colindex="5" aria-label="Colour" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-colour" phx-click="sort" phx-target="T" phx-value-column="colour" role="columnheader" scope="col" tabindex="-1">Colour<span aria-hidden="true">
+</span>
+<span aria-label="Resize Colour" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="label-resize-colour" role="separator" tabindex="-1">
+</span>
+</th>
+<th aria-colindex="6" class="whitespace-nowrap" id="label-actions-head" role="columnheader" scope="col" tabindex="-1">
             Actions
           </th>
 </tr>
-<tr id="label-filter-row" role="row" aria-rowindex="2">
-<td id="label-select-filter" role="gridcell" aria-colindex="1" tabindex="-1">
+<tr aria-rowindex="2" id="label-filter-row" role="row">
+<td aria-colindex="1" id="label-select-filter" role="gridcell" tabindex="-1">
 </td>
-<td id="label-expander-filter" role="gridcell" aria-colindex="2" tabindex="-1">
+<td aria-colindex="2" id="label-expander-filter" role="gridcell" tabindex="-1">
 </td>
-<td id="label-filter-id" role="gridcell" aria-colindex="3" tabindex="-1">
+<td aria-colindex="3" id="label-filter-id" role="gridcell" tabindex="-1">
 </td>
-<td id="label-filter-name" role="gridcell" aria-colindex="4" tabindex="-1" data-filter="">
+<td aria-colindex="4" data-filter="" id="label-filter-name" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="label-filter-name-operator" name="filter[name][o]" form="label-filters" tabindex="-1" aria-label="How to filter Name" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Name" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="label-filters" id="label-filter-name-operator" name="filter[name][o]" tabindex="-1">
 <option value="contains">
       contains
     </option>
@@ -117,12 +117,12 @@
       starts with
     </option>
 </select>
-<input type="text" id="label-filter-name-value" name="filter[name][v]" form="label-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Name" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Name" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="label-filters" id="label-filter-name-value" name="filter[name][v]" phx-debounce="blur" tabindex="-1" type="text"/>
 </div>
 </td>
-<td id="label-filter-colour" role="gridcell" aria-colindex="5" tabindex="-1" data-filter="">
+<td aria-colindex="5" data-filter="" id="label-filter-colour" role="gridcell" tabindex="-1">
 <div class="flex items-center gap-1">
-<select id="label-filter-colour-operator" name="filter[colour][o]" form="label-filters" tabindex="-1" aria-label="How to filter Colour" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<select aria-label="How to filter Colour" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="label-filters" id="label-filter-colour-operator" name="filter[colour][o]" tabindex="-1">
 <option value="contains">
       contains
     </option>
@@ -133,104 +133,104 @@
       starts with
     </option>
 </select>
-<input type="text" id="label-filter-colour-value" name="filter[colour][v]" form="label-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Colour" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<input aria-label="Filter Colour" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="label-filters" id="label-filter-colour-value" name="filter[colour][v]" phx-debounce="blur" tabindex="-1" type="text"/>
 </div>
 </td>
-<td id="label-actions-filter" role="gridcell" aria-colindex="6" tabindex="-1">
+<td aria-colindex="6" id="label-actions-filter" role="gridcell" tabindex="-1">
 </td>
 </tr>
 </thead>
 <tbody id="label-row-uuid-1">
-<tr id="label-row-uuid-1-r" role="row" aria-rowindex="3">
-<td id="label-row-uuid-1-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
-<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+<tr aria-rowindex="3" id="label-row-uuid-1-r" role="row">
+<td aria-colindex="1" data-selector="" id="label-row-uuid-1-s" role="gridcell" tabindex="-1">
+<input aria-label="Select row" class="checkbox checkbox-xs border-base-content/50" tabindex="-1" type="checkbox"/>
 </td>
-<td id="label-row-uuid-1-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
-<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+<td aria-colindex="2" data-expander="" id="label-row-uuid-1-e" role="gridcell" tabindex="-1">
+<button aria-expanded="false" aria-label="Related records" tabindex="-1" type="button">
 </button>
 </td>
-<td id="label-row-uuid-1-c-id" role="gridcell" aria-colindex="3" tabindex="-1" aria-readonly="true">uuid-1</td>
-<td id="label-row-uuid-1-c-name" role="gridcell" aria-colindex="4" tabindex="-1">label-1</td>
-<td id="label-row-uuid-1-c-colour" role="gridcell" aria-colindex="5" tabindex="-1">#14b8a6</td>
-<td id="label-row-uuid-1-a" role="gridcell" aria-colindex="6" tabindex="-1" data-actions="">
-<button type="button" id="label-row-uuid-1-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this label? It is taken off every task." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
-<button type="button" id="label-row-uuid-1-a-copy" tabindex="-1" data-action="copy" class="btn btn-xs -my-1 me-1">Copy</button>
+<td aria-colindex="3" aria-readonly="true" id="label-row-uuid-1-c-id" role="gridcell" tabindex="-1">uuid-1</td>
+<td aria-colindex="4" id="label-row-uuid-1-c-name" role="gridcell" tabindex="-1">label-1</td>
+<td aria-colindex="5" id="label-row-uuid-1-c-colour" role="gridcell" tabindex="-1">#14b8a6</td>
+<td aria-colindex="6" data-actions="" id="label-row-uuid-1-a" role="gridcell" tabindex="-1">
+<button class="btn btn-xs -my-1 me-1" data-action="destroy" data-destructive="" data-question="Delete this label? It is taken off every task." id="label-row-uuid-1-a-destroy" tabindex="-1" type="button">Destroy</button>
+<button class="btn btn-xs -my-1 me-1" data-action="copy" id="label-row-uuid-1-a-copy" tabindex="-1" type="button">Copy</button>
 </td>
 </tr>
 </tbody>
-<tbody id="label-row-uuid-1-x" hidden="" data-detail="" data-row="uuid-1">
+<tbody data-detail="" data-row="uuid-1" hidden="" id="label-row-uuid-1-x">
 </tbody>
 <tbody id="label-row-uuid-2">
-<tr id="label-row-uuid-2-r" role="row" aria-rowindex="4">
-<td id="label-row-uuid-2-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
-<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+<tr aria-rowindex="4" id="label-row-uuid-2-r" role="row">
+<td aria-colindex="1" data-selector="" id="label-row-uuid-2-s" role="gridcell" tabindex="-1">
+<input aria-label="Select row" class="checkbox checkbox-xs border-base-content/50" tabindex="-1" type="checkbox"/>
 </td>
-<td id="label-row-uuid-2-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
-<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+<td aria-colindex="2" data-expander="" id="label-row-uuid-2-e" role="gridcell" tabindex="-1">
+<button aria-expanded="false" aria-label="Related records" tabindex="-1" type="button">
 </button>
 </td>
-<td id="label-row-uuid-2-c-id" role="gridcell" aria-colindex="3" tabindex="-1" aria-readonly="true">uuid-2</td>
-<td id="label-row-uuid-2-c-name" role="gridcell" aria-colindex="4" tabindex="-1">label-2</td>
-<td id="label-row-uuid-2-c-colour" role="gridcell" aria-colindex="5" tabindex="-1">#22c55e</td>
-<td id="label-row-uuid-2-a" role="gridcell" aria-colindex="6" tabindex="-1" data-actions="">
-<button type="button" id="label-row-uuid-2-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this label? It is taken off every task." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
-<button type="button" id="label-row-uuid-2-a-copy" tabindex="-1" data-action="copy" class="btn btn-xs -my-1 me-1">Copy</button>
+<td aria-colindex="3" aria-readonly="true" id="label-row-uuid-2-c-id" role="gridcell" tabindex="-1">uuid-2</td>
+<td aria-colindex="4" id="label-row-uuid-2-c-name" role="gridcell" tabindex="-1">label-2</td>
+<td aria-colindex="5" id="label-row-uuid-2-c-colour" role="gridcell" tabindex="-1">#22c55e</td>
+<td aria-colindex="6" data-actions="" id="label-row-uuid-2-a" role="gridcell" tabindex="-1">
+<button class="btn btn-xs -my-1 me-1" data-action="destroy" data-destructive="" data-question="Delete this label? It is taken off every task." id="label-row-uuid-2-a-destroy" tabindex="-1" type="button">Destroy</button>
+<button class="btn btn-xs -my-1 me-1" data-action="copy" id="label-row-uuid-2-a-copy" tabindex="-1" type="button">Copy</button>
 </td>
 </tr>
 </tbody>
-<tbody id="label-row-uuid-2-x" hidden="" data-detail="" data-row="uuid-2">
+<tbody data-detail="" data-row="uuid-2" hidden="" id="label-row-uuid-2-x">
 </tbody>
 <tbody id="label-row-uuid-3">
-<tr id="label-row-uuid-3-r" role="row" aria-rowindex="5">
-<td id="label-row-uuid-3-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
-<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+<tr aria-rowindex="5" id="label-row-uuid-3-r" role="row">
+<td aria-colindex="1" data-selector="" id="label-row-uuid-3-s" role="gridcell" tabindex="-1">
+<input aria-label="Select row" class="checkbox checkbox-xs border-base-content/50" tabindex="-1" type="checkbox"/>
 </td>
-<td id="label-row-uuid-3-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
-<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+<td aria-colindex="2" data-expander="" id="label-row-uuid-3-e" role="gridcell" tabindex="-1">
+<button aria-expanded="false" aria-label="Related records" tabindex="-1" type="button">
 </button>
 </td>
-<td id="label-row-uuid-3-c-id" role="gridcell" aria-colindex="3" tabindex="-1" aria-readonly="true">uuid-3</td>
-<td id="label-row-uuid-3-c-name" role="gridcell" aria-colindex="4" tabindex="-1">label-3</td>
-<td id="label-row-uuid-3-c-colour" role="gridcell" aria-colindex="5" tabindex="-1">#ef4444</td>
-<td id="label-row-uuid-3-a" role="gridcell" aria-colindex="6" tabindex="-1" data-actions="">
-<button type="button" id="label-row-uuid-3-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this label? It is taken off every task." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
-<button type="button" id="label-row-uuid-3-a-copy" tabindex="-1" data-action="copy" class="btn btn-xs -my-1 me-1">Copy</button>
+<td aria-colindex="3" aria-readonly="true" id="label-row-uuid-3-c-id" role="gridcell" tabindex="-1">uuid-3</td>
+<td aria-colindex="4" id="label-row-uuid-3-c-name" role="gridcell" tabindex="-1">label-3</td>
+<td aria-colindex="5" id="label-row-uuid-3-c-colour" role="gridcell" tabindex="-1">#ef4444</td>
+<td aria-colindex="6" data-actions="" id="label-row-uuid-3-a" role="gridcell" tabindex="-1">
+<button class="btn btn-xs -my-1 me-1" data-action="destroy" data-destructive="" data-question="Delete this label? It is taken off every task." id="label-row-uuid-3-a-destroy" tabindex="-1" type="button">Destroy</button>
+<button class="btn btn-xs -my-1 me-1" data-action="copy" id="label-row-uuid-3-a-copy" tabindex="-1" type="button">Copy</button>
 </td>
 </tr>
 </tbody>
-<tbody id="label-row-uuid-3-x" hidden="" data-detail="" data-row="uuid-3">
+<tbody data-detail="" data-row="uuid-3" hidden="" id="label-row-uuid-3-x">
 </tbody>
 </table>
-<template id="label-editor-name" data-editor="text">
+<template data-editor="text" id="label-editor-name">
 <div>
-<textarea rows="1" data-control="" aria-label="Name" aria-required="true" aria-describedby="label-editor-name-count" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none">
+<textarea aria-describedby="label-editor-name-count" aria-label="Name" aria-required="true" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none" data-control="" rows="1">
 </textarea>
-<span id="label-editor-name-count" popover="manual" data-count="codepoints" data-max="30" data-trim="" class="text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold inset-auto m-0 rounded border border-base-content/40 bg-base-100 px-1.5 py-0.5 text-base-content/70 shadow data-[over]:text-base-content">0/30</span>
+<span class="text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold inset-auto m-0 rounded border border-base-content/40 bg-base-100 px-1.5 py-0.5 text-base-content/70 shadow data-[over]:text-base-content" data-count="codepoints" data-max="30" data-trim="" id="label-editor-name-count" popover="manual">0/30</span>
 </div>
 </template>
-<template id="label-editor-colour" data-editor="text">
-<textarea rows="1" aria-label="Colour" aria-required="true" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none">
+<template data-editor="text" id="label-editor-colour">
+<textarea aria-label="Colour" aria-required="true" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none" rows="1">
 </textarea>
 </template>
 <template id="label-failure">
-<span popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">
+<span class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow" popover="manual">
 </span>
 </template>
 </div>
-<div id="label-scrollbar" phx-update="ignore" aria-hidden="true" tabindex="-1" hidden="" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="">
+<div aria-hidden="true" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="" hidden="" id="label-scrollbar" phx-update="ignore" tabindex="-1">
 <div class="h-px">
 </div>
 </div>
-<div id="label-whole" popover="manual" phx-update="ignore" aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="">
+<div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="label-whole" phx-update="ignore" popover="manual">
 </div>
 <div id="label-dialogs" phx-update="ignore">
-<dialog id="label-dialog" aria-labelledby="label-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border">
+<dialog aria-labelledby="label-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="label-dialog">
 <form method="dialog">
 <p id="label-dialog-question">
 </p>
 <div class="mt-6 flex justify-end gap-2">
-<button value="cancel" class="btn">Cancel</button>
-<button value="confirm" class="btn btn-primary">Confirm</button>
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary" value="confirm">Confirm</button>
 </div>
 </form>
 </dialog>
@@ -239,8 +239,8 @@
 </div>
 </div>
 </div>
-<div id="flash-group" aria-live="polite">
-<div id="client-error" phx-click="[[&quot;push&quot;,{&quot;value&quot;:{&quot;key&quot;:&quot;error&quot;},&quot;event&quot;:&quot;lv:clear-flash&quot;}],[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}]]" role="alert" class="toast toast-top toast-end z-50" hidden="" phx-connected="[[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}],[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;hidden&quot;,&quot;&quot;]}]]" phx-disconnected="[[&quot;show&quot;,{&quot;time&quot;:300,&quot;to&quot;:&quot;.phx-client-error #client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-out&quot;,&quot;duration-300&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;]]}],[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;hidden&quot;}]]">
+<div aria-live="polite" id="flash-group">
+<div class="toast toast-top toast-end z-50" hidden="" id="client-error" phx-click="[[&quot;push&quot;,{&quot;value&quot;:{&quot;key&quot;:&quot;error&quot;},&quot;event&quot;:&quot;lv:clear-flash&quot;}],[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}]]" phx-connected="[[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}],[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;hidden&quot;,&quot;&quot;]}]]" phx-disconnected="[[&quot;show&quot;,{&quot;time&quot;:300,&quot;to&quot;:&quot;.phx-client-error #client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-out&quot;,&quot;duration-300&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;]]}],[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;hidden&quot;}]]" role="alert">
 <div class="alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap alert-error">
 <span class="hero-exclamation-circle size-5 shrink-0">
 </span>
@@ -254,13 +254,13 @@
 </div>
 <div class="flex-1">
 </div>
-<button type="button" class="group self-start cursor-pointer" aria-label="close">
+<button aria-label="close" class="group self-start cursor-pointer" type="button">
 <span class="hero-x-mark size-5 opacity-40 group-hover:opacity-70">
 </span>
 </button>
 </div>
 </div>
-<div id="server-error" phx-click="[[&quot;push&quot;,{&quot;value&quot;:{&quot;key&quot;:&quot;error&quot;},&quot;event&quot;:&quot;lv:clear-flash&quot;}],[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}]]" role="alert" class="toast toast-top toast-end z-50" hidden="" phx-connected="[[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}],[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;hidden&quot;,&quot;&quot;]}]]" phx-disconnected="[[&quot;show&quot;,{&quot;time&quot;:300,&quot;to&quot;:&quot;.phx-server-error #server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-out&quot;,&quot;duration-300&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;]]}],[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;hidden&quot;}]]">
+<div class="toast toast-top toast-end z-50" hidden="" id="server-error" phx-click="[[&quot;push&quot;,{&quot;value&quot;:{&quot;key&quot;:&quot;error&quot;},&quot;event&quot;:&quot;lv:clear-flash&quot;}],[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}]]" phx-connected="[[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}],[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;hidden&quot;,&quot;&quot;]}]]" phx-disconnected="[[&quot;show&quot;,{&quot;time&quot;:300,&quot;to&quot;:&quot;.phx-server-error #server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-out&quot;,&quot;duration-300&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;]]}],[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;hidden&quot;}]]" role="alert">
 <div class="alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap alert-error">
 <span class="hero-exclamation-circle size-5 shrink-0">
 </span>
@@ -274,7 +274,7 @@
 </div>
 <div class="flex-1">
 </div>
-<button type="button" class="group self-start cursor-pointer" aria-label="close">
+<button aria-label="close" class="group self-start cursor-pointer" type="button">
 <span class="hero-x-mark size-5 opacity-40 group-hover:opacity-70">
 </span>
 </button>

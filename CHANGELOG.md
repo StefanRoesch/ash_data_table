@@ -4,6 +4,8 @@ All notable changes to this project are documented in this file. The format
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+Renamed from `ash_table` to `ash_data_table` (the name `ash_table` is taken on Hex).
+
 ## 0.1.0 (unreleased)
 
 The first version: a resource as an editable table in Phoenix LiveView,

@@ -21,7 +21,7 @@ actions on several rows.
 ## The smallest example
 
 The demo's labels can be imported from a CSV file
-([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)).
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)).
 The action is a generic action with one argument:
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
@@ -167,7 +167,7 @@ the action runs. What the action makes of a file within them is the
 action's to say.
 
 The demo's test support has an upload that takes text files of 1 kB
-([`demo/test/support/file_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/file_tables.ex)):
+([`demo/test/support/file_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/file_tables.ex)):
 
 <!-- source: demo/test/support/file_tables.ex -->
 ```elixir
@@ -273,4 +273,4 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#uploads).
 - **Keeping the file when the action fails.**
 
 Showing a stored picture in a cell is a later addition in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

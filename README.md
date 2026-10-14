@@ -105,7 +105,7 @@ Phoenix app, and Gettext.
 mix igniter.install ash_data_table
 ```
 
-(Until the package is on Hex: `mix igniter.install ash_data_table@github:StefanRoesch/ash_table`,
+(Until the package is on Hex: `mix igniter.install ash_data_table@github:StefanRoesch/ash_data_table`,
 or `ash_data_table@path:../ash_data_table` for a checkout.) With the dependency
 already in `mix.exs` and [Igniter](https://hexdocs.pm/igniter) among your
 dependencies, `mix ash_data_table.install` does the same. It takes the five steps

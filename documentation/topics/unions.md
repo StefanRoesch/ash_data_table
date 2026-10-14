@@ -16,7 +16,7 @@ the rules every editable cell follows, and
 ## The smallest example
 
 A specimen of the demo has a union
-([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
+([`demo/lib/demo/kitchen_sink/specimen.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/kitchen_sink/specimen.ex)):
 
 <!-- source: demo/lib/demo/kitchen_sink/specimen.ex -->
 ```elixir
@@ -232,7 +232,7 @@ What a kind is called is your resource's wording, looked up in the Gettext
 domain `ash_data_table` of your backend, as a column's label and the label of an
 enum's value are ([Messages and translations](messages-and-translations.md#your-resources-wording)).
 "Kind" itself is one of the table's own texts. The demo translates both
-([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
 <!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
@@ -309,4 +309,4 @@ the panel of "A union": "Art" offers "Zahl", "Text", "Farbton" and
 - **Showing constraints before saving**, as for every editor.
 
 The display of constraints is a later slice in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -14,7 +14,7 @@ Filtering has [its own guide](filtering.md), and so have
 A table reads through one read action of its resource: the primary read
 action, unless the block names another. Everything about how the records are
 read is declared on that action. The primary read action of the demo's tasks
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -121,7 +121,7 @@ end
 
 The block names the action with `read_action`. No demo page is mounted on
 `open`, so this example is from the library's own test resources
-([`test/support/reading.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/reading.ex)):
+([`test/support/reading.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/test/support/reading.ex)):
 
 <!-- source: test/support/reading.ex -->
 ```elixir
@@ -385,7 +385,7 @@ other failure takes the rows away and puts a message in their place:
 
 The demo has no page that fails. The library's tests use a test-only
 resource for it
-([`demo/test/demo_web/tables/failed_read_test.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/demo_web/tables/failed_read_test.exs)).
+([`demo/test/demo_web/tables/failed_read_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/tables/failed_read_test.exs)).
 
 ## Edge cases
 
@@ -448,4 +448,4 @@ resource for it
 No sorting by several columns, no
 virtual scrolling and no search across columns. The later slices and what is
 out of scope are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -25,7 +25,7 @@ the line of the table's name. The demo's labels have five, of which these
 are three. "Merge" is under
 [An argument that holds the key of a record](#an-argument-that-holds-the-key-of-a-record),
 and "Import" takes a file and is in [Files](files.md)
-([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
@@ -173,7 +173,7 @@ field is a plain text field, and the key is typed.
 
 `reference` in the `action` says which resource it is. The demo's labels
 have "Merge"
-([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/label.ex)):
+([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
 <!-- source: demo/lib/demo/tracker/label.ex -->
 ```elixir
@@ -223,7 +223,7 @@ It works for every `action` of the block: a table action, a generic action
 in a row (for its other arguments, not for the `record_argument`), an
 update action and a destroy action, and for a run on the selected rows.
 The demo's projects have a generic action in every row that takes a person
-([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/project.ex)):
+([`demo/lib/demo/tracker/project.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/project.ex)):
 
 <!-- source: demo/lib/demo/tracker/project.ex -->
 ```elixir
@@ -535,4 +535,4 @@ nested table the row it is under, no table of returned records,
 no file to download from an action, no progress while an action runs and no
 way to stop one, no result per record after a run on the selected rows, and
 no icons on the buttons. The later slices are listed in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

@@ -8,7 +8,7 @@ the number is over, and what it never shows.
 
 A column says which number it wants with `summary`. The demo's tasks show
 the average progress
-([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/task.ex)):
+([`demo/lib/demo/tracker/task.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/task.ex)):
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
 ```elixir
@@ -221,4 +221,4 @@ These are reported when the resource is compiled, at the column's
   action.
 
 Further work on what a table offers is in the
-[specification](https://github.com/StefanRoesch/ash_table/issues/21).
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).
