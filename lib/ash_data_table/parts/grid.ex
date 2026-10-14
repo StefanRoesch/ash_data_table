@@ -1126,7 +1126,7 @@ defmodule AshDataTable.Parts.Grid do
 
   # opens: each as `[key in its id, what the server is told of it]`, the
   # second nil where the key says it.
-  def chosen_rows(choose) do
+  defp chosen_rows(choose) do
     for {row_key, names} <- Map.get(choose, :chosen) || [], do: [row_key, names]
   end
 
