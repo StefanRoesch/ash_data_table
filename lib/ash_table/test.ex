@@ -47,4 +47,39 @@ defmodule AshTable.Test do
     _ = :sys.get_state(view)
     :ok
   end
+
+  @doc """
+  How many tables listen now to the changes of `resource` for `tenant`
+  (nil for a resource without multitenancy), on every page: once each has
+  taken in what it was told before. A table that was closed, or whose page
+  is gone, is not counted. 0 for a resource whose domain names no
+  `pub_sub`.
+
+      assert AshTable.Test.listening(MyApp.Tracker.Task, organization.id) == 1
+  """
+  @spec listening(Ash.Resource.t(), term) :: non_neg_integer
+  def listening(resource, tenant \\ nil) do
+    case AshTable.Resource.Listening.pub_sub(resource) do
+      {:ok, pub_sub} ->
+        listeners =
+          for {pid, _value} <- Registry.lookup(pub_sub, AshTable.Notifier.topic(resource, tenant)),
+              listener?(pid),
+              do: pid
+
+        # one that was told to stop has that before it, and is gone once
+        # this returns
+        for listener <- listeners, do: AshTable.Listener.flush(listener)
+        Enum.count(listeners, &Process.alive?/1)
+
+      {:error, _reason} ->
+        0
+    end
+  end
+
+  defp listener?(pid) do
+    case Process.info(pid, :dictionary) do
+      {:dictionary, dictionary} -> List.keymember?(dictionary, AshTable.Listener, 0)
+      nil -> false
+    end
+  end
 end

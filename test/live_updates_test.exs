@@ -467,12 +467,6 @@ defmodule AshTable.LiveUpdatesTest do
       :ok
     end
 
-    # who is subscribed to a topic and alive: the registry strikes a process
-    # out a moment after it has ended
-    defp registered(topic) do
-      for {pid, _value} <- Registry.lookup(@pub_sub, topic), Process.alive?(pid), do: pid
-    end
-
     # what the listener has handed over, once it has handed over all it heard
     defp batches(listener) do
       Listener.flush(listener)
@@ -518,11 +512,11 @@ defmodule AshTable.LiveUpdatesTest do
 
       {:ok, listener} = Listener.start(@pub_sub, topic, &send(test, {:batch, &1}))
       reference = Process.monitor(listener)
-      assert length(registered(topic)) == 1
+      assert AshTable.Test.listening(Note) == 1
 
       Listener.stop(listener)
       assert_receive {:DOWN, ^reference, :process, _pid, _reason}
-      assert registered(topic) == []
+      assert AshTable.Test.listening(Note) == 0
 
       owner =
         spawn(fn ->

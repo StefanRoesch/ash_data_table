@@ -94,14 +94,8 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
   defp titles(html), do: column(html, "task", "title")
   defp notice(html, id \\ "task"), do: text(html, "[id='#{id}-notice'] > span") || ""
 
-  # How many processes listen to a topic. A listener that was told to stop,
-  # or whose page is gone, has that before it when it is asked to hand
-  # over what it has, and is gone by the time that returns.
-  defp listeners(topic) do
-    pids = for {pid, _value} <- Registry.lookup(Demo.PubSub, topic), do: pid
-    for pid <- pids, do: AshTable.Listener.flush(pid)
-    Enum.count(pids, &Process.alive?/1)
-  end
+  # How many tables listen to the changes of a resource for a tenant.
+  defp listeners({resource, tenant}), do: AshTable.Test.listening(resource, tenant)
 
   defp announcements(sofar \\ []) do
     receive do
@@ -525,38 +519,56 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
     end
 
     test "are not announced to the table that made them", %{admin: admin, task: task} do
-      {:ok, socket} = Phoenix.LiveView.Debug.socket(admin.pid)
-      assert socket
-
-      :erlang.trace(admin.pid, true, [:receive])
-      save(admin, task.id, "title", "Saved here")
-      AshTable.Test.flush(admin)
-      render(admin)
-      :erlang.trace(admin.pid, false, [:receive])
-
-      refute_received {:trace, _pid, :receive, {:phoenix, :send_update, _update}}
+      assert handed(admin, fn -> save(admin, task.id, "title", "Saved here") end) == nothing()
       assert titles(render(admin)) == ["Saved here"]
     end
 
-    # What the listener hands the table while `fun` runs and for a moment
-    # after: nothing, where the table made the change itself.
+    # What the table does once what was announced while `fun` ran has
+    # been handed to it: the records it reads through Ash, by resource, and
+    # the diffs it sends to the browser. Nothing, where the table made the
+    # change itself. What `fun` started itself (a read after a create, the
+    # footer summaries) is done before it is looked at.
     defp handed(view, fun) do
-      :erlang.trace(view.pid, true, [:receive])
       fun.()
-      AshTable.Test.flush(view)
-      render(view)
-      :erlang.trace(view.pid, false, [:receive])
-      drain(view.pid, [])
+      render_async(view, 10_000)
+
+      test = self()
+      handler = "handed-#{System.unique_integer()}"
+      pid = view.pid
+
+      # the reads of the page's process and of what it runs beside it
+      :telemetry.attach(
+        handler,
+        [:ash, :tracker, :read, :stop],
+        fn _event, _measurements, metadata, _config ->
+          if self() == pid or pid in (Process.get(:"$callers") || []),
+            do: send(test, {:handed_read, metadata.resource_short_name})
+        end,
+        nil
+      )
+
+      sent =
+        try do
+          wire(view, fn ->
+            AshTable.Test.flush(view)
+            render_async(view, 10_000)
+          end)
+        after
+          :telemetry.detach(handler)
+        end
+
+      %{reads: handed_reads([]), diffs: length(Regex.scan(~r/event: "diff"/, sent))}
     end
 
-    defp drain(pid, sofar) do
+    defp handed_reads(sofar) do
       receive do
-        {:trace, ^pid, :receive, {:phoenix, :send_update, update}} -> drain(pid, [update | sofar])
-        {:trace, ^pid, :receive, _other} -> drain(pid, sofar)
+        {:handed_read, resource} -> handed_reads([resource | sofar])
       after
         0 -> Enum.reverse(sofar)
       end
     end
+
+    defp nothing, do: %{reads: [], diffs: 0}
 
     test "are not announced to it, whichever way it writes", %{
       world: world,
@@ -566,37 +578,39 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       [project | _] = world.projects
 
       # a record another person changes is, for comparison
-      assert [_heard] =
+      assert %{reads: [_ | _], diffs: diffs} =
                handed(admin, fn ->
                  Ash.update!(task, %{title: "By another"}, authorize?: false)
                end)
 
+      assert diffs > 0
+
       # a cell
-      assert handed(admin, fn -> save(admin, task.id, "title", "Saved here") end) == []
+      assert handed(admin, fn -> save(admin, task.id, "title", "Saved here") end) == nothing()
       # a cell with an action of its own
-      assert handed(admin, fn -> save(admin, task.id, "priority", "urgent") end) == []
+      assert handed(admin, fn -> save(admin, task.id, "priority", "urgent") end) == nothing()
       # a row action that runs at once
-      assert handed(admin, fn -> act(admin, task.id, "archive") end) == []
+      assert handed(admin, fn -> act(admin, task.id, "archive") end) == nothing()
       # a row action from its panel
       assert handed(admin, fn ->
                act(admin, task.id, "set_progress")
                run_panel(admin, progress: "55")
-             end) == []
+             end) == nothing()
 
       # a reference cell, through the picker
       assert handed(admin, fn ->
                pick(admin, task.id, "assignee")
                picked(admin, world.member.id)
-             end) == []
+             end) == nothing()
 
       # a create
       assert handed(admin, fn ->
                open_create(admin)
                run_panel(admin, title: "Created here", project_id: project.id)
-             end) == []
+             end) == nothing()
 
       # a destroy
-      assert handed(admin, fn -> act(admin, task.id, "destroy") end) == []
+      assert handed(admin, fn -> act(admin, task.id, "destroy") end) == nothing()
 
       stored = Ash.read!(Task, as(world.admin))
       assert Enum.sort(Enum.map(stored, & &1.title)) == ["Created here"]
@@ -664,15 +678,15 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
     end
 
     test "goes with its row", %{world: world, member: member, task: task, nested: nested} do
-      topic = Notifier.topic(Comment, world.organization.id)
-      assert listeners(topic) == 1
+      comments = {Comment, world.organization.id}
+      assert listeners(comments) == 1
 
       Ash.destroy!(task, as(world.admin))
 
       html = heard(member)
       assert titles(html) == ["Another task"]
       assert column(html, nested, "body") == []
-      assert listeners(topic) == 0
+      assert listeners(comments) == 0
     end
   end
 
@@ -929,9 +943,9 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       task = task(world, "With comments")
       comment(world, task, "A comment")
 
-      tasks = Notifier.topic(Task, world.organization.id)
-      comments = Notifier.topic(Comment, world.organization.id)
-      projects = Notifier.topic(Project, world.organization.id)
+      tasks = {Task, world.organization.id}
+      comments = {Comment, world.organization.id}
+      projects = {Project, world.organization.id}
       assert {listeners(tasks), listeners(comments)} == {0, 0}
 
       {:ok, member, _html} = conn |> log_in(world.member) |> live("/tasks")
@@ -948,7 +962,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       # the projects announce nothing: their nested table does not listen
       toggle(member, task.id, "project")
       assert listeners(projects) == 0
-      assert listeners(Notifier.topic(Project, nil)) == 0
+      assert listeners({Project, nil}) == 0
 
       # the line is closed
       toggle(member, task.id, "comments")
@@ -981,14 +995,14 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
     test "is not there for a page that is not connected", %{conn: conn, world: world} do
       conn |> log_in(world.member) |> get("/tasks") |> html_response(200)
 
-      assert listeners(Notifier.topic(Task, world.organization.id)) == 0
+      assert listeners({Task, world.organization.id}) == 0
     end
 
     test "is not there for a resource that announces nothing", %{conn: conn, world: world} do
       {:ok, _view, _html} = conn |> log_in(world.member) |> live("/projects")
 
-      assert listeners(Notifier.topic(Project, world.organization.id)) == 0
-      assert listeners(Notifier.topic(Project, nil)) == 0
+      assert listeners({Project, world.organization.id}) == 0
+      assert listeners({Project, nil}) == 0
     end
   end
 

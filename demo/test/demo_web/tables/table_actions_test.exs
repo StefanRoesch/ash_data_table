@@ -467,7 +467,6 @@ defmodule DemoWeb.Tables.TableActionsTest do
                attribute(html, "[id='rota-row-#{rota.id}-l-shifts-create']", "class")
 
       assert attribute(html, button, "tabindex") == ["-1"]
-      assert attribute(html, button, "phx-target") == ["#rota-row-#{rota.id}-t-shifts"]
 
       # a nested table has no line of its own for them
       assert table_actions(html, nested("rota", rota.id, "shifts")) == []

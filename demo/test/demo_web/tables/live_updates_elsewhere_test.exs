@@ -62,13 +62,8 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
   defp titles(html, id \\ "bulletin"), do: column(html, id, "title")
   defp notice(html, id \\ "bulletin"), do: text(html, "[id='#{id}-notice'] > span") || ""
 
-  defp listeners(resource) do
-    pids =
-      for {pid, _value} <- Registry.lookup(Demo.PubSub, Notifier.topic(resource, nil)), do: pid
-
-    for pid <- pids, do: AshTable.Listener.flush(pid)
-    Enum.count(pids, &Process.alive?/1)
-  end
+  # How many tables listen to the changes of a resource.
+  defp listeners(resource), do: AshTable.Test.listening(resource)
 
   describe "a record the person may not read" do
     setup %{conn: conn} do

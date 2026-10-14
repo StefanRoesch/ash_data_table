@@ -1092,14 +1092,17 @@ defmodule DemoWeb.TablePage do
 
   @doc """
   Everything the LiveView of `view` and its components keep between two
-  events, as text: their assigns. For what a table must not hold on to.
+  events, as text: their assigns, and what its process keeps besides (its
+  process dictionary, where every table of the page is noted in `@tables`).
+  For what a table must not hold on to, wherever it would hold it.
   """
   def kept(view) do
     {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)
     {:ok, components} = Phoenix.LiveView.Debug.live_components(view.pid)
+    {:dictionary, dictionary} = Process.info(view.pid, :dictionary)
 
     # as bare maps: a resource's own `inspect` leaves its sensitive fields out
-    inspect({socket.assigns, Enum.map(components, & &1.assigns)},
+    inspect({socket.assigns, Enum.map(components, & &1.assigns), dictionary},
       limit: :infinity,
       printable_limit: :infinity,
       structs: false
