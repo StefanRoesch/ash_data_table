@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Referring do
+defmodule AshDataTable.Test.Referring do
   @moduledoc """
   Resources for the tests of `reference`: arguments of actions that hold
   the key of a record of another resource, where nothing but the `action`
@@ -8,16 +8,16 @@ defmodule AshTable.Test.Referring do
   """
 end
 
-defmodule AshTable.Test.Referring.Member do
+defmodule AshDataTable.Test.Referring.Member do
   @moduledoc """
   A destination, called by its name. A member who is away is read by an
   admin only: the policy is a filter, so a read finds the others.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   ets do
     private? true
@@ -48,9 +48,9 @@ defmodule AshTable.Test.Referring.Member do
   end
 end
 
-defmodule AshTable.Test.Referring.Bare do
+defmodule AshDataTable.Test.Referring.Bare do
   @moduledoc "A resource without a table."
-  use Ash.Resource, domain: AshTable.Test.Domain, data_layer: Ash.DataLayer.Ets
+  use Ash.Resource, domain: AshDataTable.Test.Domain, data_layer: Ash.DataLayer.Ets
 
   attributes do
     uuid_primary_key :id
@@ -61,18 +61,18 @@ defmodule AshTable.Test.Referring.Bare do
   end
 end
 
-defmodule AshTable.Test.Referring.Job do
+defmodule AshDataTable.Test.Referring.Job do
   @moduledoc """
   A table whose actions take keys of members: a table action, a generic
   row action, an update action and a destroy action, with one key and with
   a list of them.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Referring.Member
+  alias AshDataTable.Test.Referring.Member
 
   ets do
     private? true

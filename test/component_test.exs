@@ -1,16 +1,16 @@
-defmodule AshTable.ComponentTest do
+defmodule AshDataTable.ComponentTest do
   @moduledoc """
-  Boundary 6: a component module against the behaviour `AshTable.Component`,
+  Boundary 6: a component module against the behaviour `AshDataTable.Component`,
   as a host application writes one.
   """
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest, only: [render_component: 2]
 
-  describe "use AshTable.Component" do
+  describe "use AshDataTable.Component" do
     test "a module with `cell/1` alone is a component whose editor, had it one, would save on Enter" do
       defmodule Shout do
-        use AshTable.Component
+        use AshDataTable.Component
 
         def cell(assigns) do
           ~H"""
@@ -19,14 +19,14 @@ defmodule AshTable.ComponentTest do
         end
       end
 
-      assert AshTable.Component in (Shout.module_info(:attributes)[:behaviour] || [])
+      assert AshDataTable.Component in (Shout.module_info(:attributes)[:behaviour] || [])
       assert Shout.commit() == :enter
       assert render_component(&Shout.cell/1, value: "low", text: "Low") =~ "<strong>LOW</strong>"
     end
 
     test "`commit: :change` says that the editor saves when its value changes" do
       defmodule Dial do
-        use AshTable.Component, commit: :change
+        use AshDataTable.Component, commit: :change
 
         def editor(assigns) do
           ~H"""
@@ -45,12 +45,12 @@ defmodule AshTable.ComponentTest do
       error =
         assert_raise CompileError, fn ->
           defmodule Nothing do
-            use AshTable.Component
+            use AshDataTable.Component
           end
         end
 
       assert error.description ==
-               "AshTable.ComponentTest.Nothing uses AshTable.Component and defines neither " <>
+               "AshDataTable.ComponentTest.Nothing uses AshDataTable.Component and defines neither " <>
                  "`cell/1` nor `editor/1`. A component shows a cell's value (`cell/1`), " <>
                  "edits it (`editor/1`), or both."
     end
@@ -59,14 +59,14 @@ defmodule AshTable.ComponentTest do
       error =
         assert_raise CompileError, fn ->
           defmodule Blur do
-            use AshTable.Component, commit: :blur
+            use AshDataTable.Component, commit: :blur
 
             def editor(assigns), do: ~H"<input {@control} />"
           end
         end
 
       assert error.description ==
-               "AshTable.ComponentTest.Blur: `commit` says when the editor saves, and is " <>
+               "AshDataTable.ComponentTest.Blur: `commit` says when the editor saves, and is " <>
                  "`:enter` (on Enter or on leaving the cell, the default) or `:change` (when " <>
                  "the value changes). Got: :blur"
     end
@@ -75,21 +75,21 @@ defmodule AshTable.ComponentTest do
       error =
         assert_raise CompileError, fn ->
           defmodule Idle do
-            use AshTable.Component, commit: :change
+            use AshDataTable.Component, commit: :change
 
             def cell(assigns), do: ~H"{@text}"
           end
         end
 
       assert error.description ==
-               "AshTable.ComponentTest.Idle: `commit: :change` says when the editor saves, " <>
+               "AshDataTable.ComponentTest.Idle: `commit: :change` says when the editor saves, " <>
                  "and the module defines no `editor/1`."
     end
 
     test "goes with a module that has `Phoenix.Component` already, as a host's `:html` modules do" do
       defmodule Hosted do
         use Phoenix.Component
-        use AshTable.Component
+        use AshDataTable.Component
 
         attr :text, :string, required: true
 
@@ -101,17 +101,17 @@ defmodule AshTable.ComponentTest do
 
     test "`verify/1` is the component's to define: what it says of a column it cannot serve" do
       defmodule Picky do
-        use AshTable.Component
+        use AshDataTable.Component
 
         @impl true
-        def verify(%AshTable.Component.Column{cell_type: :number}), do: :ok
+        def verify(%AshDataTable.Component.Column{cell_type: :number}), do: :ok
         def verify(_column), do: {:error, "this component needs a number."}
 
         @impl true
         def cell(assigns), do: ~H"{@text}"
       end
 
-      column = %AshTable.Component.Column{
+      column = %AshDataTable.Component.Column{
         name: :title,
         label: "Title",
         type: Ash.Type.String,

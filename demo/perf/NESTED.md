@@ -48,7 +48,7 @@ tasks of a project. The statements and the database times agree, with one
 difference: **a page of a table with calculation or aggregate columns takes
 a third statement**, which the spike did not have. Its related query loaded
 them in the page's own statement; that fails in the data layer for a reader
-whose field policies look at the record (see `AshTable.Query.read_related/4`),
+whose field policies look at the record (see `AshDataTable.Query.read_related/4`),
 so the table loads them onto the page's records afterwards.
 
 Opening a line sends one event. Expanding a row sends one event and reads

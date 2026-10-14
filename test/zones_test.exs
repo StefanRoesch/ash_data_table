@@ -1,4 +1,4 @@
-defmodule AshTable.ZonesTest do
+defmodule AshDataTable.ZonesTest do
   @moduledoc """
   Boundaries 1 and 2: the time zone of a page. Which zones are taken, how a
   datetime is shown in one, what a wall time typed in one is given to Ash
@@ -13,13 +13,13 @@ defmodule AshTable.ZonesTest do
   """
   use ExUnit.Case, async: false
 
-  alias AshTable.Act
-  alias AshTable.Format
-  alias AshTable.Model
-  alias AshTable.Query
-  alias AshTable.State
-  alias AshTable.Test.Filtering
-  alias AshTable.Zone
+  alias AshDataTable.Act
+  alias AshDataTable.Format
+  alias AshDataTable.Model
+  alias AshDataTable.Query
+  alias AshDataTable.State
+  alias AshDataTable.Test.Filtering
+  alias AshDataTable.Zone
 
   @berlin "Europe/Berlin"
 
@@ -42,10 +42,10 @@ defmodule AshTable.ZonesTest do
 
       error =
         assert_raise ArgumentError, fn ->
-          Zone.check!("Mars/Olympus", "The `time_zone` of <AshTable.table>")
+          Zone.check!("Mars/Olympus", "The `time_zone` of <AshDataTable.table>")
         end
 
-      assert error.message =~ "The `time_zone` of <AshTable.table> is \"Mars/Olympus\""
+      assert error.message =~ "The `time_zone` of <AshDataTable.table> is \"Mars/Olympus\""
       assert error.message =~ "no time zone the time zone database knows"
     end
 
@@ -83,14 +83,14 @@ defmodule AshTable.ZonesTest do
         time_zone: "Mars/Olympus"
       }
 
-      error = assert_raise ArgumentError, fn -> AshTable.table(assigns) end
-      assert error.message =~ "The `time_zone` of <AshTable.table> is \"Mars/Olympus\""
+      error = assert_raise ArgumentError, fn -> AshDataTable.table(assigns) end
+      assert error.message =~ "The `time_zone` of <AshDataTable.table> is \"Mars/Olympus\""
     end
 
     test "a mounted table reads it from the assign its domain names, `time_zone` by default" do
-      assert AshTable.Domain.Info.time_zone_assign(Filtering) == :time_zone
-      assert AshTable.Domain.Info.time_zone(Filtering, %{time_zone: @berlin}) == @berlin
-      assert AshTable.Domain.Info.time_zone(Filtering, %{}) == nil
+      assert AshDataTable.Domain.Info.time_zone_assign(Filtering) == :time_zone
+      assert AshDataTable.Domain.Info.time_zone(Filtering, %{time_zone: @berlin}) == @berlin
+      assert AshDataTable.Domain.Info.time_zone(Filtering, %{}) == nil
     end
   end
 

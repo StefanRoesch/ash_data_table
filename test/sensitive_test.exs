@@ -1,4 +1,4 @@
-defmodule AshTable.SensitiveTest do
+defmodule AshDataTable.SensitiveTest do
   @moduledoc """
   Boundaries 1 and 2: what a table makes of a field its resource declares
   `sensitive?`. Its column is masked, neither sorted nor filtered by, and
@@ -10,16 +10,16 @@ defmodule AshTable.SensitiveTest do
 
   import Spark.Test
 
-  alias AshTable.Act
-  alias AshTable.Edit
-  alias AshTable.Format
-  alias AshTable.Model
-  alias AshTable.Resource.Embedding
-  alias AshTable.Sensitive
-  alias AshTable.Sensitive.Masked
-  alias AshTable.State
-  alias AshTable.Test.Sensitive, as: Vault
-  alias AshTable.Test.Sensitive.{Login, Owner, Shown}
+  alias AshDataTable.Act
+  alias AshDataTable.Edit
+  alias AshDataTable.Format
+  alias AshDataTable.Model
+  alias AshDataTable.Resource.Embedding
+  alias AshDataTable.Sensitive
+  alias AshDataTable.Sensitive.Masked
+  alias AshDataTable.State
+  alias AshDataTable.Test.Sensitive, as: Vault
+  alias AshDataTable.Test.Sensitive.{Login, Owner, Shown}
 
   @admin %{role: :admin}
   @member %{role: :member}
@@ -83,12 +83,12 @@ defmodule AshTable.SensitiveTest do
       end
 
       # the same types beside them are edited: it is the sensitivity
-      assert AshTable.Resource.Editing.obstacle(
+      assert AshDataTable.Resource.Editing.obstacle(
                Vault,
                Ash.Resource.Info.attribute(Vault, :expires_on)
              ) == {:sensitive, Ash.Type.Date}
 
-      assert AshTable.Resource.Editing.never_edited({:sensitive, Ash.Type.Date}) ==
+      assert AshDataTable.Resource.Editing.never_edited({:sensitive, Ash.Type.Date}) ==
                "It is declared `sensitive?: true` and has the type `Ash.Type.Date`. A table hides what is typed for a sensitive field, which it can do for text and for a number only."
     end
 
@@ -305,7 +305,7 @@ defmodule AshTable.SensitiveTest do
 
     test "has no input on the argument line, whose values are kept in the URL" do
       argument =
-        AshTable.Resource.Arguing.input(%Ash.Resource.Actions.Argument{
+        AshDataTable.Resource.Arguing.input(%Ash.Resource.Actions.Argument{
           name: :secret,
           type: Ash.Type.String,
           constraints: [],
@@ -316,7 +316,7 @@ defmodule AshTable.SensitiveTest do
       assert %{editor: nil, sensitive?: true} = argument
 
       assert %{editor: :text} =
-               AshTable.Resource.Arguing.input(%Ash.Resource.Actions.Argument{
+               AshDataTable.Resource.Arguing.input(%Ash.Resource.Actions.Argument{
                  name: :search,
                  type: Ash.Type.String,
                  constraints: [],
@@ -329,7 +329,7 @@ defmodule AshTable.SensitiveTest do
   describe "saving a sensitive cell" do
     setup do
       record = Ash.Seed.seed!(Vault, %{name: "Main", token: "tok-123", pin: 4711})
-      on_exit(fn -> AshTable.Test.Ets.stop([Vault, Owner]) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop([Vault, Owner]) end)
       %{key: %{id: record.id}}
     end
 
@@ -373,7 +373,7 @@ defmodule AshTable.SensitiveTest do
   describe "emptying a sensitive cell" do
     setup do
       record = Ash.Seed.seed!(Vault, %{name: "Main", token: "tok-123", pin: 4711})
-      on_exit(fn -> AshTable.Test.Ets.stop([Vault, Owner]) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop([Vault, Owner]) end)
       %{key: %{id: record.id}}
     end
 
@@ -450,7 +450,7 @@ defmodule AshTable.SensitiveTest do
   describe "emptying a sensitive input of an action" do
     setup do
       record = Ash.Seed.seed!(Vault, %{name: "Main", token: "tok-123", pin: 4711})
-      on_exit(fn -> AshTable.Test.Ets.stop([Vault, Owner]) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop([Vault, Owner]) end)
       %{key: %{id: record.id}, record: record}
     end
 
@@ -556,11 +556,11 @@ defmodule AshTable.SensitiveTest do
     test "a component on a sensitive column is an error" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :token, :component]} do
-          defmodule Elixir.AshTable.SensitiveTest.WithComponent do
+          defmodule Elixir.AshDataTable.SensitiveTest.WithComponent do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -573,7 +573,7 @@ defmodule AshTable.SensitiveTest do
 
             table do
               column :token do
-                component AshTable.Components.Badge
+                component AshDataTable.Components.Badge
               end
             end
           end
@@ -586,19 +586,19 @@ defmodule AshTable.SensitiveTest do
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.SensitiveTest.WithComponent: the `component` of its column `token` cannot be used. " <>
+                   "cannot build the table of AshDataTable.SensitiveTest.WithComponent: the `component` of its column `token` cannot be used. " <>
                      message,
-                   fn -> Model.build(AshTable.SensitiveTest.WithComponent) end
+                   fn -> Model.build(AshDataTable.SensitiveTest.WithComponent) end
     end
 
     test "a sensitive `label_field` is an error, and so is a column that would show it" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :label_field]} do
-          defmodule Elixir.AshTable.SensitiveTest.SecretLabel do
+          defmodule Elixir.AshDataTable.SensitiveTest.SecretLabel do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -622,18 +622,18 @@ defmodule AshTable.SensitiveTest do
 
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :agent]} do
-          defmodule Elixir.AshTable.SensitiveTest.ShowsSecretLabel do
+          defmodule Elixir.AshDataTable.SensitiveTest.ShowsSecretLabel do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
             end
 
             relationships do
-              belongs_to :agent, AshTable.SensitiveTest.SecretLabel, public?: true
+              belongs_to :agent, AshDataTable.SensitiveTest.SecretLabel, public?: true
             end
 
             actions do
@@ -647,18 +647,18 @@ defmodule AshTable.SensitiveTest do
         end
 
       assert error.message ==
-               "The `label_field` of AshTable.SensitiveTest.SecretLabel, the destination of `agent`, cannot be used. " <>
+               "The `label_field` of AshDataTable.SensitiveTest.SecretLabel, the destination of `agent`, cannot be used. " <>
                  message
     end
 
     test "`sortable? true` and `filterable? true` on a sensitive column are errors" do
       errors =
         dsl_errors do
-          defmodule Elixir.AshTable.SensitiveTest.Arranged do
+          defmodule Elixir.AshDataTable.SensitiveTest.Arranged do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -678,7 +678,7 @@ defmodule AshTable.SensitiveTest do
           end
         end
 
-      assert [{AshTable.SensitiveTest.Arranged, errors}] = errors
+      assert [{AshDataTable.SensitiveTest.Arranged, errors}] = errors
 
       assert Enum.map(errors, &{&1.path, &1.message}) == [
                {[:table, :column, :token, :sortable?],
@@ -691,11 +691,11 @@ defmodule AshTable.SensitiveTest do
     test "a column's own `update_action` on a sensitive column that cannot be typed hidden is an error" do
       errors =
         dsl_errors do
-          defmodule Elixir.AshTable.SensitiveTest.EditedDate do
+          defmodule Elixir.AshDataTable.SensitiveTest.EditedDate do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -720,7 +720,7 @@ defmodule AshTable.SensitiveTest do
           end
         end
 
-      assert [{AshTable.SensitiveTest.EditedDate, errors}] = errors
+      assert [{AshDataTable.SensitiveTest.EditedDate, errors}] = errors
 
       assert Enum.map(errors, &{&1.path, &1.message}) == [
                {[:table, :column, :born_on, :update_action],
@@ -732,11 +732,11 @@ defmodule AshTable.SensitiveTest do
 
     test "a table-level `update_action` leaves such a column read-only, without a finding" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.SensitiveTest.ReadOnlyDate do
+        defmodule Elixir.AshDataTable.SensitiveTest.ReadOnlyDate do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
+            domain: AshDataTable.Test.Domain,
             data_layer: Ash.DataLayer.Ets,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -754,17 +754,17 @@ defmodule AshTable.SensitiveTest do
       end
 
       assert [_id, %{name: :born_on, sensitive?: true, editable?: false}] =
-               Model.build(AshTable.SensitiveTest.ReadOnlyDate).columns
+               Model.build(AshDataTable.SensitiveTest.ReadOnlyDate).columns
     end
 
     test "an action that requires a sensitive input that cannot be typed hidden is an error" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :action, :lock]} do
-          defmodule Elixir.AshTable.SensitiveTest.Locking do
+          defmodule Elixir.AshDataTable.SensitiveTest.Locking do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -792,11 +792,11 @@ defmodule AshTable.SensitiveTest do
     test "a read action that requires a sensitive argument is an error: the argument line is kept in the URL" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :read_action]} do
-          defmodule Elixir.AshTable.SensitiveTest.KeyedRead do
+          defmodule Elixir.AshDataTable.SensitiveTest.KeyedRead do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -822,11 +822,11 @@ defmodule AshTable.SensitiveTest do
 
     test "an optional sensitive argument of the read action is no input of the line, without a finding" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.SensitiveTest.OptionalKey do
+        defmodule Elixir.AshDataTable.SensitiveTest.OptionalKey do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
+            domain: AshDataTable.Test.Domain,
             data_layer: Ash.DataLayer.Ets,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -847,9 +847,10 @@ defmodule AshTable.SensitiveTest do
         end
       end
 
-      assert Enum.map(Model.build(AshTable.SensitiveTest.OptionalKey).arguments, & &1.name) == [
-               :search
-             ]
+      assert Enum.map(Model.build(AshDataTable.SensitiveTest.OptionalKey).arguments, & &1.name) ==
+               [
+                 :search
+               ]
     end
   end
 end

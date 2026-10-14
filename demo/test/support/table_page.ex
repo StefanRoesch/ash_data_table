@@ -471,7 +471,7 @@ defmodule DemoWeb.TablePage do
   `confirm_table_action/3`:
 
       table_act(view, "label", "remove_unused")
-      assert_push_event view, "ash_table:ask", %{question: "Delete every label that no task carries?"}
+      assert_push_event view, "ash_data_table:ask", %{question: "Delete every label that no task carries?"}
   """
   def table_act(view, id \\ "task", action, opts \\ []) do
     button = opts[:on] || "#{id}-do-#{action}"
@@ -1241,7 +1241,7 @@ defmodule DemoWeb.TablePage do
   defp table_of(page, target, selector) do
     found =
       if target =~ ~r/\A\d+\z/,
-        do: page |> LazyHTML.query("[data-ash-table][phx-target='#{target}']"),
+        do: page |> LazyHTML.query("[data-ash-data-table][phx-target='#{target}']"),
         else: LazyHTML.query(page, target)
 
     case Enum.flat_map(found, &LazyHTML.attribute(&1, "id")) do

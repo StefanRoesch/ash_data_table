@@ -52,7 +52,7 @@ sees it without a reload.
 It is three ordinary parts, and no rule of the table's own.
 
 1. **Ash announces.** `live? true` gives the resource a notifier
-   (`AshTable.Notifier`), as a resource with GraphQL subscriptions gets
+   (`AshDataTable.Notifier`), as a resource with GraphQL subscriptions gets
    ash_graphql's. After every create, update and destroy it sends one small
    message: the resource, the kind of action, the primary key and the
    tenant.
@@ -66,7 +66,7 @@ no name of who changed something: only which record to look at again.
 
 <!-- sketch -->
 ```elixir
-{:ash_table, MyApp.Tracker.Task, :update, %{id: "0b0f…"}, "the-tenant"}
+{:ash_data_table, MyApp.Tracker.Task, :update, %{id: "0b0f…"}, "the-tenant"}
 ```
 
 ## What a person sees
@@ -141,12 +141,12 @@ tables do
 end
 
 # a page, in the router
-ash_table "/tasks/print", MyApp.Tracker.Task, live?: false
+ash_data_table "/tasks/print", MyApp.Tracker.Task, live?: false
 ```
 
 <!-- sketch -->
 ```heex
-<AshTable.table resource={MyApp.Tracker.Task} live?={false} />
+<AshDataTable.table resource={MyApp.Tracker.Task} live?={false} />
 ```
 
 A page or a placed table that says no also says it for the tables nested in
@@ -214,16 +214,16 @@ resource on the same page.
   bulk action without `notify?: true`. See "What is announced".
 - **"`live? true`, and the domain does not compile."** The domain has to
   name the server: `pub_sub MyApp.PubSub` in its `table` block, with
-  `extensions: [AshTable.Domain]`.
+  `extensions: [AshDataTable.Domain]`.
 - **"The comment count did not change."** A column that shows another
   resource does not follow that resource. See below.
 - **"The new record is not in the table."** It is not put in; use "Read
   again".
 - **`render_async/2` in a test** does not wait for live updates: they come
   from a process of their own, 100 ms after the change. Call
-  `AshTable.Test.flush(view)` after the change, in place of sleeping. A row
+  `AshDataTable.Test.flush(view)` after the change, in place of sleeping. A row
   that is to go waits for the browser's answer, which a LiveView test gives
-  itself: see `AshTable.Test`.
+  itself: see `AshDataTable.Test`.
 - **A test that changes a record of a live resource behind an open page**
   now has that page follow, a moment later. A row is updated in place; none
   is taken away without the browser's answer.

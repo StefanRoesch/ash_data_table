@@ -1,13 +1,13 @@
 defmodule Demo.Support.Closed do
   @moduledoc """
   A domain for the tests of a table that is mounted without authorization
-  (`ash_table "/path", Resource, authorize?: false`). The domain itself
+  (`ash_data_table "/path", Resource, authorize?: false`). The domain itself
   authorizes, and the policies of its resources allow nobody anything: no
   read, no field, no action. Whatever a table of them shows or does, it does
   because its page was mounted so. Its resources exist for the tests only
   and keep their records in memory.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   resources do
     resource Demo.Support.Closed.Keeper
@@ -31,7 +31,7 @@ defmodule Demo.Support.Closed.Keeper do
     domain: Demo.Support.Closed,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   field_policies do
@@ -79,7 +79,7 @@ defmodule Demo.Support.Closed.Case do
     domain: Demo.Support.Closed,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   alias Demo.Support.Closed.{Entry, Keeper, Remark}
@@ -191,7 +191,7 @@ defmodule Demo.Support.Closed.Entry do
     domain: Demo.Support.Closed,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   field_policies do
@@ -257,8 +257,8 @@ defmodule DemoWeb.Support.UncheckedLive do
 
   def render(assigns) do
     ~H"""
-    <AshTable.table id="checked" resource={Closed.Case} />
-    <AshTable.table id="unchecked" resource={Closed.Case} authorize?={false} />
+    <AshDataTable.table id="checked" resource={Closed.Case} />
+    <AshDataTable.table id="unchecked" resource={Closed.Case} authorize?={false} />
     """
   end
 end

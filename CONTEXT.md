@@ -1,4 +1,4 @@
-# AshTable
+# AshDataTable
 
 An Ash extension that presents resources to humans as an editable table in the browser, in the way other interface extensions present them to API clients.
 

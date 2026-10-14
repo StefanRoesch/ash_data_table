@@ -1,8 +1,8 @@
-defmodule AshTable.FragmentsTest do
+defmodule AshDataTable.FragmentsTest do
   @moduledoc """
   Boundaries 1 and 2 for a table in a file of its own: a Spark fragment of
   the resource (`use Spark.Dsl.Fragment, of: Ash.Resource, extensions:
-  [AshTable.Resource]`) that the resource lists as `fragments:`.
+  [AshDataTable.Resource]`) that the resource lists as `fragments:`.
 
   The default `table` block and each named table can be in a fragment. Every
   compile-time check holds for what a fragment declares, and its finding
@@ -16,16 +16,19 @@ defmodule AshTable.FragmentsTest do
 
   import Spark.Test
 
-  alias AshTable.Model
-  alias AshTable.Resource.Info
-  alias AshTable.Test.Naming.Note
-  alias AshTable.Test.Naming.Ticket
+  alias AshDataTable.Model
+  alias AshDataTable.Resource.Info
+  alias AshDataTable.Test.Naming.Note
+  alias AshDataTable.Test.Naming.Ticket
 
   # A source file of a fragment, compiled as a file of an application is:
   # with debug information, so that what it declares knows where it is.
   defp fragment_file(name, source) do
     dir =
-      Path.join(System.tmp_dir!(), "ash_table-fragments-#{System.unique_integer([:positive])}")
+      Path.join(
+        System.tmp_dir!(),
+        "ash_data_table-fragments-#{System.unique_integer([:positive])}"
+      )
 
     File.mkdir_p!(dir)
     on_exit(fn -> File.rm_rf(dir) end)
@@ -116,8 +119,8 @@ defmodule AshTable.FragmentsTest do
     test "is reported for the resource, at the fragment's file and line" do
       fragment =
         fragment_file("board_table.ex", """
-        defmodule AshTable.FragmentsTest.Mistaken.BoardTable do
-          use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+        defmodule AshDataTable.FragmentsTest.Mistaken.BoardTable do
+          use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
           tables do
             table :board do
@@ -144,8 +147,8 @@ defmodule AshTable.FragmentsTest do
 
       default =
         fragment_file("table.ex", """
-        defmodule AshTable.FragmentsTest.Mistaken.Table do
-          use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+        defmodule AshDataTable.FragmentsTest.Mistaken.Table do
+          use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
           table do
             label_field :nothing
@@ -164,13 +167,13 @@ defmodule AshTable.FragmentsTest do
             Code.compile_file(fragment)
             Code.compile_file(default)
 
-            defmodule Elixir.AshTable.FragmentsTest.Mistaken do
+            defmodule Elixir.AshDataTable.FragmentsTest.Mistaken do
               use Ash.Resource,
-                domain: AshTable.Test.Domain,
-                extensions: [AshTable.Resource],
+                domain: AshDataTable.Test.Domain,
+                extensions: [AshDataTable.Resource],
                 fragments: [
-                  AshTable.FragmentsTest.Mistaken.BoardTable,
-                  AshTable.FragmentsTest.Mistaken.Table
+                  AshDataTable.FragmentsTest.Mistaken.BoardTable,
+                  AshDataTable.FragmentsTest.Mistaken.Table
                 ]
 
               attributes do
@@ -179,7 +182,7 @@ defmodule AshTable.FragmentsTest do
               end
 
               relationships do
-                has_many :notes, AshTable.Test.Naming.Note do
+                has_many :notes, AshDataTable.Test.Naming.Note do
                   destination_attribute :ticket_id
                   public? true
                 end
@@ -197,8 +200,8 @@ defmodule AshTable.FragmentsTest do
 
       # every finding is the resource's: a fragment is no resource, and is
       # verified as part of the one that lists it
-      assert [{AshTable.FragmentsTest.Mistaken, errors}] = errors
-      assert Enum.all?(errors, &(&1.module == AshTable.FragmentsTest.Mistaken))
+      assert [{AshDataTable.FragmentsTest.Mistaken, errors}] = errors
+      assert Enum.all?(errors, &(&1.module == AshDataTable.FragmentsTest.Mistaken))
 
       found =
         Map.new(errors, fn error ->
@@ -242,7 +245,7 @@ defmodule AshTable.FragmentsTest do
       error = Enum.find(errors, &(&1.path == [:tables, :table, :board, :column, :nothing]))
 
       assert Exception.message(error) == """
-             [AshTable.FragmentsTest.Mistaken]
+             [AshDataTable.FragmentsTest.Mistaken]
              tables -> table -> board -> column -> nothing defined in #{fragment}:#{line_of(fragment, "column :nothing")}::
                The resource has no attribute, calculation, aggregate or belongs-to relationship named `nothing`.\
              """
@@ -253,8 +256,8 @@ defmodule AshTable.FragmentsTest do
         assert_dsl_error %Spark.Error.DslError{
           path: [:tables, :table, :board, :relationship, :notes]
         } do
-          defmodule Elixir.AshTable.FragmentsTest.WrongTable.BoardTable do
-            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.FragmentsTest.WrongTable.BoardTable do
+            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
             tables do
               table :board do
@@ -265,18 +268,18 @@ defmodule AshTable.FragmentsTest do
             end
           end
 
-          defmodule Elixir.AshTable.FragmentsTest.WrongTable do
+          defmodule Elixir.AshDataTable.FragmentsTest.WrongTable do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource],
-              fragments: [AshTable.FragmentsTest.WrongTable.BoardTable]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource],
+              fragments: [AshDataTable.FragmentsTest.WrongTable.BoardTable]
 
             attributes do
               uuid_primary_key :id
             end
 
             relationships do
-              has_many :notes, AshTable.Test.Naming.Note do
+              has_many :notes, AshDataTable.Test.Naming.Note do
                 destination_attribute :ticket_id
                 public? true
               end
@@ -289,7 +292,7 @@ defmodule AshTable.FragmentsTest do
         end
 
       assert error.message ==
-               "`notes` is to show the table `:short` of its destination, but AshTable.Test.Naming.Note has no table named `:short`. Its tables: `:compact`, and the default table."
+               "`notes` is to show the table `:short` of its destination, but AshDataTable.Test.Naming.Note has no table named `:short`. Its tables: `:compact`, and the default table."
     end
   end
 
@@ -297,27 +300,30 @@ defmodule AshTable.FragmentsTest do
     test "two fragments that declare a table of one name are told, as two in one file are" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:tables, :board]} do
-          defmodule Elixir.AshTable.FragmentsTest.Twice.One do
-            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.FragmentsTest.Twice.One do
+            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
             tables do
               table :board
             end
           end
 
-          defmodule Elixir.AshTable.FragmentsTest.Twice.Two do
-            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.FragmentsTest.Twice.Two do
+            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
             tables do
               table :board
             end
           end
 
-          defmodule Elixir.AshTable.FragmentsTest.Twice do
+          defmodule Elixir.AshDataTable.FragmentsTest.Twice do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource],
-              fragments: [AshTable.FragmentsTest.Twice.One, AshTable.FragmentsTest.Twice.Two]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource],
+              fragments: [
+                AshDataTable.FragmentsTest.Twice.One,
+                AshDataTable.FragmentsTest.Twice.Two
+              ]
 
             attributes do
               uuid_primary_key :id
@@ -329,7 +335,7 @@ defmodule AshTable.FragmentsTest do
           end
         end
 
-      assert error.message =~ "Got duplicate AshTable.Resource.Table: board"
+      assert error.message =~ "Got duplicate AshDataTable.Resource.Table: board"
     end
 
     # Spark puts a block that is written in several places together: what
@@ -339,8 +345,8 @@ defmodule AshTable.FragmentsTest do
     test "the `table` block written in the resource and in a fragment is one block" do
       warnings =
         ExUnit.CaptureIO.capture_io(:stderr, fn ->
-          defmodule Elixir.AshTable.FragmentsTest.Split.Table do
-            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.FragmentsTest.Split.Table do
+            use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
             table do
               label_field :title
@@ -351,11 +357,11 @@ defmodule AshTable.FragmentsTest do
             end
           end
 
-          defmodule Elixir.AshTable.FragmentsTest.Split do
+          defmodule Elixir.AshDataTable.FragmentsTest.Split do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource],
-              fragments: [AshTable.FragmentsTest.Split.Table]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource],
+              fragments: [AshDataTable.FragmentsTest.Split.Table]
 
             attributes do
               uuid_primary_key :id
@@ -379,7 +385,7 @@ defmodule AshTable.FragmentsTest do
           end
         end)
 
-      alias AshTable.FragmentsTest.Split
+      alias AshDataTable.FragmentsTest.Split
 
       assert {:ok,
               %{
@@ -394,7 +400,7 @@ defmodule AshTable.FragmentsTest do
       assert Info.table_label_field(Split) == {:ok, :title}
 
       assert warnings =~
-               "table.max_depth is being overwritten from 1 to 2 by fragment: Elixir.AshTable.FragmentsTest.Split.Table"
+               "table.max_depth is being overwritten from 1 to 2 by fragment: Elixir.AshDataTable.FragmentsTest.Split.Table"
 
       # the same value twice is nothing to warn about
       refute warnings =~ "on_forbidden"

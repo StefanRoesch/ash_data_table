@@ -1,7 +1,7 @@
 defmodule DemoWeb.NamedLive do
   @moduledoc """
   Two tables of one resource on one page: the default table of the comments
-  and their named table `:compact`, each placed with `AshTable.table/1`.
+  and their named table `:compact`, each placed with `AshDataTable.table/1`.
 
   Neither is given an `id`. The default table's is `comment` and the named
   table's `comment_compact`, so each has its own ids in the page and its own
@@ -49,7 +49,7 @@ defmodule DemoWeb.NamedLive do
       </div>
 
       <section id="named-default-section" aria-labelledby="comment-name">
-        <AshTable.table
+        <AshDataTable.table
           resource={Demo.Tracker.Comment}
           label="Comments"
           heading={2}
@@ -61,7 +61,7 @@ defmodule DemoWeb.NamedLive do
       </section>
 
       <section id="named-compact-section" aria-labelledby="comment_compact-name">
-        <AshTable.table
+        <AshDataTable.table
           resource={Demo.Tracker.Comment}
           table={:compact}
           label="Comments, compact"

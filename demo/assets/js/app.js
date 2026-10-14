@@ -23,7 +23,7 @@ import "phoenix_html"
 import {Socket} from "phoenix"
 import {LiveSocket} from "phoenix_live_view"
 import {hooks as colocatedHooks} from "phoenix-colocated/demo"
-import {hooks as ashTableHooks} from "phoenix-colocated/ash_table"
+import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 import topbar from "../vendor/topbar"
 
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
@@ -35,7 +35,7 @@ const liveSocket = new LiveSocket("/live", Socket, {
     // in (`DemoWeb.Zone`): a convenience of the demo's, which the server checks.
     time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   },
-  hooks: {...colocatedHooks, ...ashTableHooks},
+  hooks: {...colocatedHooks, ...ashDataTableHooks},
 })
 
 // Show progress bar on live navigation and form submits

@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Unions.Place do
+defmodule AshDataTable.Test.Unions.Place do
   @moduledoc "An embedded resource that is one kind of a union."
   use Ash.Resource, data_layer: :embedded
 
@@ -9,7 +9,7 @@ defmodule AshTable.Test.Unions.Place do
   end
 end
 
-defmodule AshTable.Test.Unions.Card do
+defmodule AshDataTable.Test.Unions.Card do
   @moduledoc "An embedded resource that says its own kind: a member of a tagged union."
   use Ash.Resource, data_layer: :embedded
 
@@ -19,7 +19,7 @@ defmodule AshTable.Test.Unions.Card do
   end
 end
 
-defmodule AshTable.Test.Unions.Transfer do
+defmodule AshDataTable.Test.Unions.Transfer do
   @moduledoc "Another member of a tagged union, without an attribute for its tag."
   use Ash.Resource, data_layer: :embedded
 
@@ -28,7 +28,7 @@ defmodule AshTable.Test.Unions.Transfer do
   end
 end
 
-defmodule AshTable.Test.Unions.Holder do
+defmodule AshDataTable.Test.Unions.Holder do
   @moduledoc "An embedded resource with a union inside it."
   use Ash.Resource, data_layer: :embedded
 
@@ -41,18 +41,18 @@ defmodule AshTable.Test.Unions.Holder do
         types: [
           text: [type: :string],
           number: [type: :integer, constraints: [min: 0]],
-          place: [type: AshTable.Test.Unions.Place]
+          place: [type: AshDataTable.Test.Unions.Place]
         ]
       ]
 
     # a second union with a kind of the same fields
     attribute :other, :union,
       public?: true,
-      constraints: [types: [text: [type: :string], place: [type: AshTable.Test.Unions.Place]]]
+      constraints: [types: [text: [type: :string], place: [type: AshDataTable.Test.Unions.Place]]]
   end
 end
 
-defmodule AshTable.Test.Unions.Content do
+defmodule AshDataTable.Test.Unions.Content do
   @moduledoc "A NewType of a union."
   use Ash.Type.NewType,
     subtype_of: :union,
@@ -64,14 +64,14 @@ defmodule AshTable.Test.Unions.Content do
     ]
 end
 
-defmodule AshTable.Test.Unions do
+defmodule AshDataTable.Test.Unions do
   @moduledoc "One column per kind of union."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Unions.{Card, Content, Holder, Place, Transfer}
+  alias AshDataTable.Test.Unions.{Card, Content, Holder, Place, Transfer}
 
   table do
     update_action :update
@@ -205,7 +205,7 @@ defmodule AshTable.Test.Unions do
   end
 end
 
-defmodule AshTable.Test.Unions.Once do
+defmodule AshDataTable.Test.Unions.Once do
   @moduledoc "An embedded resource whose create and update actions accept different attributes."
   use Ash.Resource, data_layer: :embedded
 
@@ -219,12 +219,12 @@ defmodule AshTable.Test.Unions.Once do
   end
 end
 
-defmodule AshTable.Test.Unions.Odd do
+defmodule AshDataTable.Test.Unions.Odd do
   @moduledoc "Unions where a table has no input for them: on the argument line, and of kinds without a control."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do

@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Sensitive.Login do
+defmodule AshDataTable.Test.Sensitive.Login do
   @moduledoc "An embedded resource with a sensitive attribute."
   use Ash.Resource, data_layer: :embedded
 
@@ -9,7 +9,7 @@ defmodule AshTable.Test.Sensitive.Login do
   end
 end
 
-defmodule AshTable.Test.Sensitive.Shown do
+defmodule AshDataTable.Test.Sensitive.Shown do
   @moduledoc "An embedded resource whose sensitive attribute nobody gives."
   use Ash.Resource, data_layer: :embedded
 
@@ -23,12 +23,12 @@ defmodule AshTable.Test.Sensitive.Shown do
   end
 end
 
-defmodule AshTable.Test.Sensitive.Owner do
+defmodule AshDataTable.Test.Sensitive.Owner do
   @moduledoc "What a vault belongs to: called by its name."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     label_field :name
@@ -45,19 +45,19 @@ defmodule AshTable.Test.Sensitive.Owner do
   end
 end
 
-defmodule AshTable.Test.Sensitive do
+defmodule AshDataTable.Test.Sensitive do
   @moduledoc """
   A vault: one sensitive column per kind of field a table has a cell for,
   and actions with sensitive inputs. The actors of its tests are maps:
   `%{role: :admin}`.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Sensitive.{Login, Owner, Shown}
+  alias AshDataTable.Test.Sensitive.{Login, Owner, Shown}
 
   table do
     update_action :update

@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Private do
+defmodule AshDataTable.Test.Private do
   @moduledoc """
   Resources for the tests of the rule that every action a table runs is
   `public?`: destinations with private actions, each exempted from the
@@ -10,17 +10,17 @@ defmodule AshTable.Test.Private do
   """
 end
 
-defmodule AshTable.Test.Private.Paper do
+defmodule AshDataTable.Test.Private.Paper do
   @moduledoc """
   A destination whose primary read is public and hides the sealed papers,
   beside private actions of every type: a read that returns the sealed ones
   too, an update, a destroy and a create.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -72,7 +72,7 @@ defmodule AshTable.Test.Private.Paper do
   end
 end
 
-defmodule AshTable.Test.Private.Minute do
+defmodule AshDataTable.Test.Private.Minute do
   @moduledoc """
   A destination whose primary read is private, and whose table names a
   public read action: the table of the minutes is sound, and so is a nested
@@ -80,10 +80,10 @@ defmodule AshTable.Test.Private.Minute do
   the primary read is another matter: a reference cell, an aggregate.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -93,7 +93,7 @@ defmodule AshTable.Test.Private.Minute do
 
   relationships do
     # says which action reads the folder: its primary read is private
-    belongs_to :folder, AshTable.Test.Private.Folder do
+    belongs_to :folder, AshDataTable.Test.Private.Folder do
       read_action :open
       public? true
       attribute_public? true
@@ -147,7 +147,7 @@ defmodule AshTable.Test.Private.Minute do
   end
 end
 
-defmodule AshTable.Test.Private.Folder do
+defmodule AshDataTable.Test.Private.Folder do
   @moduledoc """
   A folder of papers and minutes whose primary read is private, with a
   table that names a public read action. Its rows offer the default set of
@@ -155,10 +155,10 @@ defmodule AshTable.Test.Private.Folder do
   reached through one.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -167,37 +167,37 @@ defmodule AshTable.Test.Private.Folder do
   end
 
   relationships do
-    has_many :papers, AshTable.Test.Private.Paper, public?: true
+    has_many :papers, AshDataTable.Test.Private.Paper, public?: true
 
     # everything, sealed or not: for the code of the application
-    has_many :all_papers, AshTable.Test.Private.Paper do
+    has_many :all_papers, AshDataTable.Test.Private.Paper do
       read_action :internal
       public? true
     end
 
-    has_many :minutes, AshTable.Test.Private.Minute, public?: true
+    has_many :minutes, AshDataTable.Test.Private.Minute, public?: true
 
-    has_many :all_minutes, AshTable.Test.Private.Minute do
+    has_many :all_minutes, AshDataTable.Test.Private.Minute do
       read_action :read
       public? true
     end
 
     # says which action reads them, and names a public one
-    has_many :listed_minutes, AshTable.Test.Private.Minute do
+    has_many :listed_minutes, AshDataTable.Test.Private.Minute do
       read_action :listed
       public? true
     end
 
     # for the code of the application
-    has_many :taggings, AshTable.Test.Private.Tagging
+    has_many :taggings, AshDataTable.Test.Private.Tagging
 
-    has_many :open_taggings, AshTable.Test.Private.Tagging do
+    has_many :open_taggings, AshDataTable.Test.Private.Tagging do
       read_action :open
     end
 
     # joined through the taggings' private primary read action
-    many_to_many :tags, AshTable.Test.Private.Tag do
-      through AshTable.Test.Private.Tagging
+    many_to_many :tags, AshDataTable.Test.Private.Tag do
+      through AshDataTable.Test.Private.Tagging
       join_relationship :taggings
       source_attribute_on_join_resource :folder_id
       destination_attribute_on_join_resource :tag_id
@@ -205,8 +205,8 @@ defmodule AshTable.Test.Private.Folder do
     end
 
     # and through their public one
-    many_to_many :open_tags, AshTable.Test.Private.Tag do
-      through AshTable.Test.Private.Tagging
+    many_to_many :open_tags, AshDataTable.Test.Private.Tag do
+      through AshDataTable.Test.Private.Tagging
       join_relationship :open_taggings
       source_attribute_on_join_resource :folder_id
       destination_attribute_on_join_resource :tag_id
@@ -245,12 +245,12 @@ defmodule AshTable.Test.Private.Folder do
   end
 end
 
-defmodule AshTable.Test.Private.Tag do
+defmodule AshDataTable.Test.Private.Tag do
   @moduledoc "A tag of folders: nothing about it is private."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -266,14 +266,14 @@ defmodule AshTable.Test.Private.Tag do
   end
 end
 
-defmodule AshTable.Test.Private.Tagging do
+defmodule AshDataTable.Test.Private.Tagging do
   @moduledoc """
   What joins a folder and a tag. Its primary read is private and returns
   every tagging; a public one hides the withheld ones. No table: a join
   resource is read by Ash on the way from a folder to its tags.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer]
 
@@ -309,13 +309,13 @@ defmodule AshTable.Test.Private.Tagging do
   end
 end
 
-defmodule AshTable.Test.Private.FolderOfPapers do
+defmodule AshDataTable.Test.Private.FolderOfPapers do
   @moduledoc """
   A folder that counts its papers through their private read action, for
   the code of the application: the aggregate is no column of anything.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   attributes do
@@ -323,7 +323,7 @@ defmodule AshTable.Test.Private.FolderOfPapers do
   end
 
   relationships do
-    has_many :papers, AshTable.Test.Private.Paper, destination_attribute: :folder_id
+    has_many :papers, AshDataTable.Test.Private.Paper, destination_attribute: :folder_id
   end
 
   aggregates do

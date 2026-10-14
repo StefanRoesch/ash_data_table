@@ -1,13 +1,13 @@
-defmodule AshTable.Test.Editing do
+defmodule AshDataTable.Test.Editing do
   @moduledoc """
   A resource for the tests of what a table lets a person edit: a table-level
   update action, a column with its own action, a column switched off, and
   columns that no action can save.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -20,7 +20,7 @@ defmodule AshTable.Test.Editing do
     attribute :active, :boolean, public?: true
     attribute :due_on, :date, public?: true
     attribute :seen_at, :utc_datetime, public?: true
-    attribute :status, AshTable.Test.Status, public?: true
+    attribute :status, AshDataTable.Test.Status, public?: true
     attribute :size, :atom, public?: true, constraints: [one_of: [:small, :large]]
 
     # accepted by the table's action, switched off in the block
@@ -31,7 +31,7 @@ defmodule AshTable.Test.Editing do
     # array of enum values as multiple choice
     attribute :tags, {:array, :string}, public?: true
     attribute :scores, {:array, :integer}, public?: true
-    attribute :stages, {:array, AshTable.Test.Status}, public?: true
+    attribute :stages, {:array, AshDataTable.Test.Status}, public?: true
     # an array the table's action does not accept
     attribute :aliases, {:array, :string}, public?: true
     # accepted, but of a type without an editor
@@ -43,7 +43,7 @@ defmodule AshTable.Test.Editing do
   end
 
   relationships do
-    has_many :comments, AshTable.Test.Editing.Comment, destination_attribute: :subject_id
+    has_many :comments, AshDataTable.Test.Editing.Comment, destination_attribute: :subject_id
   end
 
   calculations do
@@ -124,10 +124,10 @@ defmodule AshTable.Test.Editing do
   end
 end
 
-defmodule AshTable.Test.Editing.Comment do
+defmodule AshDataTable.Test.Editing.Comment do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   attributes do
@@ -135,7 +135,7 @@ defmodule AshTable.Test.Editing.Comment do
   end
 
   relationships do
-    belongs_to :subject, AshTable.Test.Editing, public?: true
+    belongs_to :subject, AshDataTable.Test.Editing, public?: true
   end
 
   actions do
@@ -143,12 +143,12 @@ defmodule AshTable.Test.Editing.Comment do
   end
 end
 
-defmodule AshTable.Test.Editing.NeedsArgument do
+defmodule AshDataTable.Test.Editing.NeedsArgument do
   @moduledoc "A table whose update action cannot run without a value that is not on the record."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -170,12 +170,12 @@ defmodule AshTable.Test.Editing.NeedsArgument do
   end
 end
 
-defmodule AshTable.Test.Editing.Defaults do
+defmodule AshDataTable.Test.Editing.Defaults do
   @moduledoc "A table without columns of its own, edited through a table-level action."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id

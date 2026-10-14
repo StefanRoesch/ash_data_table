@@ -1,9 +1,9 @@
-defmodule AshTable.Test.Limiting.Percent do
+defmodule AshDataTable.Test.Limiting.Percent do
   @moduledoc "A type made of an integer, with the limits it gives it."
   use Ash.Type.NewType, subtype_of: :integer, constraints: [min: 0, max: 100]
 end
 
-defmodule AshTable.Test.Limiting.Place do
+defmodule AshDataTable.Test.Limiting.Place do
   @moduledoc "An embedded resource with a number that has limits."
   use Ash.Resource, data_layer: :embedded
 
@@ -13,18 +13,18 @@ defmodule AshTable.Test.Limiting.Place do
   end
 end
 
-defmodule AshTable.Test.Limiting.Slug do
+defmodule AshDataTable.Test.Limiting.Slug do
   @moduledoc "A type made of text, with the length it gives it."
   use Ash.Type.NewType, subtype_of: :string, constraints: [max_length: 12]
 end
 
-defmodule AshTable.Test.Limiting.Texts do
+defmodule AshDataTable.Test.Limiting.Texts do
   @moduledoc """
   Texts with a most they can be long, counted in every way Ash counts:
   in the unit the application configures and in each unit a type can name,
   trimmed and as typed, folded and as typed.
   """
-  use Ash.Resource, domain: AshTable.Test.Domain, data_layer: Ash.DataLayer.Ets
+  use Ash.Resource, domain: AshDataTable.Test.Domain, data_layer: Ash.DataLayer.Ets
 
   attributes do
     uuid_primary_key :id
@@ -43,27 +43,27 @@ defmodule AshTable.Test.Limiting.Texts do
     attribute :folded, :ci_string, public?: true, constraints: [max_length: 4, casing: :upper]
     attribute :lowered, :ci_string, public?: true, constraints: [max_length: 4, casing: :lower]
     attribute :unfolded, :ci_string, public?: true, constraints: [max_length: 4]
-    attribute :slug, AshTable.Test.Limiting.Slug, public?: true
+    attribute :slug, AshDataTable.Test.Limiting.Slug, public?: true
     attribute :words, {:array, :string}, public?: true, constraints: [items: [max_length: 6]]
     attribute :unlimited, :string, public?: true, constraints: [min_length: 2]
   end
 end
 
-defmodule AshTable.Test.Limiting do
+defmodule AshDataTable.Test.Limiting do
   @moduledoc """
   A resource for the tests of what an input says of its limits before
-  anything is saved (`AshTable.Model.Limits`): numbers of every type with
+  anything is saved (`AshDataTable.Model.Limits`): numbers of every type with
   the constraints Ash has for them, text with its own, values inside a map,
   an embedded resource, a union and an array, and actions that take the same
   field under other rules.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Limiting.Percent
-  alias AshTable.Test.Limiting.Place
+  alias AshDataTable.Test.Limiting.Percent
+  alias AshDataTable.Test.Limiting.Place
 
   ets do
     private? true
@@ -221,13 +221,13 @@ defmodule AshTable.Test.Limiting do
   end
 end
 
-defmodule AshTable.Test.Limiting.Guarded do
+defmodule AshDataTable.Test.Limiting.Guarded do
   @moduledoc "A required attribute behind an update action that only an admin may run."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id

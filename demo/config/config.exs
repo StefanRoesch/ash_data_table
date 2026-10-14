@@ -30,7 +30,7 @@ config :ash,
   known_types: [AshPostgres.Timestamptz, AshPostgres.TimestamptzUsec]
 
 # A time zone database, for the zones other than UTC that the tables show
-# datetimes in (`DemoWeb.Zone`, `time_zone` of `AshTable.table/1`).
+# datetimes in (`DemoWeb.Zone`, `time_zone` of `AshDataTable.table/1`).
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 
 config :spark,
@@ -65,12 +65,12 @@ config :demo,
 
 config :demo, Demo.Repo, types: Demo.PostgrexTypes
 
-# The layout the tables mounted by `ash_table` in the router are rendered in.
+# The layout the tables mounted by `ash_data_table` in the router are rendered in.
 # The tables' own texts are translated by the demo's Gettext backend (the
-# domain `ash_table`, in `priv/gettext/*/LC_MESSAGES/ash_table.po`), and the
+# domain `ash_data_table`, in `priv/gettext/*/LC_MESSAGES/ash_data_table.po`), and the
 # messages of the resources' actions by the function that translates the
 # errors of the demo's own forms (the domain `errors`).
-config :ash_table,
+config :ash_data_table,
   layout: {DemoWeb.Layouts, :app},
   gettext_backend: DemoWeb.Gettext,
   translate_error: {DemoWeb.CoreComponents, :translate_error}

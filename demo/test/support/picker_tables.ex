@@ -9,7 +9,7 @@ defmodule Demo.Support.Route do
 
   The actors of these tests are maps: `%{role: :admin}`.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -32,7 +32,7 @@ defmodule Demo.Support.Route.Zone do
     domain: Demo.Support.Route,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     label_field :name
@@ -81,7 +81,7 @@ defmodule Demo.Support.Route.Bay do
     domain: Demo.Support.Route,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     label_field :name
@@ -125,7 +125,7 @@ defmodule Demo.Support.Route.Dock do
   use Ash.Resource,
     domain: Demo.Support.Route,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     label_field :name
@@ -159,7 +159,7 @@ defmodule Demo.Support.Route.Stop do
     domain: Demo.Support.Route,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :zone_code do

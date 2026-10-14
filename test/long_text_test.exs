@@ -1,20 +1,20 @@
-defmodule AshTable.LongTextTest do
+defmodule AshDataTable.LongTextTest do
   # `max_lines` on a column: the declaration, what the model makes of it, and
   # the diagnostics for a column that is always one line.
   use ExUnit.Case, async: false
 
   import Spark.Test
 
-  alias AshTable.Model
-  alias AshTable.Resource.Presenting
+  alias AshDataTable.Model
+  alias AshDataTable.Resource.Presenting
 
-  alias AshTable.Test.LongText, as: Essay
+  alias AshDataTable.Test.LongText, as: Essay
 
   defp column(model, name), do: Enum.find(model.columns, &(&1.name == name))
 
   describe "max_lines" do
-    test "is read through AshTable.Resource.Info, nil where it is not said" do
-      declared = Map.new(AshTable.Resource.Info.table(Essay), &{&1.name, &1.max_lines})
+    test "is read through AshDataTable.Resource.Info, nil where it is not said" do
+      declared = Map.new(AshDataTable.Resource.Info.table(Essay), &{&1.name, &1.max_lines})
       assert declared.title == nil
       assert declared.body == 3
       assert declared.pages == 1
@@ -54,17 +54,17 @@ defmodule AshTable.LongTextTest do
     end
 
     test "a column of the default set shows one line" do
-      assert Enum.all?(Model.build(AshTable.Test.Presenting).columns, &(&1.max_lines == 1))
+      assert Enum.all?(Model.build(AshDataTable.Test.Presenting).columns, &(&1.max_lines == 1))
     end
 
     for lines <- [0, 11, -1] do
       test "#{lines} is no number of lines" do
         assert_raise Spark.Error.DslError, ~r/max_lines/, fn ->
-          defmodule Elixir.AshTable.LongTextTest.TooMany do
+          defmodule Elixir.AshDataTable.LongTextTest.TooMany do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -100,12 +100,12 @@ defmodule AshTable.LongTextTest do
           token:
             "it is declared `sensitive?: true`, and its cells show a mask and a button on one line.",
           mood:
-            "its cells are shown by the component `AshTable.Test.Cells.Shout`, which decides how they look.",
+            "its cells are shown by the component `AshDataTable.Test.Cells.Shout`, which decides how they look.",
           sender: "it shows the label of a related record, which is always one line."
         ] do
       test "`#{name}`: an error that points at the option and says why" do
         module =
-          Module.concat(AshTable.LongTextTest, "OneLine#{Macro.camelize("#{unquote(name)}")}")
+          Module.concat(AshDataTable.LongTextTest, "OneLine#{Macro.camelize("#{unquote(name)}")}")
 
         error =
           assert_dsl_error %Spark.Error.DslError{
@@ -113,9 +113,9 @@ defmodule AshTable.LongTextTest do
           } do
             defmodule module do
               use Ash.Resource,
-                domain: AshTable.Test.Domain,
+                domain: AshDataTable.Test.Domain,
                 data_layer: Ash.DataLayer.Ets,
-                extensions: [AshTable.Resource]
+                extensions: [AshDataTable.Resource]
 
               attributes do
                 uuid_primary_key :id
@@ -133,7 +133,7 @@ defmodule AshTable.LongTextTest do
               end
 
               relationships do
-                belongs_to :sender, AshTable.Test.Referencing.Person, public?: true
+                belongs_to :sender, AshDataTable.Test.Referencing.Person, public?: true
               end
 
               actions do
@@ -145,7 +145,7 @@ defmodule AshTable.LongTextTest do
                   max_lines(3)
 
                   if unquote(name) == :mood do
-                    component AshTable.Test.Cells.Shout
+                    component AshDataTable.Test.Cells.Shout
                   end
                 end
               end
@@ -165,11 +165,11 @@ defmodule AshTable.LongTextTest do
       assert_dsl_error %Spark.Error.DslError{
         path: [:tables, :table, :narrow, :column, :pages, :max_lines]
       } do
-        defmodule Elixir.AshTable.LongTextTest.NamedOneLine do
+        defmodule Elixir.AshDataTable.LongTextTest.NamedOneLine do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
+            domain: AshDataTable.Test.Domain,
             data_layer: Ash.DataLayer.Ets,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id

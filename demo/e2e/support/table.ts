@@ -1,10 +1,10 @@
 import { expect, type Locator, type Page, type Response } from "@playwright/test"
 
 /**
- * One table of `ash_table` in a page: where its parts are and how to wait
+ * One table of `ash_data_table` in a page: where its parts are and how to wait
  * for it. The parts are found by the stable ids the library gives them
  * (`ID-head-FIELD`, `ID-filter-FIELD`, `ID-row-KEY`, `ID-row-KEY-c-FIELD`;
- * see AshTable.Live.TableComponent), which is the one place of the suite
+ * see AshDataTable.Live.TableComponent), which is the one place of the suite
  * that knows them.
  *
  * A nested table is a table like any other, under an id of its own
@@ -60,7 +60,7 @@ export class Table {
     await element.evaluate((node) => {
       const isBusy = () => node.getAttribute("aria-busy") === "true"
       let wasBusy = isBusy()
-      ;(window as any).__ashTableIdle = new Promise<void>((resolve) => {
+      ;(window as any).__ashDataTableIdle = new Promise<void>((resolve) => {
         const observer = new MutationObserver(() => {
           const busy = isBusy()
           if (wasBusy && !busy) {
@@ -73,7 +73,7 @@ export class Table {
       })
     })
     await action()
-    await this.page.evaluate(() => (window as any).__ashTableIdle)
+    await this.page.evaluate(() => (window as any).__ashDataTableIdle)
   }
 
   // ---- the parts ----------------------------------------------------------
@@ -108,7 +108,7 @@ export class Table {
    */
   async forge(event: string, payload: Record<string, unknown>): Promise<void> {
     await this.hookRoot.evaluate(
-      (grid: any, [event, payload]) => grid._ashTable.pushEventTo(grid, event, payload),
+      (grid: any, [event, payload]) => grid._ashDataTable.pushEventTo(grid, event, payload),
       [event, payload] as const,
     )
   }
@@ -120,7 +120,7 @@ export class Table {
    */
   ask(question: string, danger = false): Promise<boolean> {
     return this.hookRoot.evaluate(
-      (grid: any, [question, danger]) => grid._ashTable.ask(question, danger),
+      (grid: any, [question, danger]) => grid._ashDataTable.ask(question, danger),
       [question, danger] as const,
     )
   }
@@ -983,6 +983,6 @@ export async function columnRules(page: Page): Promise<number> {
 export async function ownedSheets(page: Page): Promise<{ sheets: number; grids: number }> {
   return page.evaluate(() => ({
     sheets: document.adoptedStyleSheets.length,
-    grids: document.querySelectorAll("[data-ash-table]").length,
+    grids: document.querySelectorAll("[data-ash-data-table]").length,
   }))
 }

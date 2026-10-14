@@ -11,7 +11,7 @@ declared in the resource and mounted with one line in the router.
 
 ### Declaring and placing a table
 
-- `AshTable.Resource`, the extension with the `table` section: `read_action`,
+- `AshDataTable.Resource`, the extension with the `table` section: `read_action`,
   `paginate_with`, `update_action`, `on_forbidden`, `label_field`, and
   `column` entities with `label`, `sortable?`, `filterable?`,
   `update_action`, `confirm` and `exposes_protected_field?`; `relationship`
@@ -23,13 +23,13 @@ declared in the resource and mounted with one line in the router.
   finding that leaves it nothing sound to do (no usable read action,
   pagination, column or update action) refuses to render with an
   `ArgumentError`.
-- `AshTable.Router.ash_table/3` mounts a table as a page, with `id:`,
+- `AshDataTable.Router.ash_data_table/3` mounts a table as a page, with `id:`,
   `layout:` and `authorize?:` (`false` mounts the page without
-  authorization, for an admin area behind the host's own access control); `<AshTable.table … />` places one in a LiveView of the host's,
+  authorization, for an admin area behind the host's own access control); `<AshDataTable.table … />` places one in a LiveView of the host's,
   several to a page if wanted.
-- `AshTable.Domain`, the extension with the domain's `table` section:
+- `AshDataTable.Domain`, the extension with the domain's `table` section:
   `authorize?` and the socket assigns that hold scope, actor and tenant.
-- `config :ash_table, layout: {MyAppWeb.Layouts, :app}` for the layout of
+- `config :ash_data_table, layout: {MyAppWeb.Layouts, :app}` for the layout of
   mounted tables. The layout is given the flash and who is asking, under the
   conventional assign names and under those the domain names.
 
@@ -44,11 +44,11 @@ declared in the resource and mounted with one line in the router.
   around it.
 - A table whose own scrollbar is below the window has a second one at the
   bottom edge of the window, for the innermost table that is cut off there.
-  `--ash-table-bottom` keeps it above a host's fixed footer.
+  `--ash-data-table-bottom` keeps it above a host's fixed footer.
 - `sticky_label? true` in a `table` block or a named table keeps the label
   column in view while the table scrolls sideways, with the cells that select
   and expand a row. Off by default. Verified at compile time: the resource
-  has a `label_field`, and the table shows it. `--ash-table-ground` names the
+  has a `label_field`, and the table shows it. `--ash-data-table-ground` names the
   colour behind a table for those cells.
 - A cell that the keyboard moves focus to is brought into view in its own
   table's area, beside the cells that stay and above the second scrollbar.
@@ -117,7 +117,7 @@ declared in the resource and mounted with one line in the router.
   own arguments. A required argument that is given neither way, an unknown
   one, a value of the wrong type, and an asked argument that cannot be
   empty and has no default are reported when the resource is compiled.
-  `<AshTable.table>` takes `assigns` for a default that is a function.
+  `<AshDataTable.table>` takes `assigns` for a default that is a function.
 - Sort, filters, arguments and page in the URL of a mounted table, and of a
   table placed in a LiveView that hands it the page's `url`.
 - Loading, empty and failed states. An error the read action returned on
@@ -287,10 +287,10 @@ declared in the resource and mounted with one line in the router.
 
 ### Translation
 
-- Every text of the table is a message of the Gettext domain `ash_table`,
-  in English by default; `config :ash_table, gettext_backend: …` has a host's
+- Every text of the table is a message of the Gettext domain `ash_data_table`,
+  in English by default; `config :ash_data_table, gettext_backend: …` has a host's
   backend translate them, and the labels of its columns and enum values.
-- `config :ash_table, translate_error: …` has the host translate the messages
+- `config :ash_data_table, translate_error: …` has the host translate the messages
   of its actions as it does for its forms.
 
 ### Nested tables
@@ -325,7 +325,7 @@ declared in the resource and mounted with one line in the router.
 - Nothing of a nested table is in the URL.
 - **The full view.** The last row of a nested table is a link, "Open in full
   view", to the page the host's router mounts the destination's table at:
-  the first `ash_table` route for that resource whose path has no parameter.
+  the first `ash_data_table` route for that resource whose path has no parameter.
   Without such a route there is no link. The page shows the same records,
   limited by the table's parameter `of`
   (`/comments?comment[of][task][comments]=KEY`; a key of several attributes
@@ -335,7 +335,7 @@ declared in the resource and mounted with one line in the router.
   name among the resources of the application's domains and of the table's
   own, and only where its table offers the person that relationship; the
   key is cast; the parent is read as the person on every read. Anything else
-  in the parameter is ignored. A table placed with `<AshTable.table url=…>`
+  in the parameter is ignored. A table placed with `<AshDataTable.table url=…>`
   reads the same parameter.
 - The heading calls the parent by its `label_field`, else by the first of
   its table's attribute columns that the person sees on it, and names no
@@ -483,7 +483,7 @@ declared in the resource and mounted with one line in the router.
   focus goes to the actions cell of the next row; after a create, to the
   first cell of the new row; after the panel closes, to the control that
   opened it.
-- `heading` on `<AshTable.table>`: how the table's name is shown on the
+- `heading` on `<AshDataTable.table>`: how the table's name is shown on the
   line above it, which also holds the create button. `true` (the default)
   shows it as text, a number from 1 to 6 as a heading of that level, `false`
   leaves it out.
@@ -672,7 +672,7 @@ declared in the resource and mounted with one line in the router.
   MIME types, and `max_file_size`, in bytes. Without one the upload takes
   any file of 8 MB at most, which are LiveView's own limits;
   `Ash.Type.File` has no constraints to say them with.
-  `AshTable.Resource.Info.uploads/1` returns the declarations.
+  `AshDataTable.Resource.Info.uploads/1` returns the declarations.
 - A file the upload does not take is refused as it is chosen, at the field
   and in the live region, and "Run" then runs nothing. New texts: "The file
   is too large. The limit is %{limit}.", "This type of file is not
@@ -771,9 +771,9 @@ declared in the resource and mounted with one line in the router.
   the person, before the action runs, and a key that names none they could
   have chosen runs nothing. For a table action, a generic action in a row
   (not its `record_argument`), an update and a destroy action, and a run on
-  the selected rows. `AshTable.Resource.Info.actions/1` returns the
+  the selected rows. `AshDataTable.Resource.Info.actions/1` returns the
   declarations with their action (`references`,
-  `AshTable.Resource.Reference`).
+  `AshDataTable.Resource.Reference`).
 - Reported when the resource is compiled, and refused when the table is
   built: a `reference` that names no public argument of the action, an
   accepted attribute, the `record_argument`, a sensitive argument, an
@@ -868,13 +868,13 @@ declared in the resource and mounted with one line in the router.
 - `relationship` has a new option, `table`: which of the destination's
   tables is nested (`relationship :comments do table :compact end`). Without
   it the destination's default table is nested.
-- `ash_table "/comments/compact", MyApp.Comment, table: :compact` mounts a
-  named table, and `<AshTable.table resource={…} table={:compact} />` places
+- `ash_data_table "/comments/compact", MyApp.Comment, table: :compact` mounts a
+  named table, and `<AshDataTable.table resource={…} table={:compact} />` places
   one. A name the resource has no table for raises when the page is opened
   or the component rendered, with the resource's tables. `:default` names
   the default table wherever a table is named.
 - The id of a named table defaults to the resource's, `_` and the table's
-  name (`comment_compact`). The `id` of `<AshTable.table>` is no longer
+  name (`comment_compact`). The `id` of `<AshDataTable.table>` is no longer
   required: it defaults as the id of a mounted table does.
 - "Open in full view" on a nested table leads to the mounted page of the
   same table, and is not there when that table is mounted nowhere. In the
@@ -887,8 +887,8 @@ declared in the resource and mounted with one line in the router.
   `label_field` in a named table, a declaration made twice in a named
   table, and a `relationship` that names a table its destination does not
   have.
-- `AshTable.Resource.Info.tables/1`, `table/2` and `table!/2` return the
-  tables of a resource as `AshTable.Resource.Table`, in one shape for the
+- `AshDataTable.Resource.Info.tables/1`, `table/2` and `table!/2` return the
+  tables of a resource as `AshDataTable.Resource.Table`, in one shape for the
   default table and a named one.
 - A table can be declared in a file of its own, as a Spark fragment of the
   resource. Every check holds for it, and a finding points at the
@@ -897,7 +897,7 @@ declared in the resource and mounted with one line in the router.
 ### Live updates
 
 - `live? true` in a resource's `table` block makes its tables follow what
-  other people change. The resource gets a notifier, `AshTable.Notifier`,
+  other people change. The resource gets a notifier, `AshDataTable.Notifier`,
   which announces every create, update and destroy through the
   `Phoenix.PubSub` server that the domain's `table` block names with the new
   option `pub_sub`. An announcement holds the resource, the kind of action,
@@ -915,7 +915,7 @@ declared in the resource and mounted with one line in the router.
   nested under it, at any depth. A row whose record is gone stays while a
   cell of it is edited: the table asks the browser about that one row
   before it takes it away.
-- `AshTable.Test.flush/1` hands a page what was announced so far, for a test
+- `AshDataTable.Test.flush/1` hands a page what was announced so far, for a test
   that changes a record and then looks at the page.
 - Nested tables and pickers follow their own resource. A named table says
   `live? false`, and a page or a placed table `live?: false`, not to
@@ -967,7 +967,7 @@ declared in the resource and mounted with one line in the router.
 ### Time zones
 
 - A table shows, takes and filters by datetimes in the time zone of the
-  page: the attribute `time_zone` of `<AshTable.table>`, and for a mounted
+  page: the attribute `time_zone` of `<AshDataTable.table>`, and for a mounted
   table the socket assign its domain names as `time_zone_assign`
   (`time_zone` by default). UTC where none is given, as before.
 - Only instants are converted (`:utc_datetime`, `:utc_datetime_usec`,
@@ -1027,19 +1027,19 @@ declared in the resource and mounted with one line in the router.
   look, what they are edited with, or both. It changes the look and the
   control only: a save runs the column's `update_action` as before, and
   sorting, filtering and authorization are untouched.
-- `AshTable.Component`, the behaviour of such a module, with two optional
+- `AshDataTable.Component`, the behaviour of such a module, with two optional
   function components. `cell/1` is given the value, the text the table
-  itself would show, and the column (`AshTable.Component.Column`: the
+  itself would show, and the column (`AshDataTable.Component.Column`: the
   field's name, type and constraints, an enum's values with their labels,
   the column's label, whether the person can edit it). `editor/1` is given
   the control's value, the attributes the table needs on the control
   (`{@control}`), the label, the column, and where it is (`:grid` or
-  `:panel`). `use AshTable.Component` checks that a module has one of the
+  `:panel`). `use AshDataTable.Component` checks that a module has one of the
   two parts.
 - A component is never given a value the person may not see, a record
   without a value, or the record itself: the table shows its own placeholder
   and its own empty cell.
-- `use AshTable.Component, commit: :change` makes an editor save when its
+- `use AshDataTable.Component, commit: :change` makes an editor save when its
   value changes (a slider when it is let go) and stay open; the default,
   `:enter`, saves on Enter and on leaving the cell. A step with the keyboard
   is saved by Enter or by leaving, as in the table's own menus. Escape gives
@@ -1047,13 +1047,13 @@ declared in the resource and mounted with one line in the router.
 - The editor of a column's component is the field of that attribute in the
   action panel, under the table's label and with the action's messages. In
   the panel a change saves nothing: the value goes with the form.
-- `AshTable.Components.Image` shows the picture at the address a text
+- `AshDataTable.Components.Image` shows the picture at the address a text
   column holds, at the height of a line: an `http://` or `https://`
   address, or a path that starts with `/`. Anything else is shown as text.
-- Three more components are shipped: `AshTable.Components.Badge` shows an enum's
-  value as a badge, `AshTable.Components.Progress` a number between its
+- Three more components are shipped: `AshDataTable.Components.Badge` shows an enum's
+  value as a badge, `AshDataTable.Components.Progress` a number between its
   minimum and maximum as a bar with the number beside it, and
-  `AshTable.Components.Slider` edits such a number with a native range
+  `AshDataTable.Components.Slider` edits such a number with a native range
   input. Each says when the resource is compiled what its field has to be
   (`verify/1`, which a component of the host's can define as well).
 - Reported when the resource is compiled, and refused when the table is
@@ -1071,7 +1071,7 @@ declared in the resource and mounted with one line in the router.
 
 ### Changed since the reference cells were added
 
-- A table placed with `<AshTable.table … />` now shows its name on a line
+- A table placed with `<AshDataTable.table … />` now shows its name on a line
   above its grid. A page that names the table itself passes
   `heading={false}`.
 - The heading of a mounted page is rendered by the table: the `h1` has the
@@ -1201,7 +1201,7 @@ declared in the resource and mounted with one line in the router.
 
 ### Tooling
 
-- `mix ash_table.install`, an Igniter installer (`mix igniter.install
-  ash_table`): the hook in `app.js`, the Tailwind source in `app.css`, the
+- `mix ash_data_table.install`, an Igniter installer (`mix igniter.install
+  ash_data_table`): the hook in `app.js`, the Tailwind source in `app.css`, the
   formatter and the configuration.
 - The DSL reference, generated by Spark.

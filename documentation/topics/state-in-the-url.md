@@ -115,23 +115,23 @@ name, underscored. The demo's router
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
-ash_table "/tasks", Demo.Tracker.Task
-ash_table "/projects", Demo.Tracker.Project
-ash_table "/comments", Demo.Tracker.Comment
-ash_table "/labels", Demo.Tracker.Label
-ash_table "/task_labels", Demo.Tracker.TaskLabel
-ash_table "/specimens", Demo.KitchenSink.Specimen
+ash_data_table "/tasks", Demo.Tracker.Task
+ash_data_table "/projects", Demo.Tracker.Project
+ash_data_table "/comments", Demo.Tracker.Comment
+ash_data_table "/labels", Demo.Tracker.Label
+ash_data_table "/task_labels", Demo.Tracker.TaskLabel
+ash_data_table "/specimens", Demo.KitchenSink.Specimen
 ```
 
 The ids are `task`, `project`, `comment`, `label`, `task_label` and
 `specimen`. The path plays no part: `/tasks` has the id `task`.
 
 A [named table](named-tables.md) has the resource's id followed by `_` and
-the table's name: `ash_table "/tasks/board", Demo.Tracker.Task, table:
+the table's name: `ash_data_table "/tasks/board", Demo.Tracker.Task, table:
 :board` has the id `task_board`, and its parameters are
 `task_board[sort]=title`.
 
-`ash_table "/tasks", Demo.Tracker.Task, id: "tasks"` sets another id. It is
+`ash_data_table "/tasks", Demo.Tracker.Task, id: "tasks"` sets another id. It is
 a string of lower-case letters, digits, `_` and `-` that starts with a
 letter; anything else raises when the router is compiled. The id also
 prefixes every DOM id of the table, so changing it changes both the links
@@ -174,7 +174,7 @@ you can watch one link change with the person.
 
 ## A table inside your own LiveView
 
-A table placed with `<AshTable.table>` does **not** use the URL by default.
+A table placed with `<AshDataTable.table>` does **not** use the URL by default.
 The host page owns its address, and the table cannot know whether the page
 wants table parameters in it. Such a table keeps its sort, filters and page
 in its own component state. They last as long as the LiveView does and are
@@ -185,7 +185,7 @@ The demo's dashboard has two tables of this kind
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```heex
-<AshTable.table
+<AshDataTable.table
   id="dashboard-tasks"
   resource={Demo.Tracker.Task}
   heading={2}
@@ -219,8 +219,8 @@ and hands it to its tables:
 
 <!-- source: demo/test/support/plain_tables.ex -->
 ```heex
-<AshTable.table id="entries" resource={Plain.Entry} url={@url} />
-<AshTable.table id="tickets" resource={Plain.Ticket} url={@url} />
+<AshDataTable.table id="entries" resource={Plain.Entry} url={@url} />
+<AshDataTable.table id="tickets" resource={Plain.Ticket} url={@url} />
 ```
 
 Each table then patches the page's URL, with its parameters under its id

@@ -14,7 +14,7 @@ defmodule Demo.Tracker.User do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     # The default sort of a table lives on its read action, on purpose.
     primary_read_warning?: false
 

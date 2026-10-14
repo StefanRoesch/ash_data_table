@@ -1,4 +1,4 @@
-defmodule AshTable.ReferenceTest do
+defmodule AshDataTable.ReferenceTest do
   @moduledoc """
   `reference` in an `action` of the table block: the resource an argument
   of the action refers to, where nothing in Ash says it. The argument is
@@ -10,10 +10,10 @@ defmodule AshTable.ReferenceTest do
 
   import Spark.Test
 
-  alias AshTable.Act
-  alias AshTable.Bulk
-  alias AshTable.Model
-  alias AshTable.Test.Referring.{Job, Member}
+  alias AshDataTable.Act
+  alias AshDataTable.Bulk
+  alias AshDataTable.Model
+  alias AshDataTable.Test.Referring.{Job, Member}
 
   @admin [actor: %{role: :admin}, authorize_given: nil]
   @member [actor: %{role: :member}, authorize_given: nil]
@@ -30,16 +30,16 @@ defmodule AshTable.ReferenceTest do
   describe "the declaration" do
     test "is kept with its action, in the declared order" do
       assert [
-               %AshTable.Resource.Action{
+               %AshDataTable.Resource.Action{
                  name: :give_all,
-                 references: [%AshTable.Resource.Reference{name: :to_id, destination: Member}]
+                 references: [%AshDataTable.Resource.Reference{name: :to_id, destination: Member}]
                },
                %{name: :hand_over, references: [%{name: :to_id}]},
                %{name: :give},
                %{name: :staff, references: [%{name: :helper_ids, destination: Member}]},
                %{name: :close},
                %{name: :note, references: []}
-             ] = AshTable.Resource.Info.actions(Job)
+             ] = AshDataTable.Resource.Info.actions(Job)
     end
   end
 
@@ -267,7 +267,7 @@ defmodule AshTable.ReferenceTest do
     test "is given once for all the selected rows", %{ada: ada} do
       one = job("One")
       two = job("Two")
-      opts = [authorize?: false, state: %AshTable.State{}]
+      opts = [authorize?: false, state: %AshDataTable.State{}]
 
       assert %{done: 2, failed: []} =
                Bulk.run(
@@ -311,8 +311,10 @@ defmodule AshTable.ReferenceTest do
     test "an argument that is not there, not public, the table's own, sensitive, or named twice" do
       errors =
         dsl_errors do
-          defmodule Elixir.AshTable.ReferenceTest.Arguments do
-            use Ash.Resource, domain: AshTable.Test.Domain, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.ReferenceTest.Arguments do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -354,35 +356,35 @@ defmodule AshTable.ReferenceTest do
 
             table do
               action :unknown do
-                reference :other_id, AshTable.Test.Referring.Member
+                reference :other_id, AshDataTable.Test.Referring.Member
               end
 
               action :accepted do
-                reference :owner_id, AshTable.Test.Referring.Member
+                reference :owner_id, AshDataTable.Test.Referring.Member
               end
 
               action :hidden do
-                reference :to_id, AshTable.Test.Referring.Member
+                reference :to_id, AshDataTable.Test.Referring.Member
               end
 
               action :own do
                 record_argument :record_id
-                reference :record_id, AshTable.Test.Referring.Member
+                reference :record_id, AshDataTable.Test.Referring.Member
               end
 
               action :secret do
-                reference :to_id, AshTable.Test.Referring.Member
+                reference :to_id, AshDataTable.Test.Referring.Member
               end
 
               action :twice do
-                reference :to_id, AshTable.Test.Referring.Member
-                reference :to_id, AshTable.Test.Referring.Member
+                reference :to_id, AshDataTable.Test.Referring.Member
+                reference :to_id, AshDataTable.Test.Referring.Member
               end
             end
           end
         end
 
-      assert errors_of(AshTable.ReferenceTest.Arguments, errors) == [
+      assert errors_of(AshDataTable.ReferenceTest.Arguments, errors) == [
                {[:table, :action, :unknown],
                 "The action `unknown` says `reference :other_id`, and has no argument named `other_id`."},
                {[:table, :action, :accepted],
@@ -398,8 +400,8 @@ defmodule AshTable.ReferenceTest do
              ]
 
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.ReferenceTest.Arguments: its action `unknown` cannot be used. The action `unknown` says `reference :other_id`, and has no argument named `other_id`.",
-                   fn -> Model.build(AshTable.ReferenceTest.Arguments) end
+                   "cannot build the table of AshDataTable.ReferenceTest.Arguments: its action `unknown` cannot be used. The action `unknown` says `reference :other_id`, and has no argument named `other_id`.",
+                   fn -> Model.build(AshDataTable.ReferenceTest.Arguments) end
     end
 
     test "a destination without a table, without a public read action, or with a key the argument cannot hold" do
@@ -407,8 +409,10 @@ defmodule AshTable.ReferenceTest do
         dsl_errors do
           # a resource whose table would read through a private action,
           # which is reported for it as well
-          defmodule Elixir.AshTable.ReferenceTest.Closed do
-            use Ash.Resource, domain: AshTable.Test.Domain, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.ReferenceTest.Closed do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -422,8 +426,10 @@ defmodule AshTable.ReferenceTest do
             end
           end
 
-          defmodule Elixir.AshTable.ReferenceTest.Destinations do
-            use Ash.Resource, domain: AshTable.Test.Domain, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.ReferenceTest.Destinations do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -457,71 +463,73 @@ defmodule AshTable.ReferenceTest do
 
             table do
               action :bare do
-                reference :to_id, AshTable.Test.Referring.Bare
+                reference :to_id, AshDataTable.Test.Referring.Bare
               end
 
               action :no_resource do
-                reference :to_id, AshTable.Test.Referring
+                reference :to_id, AshDataTable.Test.Referring
               end
 
               action :closed do
-                reference :to_id, AshTable.ReferenceTest.Closed
+                reference :to_id, AshDataTable.ReferenceTest.Closed
               end
 
               action :composite do
-                reference :to_id, AshTable.Test.Picking.Zone
+                reference :to_id, AshDataTable.Test.Picking.Zone
               end
 
               action :numbered do
-                reference :to_id, AshTable.Test.Referring.Member
+                reference :to_id, AshDataTable.Test.Referring.Member
               end
 
               action :texts do
-                reference :to_ids, AshTable.Test.Referring.Member
+                reference :to_ids, AshDataTable.Test.Referring.Member
               end
 
               action :nested do
-                reference :to_ids, AshTable.Test.Referring.Member
+                reference :to_ids, AshDataTable.Test.Referring.Member
               end
 
               # stored as the key is, under another type: accepted
               action :stored_as_key do
-                reference :to_id, AshTable.Test.Referring.Member
+                reference :to_id, AshDataTable.Test.Referring.Member
               end
             end
           end
         end
 
-      assert errors_of(AshTable.ReferenceTest.Destinations, errors) == [
+      assert errors_of(AshDataTable.ReferenceTest.Destinations, errors) == [
                {[:table, :action, :bare],
-                "The action `bare` says `reference :to_id, AshTable.Test.Referring.Bare`, and AshTable.Test.Referring.Bare has no table: it is no resource that lists `AshTable.Resource` in its extensions. The records of a reference are chosen from the table of their resource."},
+                "The action `bare` says `reference :to_id, AshDataTable.Test.Referring.Bare`, and AshDataTable.Test.Referring.Bare has no table: it is no resource that lists `AshDataTable.Resource` in its extensions. The records of a reference are chosen from the table of their resource."},
                {[:table, :action, :no_resource],
-                "The action `no_resource` says `reference :to_id, AshTable.Test.Referring`, and AshTable.Test.Referring has no table: it is no resource that lists `AshTable.Resource` in its extensions. The records of a reference are chosen from the table of their resource."},
+                "The action `no_resource` says `reference :to_id, AshDataTable.Test.Referring`, and AshDataTable.Test.Referring has no table: it is no resource that lists `AshDataTable.Resource` in its extensions. The records of a reference are chosen from the table of their resource."},
                {[:table, :action, :closed],
-                "The action `closed` says `reference :to_id, AshTable.ReferenceTest.Closed`, and the table of AshTable.ReferenceTest.Closed has no public read action to read the records to choose from: the `read_action` of its `table` block, else its primary read action. A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies."},
+                "The action `closed` says `reference :to_id, AshDataTable.ReferenceTest.Closed`, and the table of AshDataTable.ReferenceTest.Closed has no public read action to read the records to choose from: the `read_action` of its `table` block, else its primary read action. A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies."},
                {[:table, :action, :composite],
-                "The action `composite` says `reference :to_id, AshTable.Test.Picking.Zone`, and the primary key of AshTable.Test.Picking.Zone is `country`, `number`: several attributes. One argument holds the primary key of a record only where that is one attribute."},
+                "The action `composite` says `reference :to_id, AshDataTable.Test.Picking.Zone`, and the primary key of AshDataTable.Test.Picking.Zone is `country`, `number`: several attributes. One argument holds the primary key of a record only where that is one attribute."},
                {[:table, :action, :numbered],
-                "The action `numbered` says `reference :to_id, AshTable.Test.Referring.Member`, and the argument is of the type Ash.Type.Integer, which is not stored as the primary key `id` of AshTable.Test.Referring.Member is (Ash.Type.UUID), nor a list of it. The argument is given the primary key of the chosen record as it is."},
+                "The action `numbered` says `reference :to_id, AshDataTable.Test.Referring.Member`, and the argument is of the type Ash.Type.Integer, which is not stored as the primary key `id` of AshDataTable.Test.Referring.Member is (Ash.Type.UUID), nor a list of it. The argument is given the primary key of the chosen record as it is."},
                {[:table, :action, :texts],
-                "The action `texts` says `reference :to_ids, AshTable.Test.Referring.Member`, and the argument is of the type {:array, Ash.Type.String}, which is not stored as the primary key `id` of AshTable.Test.Referring.Member is (Ash.Type.UUID), nor a list of it. The argument is given the primary key of the chosen record as it is."},
+                "The action `texts` says `reference :to_ids, AshDataTable.Test.Referring.Member`, and the argument is of the type {:array, Ash.Type.String}, which is not stored as the primary key `id` of AshDataTable.Test.Referring.Member is (Ash.Type.UUID), nor a list of it. The argument is given the primary key of the chosen record as it is."},
                {[:table, :action, :nested],
-                "The action `nested` says `reference :to_ids, AshTable.Test.Referring.Member`, and the argument is of the type {:array, {:array, Ash.Type.UUID}}, which is not stored as the primary key `id` of AshTable.Test.Referring.Member is (Ash.Type.UUID), nor a list of it. The argument is given the primary key of the chosen record as it is."}
+                "The action `nested` says `reference :to_ids, AshDataTable.Test.Referring.Member`, and the argument is of the type {:array, {:array, Ash.Type.UUID}}, which is not stored as the primary key `id` of AshDataTable.Test.Referring.Member is (Ash.Type.UUID), nor a list of it. The argument is given the primary key of the chosen record as it is."}
              ]
     end
 
     test "an argument that a `manage_relationship` change hands to a relationship: the relationship says it" do
       errors =
         dsl_errors do
-          defmodule Elixir.AshTable.ReferenceTest.Managed do
-            use Ash.Resource, domain: AshTable.Test.Domain, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.ReferenceTest.Managed do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
             end
 
             relationships do
-              belongs_to :owner, AshTable.Test.Referring.Member, public?: true
+              belongs_to :owner, AshDataTable.Test.Referring.Member, public?: true
             end
 
             actions do
@@ -536,13 +544,13 @@ defmodule AshTable.ReferenceTest do
 
             table do
               action :assign do
-                reference :owner, AshTable.Test.Referring.Member
+                reference :owner, AshDataTable.Test.Referring.Member
               end
             end
           end
         end
 
-      assert errors_of(AshTable.ReferenceTest.Managed, errors) == [
+      assert errors_of(AshDataTable.ReferenceTest.Managed, errors) == [
                {[:table, :action, :assign],
                 "The action `assign` says `reference :owner`, and a `manage_relationship` change of the action hands `owner` to the relationship `owner`. The relationship says which resource the argument refers to, and the change how it is read. Leave the `reference` out."}
              ]

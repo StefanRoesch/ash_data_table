@@ -9,7 +9,7 @@ defmodule Demo.Support.Live do
 
   The actors of these tests are maps: `%{role: :admin}`.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -34,7 +34,7 @@ defmodule Demo.Support.Live.Bulletin do
     domain: Demo.Support.Live,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   field_policies do
@@ -127,7 +127,7 @@ defmodule Demo.Support.Live.Reply do
     domain: Demo.Support.Live,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -178,7 +178,7 @@ defmodule Demo.Support.Live.Stamp do
   use Ash.Resource,
     domain: Demo.Support.Live,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   actions do
@@ -199,7 +199,7 @@ defmodule Demo.Support.Live.Pin do
   use Ash.Resource,
     domain: Demo.Support.Live,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do

@@ -566,7 +566,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       [project | _] = world.projects
 
       # projects are refused outright when nobody is logged in, tasks are not
-      assert_raise AshTable.NotFoundError, fn ->
+      assert_raise AshDataTable.NotFoundError, fn ->
         conn |> log_in(nil) |> live(of("/tasks", "task", "project", "tasks", project.id))
       end
 

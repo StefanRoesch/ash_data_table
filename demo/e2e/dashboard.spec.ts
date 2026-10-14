@@ -3,7 +3,7 @@ import { SEED } from "./support/data"
 import { Table } from "./support/table"
 
 // /dashboard: two tables placed in a LiveView of the demo's own with
-// `<AshTable.table>`, where the router's `ash_table` gives a table a page to
+// `<AshDataTable.table>`, where the router's `ash_data_table` gives a table a page to
 // itself. Each keeps its sort, filters and page itself, nothing of them is
 // in the URL, and neither moves when the other does. Two grids on one page:
 // each is one tab stop, and each has a keyboard of its own.

@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Domain do
+defmodule AshDataTable.Test.Domain do
   @moduledoc false
   use Ash.Domain, validate_config_inclusion?: false
 

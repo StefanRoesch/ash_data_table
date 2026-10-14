@@ -9,19 +9,19 @@ them is missing.
 
 | Kind | Examples | Owner | Translated by |
 | --- | --- | --- | --- |
-| The table's own texts | "No records", "Clear filters", "12 results", the operators of the filters, "You are not allowed to change this.", "Actions", "Run" | The library | `gettext_backend`: the Gettext domain `ash_table` in your backend |
+| The table's own texts | "No records", "Clear filters", "12 results", the operators of the filters, "You are not allowed to change this.", "Actions", "Run" | The library | `gettext_backend`: the Gettext domain `ash_data_table` in your backend |
 | Your resources' wording, as the table shows it | Column labels, the labels of enum values, the questions of `confirm`, the names of the tables, the labels of row actions and table actions and of the fields of the action panel, what one record is called | Your resources | `gettext_backend`: the same domain of the same backend |
 | The messages of your actions | "length must be greater than or equal to %{min}", "is required", the `message` of your own validation | Ash and your resources | `translate_error`: your app's error translator |
 
 ## The smallest example
 
-Two keys under `config :ash_table`. The installer sets both for a new Phoenix
+Two keys under `config :ash_data_table`. The installer sets both for a new Phoenix
 app. In the demo
 ([`demo/config/config.exs`](https://github.com/StefanRoesch/ash_table/blob/main/demo/config/config.exs)):
 
 <!-- source: demo/config/config.exs -->
 ```elixir
-config :ash_table,
+config :ash_data_table,
   layout: {DemoWeb.Layouts, :app},
   gettext_backend: DemoWeb.Gettext,
   translate_error: {DemoWeb.CoreComponents, :translate_error}
@@ -66,7 +66,7 @@ controller and redirects, which loads the page again.
 ## The table's own texts
 
 Every text that is the table's is a message of the Gettext domain
-`ash_table`, written in English. Without `gettext_backend` they are shown in
+`ash_data_table`, written in English. Without `gettext_backend` they are shown in
 English. With it they are looked up in your backend.
 
 Copy the template that ships with the package to one file per locale and
@@ -76,7 +76,7 @@ in place):
 <!-- sketch -->
 ```sh
 mkdir -p priv/gettext/de/LC_MESSAGES
-cp deps/ash_table/priv/gettext/ash_table.pot priv/gettext/de/LC_MESSAGES/ash_table.po
+cp deps/ash_data_table/priv/gettext/ash_data_table.pot priv/gettext/de/LC_MESSAGES/ash_data_table.po
 ```
 
 Copy it as a `.po` file, not as a template of your own: `mix gettext.extract`
@@ -84,9 +84,9 @@ removes from your templates the messages it does not find in your code.
 
 A message without a translation is shown in English. From the demo's German
 file
-([`demo/priv/gettext/de/LC_MESSAGES/ash_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "1 result"
 msgid_plural "%{count} results"
@@ -104,7 +104,7 @@ msgstr "Filter zurücksetzen"
 ```
 
 These are all the messages of the template
-([`priv/gettext/ash_table.pot`](https://github.com/StefanRoesch/ash_table/blob/main/priv/gettext/ash_table.pot)):
+([`priv/gettext/ash_data_table.pot`](https://github.com/StefanRoesch/ash_table/blob/main/priv/gettext/ash_data_table.pot)):
 
 | Where | Messages |
 | --- | --- |
@@ -135,7 +135,7 @@ These are all the messages of the template
 | The full view | "Open in full view", "Open in full view: %{table}" (the link's accessible name), "%{record}: %{relationship}" (the heading over a table limited to the records of one parent), "Show all records" |
 
 **Rewording without translating.** To say "Nothing to show" in place of "No
-records" in an English app, give your backend an `ash_table.po` for `en` with
+records" in an English app, give your backend an `ash_data_table.po` for `en` with
 that one entry. This is a sketch; the demo has no such file:
 
 <!-- sketch -->
@@ -152,7 +152,7 @@ values of an enum, the question of a `confirm`, and the name of the table
 (the resource's `plural_name`, or its short name, in words), and the label
 of each relationship line under an expanded row (declared with `label`, or
 the relationship's name in words). Each of them is looked up as a message in
-the same `ash_table` domain and shown as it is when the domain has no entry.
+the same `ash_data_table` domain and shown as it is when the domain has no entry.
 
 So is what the inputs of the [argument line](arguments.md) are called: the
 `label` of an `argument` or an `ask`, or the argument's name in words
@@ -182,13 +182,13 @@ The create button is therefore translated in two places, as the demo does
 for German: the table's message says where the name goes, and the name is
 your resource's wording.
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "New %{name}"
 msgstr "%{name} anlegen"
 ```
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "task"
 msgstr "Aufgabe"
@@ -197,7 +197,7 @@ msgstr "Aufgabe"
 "New task" is "Aufgabe anlegen". The buttons and the fields of "Reassign"
 are entries like a column's label:
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "Archive"
 msgstr "Archivieren"
@@ -206,7 +206,7 @@ msgid "Reassign"
 msgstr "Neu zuweisen"
 ```
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "Reason"
 msgstr "Begründung"
@@ -231,7 +231,7 @@ translation can put the two in another order.
 So a column is translated by adding its label to the same file. The demo
 translates the wording of `/tasks`:
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "Tasks"
 msgstr "Aufgaben"
@@ -395,8 +395,8 @@ English, and the resource's own wording.
   exactly, placeholders included: "length must be greater than or equal to
   %{min}", not the text with the number filled in.
 - **Putting column labels into `errors.po`.** Labels belong to the domain
-  `ash_table`; action messages belong to `errors`.
-- **Copying the template as `ash_table.pot` into your app.**
+  `ash_data_table`; action messages belong to `errors`.
+- **Copying the template as `ash_data_table.pot` into your app.**
   `mix gettext.extract` removes its messages. Copy it as a `.po` file.
 - **Switching the language in a running LiveView.** Set the locale in
   `on_mount` and mount again.

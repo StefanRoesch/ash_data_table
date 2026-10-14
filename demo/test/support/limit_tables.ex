@@ -18,7 +18,7 @@ defmodule Demo.Support.Limits.Meter do
   use Ash.Resource,
     domain: Demo.Support.Limits,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     read_action :within

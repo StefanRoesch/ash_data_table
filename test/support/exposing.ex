@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Exposing do
+defmodule AshDataTable.Test.Exposing do
   @moduledoc """
   Destinations for the tests of what an aggregate or a calculation column
   shows of a field that a field policy protects on the related resource.
@@ -9,13 +9,13 @@ defmodule AshTable.Test.Exposing do
   """
 end
 
-defmodule AshTable.Test.Exposing.Member do
+defmodule AshDataTable.Test.Exposing.Member do
   @moduledoc "A member whose salary an admin alone sees: a field policy protects it."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -49,13 +49,13 @@ defmodule AshTable.Test.Exposing.Member do
   end
 end
 
-defmodule AshTable.Test.Exposing.Guest do
+defmodule AshDataTable.Test.Exposing.Guest do
   @moduledoc "A guest with field policies that protect nothing: every field is seen by everybody."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -81,7 +81,7 @@ defmodule AshTable.Test.Exposing.Guest do
   end
 end
 
-defmodule AshTable.Test.Exposing.BossSalary do
+defmodule AshDataTable.Test.Exposing.BossSalary do
   @moduledoc "A calculation computed in Elixir, from what it loads of a related record."
   use Ash.Resource.Calculation
 
@@ -94,17 +94,17 @@ defmodule AshTable.Test.Exposing.BossSalary do
   end
 end
 
-defmodule AshTable.Test.Exposing.Team do
+defmodule AshDataTable.Test.Exposing.Team do
   @moduledoc """
   A team with aggregate columns, read in pages. Its headcount and its budget
   are seen by an admin, and by the team's own lead: by anybody else on some
   records only. The number of its guests is seen by everybody.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   attributes do
@@ -116,8 +116,8 @@ defmodule AshTable.Test.Exposing.Team do
   end
 
   relationships do
-    has_many :members, AshTable.Test.Exposing.Member, destination_attribute: :team_id
-    has_many :guests, AshTable.Test.Exposing.Guest, destination_attribute: :team_id
+    has_many :members, AshDataTable.Test.Exposing.Member, destination_attribute: :team_id
+    has_many :guests, AshDataTable.Test.Exposing.Guest, destination_attribute: :team_id
   end
 
   aggregates do
@@ -164,12 +164,12 @@ defmodule AshTable.Test.Exposing.Team do
   end
 end
 
-defmodule AshTable.Test.Exposing.League do
+defmodule AshDataTable.Test.Exposing.League do
   @moduledoc "A league, whose rows expand into its teams: in pages, and in full."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -177,14 +177,16 @@ defmodule AshTable.Test.Exposing.League do
   end
 
   relationships do
-    has_many :teams, AshTable.Test.Exposing.Team, public?: true
+    has_many :teams, AshDataTable.Test.Exposing.Team, public?: true
 
-    has_many :all_teams, AshTable.Test.Exposing.Team do
+    has_many :all_teams, AshDataTable.Test.Exposing.Team do
       read_action :all
       public? true
     end
 
-    has_many :guests, AshTable.Test.Exposing.Guest, destination_attribute: :team_id, public?: true
+    has_many :guests, AshDataTable.Test.Exposing.Guest,
+      destination_attribute: :team_id,
+      public?: true
   end
 
   actions do

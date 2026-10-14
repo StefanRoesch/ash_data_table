@@ -8,7 +8,7 @@ defmodule Demo.Tracker.Task do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     # A second table of the tasks, declared in a file of its own:
     # `task/board_table.ex`.
     fragments: [Demo.Tracker.Task.BoardTable],
@@ -91,13 +91,13 @@ defmodule Demo.Tracker.Task do
     column :status do
       label "State"
       confirm "Change the state of this task?"
-      component AshTable.Components.Badge
+      component AshDataTable.Components.Badge
     end
 
     # edited through an action of its own
     column :priority do
       update_action :reprioritise
-      component AshTable.Components.Badge
+      component AshDataTable.Components.Badge
     end
 
     # numbers: one that is always there and one that can be empty. Progress

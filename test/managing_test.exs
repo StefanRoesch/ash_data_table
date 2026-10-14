@@ -1,4 +1,4 @@
-defmodule AshTable.ManagingTest do
+defmodule AshDataTable.ManagingTest do
   @moduledoc """
   Relationships an action manages, behind the picker: which arguments of an
   action hand keys to a relationship, what their fields start with, which of
@@ -11,14 +11,14 @@ defmodule AshTable.ManagingTest do
   """
   use ExUnit.Case, async: true
 
-  alias AshTable.Act
-  alias AshTable.Edit
-  alias AshTable.Model
-  alias AshTable.Pick
-  alias AshTable.Resource.Managing
-  alias AshTable.Resource.Referencing
-  alias AshTable.Test.Managing.{Note, Person, Seal, Tag, Ticket, TicketSeal, TicketTag}
-  alias AshTable.Test.Picking.{Port, Zone}
+  alias AshDataTable.Act
+  alias AshDataTable.Edit
+  alias AshDataTable.Model
+  alias AshDataTable.Pick
+  alias AshDataTable.Resource.Managing
+  alias AshDataTable.Resource.Referencing
+  alias AshDataTable.Test.Managing.{Note, Person, Seal, Tag, Ticket, TicketSeal, TicketTag}
+  alias AshDataTable.Test.Picking.{Port, Zone}
 
   @admin [actor: %{role: :admin}, authorize_given: nil]
   @member [actor: %{role: :member}, authorize_given: nil]
@@ -724,7 +724,7 @@ defmodule AshTable.ManagingTest do
   end
 
   test "the destinations of these tests are what they are said to be" do
-    refute AshTable.Resource.Relating.table?(Port)
+    refute AshDataTable.Resource.Relating.table?(Port)
     assert Ash.Resource.Info.primary_key(Zone) == [:country, :number]
   end
 end

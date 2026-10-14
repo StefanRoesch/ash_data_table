@@ -8,7 +8,7 @@ defmodule Demo.Support.Long do
 
   The actors of these tests are maps: `%{role: :admin}`.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -29,7 +29,7 @@ defmodule Demo.Support.Long.Essay do
     domain: Demo.Support.Long,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   field_policies do

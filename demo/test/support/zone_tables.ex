@@ -8,7 +8,7 @@ defmodule Demo.Support.Zones do
   Its resource exists for the tests only. It reads the demo's tasks in
   Postgres, under a name of its own, without authorization.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     authorize? false
@@ -28,7 +28,7 @@ defmodule Demo.Support.Zones.Booking do
   use Ash.Resource,
     domain: Demo.Support.Zones,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   postgres do
     table "tasks"

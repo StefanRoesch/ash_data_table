@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Managing do
+defmodule AshDataTable.Test.Managing do
   @moduledoc """
   Resources for the tests of relationships an action manages: arguments
   that a `manage_relationship` change hands to a relationship, of every kind
@@ -9,12 +9,12 @@ defmodule AshTable.Test.Managing do
   """
 end
 
-defmodule AshTable.Test.Managing.Person do
+defmodule AshDataTable.Test.Managing.Person do
   @moduledoc "A destination everybody reads, called by its name."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   ets do
     private? true
@@ -34,7 +34,7 @@ defmodule AshTable.Test.Managing.Person do
   end
 end
 
-defmodule AshTable.Test.Managing.Tag do
+defmodule AshDataTable.Test.Managing.Tag do
   @moduledoc """
   A destination of a many-to-many, called by its name and also known by a
   code. Its table reads through an action that leaves out the tags that are
@@ -42,9 +42,9 @@ defmodule AshTable.Test.Managing.Tag do
   action returns all.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   ets do
     private? true
@@ -70,7 +70,7 @@ defmodule AshTable.Test.Managing.Tag do
   end
 
   identities do
-    identity :unique_code, [:code], pre_check_with: AshTable.Test.Domain
+    identity :unique_code, [:code], pre_check_with: AshDataTable.Test.Domain
   end
 
   table do
@@ -79,17 +79,17 @@ defmodule AshTable.Test.Managing.Tag do
   end
 end
 
-defmodule AshTable.Test.Managing.Seal do
+defmodule AshDataTable.Test.Managing.Seal do
   @moduledoc """
   A destination whose secret records only an admin reads: everybody else is
   shown the others. The policy is a filter, so a read is never refused: it
   finds what is not secret.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   ets do
     private? true
@@ -120,12 +120,12 @@ defmodule AshTable.Test.Managing.Seal do
   end
 end
 
-defmodule AshTable.Test.Managing.Note do
+defmodule AshDataTable.Test.Managing.Note do
   @moduledoc "The destination of a has-many, whose records belong to one ticket."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   ets do
     private? true
@@ -137,7 +137,7 @@ defmodule AshTable.Test.Managing.Note do
   end
 
   relationships do
-    belongs_to :ticket, AshTable.Test.Managing.Ticket, public?: true
+    belongs_to :ticket, AshDataTable.Test.Managing.Ticket, public?: true
   end
 
   actions do
@@ -149,10 +149,10 @@ defmodule AshTable.Test.Managing.Note do
   end
 end
 
-defmodule AshTable.Test.Managing.TicketTag do
+defmodule AshDataTable.Test.Managing.TicketTag do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   ets do
@@ -160,8 +160,8 @@ defmodule AshTable.Test.Managing.TicketTag do
   end
 
   relationships do
-    belongs_to :ticket, AshTable.Test.Managing.Ticket, primary_key?: true, allow_nil?: false
-    belongs_to :tag, AshTable.Test.Managing.Tag, primary_key?: true, allow_nil?: false
+    belongs_to :ticket, AshDataTable.Test.Managing.Ticket, primary_key?: true, allow_nil?: false
+    belongs_to :tag, AshDataTable.Test.Managing.Tag, primary_key?: true, allow_nil?: false
   end
 
   actions do
@@ -169,10 +169,10 @@ defmodule AshTable.Test.Managing.TicketTag do
   end
 end
 
-defmodule AshTable.Test.Managing.TicketSeal do
+defmodule AshDataTable.Test.Managing.TicketSeal do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   ets do
@@ -180,8 +180,8 @@ defmodule AshTable.Test.Managing.TicketSeal do
   end
 
   relationships do
-    belongs_to :ticket, AshTable.Test.Managing.Ticket, primary_key?: true, allow_nil?: false
-    belongs_to :seal, AshTable.Test.Managing.Seal, primary_key?: true, allow_nil?: false
+    belongs_to :ticket, AshDataTable.Test.Managing.Ticket, primary_key?: true, allow_nil?: false
+    belongs_to :seal, AshDataTable.Test.Managing.Seal, primary_key?: true, allow_nil?: false
   end
 
   actions do
@@ -189,20 +189,20 @@ defmodule AshTable.Test.Managing.TicketSeal do
   end
 end
 
-defmodule AshTable.Test.Managing.Ticket do
+defmodule AshDataTable.Test.Managing.Ticket do
   @moduledoc """
   A table whose actions hand their arguments to relationships, every way a
   table has to tell apart: by what the argument holds, by what the change
   does with it, and by whether the relationship's records can be chosen.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Managing.{Note, Person, Seal, Tag, TicketSeal, TicketTag}
-  alias AshTable.Test.Picking.{Port, Zone}
+  alias AshDataTable.Test.Managing.{Note, Person, Seal, Tag, TicketSeal, TicketTag}
+  alias AshDataTable.Test.Picking.{Port, Zone}
 
   ets do
     private? true

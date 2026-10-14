@@ -14,7 +14,7 @@ app's layout
 
 <!-- source: demo/config/config.exs -->
 ```elixir
-config :ash_table,
+config :ash_data_table,
   layout: {DemoWeb.Layouts, :app},
   # ...
 ```
@@ -27,7 +27,7 @@ for translations.)
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```heex
-<AshTable.table
+<AshDataTable.table
   id="dashboard-projects"
   resource={Demo.Tracker.Project}
   heading={2}
@@ -90,7 +90,7 @@ A layout that needs anything else gets a small wrapper component of yours
 that supplies it.
 
 The setting is read when the page is rendered, so it can be changed without
-recompiling the dependency. `mix ash_table.install` sets it when your app has
+recompiling the dependency. `mix ash_data_table.install` sets it when your app has
 `MyAppWeb.Layouts.app/1`.
 
 Inside the layout the page is the table, and the first line of the table is
@@ -110,13 +110,13 @@ labels a second time without the layout
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
 # The labels once more, without the app layout that the configuration
-# (`config :ash_table, layout: …`) puts around the tables above.
-ash_table "/bare/labels", Demo.Tracker.Label, layout: false
+# (`config :ash_data_table, layout: …`) puts around the tables above.
+ash_data_table "/bare/labels", Demo.Tracker.Label, layout: false
 ```
 
 | On the router line | The page is rendered in |
 | --- | --- |
-| nothing | The component named by `config :ash_table, layout:`; bare when there is no such setting. |
+| nothing | The component named by `config :ash_data_table, layout:`; bare when there is no such setting. |
 | `layout: {Module, :function}` | That component. |
 | `layout: false` | No layout: bare, in the root layout. |
 
@@ -131,7 +131,7 @@ does, or give the table a layout that has one.
 
 ### The router line
 
-`ash_table path, resource, options` expands to a `live` route. It sits in
+`ash_data_table path, resource, options` expands to a `live` route. It sits in
 whichever `scope`, pipeline and `live_session` surround it, so the page gets
 your plugs and your `on_mount` hooks like any LiveView of your own.
 
@@ -147,14 +147,14 @@ router is compiled.
 
 ## Embedding a table in your own LiveView
 
-`<AshTable.table>` renders the same table inside a page you own. The demo's
+`<AshDataTable.table>` renders the same table inside a page you own. The demo's
 dashboard places two of them in its own layout, under its own `h1`, each in
 a section of its own:
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```heex
 <section id="dashboard-tasks-section" aria-labelledby="dashboard-tasks-name">
-  <AshTable.table
+  <AshDataTable.table
     id="dashboard-tasks"
     resource={Demo.Tracker.Task}
     heading={2}
@@ -168,7 +168,7 @@ a section of its own:
 | Attribute | Required | Meaning |
 | --- | --- | --- |
 | `id` | | Unique on the page. It prefixes every DOM id of the table. Defaults to the last part of the resource's module name, underscored (`task`), followed by `_` and the table's name for a named table (`task_board`). |
-| `resource` | yes | A resource that lists `AshTable.Resource`. |
+| `resource` | yes | A resource that lists `AshDataTable.Resource`. |
 | `table` | | Which of the resource's tables is placed: the name of a [named table](named-tables.md). Left out, it is the default table. |
 | `scope` | | An `Ash.Scope` carrying actor and tenant. |
 | `actor`, `tenant` | | Used when no `scope` is given. |
@@ -223,11 +223,11 @@ from a LiveView that exists for the demo's tests
 <!-- source: demo/test/support/plain_tables.ex -->
 ```heex
 <%!-- a domain with `authorize? false`, and the table told nothing --%>
-<AshTable.table id="open" resource={Unguarded.Note} />
+<AshDataTable.table id="open" resource={Unguarded.Note} />
 <%!-- the same resource, the table told to authorize --%>
-<AshTable.table id="checked" resource={Unguarded.Note} authorize?={true} />
+<AshDataTable.table id="checked" resource={Unguarded.Note} authorize?={true} />
 <%!-- who is asking as a scope --%>
-<AshTable.table id="scoped" resource={Guarded.Note} scope={assigns[:viewer_scope]} />
+<AshDataTable.table id="scoped" resource={Guarded.Note} scope={assigns[:viewer_scope]} />
 ```
 
 The first two tables show `authorize?`. An embedded table authorizes as its
@@ -246,7 +246,7 @@ function looks at, such as `assigns={%{current_user: @current_user}}`; see
 
 | | Mounted | Embedded |
 | --- | --- | --- |
-| Declared in | the router, with `ash_table` | a template, with `<AshTable.table>` |
+| Declared in | the router, with `ash_data_table` | a template, with `<AshDataTable.table>` |
 | The page | the library's, in your layout | yours |
 | The table's name, above the grid | an `h1` | text, a heading of the level `heading` gives, or left out |
 | `id` | defaults to the resource's name | required |
@@ -322,14 +322,14 @@ it:
 
 | Custom property | What it says | Default |
 | --- | --- | --- |
-| `--ash-table-ground` | The colour behind the table, for the cells that stay in view with `sticky_label?`: they have to cover what scrolls under them. | The theme's `--color-base-100` |
-| `--ash-table-bottom` | How much of the bottom of the window the host covers with something of its own (a fixed footer), in pixels. The second scrollbar stays above it. | `0` |
+| `--ash-data-table-ground` | The colour behind the table, for the cells that stay in view with `sticky_label?`: they have to cover what scrolls under them. | The theme's `--color-base-100` |
+| `--ash-data-table-bottom` | How much of the bottom of the window the host covers with something of its own (a fixed footer), in pixels. The second scrollbar stays above it. | `0` |
 
 <!-- sketch -->
 ```css
 /* a table on a card of another colour, in an app with a footer 48px high */
-.my-card { --ash-table-ground: var(--color-base-200); }
-:root { --ash-table-bottom: 48px; }
+.my-card { --ash-data-table-ground: var(--color-base-200); }
+:root { --ash-data-table-bottom: 48px; }
 ```
 
 The second scrollbar is placed in the window (`position: fixed`), within
@@ -374,7 +374,7 @@ bottom edge is theirs.
   has to be `{module, function}` or `false`. That the function exists is
   found out when the page is rendered.
 - **Route helpers.** For apps that still generate them, the route is named
-  after the id: `ash_table_task` for the id `task`.
+  after the id: `ash_data_table_task` for the id `task`.
 - **Two routes for one resource**, as `/labels` and `/bare/labels` in the
   demo, are two pages of the same table with the same id. Give one of them
   another `id` if their saved links should differ.
@@ -383,7 +383,7 @@ bottom edge is theirs.
 
 - **The mounted table has no navigation and no flash.** No `layout` is
   configured, so the page is bare.
-- **Using an alias in the router line.** `ash_table "/tasks", Task` inside
+- **Using an alias in the router line.** `ash_data_table "/tasks", Task` inside
   `scope "/", MyAppWeb` does not become `MyAppWeb.Task`; write the resource's
   full name.
 - **An embedded table shows nothing to anyone.** It was given no `actor` or

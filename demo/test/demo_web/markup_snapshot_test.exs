@@ -251,7 +251,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
 
       [project | _] = world.projects
       Ash.create!(Task, %{title: "Arrived meanwhile", project_id: project.id}, as(world.admin))
-      AshTable.Test.flush(view)
+      AshDataTable.Test.flush(view)
       snapshot("10-dashboard", render_async(view, 10_000))
     end
   end

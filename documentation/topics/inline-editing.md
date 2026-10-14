@@ -69,7 +69,7 @@ table do
   # edited through an action of its own
   column :priority do
     update_action :reprioritise
-    component AshTable.Components.Badge
+    component AshDataTable.Components.Badge
   end
 
   # numbers: one that is always there and one that can be empty. Progress

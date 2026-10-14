@@ -1,13 +1,13 @@
-defmodule AshTable.Test.Acting do
+defmodule AshDataTable.Test.Acting do
   @moduledoc """
   A resource for the tests of what a table lets a person run: row actions
   that run straight away and ones that open the action panel, inputs of
   every kind, and a create action.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -18,7 +18,7 @@ defmodule AshTable.Test.Acting do
     attribute :urgent, :boolean, allow_nil?: false, default: false, public?: true
     attribute :due_on, :date, public?: true
     attribute :seen_at, :utc_datetime, public?: true
-    attribute :status, AshTable.Test.Status, allow_nil?: false, default: :open, public?: true
+    attribute :status, AshDataTable.Test.Status, allow_nil?: false, default: :open, public?: true
     # a key: a plain field
     attribute :owner_id, :uuid, public?: true
     # required, and filled in by itself
@@ -26,7 +26,7 @@ defmodule AshTable.Test.Acting do
     # arrays of values a table has a field for
     attribute :labels, {:array, :string}, public?: true
 
-    attribute :stages, {:array, AshTable.Test.Status},
+    attribute :stages, {:array, AshDataTable.Test.Status},
       allow_nil?: false,
       default: [],
       public?: true
@@ -143,12 +143,12 @@ defmodule AshTable.Test.Acting do
   end
 end
 
-defmodule AshTable.Test.Acting.Board do
+defmodule AshDataTable.Test.Acting.Board do
   @moduledoc "A row that expands into tables which can and cannot create."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -157,22 +157,22 @@ defmodule AshTable.Test.Acting.Board do
 
   relationships do
     # a has-many whose create action accepts the linking field
-    has_many :cards, AshTable.Test.Acting.Card, public?: true
+    has_many :cards, AshDataTable.Test.Acting.Card, public?: true
     # one record of the same
-    has_one :cover, AshTable.Test.Acting.Card, public?: true
+    has_one :cover, AshDataTable.Test.Acting.Card, public?: true
     # without attributes
-    has_many :all_cards, AshTable.Test.Acting.Card, no_attributes?: true, public?: true
+    has_many :all_cards, AshDataTable.Test.Acting.Card, no_attributes?: true, public?: true
     # through a path: Ash reads these, and writes none
-    has_many :cards_by_path, AshTable.Test.Acting.Card do
+    has_many :cards_by_path, AshDataTable.Test.Acting.Card do
       through [:cards, :board, :cards]
       public? true
     end
 
     # a has-many whose create action does not accept the linking field
-    has_many :stickers, AshTable.Test.Acting.Sticker, public?: true
+    has_many :stickers, AshDataTable.Test.Acting.Sticker, public?: true
 
-    many_to_many :friends, AshTable.Test.Acting.Card do
-      through AshTable.Test.Acting.Friend
+    many_to_many :friends, AshDataTable.Test.Acting.Card do
+      through AshDataTable.Test.Acting.Friend
       source_attribute_on_join_resource :board_id
       destination_attribute_on_join_resource :card_id
       public? true
@@ -188,12 +188,12 @@ defmodule AshTable.Test.Acting.Board do
   end
 end
 
-defmodule AshTable.Test.Acting.Card do
+defmodule AshDataTable.Test.Acting.Card do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -201,7 +201,7 @@ defmodule AshTable.Test.Acting.Card do
   end
 
   relationships do
-    belongs_to :board, AshTable.Test.Acting.Board,
+    belongs_to :board, AshDataTable.Test.Acting.Board,
       allow_nil?: false,
       public?: true,
       attribute_public?: true
@@ -217,12 +217,12 @@ defmodule AshTable.Test.Acting.Card do
   end
 end
 
-defmodule AshTable.Test.Acting.Sticker do
+defmodule AshDataTable.Test.Acting.Sticker do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -230,7 +230,7 @@ defmodule AshTable.Test.Acting.Sticker do
   end
 
   relationships do
-    belongs_to :board, AshTable.Test.Acting.Board, public?: true, attribute_public?: true
+    belongs_to :board, AshDataTable.Test.Acting.Board, public?: true, attribute_public?: true
   end
 
   actions do
@@ -243,15 +243,15 @@ defmodule AshTable.Test.Acting.Sticker do
   end
 end
 
-defmodule AshTable.Test.Acting.Friend do
+defmodule AshDataTable.Test.Acting.Friend do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   relationships do
-    belongs_to :board, AshTable.Test.Acting.Board, primary_key?: true, allow_nil?: false
-    belongs_to :card, AshTable.Test.Acting.Card, primary_key?: true, allow_nil?: false
+    belongs_to :board, AshDataTable.Test.Acting.Board, primary_key?: true, allow_nil?: false
+    belongs_to :card, AshDataTable.Test.Acting.Card, primary_key?: true, allow_nil?: false
   end
 
   actions do
@@ -259,12 +259,12 @@ defmodule AshTable.Test.Acting.Friend do
   end
 end
 
-defmodule AshTable.Test.Acting.Plain do
+defmodule AshDataTable.Test.Acting.Plain do
   @moduledoc "A table without row actions and without a create action."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -276,16 +276,16 @@ defmodule AshTable.Test.Acting.Plain do
   end
 end
 
-defmodule AshTable.Test.Acting.Sheet do
+defmodule AshDataTable.Test.Acting.Sheet do
   @moduledoc """
   Row actions that run on several rows at once, and ones that do not: one
   that the block keeps to one row, and ones that accept a value no two
   records can share.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id, writable?: true
@@ -296,9 +296,9 @@ defmodule AshTable.Test.Acting.Sheet do
   end
 
   identities do
-    identity :unique_code, [:code], pre_check_with: AshTable.Test.Domain
+    identity :unique_code, [:code], pre_check_with: AshDataTable.Test.Domain
     # an identity of two: either can be the same on many records
-    identity :unique_title_of_a_kind, [:title, :kind], pre_check_with: AshTable.Test.Domain
+    identity :unique_title_of_a_kind, [:title, :kind], pre_check_with: AshDataTable.Test.Domain
   end
 
   actions do

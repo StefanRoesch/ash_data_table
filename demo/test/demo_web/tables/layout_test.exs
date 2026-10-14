@@ -1,7 +1,7 @@
 defmodule DemoWeb.Tables.LayoutTest do
   @moduledoc """
   The layout around a mounted table: the app layout named in the config
-  (`config :ash_table, layout: {DemoWeb.Layouts, :app}`), unless the router
+  (`config :ash_data_table, layout: {DemoWeb.Layouts, :app}`), unless the router
   line says otherwise.
   """
   use DemoWeb.ConnCase, async: true

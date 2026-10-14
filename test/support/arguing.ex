@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Arguing do
+defmodule AshDataTable.Test.Arguing do
   @moduledoc """
   Resources for the tests of the argument line: a read action that takes
   arguments of every kind, and a calculation with arguments that is a column
@@ -12,9 +12,9 @@ defmodule AshTable.Test.Arguing do
   def rate(assigns, more), do: Map.get(assigns, :rate, 5) + more
 end
 
-defmodule AshTable.Test.Arguing.Priced do
+defmodule AshDataTable.Test.Arguing.Priced do
   @moduledoc """
-  `use AshTable.Test.Arguing.Priced` gives a resource a name, an amount, a
+  `use AshDataTable.Test.Arguing.Priced` gives a resource a name, an amount, a
   count aggregate, and a calculation with three arguments: `rate`, which it
   cannot be computed without; `currency`, which has a default; and `places`,
   which may be empty and has none. For the tests of the `table` block.
@@ -23,9 +23,9 @@ defmodule AshTable.Test.Arguing.Priced do
   defmacro __using__(_opts) do
     quote do
       use Ash.Resource,
-        domain: AshTable.Test.Domain,
+        domain: AshDataTable.Test.Domain,
         data_layer: Ash.DataLayer.Ets,
-        extensions: [AshTable.Resource]
+        extensions: [AshDataTable.Resource]
 
       attributes do
         uuid_primary_key :id
@@ -35,7 +35,7 @@ defmodule AshTable.Test.Arguing.Priced do
       end
 
       relationships do
-        has_many :comments, AshTable.Test.Comment, destination_attribute: :issue_id
+        has_many :comments, AshDataTable.Test.Comment, destination_attribute: :issue_id
       end
 
       aggregates do
@@ -65,19 +65,19 @@ defmodule AshTable.Test.Arguing.Priced do
   end
 end
 
-defmodule AshTable.Test.Arguing.Kind do
+defmodule AshDataTable.Test.Arguing.Kind do
   @moduledoc false
   use Ash.Type.Enum, values: [plain: [label: "Plain"], fancy: [label: "Fancy"]]
 end
 
-defmodule AshTable.Test.Arguing.Price do
+defmodule AshDataTable.Test.Arguing.Price do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Arguing.Kind
+  alias AshDataTable.Test.Arguing.Kind
 
   ets do
     private? true
@@ -175,20 +175,20 @@ defmodule AshTable.Test.Arguing.Price do
       as :amount_fn
       label "Converted"
       arguments currency: :usd
-      ask :rate, default: &AshTable.Test.Arguing.rate/1, label: "Exchange rate"
+      ask :rate, default: &AshDataTable.Test.Arguing.rate/1, label: "Exchange rate"
     end
   end
 end
 
-defmodule AshTable.Test.Arguing.Guarded do
+defmodule AshDataTable.Test.Arguing.Guarded do
   @moduledoc false
   # A calculation with an argument that only an admin sees, as a column
   # twice: each column, and what it asks for, goes with the field.
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   ets do
     private? true

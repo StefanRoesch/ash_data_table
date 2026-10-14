@@ -5,7 +5,7 @@ defmodule DemoWeb.Support.Cells.Probe do
   component must never see: a value that is hidden from the person or not
   there, a record, or an assign beyond the documented ones.
   """
-  use AshTable.Component
+  use AshDataTable.Component
 
   @cell_assigns [:column, :text, :value]
   @editor_assigns [:column, :control, :label, :place, :value]
@@ -80,7 +80,7 @@ end
 
 defmodule DemoWeb.Support.Cells.Dial do
   @moduledoc "A component that only edits, and saves when its value changes."
-  use AshTable.Component, commit: :change
+  use AshDataTable.Component, commit: :change
 
   def editor(assigns) do
     ~H"""
@@ -108,12 +108,12 @@ end
 defmodule Demo.Support.Styled.Portrait do
   @moduledoc """
   A portrait: a text column that holds where a picture is, shown with
-  `AshTable.Components.Image`.
+  `AshDataTable.Components.Image`.
   """
   use Ash.Resource,
     domain: Demo.Support.Styled,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -122,7 +122,7 @@ defmodule Demo.Support.Styled.Portrait do
     column :name
 
     column :picture do
-      component AshTable.Components.Image
+      component AshDataTable.Components.Image
     end
   end
 
@@ -157,7 +157,7 @@ defmodule Demo.Support.Styled.Gauge do
     domain: Demo.Support.Styled,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :code do

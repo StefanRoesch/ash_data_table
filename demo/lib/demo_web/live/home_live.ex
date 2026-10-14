@@ -2,7 +2,7 @@ defmodule DemoWeb.HomeLive do
   @moduledoc """
   The demo's front page: who you are, and the resources of the demo with what
   you, as that actor, can see of them, and links to the tables that
-  `ash_table` mounts in the router.
+  `ash_data_table` mounts in the router.
   """
   use DemoWeb, :live_view
 

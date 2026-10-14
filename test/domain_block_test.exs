@@ -1,20 +1,20 @@
-defmodule AshTable.DomainBlockTest do
+defmodule AshDataTable.DomainBlockTest do
   @moduledoc "Boundary 1: the `table` block of a domain at compile time."
   use ExUnit.Case, async: true
 
   import Spark.Test
 
-  alias AshTable.Domain.Info
+  alias AshDataTable.Domain.Info
 
   describe "a domain with the extension and no block" do
     test "authorizes, and reads who is asking from the conventional assigns" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.DomainBlockTest.Defaults do
-          use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+        defmodule Elixir.AshDataTable.DomainBlockTest.Defaults do
+          use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
         end
       end
 
-      alias AshTable.DomainBlockTest.Defaults
+      alias AshDataTable.DomainBlockTest.Defaults
 
       assert Info.table_authorize?(Defaults) == true
       assert Info.table_scope_assign!(Defaults) == :current_scope
@@ -25,18 +25,18 @@ defmodule AshTable.DomainBlockTest do
 
   describe "a domain without the extension" do
     test "behaves as one with the defaults" do
-      assert Info.table_authorize?(AshTable.Test.Domain) == true
-      assert Info.table_scope_assign!(AshTable.Test.Domain) == :current_scope
-      assert Info.table_actor_assign!(AshTable.Test.Domain) == :current_user
-      assert Info.table_tenant_assign!(AshTable.Test.Domain) == :current_tenant
+      assert Info.table_authorize?(AshDataTable.Test.Domain) == true
+      assert Info.table_scope_assign!(AshDataTable.Test.Domain) == :current_scope
+      assert Info.table_actor_assign!(AshDataTable.Test.Domain) == :current_user
+      assert Info.table_tenant_assign!(AshDataTable.Test.Domain) == :current_tenant
     end
   end
 
   describe "a block" do
     test "sets `authorize?` and the three assign names" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.DomainBlockTest.Declared do
-          use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+        defmodule Elixir.AshDataTable.DomainBlockTest.Declared do
+          use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
           table do
             authorize? false
@@ -47,7 +47,7 @@ defmodule AshTable.DomainBlockTest do
         end
       end
 
-      alias AshTable.DomainBlockTest.Declared
+      alias AshDataTable.DomainBlockTest.Declared
 
       assert Info.table_authorize?(Declared) == false
       assert Info.table_scope_assign!(Declared) == :scope
@@ -58,8 +58,8 @@ defmodule AshTable.DomainBlockTest do
     test "rejects an `authorize?` that is not a boolean" do
       error =
         assert_raise Spark.Error.DslError, fn ->
-          defmodule Elixir.AshTable.DomainBlockTest.AuthorizeSometimes do
-            use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+          defmodule Elixir.AshDataTable.DomainBlockTest.AuthorizeSometimes do
+            use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
             table do
               authorize? :sometimes
@@ -79,8 +79,8 @@ defmodule AshTable.DomainBlockTest do
       test "rejects a `#{option}` that is not an atom" do
         error =
           assert_raise Spark.Error.DslError, fn ->
-            defmodule unquote(Module.concat(AshTable.DomainBlockTest, name)) do
-              use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+            defmodule unquote(Module.concat(AshDataTable.DomainBlockTest, name)) do
+              use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
               table do
                 unquote(option)("current_user")

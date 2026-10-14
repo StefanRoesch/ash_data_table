@@ -68,7 +68,7 @@ A resource that lists the extension has a default table whether it writes a
 `table` block or not, as before. So a resource may declare named tables
 only: its default table is then the default set of columns, read through the
 primary read action. It is the table that a picker shows, that a
-relationship nests when it names no table, and that `ash_table` mounts
+relationship nests when it names no table, and that `ash_data_table` mounts
 without `table:`.
 
 ### Names
@@ -85,13 +85,13 @@ wherever a table is named, `:default` names the default table:
 
 ## Mounting a named table
 
-`ash_table` takes the name as `table:`
+`ash_data_table` takes the name as `table:`
 ([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
-ash_table "/tasks/board", Demo.Tracker.Task, table: :board
-ash_table "/comments/compact", Demo.Tracker.Comment, table: :compact
+ash_data_table "/tasks/board", Demo.Tracker.Task, table: :board
+ash_data_table "/comments/compact", Demo.Tracker.Comment, table: :compact
 ```
 
 The page is like any mounted table: the layout, who is reading, the heading
@@ -110,7 +110,7 @@ and lists the tables there are:
 
 <!-- sketch -->
 ```text
-** (ArgumentError) `ash_table` mounts the table `:compakt` of Demo.Tracker.Comment at "/comments/compact", but Demo.Tracker.Comment has no table named `:compakt`. Its tables: `:compact`, and the default table.
+** (ArgumentError) `ash_data_table` mounts the table `:compakt` of Demo.Tracker.Comment at "/comments/compact", but Demo.Tracker.Comment has no table named `:compakt`. Its tables: `:compact`, and the default table.
 ```
 
 A `table:` that cannot be a name at all (a string, an atom with a capital
@@ -118,13 +118,13 @@ letter) raises when the router is compiled.
 
 ## Placing a named table
 
-`<AshTable.table>` takes the name as `table`. The demo's page `/named`
+`<AshDataTable.table>` takes the name as `table`. The demo's page `/named`
 places two tables of the comments
 ([`demo/lib/demo_web/live/named_live.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/live/named_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/named_live.ex -->
 ```heex
-<AshTable.table
+<AshDataTable.table
   resource={Demo.Tracker.Comment}
   table={:compact}
   label="Comments, compact"
@@ -154,8 +154,8 @@ page. Unless you give one, it is:
 | A named table | that, `_` and the table's name | `comment_compact` |
 
 So two tables of one resource stand on one page, and in one address,
-without an `id` being written. This holds for `ash_table` and for
-`<AshTable.table>`, where `id` can now be left out.
+without an `id` being written. This holds for `ash_data_table` and for
+`<AshDataTable.table>`, where `id` can now be left out.
 
 **Try it:** `/named` as Ada Admin. Click "Body" in the lower table, then in
 the upper one. The address holds both, each under its own id:
@@ -251,7 +251,7 @@ extension. The compact table of the comments
 ```elixir
 defmodule Demo.Tracker.Comment.CompactTable do
   # ...
-  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
   tables do
     table :compact do
@@ -283,7 +283,7 @@ use Ash.Resource,
   domain: Demo.Tracker,
   data_layer: AshPostgres.DataLayer,
   authorizers: [Ash.Policy.Authorizer],
-  extensions: [AshTable.Resource],
+  extensions: [AshDataTable.Resource],
   # A second table of the comments, declared in a file of its own:
   # `comment/compact_table.ex`.
   fragments: [Demo.Tracker.Comment.CompactTable],
@@ -343,17 +343,17 @@ Take the line out again.
 
 ## Reading a resource's tables
 
-`AshTable.Resource.Info.tables/1` returns every table of a resource, the
-default table first, and `AshTable.Resource.Info.table/2` the one of a
-name. Both give an `AshTable.Resource.Table`, in one shape for the default
+`AshDataTable.Resource.Info.tables/1` returns every table of a resource, the
+default table first, and `AshDataTable.Resource.Info.table/2` the one of a
+name. Both give an `AshDataTable.Resource.Table`, in one shape for the default
 table and a named one:
 
 <!-- sketch -->
 ```elixir
-AshTable.Resource.Info.tables(Demo.Tracker.Comment) |> Enum.map(& &1.name)
+AshDataTable.Resource.Info.tables(Demo.Tracker.Comment) |> Enum.map(& &1.name)
 #=> [:default, :compact]
 
-{:ok, table} = AshTable.Resource.Info.table(Demo.Tracker.Comment, :compact)
+{:ok, table} = AshDataTable.Resource.Info.table(Demo.Tracker.Comment, :compact)
 Enum.map(table.columns, & &1.name)
 #=> [:body, :author, :inserted_at]
 ```
@@ -380,7 +380,7 @@ the others) are about the default table.
   says when its read is refused.
 - **An upload** belongs to the table that declares it, and limits the file
   arguments of that table's actions only.
-- **The settings of the domain** (`AshTable.Domain`: the assign names and
+- **The settings of the domain** (`AshDataTable.Domain`: the assign names and
   `authorize?`) hold for every table of the domain's resources.
 - **A full view from a table placed with another `id`** works as before: the
   link is found by resource and table, not by id.
@@ -399,7 +399,7 @@ the others) are about the default table.
   not meet.
 - **Forgetting `fragments:`.** A fragment that no resource lists declares
   nothing, and nothing warns.
-- **Forgetting `extensions: [AshTable.Resource]` on the fragment.** The
+- **Forgetting `extensions: [AshDataTable.Resource]` on the fragment.** The
   `tables` block is then unknown there, and the fragment does not compile.
 
 ## Not in the first version

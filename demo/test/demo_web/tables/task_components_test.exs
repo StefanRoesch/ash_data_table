@@ -1,8 +1,8 @@
 defmodule DemoWeb.Tables.TaskComponentsTest do
   @moduledoc """
   The components of the table at `/tasks`: the three that are shipped
-  (`AshTable.Components.Badge` on "State" and "Priority", and
-  `AshTable.Components.Progress` with `AshTable.Components.Slider`, put
+  (`AshDataTable.Components.Badge` on "State" and "Priority", and
+  `AshDataTable.Components.Progress` with `AshDataTable.Components.Slider`, put
   together in `DemoWeb.Cells.Progress`, on "Progress") and the demo's own
   (`DemoWeb.Cells.Hours` on "Estimate hours").
   """

@@ -60,7 +60,7 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
     cell = "[id='task-row-#{task.id}-n-comments-c']"
     assert [outer] = attribute(html, "#{cell} > div", "class")
     assert Enum.sort(String.split(outer)) == ["left-0", "sticky", "w-0"]
-    assert attribute(html, "#{cell} > div > div", "class") == ["w-[var(--ash-table-view)]"]
+    assert attribute(html, "#{cell} > div > div", "class") == ["w-[var(--ash-data-table-view)]"]
     assert attribute(html, "#{cell} > div > div > [id='#{comments}']", "id") == [comments]
 
     assert [class] = attribute(html, "[id='#{comments}-grid']", "class")

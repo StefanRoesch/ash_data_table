@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Summarising do
+defmodule AshDataTable.Test.Summarising do
   @moduledoc """
   Resources for the tests of footer summaries: what a summary is over, and
   what it must not say to a person.
@@ -7,12 +7,12 @@ defmodule AshTable.Test.Summarising do
   """
 end
 
-defmodule AshTable.Test.Summarising.Project do
+defmodule AshDataTable.Test.Summarising.Project do
   @moduledoc "The parent of tickets: its table nests them."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -20,7 +20,7 @@ defmodule AshTable.Test.Summarising.Project do
   end
 
   relationships do
-    has_many :tickets, AshTable.Test.Summarising.Ticket, public?: true
+    has_many :tickets, AshDataTable.Test.Summarising.Ticket, public?: true
   end
 
   actions do
@@ -34,7 +34,7 @@ defmodule AshTable.Test.Summarising.Project do
   end
 end
 
-defmodule AshTable.Test.Summarising.Ticket do
+defmodule AshDataTable.Test.Summarising.Ticket do
   @moduledoc """
   Tickets with a row policy and two field policies that depend on the read
   action:
@@ -51,10 +51,10 @@ defmodule AshTable.Test.Summarising.Ticket do
   `:read`, and the table `:longer` through an action with an argument.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -68,7 +68,7 @@ defmodule AshTable.Test.Summarising.Ticket do
   end
 
   relationships do
-    belongs_to :project, AshTable.Test.Summarising.Project, public?: true
+    belongs_to :project, AshDataTable.Test.Summarising.Project, public?: true
   end
 
   actions do
@@ -187,12 +187,12 @@ defmodule AshTable.Test.Summarising.Ticket do
   end
 end
 
-defmodule AshTable.Test.Summarising.Entry do
+defmodule AshDataTable.Test.Summarising.Entry do
   @moduledoc "Entries of several organisations: a tenant reads its own."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   multitenancy do
     strategy :attribute

@@ -229,12 +229,12 @@ on such a column is reported when the resource is compiled.
 ## Translating the kinds
 
 What a kind is called is your resource's wording, looked up in the Gettext
-domain `ash_table` of your backend, as a column's label and the label of an
+domain `ash_data_table` of your backend, as a column's label and the label of an
 enum's value are ([Messages and translations](messages-and-translations.md#your-resources-wording)).
 "Kind" itself is one of the table's own texts. The demo translates both
-([`demo/priv/gettext/de/LC_MESSAGES/ash_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "Kind"
 msgstr "Art"
@@ -295,7 +295,7 @@ the panel of "A union": "Art" offers "Zahl", "Text", "Farbton" and
   the kind. Where the kind matters to a reader, give the kinds values that
   tell them apart, or show the kind in a calculation column.
 - **"Kind" is in English in a translated table.** It is one of the table's
-  own texts: add it to your `ash_table.po`.
+  own texts: add it to your `ash_data_table.po`.
 
 ## Not in the first version
 

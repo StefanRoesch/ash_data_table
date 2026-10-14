@@ -1,8 +1,8 @@
 defmodule DemoWeb.Tables.UncheckedTableTest do
   @moduledoc """
   A table that is mounted without authorization
-  (`ash_table "/path", Resource, authorize?: false`), and one that is placed
-  so (`<AshTable.table authorize?={false}>`).
+  (`ash_data_table "/path", Resource, authorize?: false`), and one that is placed
+  so (`<AshDataTable.table authorize?={false}>`).
 
   The resources are of a domain that authorizes, and their policies and
   field policies allow nobody anything (`test/support/unchecked_tables.ex`):
@@ -344,21 +344,21 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
     test "a table without authorization is sent to a page mounted without, and any other never to one" do
       router = DemoWeb.Router
 
-      assert AshTable.Routes.table(router, Entry, :default, false) ==
+      assert AshDataTable.Routes.table(router, Entry, :default, false) ==
                %{path: "/support/open/entries", id: "entry"}
 
       for told <- [nil, true] do
-        assert AshTable.Routes.table(router, Entry, :default, told) ==
+        assert AshDataTable.Routes.table(router, Entry, :default, told) ==
                  %{path: "/support/closed/entries", id: "entry"}
       end
 
       # the keepers are mounted without authorization alone: no other table links there
-      assert AshTable.Routes.table(router, Keeper, :default, false) ==
+      assert AshDataTable.Routes.table(router, Keeper, :default, false) ==
                %{path: "/support/open/keepers", id: "keeper"}
 
-      assert AshTable.Routes.table(router, Keeper, :default, nil) == nil
+      assert AshDataTable.Routes.table(router, Keeper, :default, nil) == nil
       # nor one of another table of the resource than the one that is mounted
-      assert AshTable.Routes.table(router, Keeper, :compact, false) == nil
+      assert AshDataTable.Routes.table(router, Keeper, :compact, false) == nil
     end
   end
 
@@ -380,17 +380,18 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
     end
 
     test "is checked when the router is compiled: `true`, `false`, or nothing" do
-      assert AshTable.Router.__live_opts__(Case, authorize?: false)[:metadata].ash_table.authorize? ==
+      assert AshDataTable.Router.__live_opts__(Case, authorize?: false)[:metadata].ash_data_table.authorize? ==
                false
 
-      assert AshTable.Router.__live_opts__(Case, authorize?: true)[:metadata].ash_table.authorize? ==
+      assert AshDataTable.Router.__live_opts__(Case, authorize?: true)[:metadata].ash_data_table.authorize? ==
                true
 
-      assert AshTable.Router.__live_opts__(Case, [])[:metadata].ash_table.authorize? == nil
+      assert AshDataTable.Router.__live_opts__(Case, [])[:metadata].ash_data_table.authorize? ==
+               nil
 
       assert_raise ArgumentError,
-                   "the :authorize? of ash_table must be `true` or `false`, got: \"no\"",
-                   fn -> AshTable.Router.__live_opts__(Case, authorize?: "no") end
+                   "the :authorize? of ash_data_table must be `true` or `false`, got: \"no\"",
+                   fn -> AshDataTable.Router.__live_opts__(Case, authorize?: "no") end
     end
   end
 

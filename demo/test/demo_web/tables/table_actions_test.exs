@@ -110,7 +110,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
       # the action that asks first is not run by its button
       html = table_act(view, "chore", "sweep")
 
-      assert_push_event view, "ash_table:ask", %{
+      assert_push_event view, "ash_data_table:ask", %{
         table: "chore",
         action: :sweep,
         question: "Remove every finished chore?"
@@ -517,7 +517,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
 
       table_act(view, shifts, "clear", on: "rota-row-#{rota.id}-l-shifts-do-clear")
 
-      assert_push_event view, "ash_table:ask", %{
+      assert_push_event view, "ash_data_table:ask", %{
         table: ^shifts,
         action: :clear,
         question: "Remove every shift, of every rota?"

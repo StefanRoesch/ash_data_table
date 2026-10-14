@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Presenting do
+defmodule AshDataTable.Test.Presenting do
   @moduledoc """
   A resource for the tests of what a table makes of a column's `component`:
   one that only shows, one that only edits, one that does both, and columns
@@ -8,10 +8,10 @@ defmodule AshTable.Test.Presenting do
   The actors of these tests are maps: `%{role: :admin}`.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -85,30 +85,30 @@ defmodule AshTable.Test.Presenting do
     update_action :update
 
     column :mood do
-      component AshTable.Test.Cells.Shout
+      component AshDataTable.Test.Cells.Shout
     end
 
     column :level do
       label "Rung"
-      component AshTable.Test.Cells.Knob
+      component AshDataTable.Test.Cells.Knob
     end
 
     column :note do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     column :grade do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     column :plain
 
     column :secret do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     column :loud_mood do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     action :relevel
@@ -116,12 +116,12 @@ defmodule AshTable.Test.Presenting do
   end
 end
 
-defmodule AshTable.Test.Presenting.Lists do
+defmodule AshDataTable.Test.Presenting.Lists do
   @moduledoc "Arrays whose columns have a component: one that shows and edits, one that only edits."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -141,28 +141,28 @@ defmodule AshTable.Test.Presenting.Lists do
     update_action :update
 
     column :moods do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     column :grades do
-      component AshTable.Test.Cells.Knob
+      component AshDataTable.Test.Cells.Knob
     end
 
     action :update
   end
 end
 
-defmodule AshTable.Test.Presenting.Maps do
+defmodule AshDataTable.Test.Presenting.Maps do
   @moduledoc "A value made of fields, and an array of them, whose columns have a component."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
-    attribute :place, AshTable.Test.Embedding.Place, public?: true
-    attribute :places, {:array, AshTable.Test.Embedding.Place}, public?: true
+    attribute :place, AshDataTable.Test.Embedding.Place, public?: true
+    attribute :places, {:array, AshDataTable.Test.Embedding.Place}, public?: true
   end
 
   actions do
@@ -178,11 +178,11 @@ defmodule AshTable.Test.Presenting.Maps do
     update_action :update
 
     column :place do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     column :places do
-      component AshTable.Test.Cells.Both
+      component AshDataTable.Test.Cells.Both
     end
 
     action :update

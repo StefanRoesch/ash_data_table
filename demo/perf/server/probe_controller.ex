@@ -33,7 +33,7 @@ defmodule DemoWeb.Perf.ProbeController do
       tasks: Demo.Repo.query!("SELECT count(*) FROM tasks").rows |> hd() |> hd(),
       packages:
         Map.new(
-          ~w(ash_table ash ash_postgres ash_phoenix phoenix phoenix_live_view bandit ecto_sql postgrex)a,
+          ~w(ash_data_table ash ash_postgres ash_phoenix phoenix phoenix_live_view bandit ecto_sql postgrex)a,
           &{&1, version.(&1)}
         )
     })

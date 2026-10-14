@@ -14,7 +14,7 @@ defmodule Demo.Tracker.Comment do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     # A second table of the comments, declared in a file of its own:
     # `comment/compact_table.ex`.
     fragments: [Demo.Tracker.Comment.CompactTable],

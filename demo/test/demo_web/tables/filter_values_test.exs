@@ -595,7 +595,7 @@ defmodule DemoWeb.Tables.FilterValuesTest do
       end
 
       heard = fn ->
-        AshTable.Test.flush(view)
+        AshDataTable.Test.flush(view)
         text(render_async(view, 10_000), "#task-notice > span") || ""
       end
 

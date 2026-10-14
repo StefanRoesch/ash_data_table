@@ -12,7 +12,7 @@ defmodule Demo.Tracker.Deadline do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   alias Demo.Tracker.TaskStatus

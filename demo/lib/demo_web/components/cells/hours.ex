@@ -10,7 +10,7 @@ defmodule DemoWeb.Cells.Hours do
   update action, and never calls the component for an estimate that the
   person may not see.
   """
-  use AshTable.Component
+  use AshDataTable.Component
 
   # How a cell shows the value. `@text` is what the table itself would show.
   # Written on one line: a template that ends in text keeps the line break

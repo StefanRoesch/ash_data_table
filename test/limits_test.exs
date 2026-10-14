@@ -1,14 +1,14 @@
-defmodule AshTable.LimitsTest do
+defmodule AshDataTable.LimitsTest do
   @moduledoc """
   Boundary 2: what the table model says of an input's limits
-  (`AshTable.Model.Limits`), and whether an input is required, each from the
+  (`AshDataTable.Model.Limits`), and whether an input is required, each from the
   action the input belongs to.
   """
   use ExUnit.Case, async: true
 
-  alias AshTable.Model
-  alias AshTable.Model.Limits
-  alias AshTable.Test.Limiting
+  alias AshDataTable.Model
+  alias AshDataTable.Model.Limits
+  alias AshDataTable.Test.Limiting
 
   @none %{min: nil, max: nil, step: nil}
 
@@ -185,7 +185,7 @@ defmodule AshTable.LimitsTest do
   end
 
   describe "how the text of an input is counted" do
-    alias AshTable.Test.Limiting.Texts
+    alias AshDataTable.Test.Limiting.Texts
 
     defp text(name) do
       attribute = Ash.Resource.Info.attribute(Texts, name)

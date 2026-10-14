@@ -7,7 +7,7 @@ defmodule Demo.Support.Secrets do
 
   The actors of these tests are maps: `%{role: :admin}`.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -43,7 +43,7 @@ defmodule Demo.Support.Secrets.Safe do
     domain: Demo.Support.Secrets,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   alias Demo.Support.Secrets.Combination

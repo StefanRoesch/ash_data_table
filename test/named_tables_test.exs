@@ -1,29 +1,29 @@
-defmodule AshTable.NamedTablesTest do
+defmodule AshDataTable.NamedTablesTest do
   @moduledoc """
   Boundaries 1 and 2 for named tables: the `tables` block at compile time,
   with every diagnostic of the `table` block reported for a named table
   under the table's name, and the table model per table of a resource.
 
-  A table in a file of its own (a Spark fragment) is `AshTable.FragmentsTest`.
+  A table in a file of its own (a Spark fragment) is `AshDataTable.FragmentsTest`.
   """
   use ExUnit.Case, async: true
 
   import Spark.Test
 
-  alias AshTable.Model
-  alias AshTable.Resource.Info
-  alias AshTable.Test.Naming.Comment
-  alias AshTable.Test.Naming.Post
+  alias AshDataTable.Model
+  alias AshDataTable.Resource.Info
+  alias AshDataTable.Test.Naming.Comment
+  alias AshDataTable.Test.Naming.Post
 
   # One resource with a mistake of each kind in a named table, beside a
   # default table that has none: each finding names the table in its path.
   setup_all do
     errors =
       dsl_errors do
-        defmodule Elixir.AshTable.NamedTablesTest.Mistakes do
+        defmodule Elixir.AshDataTable.NamedTablesTest.Mistakes do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
-            extensions: [AshTable.Resource]
+            domain: AshDataTable.Test.Domain,
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -34,14 +34,16 @@ defmodule AshTable.NamedTablesTest do
           end
 
           relationships do
-            belongs_to :post, AshTable.Test.Naming.Post, define_attribute?: false, public?: true
+            belongs_to :post, AshDataTable.Test.Naming.Post,
+              define_attribute?: false,
+              public?: true
 
-            has_many :comments, AshTable.Test.Naming.Comment do
+            has_many :comments, AshDataTable.Test.Naming.Comment do
               destination_attribute :post_id
               public? true
             end
 
-            has_many :shelves, AshTable.Test.Relating.Shelf do
+            has_many :shelves, AshDataTable.Test.Relating.Shelf do
               destination_attribute :id
               public? true
             end
@@ -119,7 +121,7 @@ defmodule AshTable.NamedTablesTest do
 
               column :post do
                 sortable? true
-                component AshTable.Components.Badge
+                component AshDataTable.Components.Badge
               end
             end
 
@@ -160,7 +162,7 @@ defmodule AshTable.NamedTablesTest do
       end
 
     found =
-      for {AshTable.NamedTablesTest.Mistakes, errors} <- errors,
+      for {AshDataTable.NamedTablesTest.Mistakes, errors} <- errors,
           error <- errors,
           into: %{},
           do: {error.path, error.message}
@@ -171,13 +173,13 @@ defmodule AshTable.NamedTablesTest do
   describe "the `tables` block" do
     test "declares named tables beside the default table, each with its own options and declarations" do
       assert [
-               %AshTable.Resource.Table{name: :default},
-               %AshTable.Resource.Table{name: :compact},
-               %AshTable.Resource.Table{name: :plain}
+               %AshDataTable.Resource.Table{name: :default},
+               %AshDataTable.Resource.Table{name: :compact},
+               %AshDataTable.Resource.Table{name: :plain}
              ] = Info.tables(Comment)
 
       assert {:ok,
-              %AshTable.Resource.Table{
+              %AshDataTable.Resource.Table{
                 name: :compact,
                 read_action: :recent,
                 paginate_with: nil,
@@ -186,19 +188,19 @@ defmodule AshTable.NamedTablesTest do
                 on_forbidden: :message,
                 max_depth: 0,
                 columns: [
-                  %AshTable.Resource.Column{name: :body, label: "Text"},
-                  %AshTable.Resource.Column{name: :rating}
+                  %AshDataTable.Resource.Column{name: :body, label: "Text"},
+                  %AshDataTable.Resource.Column{name: :rating}
                 ],
                 relationships: [],
                 actions: [],
-                arguments: [%AshTable.Resource.Argument{name: :search, label: "Find"}],
+                arguments: [%AshDataTable.Resource.Argument{name: :search, label: "Find"}],
                 uploads: []
               }} = Info.table(Comment, :compact)
     end
 
     test "the default table comes back in the same shape, under `:default` and under nil" do
       assert {:ok,
-              %AshTable.Resource.Table{
+              %AshDataTable.Resource.Table{
                 name: :default,
                 read_action: nil,
                 update_action: :update,
@@ -206,8 +208,8 @@ defmodule AshTable.NamedTablesTest do
                 on_forbidden: :not_found,
                 max_depth: 2,
                 columns: [%{name: :body}, %{name: :rating}, %{name: :author}],
-                actions: [%AshTable.Resource.Action{name: :destroy}, %{name: :import}],
-                uploads: [%AshTable.Resource.Upload{name: :file, max_file_size: 1_000}]
+                actions: [%AshDataTable.Resource.Action{name: :destroy}, %{name: :import}],
+                uploads: [%AshDataTable.Resource.Upload{name: :file, max_file_size: 1_000}]
               } = default} = Info.table(Comment, :default)
 
       assert Info.table(Comment, nil) == {:ok, default}
@@ -221,8 +223,8 @@ defmodule AshTable.NamedTablesTest do
 
     test "a resource without a `table` block has its default table all the same" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.NamedTablesTest.NoBlock do
-          use Ash.Resource, domain: AshTable.Test.Domain, extensions: [AshTable.Resource]
+        defmodule Elixir.AshDataTable.NamedTablesTest.NoBlock do
+          use Ash.Resource, domain: AshDataTable.Test.Domain, extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -234,20 +236,20 @@ defmodule AshTable.NamedTablesTest do
         end
       end
 
-      assert [%AshTable.Resource.Table{name: :default, columns: [], max_depth: 3}] =
-               Info.tables(AshTable.NamedTablesTest.NoBlock)
+      assert [%AshDataTable.Resource.Table{name: :default, columns: [], max_depth: 3}] =
+               Info.tables(AshDataTable.NamedTablesTest.NoBlock)
     end
 
     test "a table the resource does not have is `:error`, and `table!/2` lists the ones it has" do
       assert Info.table(Comment, :compakt) == :error
 
       assert_raise ArgumentError,
-                   "AshTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table.",
+                   "AshDataTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table.",
                    fn -> Info.table!(Comment, :compakt) end
 
       assert_raise ArgumentError,
-                   "AshTable.Test.Naming.Author has no table named `:compact`. It has the default table only.",
-                   fn -> Info.table!(AshTable.Test.Naming.Author, :compact) end
+                   "AshDataTable.Test.Naming.Author has no table named `:compact`. It has the default table only.",
+                   fn -> Info.table!(AshDataTable.Test.Naming.Author, :compact) end
     end
 
     test "a named table takes nothing over from the default table" do
@@ -275,10 +277,10 @@ defmodule AshTable.NamedTablesTest do
     test "`label_field` is no option of a named table: it belongs to the resource" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:tables, :table, :compact, :label_field]} do
-          defmodule Elixir.AshTable.NamedTablesTest.LabelInNamed do
+          defmodule Elixir.AshDataTable.NamedTablesTest.LabelInNamed do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -301,15 +303,15 @@ defmodule AshTable.NamedTablesTest do
                "`label_field` says what a record of the resource is called, whichever of its tables shows it, so it is no option of a named table. Write `label_field :title` in the `table` block of the resource."
 
       # and it names nothing there
-      assert Info.table_label_field(AshTable.NamedTablesTest.LabelInNamed) == :error
+      assert Info.table_label_field(AshDataTable.NamedTablesTest.LabelInNamed) == :error
     end
 
     test "a resource with named tables and no `table` block compiles: its default table is the default set" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.NamedTablesTest.OnlyNamed do
+        defmodule Elixir.AshDataTable.NamedTablesTest.OnlyNamed do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
-            extensions: [AshTable.Resource]
+            domain: AshDataTable.Test.Domain,
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -328,7 +330,7 @@ defmodule AshTable.NamedTablesTest do
         end
       end
 
-      alias AshTable.NamedTablesTest.OnlyNamed
+      alias AshDataTable.NamedTablesTest.OnlyNamed
 
       assert [%{name: :default, columns: []}, %{name: :compact}] = Info.tables(OnlyNamed)
       assert Enum.map(Model.build(OnlyNamed).columns, & &1.name) == [:id, :title]
@@ -339,14 +341,14 @@ defmodule AshTable.NamedTablesTest do
   describe "a table's name" do
     test "is lower-case letters, digits and `_`, starting with a letter" do
       for {name, at} <- [{:Compact, 1}, {:"with-dash", 2}, {:"1st", 3}, {:"", 4}] do
-        module = Module.concat(AshTable.NamedTablesTest, "BadName#{at}")
+        module = Module.concat(AshDataTable.NamedTablesTest, "BadName#{at}")
 
         error =
           assert_dsl_error %Spark.Error.DslError{path: [:tables, :table, ^name]} do
             defmodule module do
               use Ash.Resource,
-                domain: AshTable.Test.Domain,
-                extensions: [AshTable.Resource]
+                domain: AshDataTable.Test.Domain,
+                extensions: [AshDataTable.Resource]
 
               attributes do
                 uuid_primary_key :id
@@ -372,10 +374,10 @@ defmodule AshTable.NamedTablesTest do
     test "`:default` is the default table's, and no named table can have it" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:tables, :table, :default]} do
-          defmodule Elixir.AshTable.NamedTablesTest.NamedDefault do
+          defmodule Elixir.AshDataTable.NamedTablesTest.NamedDefault do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -398,10 +400,10 @@ defmodule AshTable.NamedTablesTest do
     test "is unique among the tables of a resource" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:tables, :compact]} do
-          defmodule Elixir.AshTable.NamedTablesTest.TwoOfOneName do
+          defmodule Elixir.AshDataTable.NamedTablesTest.TwoOfOneName do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -423,15 +425,15 @@ defmodule AshTable.NamedTablesTest do
         end
 
       # Spark's own words, as for a declaration made twice in the `table` block
-      assert error.message =~ "Got duplicate AshTable.Resource.Table: compact"
+      assert error.message =~ "Got duplicate AshDataTable.Resource.Table: compact"
     end
 
     test "the same column, relationship or action in several tables is no duplicate" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.NamedTablesTest.SameInSeveral do
+        defmodule Elixir.AshDataTable.NamedTablesTest.SameInSeveral do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
-            extensions: [AshTable.Resource]
+            domain: AshDataTable.Test.Domain,
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -440,7 +442,9 @@ defmodule AshTable.NamedTablesTest do
           end
 
           relationships do
-            belongs_to :post, AshTable.Test.Naming.Post, define_attribute?: false, public?: true
+            belongs_to :post, AshDataTable.Test.Naming.Post,
+              define_attribute?: false,
+              public?: true
           end
 
           actions do
@@ -488,10 +492,10 @@ defmodule AshTable.NamedTablesTest do
     test "is told, which Spark leaves to the extension inside an entity" do
       errors =
         dsl_errors do
-          defmodule Elixir.AshTable.NamedTablesTest.Twice do
+          defmodule Elixir.AshDataTable.NamedTablesTest.Twice do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -500,7 +504,9 @@ defmodule AshTable.NamedTablesTest do
             end
 
             relationships do
-              belongs_to :post, AshTable.Test.Naming.Post, define_attribute?: false, public?: true
+              belongs_to :post, AshDataTable.Test.Naming.Post,
+                define_attribute?: false,
+                public?: true
             end
 
             actions do
@@ -561,7 +567,7 @@ defmodule AshTable.NamedTablesTest do
         end
 
       found =
-        for {AshTable.NamedTablesTest.Twice, errors} <- errors,
+        for {AshDataTable.NamedTablesTest.Twice, errors} <- errors,
             error <- errors,
             do: {error.path, error.message}
 
@@ -585,10 +591,10 @@ defmodule AshTable.NamedTablesTest do
         assert_dsl_error %Spark.Error.DslError{
           path: [:tables, :table, :compact, :column, :shout]
         } do
-          defmodule Elixir.AshTable.NamedTablesTest.TwiceCalculation do
+          defmodule Elixir.AshDataTable.NamedTablesTest.TwiceCalculation do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -634,14 +640,14 @@ defmodule AshTable.NamedTablesTest do
       assert error.message ==
                "The column `shout` is declared more than once in the table `:compact`."
 
-      alias AshTable.NamedTablesTest.TwiceCalculation
+      alias AshDataTable.NamedTablesTest.TwiceCalculation
 
       assert Enum.map(Model.build(TwiceCalculation, table: :sound).columns, & &1.name) ==
                [:shout, :ask]
 
       # compiled despite the finding, the table is refused when it is built
       assert_raise ArgumentError,
-                   "cannot build the table `:compact` of AshTable.NamedTablesTest.TwiceCalculation: it declares the column `shout` more than once",
+                   "cannot build the table `:compact` of AshDataTable.NamedTablesTest.TwiceCalculation: it declares the column `shout` more than once",
                    fn -> Model.build(TwiceCalculation, table: :compact) end
     end
   end
@@ -700,13 +706,13 @@ defmodule AshTable.NamedTablesTest do
                "The resource has no relationship named `nothing`."
 
       assert at(found, [:relationships, :relationship, :shelves]) =~
-               "AshTable.Test.Relating.Shelf"
+               "AshDataTable.Test.Relating.Shelf"
 
       assert at(found, [:relationships, :relationship, :comments]) ==
-               "`comments` is to show the table `:compakt` of its destination, but AshTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table."
+               "`comments` is to show the table `:compakt` of its destination, but AshDataTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table."
 
       assert at(found, [:relationships, :relationship, :post]) ==
-               "`post` is to show the table `:compact` of its destination, but AshTable.Test.Naming.Post has no table named `:compact`. Its tables: `:board`, `:both`, and the default table."
+               "`post` is to show the table `:compact` of its destination, but AshDataTable.Test.Naming.Post has no table named `:compact`. Its tables: `:board`, `:both`, and the default table."
     end
 
     test "`action` and `create_action`", %{found: found} do
@@ -724,7 +730,7 @@ defmodule AshTable.NamedTablesTest do
     end
 
     test "a table that was compiled despite its finding is refused when it is built, by its name" do
-      alias AshTable.NamedTablesTest.Mistakes
+      alias AshDataTable.NamedTablesTest.Mistakes
 
       # the default table is sound, and is built
       assert %Model{table: :default} = Model.build(Mistakes)
@@ -742,7 +748,7 @@ defmodule AshTable.NamedTablesTest do
               "its action `nothing` cannot be used. The resource has no action named `nothing`."
           ] do
         assert_raise ArgumentError,
-                     "cannot build the table `#{inspect(table)}` of AshTable.NamedTablesTest.Mistakes: " <>
+                     "cannot build the table `#{inspect(table)}` of AshDataTable.NamedTablesTest.Mistakes: " <>
                        message,
                      fn -> Model.build(Mistakes, table: table) end
       end
@@ -751,10 +757,10 @@ defmodule AshTable.NamedTablesTest do
     test "a destroy action without `confirm` is warned about in a named table too" do
       {message, _location} =
         assert_dsl_warning {_, _} do
-          defmodule Elixir.AshTable.NamedTablesTest.OneClick do
+          defmodule Elixir.AshDataTable.NamedTablesTest.OneClick do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource]
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -778,10 +784,10 @@ defmodule AshTable.NamedTablesTest do
     test "a table that changes records over no primary read action is told for the named table" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:tables, :table, :editing]} do
-          defmodule Elixir.AshTable.NamedTablesTest.NoPrimaryRead do
+          defmodule Elixir.AshDataTable.NamedTablesTest.NoPrimaryRead do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
-              extensions: [AshTable.Resource],
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource],
               primary_read_warning?: false
 
             attributes do
@@ -791,7 +797,9 @@ defmodule AshTable.NamedTablesTest do
             end
 
             relationships do
-              belongs_to :post, AshTable.Test.Naming.Post, define_attribute?: false, public?: true
+              belongs_to :post, AshDataTable.Test.Naming.Post,
+                define_attribute?: false,
+                public?: true
             end
 
             actions do
@@ -875,7 +883,7 @@ defmodule AshTable.NamedTablesTest do
       assert Model.build(Comment, via: via, table: :compact).table == :compact
 
       assert_raise ArgumentError,
-                   "cannot build the nested table of AshTable.Test.Naming.Comment: its relationship `comments` nests the table `:compact`, and the table `:plain` was asked for",
+                   "cannot build the nested table of AshDataTable.Test.Naming.Comment: its relationship `comments` nests the table `:compact`, and the table `:plain` was asked for",
                    fn -> Model.build(Comment, via: via, table: :plain) end
     end
 
@@ -883,7 +891,7 @@ defmodule AshTable.NamedTablesTest do
       [via] = Model.build(Post, table: :board).relationships
 
       assert_raise ArgumentError,
-                   "cannot build a table of AshTable.Test.Naming.Comment: AshTable.Test.Naming.Comment has no table named `:gone`. Its tables: `:compact`, `:plain`, and the default table.",
+                   "cannot build a table of AshDataTable.Test.Naming.Comment: AshDataTable.Test.Naming.Comment has no table named `:gone`. Its tables: `:compact`, `:plain`, and the default table.",
                    fn -> Model.build(Comment, via: %{via | table: :gone}) end
     end
   end
@@ -891,7 +899,7 @@ defmodule AshTable.NamedTablesTest do
   describe "the table model of a named table" do
     test "a table that is asked for and not there is refused, with the tables there are" do
       assert_raise ArgumentError,
-                   "cannot build a table of AshTable.Test.Naming.Comment: AshTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table.",
+                   "cannot build a table of AshDataTable.Test.Naming.Comment: AshDataTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table.",
                    fn -> Model.build(Comment, table: :compakt) end
     end
 
@@ -960,35 +968,40 @@ defmodule AshTable.NamedTablesTest do
 
   describe "ids" do
     test "the default id of a named table is the resource's, `_` and the table's name" do
-      assert AshTable.Routes.default_id(Comment) == "comment"
-      assert AshTable.Routes.default_id(Comment, :default) == "comment"
-      assert AshTable.Routes.default_id(Comment, nil) == "comment"
-      assert AshTable.Routes.default_id(Comment, :compact) == "comment_compact"
-      assert AshTable.Routes.default_id(AshTable.Test.Relating.BookTag, :wide) == "book_tag_wide"
+      assert AshDataTable.Routes.default_id(Comment) == "comment"
+      assert AshDataTable.Routes.default_id(Comment, :default) == "comment"
+      assert AshDataTable.Routes.default_id(Comment, nil) == "comment"
+      assert AshDataTable.Routes.default_id(Comment, :compact) == "comment_compact"
+
+      assert AshDataTable.Routes.default_id(AshDataTable.Test.Relating.BookTag, :wide) ==
+               "book_tag_wide"
     end
 
     test "the router names the table and its id in the route's metadata" do
-      assert [as: :ash_table_comment_compact, metadata: %{ash_table: mounted}] =
-               AshTable.Router.__live_opts__(Comment, table: :compact)
+      assert [as: :ash_data_table_comment_compact, metadata: %{ash_data_table: mounted}] =
+               AshDataTable.Router.__live_opts__(Comment, table: :compact)
 
       assert %{resource: Comment, table: :compact, id: "comment_compact"} = mounted
 
       # without `table:`, and with `:default`, it is the default table
       for opts <- [[], [table: :default], [table: nil]] do
-        assert [as: :ash_table_comment, metadata: %{ash_table: %{table: :default, id: "comment"}}] =
-                 AshTable.Router.__live_opts__(Comment, opts)
+        assert [
+                 as: :ash_data_table_comment,
+                 metadata: %{ash_data_table: %{table: :default, id: "comment"}}
+               ] =
+                 AshDataTable.Router.__live_opts__(Comment, opts)
       end
 
       # an `id:` wins, as before
-      assert [as: _, metadata: %{ash_table: %{table: :compact, id: "short"}}] =
-               AshTable.Router.__live_opts__(Comment, table: :compact, id: "short")
+      assert [as: _, metadata: %{ash_data_table: %{table: :compact, id: "short"}}] =
+               AshDataTable.Router.__live_opts__(Comment, table: :compact, id: "short")
     end
 
     test "the router refuses a `table:` that cannot be a table's name" do
       for table <- ["compact", :Compact, :"with-dash", 1] do
         assert_raise ArgumentError,
-                     "the :table of ash_table must be the name of a table of the resource, an atom such as `:compact`, or `:default` for its default table, got: #{inspect(table)}",
-                     fn -> AshTable.Router.__live_opts__(Comment, table: table) end
+                     "the :table of ash_data_table must be the name of a table of the resource, an atom such as `:compact`, or `:default` for its default table, got: #{inspect(table)}",
+                     fn -> AshDataTable.Router.__live_opts__(Comment, table: table) end
       end
     end
   end
@@ -998,9 +1011,9 @@ defmodule AshTable.NamedTablesTest do
 
     test "refuses a table the resource does not have, with the tables it has" do
       assert_raise ArgumentError,
-                   "<AshTable.table> was given `table={:compakt}`, but AshTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table.",
+                   "<AshDataTable.table> was given `table={:compakt}`, but AshDataTable.Test.Naming.Comment has no table named `:compakt`. Its tables: `:compact`, `:plain`, and the default table.",
                    fn ->
-                     render_component(&AshTable.table/1, resource: Comment, table: :compakt)
+                     render_component(&AshDataTable.table/1, resource: Comment, table: :compakt)
                    end
     end
   end

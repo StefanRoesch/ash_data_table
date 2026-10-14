@@ -20,7 +20,7 @@ state asks first
 column :status do
   label "State"
   confirm "Change the state of this task?"
-  component AshTable.Components.Badge
+  component AshDataTable.Components.Badge
 end
 ```
 
@@ -145,9 +145,9 @@ The question is the resource's wording, so the table looks it up as a
 message in the host's Gettext backend and shows it as written when there is
 no translation. This holds for a column's question and for an action's. The
 demo translates them into German
-([`demo/priv/gettext/de/LC_MESSAGES/ash_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "Change the state of this task?"
 msgstr "Den Status dieser Aufgabe ändern?"

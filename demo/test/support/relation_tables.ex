@@ -10,7 +10,7 @@ defmodule Demo.Support.Managed do
 
   The actors of these tests are maps: `%{role: :admin}`.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   # who is asking is found under a name the demo's own layout does not read
   table do
@@ -31,7 +31,7 @@ defmodule Demo.Support.Managed.Member do
   use Ash.Resource,
     domain: Demo.Support.Managed,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -65,7 +65,7 @@ defmodule Demo.Support.Managed.Skill do
     domain: Demo.Support.Managed,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -119,7 +119,7 @@ defmodule Demo.Support.Managed.Site do
   use Ash.Resource,
     domain: Demo.Support.Managed,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -175,7 +175,7 @@ defmodule Demo.Support.Managed.Gig do
     domain: Demo.Support.Managed,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   alias Demo.Support.Managed.{GigSkill, Member, Site, Skill}

@@ -2,10 +2,10 @@ defmodule DemoWeb.Tables.TranslationTest do
   @moduledoc """
   The languages of the mounted table of `Demo.Tracker.Task` at `/tasks`.
 
-  The demo names its Gettext backend and its error translator to `ash_table`
-  (`config :ash_table, gettext_backend: …, translate_error: …`) and has German
+  The demo names its Gettext backend and its error translator to `ash_data_table`
+  (`config :ash_data_table, gettext_backend: …, translate_error: …`) and has German
   texts for both: the table's own strings and the tasks' wording in the
-  domain `ash_table`, the messages of the tasks' actions in the domain
+  domain `ash_data_table`, the messages of the tasks' actions in the domain
   `errors`. The locale comes from the session, as the language switcher sets
   it.
   """

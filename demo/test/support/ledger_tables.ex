@@ -11,7 +11,7 @@ defmodule Demo.Support.Ledger do
 
   The actors of these tests are the demo's users.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -33,7 +33,7 @@ defmodule Demo.Support.Ledger.Person do
     domain: Demo.Support.Ledger,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   postgres do
     table "users"
@@ -79,7 +79,7 @@ defmodule Demo.Support.Ledger.Job do
     domain: Demo.Support.Ledger,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -208,7 +208,7 @@ defmodule Demo.Support.Ledger.Errand do
     domain: Demo.Support.Ledger,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -263,7 +263,7 @@ defmodule Demo.Support.Ledger.Remark do
     domain: Demo.Support.Ledger,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -347,7 +347,7 @@ defmodule Demo.Support.Ledger.Tag do
     domain: Demo.Support.Ledger,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do

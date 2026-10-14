@@ -71,13 +71,13 @@ A table placed in your own LiveView is given `scope`, or `actor` and
 ## The domain section
 
 The assign names, and whether the tables authorize at all, are settings of
-the resource's domain, with the extension `AshTable.Domain`. The demo's
+the resource's domain, with the extension `AshDataTable.Domain`. The demo's
 tracker writes the defaults out
 ([`demo/lib/demo/tracker.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker.ex)):
 
 <!-- source: demo/lib/demo/tracker.ex -->
 ```elixir
-use Ash.Domain, otp_app: :demo, extensions: [AshTable.Domain]
+use Ash.Domain, otp_app: :demo, extensions: [AshDataTable.Domain]
 
 # How the tables of these resources authorize, and under which socket
 # assigns a mounted table finds who is asking. These are the defaults,
@@ -153,9 +153,9 @@ authorization
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
-ash_table "/closed/cases", Demo.Support.Closed.Case, layout: false
-ash_table "/closed/entries", Demo.Support.Closed.Entry, layout: false
-ash_table "/open/cases", Demo.Support.Closed.Case, layout: false, authorize?: false
+ash_data_table "/closed/cases", Demo.Support.Closed.Case, layout: false
+ash_data_table "/closed/entries", Demo.Support.Closed.Entry, layout: false
+ash_data_table "/open/cases", Demo.Support.Closed.Case, layout: false, authorize?: false
 ```
 
 Every read and every action the table runs for that page is given
@@ -183,8 +183,8 @@ a URL, a session or an event can switch authorization off.
 | Said where | Applies to |
 | --- | --- |
 | `authorize? false` in the domain's `table` block | every table of the domain's resources |
-| `authorize?: false` on an `ash_table` line | that page, and the tables nested in it |
-| `authorize?={false}` on `<AshTable.table>` | that table, and the tables nested in it |
+| `authorize?: false` on an `ash_data_table` line | that page, and the tables nested in it |
+| `authorize?={false}` on `<AshDataTable.table>` | that table, and the tables nested in it |
 
 The route and the attribute win over the domain, in both directions:
 `authorize?: true` authorizes a table of a domain that says `false`.
@@ -474,7 +474,7 @@ not of this rule.
 ## `on_forbidden`
 
 By default a person whose read is refused outright is not told that the
-table exists. The mounted page raises `AshTable.NotFoundError`, which Phoenix
+table exists. The mounted page raises `AshDataTable.NotFoundError`, which Phoenix
 renders as it renders a missing route. `on_forbidden :message` tells them
 instead. The demo's comments do
 ([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo/tracker/comment.ex)):

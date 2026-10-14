@@ -15,7 +15,7 @@ defmodule Demo.Tracker.Task.BoardTable do
     * the labels in their short table, which is mounted nowhere, so that
       nested table has no such link.
   """
-  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
   tables do
     table :board do

@@ -1,8 +1,8 @@
-defmodule AshTable.ModelTest do
-  @moduledoc "Boundary 2: the table model built by `AshTable.Model.build/2`."
+defmodule AshDataTable.ModelTest do
+  @moduledoc "Boundary 2: the table model built by `AshDataTable.Model.build/2`."
   use ExUnit.Case, async: true
 
-  alias AshTable.Model
+  alias AshDataTable.Model
 
   defp column_names(model), do: Enum.map(model.columns, & &1.name)
 
@@ -14,11 +14,11 @@ defmodule AshTable.ModelTest do
   # a calculation that reaches through the same relationship.
   setup_all do
     dsl_warnings do
-      defmodule Elixir.AshTable.ModelTest.Staff do
+      defmodule Elixir.AshDataTable.ModelTest.Staff do
         use Ash.Resource,
-          domain: AshTable.Test.Domain,
+          domain: AshDataTable.Test.Domain,
           data_layer: Ash.DataLayer.Ets,
-          extensions: [AshTable.Resource]
+          extensions: [AshDataTable.Resource]
 
         attributes do
           uuid_primary_key :id
@@ -26,9 +26,9 @@ defmodule AshTable.ModelTest do
         end
 
         relationships do
-          belongs_to :boss, AshTable.Test.Exposing.Member, public?: true
-          belongs_to :deputy, AshTable.Test.Exposing.Member, public?: true
-          has_many :reports, AshTable.Test.Exposing.Member, destination_attribute: :team_id
+          belongs_to :boss, AshDataTable.Test.Exposing.Member, public?: true
+          belongs_to :deputy, AshDataTable.Test.Exposing.Member, public?: true
+          has_many :reports, AshDataTable.Test.Exposing.Member, destination_attribute: :team_id
         end
 
         aggregates do
@@ -70,24 +70,24 @@ defmodule AshTable.ModelTest do
 
   describe "build/2" do
     test "carries the resource and its primary key" do
-      model = Model.build(AshTable.Test.Task)
+      model = Model.build(AshDataTable.Test.Task)
 
-      assert model.resource == AshTable.Test.Task
+      assert model.resource == AshDataTable.Test.Task
       assert model.primary_key == [:id]
     end
 
     test "refuses a resource that does not list the extension" do
       assert_raise ArgumentError,
-                   ~r/AshTable.Test.Project does not list `AshTable.Resource`/,
+                   ~r/AshDataTable.Test.Project does not list `AshDataTable.Resource`/,
                    fn ->
-                     Model.build(AshTable.Test.Project)
+                     Model.build(AshDataTable.Test.Project)
                    end
     end
   end
 
   describe "columns with no `column` declared" do
     test "are the public attributes in declaration order, belongs-to foreign keys last" do
-      model = Model.build(AshTable.Test.Task)
+      model = Model.build(AshDataTable.Test.Task)
 
       assert column_names(model) == [:id, :title, :status, :estimate, :project_id]
     end
@@ -95,7 +95,7 @@ defmodule AshTable.ModelTest do
 
   describe "columns once one `column` is declared" do
     test "are exactly the declared columns in the declared order" do
-      model = Model.build(AshTable.Test.Issue)
+      model = Model.build(AshDataTable.Test.Issue)
 
       assert column_names(model) == [:status, :comment_count, :title, :shouted_title]
     end
@@ -103,7 +103,7 @@ defmodule AshTable.ModelTest do
 
   describe "the columns a person can hide" do
     test "are all but the column of the label, in the table's order" do
-      model = Model.build(AshTable.Test.Private.Minute)
+      model = Model.build(AshDataTable.Test.Private.Minute)
 
       assert column_names(model) == [:title, :shouted, :folder]
       assert Enum.map(Model.hideable(model), & &1.name) == [:shouted, :folder]
@@ -111,7 +111,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "the label's column stays wherever it stands among the columns" do
-      model = Model.build(AshTable.Test.Referring.Member)
+      model = Model.build(AshDataTable.Test.Referring.Member)
 
       assert column_names(model) == [:id, :name, :away?]
       assert Enum.map(Model.hideable(model), & &1.name) == [:id, :away?]
@@ -119,14 +119,14 @@ defmodule AshTable.ModelTest do
     end
 
     test "are all of them in a table without a label, of which one has to stay" do
-      model = Model.build(AshTable.Test.Task)
+      model = Model.build(AshDataTable.Test.Task)
 
       assert Model.hideable(model) == model.columns
       assert Model.keeps_one?(model)
     end
 
     test "are all of them where the table has no column of its label" do
-      model = Model.build(AshTable.Test.Private.Minute)
+      model = Model.build(AshDataTable.Test.Private.Minute)
       # as for a person who does not see the label's field
       model = %{model | columns: Enum.reject(model.columns, &(&1.name == :title))}
 
@@ -137,7 +137,7 @@ defmodule AshTable.ModelTest do
 
   describe "a column's kind" do
     test "tells attributes, calculations and aggregates apart" do
-      model = Model.build(AshTable.Test.Issue)
+      model = Model.build(AshDataTable.Test.Issue)
 
       assert Enum.map(model.columns, &{&1.name, &1.kind}) == [
                status: :attribute,
@@ -150,7 +150,7 @@ defmodule AshTable.ModelTest do
 
   describe "a column's label" do
     test "defaults to the humanised field name, and `:id` becomes \"ID\"" do
-      model = Model.build(AshTable.Test.Task)
+      model = Model.build(AshDataTable.Test.Task)
 
       assert Enum.map(model.columns, &{&1.name, &1.label}) == [
                id: "ID",
@@ -162,7 +162,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is the declared label when the block gives one" do
-      model = Model.build(AshTable.Test.Labelled)
+      model = Model.build(AshDataTable.Test.Labelled)
 
       assert Enum.map(model.columns, &{&1.name, &1.label}) == [
                due_on: "Deadline",
@@ -173,17 +173,17 @@ defmodule AshTable.ModelTest do
 
   describe "the read action" do
     test "defaults to the resource's primary read action" do
-      assert Model.build(AshTable.Test.Reading.Unpaginated).read_action == :read
+      assert Model.build(AshDataTable.Test.Reading.Unpaginated).read_action == :read
     end
 
     test "is the one the block names" do
-      assert Model.build(AshTable.Test.Reading.OffsetOnly).read_action == :paged
+      assert Model.build(AshDataTable.Test.Reading.OffsetOnly).read_action == :paged
     end
   end
 
   describe "every read a table runs" do
-    alias AshTable.Model.Relationship
-    alias AshTable.Test.Private.{Folder, Minute, Paper}
+    alias AshDataTable.Model.Relationship
+    alias AshDataTable.Test.Private.{Folder, Minute, Paper}
 
     defp offered(model, name), do: Enum.find(model.relationships, &(&1.name == name))
 
@@ -234,7 +234,7 @@ defmodule AshTable.ModelTest do
                {:folder, Minute, :open}
              ]
 
-      assert offered(Model.build(AshTable.Test.Relating.Book), :notes).source_read_action ==
+      assert offered(Model.build(AshDataTable.Test.Relating.Book), :notes).source_read_action ==
                :read
     end
 
@@ -269,7 +269,7 @@ defmodule AshTable.ModelTest do
       assert %Model{read_action: :read} = Model.build(Paper, via: via([]))
 
       assert_raise ArgumentError,
-                   "cannot build the nested table of AshTable.Test.Private.Paper: the relationship `all_papers` it is reached through reads through `internal`, which is not public. " <>
+                   "cannot build the nested table of AshDataTable.Test.Private.Paper: the relationship `all_papers` it is reached through reads through `internal`, which is not public. " <>
                      "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies.",
                    fn ->
                      Model.build(Paper, via: via(name: :all_papers, read_action: :internal))
@@ -279,62 +279,62 @@ defmodule AshTable.ModelTest do
     test "is refused for a nested table whose relationship names no read action of the resource, and never falls back to another" do
       for name <- [:redact, :nowhere] do
         assert_raise ArgumentError,
-                     "cannot build the nested table of AshTable.Test.Private.Paper: the relationship `papers` it is reached through reads through `#{name}`, which is no read action of AshTable.Test.Private.Paper.",
+                     "cannot build the nested table of AshDataTable.Test.Private.Paper: the relationship `papers` it is reached through reads through `#{name}`, which is no read action of AshDataTable.Test.Private.Paper.",
                      fn -> Model.build(Paper, via: via(read_action: name)) end
       end
     end
 
     test "is refused for a nested table whose row would be read again through a private action" do
       assert_raise ArgumentError,
-                   "cannot build the nested table of AshTable.Test.Private.Paper: the row it belongs to would be read through `read` of AshTable.Test.Private.Folder, which is not public. " <>
+                   "cannot build the nested table of AshDataTable.Test.Private.Paper: the row it belongs to would be read through `read` of AshDataTable.Test.Private.Folder, which is not public. " <>
                      "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies.",
                    fn -> Model.build(Paper, via: via(source_read_action: :read)) end
 
       assert_raise ArgumentError,
-                   "cannot build the nested table of AshTable.Test.Private.Paper: the row it belongs to would be read through `update` of AshTable.Test.Private.Folder, which is no read action of AshTable.Test.Private.Folder.",
+                   "cannot build the nested table of AshDataTable.Test.Private.Paper: the row it belongs to would be read through `update` of AshDataTable.Test.Private.Folder, which is no read action of AshDataTable.Test.Private.Folder.",
                    fn -> Model.build(Paper, via: via(source_read_action: :update)) end
     end
   end
 
   describe "pagination" do
-    alias AshTable.Model.Pagination
+    alias AshDataTable.Model.Pagination
 
     test "is offset with the action's default limit when the action supports offset" do
-      assert Model.build(AshTable.Test.Reading.OffsetOnly).pagination ==
+      assert Model.build(AshDataTable.Test.Reading.OffsetOnly).pagination ==
                %Pagination{strategy: :offset, page_size: 10, countable?: true}
     end
 
     test "is keyset when the action supports only keyset, with 25 rows when it has no default limit" do
-      assert Model.build(AshTable.Test.Reading.KeysetOnly).pagination ==
+      assert Model.build(AshDataTable.Test.Reading.KeysetOnly).pagination ==
                %Pagination{strategy: :keyset, page_size: 25, countable?: false}
     end
 
     test "never has a page size above the action's maximum page size" do
       assert %Pagination{strategy: :offset, page_size: 10} =
-               Model.build(AshTable.Test.Reading.SmallMaximum).pagination
+               Model.build(AshDataTable.Test.Reading.SmallMaximum).pagination
     end
 
     test "prefers offset when the action supports both, and the default limit over the maximum" do
-      assert Model.build(AshTable.Test.Reading.Both).pagination ==
+      assert Model.build(AshDataTable.Test.Reading.Both).pagination ==
                %Pagination{strategy: :offset, page_size: 5, countable?: true}
     end
 
     test "follows `paginate_with` when the action supports both" do
       assert %Pagination{strategy: :keyset, page_size: 5} =
-               Model.build(AshTable.Test.Reading.BothWithKeysetChosen).pagination
+               Model.build(AshDataTable.Test.Reading.BothWithKeysetChosen).pagination
     end
 
     test "is none for a read action without pagination" do
-      assert Model.build(AshTable.Test.Reading.Unpaginated).pagination ==
+      assert Model.build(AshDataTable.Test.Reading.Unpaginated).pagination ==
                %Pagination{strategy: :none, page_size: nil, countable?: false}
     end
   end
 
   describe "page sizes" do
-    alias AshTable.Model.Pagination
-    alias AshTable.Query
-    alias AshTable.State
-    alias AshTable.Test.Reading.{Sized, SizedShelf}
+    alias AshDataTable.Model.Pagination
+    alias AshDataTable.Query
+    alias AshDataTable.State
+    alias AshDataTable.Test.Reading.{Sized, SizedShelf}
 
     defp nested_sized(name) do
       relationship = Enum.find(Model.build(SizedShelf).relationships, &(&1.name == name))
@@ -362,7 +362,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "a table without `page_sizes` offers none" do
-      assert Model.build(AshTable.Test.Reading.Both).pagination.page_sizes == []
+      assert Model.build(AshDataTable.Test.Reading.Both).pagination.page_sizes == []
     end
 
     test "a nested table offers what the table it shows offers" do
@@ -404,7 +404,7 @@ defmodule AshTable.ModelTest do
       end
 
       # a table that offers none has its own size, whatever is asked for
-      assert Pagination.size(Model.build(AshTable.Test.Reading.Both).pagination, 50) == 5
+      assert Pagination.size(Model.build(AshDataTable.Test.Reading.Both).pagination, 50) == 5
     end
 
     test "State.from_params/2 takes a size the table offers; anything else is the size it opens with" do
@@ -424,7 +424,7 @@ defmodule AshTable.ModelTest do
       assert State.from_params(model, %{"page" => "3"}) == %State{page: 3}
 
       # a table that offers none takes none
-      assert State.from_params(Model.build(AshTable.Test.Reading.Both), %{"per" => "10"}) ==
+      assert State.from_params(Model.build(AshDataTable.Test.Reading.Both), %{"per" => "10"}) ==
                %State{}
     end
 
@@ -475,7 +475,7 @@ defmodule AshTable.ModelTest do
       assert State.fit(%State{per: 10, page: 2}, model) == %State{per: 10, page: 2}
       assert State.fit(%State{per: 1000, page: 2}, model) == %State{}
 
-      assert State.fit(%State{per: 10, page: 2}, Model.build(AshTable.Test.Reading.Both)) ==
+      assert State.fit(%State{per: 10, page: 2}, Model.build(AshDataTable.Test.Reading.Both)) ==
                %State{}
     end
 
@@ -516,7 +516,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is what the resource allows" do
-      assert sortability(AshTable.Test.Reading.Unpaginated) == [
+      assert sortability(AshDataTable.Test.Reading.Unpaginated) == [
                id: true,
                title: true,
                notes: false,
@@ -525,7 +525,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "includes calculations and aggregates under offset pagination" do
-      assert sortability(AshTable.Test.Reading.Both) == [
+      assert sortability(AshDataTable.Test.Reading.Both) == [
                title: true,
                shouted_title: true,
                comment_count: true
@@ -533,7 +533,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "excludes calculations and aggregates under keyset pagination" do
-      assert sortability(AshTable.Test.Reading.BothWithKeysetChosen) == [
+      assert sortability(AshDataTable.Test.Reading.BothWithKeysetChosen) == [
                title: true,
                shouted_title: false,
                comment_count: false
@@ -541,12 +541,12 @@ defmodule AshTable.ModelTest do
     end
 
     test "is switched off by `sortable? false` in the block" do
-      assert sortability(AshTable.Test.Labelled) == [due_on: true, comment_count: false]
+      assert sortability(AshDataTable.Test.Labelled) == [due_on: true, comment_count: false]
     end
 
     # as `Ash.Resource.Info.sortable?/3` says for every array
     test "is never an array's" do
-      for column <- Model.build(AshTable.Test.KitchenSink).columns,
+      for column <- Model.build(AshDataTable.Test.KitchenSink).columns,
           match?({:array, _item}, column.cell_type) do
         refute column.sortable?, "#{column.name}"
       end
@@ -559,7 +559,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "classifies every built-in type" do
-      assert cell_types(AshTable.Test.KitchenSink) == [
+      assert cell_types(AshDataTable.Test.KitchenSink) == [
                id: :other,
                string: :text,
                ci_string: :text,
@@ -616,7 +616,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is an array's when its values have a cell type of their own, and `:other` for every other array" do
-      types = cell_types(AshTable.Test.KitchenSink)
+      types = cell_types(AshDataTable.Test.KitchenSink)
 
       # text, numbers, booleans, dates, datetimes and enums, also as NewTypes
       # and as an atom limited to a set of values
@@ -637,7 +637,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is `:map` for a value made of fields: an embedded resource and a map, whether it declares its fields or not, and a NewType of one" do
-      types = cell_types(AshTable.Test.Embedding)
+      types = cell_types(AshDataTable.Test.Embedding)
 
       for name <- [:place, :contact, :settings, :layout, :notes, :sealed, :named] do
         assert types[name] == :map, "#{name}"
@@ -649,15 +649,15 @@ defmodule AshTable.ModelTest do
     end
 
     test "stays `:other` for the types that look like these: a typed struct, a struct of a resource, a keyword list, a tuple" do
-      assert cell_types(AshTable.Test.Embedding)[:point] == :other
-      assert cell_types(AshTable.Test.Embedding)[:keyword] == :other
-      assert cell_types(AshTable.Test.Embedding)[:struct] == :other
-      assert cell_types(AshTable.Test.KitchenSink)[:tuple] == :other
-      assert cell_types(AshTable.Test.KitchenSink)[:struct] == :other
+      assert cell_types(AshDataTable.Test.Embedding)[:point] == :other
+      assert cell_types(AshDataTable.Test.Embedding)[:keyword] == :other
+      assert cell_types(AshDataTable.Test.Embedding)[:struct] == :other
+      assert cell_types(AshDataTable.Test.KitchenSink)[:tuple] == :other
+      assert cell_types(AshDataTable.Test.KitchenSink)[:struct] == :other
     end
 
     test "follows the type of a calculation and of an aggregate" do
-      assert cell_types(AshTable.Test.Issue) == [
+      assert cell_types(AshDataTable.Test.Issue) == [
                status: :enum,
                comment_count: :number,
                title: :text,
@@ -667,10 +667,10 @@ defmodule AshTable.ModelTest do
   end
 
   describe "what an array shows and what its editor holds" do
-    alias AshTable.Format
+    alias AshDataTable.Format
 
     defp sink(name),
-      do: Enum.find(Model.build(AshTable.Test.KitchenSink).columns, &(&1.name == name))
+      do: Enum.find(Model.build(AshDataTable.Test.KitchenSink).columns, &(&1.name == name))
 
     test "its values as text, separated by commas, each as a cell of its type shows it" do
       assert Format.format(sink(:strings), ["red", "green"]) == "red, green"
@@ -723,10 +723,10 @@ defmodule AshTable.ModelTest do
   end
 
   describe "the fields of a map cell" do
-    alias AshTable.Model.Field
+    alias AshDataTable.Model.Field
 
     defp mapped(name),
-      do: Enum.find(Model.build(AshTable.Test.Embedding).columns, &(&1.name == name))
+      do: Enum.find(Model.build(AshDataTable.Test.Embedding).columns, &(&1.name == name))
 
     defp field(column, name), do: Enum.find(column.fields, &(&1.name == name))
 
@@ -794,7 +794,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "every other column has none" do
-      model = Model.build(AshTable.Test.Embedding)
+      model = Model.build(AshDataTable.Test.Embedding)
 
       for column <- model.columns, column.cell_type not in [:map, {:array, :map}] do
         assert column.fields == nil, "#{column.name}"
@@ -803,7 +803,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "the inputs of a map cell" do
-    alias AshTable.Model.Field
+    alias AshDataTable.Model.Field
 
     test "are the public attributes the embedded resource's actions accept, each with the control of its type" do
       assert for(%Field{input?: true} = f <- mapped(:place).fields, do: {f.name, f.editor}) == [
@@ -859,10 +859,10 @@ defmodule AshTable.ModelTest do
   end
 
   describe "whether a map cell is edited" do
-    alias AshTable.Resource.Embedding
+    alias AshDataTable.Resource.Embedding
 
     defp obstacle(name) do
-      attribute = Ash.Resource.Info.attribute(AshTable.Test.Embedding, name)
+      attribute = Ash.Resource.Info.attribute(AshDataTable.Test.Embedding, name)
       Embedding.of(attribute.type, attribute.constraints).obstacle
     end
 
@@ -920,11 +920,11 @@ defmodule AshTable.ModelTest do
     end
 
     test "nothing is edited without an update action that accepts the attribute" do
-      assert Enum.all?(Model.build(AshTable.Test.KitchenSink).columns, &is_nil(&1.editor))
+      assert Enum.all?(Model.build(AshDataTable.Test.KitchenSink).columns, &is_nil(&1.editor))
     end
 
     test "is neither sorted nor filtered by, whatever Ash says of the type" do
-      model = Model.build(AshTable.Test.Embedding)
+      model = Model.build(AshDataTable.Test.Embedding)
 
       for column <- model.columns, column.cell_type in [:map, {:array, :map}] do
         refute column.sortable?, "#{column.name}"
@@ -933,18 +933,18 @@ defmodule AshTable.ModelTest do
 
       # Ash itself: a map is not sortable, an embedded resource and a
       # NewType of a map are, and `sort_input` refuses the embedded resource
-      sortable? = &Ash.Resource.Info.sortable?(AshTable.Test.Embedding, &1)
+      sortable? = &Ash.Resource.Info.sortable?(AshDataTable.Test.Embedding, &1)
       refute sortable?.(:settings)
       assert sortable?.(:place)
       assert sortable?.(:layout)
 
-      assert %{valid?: false} = Ash.Query.sort_input(AshTable.Test.Embedding, "place")
+      assert %{valid?: false} = Ash.Query.sort_input(AshDataTable.Test.Embedding, "place")
     end
   end
 
   describe "what a map cell shows" do
-    alias AshTable.Format
-    alias AshTable.Test.Embedding.{Contact, Part, Place}
+    alias AshDataTable.Format
+    alias AshDataTable.Test.Embedding.{Contact, Part, Place}
 
     test "its fields on one line, each by its label and as a cell of its type shows it" do
       place = %Place{
@@ -1046,9 +1046,9 @@ defmodule AshTable.ModelTest do
   end
 
   describe "what the editor of a map cell holds" do
-    alias AshTable.Act
-    alias AshTable.Format
-    alias AshTable.Test.Embedding.{Part, Place}
+    alias AshDataTable.Act
+    alias AshDataTable.Format
+    alias AshDataTable.Test.Embedding.{Part, Place}
 
     test "its inputs by name, each as the editor of its type writes it; nil for no value" do
       place = %Place{street: "Quay 1", open?: true, kind: :main_depot, tags: ["a"], memo: "x"}
@@ -1184,7 +1184,7 @@ defmodule AshTable.ModelTest do
 
   describe "an input of an action that is a map cell" do
     test "is a group of its fields, and an array of them a list of groups, an argument as an attribute" do
-      model = Model.build(AshTable.Test.Embedding)
+      model = Model.build(AshDataTable.Test.Embedding)
       [move] = model.actions
 
       assert Enum.map(move.inputs, &{&1.name, &1.kind, &1.editor, &1.required?}) == [
@@ -1201,13 +1201,13 @@ defmodule AshTable.ModelTest do
     end
 
     test "is left out when it cannot be edited and is not required: a map that declares no fields" do
-      [move] = Model.build(AshTable.Test.Embedding).actions
+      [move] = Model.build(AshDataTable.Test.Embedding).actions
 
       refute :notes in Enum.map(move.inputs, & &1.name)
     end
 
     test "is required where the record cannot be without it" do
-      create = Model.build(AshTable.Test.Embedding).create
+      create = Model.build(AshDataTable.Test.Embedding).create
 
       assert Enum.map(create.inputs, &{&1.name, &1.editor, &1.required?}) == [
                {:name, :text, false},
@@ -1218,9 +1218,9 @@ defmodule AshTable.ModelTest do
     end
 
     test "the input a map cell is edited as is its column's attribute, with the column's fields" do
-      model = Model.build(AshTable.Test.Embedding)
+      model = Model.build(AshDataTable.Test.Embedding)
 
-      assert %AshTable.Model.Input{
+      assert %AshDataTable.Model.Input{
                name: :base,
                kind: :attribute,
                label: "Base",
@@ -1236,21 +1236,24 @@ defmodule AshTable.ModelTest do
   end
 
   describe "where the panel shows an error about a field of a value inside the record" do
-    alias AshTable.Act
-    alias AshTable.Test.Embedding.Place
+    alias AshDataTable.Act
+    alias AshDataTable.Test.Embedding.Place
 
     setup do
       record =
-        Ash.Seed.seed!(AshTable.Test.Embedding, %{name: "Harbour", base: %Place{street: "Base 1"}})
+        Ash.Seed.seed!(AshDataTable.Test.Embedding, %{
+          name: "Harbour",
+          base: %Place{street: "Base 1"}
+        })
 
-      on_exit(fn -> AshTable.Test.Ets.stop(AshTable.Test.Embedding) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop(AshDataTable.Test.Embedding) end)
 
       {:error, form} =
         record
         |> AshPhoenix.Form.for_update(:refuse, Act.form_opts("panel"))
         |> AshPhoenix.Form.submit(params: %{})
 
-      model = Model.build(AshTable.Test.Embedding)
+      model = Model.build(AshDataTable.Test.Embedding)
 
       inputs =
         for name <- [:place, :contact, :places, :entries, :settings],
@@ -1303,15 +1306,17 @@ defmodule AshTable.ModelTest do
     } do
       refute Enum.any?(List.flatten(Map.values(errors)), &(&1 =~ "Elsewhere"))
 
-      assert Enum.count(AshTable.Errors.nested(form)) == 11
-      assert AshTable.Errors.nested_text(model, [:elsewhere, 0], :name, {"is refused", []}) == nil
+      assert Enum.count(AshDataTable.Errors.nested(form)) == 11
+
+      assert AshDataTable.Errors.nested_text(model, [:elsewhere, 0], :name, {"is refused", []}) ==
+               nil
     end
 
     test "where an action is not run from a panel, each is said with the way to its field", %{
       form: form,
       model: model
     } do
-      said = AshTable.Errors.of_form(form, model, nil, "refused")
+      said = AshDataTable.Errors.of_form(form, model, nil, "refused")
 
       assert "Place: Street: is refused" in said
       assert "Contact: Places 3: Street: is refused" in said
@@ -1327,7 +1332,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "carry the labels of an Ash.Type.Enum, in declared order" do
-      assert values(AshTable.Test.KitchenSink, :status) == [
+      assert values(AshDataTable.Test.KitchenSink, :status) == [
                open: "Open",
                in_progress: "Being worked on",
                done: "Done"
@@ -1335,7 +1340,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "get a humanised label when the enum declares none" do
-      assert values(AshTable.Test.KitchenSink, :duration_unit) == [
+      assert values(AshDataTable.Test.KitchenSink, :duration_unit) == [
                year: "Year",
                month: "Month",
                week: "Week",
@@ -1349,31 +1354,31 @@ defmodule AshTable.ModelTest do
     end
 
     test "come from the `one_of` constraint of an atom, with humanised labels" do
-      assert values(AshTable.Test.KitchenSink, :size) == [
+      assert values(AshDataTable.Test.KitchenSink, :size) == [
                small: "Small",
                extra_large: "Extra large"
              ]
 
-      assert values(AshTable.Test.KitchenSink, :priority) == [low: "Low", high: "High"]
+      assert values(AshDataTable.Test.KitchenSink, :priority) == [low: "Low", high: "High"]
     end
 
     test "are those of the values of an array of enum values" do
-      assert values(AshTable.Test.KitchenSink, :statuses) ==
-               values(AshTable.Test.KitchenSink, :status)
+      assert values(AshDataTable.Test.KitchenSink, :statuses) ==
+               values(AshDataTable.Test.KitchenSink, :status)
 
-      assert values(AshTable.Test.KitchenSink, :sizes) == [
+      assert values(AshDataTable.Test.KitchenSink, :sizes) == [
                small: "Small",
                extra_large: "Extra large"
              ]
 
-      assert values(AshTable.Test.KitchenSink, :priorities) == [low: "Low", high: "High"]
+      assert values(AshDataTable.Test.KitchenSink, :priorities) == [low: "Low", high: "High"]
     end
 
     test "are nil for every other cell type" do
-      assert values(AshTable.Test.KitchenSink, :string) == nil
-      assert values(AshTable.Test.KitchenSink, :atom) == nil
-      assert values(AshTable.Test.KitchenSink, :strings) == nil
-      assert values(AshTable.Test.KitchenSink, :atoms) == nil
+      assert values(AshDataTable.Test.KitchenSink, :string) == nil
+      assert values(AshDataTable.Test.KitchenSink, :atom) == nil
+      assert values(AshDataTable.Test.KitchenSink, :strings) == nil
+      assert values(AshDataTable.Test.KitchenSink, :atoms) == nil
     end
   end
 
@@ -1384,7 +1389,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "for text are contains, equals, starts with, and is empty when the field allows nil" do
-      assert operators(AshTable.Test.Filtering, [:name, :nickname, :email, :slug]) == [
+      assert operators(AshDataTable.Test.Filtering, [:name, :nickname, :email, :slug]) == [
                name: [:contains, :equals, :starts_with],
                nickname: [:contains, :equals, :starts_with, :is_empty],
                email: [:contains, :equals, :starts_with],
@@ -1395,62 +1400,63 @@ defmodule AshTable.ModelTest do
     test "for a number are equals, the four comparisons, between, and is empty when the field allows nil" do
       comparisons = [:equals, :greater_than, :less_than, :at_least, :at_most, :between]
 
-      assert operators(AshTable.Test.Filtering, [:visits, :weight, :balance, :percentage]) == [
-               visits: comparisons,
-               weight: comparisons ++ [:is_empty],
-               balance: comparisons ++ [:is_empty],
-               percentage: comparisons
-             ]
+      assert operators(AshDataTable.Test.Filtering, [:visits, :weight, :balance, :percentage]) ==
+               [
+                 visits: comparisons,
+                 weight: comparisons ++ [:is_empty],
+                 balance: comparisons ++ [:is_empty],
+                 percentage: comparisons
+               ]
     end
 
     test "for a date are on, before, after, between, and is empty when the field allows nil" do
-      assert operators(AshTable.Test.Filtering, [:born_on, :left_on]) == [
+      assert operators(AshDataTable.Test.Filtering, [:born_on, :left_on]) == [
                born_on: [:on, :before, :after, :between],
                left_on: [:on, :before, :after, :between, :is_empty]
              ]
     end
 
     test "for a datetime are before, after, between, and is empty when the field allows nil" do
-      assert operators(AshTable.Test.Filtering, [:seen_at, :archived_at]) == [
+      assert operators(AshDataTable.Test.Filtering, [:seen_at, :archived_at]) == [
                seen_at: [:before, :after, :between],
                archived_at: [:before, :after, :between, :is_empty]
              ]
     end
 
     test "for a boolean are yes and no, whether or not the field allows nil" do
-      assert operators(AshTable.Test.Filtering, [:active, :verified]) == [
+      assert operators(AshDataTable.Test.Filtering, [:active, :verified]) == [
                active: [:yes, :no],
                verified: [:yes, :no]
              ]
     end
 
     test "for an enum are is, is any of and is none of, whether or not the field allows nil" do
-      assert operators(AshTable.Test.Filtering, [:status, :size]) == [
+      assert operators(AshDataTable.Test.Filtering, [:status, :size]) == [
                status: [:is, :any_of, :none_of],
                size: [:is, :any_of, :none_of]
              ]
     end
 
     test "are none for a column shown as read-only text" do
-      assert operators(AshTable.Test.Filtering, [:id, :settings]) == [id: [], settings: []]
+      assert operators(AshDataTable.Test.Filtering, [:id, :settings]) == [id: [], settings: []]
     end
 
     # Ash's interface extensions filter by no array, whatever it holds
     test "are none for an array" do
-      assert operators(AshTable.Test.Filtering, [:tags]) == [tags: []]
+      assert operators(AshDataTable.Test.Filtering, [:tags]) == [tags: []]
 
-      for column <- Model.build(AshTable.Test.KitchenSink).columns,
+      for column <- Model.build(AshDataTable.Test.KitchenSink).columns,
           match?({:array, _item}, column.cell_type) do
         assert column.operators == [], "#{column.name}"
       end
     end
 
     test "are none for a column the block declares `filterable? false`" do
-      assert operators(AshTable.Test.Filtering, [:remark]) == [remark: []]
+      assert operators(AshDataTable.Test.Filtering, [:remark]) == [remark: []]
     end
 
     test "are none for a field the resource declares `filterable?: false`" do
-      assert operators(AshTable.Test.Filtering, [:secret, :whisper, :hidden_count]) == [
+      assert operators(AshDataTable.Test.Filtering, [:secret, :whisper, :hidden_count]) == [
                secret: [],
                whisper: [],
                hidden_count: []
@@ -1458,26 +1464,27 @@ defmodule AshTable.ModelTest do
     end
 
     test "are only equals for a field the resource declares `filterable?: :simple_equality`" do
-      assert operators(AshTable.Test.Filtering.SimpleEquality, [:code]) == [code: [:equals]]
+      assert operators(AshDataTable.Test.Filtering.SimpleEquality, [:code]) == [code: [:equals]]
     end
 
     test "of a calculation follow its type when it is an expression" do
-      assert operators(AshTable.Test.Filtering, [:greeting, :adult?]) == [
+      assert operators(AshDataTable.Test.Filtering, [:greeting, :adult?]) == [
                greeting: [:contains, :equals, :starts_with, :is_empty],
                adult?: [:yes, :no]
              ]
     end
 
     test "are none for a calculation computed in Elixir, which no data layer can filter by" do
-      assert operators(AshTable.Test.Filtering, [:shout]) == [shout: []]
+      assert operators(AshDataTable.Test.Filtering, [:shout]) == [shout: []]
     end
 
     test "of an aggregate follow its type, with is empty only for a kind that can be nil" do
-      assert operators(AshTable.Test.Filtering, [:note_count, :last_note_at, :first_note]) == [
-               note_count: [:equals, :greater_than, :less_than, :at_least, :at_most, :between],
-               last_note_at: [:before, :after, :between, :is_empty],
-               first_note: [:contains, :equals, :starts_with, :is_empty]
-             ]
+      assert operators(AshDataTable.Test.Filtering, [:note_count, :last_note_at, :first_note]) ==
+               [
+                 note_count: [:equals, :greater_than, :less_than, :at_least, :at_most, :between],
+                 last_note_at: [:before, :after, :between, :is_empty],
+                 first_note: [:contains, :equals, :starts_with, :is_empty]
+               ]
     end
   end
 
@@ -1508,7 +1515,7 @@ defmodule AshTable.ModelTest do
 
     defp manifest_types(resource, read_action) do
       {:ok, manifest} =
-        Manifest.generate(otp_app: :ash_table, action_entrypoints: [{resource, read_action}])
+        Manifest.generate(otp_app: :ash_data_table, action_entrypoints: [{resource, read_action}])
 
       named_types = Manifest.type_lookup(manifest)
       fields = Manifest.get_resource!(Manifest.resource_lookup(manifest), resource).fields
@@ -1533,7 +1540,7 @@ defmodule AshTable.ModelTest do
 
     defp named(type, _named_types), do: type
 
-    for resource <- [AshTable.Test.KitchenSink, AshTable.Test.Issue] do
+    for resource <- [AshDataTable.Test.KitchenSink, AshDataTable.Test.Issue] do
       test "agree for every column of #{inspect(resource)}" do
         model = Model.build(unquote(resource))
         manifest_types = manifest_types(unquote(resource), model.read_action)
@@ -1599,12 +1606,16 @@ defmodule AshTable.ModelTest do
 
     defp manifest_fields(resource, read_action) do
       {:ok, manifest} =
-        Manifest.generate(otp_app: :ash_table, action_entrypoints: [{resource, read_action}])
+        Manifest.generate(otp_app: :ash_data_table, action_entrypoints: [{resource, read_action}])
 
       Manifest.get_resource!(Manifest.resource_lookup(manifest), resource).fields
     end
 
-    for resource <- [AshTable.Test.Filtering, AshTable.Test.KitchenSink, AshTable.Test.Issue] do
+    for resource <- [
+          AshDataTable.Test.Filtering,
+          AshDataTable.Test.KitchenSink,
+          AshDataTable.Test.Issue
+        ] do
       test "every operator offered for a column of #{inspect(resource)} is one the manifest reports" do
         model = Model.build(unquote(resource))
         fields = manifest_fields(unquote(resource), model.read_action)
@@ -1636,12 +1647,12 @@ defmodule AshTable.ModelTest do
     end
 
     test "nothing is editable without an `update_action`" do
-      assert edited_through(AshTable.Test.Issue) == []
-      assert Enum.all?(Model.build(AshTable.Test.Issue).columns, &is_nil(&1.update_action))
+      assert edited_through(AshDataTable.Test.Issue) == []
+      assert Enum.all?(Model.build(AshDataTable.Test.Issue).columns, &is_nil(&1.update_action))
     end
 
     test "a table-level `update_action` makes the attributes it accepts editable through it" do
-      edited = edited_through(AshTable.Test.Editing)
+      edited = edited_through(AshDataTable.Test.Editing)
 
       for name <- [:title, :email, :visits, :weight, :active, :due_on, :seen_at, :status, :size] do
         assert edited[name] == :update
@@ -1649,24 +1660,24 @@ defmodule AshTable.ModelTest do
     end
 
     test "a table-level `update_action` applies to the default set of columns too" do
-      assert edited_through(AshTable.Test.Editing.Defaults) == [title: :update]
+      assert edited_through(AshDataTable.Test.Editing.Defaults) == [title: :update]
     end
 
     test "a column-level `update_action` wins over the table's" do
-      assert edited_through(AshTable.Test.Editing)[:price] == :reprice
+      assert edited_through(AshDataTable.Test.Editing)[:price] == :reprice
     end
 
     test "`update_action false` makes a column read-only" do
-      refute Keyword.has_key?(edited_through(AshTable.Test.Editing), :slug)
+      refute Keyword.has_key?(edited_through(AshDataTable.Test.Editing), :slug)
     end
 
     test "an attribute the table's action does not accept is read-only" do
-      refute Keyword.has_key?(edited_through(AshTable.Test.Editing), :notes)
-      refute Keyword.has_key?(edited_through(AshTable.Test.Editing), :id)
+      refute Keyword.has_key?(edited_through(AshDataTable.Test.Editing), :notes)
+      refute Keyword.has_key?(edited_through(AshDataTable.Test.Editing), :id)
     end
 
     test "an attribute that is not writable, a calculation and an aggregate are read-only" do
-      edited = edited_through(AshTable.Test.Editing)
+      edited = edited_through(AshDataTable.Test.Editing)
 
       refute Keyword.has_key?(edited, :locked)
       refute Keyword.has_key?(edited, :shouted_title)
@@ -1674,7 +1685,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "an accepted attribute of a type without an editor is read-only" do
-      edited = edited_through(AshTable.Test.Editing)
+      edited = edited_through(AshDataTable.Test.Editing)
 
       refute Keyword.has_key?(edited, :settings)
       # arrays of values without an editor, and of arrays
@@ -1683,7 +1694,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "an array of values that have an editor is editable on the same conditions as any column" do
-      edited = edited_through(AshTable.Test.Editing)
+      edited = edited_through(AshDataTable.Test.Editing)
 
       assert edited[:tags] == :update
       assert edited[:scores] == :update
@@ -1693,12 +1704,12 @@ defmodule AshTable.ModelTest do
     end
 
     test "a table-level action with a required argument makes no column editable" do
-      assert edited_through(AshTable.Test.Editing.NeedsArgument) == []
+      assert edited_through(AshDataTable.Test.Editing.NeedsArgument) == []
     end
 
     test "an editable column's editor follows its cell type" do
       editors =
-        for column <- Model.build(AshTable.Test.Editing).columns,
+        for column <- Model.build(AshDataTable.Test.Editing).columns,
             column.editable?,
             do: {column.name, column.editor}
 
@@ -1722,16 +1733,16 @@ defmodule AshTable.ModelTest do
     end
 
     test "a column that is not editable has no editor" do
-      for column <- Model.build(AshTable.Test.Editing).columns, not column.editable? do
+      for column <- Model.build(AshDataTable.Test.Editing).columns, not column.editable? do
         assert is_nil(column.editor)
       end
 
-      assert Enum.all?(Model.build(AshTable.Test.Issue).columns, &is_nil(&1.editor))
+      assert Enum.all?(Model.build(AshDataTable.Test.Issue).columns, &is_nil(&1.editor))
     end
 
     test "a column carries the question its block asks before saving" do
       confirms =
-        for column <- Model.build(AshTable.Test.Editing).columns,
+        for column <- Model.build(AshDataTable.Test.Editing).columns,
             column.confirm,
             do: {column.name, column.confirm}
 
@@ -1745,7 +1756,7 @@ defmodule AshTable.ModelTest do
     @viewer %{id: 3, role: :viewer}
 
     setup do
-      %{model: Model.build(AshTable.Test.Guarded)}
+      %{model: Model.build(AshDataTable.Test.Guarded)}
     end
 
     test "are all of the table's for a person who may see every field", %{model: model} do
@@ -1772,7 +1783,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "are the same whether the person comes as an actor or in a scope", %{model: model} do
-      scope = %AshTable.Test.Scope{user: @member, tenant: nil}
+      scope = %AshDataTable.Test.Scope{user: @member, tenant: nil}
 
       assert Model.for_actor(model, scope: scope) == Model.for_actor(model, actor: @member)
     end
@@ -1781,7 +1792,7 @@ defmodule AshTable.ModelTest do
       assert Model.for_actor(model, actor: @member, tenant: "acme") ==
                Model.for_actor(model, actor: @member)
 
-      scope = %AshTable.Test.Scope{user: @member, tenant: "acme"}
+      scope = %AshDataTable.Test.Scope{user: @member, tenant: "acme"}
       assert Model.for_actor(model, scope: scope) == Model.for_actor(model, actor: @member)
     end
 
@@ -1791,7 +1802,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "are all of the table's for a resource without policies" do
-      model = Model.build(AshTable.Test.Editing)
+      model = Model.build(AshDataTable.Test.Editing)
 
       assert Model.for_actor(model, actor: nil) == model
     end
@@ -1800,7 +1811,7 @@ defmodule AshTable.ModelTest do
       Model.for_actor(model, actor: @viewer)
 
       assert column_names(model) == [:title, :secret, :salary, :rating, :flagged, :secret_shouted]
-      assert model == Model.build(AshTable.Test.Guarded)
+      assert model == Model.build(AshDataTable.Test.Guarded)
     end
 
     test "do not ask for a calculation the person cannot see", %{model: model} do
@@ -1815,7 +1826,7 @@ defmodule AshTable.ModelTest do
     @viewer %{id: 3, role: :viewer}
 
     setup do
-      %{model: Model.build(AshTable.Test.Guarded)}
+      %{model: Model.build(AshDataTable.Test.Guarded)}
     end
 
     defp editable(model), do: for(%{editable?: true} = column <- model.columns, do: column.name)
@@ -1863,7 +1874,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "are the same whether the person comes as an actor or in a scope", %{model: model} do
-      scope = %AshTable.Test.Scope{user: @viewer, tenant: nil}
+      scope = %AshDataTable.Test.Scope{user: @viewer, tenant: nil}
 
       assert editable(Model.for_actor(model, scope: scope)) == [:flagged]
     end
@@ -1874,14 +1885,14 @@ defmodule AshTable.ModelTest do
     end
 
     test "are none in a table that lets nobody edit" do
-      model = Model.build(AshTable.Test.Task)
+      model = Model.build(AshDataTable.Test.Task)
 
       assert editable(Model.for_actor(model, actor: @admin)) == []
     end
   end
 
   describe "the relationships a row offers" do
-    alias AshTable.Test.Relating.{Author, Book, Note, Secret, Tag}
+    alias AshDataTable.Test.Relating.{Author, Book, Note, Secret, Tag}
 
     defp relationship_names(model), do: Enum.map(model.relationships, & &1.name)
     defp relationship(model, name), do: Enum.find(model.relationships, &(&1.name == name))
@@ -1975,7 +1986,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "are none for a resource without relationships" do
-      assert Model.build(AshTable.Test.Labelled).relationships == []
+      assert Model.build(AshDataTable.Test.Labelled).relationships == []
     end
 
     test "do not build the destination's table: resources that point at each other end" do
@@ -1987,19 +1998,19 @@ defmodule AshTable.ModelTest do
 
   describe "max_depth" do
     test "is 3 unless the block says otherwise" do
-      assert Model.build(AshTable.Test.Relating.Book).max_depth == 3
-      assert Model.build(AshTable.Test.Task).max_depth == 3
+      assert Model.build(AshDataTable.Test.Relating.Book).max_depth == 3
+      assert Model.build(AshDataTable.Test.Task).max_depth == 3
     end
 
     test "is what the block says" do
-      assert Model.build(AshTable.Test.Relating.Author).max_depth == 1
-      assert Model.build(AshTable.Test.Relating.Tag).max_depth == 0
+      assert Model.build(AshDataTable.Test.Relating.Author).max_depth == 1
+      assert Model.build(AshDataTable.Test.Relating.Tag).max_depth == 0
     end
   end
 
   describe "the model of a nested table: build/2 with `via`" do
-    alias AshTable.Model.Pagination
-    alias AshTable.Test.Relating.{Author, Book, Note, Tag}
+    alias AshDataTable.Model.Pagination
+    alias AshDataTable.Test.Relating.{Author, Book, Note, Tag}
 
     defp nested(parent, name) do
       relationship = Enum.find(Model.build(parent).relationships, &(&1.name == name))
@@ -2088,7 +2099,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "for_actor/2: the relationships a person is offered" do
-    alias AshTable.Test.Relating.Book
+    alias AshDataTable.Test.Relating.Book
 
     setup do
       %{model: Model.build(Book)}
@@ -2107,7 +2118,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "are the same whether the person comes as an actor or in a scope", %{model: model} do
-      scope = %AshTable.Test.Scope{user: %{role: :member}, tenant: nil}
+      scope = %AshDataTable.Test.Scope{user: %{role: :member}, tenant: nil}
 
       assert Model.for_actor(model, scope: scope) ==
                Model.for_actor(model, actor: %{role: :member})
@@ -2119,7 +2130,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a reference column" do
-    alias AshTable.Test.Referencing.{Agent, Letter, Person, Rank, Vault}
+    alias AshDataTable.Test.Referencing.{Agent, Letter, Person, Rank, Vault}
 
     defp column(model, name), do: Enum.find(model.columns, &(&1.name == name))
 
@@ -2214,17 +2225,17 @@ defmodule AshTable.ModelTest do
     end
 
     test "is not among the columns of a table that declares none" do
-      assert column_names(Model.build(AshTable.Test.Relating.Note)) == [
+      assert column_names(Model.build(AshDataTable.Test.Relating.Note)) == [
                :body,
                :written_on,
                :sibling_count
              ]
 
-      assert :book not in column_names(Model.build(AshTable.Test.Relating.Secret))
+      assert :book not in column_names(Model.build(AshDataTable.Test.Relating.Secret))
     end
 
     test "stays what it is in a nested table of one record, where nothing is sorted or filtered" do
-      via = %AshTable.Model.Relationship{
+      via = %AshDataTable.Model.Relationship{
         name: :letter,
         label: "Letter",
         kind: :belongs_to,
@@ -2242,7 +2253,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "for_actor/2: the reference columns a person sees" do
-    alias AshTable.Test.Referencing.Letter
+    alias AshDataTable.Test.Referencing.Letter
 
     setup do
       %{model: Model.build(Letter)}
@@ -2264,7 +2275,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "are the same whether the person comes as an actor or in a scope", %{model: model} do
-      scope = %AshTable.Test.Scope{user: %{role: :member}, tenant: nil}
+      scope = %AshDataTable.Test.Scope{user: %{role: :member}, tenant: nil}
 
       assert Model.for_actor(model, scope: scope) ==
                Model.for_actor(model, actor: %{role: :member})
@@ -2280,25 +2291,25 @@ defmodule AshTable.ModelTest do
   end
 
   describe "what a table reads in steps" do
-    alias AshTable.Test.Exposing.Team
+    alias AshDataTable.Test.Exposing.Team
 
     test "calculations and reference columns are read with the records" do
       assert [:loud_name] = Model.loads(Model.build(Team))
 
       assert [{:boss, %Ash.Query{}}, :boss_initial, :loud_title] =
-               Model.loads(Model.build(AshTable.ModelTest.Staff))
+               Model.loads(Model.build(AshDataTable.ModelTest.Staff))
     end
 
     test "aggregates are read after them, in a step of their own" do
       assert Model.aggregates(Model.build(Team)) == [:headcount, :guest_count]
-      assert Model.aggregates(Model.build(AshTable.Test.Guarded)) == []
+      assert Model.aggregates(Model.build(AshDataTable.Test.Guarded)) == []
 
-      assert Model.aggregates(Model.build(AshTable.ModelTest.Staff)) ==
+      assert Model.aggregates(Model.build(AshDataTable.ModelTest.Staff)) ==
                [:deputy_name, :report_count, :boss_again]
     end
 
     test "a `first` aggregate over one related record is read apart when a calculation column reaches through the same relationship" do
-      model = Model.build(AshTable.ModelTest.Staff)
+      model = Model.build(AshDataTable.ModelTest.Staff)
 
       # not the one over another relationship, not the count, not the one
       # with a join of its own
@@ -2307,7 +2318,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "and is then neither sorted nor filtered by, which would put it in the statement of the calculation" do
-      model = Model.build(AshTable.ModelTest.Staff)
+      model = Model.build(AshDataTable.ModelTest.Staff)
       column = &Enum.find(model.columns, fn column -> column.name == &1 end)
 
       assert %{sortable?: false, operators: []} = column.(:boss_name)
@@ -2325,7 +2336,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "for_actor/2: sorting by an aggregate column" do
-    alias AshTable.Test.Exposing.{League, Team}
+    alias AshDataTable.Test.Exposing.{League, Team}
 
     @admin %{id: 1, role: :admin}
     @lead %{id: 2, role: :member}
@@ -2380,7 +2391,7 @@ defmodule AshTable.ModelTest do
       do: for(%{partly_hidden?: true} = column <- model.columns, do: column.name)
 
     setup do
-      %{model: Model.build(AshTable.Test.Guarded)}
+      %{model: Model.build(AshDataTable.Test.Guarded)}
     end
 
     test "are marked, as a count over a filter on one of them would tell what its rows do not",
@@ -2408,11 +2419,11 @@ defmodule AshTable.ModelTest do
     @tag timeout: 120_000
     test "leaves out the columns a person can never see, the first time it is asked" do
       code = """
-      model = AshTable.Model.build(AshTable.Test.Guarded)
+      model = AshDataTable.Model.build(AshDataTable.Test.Guarded)
       IO.puts("authorizer loaded: \#{:code.is_loaded(Ash.Policy.Authorizer) != false}")
 
       model
-      |> AshTable.Model.for_actor(actor: %{id: 2, role: :member})
+      |> AshDataTable.Model.for_actor(actor: %{id: 2, role: :member})
       |> Map.fetch!(:columns)
       |> Enum.map(& &1.name)
       |> inspect()
@@ -2435,12 +2446,12 @@ defmodule AshTable.ModelTest do
     defp action(model, name), do: Enum.find(model.actions, &(&1.name == name))
 
     test "are none unless the block declares them" do
-      assert Model.build(AshTable.Test.Acting.Plain).actions == []
+      assert Model.build(AshDataTable.Test.Acting.Plain).actions == []
     end
 
     test "are the declared ones in the declared order, each with its kind, its label and its question" do
       actions =
-        for action <- Model.build(AshTable.Test.Acting).actions,
+        for action <- Model.build(AshDataTable.Test.Acting).actions,
             do: {action.name, action.type, action.label, action.confirm}
 
       assert actions == [
@@ -2462,7 +2473,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "take the attributes the action accepts, then its public arguments, in the action's order" do
-      model = Model.build(AshTable.Test.Acting)
+      model = Model.build(AshDataTable.Test.Acting)
 
       assert inputs(model, :archive) == []
 
@@ -2489,11 +2500,11 @@ defmodule AshTable.ModelTest do
     end
 
     test "leave out an optional input of a type a table has no field for" do
-      assert inputs(Model.build(AshTable.Test.Acting), :retag) == []
+      assert inputs(Model.build(AshDataTable.Test.Acting), :retag) == []
     end
 
     test "take an array as multiple choice or value by value, an argument as an attribute" do
-      model = Model.build(AshTable.Test.Acting)
+      model = Model.build(AshDataTable.Test.Acting)
 
       assert inputs(model, :relabel) == [
                {:labels, :attribute, :list, false},
@@ -2509,7 +2520,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "an input is labelled as its column is, else with its humanised name, and carries its choices and its default" do
-      model = Model.build(AshTable.Test.Acting)
+      model = Model.build(AshDataTable.Test.Acting)
 
       assert [
                %{name: :title, label: "Subject", cell_type: :text, values: nil, default: nil},
@@ -2537,7 +2548,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "run straight away without inputs or with optional arguments only, and open the panel otherwise" do
-      model = Model.build(AshTable.Test.Acting)
+      model = Model.build(AshDataTable.Test.Acting)
 
       panels = for action <- model.actions, do: {action.name, action.panel?}
 
@@ -2564,7 +2575,7 @@ defmodule AshTable.ModelTest do
     defp bulk(model), do: for(action <- Model.bulk_actions(model), do: action.name)
 
     test "are the row actions of the block, unless it says otherwise" do
-      model = Model.build(AshTable.Test.Acting)
+      model = Model.build(AshDataTable.Test.Acting)
 
       # every one of them: with and without inputs, updates and destroys,
       # with a question and without
@@ -2573,11 +2584,11 @@ defmodule AshTable.ModelTest do
     end
 
     test "are none in a table without row actions" do
-      assert Model.bulk_actions(Model.build(AshTable.Test.Acting.Plain)) == []
+      assert Model.bulk_actions(Model.build(AshDataTable.Test.Acting.Plain)) == []
     end
 
     test "leave out an action the block keeps to one row, and one that accepts a value no two records can share" do
-      model = Model.build(AshTable.Test.Acting.Sheet)
+      model = Model.build(AshDataTable.Test.Acting.Sheet)
 
       assert for(action <- model.actions, do: {action.name, action.bulk?}) == [
                archive: true,
@@ -2598,7 +2609,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "the create action is never one of them" do
-      model = Model.build(AshTable.Test.Acting)
+      model = Model.build(AshDataTable.Test.Acting)
 
       refute model.create.bulk?
       refute model.create.name in bulk(model)
@@ -2606,14 +2617,14 @@ defmodule AshTable.ModelTest do
   end
 
   describe "table actions" do
-    alias AshTable.Test.TableActing
+    alias AshDataTable.Test.TableActing
 
     defp table_action(model, name),
       do: Enum.find(model.table_actions ++ model.actions, &(&1.name == name))
 
     test "are none unless the block declares a generic action" do
-      assert Model.build(AshTable.Test.Acting).table_actions == []
-      assert Model.build(AshTable.Test.Acting.Plain).table_actions == []
+      assert Model.build(AshDataTable.Test.Acting).table_actions == []
+      assert Model.build(AshDataTable.Test.Acting.Plain).table_actions == []
     end
 
     test "are the generic actions of the block in the declared order, each with its label and its question" do
@@ -2716,7 +2727,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "for_actor/2: the table actions a person can run" do
-    alias AshTable.Test.TableActing
+    alias AshDataTable.Test.TableActing
 
     test "are those they can ever run, asked once per action and without arguments" do
       model = Model.build(TableActing)
@@ -2762,7 +2773,7 @@ defmodule AshTable.ModelTest do
       assert names.(actor: nil, authorize?: false) == [:count, :purge]
 
       # a table without table actions has none in a nested table either
-      [cards | _] = Model.build(AshTable.Test.Acting.Board).relationships
+      [cards | _] = Model.build(AshDataTable.Test.Acting.Board).relationships
 
       assert Model.nested_table_actions(
                Model.build(cards.destination, via: cards),
@@ -2772,9 +2783,9 @@ defmodule AshTable.ModelTest do
   end
 
   describe "running a generic action" do
-    alias AshTable.Act
-    alias AshTable.Bulk
-    alias AshTable.Test.TableActing
+    alias AshDataTable.Act
+    alias AshDataTable.Bulk
+    alias AshDataTable.Test.TableActing
 
     @opts [actor: %{role: :member}]
 
@@ -2858,7 +2869,7 @@ defmodule AshTable.ModelTest do
                    {:error, "This could not be done."}
         end)
 
-      assert log =~ "the action `explode` of AshTable.Test.TableActing failed"
+      assert log =~ "the action `explode` of AshDataTable.Test.TableActing failed"
       assert log =~ "something underneath"
     end
 
@@ -2940,7 +2951,7 @@ defmodule AshTable.ModelTest do
       one = record("One")
       two = record("Two", true)
       gone = Ash.UUID.generate()
-      opts = @opts ++ [state: %AshTable.State{}]
+      opts = @opts ++ [state: %AshDataTable.State{}]
 
       assert %{done: 2, failed: [%{id: ^gone}], failures: failures} =
                Bulk.run(
@@ -2966,7 +2977,7 @@ defmodule AshTable.ModelTest do
     test "on the selected rows, a table action and a row action that says `bulk? false` are not run",
          %{model: model} do
       one = record("One")
-      opts = @opts ++ [state: %AshTable.State{}]
+      opts = @opts ++ [state: %AshDataTable.State{}]
 
       for name <- [:count, :stamp] do
         assert_raise FunctionClauseError, fn ->
@@ -2977,8 +2988,8 @@ defmodule AshTable.ModelTest do
   end
 
   describe "what a generic action returned, as a person is told it" do
-    alias AshTable.Act
-    alias AshTable.Model.Action
+    alias AshDataTable.Act
+    alias AshDataTable.Model.Action
 
     @plain %Action{name: :any, type: :action, label: "Any"}
 
@@ -2996,7 +3007,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is the label of a value of an enum the action says it returns" do
-      level = table_action(Model.build(AshTable.Test.TableActing), :level)
+      level = table_action(Model.build(AshDataTable.Test.TableActing), :level)
 
       assert Act.said(level, :in_progress) == "Being worked on"
       # a value the enum does not have is said as it is
@@ -3011,14 +3022,14 @@ defmodule AshTable.ModelTest do
       assert Act.said(@plain, [1, 2]) == nil
       assert Act.said(@plain, %{a: 1}) == nil
       assert Act.said(@plain, {:ok, 1}) == nil
-      assert Act.said(@plain, %AshTable.Test.TableActing{title: "A record"}) == nil
-      assert Act.said(@plain, [%AshTable.Test.TableActing{title: "A record"}]) == nil
+      assert Act.said(@plain, %AshDataTable.Test.TableActing{title: "A record"}) == nil
+      assert Act.said(@plain, [%AshDataTable.Test.TableActing{title: "A record"}]) == nil
     end
   end
 
   describe "the create action" do
     test "is none unless the block names one" do
-      assert Model.build(AshTable.Test.Acting.Plain).create == nil
+      assert Model.build(AshDataTable.Test.Acting.Plain).create == nil
     end
 
     test "is the one the block names, called after the resource, and always opens the panel" do
@@ -3029,14 +3040,14 @@ defmodule AshTable.ModelTest do
                panel?: true,
                link: nil
              } =
-               Model.build(AshTable.Test.Acting).create
+               Model.build(AshDataTable.Test.Acting).create
 
-      assert Model.build(AshTable.Test.Acting).name == "acting"
+      assert Model.build(AshDataTable.Test.Acting).name == "acting"
     end
 
     test "takes the attributes it accepts and its arguments, required as a create needs them" do
       inputs =
-        for input <- Model.build(AshTable.Test.Acting).create.inputs,
+        for input <- Model.build(AshDataTable.Test.Acting).create.inputs,
             do: {input.name, input.kind, input.editor, input.required?, input.default}
 
       # `tags` has no field, and `internal_note` is private
@@ -3063,7 +3074,7 @@ defmodule AshTable.ModelTest do
     defp nested(relationship) do
       via =
         Enum.find(
-          Model.build(AshTable.Test.Acting.Board).relationships,
+          Model.build(AshDataTable.Test.Acting.Board).relationships,
           &(&1.name == relationship)
         )
 
@@ -3077,11 +3088,11 @@ defmodule AshTable.ModelTest do
       # on a page of its own the linking field is an input like any other:
       # the key of a board, which is chosen from the boards' table
       assert [%{name: :title}, %{name: :board_id, editor: :reference, required?: true}] =
-               Model.build(AshTable.Test.Acting.Card).create.inputs
+               Model.build(AshDataTable.Test.Acting.Card).create.inputs
     end
 
     test "is not offered where the create action does not accept the linking field" do
-      assert Model.build(AshTable.Test.Acting.Sticker).create != nil
+      assert Model.build(AshDataTable.Test.Acting.Sticker).create != nil
       assert nested(:stickers).create == nil
     end
 
@@ -3095,7 +3106,7 @@ defmodule AshTable.ModelTest do
     # there is no field a new record could be linked by
     test "is not offered through a path, though the create action accepts a field named like the link" do
       assert %{through: [:cards, :board, :cards], no_attributes?: true} =
-               Ash.Resource.Info.relationship(AshTable.Test.Acting.Board, :cards_by_path)
+               Ash.Resource.Info.relationship(AshDataTable.Test.Acting.Board, :cards_by_path)
 
       assert nested(:cards_by_path).create == nil
     end
@@ -3107,7 +3118,7 @@ defmodule AshTable.ModelTest do
     @viewer %{id: 3, role: :viewer}
 
     setup do
-      %{model: Model.build(AshTable.Test.Guarded)}
+      %{model: Model.build(AshDataTable.Test.Guarded)}
     end
 
     defp runnable(model), do: Enum.map(model.actions, & &1.name)
@@ -3126,7 +3137,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is the same whether the person comes as an actor or in a scope", %{model: model} do
-      scope = %AshTable.Test.Scope{user: @viewer, tenant: nil}
+      scope = %AshDataTable.Test.Scope{user: @viewer, tenant: nil}
 
       assert runnable(Model.for_actor(model, scope: scope)) == [:flag]
     end
@@ -3199,22 +3210,22 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a column's component" do
-    defp presenting(name, model \\ Model.build(AshTable.Test.Presenting)),
+    defp presenting(name, model \\ Model.build(AshDataTable.Test.Presenting)),
       do: Enum.find(model.columns, &(&1.name == name))
 
     test "is none unless the block names one" do
       assert presenting(:plain).component == nil
-      assert Enum.all?(Model.build(AshTable.Test.Editing).columns, &is_nil(&1.component))
+      assert Enum.all?(Model.build(AshDataTable.Test.Editing).columns, &is_nil(&1.component))
     end
 
     test "says which module it is, which of the two parts it has, and when its editor saves" do
-      assert %{module: AshTable.Test.Cells.Shout, cell?: true, editor?: false, commit: :enter} =
+      assert %{module: AshDataTable.Test.Cells.Shout, cell?: true, editor?: false, commit: :enter} =
                presenting(:mood).component
 
-      assert %{module: AshTable.Test.Cells.Knob, cell?: false, editor?: true, commit: :change} =
+      assert %{module: AshDataTable.Test.Cells.Knob, cell?: false, editor?: true, commit: :change} =
                presenting(:level).component
 
-      assert %{module: AshTable.Test.Cells.Both, cell?: true, editor?: true, commit: :enter} =
+      assert %{module: AshDataTable.Test.Cells.Both, cell?: true, editor?: true, commit: :enter} =
                presenting(:note).component
     end
 
@@ -3235,7 +3246,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "carries what the resource knows about the field, for the component to read" do
-      assert presenting(:level).component.column == %AshTable.Component.Column{
+      assert presenting(:level).component.column == %AshDataTable.Component.Column{
                name: :level,
                label: "Rung",
                type: Ash.Type.Integer,
@@ -3245,7 +3256,7 @@ defmodule AshTable.ModelTest do
                editable?: true
              }
 
-      assert %AshTable.Component.Column{
+      assert %AshDataTable.Component.Column{
                name: :grade,
                label: "Grade",
                type: Ash.Type.Atom,
@@ -3256,21 +3267,21 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a component on an array column" do
-    alias AshTable.Test.Presenting.Lists
+    alias AshDataTable.Test.Presenting.Lists
 
     test "shows, and is told that the column is an array, of what, and the values of an enum" do
       [moods, grades] = Model.build(Lists).columns
 
-      assert %{module: AshTable.Test.Cells.Both, cell?: true} = moods.component
+      assert %{module: AshDataTable.Test.Cells.Both, cell?: true} = moods.component
 
-      assert %AshTable.Component.Column{
+      assert %AshDataTable.Component.Column{
                type: {:array, Ash.Type.String},
                cell_type: {:array, :text},
                values: nil,
                editable?: true
              } = moods.component.column
 
-      assert %AshTable.Component.Column{
+      assert %AshDataTable.Component.Column{
                cell_type: {:array, :enum},
                values: [junior: "Junior", senior: "Senior"]
              } = grades.component.column
@@ -3295,22 +3306,22 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a component on the column of a map cell" do
-    alias AshTable.Test.Presenting.Maps
+    alias AshDataTable.Test.Presenting.Maps
 
     test "shows, and is told that the column is a value made of fields, or an array of them" do
       [place, places] = Model.build(Maps).columns
 
-      assert %{module: AshTable.Test.Cells.Both, cell?: true} = place.component
+      assert %{module: AshDataTable.Test.Cells.Both, cell?: true} = place.component
 
-      assert %AshTable.Component.Column{
-               type: AshTable.Test.Embedding.Place,
+      assert %AshDataTable.Component.Column{
+               type: AshDataTable.Test.Embedding.Place,
                cell_type: :map,
                values: nil,
                editable?: true
              } = place.component.column
 
-      assert %AshTable.Component.Column{
-               type: {:array, AshTable.Test.Embedding.Place},
+      assert %AshDataTable.Component.Column{
+               type: {:array, AshDataTable.Test.Embedding.Place},
                cell_type: {:array, :map}
              } = places.component.column
     end
@@ -3338,7 +3349,7 @@ defmodule AshTable.ModelTest do
     @viewer %{role: :viewer}
 
     setup do
-      %{model: Model.build(AshTable.Test.Presenting)}
+      %{model: Model.build(AshDataTable.Test.Presenting)}
     end
 
     test "stays as it is for a person who can edit the column", %{model: model} do
@@ -3363,7 +3374,7 @@ defmodule AshTable.ModelTest do
 
     test "goes with a column the person can never see", %{model: model} do
       assert presenting(:secret, Model.for_actor(model, actor: @viewer)) == nil
-      assert %{component: %{module: AshTable.Test.Cells.Both}} = presenting(:secret, model)
+      assert %{component: %{module: AshDataTable.Test.Cells.Both}} = presenting(:secret, model)
     end
   end
 
@@ -3371,18 +3382,18 @@ defmodule AshTable.ModelTest do
     defp input(action, name), do: Enum.find(action.inputs, &(&1.name == name))
 
     test "an attribute whose column has a component with an editor is given through that editor" do
-      %{actions: [relevel], create: create} = Model.build(AshTable.Test.Presenting)
+      %{actions: [relevel], create: create} = Model.build(AshDataTable.Test.Presenting)
 
       assert %{editor: :component} = input(relevel, :level)
 
-      assert %{module: AshTable.Test.Cells.Knob, commit: :change, column: %{name: :level}} =
+      assert %{module: AshDataTable.Test.Cells.Knob, commit: :change, column: %{name: :level}} =
                input(relevel, :level).component
 
-      assert %{module: AshTable.Test.Cells.Both} = input(create, :note).component
+      assert %{module: AshDataTable.Test.Cells.Both} = input(create, :note).component
     end
 
     test "every other input has the field of its type" do
-      %{actions: [relevel]} = Model.build(AshTable.Test.Presenting)
+      %{actions: [relevel]} = Model.build(AshDataTable.Test.Presenting)
 
       # an attribute whose column has no component
       assert %{editor: :text, component: nil} = input(relevel, :plain)
@@ -3394,7 +3405,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "for_actor/2: the component of an input is told what its column is told" do
-      model = Model.build(AshTable.Test.Presenting)
+      model = Model.build(AshDataTable.Test.Presenting)
 
       # a viewer never edits a cell of `level`, and may run `relevel`
       %{actions: [relevel]} = Model.for_actor(model, actor: %{role: :viewer})
@@ -3407,7 +3418,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a reference column whose related record a person chooses" do
-    alias AshTable.Test.Picking.{Depot, Shipment, Vault, Zone}
+    alias AshDataTable.Test.Picking.{Depot, Shipment, Vault, Zone}
 
     setup do
       %{model: Model.build(Shipment)}
@@ -3504,7 +3515,7 @@ defmodule AshTable.ModelTest do
                 destination_attribute: :id,
                 read_action: :read,
                 allow_nil?: true
-              }} == AshTable.Resource.Referencing.picking(Shipment, relationship.(:depot))
+              }} == AshDataTable.Resource.Referencing.picking(Shipment, relationship.(:depot))
 
       for {name, reason} <- [
             haven: :filter,
@@ -3513,12 +3524,12 @@ defmodule AshTable.ModelTest do
             owner: :key_not_public
           ] do
         assert {:error, reason} ==
-                 AshTable.Resource.Referencing.picking(Shipment, relationship.(name))
+                 AshDataTable.Resource.Referencing.picking(Shipment, relationship.(name))
       end
 
       # no belongs-to at all
       assert {:error, :no_table} ==
-               AshTable.Resource.Referencing.picking(
+               AshDataTable.Resource.Referencing.picking(
                  Depot,
                  Ash.Resource.Info.relationship(Depot, :shipments)
                )
@@ -3532,7 +3543,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "for_actor/2: the reference columns a person edits" do
-    alias AshTable.Test.Picking.Shipment
+    alias AshDataTable.Test.Picking.Shipment
 
     defp editable(model, actor) do
       for column <- Model.for_actor(model, actor: actor).columns,
@@ -3570,7 +3581,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "an input that is the key of a related record" do
-    alias AshTable.Test.Picking.{Depot, Shipment, Zone}
+    alias AshDataTable.Test.Picking.{Depot, Shipment, Zone}
 
     setup do
       %{model: Model.build(Shipment)}
@@ -3636,14 +3647,14 @@ defmodule AshTable.ModelTest do
       # them: the field is called what that column is
       assert %{label: "Board ID", editor: :reference} =
                Enum.find(
-                 Model.build(AshTable.Test.Acting.Card).create.inputs,
+                 Model.build(AshDataTable.Test.Acting.Card).create.inputs,
                  &(&1.name == :board_id)
                )
 
       # the table of the crates has no column for the depot or for its key
       assert %{label: "Depot", editor: :reference} =
                Enum.find(
-                 Model.build(AshTable.Test.Picking.Crate).create.inputs,
+                 Model.build(AshDataTable.Test.Picking.Crate).create.inputs,
                  &(&1.name == :depot_id)
                )
     end
@@ -3663,8 +3674,8 @@ defmodule AshTable.ModelTest do
   end
 
   describe "an argument of an action that hands keys to a relationship" do
-    alias AshTable.Test.Managing.{Note, Person, Tag, Ticket}
-    alias AshTable.Test.Picking.Zone
+    alias AshDataTable.Test.Managing.{Note, Person, Tag, Ticket}
+    alias AshDataTable.Test.Picking.Zone
 
     setup do
       %{model: Model.build(Ticket)}
@@ -3830,7 +3841,7 @@ defmodule AshTable.ModelTest do
     end
 
     test "is no input of a generic action, which has no changes: its key is typed" do
-      model = Model.build(AshTable.Test.TableActing)
+      model = Model.build(AshDataTable.Test.TableActing)
 
       for action <- model.table_actions ++ model.actions, input <- action.inputs do
         refute input.editor in [:reference, :references]
@@ -3839,7 +3850,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a reference column that is edited through an argument" do
-    alias AshTable.Test.Managing.{Person, Ticket}
+    alias AshDataTable.Test.Managing.{Person, Ticket}
 
     setup do
       %{model: Model.build(Ticket)}
@@ -3910,8 +3921,8 @@ defmodule AshTable.ModelTest do
       end
     end
 
-    test "is saved by what `AshTable.Resource.Editing` says of its action" do
-      alias AshTable.Resource.Editing
+    test "is saved by what `AshDataTable.Resource.Editing` says of its action" do
+      alias AshDataTable.Resource.Editing
 
       relationship = &Ash.Resource.Info.relationship(Ticket, &1)
       action = &Ash.Resource.Info.action(Ticket, &1)
@@ -3933,7 +3944,7 @@ defmodule AshTable.ModelTest do
 
       assert Editing.update_action(
                Ticket,
-               AshTable.Resource.Info.table!(Ticket, :default),
+               AshDataTable.Resource.Info.table!(Ticket, :default),
                relationship.(:owner),
                %{update_action: :assign}
              ) ==
@@ -3942,7 +3953,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "build/2 with `choose:`: the table a picker shows" do
-    alias AshTable.Test.Picking.Depot
+    alias AshDataTable.Test.Picking.Depot
 
     test "is the table of the resource with nothing to edit, run, create or expand" do
       own = Model.build(Depot)
@@ -3979,13 +3990,13 @@ defmodule AshTable.ModelTest do
 
     test "is refused for an action that is not a public read action of the resource" do
       assert_raise ArgumentError,
-                   "cannot build the table of AshTable.Test.Private.Paper to choose a record from: it would be read through `internal`, which is not public. " <>
+                   "cannot build the table of AshDataTable.Test.Private.Paper to choose a record from: it would be read through `internal`, which is not public. " <>
                      "A table only runs `public?` actions: a private action is not meant for interfaces, and may be exempt from policies.",
-                   fn -> Model.build(AshTable.Test.Private.Paper, choose: :internal) end
+                   fn -> Model.build(AshDataTable.Test.Private.Paper, choose: :internal) end
 
       for name <- [:update, :nothing] do
         assert_raise ArgumentError,
-                     "cannot build the table of AshTable.Test.Picking.Depot to choose a record from: it would be read through `#{name}`, which is no read action of AshTable.Test.Picking.Depot.",
+                     "cannot build the table of AshDataTable.Test.Picking.Depot to choose a record from: it would be read through `#{name}`, which is no read action of AshDataTable.Test.Picking.Depot.",
                      fn -> Model.build(Depot, choose: name) end
       end
     end
@@ -3999,8 +4010,8 @@ defmodule AshTable.ModelTest do
   end
 
   describe "the argument line" do
-    alias AshTable.Model.Argument
-    alias AshTable.Test.Arguing.Price
+    alias AshDataTable.Model.Argument
+    alias AshDataTable.Test.Arguing.Price
 
     test "has the public arguments of the read action, in its order, then what the columns ask for" do
       model = Model.build(Price)
@@ -4102,8 +4113,8 @@ defmodule AshTable.ModelTest do
     end
 
     test "a table without arguments has no line" do
-      assert Model.build(AshTable.Test.Guarded).arguments == []
-      assert Model.build(AshTable.Test.Guarded).read_arguments == %{}
+      assert Model.build(AshDataTable.Test.Guarded).arguments == []
+      assert Model.build(AshDataTable.Test.Guarded).read_arguments == %{}
     end
 
     test "a nested table and a picker have the arguments of the action they read through" do
@@ -4113,7 +4124,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a calculation column and its arguments" do
-    alias AshTable.Test.Arguing.Price
+    alias AshDataTable.Test.Arguing.Price
 
     test "a column is told apart by its `as`, and shows the field it names" do
       model = Model.build(Price)
@@ -4148,7 +4159,7 @@ defmodule AshTable.ModelTest do
   end
 
   describe "supply/2: the model with what a person chose" do
-    alias AshTable.Test.Arguing.Price
+    alias AshDataTable.Test.Arguing.Price
 
     defp priced(assigns \\ %{}), do: Price |> Model.build() |> Model.defaults(assigns)
 
@@ -4216,13 +4227,13 @@ defmodule AshTable.ModelTest do
     end
 
     test "a calculation without arguments is loaded by its name, as before" do
-      assert :secret_shouted in Model.loads(Model.build(AshTable.Test.Guarded))
+      assert :secret_shouted in Model.loads(Model.build(AshDataTable.Test.Guarded))
     end
   end
 
   describe "for_actor/2: the arguments of a column a person never sees" do
-    alias AshTable.Model.Argument
-    alias AshTable.Test.Arguing.Guarded
+    alias AshDataTable.Model.Argument
+    alias AshDataTable.Test.Arguing.Guarded
 
     test "go with every column of that field, whatever the column is called" do
       model = Model.build(Guarded)
@@ -4238,8 +4249,8 @@ defmodule AshTable.ModelTest do
   end
 
   describe "the arguments in the state" do
-    alias AshTable.State
-    alias AshTable.Test.Arguing.Price
+    alias AshDataTable.State
+    alias AshDataTable.Test.Arguing.Price
 
     defp line, do: Price |> Model.build() |> Model.defaults(%{})
 
@@ -4376,9 +4387,9 @@ defmodule AshTable.ModelTest do
   end
 
   describe "what Ash makes of the arguments" do
-    alias AshTable.Model.Argument
-    alias AshTable.Query
-    alias AshTable.Test.Arguing.Price
+    alias AshDataTable.Model.Argument
+    alias AshDataTable.Query
+    alias AshDataTable.Test.Arguing.Price
 
     defp asked(chosen), do: Price |> Model.build() |> Model.defaults(%{}) |> Model.supply(chosen)
 
@@ -4433,16 +4444,16 @@ defmodule AshTable.ModelTest do
     end
 
     test "a table without arguments is asked nothing" do
-      assert Query.arguments(Model.build(AshTable.Test.Guarded), authorize?: false) ==
+      assert Query.arguments(Model.build(AshDataTable.Test.Guarded), authorize?: false) ==
                %{missing: [], refused: %{}}
     end
   end
 
   describe "reading with arguments" do
-    alias AshTable.Query
-    alias AshTable.Record
-    alias AshTable.State
-    alias AshTable.Test.Arguing.Price
+    alias AshDataTable.Query
+    alias AshDataTable.Record
+    alias AshDataTable.State
+    alias AshDataTable.Test.Arguing.Price
 
     setup do
       for {name, amount, kind} <- [
@@ -4560,9 +4571,9 @@ defmodule AshTable.ModelTest do
   end
 
   describe "a resource with several tables" do
-    # The model is built per table of a resource: `AshTable.NamedTablesTest`
+    # The model is built per table of a resource: `AshDataTable.NamedTablesTest`
     # has what each table's own is.
-    alias AshTable.Test.Naming.Comment
+    alias AshDataTable.Test.Naming.Comment
 
     test "has a model per table, and the default table's unless one is named" do
       assert Model.build(Comment).table == :default

@@ -5,7 +5,7 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
   same row.
 
   The link is there only when the destination's table is mounted with an
-  `ash_table` line of the router. In the demo that is so for comments,
+  `ash_data_table` line of the router. In the demo that is so for comments,
   labels, projects, tasks and the labels of tasks, and not for people.
   """
   use DemoWeb.ConnCase, async: true

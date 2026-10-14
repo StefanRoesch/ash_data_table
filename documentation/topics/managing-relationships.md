@@ -74,7 +74,7 @@ about the argument, the others about there being something to choose from.
 | The related resource has one attribute to name a record by | Its primary key, where that is one attribute, else the attribute the change names with `value_is_key`. |
 | The relationship is public, and is not manual | A table shows nothing of a relationship the resource keeps to itself, and Ash manages no manual one. |
 | The change makes no record for a key | `on_no_match` is not `:create`. `type: :direct_control` and `type: :create` make a new record for a key that names none of the related ones, and a table chooses existing records only. |
-| The destination has a table | It lists `AshTable.Resource`. Its table is what the picker shows. |
+| The destination has a table | It lists `AshDataTable.Resource`. Its table is what the picker shows. |
 | The relationship has no `filter` | As for a reference cell. |
 | The records can be read through a `public?` action | The relationship's own `read_action`, else the read action of the destination's table. |
 | A list of keys is for a relationship of several records | A list for a belongs-to or a has-one is not chosen: there is one record to choose. |

@@ -356,7 +356,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert bulk_result(html) == %{summary: "Archive: 2 done.", failures: []}
       assert announcement(html) == "Archive: 2 done."
       # nothing failed: no row stays selected
-      assert_push_event view, "ash_table:bulk", %{table: "task", failed: []}
+      assert_push_event view, "ash_data_table:bulk", %{table: "task", failed: []}
 
       # the rows are shown as they are now
       assert text(html, cell(second.id, "status")) == "Archived"
@@ -450,7 +450,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
       # the rows on which it did not run stay selected: by their keys, which
       # are all the hook needs to name them
-      assert_push_event view, "ash_table:bulk", %{table: "task", failed: failed}
+      assert_push_event view, "ash_data_table:bulk", %{table: "task", failed: failed}
       assert Enum.sort(failed) == Enum.sort([[other.id, nil], [another.id, nil]])
     end
 
@@ -483,7 +483,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
              }
 
       assert bulk_result(html).summary == "Archive: 2 done, 2 not done."
-      assert_push_event view, "ash_table:bulk", %{failed: [_, _]}
+      assert_push_event view, "ash_data_table:bulk", %{failed: [_, _]}
     end
 
     test "by a validation: the others are done, and the action's message says why this one was not",
@@ -506,7 +506,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
                failures: ["Progress: must be 100 when the task is done (1)"]
              }
 
-      assert_push_event view, "ash_table:bulk", %{failed: [[id, nil]]}
+      assert_push_event view, "ash_data_table:bulk", %{failed: [[id, nil]]}
       assert id == done.id
     end
 
@@ -554,7 +554,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
              }
 
       # it stays selected, for as long as the person leaves it so
-      assert_push_event view, "ash_table:bulk", %{failed: [[id, nil]]}
+      assert_push_event view, "ash_data_table:bulk", %{failed: [[id, nil]]}
       assert id == deleted.id
     end
 

@@ -3,7 +3,7 @@ defmodule Demo.Perf do
   The domain of the performance scripts' one resource, `Demo.Perf.Task`. It
   exists in the perf environment only (`perf/server`).
   """
-  use Ash.Domain, otp_app: :demo, extensions: [AshTable.Domain]
+  use Ash.Domain, otp_app: :demo, extensions: [AshDataTable.Domain]
 
   # the task says `live? true`, as the demo's does
   table do

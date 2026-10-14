@@ -20,7 +20,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
-  alias AshTable.Notifier
+  alias AshDataTable.Notifier
   alias Demo.Generator
   alias Demo.Tracker.Comment
   alias Demo.Tracker.Project
@@ -68,12 +68,12 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
   end
 
   # The page once what was announced has reached it. A listener gathers for
-  # 100 ms; `AshTable.Test.flush/1` has it hand over at once, and the table
+  # 100 ms; `AshDataTable.Test.flush/1` has it hand over at once, and the table
   # may read again for what it heard. A row that is to go is asked about
-  # first (`ash_table:leaving`), and the hook, which these tests do not
+  # first (`ash_data_table:leaving`), and the hook, which these tests do not
   # have, answers that no cell of it is being edited.
   defp heard(view) do
-    AshTable.Test.flush(view)
+    AshDataTable.Test.flush(view)
     render_async(view, 10_000)
     left(view)
     render(view)
@@ -83,7 +83,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
     {ref, _topic, _proxy} = view.proxy
 
     receive do
-      {^ref, {:push_event, "ash_table:leaving", %{table: table, row: row}}} ->
+      {^ref, {:push_event, "ash_data_table:leaving", %{table: table, row: row}}} ->
         forge(view, table, "left", %{"row" => row})
         left(view)
     after
@@ -95,11 +95,12 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
   defp notice(html, id \\ "task"), do: text(html, "[id='#{id}-notice'] > span") || ""
 
   # How many tables listen to the changes of a resource for a tenant.
-  defp listeners({resource, tenant}), do: AshTable.Test.listening(resource, tenant)
+  defp listeners({resource, tenant}), do: AshDataTable.Test.listening(resource, tenant)
 
   defp announcements(sofar \\ []) do
     receive do
-      {:ash_table, _resource, _type, _key, _tenant} = message -> announcements([message | sofar])
+      {:ash_data_table, _resource, _type, _key, _tenant} = message ->
+        announcements([message | sofar])
     after
       0 -> Enum.reverse(sofar)
     end
@@ -127,15 +128,17 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
         )
 
       assert_receive message
-      assert message == {:ash_table, Task, :create, %{id: created.id}, world.organization.id}
+      assert message == {:ash_data_table, Task, :create, %{id: created.id}, world.organization.id}
 
       Ash.update!(created, %{title: "Announced"}, as(world.admin))
       assert_receive message
-      assert message == {:ash_table, Task, :update, %{id: created.id}, world.organization.id}
+      assert message == {:ash_data_table, Task, :update, %{id: created.id}, world.organization.id}
 
       Ash.destroy!(created, as(world.admin))
       assert_receive message
-      assert message == {:ash_table, Task, :destroy, %{id: created.id}, world.organization.id}
+
+      assert message ==
+               {:ash_data_table, Task, :destroy, %{id: created.id}, world.organization.id}
 
       assert announcements() == []
     end
@@ -167,7 +170,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       # announced by the time the action returns: in the process that ran it
       send(listener.pid, :say)
 
-      assert_receive {:ash_table, Task, :update, %{id: id}, tenant}
+      assert_receive {:ash_data_table, Task, :update, %{id: id}, tenant}
       assert {id, tenant} == {task.id, world.organization.id}
       assert Elixir.Task.await(listener) == []
     end
@@ -183,7 +186,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
           [notify?: true, strategy: [:atomic, :stream]] ++ as(world.admin)
         )
 
-      keys = for {:ash_table, Task, :update, key, _tenant} <- announcements(), do: key.id
+      keys = for {:ash_data_table, Task, :update, key, _tenant} <- announcements(), do: key.id
       assert Enum.sort(keys) == Enum.sort(Enum.map(tasks, & &1.id))
 
       %Ash.BulkResult{status: :success} =
@@ -218,7 +221,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
                  announcements()
                end)
 
-      assert_receive {:ash_table, Task, :update, %{id: id}, _tenant}
+      assert_receive {:ash_data_table, Task, :update, %{id: id}, _tenant}
       assert id == task.id
     end
   end
@@ -259,7 +262,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
         wire(member, fn ->
           save(admin, theirs.id, "title", "Theirs, renamed")
           save(admin, mine.id, "title", "Mine, renamed")
-          AshTable.Test.flush(member)
+          AshDataTable.Test.flush(member)
         end)
 
       html = render(member)
@@ -305,7 +308,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       Ash.destroy!(theirs, as(world.admin))
       heard(member)
 
-      assert_push_event(member, "ash_table:unselect", %{table: "task", row: row})
+      assert_push_event(member, "ash_data_table:unselect", %{table: "task", row: row})
       assert row == theirs.id
     end
 
@@ -475,11 +478,11 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
         Phoenix.PubSub.broadcast(
           Demo.PubSub,
           Notifier.topic(Task, world.other_organization.id),
-          {:ash_table, Task, type, %{id: theirs.id}, world.other_organization.id}
+          {:ash_data_table, Task, type, %{id: theirs.id}, world.other_organization.id}
         )
       end
 
-      sent = wire(outsider, fn -> AshTable.Test.flush(outsider) end)
+      sent = wire(outsider, fn -> AshDataTable.Test.flush(outsider) end)
       html = render(outsider)
 
       assert titles(html) == []
@@ -550,7 +553,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       sent =
         try do
           wire(view, fn ->
-            AshTable.Test.flush(view)
+            AshDataTable.Test.flush(view)
             render_async(view, 10_000)
           end)
         after
@@ -824,9 +827,9 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
     test "is asked about first, and stays until the hook says that no cell of it is edited",
          %{world: world, member: member, task: task} do
       Ash.destroy!(task, as(world.admin))
-      AshTable.Test.flush(member)
+      AshDataTable.Test.flush(member)
 
-      assert_push_event(member, "ash_table:leaving", %{table: "task", row: row})
+      assert_push_event(member, "ash_data_table:leaving", %{table: "task", row: row})
       assert row == task.id
       assert titles(render(member)) == ["Staying", "Going"]
 
@@ -857,10 +860,10 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       ])
 
       topic = Notifier.topic(Task, world.organization.id)
-      message = {:ash_table, Task, :update, %{id: task.id}, world.organization.id}
+      message = {:ash_data_table, Task, :update, %{id: task.id}, world.organization.id}
       Phoenix.PubSub.broadcast(Demo.PubSub, topic, message)
-      AshTable.Test.flush(member)
-      assert_push_event(member, "ash_table:leaving", %{row: _row})
+      AshDataTable.Test.flush(member)
+      assert_push_event(member, "ash_data_table:leaving", %{row: _row})
 
       Demo.Repo.query!(
         "UPDATE tasks SET organization_id = $1, title = 'Back again' WHERE id = $2",
@@ -871,7 +874,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       )
 
       Phoenix.PubSub.broadcast(Demo.PubSub, topic, message)
-      AshTable.Test.flush(member)
+      AshDataTable.Test.flush(member)
       assert titles(render(member)) == ["Staying", "Back again"]
 
       # the answer to the first question comes late, and sends nothing away
@@ -898,11 +901,11 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       Phoenix.PubSub.broadcast(
         Demo.PubSub,
         Notifier.topic(Task, world.organization.id),
-        {:ash_table, Task, :update, %{id: task.id}, world.organization.id}
+        {:ash_data_table, Task, :update, %{id: task.id}, world.organization.id}
       )
 
-      AshTable.Test.flush(member)
-      assert_push_event(member, "ash_table:leaving", %{row: _row})
+      AshDataTable.Test.flush(member)
+      assert_push_event(member, "ash_data_table:leaving", %{row: _row})
       move.(world.organization)
 
       # the person opens the action panel for the row before the hook has answered

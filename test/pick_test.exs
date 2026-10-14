@@ -1,4 +1,4 @@
-defmodule AshTable.PickTest do
+defmodule AshDataTable.PickTest do
   @moduledoc """
   What stands behind the picker: which record a person chose, by the key the
   browser names it by, and which record a key points at. Both are read as
@@ -6,8 +6,8 @@ defmodule AshTable.PickTest do
   """
   use ExUnit.Case, async: false
 
-  alias AshTable.Pick
-  alias AshTable.Test.Picking.{Depot, Locker, Vault, Zone}
+  alias AshDataTable.Pick
+  alias AshDataTable.Test.Picking.{Depot, Locker, Vault, Zone}
 
   defp create!(resource, attributes) do
     resource
@@ -16,7 +16,7 @@ defmodule AshTable.PickTest do
   end
 
   setup do
-    on_exit(fn -> AshTable.Test.Ets.stop([Depot, Vault, Zone, Locker]) end)
+    on_exit(fn -> AshDataTable.Test.Ets.stop([Depot, Vault, Zone, Locker]) end)
     :ok
   end
 
@@ -46,7 +46,7 @@ defmodule AshTable.PickTest do
     end
 
     test "takes a scope in place of actor and tenant" do
-      scope = %AshTable.Test.Scope{user: %{role: :admin}, tenant: nil}
+      scope = %AshDataTable.Test.Scope{user: %{role: :admin}, tenant: nil}
 
       assert Pick.reader(depots(), scope: scope, actor: :ignored, authorize_given: nil) ==
                [authorize?: true, scope: scope]

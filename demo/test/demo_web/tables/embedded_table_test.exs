@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.EmbeddedTableTest do
   @moduledoc """
-  Tables placed in a LiveView of the host's with `<AshTable.table … />`.
+  Tables placed in a LiveView of the host's with `<AshDataTable.table … />`.
 
   The demo's dashboard at `/dashboard` holds two: the projects and the tasks,
   each given the actor and the tenant as attributes. What a domain's

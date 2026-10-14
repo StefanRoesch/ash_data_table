@@ -242,7 +242,7 @@ defmodule DemoWeb.Tables.DomainSettingsTest do
       Gate.close()
 
       assert_error_sent 404, fn -> get(conn, "/support/guarded-notes") end
-      assert_raise AshTable.NotFoundError, fn -> live(conn, "/support/guarded-notes") end
+      assert_raise AshDataTable.NotFoundError, fn -> live(conn, "/support/guarded-notes") end
     end
   end
 

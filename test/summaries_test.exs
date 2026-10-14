@@ -1,22 +1,22 @@
-defmodule AshTable.SummariesTest do
+defmodule AshDataTable.SummariesTest do
   @moduledoc """
   Footer summaries below the table component: what the model knows of them,
-  what `AshTable.Query.summaries/4` asks Ash for, and how a value is shown.
+  what `AshDataTable.Query.summaries/4` asks Ash for, and how a value is shown.
   """
   use ExUnit.Case, async: false
 
-  alias AshTable.Format
-  alias AshTable.Model
-  alias AshTable.Query
-  alias AshTable.State
-  alias AshTable.Test.Summarising.Entry
-  alias AshTable.Test.Summarising.Project
-  alias AshTable.Test.Summarising.Ticket
+  alias AshDataTable.Format
+  alias AshDataTable.Model
+  alias AshDataTable.Query
+  alias AshDataTable.State
+  alias AshDataTable.Test.Summarising.Entry
+  alias AshDataTable.Test.Summarising.Project
+  alias AshDataTable.Test.Summarising.Ticket
 
   @ann %{name: "ann"}
 
   setup do
-    on_exit(fn -> AshTable.Test.Ets.stop([Ticket, Project, Entry]) end)
+    on_exit(fn -> AshDataTable.Test.Ets.stop([Ticket, Project, Entry]) end)
 
     project = Ash.create!(Project, %{name: "Apollo"}, authorize?: false)
     other = Ash.create!(Project, %{name: "Borealis"}, authorize?: false)
@@ -85,7 +85,7 @@ defmodule AshTable.SummariesTest do
     end
 
     test "a column of the default set has none" do
-      assert Model.summarised(Model.build(AshTable.Test.Guarded)) == []
+      assert Model.summarised(Model.build(AshDataTable.Test.Guarded)) == []
     end
 
     test "a column this person never sees has no summary to ask for" do
@@ -179,7 +179,7 @@ defmodule AshTable.SummariesTest do
       assert summaries(model, tenant: "north", authorize?: false) == %{amount: {:ok, 15}}
       assert summaries(model, tenant: "south", authorize?: false) == %{amount: {:ok, 100}}
 
-      scope = %AshTable.Test.Scope{user: nil, tenant: "south"}
+      scope = %AshDataTable.Test.Scope{user: nil, tenant: "south"}
       assert summaries(model, scope: scope, authorize?: false) == %{amount: {:ok, 100}}
     end
   end
@@ -217,7 +217,7 @@ defmodule AshTable.SummariesTest do
 
     test "the same with a scope" do
       model = Model.build(Ticket)
-      scope = %AshTable.Test.Scope{user: @ann}
+      scope = %AshDataTable.Test.Scope{user: @ann}
 
       assert %{hours: {:ok, 25}, title: {:ok, 4}} = summaries(model, scope: scope)
     end

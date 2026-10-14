@@ -7,7 +7,7 @@ defmodule DemoWeb.Actor do
     * `current_tenant` - that user's organization id, or `nil`
 
   on the conn (as a plug) and on the socket (as an `on_mount` hook). These are
-  the assign names `ash_table` reads by default.
+  the assign names `ash_data_table` reads by default.
   """
   import Plug.Conn
 

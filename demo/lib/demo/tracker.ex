@@ -3,7 +3,7 @@ defmodule Demo.Tracker do
   The issue tracker: organizations (the tenant), users, projects, tasks,
   comments and labels.
   """
-  use Ash.Domain, otp_app: :demo, extensions: [AshTable.Domain]
+  use Ash.Domain, otp_app: :demo, extensions: [AshDataTable.Domain]
 
   # How the tables of these resources authorize, and under which socket
   # assigns a mounted table finds who is asking. These are the defaults,

@@ -1,13 +1,13 @@
-defmodule AshTable.Test.Files do
+defmodule AshDataTable.Test.Files do
   @moduledoc """
   Actions with arguments that take a file (`Ash.Type.File`), of every kind a
   table offers: on a record, on the table as a whole, and the create action.
   Each writes down what it read of the file it was given.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -73,7 +73,7 @@ defmodule AshTable.Test.Files do
       argument :against, :file, allow_nil?: false
 
       run fn input, _context ->
-        {:ok, byte_size(AshTable.Test.Files.Read.text(input.arguments.against))}
+        {:ok, byte_size(AshDataTable.Test.Files.Read.text(input.arguments.against))}
       end
     end
 
@@ -83,7 +83,7 @@ defmodule AshTable.Test.Files do
 
       run fn input, _context ->
         {:ok, name} = Ash.Type.File.filename(input.arguments.file)
-        {:ok, "#{name}: #{AshTable.Test.Files.Read.text(input.arguments.file)}"}
+        {:ok, "#{name}: #{AshDataTable.Test.Files.Read.text(input.arguments.file)}"}
       end
     end
   end
@@ -97,7 +97,7 @@ defmodule AshTable.Test.Files do
   end
 end
 
-defmodule AshTable.Test.Files.Read do
+defmodule AshDataTable.Test.Files.Read do
   @moduledoc "A change that reads the file an action was given, through `Ash.Type.File`."
   use Ash.Resource.Change
 

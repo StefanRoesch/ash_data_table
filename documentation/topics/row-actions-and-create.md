@@ -580,8 +580,8 @@ resource's short name in words. `Demo.Tracker.Task` gives "New task",
 
 | The table | The button |
 | --- | --- |
-| Mounted with `ash_table` | On the line of the page's heading: the table's name at the left, the button at the right. |
-| Embedded with `<AshTable.table>` | On the line of the table's name, in the same way. The `heading` attribute says what the name is; see [Layout and embedding](layout-and-embedding.md#the-line-of-the-table-s-name). |
+| Mounted with `ash_data_table` | On the line of the page's heading: the table's name at the left, the button at the right. |
+| Embedded with `<AshDataTable.table>` | On the line of the table's name, in the same way. The `heading` attribute says what the name is; see [Layout and embedding](layout-and-embedding.md#the-line-of-the-table-s-name). |
 | The full view of a nested table | On the line that names the parent and the relationship, before "Show all records". The record is created under that parent. |
 | A nested table | On its relationship line, after the label. See below. |
 

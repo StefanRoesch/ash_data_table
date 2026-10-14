@@ -13,7 +13,7 @@ of its tables the zone of the page
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
 ```elixir
-<AshTable.table
+<AshDataTable.table
   id="dashboard-tasks"
   resource={Demo.Tracker.Task}
   heading={2}
@@ -38,7 +38,7 @@ one to the application and configure it
 config :elixir, :time_zone_database, Tz.TimeZoneDatabase
 ```
 
-`tzdata` works the same way (`Tzdata.TimeZoneDatabase`). `ash_table`
+`tzdata` works the same way (`Tzdata.TimeZoneDatabase`). `ash_data_table`
 depends on neither.
 
 **Try it:** `/dashboard` in the demo, in a browser whose zone is not UTC.
@@ -52,8 +52,8 @@ the browser by itself.
 
 | Where the table is | How it is given the zone |
 | --- | --- |
-| Placed with `<AshTable.table>` | The attribute `time_zone`. |
-| Mounted with `ash_table` in the router | The socket assign `time_zone`, which the host's `on_mount` hook sets. |
+| Placed with `<AshDataTable.table>` | The attribute `time_zone`. |
+| Mounted with `ash_data_table` in the router | The socket assign `time_zone`, which the host's `on_mount` hook sets. |
 | A nested table, a picker | The zone of the table it is in. |
 
 Nil, nothing and `"UTC"` are UTC.
@@ -160,7 +160,7 @@ The table asks Ash for exactly those instants.
 ## Mistakes
 
 A name that is no zone is an `ArgumentError` when the table is rendered,
-naming where it was given: the `time_zone` of `<AshTable.table>`, or the
+naming where it was given: the `time_zone` of `<AshDataTable.table>`, or the
 assign and the domain of a mounted table.
 
 A zone other than UTC without a time zone database is an `ArgumentError`

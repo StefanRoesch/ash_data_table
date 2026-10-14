@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Status do
+defmodule AshDataTable.Test.Status do
   @moduledoc false
   use Ash.Type.Enum,
     values: [
@@ -8,10 +8,10 @@ defmodule AshTable.Test.Status do
     ]
 end
 
-defmodule AshTable.Test.Project do
+defmodule AshDataTable.Test.Project do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   attributes do
@@ -24,17 +24,17 @@ defmodule AshTable.Test.Project do
   end
 end
 
-defmodule AshTable.Test.Task do
+defmodule AshDataTable.Test.Task do
   @moduledoc "A resource with the extension and no `table` block."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
     attribute :title, :string, public?: true, allow_nil?: false
-    attribute :status, AshTable.Test.Status, public?: true
+    attribute :status, AshDataTable.Test.Status, public?: true
     attribute :estimate, :integer, public?: true
     attribute :internal_note, :string
     create_timestamp :inserted_at
@@ -42,7 +42,7 @@ defmodule AshTable.Test.Task do
   end
 
   relationships do
-    belongs_to :project, AshTable.Test.Project, public?: true
+    belongs_to :project, AshDataTable.Test.Project, public?: true
   end
 
   actions do
@@ -50,10 +50,10 @@ defmodule AshTable.Test.Task do
   end
 end
 
-defmodule AshTable.Test.Comment do
+defmodule AshDataTable.Test.Comment do
   @moduledoc false
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   attributes do
@@ -62,7 +62,7 @@ defmodule AshTable.Test.Comment do
   end
 
   relationships do
-    belongs_to :issue, AshTable.Test.Issue, public?: true
+    belongs_to :issue, AshDataTable.Test.Issue, public?: true
   end
 
   actions do
@@ -70,23 +70,23 @@ defmodule AshTable.Test.Comment do
   end
 end
 
-defmodule AshTable.Test.Issue do
+defmodule AshDataTable.Test.Issue do
   @moduledoc "A resource whose `table` block declares its columns."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
     attribute :title, :string, public?: true, allow_nil?: false
-    attribute :status, AshTable.Test.Status, public?: true
+    attribute :status, AshDataTable.Test.Status, public?: true
     attribute :estimate, :integer, public?: true
     attribute :due_on, :date, public?: true
   end
 
   relationships do
-    has_many :comments, AshTable.Test.Comment
+    has_many :comments, AshDataTable.Test.Comment
   end
 
   calculations do
@@ -109,12 +109,12 @@ defmodule AshTable.Test.Issue do
   end
 end
 
-defmodule AshTable.Test.Labelled do
+defmodule AshDataTable.Test.Labelled do
   @moduledoc "A table that labels a column and switches sorting off on another."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id

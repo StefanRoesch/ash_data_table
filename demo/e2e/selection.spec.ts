@@ -1009,7 +1009,7 @@ test.describe("tables that are told to let their rows be selected, with nothing 
     // the surrounding page listens, as any code around a table can
     await page.addInitScript(() => {
       ;(window as any).__selections = {}
-      window.addEventListener("ash_table:selection", (event) => {
+      window.addEventListener("ash_data_table:selection", (event) => {
         const detail = (event as CustomEvent).detail
         ;(window as any).__selections[detail.table] = detail
       })

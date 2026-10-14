@@ -1,4 +1,4 @@
-defmodule AshTable.Test.LongText.Note do
+defmodule AshDataTable.Test.LongText.Note do
   @moduledoc "An embedded resource: a map cell."
   use Ash.Resource, data_layer: :embedded
 
@@ -7,16 +7,16 @@ defmodule AshTable.Test.LongText.Note do
   end
 end
 
-defmodule AshTable.Test.LongText do
+defmodule AshDataTable.Test.LongText do
   @moduledoc """
   A resource for the tests of `max_lines`: a column of every cell type that
   takes it, one that says one line, and one whose component only edits. Its
   second table, `:short`, says another number for the same field.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -24,7 +24,7 @@ defmodule AshTable.Test.LongText do
     attribute :body, :string, public?: true
     attribute :summary, :ci_string, public?: true
     attribute :tags, {:array, :string}, public?: true
-    attribute :note, AshTable.Test.LongText.Note, public?: true
+    attribute :note, AshDataTable.Test.LongText.Note, public?: true
     attribute :facts, :map, public?: true
 
     attribute :source, :union do
@@ -90,7 +90,7 @@ defmodule AshTable.Test.LongText do
 
     column :mood do
       max_lines(2)
-      component AshTable.Test.Cells.Knob
+      component AshDataTable.Test.Cells.Knob
     end
   end
 

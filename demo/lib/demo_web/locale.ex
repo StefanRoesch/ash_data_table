@@ -5,9 +5,9 @@ defmodule DemoWeb.Locale do
   process with `Gettext.put_locale/1`: for a request as a plug, for a
   LiveView as an `on_mount` hook.
 
-  That is all a host does for `ash_table` to translate: the table looks its
+  That is all a host does for `ash_data_table` to translate: the table looks its
   texts up in the locale of the process it runs in, in the backend named by
-  `config :ash_table, gettext_backend: DemoWeb.Gettext`. Only the tables are
+  `config :ash_data_table, gettext_backend: DemoWeb.Gettext`. Only the tables are
   translated here; the demo's own pages stay in English.
   """
   import Plug.Conn

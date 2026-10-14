@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Picking do
+defmodule AshDataTable.Test.Picking do
   @moduledoc """
   Resources for the tests of the picker: reference cells that are edited by
   choosing a record of the destination's table, and inputs of actions that
@@ -8,15 +8,15 @@ defmodule AshTable.Test.Picking do
   """
 end
 
-defmodule AshTable.Test.Picking.Depot do
+defmodule AshDataTable.Test.Picking.Depot do
   @moduledoc """
   A destination everybody reads, called by its name: its table reads through
   the primary read action, in pages.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -25,7 +25,7 @@ defmodule AshTable.Test.Picking.Depot do
   end
 
   relationships do
-    has_many :shipments, AshTable.Test.Picking.Shipment, public?: true
+    has_many :shipments, AshDataTable.Test.Picking.Shipment, public?: true
   end
 
   actions do
@@ -68,17 +68,17 @@ defmodule AshTable.Test.Picking.Depot do
   end
 end
 
-defmodule AshTable.Test.Picking.Vault do
+defmodule AshDataTable.Test.Picking.Vault do
   @moduledoc """
   A destination everybody is shown the label of, through the primary read
   action, and only an admin can ever list, through the read action of its
   table.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -108,10 +108,10 @@ defmodule AshTable.Test.Picking.Vault do
   end
 end
 
-defmodule AshTable.Test.Picking.Port do
+defmodule AshDataTable.Test.Picking.Port do
   @moduledoc "A destination without a table: nothing to choose its records from."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets
 
   attributes do
@@ -124,15 +124,15 @@ defmodule AshTable.Test.Picking.Port do
   end
 end
 
-defmodule AshTable.Test.Picking.Zone do
+defmodule AshDataTable.Test.Picking.Zone do
   @moduledoc """
   A destination that is pointed at by an attribute that is not its primary
   key, which has two attributes: a zone is known by its code.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     attribute :country, :string, primary_key?: true, allow_nil?: false, public?: true
@@ -145,7 +145,7 @@ defmodule AshTable.Test.Picking.Zone do
   end
 
   identities do
-    identity :unique_code, [:code], pre_check_with: AshTable.Test.Domain
+    identity :unique_code, [:code], pre_check_with: AshDataTable.Test.Domain
   end
 
   table do
@@ -153,19 +153,19 @@ defmodule AshTable.Test.Picking.Zone do
   end
 end
 
-defmodule AshTable.Test.Picking.Shipment do
+defmodule AshDataTable.Test.Picking.Shipment do
   @moduledoc """
   A table with reference columns of every kind the picker has to tell
   apart: by what their relationship is, and by what the update action
   accepts.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Picking.{Depot, Port, Vault, Zone}
+  alias AshDataTable.Test.Picking.{Depot, Port, Vault, Zone}
 
   attributes do
     uuid_primary_key :id
@@ -307,15 +307,15 @@ defmodule AshTable.Test.Picking.Shipment do
   end
 end
 
-defmodule AshTable.Test.Picking.Crate do
+defmodule AshDataTable.Test.Picking.Crate do
   @moduledoc """
   A table that has no column for the depot a crate is in, and a create
   action that takes its key.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -323,7 +323,7 @@ defmodule AshTable.Test.Picking.Crate do
   end
 
   relationships do
-    belongs_to :depot, AshTable.Test.Picking.Depot, public?: true
+    belongs_to :depot, AshDataTable.Test.Picking.Depot, public?: true
   end
 
   actions do
@@ -336,9 +336,9 @@ defmodule AshTable.Test.Picking.Crate do
   end
 end
 
-defmodule AshTable.Test.Picking.Unguarded do
+defmodule AshDataTable.Test.Picking.Unguarded do
   @moduledoc "A domain whose tables do not authorize."
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     authorize? false
@@ -349,13 +349,13 @@ defmodule AshTable.Test.Picking.Unguarded do
   end
 end
 
-defmodule AshTable.Test.Picking.Locker do
+defmodule AshDataTable.Test.Picking.Locker do
   @moduledoc "A destination nobody may read, in a domain whose tables do not authorize."
   use Ash.Resource,
-    domain: AshTable.Test.Picking.Unguarded,
+    domain: AshDataTable.Test.Picking.Unguarded,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id

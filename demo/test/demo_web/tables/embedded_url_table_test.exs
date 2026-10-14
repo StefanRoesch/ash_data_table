@@ -1,7 +1,7 @@
 defmodule DemoWeb.Tables.EmbeddedUrlTableTest do
   @moduledoc """
   Tables placed in a LiveView of the host's and given the page's URL
-  (`<AshTable.table … url={@url} />`): they keep their sort, filters and
+  (`<AshDataTable.table … url={@url} />`): they keep their sort, filters and
   page in that URL, each under its own id.
 
   The demo's dashboard keeps its tables' state out of the URL, so this page

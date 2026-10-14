@@ -1,4 +1,4 @@
-defmodule AshTable.LiveUpdatesTest do
+defmodule AshDataTable.LiveUpdatesTest do
   @moduledoc """
   Boundaries 1 and 2 of live updates: `live?` in a `table` block and in a
   named table, `pub_sub` in a domain's block and what is reported without
@@ -10,11 +10,11 @@ defmodule AshTable.LiveUpdatesTest do
   import ExUnit.CaptureLog
   import Spark.Test
 
-  alias AshTable.Listener
-  alias AshTable.Model
-  alias AshTable.Notifier
-  alias AshTable.Resource.Info
-  alias AshTable.Resource.Listening
+  alias AshDataTable.Listener
+  alias AshDataTable.Model
+  alias AshDataTable.Notifier
+  alias AshDataTable.Resource.Info
+  alias AshDataTable.Resource.Listening
 
   defmodule OwnNotifier do
     @moduledoc false
@@ -27,10 +27,10 @@ defmodule AshTable.LiveUpdatesTest do
   defmodule Note do
     @moduledoc false
     use Ash.Resource,
-      domain: AshTable.LiveUpdatesTest.Notes,
+      domain: AshDataTable.LiveUpdatesTest.Notes,
       data_layer: Ash.DataLayer.Ets,
-      simple_notifiers: [AshTable.LiveUpdatesTest.OwnNotifier],
-      extensions: [AshTable.Resource]
+      simple_notifiers: [AshDataTable.LiveUpdatesTest.OwnNotifier],
+      extensions: [AshDataTable.Resource]
 
     attributes do
       uuid_primary_key :id
@@ -66,9 +66,9 @@ defmodule AshTable.LiveUpdatesTest do
   defmodule Lodger do
     @moduledoc false
     use Ash.Resource,
-      domain: AshTable.LiveUpdatesTest.Notes,
+      domain: AshDataTable.LiveUpdatesTest.Notes,
       data_layer: Ash.DataLayer.Ets,
-      extensions: [AshTable.Resource]
+      extensions: [AshDataTable.Resource]
 
     multitenancy do
       strategy :context
@@ -91,9 +91,9 @@ defmodule AshTable.LiveUpdatesTest do
   defmodule Still do
     @moduledoc false
     use Ash.Resource,
-      domain: AshTable.LiveUpdatesTest.Notes,
+      domain: AshDataTable.LiveUpdatesTest.Notes,
       data_layer: Ash.DataLayer.Ets,
-      extensions: [AshTable.Resource]
+      extensions: [AshDataTable.Resource]
 
     attributes do
       uuid_primary_key :id
@@ -113,16 +113,16 @@ defmodule AshTable.LiveUpdatesTest do
 
   defmodule Notes do
     @moduledoc false
-    use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+    use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
     table do
-      pub_sub AshTable.LiveUpdatesTest.PubSub
+      pub_sub AshDataTable.LiveUpdatesTest.PubSub
     end
 
     resources do
-      resource AshTable.LiveUpdatesTest.Note
-      resource AshTable.LiveUpdatesTest.Lodger
-      resource AshTable.LiveUpdatesTest.Still
+      resource AshDataTable.LiveUpdatesTest.Note
+      resource AshDataTable.LiveUpdatesTest.Lodger
+      resource AshDataTable.LiveUpdatesTest.Still
     end
   end
 
@@ -130,9 +130,9 @@ defmodule AshTable.LiveUpdatesTest do
   defmodule Stray do
     @moduledoc false
     use Ash.Resource,
-      domain: AshTable.Test.Domain,
+      domain: AshDataTable.Test.Domain,
       data_layer: Ash.DataLayer.Ets,
-      extensions: [AshTable.Resource]
+      extensions: [AshDataTable.Resource]
 
     attributes do
       uuid_primary_key :id
@@ -148,13 +148,13 @@ defmodule AshTable.LiveUpdatesTest do
     end
   end
 
-  @pub_sub AshTable.LiveUpdatesTest.PubSub
+  @pub_sub AshDataTable.LiveUpdatesTest.PubSub
 
   # What was announced to this process so far. An action announces in the
   # process that runs it, before it returns.
   defp heard(sofar \\ []) do
     receive do
-      {:ash_table, _resource, _type, _key, _tenant} = message -> heard([message | sofar])
+      {:ash_data_table, _resource, _type, _key, _tenant} = message -> heard([message | sofar])
     after
       0 -> Enum.reverse(sofar)
     end
@@ -188,20 +188,22 @@ defmodule AshTable.LiveUpdatesTest do
       assert Info.live?(Note)
       assert Info.table_live?(Note)
       refute Info.live?(Still)
-      refute Info.live?(AshTable.Test.Domain)
+      refute Info.live?(AshDataTable.Test.Domain)
     end
 
     test "adds the table's notifier to the resource, beside the host's own" do
-      assert Ash.Resource.Info.notifiers(Note) == [AshTable.Notifier, OwnNotifier]
-      assert Ash.Resource.Info.notifiers(Lodger) == [AshTable.Notifier]
+      assert Ash.Resource.Info.notifiers(Note) == [AshDataTable.Notifier, OwnNotifier]
+      assert Ash.Resource.Info.notifiers(Lodger) == [AshDataTable.Notifier]
       assert Ash.Resource.Info.notifiers(Still) == []
     end
 
     test "rejects a value that is not a boolean" do
       error =
         assert_raise Spark.Error.DslError, fn ->
-          defmodule Elixir.AshTable.LiveUpdatesTest.LiveSometimes do
-            use Ash.Resource, domain: AshTable.Test.Domain, extensions: [AshTable.Resource]
+          defmodule Elixir.AshDataTable.LiveUpdatesTest.LiveSometimes do
+            use Ash.Resource,
+              domain: AshDataTable.Test.Domain,
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -250,35 +252,37 @@ defmodule AshTable.LiveUpdatesTest do
       error = assert_raise ArgumentError, fn -> Model.build(Still, live?: true) end
 
       assert error.message ==
-               "cannot build the table of AshTable.LiveUpdatesTest.Still: it is asked to show " <>
-                 "live updates (`live?: true`), but AshTable.LiveUpdatesTest.Still announces " <>
+               "cannot build the table of AshDataTable.LiveUpdatesTest.Still: it is asked to show " <>
+                 "live updates (`live?: true`), but AshDataTable.LiveUpdatesTest.Still announces " <>
                  "none: add `live? true` to its `table` block."
 
       error = assert_raise ArgumentError, fn -> Model.build(Still, table: :other, live?: true) end
-      assert error.message =~ "cannot build the table `:other` of AshTable.LiveUpdatesTest.Still"
+
+      assert error.message =~
+               "cannot build the table `:other` of AshDataTable.LiveUpdatesTest.Still"
     end
   end
 
   describe "`pub_sub` in the domain's `table` block" do
     test "is read for a resource of the domain, and is nil where none is named" do
-      assert AshTable.Domain.Info.pub_sub(Note) == @pub_sub
+      assert AshDataTable.Domain.Info.pub_sub(Note) == @pub_sub
       assert Listening.pub_sub(Note) == {:ok, @pub_sub}
 
-      assert AshTable.Domain.Info.pub_sub(Stray) == nil
+      assert AshDataTable.Domain.Info.pub_sub(Stray) == nil
 
-      assert {:error, {:no_pub_sub, Stray, AshTable.Test.Domain} = reason} =
+      assert {:error, {:no_pub_sub, Stray, AshDataTable.Test.Domain} = reason} =
                Listening.pub_sub(Stray)
 
       assert Listening.message(reason) =~
-               "AshTable.LiveUpdatesTest.Stray says `live? true`, but the `table` block of " <>
-                 "AshTable.Test.Domain names no `pub_sub`."
+               "AshDataTable.LiveUpdatesTest.Stray says `live? true`, but the `table` block of " <>
+                 "AshDataTable.Test.Domain names no `pub_sub`."
     end
 
     test "is missed when the domain is compiled with a resource that says `live? true`" do
       error =
         assert_dsl_error %Spark.Error.DslError{} do
-          defmodule Elixir.AshTable.LiveUpdatesTest.Silent do
-            use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+          defmodule Elixir.AshDataTable.LiveUpdatesTest.Silent do
+            use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
             table do
               authorize? true
@@ -286,8 +290,8 @@ defmodule AshTable.LiveUpdatesTest do
 
             resources do
               allow_unregistered? true
-              resource AshTable.LiveUpdatesTest.Still
-              resource AshTable.LiveUpdatesTest.Note
+              resource AshDataTable.LiveUpdatesTest.Still
+              resource AshDataTable.LiveUpdatesTest.Note
             end
           end
         end
@@ -295,20 +299,20 @@ defmodule AshTable.LiveUpdatesTest do
       assert error.path == [:table, :pub_sub]
 
       assert error.message ==
-               "AshTable.LiveUpdatesTest.Note says `live? true`, but the `table` block of " <>
-                 "AshTable.LiveUpdatesTest.Silent names no `pub_sub`. Live updates are sent " <>
+               "AshDataTable.LiveUpdatesTest.Note says `live? true`, but the `table` block of " <>
+                 "AshDataTable.LiveUpdatesTest.Silent names no `pub_sub`. Live updates are sent " <>
                  "through a Phoenix.PubSub server: add `pub_sub MyApp.PubSub` to the `table` " <>
-                 "block of AshTable.LiveUpdatesTest.Silent (with `extensions: [AshTable.Domain]`)."
+                 "block of AshDataTable.LiveUpdatesTest.Silent (with `extensions: [AshDataTable.Domain]`)."
     end
 
     test "is not missed in a domain whose resources announce nothing" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.LiveUpdatesTest.Calm do
-          use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+        defmodule Elixir.AshDataTable.LiveUpdatesTest.Calm do
+          use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
           resources do
             allow_unregistered? true
-            resource AshTable.LiveUpdatesTest.Still
+            resource AshDataTable.LiveUpdatesTest.Still
           end
         end
       end
@@ -317,8 +321,8 @@ defmodule AshTable.LiveUpdatesTest do
     test "rejects a name that is not an atom" do
       error =
         assert_raise Spark.Error.DslError, fn ->
-          defmodule Elixir.AshTable.LiveUpdatesTest.PubSubAsText do
-            use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+          defmodule Elixir.AshDataTable.LiveUpdatesTest.PubSubAsText do
+            use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
             table do
               pub_sub "MyApp.PubSub"
@@ -332,23 +336,30 @@ defmodule AshTable.LiveUpdatesTest do
 
   describe "the router" do
     test "takes `live?` for a mounted table, and only a boolean" do
-      assert AshTable.Router.__live_opts__(Note, live?: false)[:metadata].ash_table.live? == false
-      assert AshTable.Router.__live_opts__(Note, [])[:metadata].ash_table.live? == nil
+      assert AshDataTable.Router.__live_opts__(Note, live?: false)[:metadata].ash_data_table.live? ==
+               false
 
-      assert_raise ArgumentError, ~r/the :live\? of ash_table must be `true` or `false`/, fn ->
-        AshTable.Router.__live_opts__(Note, live?: :yes)
-      end
+      assert AshDataTable.Router.__live_opts__(Note, [])[:metadata].ash_data_table.live? == nil
+
+      assert_raise ArgumentError,
+                   ~r/the :live\? of ash_data_table must be `true` or `false`/,
+                   fn ->
+                     AshDataTable.Router.__live_opts__(Note, live?: :yes)
+                   end
     end
   end
 
   describe "the topic" do
     test "is the resource's, and the tenant's where the resource has tenants" do
-      assert Notifier.topic(Note, nil) == "ash_table:AshTable.LiveUpdatesTest.Note"
-      assert Notifier.topic(Note, "acme") == "ash_table:AshTable.LiveUpdatesTest.Note"
+      assert Notifier.topic(Note, nil) == "ash_data_table:AshDataTable.LiveUpdatesTest.Note"
+      assert Notifier.topic(Note, "acme") == "ash_data_table:AshDataTable.LiveUpdatesTest.Note"
 
-      assert Notifier.topic(Lodger, nil) == "ash_table:AshTable.LiveUpdatesTest.Lodger"
-      assert Notifier.topic(Lodger, "acme") == "ash_table:AshTable.LiveUpdatesTest.Lodger:acme"
-      assert Notifier.topic(Lodger, 7) == "ash_table:AshTable.LiveUpdatesTest.Lodger:7"
+      assert Notifier.topic(Lodger, nil) == "ash_data_table:AshDataTable.LiveUpdatesTest.Lodger"
+
+      assert Notifier.topic(Lodger, "acme") ==
+               "ash_data_table:AshDataTable.LiveUpdatesTest.Lodger:acme"
+
+      assert Notifier.topic(Lodger, 7) == "ash_data_table:AshDataTable.LiveUpdatesTest.Lodger:7"
       assert Notifier.topic(Lodger, "acme") != Notifier.topic(Lodger, "globex")
     end
   end
@@ -374,9 +385,9 @@ defmodule AshTable.LiveUpdatesTest do
       messages = heard()
 
       assert messages == [
-               {:ash_table, Note, :create, %{id: note.id}, nil},
-               {:ash_table, Note, :update, %{id: note.id}, nil},
-               {:ash_table, Note, :destroy, %{id: note.id}, nil}
+               {:ash_data_table, Note, :create, %{id: note.id}, nil},
+               {:ash_data_table, Note, :update, %{id: note.id}, nil},
+               {:ash_data_table, Note, :destroy, %{id: note.id}, nil}
              ]
 
       refute inspect(messages) =~ "s3cret"
@@ -398,8 +409,8 @@ defmodule AshTable.LiveUpdatesTest do
 
       lodger = Ash.create!(Lodger, %{name: "Ann"}, tenant: "acme")
 
-      assert heard() == [{:ash_table, Lodger, :create, %{id: lodger.id}, "acme"}]
-      assert said(all) == [{:ash_table, Lodger, :create, %{id: lodger.id}, "acme"}]
+      assert heard() == [{:ash_data_table, Lodger, :create, %{id: lodger.id}, "acme"}]
+      assert said(all) == [{:ash_data_table, Lodger, :create, %{id: lodger.id}, "acme"}]
       assert said(other) == []
     end
 
@@ -409,14 +420,14 @@ defmodule AshTable.LiveUpdatesTest do
 
       another = another(topic)
 
-      # what a table gives every call it makes (`AshTable.Query.reader_opts/1`)
-      opts = AshTable.Query.reader_opts(origin: self(), authorize?: false)
-      assert opts[:context] == %{ash_table_origin: self()}
+      # what a table gives every call it makes (`AshDataTable.Query.reader_opts/1`)
+      opts = AshDataTable.Query.reader_opts(origin: self(), authorize?: false)
+      assert opts[:context] == %{ash_data_table_origin: self()}
 
       note = Ash.create!(Note, %{title: "Mine"}, opts)
 
       assert heard() == []
-      assert said(another) == [{:ash_table, Note, :create, %{id: note.id}, nil}]
+      assert said(another) == [{:ash_data_table, Note, :create, %{id: note.id}, nil}]
     end
 
     test "lets a write through where the domain names no server" do
@@ -431,8 +442,8 @@ defmodule AshTable.LiveUpdatesTest do
           assert %{title: "Unheard"} = Ash.create!(Note, %{title: "Unheard"})
         end)
 
-      assert log =~ "a change of AshTable.LiveUpdatesTest.Note could not be announced"
-      assert log =~ "AshTable.LiveUpdatesTest.PubSub"
+      assert log =~ "a change of AshDataTable.LiveUpdatesTest.Note could not be announced"
+      assert log =~ "AshDataTable.LiveUpdatesTest.PubSub"
     end
   end
 
@@ -449,7 +460,7 @@ defmodule AshTable.LiveUpdatesTest do
       {:ok, two} = Listener.start(@pub_sub, topic, &send(test, {:batch, &1}))
       assert Enum.sort(Listener.of(self())) == Enum.sort([one, two])
 
-      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_table, Note, :update, %{id: 1}, nil})
+      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, :update, %{id: 1}, nil})
       for listener <- Listener.of(self()), do: Listener.flush(listener)
 
       assert_received {:batch, [update: %{id: 1}]}
@@ -488,17 +499,17 @@ defmodule AshTable.LiveUpdatesTest do
 
       # subscribed by the time it is started: nothing is missed
       for n <- 1..1000, type <- [:update, :update] do
-        Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_table, Note, type, %{id: n}, nil})
+        Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, type, %{id: n}, nil})
       end
 
       assert [batch] = batches(listener)
       assert batch == for(n <- 1..1000, do: {:update, %{id: n}})
 
-      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_table, Note, :destroy, %{id: 1}, nil})
+      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, :destroy, %{id: 1}, nil})
       assert batches(listener) == [[destroy: %{id: 1}]]
 
       # and by itself, a moment after the first thing it hears
-      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_table, Note, :create, %{id: 2}, nil})
+      Phoenix.PubSub.broadcast(@pub_sub, topic, {:ash_data_table, Note, :create, %{id: 2}, nil})
       assert_receive {:batch, [create: %{id: 2}]}, 1_000
       # nothing twice: the timer of a batch that was handed over early brings none
       assert batches(listener) == []
@@ -512,11 +523,11 @@ defmodule AshTable.LiveUpdatesTest do
 
       {:ok, listener} = Listener.start(@pub_sub, topic, &send(test, {:batch, &1}))
       reference = Process.monitor(listener)
-      assert AshTable.Test.listening(Note) == 1
+      assert AshDataTable.Test.listening(Note) == 1
 
       Listener.stop(listener)
       assert_receive {:DOWN, ^reference, :process, _pid, _reason}
-      assert AshTable.Test.listening(Note) == 0
+      assert AshDataTable.Test.listening(Note) == 0
 
       owner =
         spawn(fn ->
@@ -533,7 +544,9 @@ defmodule AshTable.LiveUpdatesTest do
 
     test "says that the server is not running" do
       assert {:error, %ArgumentError{}} =
-               Listener.start(AshTable.LiveUpdatesTest.NoSuchPubSub, "topic", fn _batch -> :ok end)
+               Listener.start(AshDataTable.LiveUpdatesTest.NoSuchPubSub, "topic", fn _batch ->
+                 :ok
+               end)
     end
   end
 end

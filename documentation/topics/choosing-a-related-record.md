@@ -94,7 +94,7 @@ about there being something to choose from.
 | That action needs nothing else | No required argument without a default, as for any column. |
 | The person may run it | One they can never run leaves the cell read-only for them. See [Authorization](authorization.md). |
 | The key is a public, writable attribute | `attribute_public?` and `attribute_writable?` of the relationship. A public relationship has a public key unless it says otherwise. Not needed where the action takes the record through an argument. |
-| The destination has a table | It lists `AshTable.Resource`. A reference column needs that anyway, for the label. |
+| The destination has a table | It lists `AshDataTable.Resource`. A reference column needs that anyway, for the label. |
 | The relationship has no `filter` | See [Which records are offered](#which-records-are-offered). |
 | The records can be read through a `public?` action | The relationship's own `read_action`, else the read action of the destination's table. |
 

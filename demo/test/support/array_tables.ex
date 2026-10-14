@@ -39,7 +39,7 @@ defmodule Demo.Support.Lists.Roster do
     domain: Demo.Support.Lists,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :secrets do

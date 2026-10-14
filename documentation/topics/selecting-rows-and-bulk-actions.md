@@ -231,7 +231,7 @@ An identity of several attributes is no reason: each of them can be the
 same on many records. The demo's tables have no such action; the library's
 own tests do
 ([`test/support/acting.ex`](https://github.com/StefanRoesch/ash_table/blob/main/test/support/acting.ex),
-`AshTable.Test.Acting.Sheet`).
+`AshDataTable.Test.Acting.Sheet`).
 
 `bulk? true` on such an action is reported when the resource is compiled:
 the option switches nothing on. See

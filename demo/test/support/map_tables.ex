@@ -155,7 +155,7 @@ defmodule Demo.Support.Maps.Site do
     domain: Demo.Support.Maps,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     update_action :update

@@ -1,9 +1,9 @@
-defmodule AshTable.Test.Reading do
+defmodule AshDataTable.Test.Reading do
   @moduledoc """
   Resources that differ only in their read action and `table` block, for the
   tests of read action, pagination and sortability.
 
-  `use AshTable.Test.Reading` gives a resource the same fields every time:
+  `use AshDataTable.Test.Reading` gives a resource the same fields every time:
   a title, an attribute declared `sortable?: false`, an array attribute, an
   expression calculation and a count aggregate.
   """
@@ -11,9 +11,9 @@ defmodule AshTable.Test.Reading do
   defmacro __using__(_opts) do
     quote do
       use Ash.Resource,
-        domain: AshTable.Test.Domain,
+        domain: AshDataTable.Test.Domain,
         data_layer: Ash.DataLayer.Ets,
-        extensions: [AshTable.Resource]
+        extensions: [AshDataTable.Resource]
 
       attributes do
         uuid_primary_key :id
@@ -23,7 +23,7 @@ defmodule AshTable.Test.Reading do
       end
 
       relationships do
-        has_many :comments, AshTable.Test.Comment, destination_attribute: :issue_id
+        has_many :comments, AshDataTable.Test.Comment, destination_attribute: :issue_id
       end
 
       calculations do
@@ -37,9 +37,9 @@ defmodule AshTable.Test.Reading do
   end
 end
 
-defmodule AshTable.Test.Reading.Unpaginated do
+defmodule AshDataTable.Test.Reading.Unpaginated do
   @moduledoc false
-  use AshTable.Test.Reading
+  use AshDataTable.Test.Reading
 
   actions do
     read :read do
@@ -48,9 +48,9 @@ defmodule AshTable.Test.Reading.Unpaginated do
   end
 end
 
-defmodule AshTable.Test.Reading.OffsetOnly do
+defmodule AshDataTable.Test.Reading.OffsetOnly do
   @moduledoc false
-  use AshTable.Test.Reading
+  use AshDataTable.Test.Reading
 
   actions do
     read :read do
@@ -67,9 +67,9 @@ defmodule AshTable.Test.Reading.OffsetOnly do
   end
 end
 
-defmodule AshTable.Test.Reading.KeysetOnly do
+defmodule AshDataTable.Test.Reading.KeysetOnly do
   @moduledoc false
-  use AshTable.Test.Reading
+  use AshDataTable.Test.Reading
 
   actions do
     read :read do
@@ -79,9 +79,9 @@ defmodule AshTable.Test.Reading.KeysetOnly do
   end
 end
 
-defmodule AshTable.Test.Reading.Both do
+defmodule AshDataTable.Test.Reading.Both do
   @moduledoc false
-  use AshTable.Test.Reading
+  use AshDataTable.Test.Reading
 
   actions do
     read :read do
@@ -102,9 +102,9 @@ defmodule AshTable.Test.Reading.Both do
   end
 end
 
-defmodule AshTable.Test.Reading.BothWithKeysetChosen do
+defmodule AshDataTable.Test.Reading.BothWithKeysetChosen do
   @moduledoc false
-  use AshTable.Test.Reading
+  use AshDataTable.Test.Reading
 
   actions do
     read :read do
@@ -122,9 +122,9 @@ defmodule AshTable.Test.Reading.BothWithKeysetChosen do
   end
 end
 
-defmodule AshTable.Test.Reading.SmallMaximum do
+defmodule AshDataTable.Test.Reading.SmallMaximum do
   @moduledoc false
-  use AshTable.Test.Reading
+  use AshDataTable.Test.Reading
 
   actions do
     read :read do
@@ -134,7 +134,7 @@ defmodule AshTable.Test.Reading.SmallMaximum do
   end
 end
 
-defmodule AshTable.Test.Reading.Sized do
+defmodule AshDataTable.Test.Reading.Sized do
   @moduledoc """
   Tables that offer page sizes. The default one pages by offset and opens
   with the action's `default_limit`; `:by_keyset` pages by keyset;
@@ -142,12 +142,12 @@ defmodule AshTable.Test.Reading.Sized do
   with the first size as it is written.
 
   The other read actions are for relationships that read it through an
-  action of their own (`AshTable.Test.Reading.SizedShelf`).
+  action of their own (`AshDataTable.Test.Reading.SizedShelf`).
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -215,15 +215,15 @@ defmodule AshTable.Test.Reading.Sized do
   end
 end
 
-defmodule AshTable.Test.Reading.SizedShelf do
+defmodule AshDataTable.Test.Reading.SizedShelf do
   @moduledoc """
   A table that declares no `relationship`, over records that are read in
-  `AshTable.Test.Reading.Sized`'s table through actions of their own.
+  `AshDataTable.Test.Reading.Sized`'s table through actions of their own.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -231,27 +231,29 @@ defmodule AshTable.Test.Reading.SizedShelf do
   end
 
   relationships do
-    has_many :items, AshTable.Test.Reading.Sized, destination_attribute: :shelf_id, public?: true
+    has_many :items, AshDataTable.Test.Reading.Sized,
+      destination_attribute: :shelf_id,
+      public?: true
 
-    has_many :few_items, AshTable.Test.Reading.Sized do
+    has_many :few_items, AshDataTable.Test.Reading.Sized do
       destination_attribute :shelf_id
       read_action :few
       public? true
     end
 
-    has_many :unpaged_items, AshTable.Test.Reading.Sized do
+    has_many :unpaged_items, AshDataTable.Test.Reading.Sized do
       destination_attribute :shelf_id
       read_action :unpaged
       public? true
     end
 
-    has_many :needy_items, AshTable.Test.Reading.Sized do
+    has_many :needy_items, AshDataTable.Test.Reading.Sized do
       destination_attribute :shelf_id
       read_action :needy
       public? true
     end
 
-    has_one :first_item, AshTable.Test.Reading.Sized do
+    has_one :first_item, AshDataTable.Test.Reading.Sized do
       destination_attribute :shelf_id
       from_many? true
       public? true

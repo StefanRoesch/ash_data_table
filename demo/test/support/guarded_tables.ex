@@ -34,7 +34,7 @@ defmodule Demo.Support.Guarded do
   A domain whose tables find who is asking under names of its own. Its
   resources exist for the tests only and keep their records in memory.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     scope_assign :viewer_scope
@@ -57,7 +57,7 @@ defmodule Demo.Support.Guarded.Note do
     domain: Demo.Support.Guarded,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     update_action :update
@@ -104,7 +104,7 @@ defmodule Demo.Support.Unguarded do
   A domain whose tables do not authorize. Its resource exists for the tests
   only and keeps its records in memory.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     authorize? false
@@ -123,7 +123,7 @@ defmodule Demo.Support.Unguarded.Note do
     domain: Demo.Support.Unguarded,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :* do

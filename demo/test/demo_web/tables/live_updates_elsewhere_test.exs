@@ -15,7 +15,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
-  alias AshTable.Notifier
+  alias AshDataTable.Notifier
   alias Demo.Support.Live.{Bulletin, Pin, Reply, Stamp}
 
   @notice "There are new or changed records."
@@ -36,12 +36,12 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
     do: Phoenix.ConnTest.init_test_session(conn, %{"assigns" => %{reader: %{role: role}}})
 
   # The page once what was announced has reached it. A listener gathers for
-  # 100 ms; `AshTable.Test.flush/1` has it hand over at once, and the table
+  # 100 ms; `AshDataTable.Test.flush/1` has it hand over at once, and the table
   # may read again for what it heard. A row that is to go is asked about
-  # first (`ash_table:leaving`), and the hook, which these tests do not
+  # first (`ash_data_table:leaving`), and the hook, which these tests do not
   # have, answers that no cell of it is being edited.
   defp heard(view) do
-    AshTable.Test.flush(view)
+    AshDataTable.Test.flush(view)
     render_async(view, 10_000)
     left(view)
     render(view)
@@ -51,7 +51,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
     {ref, _topic, _proxy} = view.proxy
 
     receive do
-      {^ref, {:push_event, "ash_table:leaving", %{table: table, row: row}}} ->
+      {^ref, {:push_event, "ash_data_table:leaving", %{table: table, row: row}}} ->
         forge(view, table, "left", %{"row" => row})
         left(view)
     after
@@ -63,7 +63,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
   defp notice(html, id \\ "bulletin"), do: text(html, "[id='#{id}-notice'] > span") || ""
 
   # How many tables listen to the changes of a resource.
-  defp listeners(resource), do: AshTable.Test.listening(resource)
+  defp listeners(resource), do: AshDataTable.Test.listening(resource)
 
   describe "a record the person may not read" do
     setup %{conn: conn} do
@@ -77,7 +77,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
       Ash.update!(hidden, %{title: "Kept back, renamed"}, authorize?: false)
       Ash.create!(Bulletin, %{title: "Another secret", hidden?: true}, authorize?: false)
 
-      sent = wire(reader, fn -> AshTable.Test.flush(reader) end)
+      sent = wire(reader, fn -> AshDataTable.Test.flush(reader) end)
       html = render(reader)
 
       assert titles(html) == ["Plain"]
@@ -127,7 +127,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       Ash.update!(plain, %{title: "Plain, renamed"}, authorize?: false)
 
-      sent = wire(reader, fn -> AshTable.Test.flush(reader) end)
+      sent = wire(reader, fn -> AshDataTable.Test.flush(reader) end)
       html = render(reader)
 
       assert titles(html) == ["Plain, renamed"]
@@ -154,7 +154,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       Ash.update!(plain, %{title: "Plain, renamed", code: "code-new-5d6e"}, authorize?: false)
 
-      sent = wire(admin, fn -> AshTable.Test.flush(admin) end)
+      sent = wire(admin, fn -> AshDataTable.Test.flush(admin) end)
       html = render(admin)
 
       assert "Plain, renamed" in titles(html)
@@ -236,9 +236,10 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
   describe "a table without a tenant" do
     test "listens to the one topic of its resource", %{conn: conn} do
-      assert Notifier.topic(Bulletin, nil) == "ash_table:Demo.Support.Live.Bulletin"
+      assert Notifier.topic(Bulletin, nil) == "ash_data_table:Demo.Support.Live.Bulletin"
       # a resource without multitenancy has no other
-      assert Notifier.topic(Bulletin, "some-tenant") == "ash_table:Demo.Support.Live.Bulletin"
+      assert Notifier.topic(Bulletin, "some-tenant") ==
+               "ash_data_table:Demo.Support.Live.Bulletin"
 
       {:ok, _view, _html} = conn |> as(:admin) |> live("/support/bulletins")
       assert listeners(Bulletin) == 1
@@ -296,8 +297,8 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       Ash.update!(first, %{note: "First, edited"}, authorize?: false)
 
-      assert_receive {:ash_table, _resource, _type, _key, _tenant} = message
-      assert message == {:ash_table, Pin, :update, %{board: "north", slot: 1}, nil}
+      assert_receive {:ash_data_table, _resource, _type, _key, _tenant} = message
+      assert message == {:ash_data_table, Pin, :update, %{board: "north", slot: 1}, nil}
     end
 
     test "names the row that is updated, and the row that goes", %{

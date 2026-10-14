@@ -23,7 +23,7 @@ The demo's tasks show their state as a badge
 column :status do
   label "State"
   confirm "Change the state of this task?"
-  component AshTable.Components.Badge
+  component AshDataTable.Components.Badge
 end
 ```
 
@@ -34,7 +34,7 @@ itself shows every type.
 
 ## What a component is
 
-A module that implements the behaviour `AshTable.Component`. It has two
+A module that implements the behaviour `AshDataTable.Component`. It has two
 parts, each a function component, and either can be left out:
 
 | Part | What it is | Without it |
@@ -59,10 +59,10 @@ A component is an interface and nothing more. With one or without:
 
 | Component | Part | For | Looks like |
 | --- | --- | --- | --- |
-| `AshTable.Components.Badge` | `cell/1` | A choice: an `Ash.Type.Enum`, or an `:atom` with `one_of`. | The value's label in an outlined pill. Every value has the same badge: there is no colour per value. |
-| `AshTable.Components.Image` | `cell/1` | Text that holds where a picture is: an `http://` or `https://` address, or a path that starts with `/`. | The picture, as high as a line of text. Any other text is shown as text: a `javascript:` or `data:` address is never asked for. The picture's text alternative is the column's label. The component is not given the record, so the column has to hold the address itself, or be a calculation that makes one from a stored key. |
-| `AshTable.Components.Progress` | `cell/1` | A number with a minimum and a maximum. | A bar from the minimum to the maximum, filled up to the value, with the number beside it. |
-| `AshTable.Components.Slider` | `editor/1` | A number with a minimum and a maximum. | A slider between the two, with the number that is being chosen beside it. It saves when it is let go. |
+| `AshDataTable.Components.Badge` | `cell/1` | A choice: an `Ash.Type.Enum`, or an `:atom` with `one_of`. | The value's label in an outlined pill. Every value has the same badge: there is no colour per value. |
+| `AshDataTable.Components.Image` | `cell/1` | Text that holds where a picture is: an `http://` or `https://` address, or a path that starts with `/`. | The picture, as high as a line of text. Any other text is shown as text: a `javascript:` or `data:` address is never asked for. The picture's text alternative is the column's label. The component is not given the record, so the column has to hold the address itself, or be a calculation that makes one from a stored key. |
+| `AshDataTable.Components.Progress` | `cell/1` | A number with a minimum and a maximum. | A bar from the minimum to the maximum, filled up to the value, with the number beside it. |
+| `AshDataTable.Components.Slider` | `editor/1` | A number with a minimum and a maximum. | A slider between the two, with the number that is being chosen beside it. It saves when it is let go. |
 
 Each says what it needs when the resource is compiled: a slider on a number
 without `min` and `max`, or a badge on a field that is no choice, is a
@@ -91,14 +91,14 @@ slider, a module takes one part from each
 
 <!-- source: demo/lib/demo_web/components/cells/progress.ex -->
 ```elixir
-use AshTable.Component, commit: :change
+use AshDataTable.Component, commit: :change
 
 # a bar with the number beside it
-defdelegate cell(assigns), to: AshTable.Components.Progress
+defdelegate cell(assigns), to: AshDataTable.Components.Progress
 # a slider, which saves when it is let go
-defdelegate editor(assigns), to: AshTable.Components.Slider
+defdelegate editor(assigns), to: AshDataTable.Components.Slider
 # both need the same of a field: a number with a minimum and a maximum
-defdelegate verify(column), to: AshTable.Components.Slider
+defdelegate verify(column), to: AshDataTable.Components.Slider
 ```
 
 <!-- source: demo/lib/demo/tracker/task.ex -->
@@ -128,7 +128,7 @@ knows the attribute's minimum:
 
 <!-- source: demo/lib/demo_web/components/cells/hours.ex -->
 ```elixir
-use AshTable.Component
+use AshDataTable.Component
 
 # How a cell shows the value. `@text` is what the table itself would show.
 # Written on one line: a template that ends in text keeps the line break
@@ -171,7 +171,7 @@ column :estimate_hours do
 end
 ```
 
-`use AshTable.Component` declares the behaviour, brings in
+`use AshDataTable.Component` declares the behaviour, brings in
 `Phoenix.Component`, and checks that the module defines `cell/1`, `editor/1`
 or both. A module of your web layer can `use MyAppWeb, :html` before it, to
 have its own components at hand.
@@ -187,7 +187,7 @@ reader, as they were before the column had a component.
 | --- | --- |
 | `@value` | The value as the record holds it: an integer, a `Decimal`, the atom of an enum's value, a `Date`. |
 | `@text` | What the table itself would show, as text: a number written out, an enum's label in the language of the person reading. A component that decorates shows this. |
-| `@column` | An `AshTable.Component.Column`: see below. |
+| `@column` | An `AshDataTable.Component.Column`: see below. |
 
 ### What `editor/1` is given
 
@@ -196,7 +196,7 @@ reader, as they were before the column had a component.
 | `@value` | What the control holds, as text: the number as it is written, the name of an enum's value, `""` for nothing. In a cell it is always `""`: see [The control](#the-control). |
 | `@control` | The attributes the table needs on the control. They go on it as they are: `<input {@control} />`. |
 | `@label` | The column's label, in the language of the person reading. `@control` makes it the control's accessible name where that is needed; it is here for a component that shows it. |
-| `@column` | The `AshTable.Component.Column`. |
+| `@column` | The `AshDataTable.Component.Column`. |
 | `@place` | `:grid` in a cell, where the editor stands in the place of the cell's text; `:panel` in the action panel, where it is a field of a form. |
 
 ### What a component is told about the column
@@ -240,7 +240,7 @@ browser gives it, is what is saved. Nothing else the editor renders is read.
 
 ## When an editor saves
 
-| `use AshTable.Component` | The editor saves | For |
+| `use AshDataTable.Component` | The editor saves | For |
 | --- | --- | --- |
 | nothing, or `commit: :enter` | On Enter, and on leaving the cell. | Anything that is typed. |
 | `commit: :change` | When the control's value changes: the browser's `change` event. It stays open, so that the value can be changed again. | A slider, a menu, a picker. |
@@ -473,7 +473,7 @@ the cell.
   `success-content` on `success` first.
 - **The component was changed, and the table says it cannot be found.** The
   resource was not compiled again. `mix compile --force`.
-- **`mix format` puts parentheses around `component`.** Add `:ash_table` to
+- **`mix format` puts parentheses around `component`.** Add `:ash_data_table` to
   `import_deps` in `.formatter.exs`; if it is there already, the formatter's
   cache is from before the option existed: remove
   `_build/dev/lib/YOUR_APP/.mix/cached_dot_formatter`.

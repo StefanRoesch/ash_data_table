@@ -12,7 +12,7 @@ defmodule Demo.Tracker.Comment.CompactTable do
   more here. What a comment is called (`label_field`) is the resource's, and
   is not said per table.
   """
-  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
   tables do
     table :compact do

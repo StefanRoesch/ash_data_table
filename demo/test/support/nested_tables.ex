@@ -4,7 +4,7 @@ defmodule Demo.Support.Shelves do
   refused or fails. Its resources exist for the tests only and keep their
   records in memory.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   # who is asking is found under a name the demo's own layout does not read
   table do
@@ -30,7 +30,7 @@ defmodule Demo.Support.Shelves.Binder do
   use Ash.Resource,
     domain: Demo.Support.Shelves,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title
@@ -77,7 +77,7 @@ defmodule Demo.Support.Shelves.Paper do
     domain: Demo.Support.Shelves,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     on_forbidden :message
@@ -119,7 +119,7 @@ defmodule Demo.Support.Shelves.Draft do
     domain: Demo.Support.Shelves,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title
@@ -158,7 +158,7 @@ defmodule Demo.Support.Shelves.Sheet do
   use Ash.Resource,
     domain: Demo.Support.Shelves,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   alias Ash.Error.Query.InvalidQuery
@@ -217,7 +217,7 @@ defmodule Demo.Support.Shelves.Slip do
     domain: Demo.Support.Shelves,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   field_policies do
@@ -287,8 +287,13 @@ defmodule DemoWeb.Support.SwitchLive do
     ~H"""
     <main>
       <button id="become" phx-click="become">Become</button>
-      <AshTable.table id="tasks" resource={Demo.Tracker.Task} actor={@actor} tenant={@tenant} />
-      <AshTable.table id="projects" resource={Demo.Tracker.Project} actor={@actor} tenant={@tenant} />
+      <AshDataTable.table id="tasks" resource={Demo.Tracker.Task} actor={@actor} tenant={@tenant} />
+      <AshDataTable.table
+        id="projects"
+        resource={Demo.Tracker.Project}
+        actor={@actor}
+        tenant={@tenant}
+      />
     </main>
     """
   end

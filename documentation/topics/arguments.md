@@ -272,7 +272,7 @@ empty and has neither default is a mistake the compiler reports.
 
 A function is given the assigns of the page. For a mounted table those are
 the assigns of its socket, which the host's `on_mount` hooks set. A table
-placed with `<AshTable.table>` is given them as `assigns`. The example is
+placed with `<AshDataTable.table>` is given them as `assigns`. The example is
 from a domain that exists for the demo's tests
 ([`demo/test/support/argument_tables.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/test/support/argument_tables.ex)):
 
@@ -294,7 +294,7 @@ end
 
 <!-- source: demo/test/support/argument_tables.ex -->
 ```heex
-<AshTable.table
+<AshDataTable.table
   id="held"
   resource={Stock}
   actor={assigns[:reader]}

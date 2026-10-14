@@ -1,4 +1,4 @@
-# Local stack for ash_table's demo app: Postgres 18.6, plus the optional demo.
+# Local stack for ash_data_table's demo app: Postgres 18.6, plus the optional demo.
 #   docker compose up -d                  # Postgres only
 #   docker compose --profile demo up      # Postgres and the seeded demo on :4478
 # Bind only loopback. Defaults match .env.example; override via `.env`.

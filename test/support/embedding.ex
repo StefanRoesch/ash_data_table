@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Embedding.Place do
+defmodule AshDataTable.Test.Embedding.Place do
   @moduledoc "An embedded resource without a primary key, with a private attribute."
   use Ash.Resource, data_layer: :embedded
 
@@ -14,18 +14,18 @@ defmodule AshTable.Test.Embedding.Place do
   end
 end
 
-defmodule AshTable.Test.Embedding.Contact do
+defmodule AshDataTable.Test.Embedding.Contact do
   @moduledoc "An embedded resource with another one inside it."
   use Ash.Resource, data_layer: :embedded
 
   attributes do
     attribute :name, :string, allow_nil?: false, public?: true
-    attribute :place, AshTable.Test.Embedding.Place, public?: true
-    attribute :places, {:array, AshTable.Test.Embedding.Place}, public?: true
+    attribute :place, AshDataTable.Test.Embedding.Place, public?: true
+    attribute :places, {:array, AshDataTable.Test.Embedding.Place}, public?: true
   end
 end
 
-defmodule AshTable.Test.Embedding.Part do
+defmodule AshDataTable.Test.Embedding.Part do
   @moduledoc "An embedded resource with a public primary key that no action accepts."
   use Ash.Resource, data_layer: :embedded
 
@@ -36,7 +36,7 @@ defmodule AshTable.Test.Embedding.Part do
   end
 end
 
-defmodule AshTable.Test.Embedding.Coded do
+defmodule AshDataTable.Test.Embedding.Coded do
   @moduledoc "An embedded resource whose primary key is an input."
   use Ash.Resource, data_layer: :embedded
 
@@ -46,7 +46,7 @@ defmodule AshTable.Test.Embedding.Coded do
   end
 end
 
-defmodule AshTable.Test.Embedding.Sealed do
+defmodule AshDataTable.Test.Embedding.Sealed do
   @moduledoc "An embedded resource whose create and update actions accept different attributes."
   use Ash.Resource, data_layer: :embedded
 
@@ -60,7 +60,7 @@ defmodule AshTable.Test.Embedding.Sealed do
   end
 end
 
-defmodule AshTable.Test.Embedding.Mixed do
+defmodule AshDataTable.Test.Embedding.Mixed do
   @moduledoc "An embedded resource with an input a table has no control for."
   use Ash.Resource, data_layer: :embedded
 
@@ -73,7 +73,7 @@ defmodule AshTable.Test.Embedding.Mixed do
   end
 end
 
-defmodule AshTable.Test.Embedding.Argued do
+defmodule AshDataTable.Test.Embedding.Argued do
   @moduledoc "An embedded resource whose create action does not run without an argument."
   use Ash.Resource, data_layer: :embedded
 
@@ -92,7 +92,7 @@ defmodule AshTable.Test.Embedding.Argued do
   end
 end
 
-defmodule AshTable.Test.Embedding.Stamped do
+defmodule AshDataTable.Test.Embedding.Stamped do
   @moduledoc "An embedded resource whose create action requires a private attribute."
   use Ash.Resource, data_layer: :embedded
 
@@ -106,7 +106,7 @@ defmodule AshTable.Test.Embedding.Stamped do
   end
 end
 
-defmodule AshTable.Test.Embedding.Named do
+defmodule AshDataTable.Test.Embedding.Named do
   @moduledoc """
   An embedded resource cast through actions the attribute names, one of
   them private: `draft` accepts less than the primary create action.
@@ -132,7 +132,7 @@ defmodule AshTable.Test.Embedding.Named do
   end
 end
 
-defmodule AshTable.Test.Embedding.Layout do
+defmodule AshDataTable.Test.Embedding.Layout do
   @moduledoc "A NewType of a map that declares its fields."
   use Ash.Type.NewType,
     subtype_of: :map,
@@ -144,7 +144,7 @@ defmodule AshTable.Test.Embedding.Layout do
     ]
 end
 
-defmodule AshTable.Test.Embedding.Point do
+defmodule AshDataTable.Test.Embedding.Point do
   @moduledoc "A typed struct: no cell of its own."
   use Ash.TypedStruct
 
@@ -154,15 +154,15 @@ defmodule AshTable.Test.Embedding.Point do
   end
 end
 
-defmodule AshTable.Test.Embedding do
+defmodule AshDataTable.Test.Embedding do
   @moduledoc "One column per kind of value that is made of fields."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
-  alias AshTable.Test.Embedding.{Argued, Coded, Contact, Layout, Mixed, Named, Part, Place}
-  alias AshTable.Test.Embedding.{Point, Sealed, Stamped}
+  alias AshDataTable.Test.Embedding.{Argued, Coded, Contact, Layout, Mixed, Named, Part, Place}
+  alias AshDataTable.Test.Embedding.{Point, Sealed, Stamped}
 
   table do
     update_action :update

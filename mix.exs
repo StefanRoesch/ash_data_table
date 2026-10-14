@@ -1,18 +1,18 @@
-defmodule AshTable.MixProject do
+defmodule AshDataTable.MixProject do
   use Mix.Project
 
   @version "0.1.0"
   @source_url "https://github.com/StefanRoesch/ash_table"
-  @extensions "AshTable.Resource,AshTable.Domain"
+  @extensions "AshDataTable.Resource,AshDataTable.Domain"
 
   def project do
     [
-      app: :ash_table,
+      app: :ash_data_table,
       version: @version,
       elixir: "~> 1.17",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      # Writes the colocated hook's manifest (`phoenix-colocated/ash_table`),
+      # Writes the colocated hook's manifest (`phoenix-colocated/ash_data_table`),
       # also when this project is compiled as a dependency of a host app.
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
       deps: deps(),
@@ -48,7 +48,7 @@ defmodule AshTable.MixProject do
       # `test/documentation_test.exs`.
       extras: [
         "README.md",
-        "documentation/tutorials/get-started-with-ash-table.md",
+        "documentation/tutorials/get-started-with-ash-data-table.md",
         "documentation/topics/columns-and-defaults.md",
         "documentation/topics/reading-sorting-and-pagination.md",
         "documentation/topics/filtering.md",
@@ -76,40 +76,45 @@ defmodule AshTable.MixProject do
         "documentation/topics/time-zones.md",
         "documentation/topics/layout-and-embedding.md",
         "documentation/topics/mistakes-at-compile-time.md",
-        "documentation/dsls/DSL-AshTable.Resource.md",
-        "documentation/dsls/DSL-AshTable.Domain.md",
+        "documentation/dsls/DSL-AshDataTable.Resource.md",
+        "documentation/dsls/DSL-AshDataTable.Domain.md",
         "CHANGELOG.md"
       ],
       groups_for_extras: [
         Tutorials: ~r"documentation/tutorials",
         Topics: ~r"documentation/topics",
         "DSL reference": ~r"documentation/dsls",
-        "About ash_table": ["CHANGELOG.md"]
+        "About ash_data_table": ["CHANGELOG.md"]
       ],
       groups_for_modules: [
-        Extensions: [AshTable.Resource, AshTable.Domain],
-        "In the page": [AshTable, AshTable.Router, AshTable.Live.Page, AshTable.NotFoundError],
-        Components: [
-          AshTable.Component,
-          AshTable.Component.Column,
-          AshTable.Components.Badge,
-          AshTable.Components.Image,
-          AshTable.Components.Progress,
-          AshTable.Components.Slider
+        Extensions: [AshDataTable.Resource, AshDataTable.Domain],
+        "In the page": [
+          AshDataTable,
+          AshDataTable.Router,
+          AshDataTable.Live.Page,
+          AshDataTable.NotFoundError
         ],
-        "Live updates": [AshTable.Notifier, AshTable.Test],
-        Translation: [AshTable.Gettext],
+        Components: [
+          AshDataTable.Component,
+          AshDataTable.Component.Column,
+          AshDataTable.Components.Badge,
+          AshDataTable.Components.Image,
+          AshDataTable.Components.Progress,
+          AshDataTable.Components.Slider
+        ],
+        "Live updates": [AshDataTable.Notifier, AshDataTable.Test],
+        Translation: [AshDataTable.Gettext],
         Introspection: [
-          AshTable.Resource.Info,
-          AshTable.Resource.Table,
-          AshTable.Resource.Column,
-          AshTable.Resource.Relationship,
-          AshTable.Resource.Action,
-          AshTable.Resource.Reference,
-          AshTable.Resource.Argument,
-          AshTable.Resource.Upload,
-          AshTable.Resource.Ask,
-          AshTable.Domain.Info
+          AshDataTable.Resource.Info,
+          AshDataTable.Resource.Table,
+          AshDataTable.Resource.Column,
+          AshDataTable.Resource.Relationship,
+          AshDataTable.Resource.Action,
+          AshDataTable.Resource.Reference,
+          AshDataTable.Resource.Argument,
+          AshDataTable.Resource.Upload,
+          AshDataTable.Resource.Ask,
+          AshDataTable.Domain.Info
         ]
       ]
     ]
@@ -129,9 +134,9 @@ defmodule AshTable.MixProject do
       {:spark, "~> 2.7"},
       {:phoenix, "~> 1.8"},
       {:phoenix_live_view, "~> 1.2 and >= 1.2.10"},
-      # Every text of the table goes through Gettext (`AshTable.Text`).
+      # Every text of the table goes through Gettext (`AshDataTable.Text`).
       {:gettext, "~> 0.26 or ~> 1.0"},
-      # Only `mix ash_table.install` needs it; without it the task is a stub.
+      # Only `mix ash_data_table.install` needs it; without it the task is a stub.
       {:igniter, "~> 0.6", optional: true},
       {:ex_doc, "~> 0.37", only: [:dev, :test], runtime: false},
       # The solver Ash's policies need. Only the test resources have policies;

@@ -237,7 +237,7 @@ defmodule DemoWeb.Tables.LabelActionsTest do
 
       table_act(view, "label", "remove_unused")
 
-      assert_push_event view, "ash_table:ask", %{
+      assert_push_event view, "ash_data_table:ask", %{
         table: "label",
         action: :remove_unused,
         question: "Delete every label that no task carries?"

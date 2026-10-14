@@ -48,7 +48,7 @@ defmodule Demo.Support.Vault do
   says about them is taken as a result; they are of this domain without
   being listed in it.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   resources do
     allow_unregistered? true
@@ -78,7 +78,7 @@ defmodule Demo.Support.Vault.Dossier do
     domain: Demo.Support.Vault,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -168,7 +168,7 @@ defmodule Demo.Support.Vault.Note do
     domain: Demo.Support.Vault,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -292,7 +292,7 @@ defmodule Demo.Support.Vault.Folder do
     domain: Demo.Support.Vault,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -376,7 +376,7 @@ defmodule Demo.Support.Vault.Binder do
   use Ash.Resource,
     domain: Demo.Support.Vault,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do
@@ -421,7 +421,7 @@ defmodule Demo.Support.Vault.Mark do
   use Ash.Resource,
     domain: Demo.Support.Vault,
     data_layer: AshPostgres.DataLayer,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   postgres do
     table "labels"

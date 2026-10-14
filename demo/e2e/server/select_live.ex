@@ -4,7 +4,7 @@ defmodule DemoWeb.E2E.SelectLive do
   rows can be selected though the page has nothing to run on a selection,
   one row at a time and several. This is how the library's own code shows a
   table for a person to choose from: the table, given `select` (an internal
-  attribute of `AshTable.table/1`).
+  attribute of `AshDataTable.table/1`).
 
   The labels are read as whoever the actor switcher says is asking: as the
   member, who can run no action on a label, the tables have nothing to run
@@ -42,7 +42,7 @@ defmodule DemoWeb.E2E.SelectLive do
 
   defp selecting(assigns) do
     ~H"""
-    <AshTable.table
+    <AshDataTable.table
       id={@id}
       resource={Demo.Tracker.Label}
       select={@select}

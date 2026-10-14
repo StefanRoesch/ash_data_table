@@ -15,7 +15,7 @@ machine, no network, no TLS, no compression of the WebSocket.
 - **Machine:** 12th Gen Intel(R) Core(TM) i7-1255U, 12 logical cores, 39 GB; Linux 7.0.0-38-generic x64
 - **Load average** (1, 5, 15 min) when the run began: 2.09, 1.81, 2.96; when it ended: 1.7, 1.82, 2.83
 - **Server:** Elixir 1.19.4, Erlang/OTP 28 (erts 16.2), 12 schedulers, `MIX_ENV=perf`
-- **Packages:** phoenix_live_view 1.2.12, ash_table 0.1.0, ash_phoenix 2.3.25, ash_postgres 2.14.2, ash 3.34.4, phoenix 1.8.15, ecto_sql 3.14.0, postgrex 0.22.4, bandit 1.12.5
+- **Packages:** phoenix_live_view 1.2.12, ash_data_table 0.1.0, ash_phoenix 2.3.25, ash_postgres 2.14.2, ash 3.34.4, phoenix 1.8.15, ecto_sql 3.14.0, postgrex 0.22.4, bandit 1.12.5
 - **Database:** PostgreSQL 18.6 in Docker (the `postgres` service of `docker-compose.yml`), on the same machine
 - **Browser:** Chromium 153.0.8010.12 (headless), Playwright, Node 24.13.1; viewport 1600 × 900
 - **Repetitions:** 15 of each thing (5 of the jump to the last page), after one that is not counted. A cell shows the median, with the least and the greatest in brackets.

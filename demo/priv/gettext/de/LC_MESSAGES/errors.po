@@ -1,6 +1,6 @@
 ## The German texts of the messages the demo's actions return. They reach
 ## the tables through `DemoWeb.CoreComponents.translate_error/1`, which
-## `config :ash_table, translate_error: …` names.
+## `config :ash_data_table, translate_error: …` names.
 msgid ""
 msgstr ""
 "Language: de\n"

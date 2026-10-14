@@ -79,7 +79,7 @@ defmodule Demo.Support.Files.Scan do
   use Ash.Resource,
     domain: Demo.Support.Files,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   alias Demo.Support.Files.Read
 
@@ -200,8 +200,8 @@ defmodule DemoWeb.Support.ScansLive do
 
   def render(assigns) do
     ~H"""
-    <AshTable.table id="left" resource={Demo.Support.Files.Scan} />
-    <AshTable.table id="right" resource={Demo.Support.Files.Scan} />
+    <AshDataTable.table id="left" resource={Demo.Support.Files.Scan} />
+    <AshDataTable.table id="right" resource={Demo.Support.Files.Scan} />
     """
   end
 end

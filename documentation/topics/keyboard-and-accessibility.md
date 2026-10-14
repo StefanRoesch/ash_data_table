@@ -19,9 +19,9 @@ they are registered, which is one import. In the demo
 
 <!-- source: demo/assets/js/app.js -->
 ```js
-import {hooks as ashTableHooks} from "phoenix-colocated/ash_table"
+import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 // ...
-  hooks: {...colocatedHooks, ...ashTableHooks},
+  hooks: {...colocatedHooks, ...ashDataTableHooks},
 ```
 
 (The line `// ...` stands for the lines between the import and the
@@ -759,7 +759,7 @@ technology, a report of what you find is welcome in the
 
 - **The arrow keys do nothing.** The hooks are not registered, or the assets
   were built before the dependency was compiled. See the
-  [tutorial](../tutorials/get-started-with-ash-table.md#1-install).
+  [tutorial](../tutorials/get-started-with-ash-data-table.md#1-install).
 - **Expecting Tab to move to the next cell.** Tab leaves the grid; this is
   the ARIA grid pattern. Arrow keys move between cells.
 - **Expecting Space to toggle a boolean.** Enter and F2 do. Space selects

@@ -436,11 +436,11 @@ table's own editor.
 ## Translating the fields
 
 The label of a field is your resource's wording, looked up in the Gettext
-domain `ash_table` of your backend, as a column's label is. The demo
+domain `ash_data_table` of your backend, as a column's label is. The demo
 translates the fields of a task's recurrence
-([`demo/priv/gettext/de/LC_MESSAGES/ash_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_table.po)):
+([`demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`](https://github.com/StefanRoesch/ash_table/blob/main/demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po)):
 
-<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_table.po -->
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
 ```po
 msgid "Repeats"
 msgstr "Wiederholung"

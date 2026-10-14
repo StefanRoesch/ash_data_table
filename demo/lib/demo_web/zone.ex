@@ -5,9 +5,9 @@ defmodule DemoWeb.Zone do
   connect params (`Intl.DateTimeFormat().resolvedOptions().timeZone`).
 
   An `on_mount` hook puts it into the socket assign `time_zone`, where a
-  mounted table finds it (`time_zone_assign` of `AshTable.Domain`), and the
+  mounted table finds it (`time_zone_assign` of `AshDataTable.Domain`), and the
   demo's own pages pass it to the tables they place
-  (`<AshTable.table time_zone={@time_zone}>`).
+  (`<AshDataTable.table time_zone={@time_zone}>`).
 
   The zone the browser names is a claim: it is taken only when the time zone
   database knows it, else the tables are in UTC. So is the first render,

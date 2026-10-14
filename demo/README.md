@@ -1,6 +1,6 @@
 # ash_table demo
 
-A real Phoenix and Ash host app for `ash_table`. It holds the domain, the data
+A real Phoenix and Ash host app for `ash_data_table`. It holds the domain, the data
 and the infrastructure that the library's tables are shown and tested on: an
 issue tracker with one of everything a table has to cope with, and a
 kitchen-sink resource with one attribute per built-in Ash type.
@@ -54,12 +54,12 @@ from `.env`; the app reads the same names from the environment
 | What | Where |
 | --- | --- |
 | Demo | http://localhost:4478 |
-| Postgres | `localhost:5477`, user and password `ash_table`, databases `demo_dev` and `demo_test` |
+| Postgres | `localhost:5477`, user and password `ash_data_table`, databases `demo_dev` and `demo_test` |
 
 ## The tables
 
-Every table is one `ash_table` line in `DemoWeb.Router`, rendered in the
-demo's app layout (`config :ash_table, layout: {DemoWeb.Layouts, :app}`).
+Every table is one `ash_data_table` line in `DemoWeb.Router`, rendered in the
+demo's app layout (`config :ash_data_table, layout: {DemoWeb.Layouts, :app}`).
 
 | URL | Resource | Shows |
 | --- | --- | --- |
@@ -95,11 +95,11 @@ beside its default one.
 | --- | --- | --- |
 | http://localhost:4478/tasks/board | `Task`, table `:board` | a second table of the tasks, declared in a file of its own (`lib/demo/tracker/task/board_table.ex`, a fragment of the resource): four columns, "Title" and "State" edited in place, one row action ("Archive"), no "New task". Its id is `task_board`. A row expands into "Comments", which nests the compact table of the comments and links to its full view at `/comments/compact`, and into "Labels", which nests the short table of the labels (`:short`, declared in `label.ex`): that table is mounted nowhere, so it has no "Open in full view", although `/labels` exists. The assignee is chosen in the picker, which shows the people's default table |
 | http://localhost:4478/comments/compact | `Comment`, table `:compact` | a second table of the comments, in a file of its own too (`lib/demo/tracker/comment/compact_table.ex`): "Body", "Author" (the author's name, where `/comments` shows the key) and "Inserted at"; "Body" shows up to three lines of a comment (`max_lines 3`), and what is cut off after that under the cell, on focus or under the pointer; nothing is edited, there is no row action and no "New comment", and rows do not expand. Its id is `comment_compact`. For nobody it says "You are not allowed to see these records.": the named table says `on_forbidden :message` itself, since it takes nothing over from the default table |
-| http://localhost:4478/named | `Comment`, both tables | a LiveView of the demo's own (`DemoWeb.NamedLive`) with the default table and the compact table of the comments, placed with `<AshTable.table>` and no `id`. Sort both: the address holds `comment[sort]=…` and `comment_compact[sort]=…` side by side. The comments have **live updates** (`live? true`), so the two tables follow each other: change a comment's text in the first and the same row changes in the second; create one in the first and the second says "There are new or changed records." with "Read again"; delete one and its row goes from both |
+| http://localhost:4478/named | `Comment`, both tables | a LiveView of the demo's own (`DemoWeb.NamedLive`) with the default table and the compact table of the comments, placed with `<AshDataTable.table>` and no `id`. Sort both: the address holds `comment[sort]=…` and `comment_compact[sort]=…` side by side. The comments have **live updates** (`live? true`), so the two tables follow each other: change a comment's text in the first and the same row changes in the second; create one in the first and the second says "There are new or changed records." with "Read again"; delete one and its row goes from both |
 
 http://localhost:4478/dashboard is a LiveView of the demo's own
 (`DemoWeb.DashboardLive`) with two tables placed in it with
-`<AshTable.table … />`: the projects and the tasks, each given the actor and
+`<AshDataTable.table … />`: the projects and the tasks, each given the actor and
 the tenant as attributes. Each sorts, filters, pages, saves and runs its
 actions by itself, and nothing of it is in the URL. Each table renders the
 line above it, its name and its create button; `heading={2}` makes that name
@@ -243,14 +243,14 @@ which stores `"en"` or `"de"` in the session under `"locale"`;
 with `Gettext.put_locale/1`. The demo's own pages stay in English; the
 tables follow:
 
-- `config :ash_table, gettext_backend: DemoWeb.Gettext` and
-  `priv/gettext/de/LC_MESSAGES/ash_table.po`: the table's own texts, and the
+- `config :ash_data_table, gettext_backend: DemoWeb.Gettext` and
+  `priv/gettext/de/LC_MESSAGES/ash_data_table.po`: the table's own texts, and the
   wording of `/tasks` (its name, column labels, enum labels, the question
   before a change of state, the labels of its row actions and of the fields
   of their panels). For every table: the row actions, their questions, and
   what one record is called, so that "New task" is "Aufgabe anlegen". The
   other tables' column labels are not translated, and show as they are.
-- `config :ash_table, translate_error: {DemoWeb.CoreComponents, :translate_error}`
+- `config :ash_data_table, translate_error: {DemoWeb.CoreComponents, :translate_error}`
   and `priv/gettext/de/LC_MESSAGES/errors.po`: the messages of the tasks'
   actions. Try a title of two characters, a progress of 150, or the state
   "Erledigt" on a task below 100.
@@ -461,8 +461,8 @@ hidden from the same people.
 
 | Column | Component | Shows | Edits |
 | --- | --- | --- | --- |
-| `status` ("State"), `priority` | `AshTable.Components.Badge`, shipped | the value's label in a badge | with the table's own menu |
-| `progress` | `DemoWeb.Cells.Progress`, which takes its two parts from the shipped `AshTable.Components.Progress` and `AshTable.Components.Slider` | a bar with the number beside it | with a slider |
+| `status` ("State"), `priority` | `AshDataTable.Components.Badge`, shipped | the value's label in a badge | with the table's own menu |
+| `progress` | `DemoWeb.Cells.Progress`, which takes its two parts from the shipped `AshDataTable.Components.Progress` and `AshDataTable.Components.Slider` | a bar with the number beside it | with a slider |
 | `estimate_hours` | `DemoWeb.Cells.Hours`, the demo's own (`lib/demo_web/components/cells/hours.ex`) | the number with "h" | in a number input with "h" beside it |
 
 - "Set progress" and "New task" have the slider and the hours input as
@@ -684,8 +684,8 @@ There is no login. The switcher at the top right of every page posts to
 `POST /actor`, which stores the chosen user's id in the session under
 `"actor_id"`; choosing "Nobody" removes it. `DemoWeb.Actor` (a plug and an
 `on_mount` hook) turns the session into two assigns, on the conn and on the
-socket. They are the names `ash_table` reads by default, and `Demo.Tracker`
-writes them out in its `table` block (the extension `AshTable.Domain`):
+socket. They are the names `ash_data_table` reads by default, and `Demo.Tracker`
+writes them out in its `table` block (the extension `AshDataTable.Domain`):
 
 - `current_user`: the `Demo.Tracker.User`, or `nil`
 - `current_tenant`: that user's `organization_id`, or `nil`
@@ -883,7 +883,7 @@ after a patch, the editors and the dialog, what each actor's page contains,
 and axe-core on every table in every state. They are written with Playwright
 and `@axe-core/playwright` and run in headless Chromium.
 
-Node is a tool for developing `ash_table` here, nothing more: the library
+Node is a tool for developing `ash_data_table` here, nothing more: the library
 puts no npm package into a host app, and neither does the demo itself.
 
 ```sh

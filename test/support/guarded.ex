@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Guarded do
+defmodule AshDataTable.Test.Guarded do
   @moduledoc """
   A resource for the tests of what a table shows and lets edit, person by
   person: fields nobody but an admin sees, a field seen on a person's own
@@ -8,10 +8,10 @@ defmodule AshTable.Test.Guarded do
   The actors of these tests are maps: `%{id: 1, role: :admin}`.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -134,7 +134,7 @@ defmodule AshTable.Test.Guarded do
   end
 end
 
-defmodule AshTable.Test.Scope do
+defmodule AshDataTable.Test.Scope do
   @moduledoc "A scope, as a host application would define one."
   defstruct [:user, :tenant]
 

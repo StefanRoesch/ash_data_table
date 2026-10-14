@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Naming do
+defmodule AshDataTable.Test.Naming do
   @moduledoc """
   Resources with several tables: a default table and named ones, a
   relationship that names which of its destination's tables it nests, and
@@ -8,12 +8,12 @@ defmodule AshTable.Test.Naming do
   """
 end
 
-defmodule AshTable.Test.Naming.Author do
+defmodule AshDataTable.Test.Naming.Author do
   @moduledoc "A destination of a reference column: a default table only."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -29,7 +29,7 @@ defmodule AshTable.Test.Naming.Author do
   end
 end
 
-defmodule AshTable.Test.Naming.Comment do
+defmodule AshDataTable.Test.Naming.Comment do
   @moduledoc """
   A default table and two named ones, each with settings of its own.
 
@@ -39,10 +39,10 @@ defmodule AshTable.Test.Naming.Comment do
     * `:plain` declares nothing at all.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -53,12 +53,12 @@ defmodule AshTable.Test.Naming.Comment do
   end
 
   relationships do
-    belongs_to :post, AshTable.Test.Naming.Post do
+    belongs_to :post, AshDataTable.Test.Naming.Post do
       define_attribute? false
       public? true
     end
 
-    belongs_to :author, AshTable.Test.Naming.Author do
+    belongs_to :author, AshDataTable.Test.Naming.Author do
       define_attribute? false
       public? true
     end
@@ -145,16 +145,16 @@ defmodule AshTable.Test.Naming.Comment do
   end
 end
 
-defmodule AshTable.Test.Naming.Post do
+defmodule AshDataTable.Test.Naming.Post do
   @moduledoc """
   A resource whose tables nest different tables of `Comment`: the default
   table nests the default one, `:board` the compact one, and `:both` each of
   them, through two relationships.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -163,12 +163,12 @@ defmodule AshTable.Test.Naming.Post do
   end
 
   relationships do
-    has_many :comments, AshTable.Test.Naming.Comment do
+    has_many :comments, AshDataTable.Test.Naming.Comment do
       destination_attribute :post_id
       public? true
     end
 
-    has_many :remarks, AshTable.Test.Naming.Comment do
+    has_many :remarks, AshDataTable.Test.Naming.Comment do
       destination_attribute :post_id
       public? true
     end
@@ -212,9 +212,9 @@ end
 # A table in a file of its own is a Spark fragment of the resource. Here they
 # share the file with the resource; what counts is that each is a module.
 
-defmodule AshTable.Test.Naming.Ticket.BoardTable do
+defmodule AshDataTable.Test.Naming.Ticket.BoardTable do
   @moduledoc "One named table of `Ticket`."
-  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
   tables do
     table :board do
@@ -230,9 +230,9 @@ defmodule AshTable.Test.Naming.Ticket.BoardTable do
   end
 end
 
-defmodule AshTable.Test.Naming.Ticket.ListTable do
+defmodule AshDataTable.Test.Naming.Ticket.ListTable do
   @moduledoc "Another named table of `Ticket`, from a second fragment."
-  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
   tables do
     table :list do
@@ -242,18 +242,18 @@ defmodule AshTable.Test.Naming.Ticket.ListTable do
   end
 end
 
-defmodule AshTable.Test.Naming.Ticket do
+defmodule AshDataTable.Test.Naming.Ticket do
   @moduledoc """
   The default table in the resource, two named tables in a fragment each,
   and a third named table in the resource beside them.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     fragments: [
-      AshTable.Test.Naming.Ticket.BoardTable,
-      AshTable.Test.Naming.Ticket.ListTable
+      AshDataTable.Test.Naming.Ticket.BoardTable,
+      AshDataTable.Test.Naming.Ticket.ListTable
     ]
 
   attributes do
@@ -263,7 +263,7 @@ defmodule AshTable.Test.Naming.Ticket do
   end
 
   relationships do
-    has_many :notes, AshTable.Test.Naming.Note do
+    has_many :notes, AshDataTable.Test.Naming.Note do
       destination_attribute :ticket_id
       public? true
     end
@@ -285,9 +285,9 @@ defmodule AshTable.Test.Naming.Ticket do
   end
 end
 
-defmodule AshTable.Test.Naming.Note.Table do
+defmodule AshDataTable.Test.Naming.Note.Table do
   @moduledoc "The default table of `Note`, `label_field` and all, in a fragment."
-  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshTable.Resource]
+  use Spark.Dsl.Fragment, of: Ash.Resource, extensions: [AshDataTable.Resource]
 
   table do
     label_field :text
@@ -299,13 +299,13 @@ defmodule AshTable.Test.Naming.Note.Table do
   end
 end
 
-defmodule AshTable.Test.Naming.Note do
+defmodule AshDataTable.Test.Naming.Note do
   @moduledoc "The default table in a fragment, a named table in the resource."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
-    fragments: [AshTable.Test.Naming.Note.Table]
+    extensions: [AshDataTable.Resource],
+    fragments: [AshDataTable.Test.Naming.Note.Table]
 
   attributes do
     uuid_primary_key :id
@@ -314,7 +314,7 @@ defmodule AshTable.Test.Naming.Note do
   end
 
   relationships do
-    belongs_to :ticket, AshTable.Test.Naming.Ticket do
+    belongs_to :ticket, AshDataTable.Test.Naming.Ticket do
       define_attribute? false
       public? true
     end

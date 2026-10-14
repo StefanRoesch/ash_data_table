@@ -4,7 +4,7 @@ defmodule Demo.Support.Desk do
   record's label is not the person's to see. Its resources exist for the
   tests only and keep their records in memory.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -28,7 +28,7 @@ defmodule Demo.Support.Desk.Clerk do
     domain: Demo.Support.Desk,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :name do
@@ -79,7 +79,7 @@ defmodule Demo.Support.Desk.Docket do
   use Ash.Resource,
     domain: Demo.Support.Desk,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     update_action :update
@@ -121,7 +121,7 @@ defmodule DemoWeb.Support.DocketsLive do
     ~H"""
     <main>
       <h1>A page of the host's, with the dockets in its URL</h1>
-      <AshTable.table
+      <AshDataTable.table
         id="held"
         resource={Demo.Support.Desk.Docket}
         actor={assigns[:reader]}

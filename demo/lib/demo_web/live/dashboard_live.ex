@@ -1,7 +1,7 @@
 defmodule DemoWeb.DashboardLive do
   @moduledoc """
-  A page of the demo's own with two tables placed in it: `AshTable.table/1`
-  inside a host LiveView, where the router's `ash_table` gives a table a page
+  A page of the demo's own with two tables placed in it: `AshDataTable.table/1`
+  inside a host LiveView, where the router's `ash_data_table` gives a table a page
   to itself.
 
   Each table is given who is asking as attributes, and the time zone of the
@@ -23,7 +23,7 @@ defmodule DemoWeb.DashboardLive do
       <div class="space-y-2">
         <h1 class="text-2xl font-semibold">Dashboard</h1>
         <p class="text-base-content/70">
-          Two tables embedded in one LiveView with <code class="text-xs">&lt;AshTable.table&gt;</code>.
+          Two tables embedded in one LiveView with <code class="text-xs">&lt;AshDataTable.table&gt;</code>.
           Each keeps its own sort, filters and page; neither is in the URL.
         </p>
       </div>
@@ -32,7 +32,7 @@ defmodule DemoWeb.DashboardLive do
       button at the other end: `heading` makes that name a heading of this
       page, and the section is named by it. --%>
       <section id="dashboard-projects-section" aria-labelledby="dashboard-projects-name">
-        <AshTable.table
+        <AshDataTable.table
           id="dashboard-projects"
           resource={Demo.Tracker.Project}
           heading={2}
@@ -43,7 +43,7 @@ defmodule DemoWeb.DashboardLive do
       </section>
 
       <section id="dashboard-tasks-section" aria-labelledby="dashboard-tasks-name">
-        <AshTable.table
+        <AshDataTable.table
           id="dashboard-tasks"
           resource={Demo.Tracker.Task}
           heading={2}

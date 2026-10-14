@@ -1,4 +1,4 @@
-defmodule AshTable.FilesTest do
+defmodule AshDataTable.FilesTest do
   @moduledoc """
   Boundary 2: what a table makes of an argument that takes a file
   (`Ash.Type.File`): the input it is in the action panel, what its upload is
@@ -6,12 +6,12 @@ defmodule AshTable.FilesTest do
   """
   use ExUnit.Case, async: false
 
-  alias AshTable.Act
-  alias AshTable.Bulk
-  alias AshTable.Model
-  alias AshTable.Resource.Acting
-  alias AshTable.Resource.Uploading
-  alias AshTable.Test.Files
+  alias AshDataTable.Act
+  alias AshDataTable.Bulk
+  alias AshDataTable.Model
+  alias AshDataTable.Resource.Acting
+  alias AshDataTable.Resource.Uploading
+  alias AshDataTable.Test.Files
 
   defp model, do: Model.build(Files)
   defp action(name), do: Enum.find(model().actions ++ model().table_actions, &(&1.name == name))
@@ -19,7 +19,7 @@ defmodule AshTable.FilesTest do
 
   # A file as the table's upload gives it to an action.
   defp file(text, name \\ "notes.txt") do
-    path = Path.join(System.tmp_dir!(), "ash_table-#{System.unique_integer([:positive])}")
+    path = Path.join(System.tmp_dir!(), "ash_data_table-#{System.unique_integer([:positive])}")
     File.write!(path, text)
     on_exit(fn -> File.rm(path) end)
     %Plug.Upload{path: path, filename: name, content_type: "text/plain"}
@@ -87,10 +87,11 @@ defmodule AshTable.FilesTest do
       assert input(:pair, :front).upload == %{accept: :any, max_file_size: 50_000_000}
       assert input(:pair, :rear).upload == %{accept: :any, max_file_size: 8_000_000}
 
-      assert Uploading.limits(AshTable.Resource.Info.table!(Files, :default), :unheard_of) == %{
-               accept: :any,
-               max_file_size: 8_000_000
-             }
+      assert Uploading.limits(AshDataTable.Resource.Info.table!(Files, :default), :unheard_of) ==
+               %{
+                 accept: :any,
+                 max_file_size: 8_000_000
+               }
     end
 
     test "is said of no other input" do
@@ -101,7 +102,7 @@ defmodule AshTable.FilesTest do
   describe "how a file reaches the action" do
     setup do
       record = Ash.Seed.seed!(Files, %{title: "Page 1"})
-      on_exit(fn -> AshTable.Test.Ets.stop(Files) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop(Files) end)
       %{record: record, key: %{id: record.id}}
     end
 

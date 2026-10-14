@@ -6,7 +6,7 @@ defmodule Demo.Support.Generic do
   records with table actions. The resources exist for the tests only and
   keep their records in memory.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   # who is asking is found under a name the demo's own layout does not read
   table do
@@ -29,7 +29,7 @@ defmodule Demo.Support.Generic.Chore do
     domain: Demo.Support.Generic,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -208,7 +208,7 @@ defmodule Demo.Support.Generic.Rota do
   use Ash.Resource,
     domain: Demo.Support.Generic,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     label_field :name
@@ -237,7 +237,7 @@ defmodule Demo.Support.Generic.Shift do
     domain: Demo.Support.Generic,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title

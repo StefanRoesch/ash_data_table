@@ -92,7 +92,7 @@ defmodule DemoWeb.Tables.FullViewStatesTest do
     } do
       Gate.close()
 
-      assert_raise AshTable.NotFoundError, fn -> live(conn, drafts) end
+      assert_raise AshDataTable.NotFoundError, fn -> live(conn, drafts) end
       assert_error_sent 404, fn -> get(conn, drafts) end
     end
 

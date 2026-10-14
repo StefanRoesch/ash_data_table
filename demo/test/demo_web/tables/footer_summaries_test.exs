@@ -14,9 +14,9 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
-  alias AshTable.Model
-  alias AshTable.Query
-  alias AshTable.State
+  alias AshDataTable.Model
+  alias AshDataTable.Query
+  alias AshDataTable.State
   alias Demo.Generator
   alias Demo.Support.Sums.Effort
   alias Demo.Tracker.Task
@@ -469,7 +469,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       assert footer(html, "progress") == {"Average", "60"}
 
       Ash.update!(first, %{progress: 100}, [action: :set_progress] ++ as(world.member))
-      AshTable.Test.flush(view)
+      AshDataTable.Test.flush(view)
       html = render_async(view, 10_000)
 
       assert text(html, cell(first.id, "progress")) =~ "100"
@@ -675,7 +675,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       refute busy?(html, "effort_broken", "ghost")
 
       assert log =~
-               "ash_table: the summaries of the table of Demo.Support.Sums.Effort could not be computed"
+               "ash_data_table: the summaries of the table of Demo.Support.Sums.Effort could not be computed"
     end
   end
 end

@@ -37,7 +37,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
             authorizers: [Ash.Policy.Authorizer],
-            extensions: [AshTable.Resource],
+            extensions: [AshDataTable.Resource],
             primary_read_warning?: false
 
           postgres do
@@ -85,7 +85,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "projects"
@@ -123,7 +123,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "tasks"
@@ -159,7 +159,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "tasks"
@@ -196,7 +196,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "projects"
@@ -235,7 +235,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "projects"
@@ -276,7 +276,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "organizations"
@@ -314,7 +314,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "tasks"
@@ -355,7 +355,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "tasks"
@@ -400,7 +400,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "organizations"
@@ -441,7 +441,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
           use Ash.Resource,
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           postgres do
             table "organizations"
@@ -489,7 +489,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
             domain: Demo.Support.Vault,
             data_layer: AshPostgres.DataLayer,
             authorizers: [Ash.Policy.Authorizer],
-            extensions: [AshTable.Resource],
+            extensions: [AshDataTable.Resource],
             primary_read_warning?: false
 
           postgres do

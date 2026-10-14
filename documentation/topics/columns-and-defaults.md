@@ -700,7 +700,7 @@ keeps it in view when its block says `sticky_label? true`:
   without the option.
 - **The cells that stay have the page's ground**, so that what scrolls under
   them does not show through: the theme's `--color-base-100`. A table on
-  another ground is told so with `--ash-table-ground`: see
+  another ground is told so with `--ash-data-table-ground`: see
   [Scrolling sideways](layout-and-embedding.md#scrolling-sideways). While
   something is under them, the last of them has a thin edge.
 - **The header row does not stay at the top** when the page scrolls down.

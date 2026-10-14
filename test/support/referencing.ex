@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Referencing do
+defmodule AshDataTable.Test.Referencing do
   @moduledoc """
   Resources for the tests of reference cells: columns that name a belongs-to
   relationship and show the related record's label.
@@ -7,12 +7,12 @@ defmodule AshTable.Test.Referencing do
   """
 end
 
-defmodule AshTable.Test.Referencing.Person do
+defmodule AshDataTable.Test.Referencing.Person do
   @moduledoc "A destination everybody reads, called by its name."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -29,12 +29,12 @@ defmodule AshTable.Test.Referencing.Person do
   end
 end
 
-defmodule AshTable.Test.Referencing.Rank do
+defmodule AshDataTable.Test.Referencing.Rank do
   @moduledoc "A destination called by an enum, whose labels a reference cell shows."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -54,13 +54,13 @@ defmodule AshTable.Test.Referencing.Rank do
   end
 end
 
-defmodule AshTable.Test.Referencing.Vault do
+defmodule AshDataTable.Test.Referencing.Vault do
   @moduledoc "A destination only an admin may ever read: its read is refused outright."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -83,16 +83,16 @@ defmodule AshTable.Test.Referencing.Vault do
   end
 end
 
-defmodule AshTable.Test.Referencing.Agent do
+defmodule AshDataTable.Test.Referencing.Agent do
   @moduledoc """
   A destination everybody reads, whose label only an admin ever sees, and
   whose records are read through an action of their own by one relationship.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -122,13 +122,13 @@ defmodule AshTable.Test.Referencing.Agent do
   end
 end
 
-defmodule AshTable.Test.Referencing.Letter do
+defmodule AshDataTable.Test.Referencing.Letter do
   @moduledoc "A table with reference columns beside a column a person edits."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -136,11 +136,11 @@ defmodule AshTable.Test.Referencing.Letter do
   end
 
   relationships do
-    belongs_to :sender, AshTable.Test.Referencing.Person, public?: true
-    belongs_to :rank, AshTable.Test.Referencing.Rank, public?: true
-    belongs_to :vault, AshTable.Test.Referencing.Vault, public?: true
+    belongs_to :sender, AshDataTable.Test.Referencing.Person, public?: true
+    belongs_to :rank, AshDataTable.Test.Referencing.Rank, public?: true
+    belongs_to :vault, AshDataTable.Test.Referencing.Vault, public?: true
 
-    belongs_to :agent, AshTable.Test.Referencing.Agent do
+    belongs_to :agent, AshDataTable.Test.Referencing.Agent do
       read_action :active
       public? true
     end
@@ -171,12 +171,12 @@ defmodule AshTable.Test.Referencing.Letter do
   end
 end
 
-defmodule AshTable.Test.Referencing.Ledger do
+defmodule AshDataTable.Test.Referencing.Ledger do
   @moduledoc "A destination with a label and without a primary read action."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id

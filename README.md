@@ -1,4 +1,4 @@
-# ash_table
+# ash_data_table
 
 An Ash extension that presents a resource to people as a table in Phoenix
 LiveView. It is an interface to Ash resources in the way `ash_json_api` and
@@ -52,15 +52,15 @@ no HEEx.
 - [Things people trip over](#things-people-trip-over)
 
 The options of the two extensions are listed in the DSL reference,
-[`AshTable.Resource`](documentation/dsls/DSL-AshTable.Resource.md) and
-[`AshTable.Domain`](documentation/dsls/DSL-AshTable.Domain.md).
+[`AshDataTable.Resource`](documentation/dsls/DSL-AshDataTable.Resource.md) and
+[`AshDataTable.Domain`](documentation/dsls/DSL-AshDataTable.Domain.md).
 
 ## Guides
 
 This README is the overview. The guides go deeper, one topic each, with
 examples from the demo app and each topic's edge cases.
 
-- Tutorial: [Get started with AshTable](documentation/tutorials/get-started-with-ash-table.md)
+- Tutorial: [Get started with AshDataTable](documentation/tutorials/get-started-with-ash-data-table.md)
 - [Columns and defaults](documentation/topics/columns-and-defaults.md)
 - [Reading, sorting and pagination](documentation/topics/reading-sorting-and-pagination.md)
 - [Filtering](documentation/topics/filtering.md)
@@ -102,13 +102,13 @@ Phoenix app, and Gettext.
 ### With the installer
 
 ```sh
-mix igniter.install ash_table
+mix igniter.install ash_data_table
 ```
 
-(Until the package is on Hex: `mix igniter.install ash_table@github:StefanRoesch/ash_table`,
-or `ash_table@path:../ash_table` for a checkout.) With the dependency
+(Until the package is on Hex: `mix igniter.install ash_data_table@github:StefanRoesch/ash_table`,
+or `ash_data_table@path:../ash_data_table` for a checkout.) With the dependency
 already in `mix.exs` and [Igniter](https://hexdocs.pm/igniter) among your
-dependencies, `mix ash_table.install` does the same. It takes the five steps
+dependencies, `mix ash_data_table.install` does the same. It takes the five steps
 below, each only if it has not been taken, and tells you what is left: the
 extension on a resource and a line in the router. A file that does not look
 like the one of a new Phoenix 1.8 app is left as it is, and the step is
@@ -119,7 +119,7 @@ printed for you to take by hand.
 1. Add the dependency in `mix.exs`:
 
    ```elixir
-   {:ash_table, "~> 0.1"}
+   {:ash_data_table, "~> 0.1"}
    ```
 
 2. Register the table's JavaScript hooks in `assets/js/app.js`. There are
@@ -128,10 +128,10 @@ printed for you to take by hand.
    nothing to install from npm.
 
    ```js
-   import {hooks as ashTableHooks} from "phoenix-colocated/ash_table"
+   import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 
    const liveSocket = new LiveSocket("/live", Socket, {
-     hooks: {...colocatedHooks, ...ashTableHooks},
+     hooks: {...colocatedHooks, ...ashDataTableHooks},
      // …
    })
    ```
@@ -139,25 +139,25 @@ printed for you to take by hand.
 3. Let Tailwind see the classes the table uses, in `assets/css/app.css`:
 
    ```css
-   @source "../../deps/ash_table/lib";
+   @source "../../deps/ash_data_table/lib";
    ```
 
    The path is the dependency's `lib` directory, seen from `assets/css`.
    For a path dependency that is the checkout, not `deps`: with
-   `{:ash_table, path: "../ash_table"}` it is
-   `@source "../../../ash_table/lib";`. The installer writes the path of the
+   `{:ash_data_table, path: "../ash_data_table"}` it is
+   `@source "../../../ash_data_table/lib";`. The installer writes the path of the
    dependency as it finds it.
 
 4. Add the DSL to the formatter in `.formatter.exs`:
 
    ```elixir
-   import_deps: [:ash_table, :ash, :phoenix]
+   import_deps: [:ash_data_table, :ash, :phoenix]
    ```
 
 5. Tell the table about your app, in `config/config.exs`:
 
    ```elixir
-   config :ash_table,
+   config :ash_data_table,
      layout: {MyAppWeb.Layouts, :app},
      gettext_backend: MyAppWeb.Gettext,
      translate_error: {MyAppWeb.CoreComponents, :translate_error}
@@ -179,7 +179,7 @@ List the extension on a resource:
 defmodule MyApp.Tracker.Task do
   use Ash.Resource,
     domain: MyApp.Tracker,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   # …
 end
@@ -188,13 +188,13 @@ end
 and mount it in the router:
 
 ```elixir
-import AshTable.Router
+import AshDataTable.Router
 
 scope "/", MyAppWeb do
   pipe_through :browser
 
   live_session :default, on_mount: [{MyAppWeb.UserAuth, :mount_current_scope}] do
-    ash_table "/tasks", MyApp.Tracker.Task
+    ash_data_table "/tasks", MyApp.Tracker.Task
   end
 end
 ```
@@ -226,7 +226,7 @@ table do
   column :project          # a belongs-to: the related record's label
 
   column :progress do      # how its cells look and what they are edited with
-    component AshTable.Components.Slider
+    component AshDataTable.Components.Slider
   end
 
   action :archive          # a button in every row; default: none
@@ -449,7 +449,7 @@ One more parameter limits the table to the records related to one record,
 table.
 
 The id defaults to the last part of the resource's module name, underscored;
-`ash_table "/tasks", MyApp.Tracker.Task, id: "tasks"` sets another.
+`ash_data_table "/tasks", MyApp.Tracker.Task, id: "tasks"` sets another.
 
 ### When a read fails
 
@@ -1093,7 +1093,7 @@ end
 ```
 
 - With no `relationship`, a row offers every public relationship whose
-  destination resource has a table (lists `AshTable.Resource`), except manual
+  destination resource has a table (lists `AshDataTable.Resource`), except manual
   relationships and those that are read through a private action. Once one
   `relationship` is declared, a row offers exactly
   the declared ones in the declared order. A table with nothing to offer has
@@ -1178,7 +1178,7 @@ actions and settings are its own.
 
 ```elixir
 # mounted
-ash_table "/comments/compact", MyApp.Comment, table: :compact
+ash_data_table "/comments/compact", MyApp.Comment, table: :compact
 
 # nested under another resource's rows
 relationship :comments do
@@ -1187,7 +1187,7 @@ end
 ```
 
 ```heex
-<AshTable.table resource={MyApp.Comment} table={:compact} scope={@current_scope} />
+<AshDataTable.table resource={MyApp.Comment} table={:compact} scope={@current_scope} />
 ```
 
 - The id of a named table defaults to the resource's, `_` and the table's
@@ -1198,7 +1198,7 @@ end
 - The picker shows the destination's default table.
 - A table can be declared in a file of its own, as a Spark fragment of the
   resource (`use Spark.Dsl.Fragment, of: Ash.Resource, extensions:
-  [AshTable.Resource]`, listed as `fragments:`). Every compile-time check
+  [AshDataTable.Resource]`, listed as `fragments:`). Every compile-time check
   holds, and a finding points at the fragment's file.
 
 The guide [Named tables](documentation/topics/named-tables.md) has the
@@ -1214,7 +1214,7 @@ table do
   update_action :update
 
   column :status do
-    component AshTable.Components.Badge
+    component AshDataTable.Components.Badge
   end
 
   column :progress do
@@ -1223,16 +1223,16 @@ table do
 end
 ```
 
-Four are shipped: `AshTable.Components.Badge` shows an enum's value as a
-badge, `AshTable.Components.Image` shows the picture at the address a text
-holds, `AshTable.Components.Progress` shows a number between its minimum and
-maximum as a bar with the number beside it, and `AshTable.Components.Slider`
+Four are shipped: `AshDataTable.Components.Badge` shows an enum's value as a
+badge, `AshDataTable.Components.Image` shows the picture at the address a text
+holds, `AshDataTable.Components.Progress` shows a number between its minimum and
+maximum as a bar with the number beside it, and `AshDataTable.Components.Slider`
 edits such a number with a slider. A component of your own is a module with
 two function components, either of which can be left out:
 
 ```elixir
 defmodule MyAppWeb.Cells.Hours do
-  use AshTable.Component
+  use AshDataTable.Component
 
   # how a cell shows the value
   def cell(assigns), do: ~H"{@text} h"
@@ -1262,7 +1262,7 @@ end
   `{@control}`; the control's value is what is saved. The same editor is the
   field of that attribute in the action panel.
 - An editor saves on Enter or on leaving the cell, as anything typed does.
-  `use AshTable.Component, commit: :change` makes it save when its value
+  `use AshDataTable.Component, commit: :change` makes it save when its value
   changes instead: a slider when it is let go. Escape gives up what has not
   been saved.
 - The resource does not depend on the component's module: there is no
@@ -1287,11 +1287,11 @@ and `current_tenant`. With none of them assigned nobody is logged in, which
 is fine: the table shows what the resource leaves to an anonymous visitor.
 Who may open the page at all is your router's and live session's business.
 
-The names can be changed per domain, with the extension `AshTable.Domain`:
+The names can be changed per domain, with the extension `AshDataTable.Domain`:
 
 ```elixir
 defmodule MyApp.Tracker do
-  use Ash.Domain, extensions: [AshTable.Domain]
+  use Ash.Domain, extensions: [AshDataTable.Domain]
 
   table do
     scope_assign :scope                    # default :current_scope
@@ -1303,7 +1303,7 @@ end
 ```
 
 A domain without the extension behaves as one with these defaults. Add
-`import_deps: [:ash_table]` to `.formatter.exs` for the options.
+`import_deps: [:ash_data_table]` to `.formatter.exs` for the options.
 
 > **`authorize? false` removes every check.** The tables of that domain's
 > resources then read and save with no policy and no field policy applied,
@@ -1313,7 +1313,7 @@ A domain without the extension behaves as one with these defaults. Add
 
 One page can be mounted without authorization, whatever its domain says:
 
-    ash_table "/admin/tasks", MyApp.Tracker.Task, id: "admin-task", authorize?: false
+    ash_data_table "/admin/tasks", MyApp.Tracker.Task, id: "admin-task", authorize?: false
 
 > **This page shows everything to whoever can open it.** Every read and
 > every action the table runs for it is given `authorize?: false`, the
@@ -1392,7 +1392,7 @@ table do
 end
 ```
 
-The 404 is the exception `AshTable.NotFoundError`, which Phoenix renders as
+The 404 is the exception `AshDataTable.NotFoundError`, which Phoenix renders as
 it renders a missing route. On a live navigation to the page LiveView makes
 the browser ask for the page afresh, and a read that comes to be refused
 while the page is open redirects to the page's own URL; both end at the 404.
@@ -1503,7 +1503,7 @@ letter, say) starts editing without replacing the number.
 Two settings, for two kinds of text:
 
 ```elixir
-config :ash_table,
+config :ash_data_table,
   gettext_backend: MyAppWeb.Gettext,
   translate_error: {MyAppWeb.CoreComponents, :translate_error}
 ```
@@ -1515,14 +1515,14 @@ write them.
 
 **The table's own texts** ("No records", "Clear filters", "1 result", the
 operators of the filters, "You are not allowed to change this." and so on)
-are messages of the Gettext domain `ash_table`, written in English. With
+are messages of the Gettext domain `ash_data_table`, written in English. With
 `gettext_backend` they are looked up in your backend. Copy the template
 that ships with the package to one file per locale and fill in each
 `msgstr`:
 
 ```sh
 mkdir -p priv/gettext/de/LC_MESSAGES
-cp deps/ash_table/priv/gettext/ash_table.pot priv/gettext/de/LC_MESSAGES/ash_table.po
+cp deps/ash_data_table/priv/gettext/ash_data_table.pot priv/gettext/de/LC_MESSAGES/ash_data_table.po
 ```
 
 A message without a translation is shown in English, as everything is
@@ -1572,7 +1572,7 @@ A LiveView mounted from the router gets the root layout only; since Phoenix
 table's page has to be told which one:
 
 ```elixir
-config :ash_table, layout: {MyAppWeb.Layouts, :app}
+config :ash_data_table, layout: {MyAppWeb.Layouts, :app}
 ```
 
 The component is called with the table as its inner block and the assigns
@@ -1582,7 +1582,7 @@ assigns (`scope_assign`, `actor_assign`, `tenant_assign`) has its layout
 given those too, under the names the domain gives them, each only when the
 socket has it. Without this setting the tables are rendered bare in the root
 layout. One table can differ:
-`ash_table "/tasks", MyApp.Tracker.Task, layout: false`, or
+`ash_data_table "/tasks", MyApp.Tracker.Task, layout: false`, or
 `layout: {Module, :function}`. The router line also takes `id:` and
 `authorize?:` (see "Who is reading, and what they may see and do").
 
@@ -1600,7 +1600,7 @@ one.
 ## Inside an existing LiveView
 
 ```heex
-<AshTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
+<AshDataTable.table id="tasks" resource={MyApp.Tracker.Task} scope={@current_scope} />
 ```
 
 It accepts `scope`, or `actor` and `tenant`; the assign names of the domain
@@ -1610,7 +1610,7 @@ Several tables can share a page, each with an `id` of its own: they sort,
 filter, page and save independently.
 
 ```heex
-<AshTable.table
+<AshDataTable.table
   id="open-tasks"
   resource={MyApp.Tracker.Task}
   actor={@current_user}
@@ -1626,7 +1626,7 @@ it shows that name as text that is no heading. `heading={2}` makes it a
 heading of that level, and `heading={false}` leaves it out, for a page that
 names the table itself.
 
-It authorizes as its resource's domain says (`authorize?` in `AshTable.Domain`,
+It authorizes as its resource's domain says (`authorize?` in `AshDataTable.Domain`,
 `true` by default); `authorize?={false}` or `authorize?={true}` on the table
 itself wins. Everything in the table above holds for it, with one difference:
 it cannot turn your page into a 404. A read refused outright makes it render
@@ -1678,12 +1678,12 @@ nothing at all, unless the resource says `on_forbidden :message`.
   accepts the field from anyone its policy allows. See the note under
   [Who is reading](#who-is-reading-and-what-they-may-see-and-do).
 - **Restart the server after changing a path dependency.** The Phoenix code
-  reloader does not recompile `{:ash_table, path: "…"}`; neither does it
+  reloader does not recompile `{:ash_data_table, path: "…"}`; neither does it
   rebuild the hooks. Stop the server, `mix assets.build`, start it again.
 - **`mix compile` before the assets.** The hooks are generated when the
   dependency is compiled; an `esbuild` that runs first does not find
-  `phoenix-colocated/ash_table`.
-- **An older Phoenix 1.8 app pins LiveView 1.1.** `ash_table` needs 1.2.10
+  `phoenix-colocated/ash_data_table`.
+- **An older Phoenix 1.8 app pins LiveView 1.1.** `ash_data_table` needs 1.2.10
   or later (see [Install](#install)).
 - **Nothing is editable until the block says so**, and then only what the
   action accepts: see [Inline editing](#inline-editing).

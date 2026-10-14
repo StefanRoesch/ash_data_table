@@ -87,7 +87,7 @@ defmodule Demo.Support.Unions.Gift do
   use Ash.Resource,
     domain: Demo.Support.Unions,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   alias Demo.Support.Unions.{Box, Card, Holder, Transfer}
 

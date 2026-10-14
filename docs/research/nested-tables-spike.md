@@ -36,7 +36,7 @@ Reasons, strongest first:
 
 1. **It is the only candidate that asks whether the reader may read the parent.** `Ash.load/3` on a record trusts the record: given a struct holding nothing but an Acme task's id, the outsider got that task's comments (section 2). A plain read of the destination never looks at the parent at all. The parent read by key through the reader's read path returns `nil` for the outsider, in the same two queries.
 2. **It is the only candidate that respects the relationship as declared, for every kind.** Many-to-many without a reverse relationship, a relationship filter, `no_attributes?` with `parent()`, `from_many?`, a manual relationship and a destination policy of `accessing_from/2` all work, because Ash's own loader runs. A plain read has to re-implement each of these from relationship metadata, and cannot for three of them.
-3. **The result is an ordinary page.** `%Ash.Page.Offset{}` or `%Ash.Page.Keyset{}` with `results`, `count`, `more?` and keyset cursors, which `AshTable.Query`'s existing page handling can take unchanged. A cursor from a relationship page is the same string as one from a plain read and works on the next request.
+3. **The result is an ordinary page.** `%Ash.Page.Offset{}` or `%Ash.Page.Keyset{}` with `results`, `count`, `more?` and keyset cursors, which `AshDataTable.Query`'s existing page handling can take unchanged. A cursor from a relationship page is the same string as one from a plain read and works on the next request.
 4. **Cost: two queries per page, about 6 ms** for 25 rows on the dev database, the same as keeping the parent in memory and 1 to 2 ms more than a plain read. The table needs to hold only the parent's primary key.
 
 What it costs, and what the design has to change (details in "Constraints" and "Decisions for the owner"):
@@ -162,9 +162,9 @@ for_read admin, load as outsider:     %Ash.Page.Offset{count: nil, results: [0 r
 for_read outsider, load as admin:     %Ash.Page.Offset{count: 0, results: [0 records]}
 ```
 
-A query already built for an action without an actor reads as nobody, while the count is taken as the loader. `AshTable.Query.read/3` passes the reader's options to `for_read` today; the nested query must do the same.
+A query already built for an action without an actor reads as nobody, while the count is taken as the loader. `AshDataTable.Query.read/3` passes the reader's options to `for_read` today; the nested query must do the same.
 
-**Sort order** (Run). Built as `AshTable.Query` builds a query (the person's sort, then `for_read`), the order of `recent_comments` was:
+**Sort order** (Run). Built as `AshDataTable.Query` builds a query (the person's sort, then `for_read`), the order of `recent_comments` was:
 
 ```
 WINDOW "order" AS (ORDER BY sc0."body", sc0."inserted_at" DESC, sc0."id" DESC, sc0."inserted_at")
@@ -324,7 +324,7 @@ member, (b) plain read:   {:error, Forbidden …}
 
 Which of the two comes back depends on the relationship's `allow_forbidden_field?`, whose default is the application's `allow_forbidden_field_for_relationships_by_default` (`true` in the demo, `false` in Ash unless set). Both have to be treated as "refused", in the way the destination table's `on_forbidden` says.
 
-**Can this reader ever read the destination, asked without a query.** The call `AshTable.Model.Access.forbidden_actions/3` already makes for update actions, asked of the destination's read action:
+**Can this reader ever read the destination, asked without a query.** The call `AshDataTable.Model.Access.forbidden_actions/3` already makes for update actions, asked of the destination's read action:
 
 ```elixir
 Ash.can({destination, read_action}, actor, pre_flight?: false, run_queries?: false, maybe_is: :maybe, tenant: tenant)
@@ -391,9 +391,9 @@ What follows for the table:
 
 ## 4. Editing inside a nested table
 
-**Inferred** from `lib/ash_table/edit.ex` and the runs above; no save was made (the database was read only).
+**Inferred** from `lib/ash_data_table/edit.ex` and the runs above; no save was made (the database was read only).
 
-`AshTable.Edit.save/5` is given the destination's model, the column, the record's primary key and who is asking. It reads the record by key through the destination's primary read as the reader, and runs the column's update action. Nothing in it knows or needs the parent or the relationship, so it serves a nested table as it is.
+`AshDataTable.Edit.save/5` is given the destination's model, the column, the record's primary key and who is asking. It reads the record by key through the destination's primary read as the reader, and runs the column's update action. Nothing in it knows or needs the parent or the relationship, so it serves a nested table as it is.
 
 What follows from the existing rules:
 
@@ -494,7 +494,7 @@ columns of Demo.Tracker.TaskLabel: [note: :text, task_id: :other, label_id: :oth
 public attributes of Task: [… :project_id, :assignee_id, :reporter_id]
 ```
 
-`column :assignee` is a compile error today ("The resource has no attribute, calculation or aggregate named `assignee`", `VerifyColumns`), and `AshTable.Model.field!/2` raises the same at runtime.
+`column :assignee` is a compile error today ("The resource has no attribute, calculation or aggregate named `assignee`", `VerifyColumns`), and `AshDataTable.Model.field!/2` raises the same at runtime.
 
 What `column :assignee` needs:
 
@@ -534,7 +534,7 @@ What the table model needs of each relationship, all from `Ash.Resource.Info.pub
 | refusal as a value or as an error | `allow_forbidden_field?` |
 | nothing else | `source_attribute`, `destination_attribute`, `through` and the join attributes are not needed by (c). Slice 2 ("creating a row fills in the link to the parent") will need them |
 
-**Whether the destination has a table**: `AshTable.Resource in Spark.extensions(relationship.destination)`, the test `AshTable.Model.ensure_table!/1` already makes. In the demo:
+**Whether the destination has a table**: `AshDataTable.Resource in Spark.extensions(relationship.destination)`, the test `AshDataTable.Model.ensure_table!/1` already makes. In the demo:
 
 ```
 Organization: users -> User false, projects -> Project true
@@ -559,7 +559,7 @@ result: :ok
 
 The same check in a **transformer** fails: `** (CompileError) deadlocked waiting on module CycT.A` and `… CycT.B`, "Compilation failed because of a deadlock between files". So "naming a relationship whose destination has no table is a compile error" and "`column :author` needs the destination's `label_field`" belong in verifiers, where `VerifyColumns` and the others already are.
 
-One limit (**Inferred**, not run): because a verifier creates no compile-time dependency, removing the extension or the `label_field` from B does not recompile or re-verify A. The runtime model has to check again and raise, as `AshTable.Model.build/2` already does for the other verifier findings ("raised here for a resource that was compiled despite them").
+One limit (**Inferred**, not run): because a verifier creates no compile-time dependency, removing the extension or the `label_field` from B does not recompile or re-verify A. The runtime model has to check again and raise, as `AshDataTable.Model.build/2` already does for the other verifier findings ("raised here for a resource that was compiled despite them").
 
 Cycles cost nothing at runtime as long as the model of a destination is built when its nested table is opened, not when the parent's model is built. A model that eagerly embedded the models of its relationships would not terminate on `Task → Comment → Task`.
 
@@ -579,7 +579,7 @@ Opening one nested table:
 | `Task.labels` (many-to-many, unpaginated), 3 rows | 2, 3.0 ms | 1, 2.1 ms | 2, 4.0 ms | not generic |
 | `Task.project` (belongs-to) | 2, 2.5 ms | 2, 2.2 ms | 3, 3.9 ms | 1, 1.0 ms |
 
-For comparison, the top-level read the table does today (`AshTable.Query.read/3`, tasks page 1 of 25 with count): 2 queries, 4.0 ms.
+For comparison, the top-level read the table does today (`AshDataTable.Query.read/3`, tasks page 1 of 25 with count): 2 queries, 4.0 ms.
 
 Re-fetching the parent by primary key on every request is necessary (section 2) and costs nothing in queries when a count is asked for (the parent read carries the count), and one small statement, about 1.5 ms, when it is not.
 
@@ -596,9 +596,9 @@ About 6 ms and 2 queries per open nested table; ten are about 60 ms of database 
 ## Constraints the recommendation puts on the design
 
 1. **A nested table is identified by parent resource, parent primary key and relationship name**, and reads through `Ash.get(parent, key, load: [{relationship, query}])` as the reader. It never trusts a parent record or key without that read, and never uses `Ash.load/3` on a struct made from a key.
-2. **The parent is read through its resource's primary read action**, as `AshTable.Edit` reads a record by key today. `{:ok, nil}` means the parent is gone or not the reader's: the nested table shows that, in the way a failed read is shown.
+2. **The parent is read through its resource's primary read action**, as `AshDataTable.Edit` reads a record by key today. `{:ok, nil}` means the parent is gone or not the reader's: the nested table shows that, in the way a failed read is shown.
 3. **The related query is built for the reader**: `for_read(action, %{}, reader_opts)`. Without the actor there it reads as nobody while counting as the reader.
-4. **Paging needs a pageable relationship**: cardinality many, not manual, not `no_attributes?`, and a read action that declares pagination. Then the action's strategy, page size and `countable` decide as at the top level (`AshTable.Model.Pagination` of the action that runs). Otherwise no `Ash.Query.page/2` is put on the query and the result is a list, shown as the table of an unpaginated action is shown today.
+4. **Paging needs a pageable relationship**: cardinality many, not manual, not `no_attributes?`, and a read action that declares pagination. Then the action's strategy, page size and `countable` decide as at the top level (`AshDataTable.Model.Pagination` of the action that runs). Otherwise no `Ash.Query.page/2` is put on the query and the result is a list, shown as the table of an unpaginated action is shown today.
 5. **Never ask for a page or a count on a manual relationship** (it raises), and never a count on a relationship whose action is not countable (it errors).
 6. **`required?` and "pagination not enabled" are not enforced by Ash in a relationship load.** The table decides from the action's metadata; nothing fails if it gets it wrong, it just reads everything.
 7. **No `count: true` while a filter is set on a column the reader sees on some records only** (section 3), until Ash applies field policies to that count.
@@ -608,7 +608,7 @@ About 6 ms and 2 queries per open nested table; ten are about 60 ms of database 
 11. **The destination's refusal has two shapes**, `%Ash.ForbiddenField{type: :relationship}` in place of the page and `{:error, %Ash.Error.Forbidden{}}` for the whole call; both mean the destination table's `on_forbidden`.
 12. **A relationship line is left out** when `Ash.can({destination, read_action}, actor, pre_flight?: false, run_queries?: false, maybe_is: :maybe)` answers `{:ok, false}`, or an error.
 13. **Compile-time checks about the destination are verifiers**, repeated at runtime when the model is built. The model of a destination is built when its nested table opens.
-14. **`AshTable.Query` changes shape, not substance.** Building the query (sort, filter, loads, `for_read`) and turning an `Ash.Page.Offset`, an `Ash.Page.Keyset` or a list into `AshTable.Query.Page` stay as they are. New is the last step: `Ash.Query.page/2` on the query and `Ash.get` of the parent in place of `Ash.read(query, page: …)`. The existing `:query` option ("a base query to build on … for a table limited to related records") is not the mechanism and has no use here.
+14. **`AshDataTable.Query` changes shape, not substance.** Building the query (sort, filter, loads, `for_read`) and turning an `Ash.Page.Offset`, an `Ash.Page.Keyset` or a list into `AshDataTable.Query.Page` stay as they are. New is the last step: `Ash.Query.page/2` on the query and `Ash.get` of the parent in place of `Ash.read(query, page: …)`. The existing `:query` option ("a base query to build on … for a table limited to related records") is not the mechanism and has no use here.
 
 ## Where #16 is contradicted, and decisions for the owner
 
@@ -630,7 +630,7 @@ About 6 ms and 2 queries per open nested table; ten are about 60 ms of database 
 6. **Is a reference cell sortable and filterable?** #16 says read-only and no more. Sorting by the related label works through `sort_input(["assignee.name"])` but is not authorized by Ash; filtering through `filter_input` is.
    *Recommended:* not sortable, in slice 1 and until Ash authorizes a sort through a relationship. Filterable by the label is safe and public; leave it out of slice 1 unless wanted, since it needs nothing later slices would have to undo.
 
-7. **"A table component that … builds its query on top of a base query" (#16, what the first version must leave room for).** The first version left that room as `AshTable.Query.read/3`'s `:query` option. A base query is mechanism (b), which cannot serve many-to-many, `no_attributes?`, manual or `from_many?` relationships and does not check the parent.
+7. **"A table component that … builds its query on top of a base query" (#16, what the first version must leave room for).** The first version left that room as `AshDataTable.Query.read/3`'s `:query` option. A base query is mechanism (b), which cannot serve many-to-many, `no_attributes?`, manual or `from_many?` relationships and does not check the parent.
    *Recommended:* drop the `:query` option when the slice is built; the component is given the parent's resource, its primary key and the relationship name. (#16's "given a parent record" becomes "given a parent's key".)
 
 8. **Should a relationship line the reader can never open be left out?** #16 does not say. The question costs no query (about 50 µs).

@@ -9,7 +9,7 @@ defmodule Demo.Support.Asked do
 
   The actors of these tests are maps: `%{role: :admin}`.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -60,7 +60,7 @@ defmodule Demo.Support.Asked.Shelf do
   use Ash.Resource,
     domain: Demo.Support.Asked,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     read_action :offered
@@ -101,7 +101,7 @@ defmodule Demo.Support.Asked.Lot do
   use Ash.Resource,
     domain: Demo.Support.Asked,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     read_action :listed
@@ -151,7 +151,7 @@ defmodule Demo.Support.Asked.Stock do
     domain: Demo.Support.Asked,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   alias Demo.Support.Asked.Kind
 
@@ -322,7 +322,7 @@ defmodule Demo.Support.Asked.Vault do
     domain: Demo.Support.Asked,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     read_action :coded
@@ -374,13 +374,13 @@ defmodule DemoWeb.Support.AskedLive do
     ~H"""
     <main>
       <h1>A page of the host's</h1>
-      <AshTable.table
+      <AshDataTable.table
         id="held"
         resource={Stock}
         actor={assigns[:reader]}
         assigns={%{rate: assigns[:rate]}}
       />
-      <AshTable.table id="linked" resource={Stock} actor={assigns[:reader]} url={@url} />
+      <AshDataTable.table id="linked" resource={Stock} actor={assigns[:reader]} url={@url} />
     </main>
     """
   end

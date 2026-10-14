@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.ImageTableTest do
   @moduledoc """
-  `AshTable.Components.Image` in a table: a text column that holds where a
+  `AshDataTable.Components.Image` in a table: a text column that holds where a
   picture is. The table is of a resource that exists for the tests only
   (`test/support/component_tables.ex`), mounted at `/support/portraits`.
   """

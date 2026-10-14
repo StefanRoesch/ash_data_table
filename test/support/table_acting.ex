@@ -1,4 +1,4 @@
-defmodule AshTable.Test.TableActing.KnowsTheRecord do
+defmodule AshDataTable.Test.TableActing.KnowsTheRecord do
   @moduledoc """
   A check on an argument of a generic action: the action runs on a record
   whose key the actor holds (`%{keys: [...]}`). Asked without the argument,
@@ -17,7 +17,7 @@ defmodule AshTable.Test.TableActing.KnowsTheRecord do
   def match?(_actor, _context, _opts), do: true
 end
 
-defmodule AshTable.Test.TableActing do
+defmodule AshDataTable.Test.TableActing do
   @moduledoc """
   A resource for the tests of table actions: generic actions that run on
   the table as a whole, with and without arguments and return values of
@@ -27,10 +27,10 @@ defmodule AshTable.Test.TableActing do
   The actors of these tests are maps: `%{role: :admin}`.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   # each test has its own records
   ets do
@@ -97,7 +97,7 @@ defmodule AshTable.Test.TableActing do
     end
 
     # values of every kind
-    action :level, AshTable.Test.Status do
+    action :level, AshDataTable.Test.Status do
       run fn _input, _context -> {:ok, :in_progress} end
     end
 
@@ -217,7 +217,7 @@ defmodule AshTable.Test.TableActing do
     end
 
     policy action(:guard) do
-      authorize_if AshTable.Test.TableActing.KnowsTheRecord
+      authorize_if AshDataTable.Test.TableActing.KnowsTheRecord
     end
 
     policy always() do
@@ -272,12 +272,12 @@ defmodule AshTable.Test.TableActing do
   end
 end
 
-defmodule AshTable.Test.TableActing.Shelf do
+defmodule AshDataTable.Test.TableActing.Shelf do
   @moduledoc "A row that expands into a table with table actions."
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -285,7 +285,7 @@ defmodule AshTable.Test.TableActing.Shelf do
   end
 
   relationships do
-    has_many :items, AshTable.Test.TableActing.Item, public?: true
+    has_many :items, AshDataTable.Test.TableActing.Item, public?: true
   end
 
   actions do
@@ -293,16 +293,16 @@ defmodule AshTable.Test.TableActing.Shelf do
   end
 end
 
-defmodule AshTable.Test.TableActing.Item do
+defmodule AshDataTable.Test.TableActing.Item do
   @moduledoc """
   The related records: a table with a table action a person may run, and
   one only an admin may.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id
@@ -311,7 +311,7 @@ defmodule AshTable.Test.TableActing.Item do
   end
 
   relationships do
-    belongs_to :shelf, AshTable.Test.TableActing.Shelf, define_attribute?: false
+    belongs_to :shelf, AshDataTable.Test.TableActing.Shelf, define_attribute?: false
   end
 
   actions do
@@ -345,17 +345,17 @@ defmodule AshTable.Test.TableActing.Item do
   end
 end
 
-defmodule AshTable.Test.TableActing.Unanswerable do
+defmodule AshDataTable.Test.TableActing.Unanswerable do
   @moduledoc """
   A generic action under a policy that looks at a record, which a generic
   action has none of: Ash raises when it is asked whether a person may run
   it, and when it is run.
   """
   use Ash.Resource,
-    domain: AshTable.Test.Domain,
+    domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   attributes do
     uuid_primary_key :id

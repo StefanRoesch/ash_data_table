@@ -44,7 +44,7 @@ defmodule Demo.Support.Bulk.Parcel do
   use Ash.Resource,
     domain: Demo.Support.Bulk,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     simple_notifiers: [Demo.Support.Bulk.Heard],
     primary_read_warning?: false
 
@@ -88,7 +88,7 @@ defmodule Demo.Support.Bulk.Crate do
   use Ash.Resource,
     domain: Demo.Support.Bulk,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -165,7 +165,7 @@ defmodule Demo.Support.Bulk.Letter do
     domain: Demo.Support.Bulk,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -219,7 +219,7 @@ defmodule Demo.Support.Bulk.Pouch do
   use Ash.Resource,
     domain: Demo.Support.Bulk,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title
@@ -244,7 +244,7 @@ defmodule Demo.Support.Bulk.Slot do
   use Ash.Resource,
     domain: Demo.Support.Bulk,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title
@@ -265,7 +265,7 @@ defmodule Demo.Support.Bulk.Tally do
   use Ash.Resource,
     domain: Demo.Support.Bulk,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title
@@ -319,7 +319,7 @@ defmodule DemoWeb.Support.SelectLive do
 
   defp table(assigns) do
     ~H"""
-    <AshTable.table id={@id} resource={@resource} select={@select} label={@id} heading={false} />
+    <AshDataTable.table id={@id} resource={@resource} select={@select} label={@id} heading={false} />
     """
   end
 end

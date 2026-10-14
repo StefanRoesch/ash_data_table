@@ -10,7 +10,7 @@ end
 
 defmodule Demo.Support.Plain do
   @moduledoc """
-  A domain without the extension `AshTable.Domain`: its tables authorize and
+  A domain without the extension `AshDataTable.Domain`: its tables authorize and
   find who is asking under the conventional assigns. Its resources exist for
   the tests only and keep their records in memory.
   """
@@ -37,7 +37,7 @@ defmodule Demo.Support.Plain.Customer do
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   actions do
     defaults [:read, create: [:name, :keeper]]
@@ -66,7 +66,7 @@ defmodule Demo.Support.Plain.Visit do
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     max_depth 0
@@ -131,7 +131,7 @@ defmodule Demo.Support.Plain.Order do
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :code do
@@ -273,7 +273,7 @@ defmodule Demo.Support.Plain.Memo do
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   field_policies do
     field_policy :code do
@@ -349,7 +349,7 @@ defmodule Demo.Support.Plain.Report do
   use Ash.Resource,
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   alias Ash.Error.Query.InvalidArgument
@@ -439,7 +439,7 @@ defmodule Demo.Support.Plain.Entry do
   use Ash.Resource,
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -471,7 +471,7 @@ defmodule Demo.Support.Plain.Ticket do
   use Ash.Resource,
     domain: Demo.Support.Plain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   table do
@@ -517,8 +517,8 @@ defmodule DemoWeb.Support.UrlLive do
     ~H"""
     <main>
       <h1>A page of the host's, with its tables in its URL</h1>
-      <AshTable.table id="entries" resource={Plain.Entry} url={@url} />
-      <AshTable.table id="tickets" resource={Plain.Ticket} url={@url} />
+      <AshDataTable.table id="entries" resource={Plain.Entry} url={@url} />
+      <AshDataTable.table id="tickets" resource={Plain.Ticket} url={@url} />
     </main>
     """
   end
@@ -543,11 +543,11 @@ defmodule DemoWeb.Support.EmbeddedLive do
     <main>
       <h1>A page of the host's</h1>
       <%!-- a domain with `authorize? false`, and the table told nothing --%>
-      <AshTable.table id="open" resource={Unguarded.Note} />
+      <AshDataTable.table id="open" resource={Unguarded.Note} />
       <%!-- the same resource, the table told to authorize --%>
-      <AshTable.table id="checked" resource={Unguarded.Note} authorize?={true} />
+      <AshDataTable.table id="checked" resource={Unguarded.Note} authorize?={true} />
       <%!-- who is asking as a scope --%>
-      <AshTable.table id="scoped" resource={Guarded.Note} scope={assigns[:viewer_scope]} />
+      <AshDataTable.table id="scoped" resource={Guarded.Note} scope={assigns[:viewer_scope]} />
       <p id="after">After the tables</p>
     </main>
     """

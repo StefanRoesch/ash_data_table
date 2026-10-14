@@ -1,4 +1,4 @@
-defmodule AshTable.DocumentationTest do
+defmodule AshDataTable.DocumentationTest do
   @moduledoc """
   Boundary 5: the guides' examples against the repository.
 
@@ -43,7 +43,7 @@ defmodule AshTable.DocumentationTest do
   describe "the set of guides" do
     test "is the tutorial and the twenty-seven topic guides" do
       assert Enum.filter(@guides, &String.starts_with?(&1, "documentation/tutorials/")) ==
-               ["documentation/tutorials/get-started-with-ash-table.md"]
+               ["documentation/tutorials/get-started-with-ash-data-table.md"]
 
       assert @guides
              |> Enum.filter(&String.starts_with?(&1, "documentation/topics/"))
@@ -217,9 +217,10 @@ defmodule AshTable.DocumentationTest do
                check(%{block | marker: {:source, "lib/no_such_file.ex"}})
 
       assert {:error, "is not found in mix.exs" <> _} =
-               check(%{block | marker: {:source, "mix.exs"}, lines: ["app: :ash_tables,"]})
+               check(%{block | marker: {:source, "mix.exs"}, lines: ["app: :ash_data_tables,"]})
 
-      assert :ok = check(%{block | marker: {:source, "mix.exs"}, lines: ["app: :ash_table,"]})
+      assert :ok =
+               check(%{block | marker: {:source, "mix.exs"}, lines: ["app: :ash_data_table,"]})
     end
 
     test "links are found outside code, and a heading's anchor is the one ExDoc gives it" do

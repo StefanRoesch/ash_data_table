@@ -1,6 +1,6 @@
 [
   import_deps: [
-    :ash_table,
+    :ash_data_table,
     :ash_phoenix,
     :ash_postgres,
     :ash,

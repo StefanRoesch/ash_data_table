@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.TranslationSettingsTest do
   @moduledoc """
-  What the two settings of `ash_table` for languages do when a host leaves
+  What the two settings of `ash_data_table` for languages do when a host leaves
   one out. The demo sets both, so these tests take one away for their
   duration; that is application-wide, hence they run on their own.
   """
@@ -31,9 +31,9 @@ defmodule DemoWeb.Tables.TranslationSettingsTest do
   end
 
   defp without(key) do
-    value = Application.fetch_env!(:ash_table, key)
-    Application.delete_env(:ash_table, key)
-    on_exit(fn -> Application.put_env(:ash_table, key, value) end)
+    value = Application.fetch_env!(:ash_data_table, key)
+    Application.delete_env(:ash_data_table, key)
+    on_exit(fn -> Application.put_env(:ash_data_table, key, value) end)
   end
 
   test "without `translate_error`, an action's message is shown as the resource wrote it, " <>

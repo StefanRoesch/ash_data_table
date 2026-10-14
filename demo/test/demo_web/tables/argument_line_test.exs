@@ -348,7 +348,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       # an empty row holds no value: nothing is read for it
       assert argument(html, "names").value == [""]
       assert column(html, "stock", "name") == ["apple", "banana"]
-      assert_push_event view, "ash_table:focus", %{table: "stock", cell: "stock-arg-names-0"}
+      assert_push_event view, "ash_data_table:focus", %{table: "stock", cell: "stock-arg-names-0"}
 
       assert attribute(html, "#stock-arg-names-0", "aria-label") == ["Names 1"]
       assert attribute(html, "#stock-arg-names-0-remove", "aria-label") == ["Remove Names 1"]
@@ -370,14 +370,14 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
       assert column(html, "stock", "name") == ["banana"]
       assert argument(html, "names").value == ["banana"]
-      assert_push_event view, "ash_table:focus", %{cell: "stock-arg-names-0"}
+      assert_push_event view, "ash_data_table:focus", %{cell: "stock-arg-names-0"}
 
       view |> element("#stock-arg-names-0-remove") |> render_click()
       html = render_async(view)
 
       assert column(html, "stock", "name") == ["apple", "banana"]
       assert argument(html, "names").value == []
-      assert_push_event view, "ash_table:focus", %{cell: "stock-arg-names-add"}
+      assert_push_event view, "ash_data_table:focus", %{cell: "stock-arg-names-add"}
     end
 
     test "is in the URL as the list of its values", %{conn: conn, view: view} do
@@ -592,14 +592,14 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
     test "a person whose read is refused outright is not asked to fill in anything", %{conn: conn} do
       conn = as(conn, %{})
 
-      assert_raise AshTable.NotFoundError, fn -> live(conn, "/support/stocks") end
+      assert_raise AshDataTable.NotFoundError, fn -> live(conn, "/support/stocks") end
       assert_error_sent 404, fn -> get(conn, "/support/stocks") end
     end
 
     test "nor is one who can never run the read action, though no read was run", %{conn: conn} do
       conn = as(conn, reader: %{role: :member})
 
-      assert_raise AshTable.NotFoundError, fn -> live(conn, "/support/vaults") end
+      assert_raise AshDataTable.NotFoundError, fn -> live(conn, "/support/vaults") end
 
       {:ok, _view, html} = conn |> as(reader: @admin) |> live("/support/vaults")
       assert text(html, "#vault-fill") == "Fill in Code to see records."

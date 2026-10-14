@@ -184,7 +184,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
                failures: ["This record is no longer available. (2)"]
              }
 
-      assert_push_event view, "ash_table:bulk", %{table: "task_label", failed: failed}
+      assert_push_event view, "ash_data_table:bulk", %{table: "task_label", failed: failed}
       assert failed == [["#{task.id}-#{gone}", [task.id, gone]]]
     end
   end
@@ -232,7 +232,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
       assert length(bodies()) == 30
       refute "Comment 03" in bodies()
-      assert_push_event view, "ash_table:bulk", %{table: "comment", failed: failed}
+      assert_push_event view, "ash_data_table:bulk", %{table: "comment", failed: failed}
       assert length(failed) == 30
     end
   end
@@ -285,7 +285,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       assert bulk_result(html, comments) == %{summary: "Destroy: 1 done.", failures: []}
       assert bulk_result(html, "task") == nil
       assert bodies() == ["On the filing", "On the report 2", "On the report 3"]
-      assert_push_event view, "ash_table:bulk", %{table: ^comments, failed: []}
+      assert_push_event view, "ash_data_table:bulk", %{table: ^comments, failed: []}
       # the row is still expanded, with what is left under it
       assert column(html, comments, "body") == ["On the report 3", "On the report 2"]
     end
@@ -531,7 +531,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       refute html =~ "toppled"
 
       # the hook is told nothing of the rows: what was selected stays so
-      assert_push_event view, "ash_table:bulk", %{table: "crate"} = told
+      assert_push_event view, "ash_data_table:bulk", %{table: "crate"} = told
       refute is_map_key(told, :failed)
 
       assert attribute(html, "#crate-table", "aria-busy") == []
@@ -800,7 +800,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
                failures: ["the books are closed (3)"]
              }
 
-      assert_push_event view, "ash_table:bulk", %{failed: failed}
+      assert_push_event view, "ash_data_table:bulk", %{failed: failed}
       assert Enum.sort(failed) == Enum.sort(Enum.map(ids, &[&1, nil]))
     end
 

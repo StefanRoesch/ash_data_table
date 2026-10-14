@@ -20,7 +20,7 @@ one
 has_many :tasks, Demo.Tracker.Task, public?: true
 ```
 
-`Demo.Tracker.Task` lists `AshTable.Resource`, so a project's row has an
+`Demo.Tracker.Task` lists `AshDataTable.Resource`, so a project's row has an
 expander.
 
 **Try it:** `/projects` in the demo, as Ada Admin. Click the mark at the
@@ -54,7 +54,7 @@ With no `relationship` in the `table` block, a row offers every relationship
 of the resource that
 
 - is `public?`,
-- leads to a resource that has a table (lists `AshTable.Resource`),
+- leads to a resource that has a table (lists `AshDataTable.Resource`),
 - is not a manual relationship, and
 - is read through `public?` actions only: its own `read_action` when it
   names one, else the read action of the destination's table; for a
@@ -161,8 +161,8 @@ has_many :by_the_same_author, __MODULE__ do
   public? true
 end
 
-has_many :manual_notes, AshTable.Test.Relating.Note do
-  manual AshTable.Test.Relating.ManualNotes
+has_many :manual_notes, AshDataTable.Test.Relating.Note do
+  manual AshDataTable.Test.Relating.ManualNotes
   public? true
 end
 ```
@@ -388,7 +388,7 @@ same sort. "Show all records" above the table takes the limit away.
 ### When the link is there
 
 The link is there when the host's router mounts the table that is nested
-with an `ash_table` line. That is the destination's default table, unless
+with an `ash_data_table` line. That is the destination's default table, unless
 the `relationship` names another (`table :compact`): then it is the page of
 that named table, and no other. A nested named table that is mounted
 nowhere has no link, although the destination's default table may be
@@ -396,25 +396,25 @@ mounted. See [Named tables](named-tables.md#the-full-view-of-a-nested-named-tabl
 
 For the default table, the library looks through the router's routes
 (`Phoenix.Router.routes/1`) for the first one, in the router's order, whose
-`ash_table` names the destination resource without `table:` and whose path
+`ash_data_table` names the destination resource without `table:` and whose path
 has no parameter.
 The demo's router mounts five tracker tables
 ([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_table/blob/main/demo/lib/demo_web/router.ex)):
 
 <!-- source: demo/lib/demo_web/router.ex -->
 ```elixir
-ash_table "/tasks", Demo.Tracker.Task
-ash_table "/projects", Demo.Tracker.Project
-ash_table "/comments", Demo.Tracker.Comment
-ash_table "/labels", Demo.Tracker.Label
-ash_table "/task_labels", Demo.Tracker.TaskLabel
+ash_data_table "/tasks", Demo.Tracker.Task
+ash_data_table "/projects", Demo.Tracker.Project
+ash_data_table "/comments", Demo.Tracker.Comment
+ash_data_table "/labels", Demo.Tracker.Label
+ash_data_table "/task_labels", Demo.Tracker.TaskLabel
 ```
 
 `Demo.Tracker.User` has a table and no page. So under a task the nested
 tables "Comments", "Labels" and "Project" have the link, and "Assignee" and
 "Reported by" have none. Nothing is rendered in its place.
 
-A table placed in a page of your own with `<AshTable.table>` links to the
+A table placed in a page of your own with `<AshDataTable.table>` links to the
 destination's mounted page in the same way: the tasks on the demo's
 `/dashboard` do. The link is a live navigation; LiveView turns it into a
 page load by itself where the destination is in another `live_session`.
@@ -739,7 +739,7 @@ in a nested table for each of its rows.
 ## Things people trip over
 
 - **A relationship is missing under the row.** It is not `public?`, its
-  destination does not list `AshTable.Resource`, it is manual and not
+  destination does not list `AshDataTable.Resource`, it is manual and not
   declared, it is read through a private action (its own, or that of its
   join resource) and not declared, or the block declares others. For one person only: they can never read the
   destination.
@@ -750,7 +750,7 @@ in a nested table for each of its rows.
 - **Expecting the nested table's state in the address.** It is not. Open the
   full view for a link that can be shared.
 - **No link on a nested table.** The destination is not mounted with
-  `ash_table`.
+  `ash_data_table`.
 - **A heading with a UUID in it.** The parent's table has no `label_field`,
   and its first column is the key.
 - **`column :author` reports that the destination declares no

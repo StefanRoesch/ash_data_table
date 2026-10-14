@@ -5,7 +5,7 @@ defmodule Demo.Tracker.TaskLabel do
     domain: Demo.Tracker,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     # the default sort is a preparation of the primary read action, on purpose
     primary_read_warning?: false
 

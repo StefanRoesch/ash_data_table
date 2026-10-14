@@ -191,7 +191,7 @@ defmodule DemoWeb.Tables.NamedTableTest do
     test "a route that names a table the resource does not have says so when the page is opened",
          %{conn: conn} do
       assert_raise ArgumentError,
-                   "`ash_table` mounts the table `:compakt` of Demo.Tracker.Comment at \"/support/wrong-table\", but Demo.Tracker.Comment has no table named `:compakt`. Its tables: `:compact`, and the default table.",
+                   "`ash_data_table` mounts the table `:compakt` of Demo.Tracker.Comment at \"/support/wrong-table\", but Demo.Tracker.Comment has no table named `:compakt`. Its tables: `:compact`, and the default table.",
                    fn -> live(conn, "/support/wrong-table") end
     end
   end

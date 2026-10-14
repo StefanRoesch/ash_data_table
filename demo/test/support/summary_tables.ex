@@ -11,7 +11,7 @@ defmodule Demo.Support.Sums do
 
   The actors of these tests are the demo's users.
   """
-  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshTable.Domain]
+  use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
   table do
     actor_assign :reader
@@ -42,7 +42,7 @@ defmodule Demo.Support.Sums.Effort do
     domain: Demo.Support.Sums,
     data_layer: AshPostgres.DataLayer,
     authorizers: [Ash.Policy.Authorizer],
-    extensions: [AshTable.Resource],
+    extensions: [AshDataTable.Resource],
     primary_read_warning?: false
 
   postgres do

@@ -97,7 +97,7 @@ defmodule DemoWeb.Tables.ProjectTableTest do
     test "the exception says \"not found\" and nothing about a refusal",
          %{conn: conn, world: world} do
       error =
-        assert_raise AshTable.NotFoundError, fn ->
+        assert_raise AshDataTable.NotFoundError, fn ->
           conn |> log_in(world.nobody) |> live("/projects")
         end
 

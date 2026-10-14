@@ -17,7 +17,7 @@ defmodule Sketch.Task do
   use Ash.Resource,
     domain: Sketch.Tracker,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :title
@@ -220,7 +220,7 @@ column with `as`, `NAME` is that name.
 | The argument \`ARG\` of the calculation \`NAME\` cannot be asked: a table has no input for its type (TYPE). … Fix its value with \`arguments\` instead. | `ask` of an argument that is a map, an embedded resource, a union, or an array of such. | Fix it with `arguments`. |
 | \`NAME\` is not a calculation. Only a calculation takes arguments. | `arguments` on a column of an attribute, an aggregate or a relationship. For `ask` the message ends "Only an argument of a calculation can be asked; an argument of the read action is on the argument line without a declaration.", and for `as` it reads "\`NAME\` is not a calculation, so \`as\` has no effect. …" | Remove the option. |
 | \`AS\` is a field of the resource, so the column of \`NAME\` cannot be called that. \`as\` gives a column a name that nothing else has. | `as` is the name of an attribute, a calculation, an aggregate or a relationship of the resource. | Choose another name. |
-| Got duplicate AshTable.Resource.Column: NAME | Two columns of one field without `as`, or two columns with the same `as`. | Give the second column of a calculation a name of its own with `as`. |
+| Got duplicate AshDataTable.Resource.Column: NAME | Two columns of one field without `as`, or two columns with the same `as`. | Give the second column of a calculation a name of its own with `as`. |
 | \`NAME\` cannot be sorted, so \`sortable? true\` has no effect. \`sortable?\` can only switch sorting off; remove it or set it to \`false\`. | `sortable? true` on a field the resource does not allow to be sorted. Under keyset pagination the message says "cannot be sorted with keyset pagination". | Remove the option. To sort by a calculation or an aggregate, page by offset. |
 | \`NAME\` cannot be filtered, so \`filterable? true\` has no effect. \`filterable?\` can only switch filtering off; remove it or set it to \`false\`. | `filterable? true` on a field no filter is offered for. | Remove the option. |
 | \`NAME\` is a calculation. Only an attribute can be edited, so a calculation column cannot have an \`update_action\`. | `update_action` on a calculation column. The same message exists for an aggregate. | Remove the option. |
@@ -249,7 +249,7 @@ the relationship and `DESTINATION` its destination resource.
 | Message | Cause | Fix |
 | --- | --- | --- |
 | \`NAME\` is a has-many relationship. Only a belongs-to relationship can be a column: its cell shows the label of the one related record. Offer this one under the row with \`relationship :NAME\`. | The column names a has-many, a has-one or a many-to-many; the message says which. | Remove the column. The related records are a nested table under the row. |
-| The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshTable.Resource\` in its extensions. A column that names a relationship shows the related record's label, which the destination's table declares with \`label_field\`. | The destination resource does not list the extension. | Add the extension and a `label_field` to the destination, or show the foreign key attribute. |
+| The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshDataTable.Resource\` in its extensions. A column that names a relationship shows the related record's label, which the destination's table declares with \`label_field\`. | The destination resource does not list the extension. | Add the extension and a `label_field` to the destination, or show the foreign key attribute. |
 | The destination of \`NAME\`, DESTINATION, declares no \`label_field\`. A column that names a relationship shows the related record's label: add \`label_field\` to the \`table\` block of DESTINATION. | The destination has a table, and its block names no `label_field`. | Add `label_field` there. |
 | The destination of \`NAME\`, DESTINATION, has no primary read action, and the relationship names no \`read_action\`. The related record of a column is read as Ash loads the relationship, which needs one of the two. | Neither is there. | Mark a read action of the destination `primary? true`, or give the relationship a `read_action`. |
 | \`NAME\` shows the label of a related record, which a table does not sort by, so \`sortable? true\` has no effect. \`sortable?\` can only switch sorting off; remove it or set it to \`false\`. | `sortable? true` on a reference cell. | Remove the option. |
@@ -283,13 +283,13 @@ the option names. See [Custom components](custom-components.md).
 | Message | Cause | Fix |
 | --- | --- | --- |
 | The component \`MODULE\` cannot be found: there is no module of that name. | `component` names a module that does not exist: a typo, an alias that is not in scope in the resource, or a module that was renamed. | Correct the name. Write the module's whole name, or `alias` it in the resource. |
-| \`MODULE\` is not a component: it does not implement the behaviour \`AshTable.Component\`. Add \`use AshTable.Component\` to it and define \`cell/1\`, \`editor/1\` or both. | The module exists and is something else: a LiveComponent, a module of function components without the behaviour. | Add `use AshTable.Component` to it. |
-| The component \`MODULE\` defines neither \`cell/1\` nor \`editor/1\`, so it changes nothing. | A module that declares the behaviour by hand (`@behaviour AshTable.Component`) and has neither part. With `use AshTable.Component` this is an error of that module's own compile: see below. | Define one of the two. |
-| The component \`MODULE\` only edits (it has no \`cell/1\`), and \`NAME\` can never be edited, so the component is never used. A column is edited through an \`update_action\`, its own or the table's, that accepts its attribute. | A component with `editor/1` alone, such as `AshTable.Components.Slider`, on a column nobody can edit. The last sentence says why, as for `confirm`: no action, a type without an editor, or "Its attribute is declared \`writable?: false\`." | Make the column editable, or remove `component`. |
+| \`MODULE\` is not a component: it does not implement the behaviour \`AshDataTable.Component\`. Add \`use AshDataTable.Component\` to it and define \`cell/1\`, \`editor/1\` or both. | The module exists and is something else: a LiveComponent, a module of function components without the behaviour. | Add `use AshDataTable.Component` to it. |
+| The component \`MODULE\` defines neither \`cell/1\` nor \`editor/1\`, so it changes nothing. | A module that declares the behaviour by hand (`@behaviour AshDataTable.Component`) and has neither part. With `use AshDataTable.Component` this is an error of that module's own compile: see below. | Define one of the two. |
+| The component \`MODULE\` only edits (it has no \`cell/1\`), and \`NAME\` can never be edited, so the component is never used. A column is edited through an \`update_action\`, its own or the table's, that accepts its attribute. | A component with `editor/1` alone, such as `AshDataTable.Components.Slider`, on a column nobody can edit. The last sentence says why, as for `confirm`: no action, a type without an editor, or "Its attribute is declared \`writable?: false\`." | Make the column editable, or remove `component`. |
 | \`NAME\` shows the label of a related record. A reference cell has no component: remove \`component\` from this column. | `component` on a column that names a relationship. | Remove the option. |
-| The component \`AshTable.Components.Slider\` cannot be used on \`NAME\`: a slider needs a number with a minimum and a maximum. Declare both on the attribute: \`constraints min: 0, max: 100\`. | The slider on a number whose constraints lack `min`, `max` or both. `AshTable.Components.Progress` says the same of "a progress bar". | Add the constraints to the attribute. |
-| The component \`AshTable.Components.Slider\` cannot be used on \`NAME\`: a slider needs a number with a minimum and a maximum, and this field is shown as text. | The slider, or the progress bar, on a field that is no number. The end of the message says what the field is shown as: text, a boolean, a date, a date and time, a choice or read-only text. | Use it on a number, or remove `component`. |
-| The component \`AshTable.Components.Badge\` cannot be used on \`NAME\`: a badge shows the label of a choice, and this field is shown as a number. It needs an \`Ash.Type.Enum\`, or an \`:atom\` with \`constraints one_of: [...]\`. | The badge on a field that is no enum. | Use it on an enum, or remove `component`. |
+| The component \`AshDataTable.Components.Slider\` cannot be used on \`NAME\`: a slider needs a number with a minimum and a maximum. Declare both on the attribute: \`constraints min: 0, max: 100\`. | The slider on a number whose constraints lack `min`, `max` or both. `AshDataTable.Components.Progress` says the same of "a progress bar". | Add the constraints to the attribute. |
+| The component \`AshDataTable.Components.Slider\` cannot be used on \`NAME\`: a slider needs a number with a minimum and a maximum, and this field is shown as text. | The slider, or the progress bar, on a field that is no number. The end of the message says what the field is shown as: text, a boolean, a date, a date and time, a choice or read-only text. | Use it on a number, or remove `component`. |
+| The component \`AshDataTable.Components.Badge\` cannot be used on \`NAME\`: a badge shows the label of a choice, and this field is shown as a number. It needs an \`Ash.Type.Enum\`, or an \`:atom\` with \`constraints one_of: [...]\`. | The badge on a field that is no enum. | Use it on an enum, or remove `component`. |
 
 The last three are what the three shipped components say of themselves. A
 component of your own says what it needs in the same place, with the same
@@ -302,13 +302,13 @@ column.
 
 ### The component's own compile
 
-`use AshTable.Component` checks the module that uses it, and these are
+`use AshDataTable.Component` checks the module that uses it, and these are
 errors of that module, which stop the build:
 
 | Message | Cause |
 | --- | --- |
-| MODULE uses AshTable.Component and defines neither \`cell/1\` nor \`editor/1\`. A component shows a cell's value (\`cell/1\`), edits it (\`editor/1\`), or both. | The module has neither function. |
-| MODULE: \`commit\` says when the editor saves, and is \`:enter\` (on Enter or on leaving the cell, the default) or \`:change\` (when the value changes). Got: :blur | `use AshTable.Component, commit:` with another value. |
+| MODULE uses AshDataTable.Component and defines neither \`cell/1\` nor \`editor/1\`. A component shows a cell's value (\`cell/1\`), edits it (\`editor/1\`), or both. | The module has neither function. |
+| MODULE: \`commit\` says when the editor saves, and is \`:enter\` (on Enter or on leaving the cell, the default) or \`:change\` (when the value changes). Got: :blur | `use AshDataTable.Component, commit:` with another value. |
 | MODULE: \`commit: :change\` says when the editor saves, and the module defines no \`editor/1\`. | `commit: :change` on a component that only shows. |
 
 ### When a component changes after the resource was compiled
@@ -374,11 +374,11 @@ The findings about the tables themselves have the path
 | --- | --- | --- |
 | \`:NAME\` cannot be the name of a table. A table's name is part of its id and of the parameters of its URL: an atom of lower-case letters, digits and \`_\` that starts with a letter, such as \`:compact\`. | The name has a capital letter, a `-`, or starts with a digit. | Rename the table. |
 | \`:default\` is the name of the default table, the one of the \`table\` block, and no named table can have it. Write this table in the \`table\` block, or give it another name. | A named table is called `:default`. | Move it into the `table` block, or rename it. |
-| Got duplicate AshTable.Resource.Table: NAME | Two tables of one name, in one file or in two fragments. This one is Spark's, with the path `tables -> NAME`. | Rename one, or put them together. |
+| Got duplicate AshDataTable.Resource.Table: NAME | Two tables of one name, in one file or in two fragments. This one is Spark's, with the path `tables -> NAME`. | Rename one, or put them together. |
 | The column \`NAME\` is declared more than once in the table \`:TABLE\`. | A named table declares the same `column` twice. Also said of a `relationship`, an `action`, an `argument` and an `upload`. In the `table` block Spark reports this itself ("Got duplicate …"). | Declare it once. A calculation shown twice needs `as` on the second column. |
 | \`label_field\` says what a record of the resource is called, whichever of its tables shows it, so it is no option of a named table. Write \`label_field :NAME\` in the \`table\` block of the resource. | `label_field` inside a named table. The path ends in `-> label_field`. | Move it to the `table` block. |
 
-A table that the router or `<AshTable.table>` names and the resource does
+A table that the router or `<AshDataTable.table>` names and the resource does
 not have is not found at compile time: the router does not look at the
 resource. It raises when the page is opened or the component rendered, and
 lists the resource's tables.
@@ -391,8 +391,8 @@ The path is `table -> relationship -> NAME`.
 | --- | --- | --- |
 | The resource has no relationship named \`NAME\`. | A `relationship` names something that is no relationship of the resource. | Correct the name. |
 | \`NAME\` is not public. Only \`public?\` relationships can be offered by a table. | The relationship is private. | Make it `public? true` if its records may be shown, or leave it out. |
-| The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshTable.Resource\` in its extensions. A row can only be expanded into the table of a resource that has one. | The destination resource does not list the extension. | Add the extension to the destination, or leave the relationship out. |
-| Got duplicate AshTable.Resource.Relationship: NAME | The block declares the same `relationship` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
+| The destination of \`NAME\`, DESTINATION, has no table: it does not list \`AshDataTable.Resource\` in its extensions. A row can only be expanded into the table of a resource that has one. | The destination resource does not list the extension. | Add the extension to the destination, or leave the relationship out. |
+| Got duplicate AshDataTable.Resource.Relationship: NAME | The block declares the same `relationship` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
 | \`NAME\` is to show the table \`:TABLE\` of its destination, but DESTINATION has no table named \`:TABLE\`. Its tables: \`:A\`, \`:B\`, and the default table. | The `table` of a `relationship` names a table the destination does not have. For a destination without named tables it ends "It has the default table only." | Correct the name, or declare the table on the destination. |
 
 | \`NAME\` shows the table of DESTINATION, which offers the page sizes [10, 25, 50], and reads it through \`:ACTION\`, the relationship's own \`read_action\`. 50 is more than \`max_page_size: 25\` of \`:ACTION\`. … | The nested table offers [`page_sizes`](#page_sizes), and the relationship reads it through a `read_action` of its own that does not allow them: a size above its `max_page_size`, or a `default_limit` that is not among them. The message ends as the one for the table's own read action does. | Change the sizes or the action, or give the relationship no `read_action` of its own. |
@@ -416,7 +416,7 @@ or one of its arguments, and `ARG` the argument `record_argument` names.
 | The action \`NAME\` is not public. Only \`public?\` actions can be behind a table. | The action is declared `public? false`. | Make it public, or leave it out. |
 | \`NAME\` is a create action. An \`action\` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole. A create action is offered with \`create_action :NAME\` in the \`table\` block. | An `action` names a create action. | Name it with `create_action`. |
 | \`NAME\` is a read action. An \`action\` of a table is an update or a destroy action, which runs on the record of a row, or a generic action, which runs on the table as a whole. | An `action` names a read action. | Remove it. |
-| Got duplicate AshTable.Resource.Action: NAME | The block declares the same `action` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
+| Got duplicate AshDataTable.Resource.Action: NAME | The block declares the same `action` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
 | The row action \`NAME\` cannot be run from a table: its input \`INPUT\` is required, and a table has no field for its type (TYPE). The action panel has fields for text, numbers, booleans, dates, datetimes, choices, arrays of those, values written as one line of text, such as a key, for embedded resources and maps whose every field is one of these, for unions whose every kind is, and for an argument that takes one file. | The action accepts an attribute it requires, or has an argument with `allow_nil? false`, of a type the action panel has no field for: a map that declares no fields, an embedded resource or a union a table cannot edit, a binary, several files, or an array of anything but text, numbers, booleans, dates, datetimes and choices. `TYPE` is the Ash type, such as `Ash.Type.Map` or `{:array, Ash.Type.UUID}`. | Use an action that does not require the input, or leave the action out. |
 | The row action \`NAME\` cannot be run from a table: its argument \`INPUT\` is required, and holds the keys of the records of \`RELATIONSHIP\`. A table has a field for a list of keys only where the records can be chosen from the related resource's own table, and here they cannot. … | The action has a required argument that a `manage_relationship` change hands to a relationship as a list of keys, and the records of that relationship cannot be chosen. The last sentence says why: the relationship is not public, is manual, or has a `filter`; its destination has no table; the records to choose from, or those that are related now, would be read through an action that is not a public read action; the change would make a record for a key that names none (`type: :direct_control`); or the relationship holds one record. The same message exists for the create action. | Make the relationship `public? true` and give its destination a table, or leave the action out. See [Relationships an action manages](managing-relationships.md#which-arguments-are-chosen). |
 | The row action \`NAME\` says \`bulk? true\`, and cannot run on several records at once: it accepts \`INPUT\`, of which no two records can hold the same value (an attribute of the primary key, or an identity by itself), and the inputs of an action that runs on the selected rows are given once for all of them. Leave \`bulk?\` out: the action stays an action of one row. | An `action` says `bulk? true` and accepts an attribute of the primary key, or one that is the only key of an identity. `bulk?` can only switch off. | Remove `bulk? true`. The action is a row action, and is not offered for a selection. |
@@ -446,7 +446,7 @@ is that of its action, `table -> action -> NAME`.
 | The action \`NAME\` says \`reference :REF\`, and \`REF\` is its \`record_argument\` … | The table gives that argument the key of the row. | Remove the `reference`. |
 | The action \`NAME\` says \`reference :REF\`, and its argument \`REF\` is declared \`sensitive?: true\`. … | A picker shows what is chosen. | Remove the `reference`. |
 | The action \`NAME\` says \`reference :REF\`, and a \`manage_relationship\` change of the action hands \`REF\` to the relationship \`RELATIONSHIP\`. … | The relationship says which resource the argument refers to. | Remove the `reference`: the argument is chosen in the picker without it. |
-| The action \`NAME\` says \`reference :REF, DESTINATION\`, and DESTINATION has no table … | `DESTINATION` is no resource, or does not list `AshTable.Resource`. | Give it a table, or name another resource. |
+| The action \`NAME\` says \`reference :REF, DESTINATION\`, and DESTINATION has no table … | `DESTINATION` is no resource, or does not list `AshDataTable.Resource`. | Give it a table, or name another resource. |
 | … and the table of DESTINATION has no public read action to read the records to choose from … | The read action behind that table is private, or missing. | Make it public, or name a public one with `read_action` in that block. |
 | … and the primary key of DESTINATION is \`A\`, \`B\`: several attributes. … / … has no primary key … | One argument holds one value. | Remove the `reference`. |
 | … and the argument is of the type TYPE, which is not stored as the primary key \`KEY\` of DESTINATION is (KEY_TYPE), nor a list of it. … | The argument cannot hold that key. Types that are stored alike (`:uuid`, `:uuid_v7`) are accepted. | Give the argument the key's type, or a list of it. |
@@ -557,7 +557,7 @@ is compiled before its domain and cannot read the domain's block. See
 | --- | --- | --- | --- |
 | `table -> pub_sub` (of the domain) | RESOURCE says \`live? true\`, but the \`table\` block of DOMAIN names no \`pub_sub\` … | A resource of the domain announces its changes, and the domain does not say through which `Phoenix.PubSub` server. | Add `pub_sub MyApp.PubSub` to the domain's `table` block. |
 
-A domain that does not list `AshTable.Domain` is not checked. The table
+A domain that does not list `AshDataTable.Domain` is not checked. The table
 then refuses to be opened, with the same sentence. So does a page or a
 placed table that says `live?: true` for a resource that announces nothing.
 
@@ -580,7 +580,7 @@ defmodule Sketch.Folder do
   use Ash.Resource,
     domain: Sketch.Vault,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshTable.Resource]
+    extensions: [AshDataTable.Resource]
 
   table do
     column :name
@@ -789,7 +789,7 @@ anyway: an action that exists and cannot save a column leaves that column
 read-only, whoever named it. An action that cannot be run at all is refused.
 
 A table is also refused at runtime for a resource that does not list the
-extension at all: "… does not list \`AshTable.Resource\` in its extensions,
+extension at all: "… does not list \`AshDataTable.Resource\` in its extensions,
 so it has no table."
 
 A nested table is built from a relationship of the table around it, and
@@ -835,7 +835,7 @@ place.
   if CI reuses a `_build` in which the resource was already compiled. Add
   `--force`.
 - **`mix format` adds parentheses to the block.** The formatter does not
-  know the DSL: add `:ash_table` to `import_deps` in `.formatter.exs`. This
+  know the DSL: add `:ash_data_table` to `import_deps` in `.formatter.exs`. This
   is not a compile-time finding, but it shows up at the same moment.
 - **Reading the message without the path.** The line above the message says
   which column and which option it is about.

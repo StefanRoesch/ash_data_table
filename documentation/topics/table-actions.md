@@ -100,7 +100,7 @@ the page, in its tab order before the grid.
 
 | The table | The buttons |
 | --- | --- |
-| Mounted with `ash_table`, or embedded with `<AshTable.table>` | On the line of the table's name, at the right. A table without a name and without a create button has the line for them alone. |
+| Mounted with `ash_data_table`, or embedded with `<AshDataTable.table>` | On the line of the table's name, at the right. A table without a name and without a create button has the line for them alone. |
 | The full view of a nested table | On the line that names the parent and the relationship, before "Show all records". |
 | A nested table | On its relationship line, after the label and the create button. See [Nested tables](#nested-tables). |
 | The table in a picker | None. A picker is for choosing a record. |
@@ -243,7 +243,7 @@ What the declaration has to be, or it is reported:
 | Names an argument that is `sensitive?` | Reported: a picker shows what is chosen. |
 | Names an argument twice | Reported. |
 | Names an argument that a `manage_relationship` change hands to a relationship | Reported: the relationship says which resource it is. Leave the `reference` out. |
-| The resource has no table (it does not list `AshTable.Resource`) | Reported: the records are chosen from its table. |
+| The resource has no table (it does not list `AshDataTable.Resource`) | Reported: the records are chosen from its table. |
 | The resource's table has no public read action | Reported. |
 | The resource's primary key is several attributes, or none | Reported: one argument holds one value. |
 | The argument is not stored as that primary key is, nor a list of it | Reported. |

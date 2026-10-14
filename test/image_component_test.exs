@@ -1,6 +1,6 @@
-defmodule AshTable.ImageComponentTest do
+defmodule AshDataTable.ImageComponentTest do
   @moduledoc """
-  `AshTable.Components.Image`: which values it asks a picture for, what it
+  `AshDataTable.Components.Image`: which values it asks a picture for, what it
   renders, and which columns it can be on.
   """
   use ExUnit.Case, async: true
@@ -8,8 +8,8 @@ defmodule AshTable.ImageComponentTest do
   import Phoenix.LiveViewTest, only: [render_component: 2]
   import Spark.Test
 
-  alias AshTable.Component.Column
-  alias AshTable.Components.Image
+  alias AshDataTable.Component.Column
+  alias AshDataTable.Components.Image
 
   @column %Column{name: :avatar, label: "Avatar", type: Ash.Type.String, cell_type: :text}
 
@@ -98,11 +98,11 @@ defmodule AshTable.ImageComponentTest do
   describe "the columns it can be on" do
     test "a text column, where the table is built with it" do
       refute_dsl_errors do
-        defmodule Elixir.AshTable.ImageComponentTest.Person do
+        defmodule Elixir.AshDataTable.ImageComponentTest.Person do
           use Ash.Resource,
-            domain: AshTable.Test.Domain,
+            domain: AshDataTable.Test.Domain,
             data_layer: Ash.DataLayer.Ets,
-            extensions: [AshTable.Resource]
+            extensions: [AshDataTable.Resource]
 
           attributes do
             uuid_primary_key :id
@@ -117,24 +117,24 @@ defmodule AshTable.ImageComponentTest do
             update_action :update
 
             column :avatar do
-              component AshTable.Components.Image
+              component AshDataTable.Components.Image
             end
           end
         end
       end
 
       assert [%{component: %{module: Image, cell?: true, editor?: false}, editor: :text}] =
-               AshTable.Model.build(AshTable.ImageComponentTest.Person).columns
+               AshDataTable.Model.build(AshDataTable.ImageComponentTest.Person).columns
     end
 
     test "not one that is no text" do
       error =
         assert_dsl_error %Spark.Error.DslError{path: [:table, :column, :age, :component]} do
-          defmodule Elixir.AshTable.ImageComponentTest.Aged do
+          defmodule Elixir.AshDataTable.ImageComponentTest.Aged do
             use Ash.Resource,
-              domain: AshTable.Test.Domain,
+              domain: AshDataTable.Test.Domain,
               data_layer: Ash.DataLayer.Ets,
-              extensions: [AshTable.Resource]
+              extensions: [AshDataTable.Resource]
 
             attributes do
               uuid_primary_key :id
@@ -147,14 +147,14 @@ defmodule AshTable.ImageComponentTest do
 
             table do
               column :age do
-                component AshTable.Components.Image
+                component AshDataTable.Components.Image
               end
             end
           end
         end
 
       assert error.message ==
-               "The component `AshTable.Components.Image` cannot be used on `age`: a picture is shown from the location a text holds, and this field is shown as a number. It needs a text: a `:string` that holds an `http://` or `https://` address, or a path that starts with `/`."
+               "The component `AshDataTable.Components.Image` cannot be used on `age`: a picture is shown from the location a text holds, and this field is shown as a number. It needs a text: a `:string` that holds an `http://` or `https://` address, or a path that starts with `/`."
     end
   end
 end

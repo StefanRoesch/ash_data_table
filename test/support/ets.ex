@@ -1,4 +1,4 @@
-defmodule AshTable.Test.Ets do
+defmodule AshDataTable.Test.Ets do
   @moduledoc """
   Stops the ETS tables of resources, and waits until they are gone.
 

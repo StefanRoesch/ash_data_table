@@ -1,4 +1,4 @@
-defmodule AshTable.UnionsTest do
+defmodule AshDataTable.UnionsTest do
   @moduledoc """
   Boundary 2: what a table makes of a union (`Ash.Type.Union`): its cell
   type and kinds, what a cell of it shows, what its editor holds and gives
@@ -6,14 +6,14 @@ defmodule AshTable.UnionsTest do
   """
   use ExUnit.Case, async: false
 
-  alias AshTable.Act
-  alias AshTable.Edit
-  alias AshTable.Format
-  alias AshTable.Model
-  alias AshTable.Model.Field
-  alias AshTable.Resource.Embedding
-  alias AshTable.Test.Unions
-  alias AshTable.Test.Unions.{Card, Holder, Odd, Once, Place, Transfer}
+  alias AshDataTable.Act
+  alias AshDataTable.Edit
+  alias AshDataTable.Format
+  alias AshDataTable.Model
+  alias AshDataTable.Model.Field
+  alias AshDataTable.Resource.Embedding
+  alias AshDataTable.Test.Unions
+  alias AshDataTable.Test.Unions.{Card, Holder, Odd, Once, Place, Transfer}
 
   defp model, do: Model.build(Unions)
   defp column(name), do: Enum.find(model().columns, &(&1.name == name))
@@ -406,7 +406,7 @@ defmodule AshTable.UnionsTest do
       record =
         Ash.Seed.seed!(Unions, %{name: "One", required: %Ash.Union{type: :text, value: "x"}})
 
-      on_exit(fn -> AshTable.Test.Ets.stop(Unions) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop(Unions) end)
       %{key: %{id: record.id}}
     end
 
@@ -544,7 +544,7 @@ defmodule AshTable.UnionsTest do
       record =
         Ash.Seed.seed!(Unions, %{name: "One", required: %Ash.Union{type: :text, value: "x"}})
 
-      on_exit(fn -> AshTable.Test.Ets.stop(Unions) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop(Unions) end)
 
       {:error, form} =
         record
@@ -579,7 +579,7 @@ defmodule AshTable.UnionsTest do
     test "where an action is not run from a panel, each is said with the way to its field", %{
       form: form
     } do
-      said = AshTable.Errors.of_form(form, model(), nil, "refused")
+      said = AshDataTable.Errors.of_form(form, model(), nil, "refused")
 
       assert "Value: is refused" in said
       assert "Value: Street: is refused" in said

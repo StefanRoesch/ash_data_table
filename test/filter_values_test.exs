@@ -1,4 +1,4 @@
-defmodule AshTable.FilterValuesTest do
+defmodule AshDataTable.FilterValuesTest do
   @moduledoc """
   Boundaries 1 and 2: the filters that take more than one value. "is any
   of" and "is none of" take several of a column's own values, "between" the
@@ -8,14 +8,14 @@ defmodule AshTable.FilterValuesTest do
   """
   use ExUnit.Case, async: false
 
-  alias AshTable.Model
-  alias AshTable.Model.Operator
-  alias AshTable.Query
-  alias AshTable.State
-  alias AshTable.Test.Arguing.Guarded
-  alias AshTable.Test.Arguing.Price
-  alias AshTable.Test.Filtering
-  alias AshTable.Test.Sensitive, as: Vault
+  alias AshDataTable.Model
+  alias AshDataTable.Model.Operator
+  alias AshDataTable.Query
+  alias AshDataTable.State
+  alias AshDataTable.Test.Arguing.Guarded
+  alias AshDataTable.Test.Arguing.Price
+  alias AshDataTable.Test.Filtering
+  alias AshDataTable.Test.Sensitive, as: Vault
 
   defp model, do: Model.build(Filtering)
   defp column(model, name), do: Enum.find(model.columns, &(&1.name == name))
