@@ -1,16 +1,10 @@
 defmodule AshDataTable.Notifier do
   @moduledoc false
   # A facade for the duration of the refactor. The notifier moved into the
-  # declaration, as `AshDataTable.Resource.Notifier` (stage 1). A resource
-  # that says `live? true` is still given this module, because what
-  # `Ash.Resource.Info.notifiers/1` lists, and the tests that name it, stay
-  # as they are until the owner says otherwise. Removed in a later stage.
-  use Ash.Notifier
+  # declaration, as `AshDataTable.Resource.Notifier` (stage 1), and a
+  # resource that says `live? true` is given that one. The tests still ask
+  # this module for the topic of a resource (`test/live_updates_test.exs`
+  # and the demo's). It goes when the tests may ask the declaration.
 
-  alias AshDataTable.Resource.Notifier
-
-  @impl Ash.Notifier
-  def notify(notification), do: Notifier.notify(notification)
-
-  defdelegate topic(resource, tenant), to: Notifier
+  defdelegate topic(resource, tenant), to: AshDataTable.Resource.Notifier
 end

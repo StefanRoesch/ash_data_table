@@ -899,8 +899,8 @@ declared in the resource and mounted with one line in the router.
 ### Live updates
 
 - `live? true` in a resource's `table` block makes its tables follow what
-  other people change. The resource gets a notifier, `AshDataTable.Notifier`,
-  which announces every create, update and destroy through the
+  other people change. The resource gets a notifier,
+  `AshDataTable.Resource.Notifier`, which announces every create, update and destroy through the
   `Phoenix.PubSub` server that the domain's `table` block names with the new
   option `pub_sub`. An announcement holds the resource, the kind of action,
   the primary key and the tenant, and nothing of the record. A domain with

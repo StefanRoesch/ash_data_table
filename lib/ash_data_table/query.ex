@@ -301,7 +301,7 @@ defmodule AshDataTable.Query do
   read action).
 
   This is how a table follows a change that was announced to it
-  (`AshDataTable.Notifier`): a key that names nothing the person may read
+  (`AshDataTable.Resource.Notifier`): a key that names nothing the person may read
   through the table is not among the records, and nothing says why.
 
   Takes the options of `read_related/4`.
@@ -738,7 +738,7 @@ defmodule AshDataTable.Query do
 
   # A table that follows live updates says of what it runs that it ran it:
   # `origin` is its listener (`AshDataTable.Listener`), which the notifier then
-  # leaves out when it announces the change (`AshDataTable.Notifier`). The table
+  # leaves out when it announces the change (`AshDataTable.Resource.Notifier`). The table
   # has shown what its action returned. It is in the context of that one
   # action, and not shared with the actions it runs in turn: what those
   # change besides is announced to the table like anything else.

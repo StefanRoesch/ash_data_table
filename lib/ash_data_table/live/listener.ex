@@ -1,7 +1,7 @@
 defmodule AshDataTable.Listener do
   @moduledoc false
   # The process through which one table hears of changes
-  # (`AshDataTable.Notifier`). A table is a LiveComponent, which lives in the
+  # (`AshDataTable.Resource.Notifier`). A table is a LiveComponent, which lives in the
   # process of its LiveView and cannot receive a message of its own: this
   # process subscribes for it, gathers what is announced for a moment, and
   # hands each batch to the component with `Phoenix.LiveView.send_update/3`.

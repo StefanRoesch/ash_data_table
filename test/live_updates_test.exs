@@ -193,8 +193,8 @@ defmodule AshDataTable.LiveUpdatesTest do
     end
 
     test "adds the table's notifier to the resource, beside the host's own" do
-      assert Ash.Resource.Info.notifiers(Note) == [AshDataTable.Notifier, OwnNotifier]
-      assert Ash.Resource.Info.notifiers(Lodger) == [AshDataTable.Notifier]
+      assert Ash.Resource.Info.notifiers(Note) == [AshDataTable.Resource.Notifier, OwnNotifier]
+      assert Ash.Resource.Info.notifiers(Lodger) == [AshDataTable.Resource.Notifier]
       assert Ash.Resource.Info.notifiers(Still) == []
     end
 

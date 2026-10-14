@@ -10,10 +10,8 @@ defmodule AshDataTable.Resource.Transformers.Announce do
   alias Spark.Dsl.Transformer
 
   # Named as an atom, not as a module, so that the transformer does not
-  # depend on it (a resource's compile cycle would take it in). It is the
-  # facade of `AshDataTable.Resource.Notifier` for now: what
-  # `Ash.Resource.Info.notifiers/1` lists stays as it was.
-  @notifier :"Elixir.AshDataTable.Notifier"
+  # depend on it (a resource's compile cycle would take it in).
+  @notifier :"Elixir.AshDataTable.Resource.Notifier"
 
   @impl true
   def transform(dsl) do

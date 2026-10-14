@@ -577,7 +577,7 @@ defmodule AshDataTable.Resource do
       end
 
   The resource then announces every create, update and destroy
-  (`AshDataTable.Notifier`) through the `Phoenix.PubSub` server its domain
+  (`AshDataTable.Resource.Notifier`) through the `Phoenix.PubSub` server its domain
   names (`pub_sub MyApp.PubSub` in the domain's `table` block:
   `AshDataTable.Domain`), and every table of the resource listens: on a page,
   placed in a LiveView, nested in a row, and in a picker. An announcement
