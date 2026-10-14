@@ -308,6 +308,9 @@ read :open do
 end
 ```
 
+`page_sizes [10, 25, 50]` in the block lets a person choose among sizes the
+action allows, in a "Rows per page" menu beside the pagination.
+
 The page size is the action's `default_limit`, or 25 when it has none, and
 never above the action's `max_page_size`. A read action without pagination
 loads every record. Offset pagination shows page numbers, and where the page

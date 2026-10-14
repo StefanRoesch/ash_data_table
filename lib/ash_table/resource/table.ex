@@ -22,6 +22,7 @@ defmodule AshTable.Resource.Table do
     :name,
     :read_action,
     :paginate_with,
+    :page_sizes,
     :update_action,
     :create_action,
     :label_field,
@@ -42,6 +43,7 @@ defmodule AshTable.Resource.Table do
           name: atom,
           read_action: atom | nil,
           paginate_with: :offset | :keyset | nil,
+          page_sizes: [pos_integer] | nil,
           update_action: atom | nil,
           create_action: atom | nil,
           on_forbidden: :not_found | :message,
@@ -66,6 +68,11 @@ defmodule AshTable.Resource.Table do
       type: {:one_of, [:offset, :keyset]},
       doc:
         "The pagination strategy. Defaults to `:offset` if the read action supports it, else `:keyset`."
+    ],
+    page_sizes: [
+      type: {:list, :pos_integer},
+      doc:
+        "The page sizes a person can choose between, in a \"Rows per page\" menu beside the pagination: at least two, such as `[10, 25, 50]`. The read action stays the authority: none may be more than its `max_page_size`, and its `default_limit` has to be one of them. An action without a `default_limit` opens with the first one. Without the option there is no menu, and the page size is the action's."
     ],
     update_action: [
       type: :atom,

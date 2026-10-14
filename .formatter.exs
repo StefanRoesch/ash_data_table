@@ -25,6 +25,7 @@ spark_locals_without_parens = [
   max_depth: 1,
   max_file_size: 1,
   on_forbidden: 1,
+  page_sizes: 1,
   paginate_with: 1,
   pub_sub: 1,
   read_action: 1,

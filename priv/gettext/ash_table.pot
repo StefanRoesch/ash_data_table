@@ -532,3 +532,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Sum"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Rows per page"
+msgstr ""

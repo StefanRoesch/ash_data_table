@@ -27,7 +27,7 @@ defmodule AshTable.Resource.Verifiers.VerifyReadAction do
   defp errors(dsl, module, table) do
     with {:ok, action} <- Reading.read_action(module, table),
          {:ok, _strategy} <- Reading.strategy(table, action) do
-      argument_errors(dsl, module, table, action)
+      page_size_errors(dsl, module, table, action) ++ argument_errors(dsl, module, table, action)
     else
       {:error, {:unsupported, strategy}} ->
         {:ok, action} = Reading.read_action(module, table)
@@ -44,6 +44,18 @@ defmodule AshTable.Resource.Verifiers.VerifyReadAction do
 
       {:error, reason} ->
         [error(dsl, module, table, :read_action, Reading.message(reason))]
+    end
+  end
+
+  # The read action says what a page may hold and what a table opens with;
+  # `page_sizes` only says which of that a person is offered.
+  defp page_size_errors(dsl, module, table, action) do
+    case Reading.page_sizes(table.page_sizes, action) do
+      {:ok, _sizes} ->
+        []
+
+      {:error, reasons} ->
+        for reason <- reasons, do: error(dsl, module, table, :page_sizes, Reading.message(reason))
     end
   end
 

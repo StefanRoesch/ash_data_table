@@ -2056,8 +2056,17 @@ defmodule AshTable.Live.TableComponent do
     {:noreply, go(socket, target(socket.assigns, to))}
   end
 
+  # Sent by the "Rows per page" menu: the size as text. It is a claim: only
+  # a size the table offers is taken (`AshTable.State.resize/3`), and
+  # anything else changes nothing. The table starts at its first page with
+  # it, as after a new sort; the sort, the filters and the arguments stay.
+  def handle_event("page_size", %{"size" => size}, socket) when is_binary(size) do
+    %{state: state, model: model} = socket.assigns
+    {:noreply, go(socket, State.resize(state, model, size))}
+  end
+
   # An event of a shape the table never sends: nothing happens.
-  def handle_event(event, _params, socket) when event in ["clear_filter", "page"],
+  def handle_event(event, _params, socket) when event in ["clear_filter", "page", "page_size"],
     do: {:noreply, socket}
 
   # Sent by the hook when a person uses the expander of a row: the row by
@@ -10187,6 +10196,12 @@ defmodule AshTable.Live.TableComponent do
   #
   # The hook keeps focus on the control that was used, or sends it on when
   # that control is gone (see `.Pagination` below).
+  #
+  # A table that offers page sizes has a menu after the buttons,
+  # `ID-page-size`, with its label "Rows per page" (in the form
+  # `ID-page-size-form`). Choosing sends `page_size`, and the table reads
+  # its first page with that size. In a nested table the menu is reached as
+  # the buttons are: Enter on the row's cell, then Left and Right Arrow.
   attr :id, :string, required: true
   attr :nested?, :boolean, required: true
   attr :page, :map, required: true
@@ -10222,7 +10237,9 @@ defmodule AshTable.Live.TableComponent do
 
   defp pages(assigns) do
     ~H"""
-    <p id={"#{@id}-range"} class="text-sm">{range_text(@page, @row_count, @state)}</p>
+    <%!-- `me-auto`: under a table of its own the range is at one end and the
+    controls together at the other. --%>
+    <p id={"#{@id}-range"} class="me-auto text-sm">{range_text(@page, @row_count, @state)}</p>
     <div class="join">
       <button
         type="button"
@@ -10276,6 +10293,32 @@ defmodule AshTable.Live.TableComponent do
         {Text.t(:next)}
       </button>
     </div>
+    <%!-- The page sizes a person can choose between, for a table that offers
+    some: after the buttons, so that Previous and Next stay where they are. A
+    form of its own, of one menu, which applies when it changes. --%>
+    <form
+      :if={@model.pagination.page_sizes != []}
+      id={"#{@id}-page-size-form"}
+      phx-change="page_size"
+      phx-target={@target}
+      class="flex items-center gap-2"
+    >
+      <label for={"#{@id}-page-size"} class="text-sm">{Text.t(:rows_per_page)}</label>
+      <select
+        id={"#{@id}-page-size"}
+        name="size"
+        tabindex={@nested? && "-1"}
+        class={["select select-sm w-auto", control_edge()]}
+      >
+        <option
+          :for={size <- @model.pagination.page_sizes}
+          value={size}
+          selected={size == Model.Pagination.size(@model.pagination, @state.per)}
+        >
+          {size}
+        </option>
+      </select>
+    </form>
     """
   end
 

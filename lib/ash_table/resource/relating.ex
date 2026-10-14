@@ -20,6 +20,8 @@ defmodule AshTable.Resource.Relating do
           | {:no_such_table, atom, Ash.Resource.t(), atom}
           | {:declared_twice, atom}
           | private_read
+          | {:page_sizes, atom, Ash.Resource.t(), atom, atom, [pos_integer],
+             Reading.page_sizes_reason()}
 
   @typedoc """
   A relationship whose nested table would run a private read action: the
@@ -266,6 +268,40 @@ defmodule AshTable.Resource.Relating do
     end
   end
 
+  @doc """
+  What is wrong with the page sizes of the nested table of a relationship
+  that has a `read_action` of its own, or `:ok`.
+
+  The table that is nested (`table`, of the destination) says which page
+  sizes a person is offered, and its own read action was checked against
+  them where that table is declared. Under this relationship it is read
+  through another action, which is the authority here: no size may be more
+  than its `max_page_size`, and its `default_limit` has to be one of them.
+
+  Nothing is wrong where the nested table has no pages under this
+  relationship (`pageable?/2`): it then has no menu either. Nor where the
+  relationship has no `read_action` of its own.
+  """
+  @spec page_sizes(struct, atom) :: :ok | {:error, reason}
+  def page_sizes(%{read_action: nil}, _table), do: :ok
+
+  def page_sizes(%{destination: destination} = relationship, table) do
+    with {:ok, %Table{page_sizes: [_ | _] = sizes}} <- TableInfo.table(destination, table),
+         {:ok, action} <- read_action(relationship, table),
+         true <- pageable?(relationship, action),
+         {:error, reasons} <- Reading.page_sizes(sizes, action),
+         [reason | _] <- Enum.filter(reasons, &of_action?/1) do
+      {:error, {:page_sizes, relationship.name, destination, table, action.name, sizes, reason}}
+    else
+      _nothing_wrong -> :ok
+    end
+  end
+
+  # What the list itself lacks is the destination's to report.
+  defp of_action?({kind, _, _, _}) when kind == :page_size_above_max, do: true
+  defp of_action?({:default_limit_not_offered, _, _, _, _}), do: true
+  defp of_action?(_of_the_list), do: false
+
   # of a relationship of the default set, which nests the default table
   defp private_read?(relationship), do: public_read(relationship, :default) != :ok
 
@@ -334,6 +370,11 @@ defmodule AshTable.Resource.Relating do
         TableInfo.no_table(destination, table)
 
   def message({:declared_twice, name}), do: "`#{name}` is declared more than once."
+
+  def message({:page_sizes, name, destination, table, action, sizes, reason}),
+    do:
+      "`#{name}` shows #{Table.in_words(table)} of #{inspect(destination)}, which offers the page sizes #{inspect(sizes)}, and reads it through `#{inspect(action)}`, the relationship's own `read_action`. " <>
+        Reading.message(reason)
 
   def message({:read_action_not_public, name, destination, action, :own}),
     do:

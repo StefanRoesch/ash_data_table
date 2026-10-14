@@ -422,6 +422,11 @@ export class Table {
     return this.pagination.getByRole("button", { name: `Go to page ${number}`, exact: true })
   }
 
+  /** "Rows per page": the menu of a table that offers page sizes, after its buttons. */
+  get pageSize(): Locator {
+    return this.byId(`${this.id}-page-size`)
+  }
+
   // ---- editing ------------------------------------------------------------
 
   /** The editor open in a cell. */

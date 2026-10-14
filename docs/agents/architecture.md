@@ -33,11 +33,11 @@ One line per module. The functions named are the ones other modules call.
 
 The rules of a declaration live in one module per topic. Each is shared by the verifiers (which report a mistake) and the model (which builds on the answer). Most return `{:error, reason}` and turn the reason into text with `message/1`.
 
-- `Resource.Reading`: read action, pagination strategy, what can be sorted. `read_action/2`, `strategy/2`, `sortable?/3`, `private_read/2`, `apart/2`.
+- `Resource.Reading`: read action, pagination strategy, page sizes, what can be sorted. `read_action/2`, `strategy/2`, `page_sizes/2`, `sortable?/3`, `private_read/2`, `apart/2`.
 - `Resource.Editing`: the update action behind a column and whether it can serve an inline edit. `update_action/4`, `edit/4`, `editor/3`, `obstacle/2`.
 - `Resource.Acting`: row actions, table actions, create, and their inputs. `offered/2`, `create_action/2`, `inputs/4`, `record_argument/3`, `bulk?/3`.
 - `Resource.Arguing`: arguments of the read action and of calculation columns. `inputs/1`, `mistakes/3`, `declared_mistakes/2`.
-- `Resource.Relating`: relationships a row offers and the nested table. `offered/2`, `declared/2`, `nested/1`, `read_action/2`, `public_read/2`.
+- `Resource.Relating`: relationships a row offers and the nested table. `offered/2`, `declared/2`, `nested/1`, `read_action/2`, `public_read/2`, `page_sizes/2`.
 - `Resource.Referencing`: reference cells, `label_field`, the picker, and `sticky_label?`. `label_field/1`, `sticky_label/2`, `reference/1`, `picking/2`, `declared/4`.
 - `Resource.Managing`: arguments that a `manage_relationship` change hands to a relationship. `managed/3`, `handed/3`.
 - `Resource.Embedding`: fields of a map cell, kinds of a union. `of/2`, `union/2`, `kind/2`.
@@ -56,7 +56,7 @@ A new diagnostic goes in two places. Put the rule and its `message/1` clause int
 The model:
 
 - `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `summarised/1` (the columns with a `summary`), `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name.
-- `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key.
+- `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key. `Pagination.size/2` is how many records a page holds for the size a person asked for: one of `page_sizes`, else `page_size`.
 - `Model.CellType`: Ash type to cell type. `of/2`, `classify/2`.
 - `Model.Operator`: filter operators per cell type. `available/2`, `to_ash/2`; `takes/1` (no value, one, several, a range), `predicates/2`, `negated?/1`.
 - `Model.Limits`: `min`, `max`, `step` and the text counter. `of/2`, `counted/2`.
@@ -64,7 +64,7 @@ The model:
 
 State and URL:
 
-- `AshTable.State` (`state.ex`): sort, filters, arguments, page position. `from_params/2` and `to_params/2` are the URL format. `fit/2` drops what the model does not allow. `cycle_sort/3`, `filter/3`, `pending/2` (what the filter row was sent, an operator without its value among it), `value?/2`, `clear_filter/2`, `clear_filters/1`, `argue/3`, `put_argument/4`, `to_page/2`.
+- `AshTable.State` (`state.ex`): sort, filters, arguments, page position, chosen page size (`per`). `from_params/2` and `to_params/2` are the URL format. `fit/2` drops what the model does not allow. `cycle_sort/3`, `filter/3`, `pending/2` (what the filter row was sent, an operator without its value among it), `value?/2`, `clear_filter/2`, `clear_filters/1`, `argue/3`, `put_argument/4`, `to_page/2`, `resize/3`.
 - `AshTable.Related` (`related.ex`): the URL parameter `of` that limits a table to the records of one row (the full view). `from_params/5`, `to_param/2`, `path/5`.
 - `AshTable.Routes` (`routes.ex`): where the host's router mounts a table. `default_id/2`, `table/4`.
 
@@ -137,7 +137,7 @@ grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|Colocated
 
 All arrive in `handle_event/3`. A name from the browser is looked up as text (`column/2`, `action/2`); it is never turned into an atom.
 
-- Reading: `sort`, `filter`, `clear_filter`, `clear_filters`, `page`.
+- Reading: `sort`, `filter`, `clear_filter`, `clear_filters`, `page`, `page_size`.
 - Argument line: `arguments`, `argument_add`, `argument_remove`.
 - Nested tables: `expand`, `toggle`.
 - Cells: `save`, `clear`, `discard`, `dismiss`, `reveal` (sensitive), `edit` (map cell, opens the panel).
@@ -179,7 +179,7 @@ The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`
 
 They are colocated hooks. A host gets them from `phoenix-colocated/ash_table`.
 
-- `.Pagination` (from 4721): keeps focus on the pagination control that was used. No sections.
+- `.Pagination` (from 4721): keeps focus on the pagination control that was used, the "Rows per page" menu among them. No sections.
 - `.Panel` (from 4788): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
 - `.Picker` (from 4981): the picker dialog. Hears the selection of the table inside it and sends `picked`.
 - `.Grid` (from 5118): everything in the grid. It starts with a long comment and constants (among them `PLACE`, which places the scrollbars at the bottom edge of the window for all grids of a page at once), then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
@@ -217,7 +217,7 @@ Every change must keep these. They are what part 2 is for.
 - **Nothing sensitive reaches the browser before "Show".** A row is rendered from a record that went through `AshTable.Sensitive.scrub/2`. The value is sent only as the reply to `reveal`, after the record was read again. An editor of a sensitive column opens empty.
 - **An announcement is a claim too.** A live update names a primary key and nothing else. The table shows only what its own read returns for that key, as the person (`Query.rows/4`), and says that there are new or changed records only after asking, as the person and with their filters, whether one is theirs to see (`Query.any?/5`). The notifier never sends a record.
 - **A summary says no more than the rows.** `Query.summaries/4` asks `Ash.aggregate/3` with `authorize_fields?: true` and with the table's read action as each aggregate's `read_action` (Ash would otherwise judge field policies as the primary read action meets them), and asks for nothing over a column that is `partly_hidden?` for the person: its footer cell is a dash. `summary` is refused on a `sensitive?` column.
-- **Values from the browser are claims.** A row key, a column name, an action name, a picked record and a selection are looked up or read again before they are used. Sort and filter go through `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. What a person typed goes to the action as typed; Ash casts and validates it. Text from outside never becomes an atom.
+- **Values from the browser are claims.** A row key, a column name, an action name, a picked record and a selection are looked up or read again before they are used. A page size from a URL or an event is taken only when it is one of the table's `page_sizes` (`State`, and once more where the query is built: `Model.Pagination.size/2`). Sort and filter go through `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. What a person typed goes to the action as typed; Ash casts and validates it. Text from outside never becomes an atom.
 
 ## Adding a feature
 

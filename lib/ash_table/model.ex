@@ -335,8 +335,6 @@ defmodule AshTable.Model do
           sticky_label?: boolean
         }
 
-  @default_page_size 25
-
   @doc """
   Builds the model of a table of a resource: of its default table, or of
   the named table that `:table` names.
@@ -1170,10 +1168,11 @@ defmodule AshTable.Model do
   defp choose_pagination(table, read_action) do
     case Reading.strategy(table, read_action) do
       {:ok, strategy} ->
-        pagination(read_action, strategy)
+        pagination(table, read_action, strategy)
 
       {:error, {:unsupported, _strategy}} ->
         pagination(
+          table,
           read_action,
           List.first(Reading.supported_strategies(read_action.pagination), :none)
         )
@@ -1217,9 +1216,15 @@ defmodule AshTable.Model do
   end
 
   defp pagination(resource, table, read_action, nil) do
+    # of a table of its own, what the verifier reports is refused
+    with {:error, [reason | _]} <- Reading.page_sizes(table.page_sizes, read_action) do
+      raise ArgumentError,
+            "cannot build the #{whose(resource, table)}: " <> Reading.message(reason)
+    end
+
     case Reading.strategy(table, read_action) do
       {:ok, strategy} ->
-        pagination(read_action, strategy)
+        pagination(table, read_action, strategy)
 
       {:error, {:unsupported, strategy}} ->
         raise ArgumentError,
@@ -1229,32 +1234,45 @@ defmodule AshTable.Model do
   end
 
   # What Ash cannot page comes back in full, whatever the action declares.
-  defp pagination(_resource, _table, read_action, %Relationship{pageable?: false}),
-    do: pagination(read_action, :none)
+  defp pagination(_resource, table, read_action, %Relationship{pageable?: false}),
+    do: pagination(table, read_action, :none)
 
   # The strategy the block names when the action that runs supports it, which
   # the relationship's own action need not.
   defp pagination(_resource, table, read_action, %Relationship{}) do
     case Reading.strategy(table, read_action) do
       {:ok, strategy} ->
-        pagination(read_action, strategy)
+        pagination(table, read_action, strategy)
 
       {:error, {:unsupported, _strategy}} ->
-        pagination(read_action, hd(Reading.supported_strategies(read_action.pagination)))
+        pagination(table, read_action, hd(Reading.supported_strategies(read_action.pagination)))
     end
   end
 
-  defp pagination(_read_action, :none),
+  defp pagination(_table, _read_action, :none),
     do: %Pagination{strategy: :none, page_size: nil, countable?: false}
 
-  defp pagination(read_action, strategy) do
-    %{default_limit: default_limit, max_page_size: max_page_size, countable: countable} =
-      read_action.pagination
+  # The sizes the block offers, as far as the action that runs allows them.
+  # A nested table and a table to choose from can be read through another
+  # action than the one the block was checked against (a relationship's
+  # own, a reference's): where that one does not allow what the block
+  # offers, the table has that action's page size and no menu.
+  defp pagination(table, read_action, strategy) do
+    {page_size, page_sizes} =
+      case Reading.page_sizes(table.page_sizes, read_action) do
+        {:ok, sizes} ->
+          sizes
+
+        {:error, _reasons} ->
+          {:ok, sizes} = Reading.page_sizes(nil, read_action)
+          sizes
+      end
 
     %Pagination{
       strategy: strategy,
-      page_size: min(default_limit || @default_page_size, max_page_size),
-      countable?: countable in [true, :by_default]
+      page_size: page_size,
+      page_sizes: page_sizes,
+      countable?: read_action.pagination.countable in [true, :by_default]
     }
   end
 

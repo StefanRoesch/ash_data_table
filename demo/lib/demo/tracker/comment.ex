@@ -50,6 +50,10 @@ defmodule Demo.Tracker.Comment do
     # Live updates, also where the comments are nested under a task.
     live? true
 
+    # "Rows per page", here and where the comments are nested under a task:
+    # 20 is the `default_limit` of the read action.
+    page_sizes [10, 20, 50]
+
     action :destroy do
       confirm "Delete this comment?"
     end

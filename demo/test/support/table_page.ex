@@ -11,6 +11,7 @@ defmodule DemoWeb.TablePage do
       element: 2,
       form: 3,
       render_change: 1,
+      render_change: 2,
       render_async: 2,
       render_hook: 3,
       render_click: 1,
@@ -31,6 +32,42 @@ defmodule DemoWeb.TablePage do
 
     view |> form("##{id}-filters", %{"filter" => %{field => entry}}) |> render_change()
     render_async(view, 10_000)
+  end
+
+  @doc """
+  Chooses in the "Rows per page" menu of the table `id`, as the menu sends
+  it: the size as text, whether or not the menu offers it. Returns the page
+  once the rows have been read again.
+
+      page_size(view, "task", 50)
+  """
+  def page_size(view, id, size) do
+    view
+    |> element("[id='#{id}-page-size-form']")
+    |> render_change(%{"size" => to_string(size)})
+
+    render_async(view, 10_000)
+  end
+
+  @doc """
+  The "Rows per page" menu of the table `id` as a person reads it: its
+  label, the sizes it offers and the one that is chosen. Nil for a table
+  without the menu.
+  """
+  def page_sizes(html, id) do
+    menu = "[id='#{id}-page-size']"
+
+    case Enum.to_list(query(html, menu)) do
+      [] ->
+        nil
+
+      [_menu] ->
+        %{
+          label: text(html, "label[for='#{id}-page-size']"),
+          sizes: attribute(html, "#{menu} option", "value"),
+          chosen: attribute(html, "#{menu} option[selected]", "value")
+        }
+    end
   end
 
   @doc """

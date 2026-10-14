@@ -34,11 +34,12 @@ defmodule AshTable.Resource.Verifiers.VerifyRelationships do
 
   # A public relationship to a resource with a table, and with the table
   # that the declaration names, whose nested table runs a public read
-  # action. A relationship of the default set is not looked at here: one
+  # action that allows the page sizes that table offers. A relationship of the default set is not looked at here: one
   # that cannot be offered is left out of it.
   defp offerable(dsl, declaration) do
-    with {:ok, relationship} <- Relating.declared(dsl, declaration) do
-      Relating.public_read(relationship, Relating.nested(declaration))
+    with {:ok, relationship} <- Relating.declared(dsl, declaration),
+         :ok <- Relating.public_read(relationship, Relating.nested(declaration)) do
+      Relating.page_sizes(relationship, Relating.nested(declaration))
     end
   end
 end
