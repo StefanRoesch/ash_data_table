@@ -78,7 +78,7 @@ test.describe("the switcher", () => {
 
     await switchLocale(page, "en")
     await tasks.ready()
-    await expect(page).toHaveTitle("Tasks · ash_table demo")
+    await expect(page).toHaveTitle("Tasks · ash_data_table demo")
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Tasks")
     await expect(tasks.headers.first()).toHaveText("Title")
     await expect(tasks.pagination).toHaveAccessibleName("Pagination: Tasks")
@@ -99,7 +99,7 @@ test.describe("in German", () => {
     page,
     tasks,
   }) => {
-    await expect(page).toHaveTitle("Aufgaben · ash_table demo")
+    await expect(page).toHaveTitle("Aufgaben · ash_data_table demo")
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Aufgaben")
     await expect(page.getByRole("grid", { name: "Aufgaben" })).toHaveId("task-table")
     await expect(tasks.headers).toHaveText([
@@ -128,7 +128,7 @@ test.describe("in German", () => {
     ])
 
     await expect(page.getByRole("navigation", { name: "Main" }).getByRole("link")).toHaveText([
-      "ash_table demo",
+      "ash_data_table demo",
       "Tasks",
       "Deadlines",
       "Projects",

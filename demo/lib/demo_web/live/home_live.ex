@@ -104,7 +104,7 @@ defmodule DemoWeb.HomeLive do
     ~H"""
     <Layouts.app flash={@flash}>
       <div class="space-y-2">
-        <h1 class="text-2xl font-semibold">ash_table demo</h1>
+        <h1 class="text-2xl font-semibold">ash_data_table demo</h1>
         <p id="whoami" class="text-base-content/70">
           <span :if={@current_user}>
             You are <strong>{@current_user.name}</strong>

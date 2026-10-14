@@ -1,4 +1,4 @@
-# ash_table demo
+# ash_data_table demo
 
 A real Phoenix and Ash host app for `ash_data_table`. It holds the domain, the data
 and the infrastructure that the library's tables are shown and tested on: an

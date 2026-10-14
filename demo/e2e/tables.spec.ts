@@ -101,7 +101,7 @@ for (const mounted of MOUNTED) {
     expect(response!.status()).toBe(200)
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(mounted.title)
-    await expect(page).toHaveTitle(`${mounted.title} · ash_table demo`)
+    await expect(page).toHaveTitle(`${mounted.title} · ash_data_table demo`)
     await expect(page.getByRole("grid", { name: mounted.title })).toHaveId(`${mounted.id}-table`)
 
     // Each of these tables has relationships to offer: before its columns

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="csrf-token" content={get_csrf_token()} />
-    <.live_title default="Demo" suffix=" · ash_table demo">
+    <.live_title default="Demo" suffix=" · ash_data_table demo">
       {assigns[:page_title]}
     </.live_title>
     <link phx-track-static rel="stylesheet" href={~p"/assets/css/app.css"} />
@@ -49,7 +49,7 @@
     <header class="navbar gap-4 border-b border-base-300 px-4 sm:px-6 lg:px-8">
       <div class="flex-1">
         <nav aria-label="Main" class="flex items-center gap-4">
-          <.link navigate={~p"/"} class="font-semibold">ash_table demo</.link>
+          <.link navigate={~p"/"} class="font-semibold">ash_data_table demo</.link>
           <.link navigate={~p"/tasks"}>Tasks</.link>
           <.link navigate={~p"/deadlines"}>Deadlines</.link>
           <.link navigate={~p"/projects"}>Projects</.link>

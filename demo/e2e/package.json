@@ -1,7 +1,7 @@
 {
   "name": "ash-table-demo-e2e",
   "private": true,
-  "description": "Browser tests of the ash_table demo: Playwright and axe-core. A development tool only.",
+  "description": "Browser tests of the ash_data_table demo: Playwright and axe-core. A development tool only.",
   "type": "module",
   "scripts": {
     "test": "playwright test",

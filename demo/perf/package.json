@@ -1,7 +1,7 @@
 {
   "name": "ash-table-demo-perf",
   "private": true,
-  "description": "Performance scripts of the ash_table demo: the prototype's measurements, repeated on Postgres. A development tool only.",
+  "description": "Performance scripts of the ash_data_table demo: the prototype's measurements, repeated on Postgres. A development tool only.",
   "type": "module",
   "scripts": {
     "setup": "./setup.sh",

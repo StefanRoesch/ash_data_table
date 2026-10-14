@@ -34,7 +34,7 @@ test.describe("the page", () => {
     await expect(page).toHaveURL(/\/dashboard$/)
     await projects.ready()
     await tasks.ready()
-    await expect(page).toHaveTitle("Dashboard · ash_table demo")
+    await expect(page).toHaveTitle("Dashboard · ash_data_table demo")
   })
 
   test("holds two tables, each a grid named after its resource under a heading of its own", async ({
