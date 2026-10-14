@@ -43,7 +43,7 @@ defmodule AshDataTable.Query do
 
   alias AshDataTable.Model
   alias AshDataTable.Model.Argument
-  alias AshDataTable.Model.Operator
+  alias AshDataTable.Resource.Operator
   alias AshDataTable.Resource.Summarising
   alias AshDataTable.Model.Pagination
   alias AshDataTable.State

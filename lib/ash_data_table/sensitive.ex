@@ -17,9 +17,11 @@ defmodule AshDataTable.Sensitive do
   #   * the value of one cell is read again when a person asks for it, as
   #     that person;
   #   * what is typed for one is hidden as it is typed, which a table can
-  #     do for text and for a number, and for nothing else (`typed?/1`);
+  #     do for text and for a number, and for nothing else (`AshDataTable.Resource.Exposing.typed?/1`);
   #   * a table neither sorts nor filters by one: the order of the rows, and
   #     which of them a filter leaves, would say what the mask hides.
+
+  alias AshDataTable.Resource.Exposing
 
   defmodule Masked do
     @moduledoc false
@@ -29,36 +31,9 @@ defmodule AshDataTable.Sensitive do
     @type t :: %__MODULE__{}
   end
 
-  # the editors that can hide what is typed: one line, in a password input
-  @typed [:text, :number]
-
   @doc "What a cell shows in place of a sensitive value: the same for every value."
   @spec mask() :: String.t()
   def mask, do: "••••••"
-
-  @doc "Whether a field, an argument or a column says that it is sensitive."
-  @spec sensitive?(term) :: boolean
-  def sensitive?(%{sensitive?: true}), do: true
-  def sensitive?(_field), do: false
-
-  @doc """
-  Whether a table hides what is typed into an editor of that kind: text and
-  numbers, which are typed as one line. Every other editor shows what it
-  holds (a box, a menu, a date), so a sensitive field has none of them.
-  """
-  @spec typed?(atom | nil) :: boolean
-  def typed?(editor), do: editor in @typed
-
-  @doc """
-  Whether a sensitive field holds nothing: such a cell is empty and has
-  nothing to show.
-  """
-  @spec empty?(term) :: boolean
-  def empty?(nil), do: true
-  def empty?(""), do: true
-  def empty?([]), do: true
-  def empty?(%Ash.NotLoaded{}), do: true
-  def empty?(_value), do: false
 
   @doc """
   A record as a table keeps it for a row: with every sensitive value in it
@@ -152,14 +127,14 @@ defmodule AshDataTable.Sensitive do
 
   defp masked(%Ash.ForbiddenField{} = hidden), do: hidden
   defp masked(%Ash.NotLoaded{} = not_loaded), do: not_loaded
-  defp masked(value), do: if(empty?(value), do: value, else: %Masked{})
+  defp masked(value), do: if(Exposing.empty?(value), do: value, else: %Masked{})
 
   defp sensitive_names(resource) do
     for field <-
           Ash.Resource.Info.attributes(resource) ++
             Ash.Resource.Info.calculations(resource) ++
             Ash.Resource.Info.aggregates(resource),
-        sensitive?(field),
+        Exposing.sensitive?(field),
         do: field.name
   end
 end

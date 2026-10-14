@@ -20,6 +20,7 @@ defmodule AshDataTable.Format do
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
   alias AshDataTable.Resource.Embedding
+  alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
   alias AshDataTable.Text
   alias AshDataTable.Zone
@@ -81,7 +82,7 @@ defmodule AshDataTable.Format do
       case fields(field, value) do
         nil ->
           for {key, held} <- undeclared(value), text = other(held, zone), text != "" do
-            {Text.label(Model.humanize(key)), text}
+            {Text.label(AshDataTable.Resource.Words.humanize(key)), text}
           end
 
         fields ->
@@ -248,7 +249,7 @@ defmodule AshDataTable.Format do
   defp shown(%{sensitive?: true} = inner, held, zone) do
     cond do
       is_struct(held, Ash.ForbiddenField) -> format(inner, held, zone)
-      Sensitive.empty?(held) -> ""
+      Exposing.empty?(held) -> ""
       true -> Sensitive.mask()
     end
   end
@@ -263,8 +264,11 @@ defmodule AshDataTable.Format do
 
   defp fields(%{type: {type, constraints}}, _value) when not is_nil(type) do
     case Embedding.of(type, constraints) do
-      %{fields: [_ | _] = fields} -> Enum.map(fields, &%{&1 | label: Text.label(&1.label)})
-      _none -> nil
+      %{fields: [_ | _] = fields} ->
+        Enum.map(Model.Field.from(fields), &%{&1 | label: Text.label(&1.label)})
+
+      _none ->
+        nil
     end
   end
 
@@ -276,8 +280,11 @@ defmodule AshDataTable.Format do
 
   defp members(%{type: {type, constraints}}) when not is_nil(type) do
     case Embedding.of(type, constraints) do
-      %{members: [_ | _] = members} -> Enum.map(members, &%{&1 | label: Text.label(&1.label)})
-      _none -> nil
+      %{members: [_ | _] = members} ->
+        Enum.map(Model.Field.from(members), &%{&1 | label: Text.label(&1.label)})
+
+      _none ->
+        nil
     end
   end
 

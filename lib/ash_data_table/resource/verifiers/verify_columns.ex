@@ -2,7 +2,7 @@ defmodule AshDataTable.Resource.Verifiers.VerifyColumns do
   @moduledoc false
   use Spark.Dsl.Verifier
 
-  alias AshDataTable.Model.Operator
+  alias AshDataTable.Resource.Operator
   alias AshDataTable.Resource.Arguing
   alias AshDataTable.Resource.Editing
   alias AshDataTable.Resource.Presenting

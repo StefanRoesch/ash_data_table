@@ -13,6 +13,11 @@ defmodule AshDataTable.Resource.Relating do
   alias AshDataTable.Resource.Reading
   alias AshDataTable.Resource.Table
 
+  # The extension, named as an atom and not as a module: a rule of the
+  # declaration does not call the extension it belongs to, which would put
+  # it in the compile cycle of every resource that uses the extension.
+  @extension :"Elixir.AshDataTable.Resource"
+
   @type reason ::
           {:not_found, atom}
           | {:not_public, atom}
@@ -142,7 +147,7 @@ defmodule AshDataTable.Resource.Relating do
   @spec table?(module) :: boolean
   def table?(resource) do
     match?({:module, _}, Code.ensure_compiled(resource)) and Info.resource?(resource) and
-      AshDataTable.Resource in Spark.extensions(resource)
+      @extension in Spark.extensions(resource)
   end
 
   @doc """

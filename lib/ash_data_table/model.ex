@@ -114,7 +114,7 @@ defmodule AshDataTable.Model do
   # ## Arrays
   #
   # An array of values that have a cell type of their own has the cell type
-  # `{:array, item}` (`AshDataTable.Model.CellType`): shown as its values, each as
+  # `{:array, item}` (`AshDataTable.Resource.CellType`): shown as its values, each as
   # a cell of its type shows it, and edited as a whole. An array of enum
   # values is edited as multiple choice (`:choices`), any other with one
   # control per value (`:list`). It is neither sorted nor filtered by: Ash
@@ -272,25 +272,26 @@ defmodule AshDataTable.Model do
   alias AshDataTable.Model.Access
   alias AshDataTable.Model.Action
   alias AshDataTable.Model.Argument
-  alias AshDataTable.Model.CellType
   alias AshDataTable.Model.Column
+  alias AshDataTable.Model.Field
   alias AshDataTable.Model.Input
-  alias AshDataTable.Model.Operator
   alias AshDataTable.Model.Pagination
   alias AshDataTable.Model.Relationship
   alias AshDataTable.Resource.Acting
   alias AshDataTable.Resource.Arguing
+  alias AshDataTable.Resource.CellType
   alias AshDataTable.Resource.Editing
   alias AshDataTable.Resource.Embedding
+  alias AshDataTable.Resource.Exposing
   alias AshDataTable.Resource.Info, as: TableInfo
   alias AshDataTable.Resource.Listening
+  alias AshDataTable.Resource.Operator
   alias AshDataTable.Resource.Presenting
   alias AshDataTable.Resource.Reading
   alias AshDataTable.Resource.Referencing
   alias AshDataTable.Resource.Relating
   alias AshDataTable.Resource.Summarising
   alias AshDataTable.Resource.Table
-  alias AshDataTable.Sensitive
 
   @enforce_keys [:resource, :primary_key, :read_action, :pagination, :columns]
   defstruct [
@@ -1585,6 +1586,19 @@ defmodule AshDataTable.Model do
   end
 
   @doc """
+  What a resource's table is called, before it is translated: its
+  `plural_name` when the resource has one, else its short name, humanised
+  ("Task labels"). `AshDataTable.label/1` is this, translated.
+  """
+  @spec label(Ash.Resource.t()) :: String.t()
+  def label(resource) do
+    (Info.plural_name(resource) || Info.short_name(resource))
+    |> to_string()
+    |> String.replace("_", " ")
+    |> String.capitalize()
+  end
+
+  @doc """
   What one record of a resource is called: its short name, in words ("task
   label"). It is the `name` of the resource's model.
   """
@@ -1601,7 +1615,13 @@ defmodule AshDataTable.Model do
       for %{editor: editor} = input when not is_nil(editor) <-
             Acting.inputs(resource, action, record_argument, references) do
         Input
-        |> struct!(Map.put(input, :label, input_label(input, columns)))
+        |> struct!(
+          Map.merge(input, %{
+            label: input_label(input, columns),
+            fields: Field.from(input.fields),
+            members: Field.from(input.members)
+          })
+        )
         |> with_reference(resource, columns)
         |> with_component(columns)
         |> with_upload(table)
@@ -1834,7 +1854,7 @@ defmodule AshDataTable.Model do
     %Column{
       # a sensitive field is masked, and neither sorted nor filtered by:
       # `Reading.sortable?/3` and `Operator.available/2` say so
-      sensitive?: Sensitive.sensitive?(field),
+      sensitive?: Exposing.sensitive?(field),
       max_lines: max_lines(resource, field, declared),
       fixed: fixed,
       arguments: fixed,
@@ -1930,7 +1950,7 @@ defmodule AshDataTable.Model do
   # declares none, and for every other cell type.
   defp fields(cell_type, type, constraints) when cell_type in [:map, {:array, :map}] do
     case Embedding.of(type, constraints) do
-      %{fields: fields} -> fields
+      %{fields: fields} -> Field.from(fields)
       nil -> nil
     end
   end
@@ -1941,7 +1961,7 @@ defmodule AshDataTable.Model do
   # type.
   defp members(cell_type, type, constraints) when cell_type in [:union, {:array, :union}] do
     case Embedding.of(type, constraints) do
-      %{members: members} -> members
+      %{members: members} -> Field.from(members)
       nil -> nil
     end
   end
@@ -2030,17 +2050,5 @@ defmodule AshDataTable.Model do
   defp kind(%Ash.Resource.Calculation{}), do: :calculation
   defp kind(%Ash.Resource.Aggregate{}), do: :aggregate
 
-  @doc false
-  # A field's name in words: what its column is called unless the block says.
-  def humanize(name) do
-    name
-    |> to_string()
-    |> String.split("_", trim: true)
-    |> Enum.with_index()
-    |> Enum.map_join(" ", fn
-      {"id", _index} -> "ID"
-      {word, 0} -> String.capitalize(word)
-      {word, _index} -> word
-    end)
-  end
+  defp humanize(name), do: AshDataTable.Resource.Words.humanize(name)
 end

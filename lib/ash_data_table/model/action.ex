@@ -50,7 +50,7 @@ defmodule AshDataTable.Model.Action do
           confirm: String.t() | nil,
           link: {atom, atom} | nil,
           record_argument: atom | nil,
-          returns: %{cell_type: :enum, values: AshDataTable.Model.CellType.values()} | nil,
+          returns: %{cell_type: :enum, values: AshDataTable.Resource.CellType.values()} | nil,
           inputs: [AshDataTable.Model.Input.t()],
           panel?: boolean,
           bulk?: boolean

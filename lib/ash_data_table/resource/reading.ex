@@ -459,7 +459,7 @@ defmodule AshDataTable.Resource.Reading do
     field = Info.field(resource, name)
 
     Info.sortable?(resource, name, pagination_type: pagination_type, include_private?: false) and
-      not made_of_fields?(field) and not AshDataTable.Sensitive.sensitive?(field)
+      not made_of_fields?(field) and not AshDataTable.Resource.Exposing.sensitive?(field)
   end
 
   defp made_of_fields?(%{type: type} = field) when not is_nil(type) and not is_tuple(type) do

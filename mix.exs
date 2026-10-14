@@ -102,7 +102,7 @@ defmodule AshDataTable.MixProject do
           AshDataTable.Components.Progress,
           AshDataTable.Components.Slider
         ],
-        "Live updates": [AshDataTable.Notifier, AshDataTable.Test],
+        "Live updates": [AshDataTable.Resource.Notifier, AshDataTable.Test],
         Translation: [AshDataTable.Gettext],
         Introspection: [
           AshDataTable.Resource.Info,

@@ -55,8 +55,8 @@ defmodule AshDataTable.Model.Field do
           name: atom,
           label: String.t(),
           type: {Ash.Type.t(), keyword},
-          cell_type: AshDataTable.Model.CellType.t(),
-          values: AshDataTable.Model.CellType.values() | nil,
+          cell_type: AshDataTable.Resource.CellType.t(),
+          values: AshDataTable.Resource.CellType.values() | nil,
           fields: [t] | nil,
           members: [t] | nil,
           tag: {atom | String.t(), term} | nil,
@@ -67,4 +67,16 @@ defmodule AshDataTable.Model.Field do
           key?: boolean,
           sensitive?: boolean
         }
+
+  @doc false
+  # A field of a map cell, or a kind of a union, as the declaration's rules
+  # give it (`AshDataTable.Resource.Embedding`), with the fields and kinds
+  # in it. Nil stays nil.
+  @spec from(map | [map] | nil) :: t | [t] | nil
+  def from(nil), do: nil
+  def from(fields) when is_list(fields), do: Enum.map(fields, &from/1)
+
+  def from(%{} = field) do
+    struct!(__MODULE__, %{field | fields: from(field.fields), members: from(field.members)})
+  end
 end

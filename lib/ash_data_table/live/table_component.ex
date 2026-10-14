@@ -522,9 +522,9 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Listener
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
-  alias AshDataTable.Model.Operator
+  alias AshDataTable.Resource.Operator
   alias AshDataTable.Model.Relationship
-  alias AshDataTable.Notifier
+  alias AshDataTable.Resource.Notifier
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
@@ -532,6 +532,7 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Listening
   alias AshDataTable.Routes
+  alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
   alias AshDataTable.State
   alias AshDataTable.Text
@@ -9443,7 +9444,7 @@ defmodule AshDataTable.Live.TableComponent do
             chosen: @picker.chosen
           }
         }
-        label={AshDataTable.label(@picker.reference.destination)}
+        label={Text.label(Model.label(@picker.reference.destination))}
         heading={false}
         url={nil}
         mounted?={false}
@@ -9503,7 +9504,7 @@ defmodule AshDataTable.Live.TableComponent do
 
       # A sensitive field holds what was typed into it, and nothing else:
       # never what the record has, nor a default. It starts empty.
-      Sensitive.sensitive?(input) ->
+      Exposing.sensitive?(input) ->
         case panel.typed do
           %{^name => typed} when is_binary(typed) -> typed
           _nothing_typed -> ""
@@ -9601,7 +9602,7 @@ defmodule AshDataTable.Live.TableComponent do
         else: assigns
 
     # typed hidden: a password input in place of the control of its type
-    secret? = Sensitive.sensitive?(assigns.input)
+    secret? = Exposing.sensitive?(assigns.input)
 
     # The counter of a text that has a most it can be long, and of each
     # value of an array of such texts. Not of a sensitive one: nothing is
@@ -11894,7 +11895,7 @@ defmodule AshDataTable.Live.TableComponent do
   # What is rendered is the same whatever the value is; the value itself is
   # not in the record a row is rendered from (`AshDataTable.Sensitive.scrub/2`).
   defp cell(%{sensitive?: true} = column, value, _zone) do
-    if Sensitive.empty?(value) do
+    if Exposing.empty?(value) do
       ""
     else
       {:safe,

@@ -46,12 +46,12 @@ defmodule AshDataTable.Resource.Verifiers.VerifyComponents do
             "component: remove `component` from this column."
         ]
 
-      AshDataTable.Sensitive.sensitive?(field) ->
+      AshDataTable.Resource.Exposing.sensitive?(field) ->
         [Presenting.message({:sensitive, column.name})]
 
       true ->
         editable? = Editing.update_action(module, table, field, column) != :none
-        label = column.label || AshDataTable.Model.humanize(column.name)
+        label = column.label || AshDataTable.Resource.Words.humanize(column.name)
 
         case Presenting.component(
                column.component,

@@ -12,7 +12,7 @@ defmodule AshDataTable.Resource.Summarising do
   # asked through and whose rows the number could then disagree with.
 
   alias AshDataTable.Resource.Referencing
-  alias AshDataTable.Sensitive
+  alias AshDataTable.Resource.Exposing
 
   @kinds [:count, :sum, :avg, :min, :max]
 
@@ -58,7 +58,7 @@ defmodule AshDataTable.Resource.Summarising do
       is_struct(field, Ash.Resource.Aggregate) ->
         {:error, {:not_an_attribute, field.name, :aggregate}}
 
-      Sensitive.sensitive?(field) ->
+      Exposing.sensitive?(field) ->
         {:error, {:sensitive, field.name}}
 
       not fits?(kind, field.type) ->

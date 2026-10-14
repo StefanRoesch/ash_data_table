@@ -306,7 +306,7 @@ defmodule AshDataTable.Act do
     for %{kind: :attribute, sensitive?: true, required?: false, name: name} <- inputs,
         value = Map.get(record, name),
         not is_struct(value, Ash.ForbiddenField),
-        not AshDataTable.Sensitive.empty?(value),
+        not AshDataTable.Resource.Exposing.empty?(value),
         do: name
   end
 
@@ -1070,7 +1070,7 @@ defmodule AshDataTable.Act do
   # the field's name in words.
   defp named(field, error) do
     Text.t(:error_on_field,
-      field: Text.label(Model.humanize(field)),
+      field: Text.label(AshDataTable.Resource.Words.humanize(field)),
       message: Text.error(error)
     )
   end

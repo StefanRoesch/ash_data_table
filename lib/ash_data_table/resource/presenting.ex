@@ -8,7 +8,7 @@ defmodule AshDataTable.Resource.Presenting do
   # is compiled: the resource does not depend on it.
 
   alias AshDataTable.Component.Column
-  alias AshDataTable.Model.CellType
+  alias AshDataTable.Resource.CellType
 
   @type reason ::
           {:sensitive, atom}
@@ -129,7 +129,7 @@ defmodule AshDataTable.Resource.Presenting do
       is_struct(field, Ash.Resource.Relationships.BelongsTo) ->
         {:error, {:one_line, declared.name, :reference}}
 
-      AshDataTable.Sensitive.sensitive?(field) ->
+      AshDataTable.Resource.Exposing.sensitive?(field) ->
         {:error, {:one_line, declared.name, :sensitive}}
 
       shows?(declared.component) ->
@@ -204,4 +204,19 @@ defmodule AshDataTable.Resource.Presenting do
   defp article(:date), do: "a date"
   defp article(:datetime), do: "a datetime"
   defp article(:enum), do: "an enum"
+
+  @doc false
+  # What a field of a cell type is shown as, in a sentence: what the shipped
+  # components (`AshDataTable.Components.Badge`, `.Image`, `.Progress`,
+  # `.Slider`) say when a column is not of a type they show.
+  def shown_as(:text), do: "text"
+  def shown_as(:number), do: "a number"
+  def shown_as(:boolean), do: "a boolean"
+  def shown_as(:date), do: "a date"
+  def shown_as(:datetime), do: "a date and time"
+  def shown_as(:enum), do: "a choice"
+  def shown_as({:array, _item}), do: "a list of values"
+  def shown_as(:map), do: "a value made of fields"
+  def shown_as(:union), do: "a value of one of several kinds"
+  def shown_as(:other), do: "read-only text"
 end

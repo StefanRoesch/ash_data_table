@@ -246,11 +246,5 @@ defmodule AshDataTable do
   column label (see `AshDataTable.Gettext`).
   """
   @spec label(Ash.Resource.t()) :: String.t()
-  def label(resource) do
-    (Ash.Resource.Info.plural_name(resource) || Ash.Resource.Info.short_name(resource))
-    |> to_string()
-    |> String.replace("_", " ")
-    |> String.capitalize()
-    |> AshDataTable.Text.label()
-  end
+  def label(resource), do: resource |> AshDataTable.Model.label() |> AshDataTable.Text.label()
 end

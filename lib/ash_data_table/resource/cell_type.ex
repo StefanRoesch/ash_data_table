@@ -1,4 +1,4 @@
-defmodule AshDataTable.Model.CellType do
+defmodule AshDataTable.Resource.CellType do
   @moduledoc false
   # Our own classification of an Ash type into the cell type a table shows and
   # (later) edits and filters it as. `Ash.Info.Manifest` is not consulted at

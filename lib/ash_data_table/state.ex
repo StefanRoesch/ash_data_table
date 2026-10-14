@@ -27,7 +27,7 @@ defmodule AshDataTable.State do
 
   alias AshDataTable.Model
   alias AshDataTable.Model.Argument
-  alias AshDataTable.Model.Operator
+  alias AshDataTable.Resource.Operator
 
   defstruct sort: nil, filters: %{}, arguments: %{}, page: 1, after: nil, before: nil, per: nil
 

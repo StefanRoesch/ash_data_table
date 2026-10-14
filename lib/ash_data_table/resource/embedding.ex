@@ -74,10 +74,9 @@ defmodule AshDataTable.Resource.Embedding do
   # edited.
 
   alias Ash.Resource.Info
-  alias AshDataTable.Model
-  alias AshDataTable.Model.CellType
-  alias AshDataTable.Model.Field
   alias AshDataTable.Resource.Acting
+  alias AshDataTable.Resource.CellType
+  alias AshDataTable.Resource.Words
 
   @typedoc """
   What a table makes of a map cell's type: the fields it shows (nil for a
@@ -85,10 +84,50 @@ defmodule AshDataTable.Resource.Embedding do
   what keeps it from being edited, as a sentence, or nil when nothing does.
   """
   @type t :: %{
-          fields: [Field.t()] | nil,
-          members: [Field.t()] | nil,
+          fields: [field] | nil,
+          members: [field] | nil,
           obstacle: String.t() | nil
         }
+
+  @typedoc """
+  One field of a map cell, or one kind of a union, as a map with the keys
+  of `@field`. The table model makes an `AshDataTable.Model.Field` of it.
+  """
+  @type field :: %{
+          name: atom,
+          label: String.t(),
+          type: {Ash.Type.t(), keyword},
+          cell_type: CellType.t(),
+          values: CellType.values() | nil,
+          fields: [field] | nil,
+          members: [field] | nil,
+          tag: {atom | String.t(), term} | nil,
+          editor: atom | nil,
+          default: term,
+          input?: boolean,
+          required?: boolean,
+          key?: boolean,
+          sensitive?: boolean
+        }
+
+  # A field with nothing said of it yet: every key there, as the table
+  # model's `Field` has them.
+  @field %{
+    name: nil,
+    label: nil,
+    type: nil,
+    cell_type: nil,
+    values: nil,
+    fields: nil,
+    members: nil,
+    tag: nil,
+    editor: nil,
+    default: nil,
+    input?: false,
+    required?: false,
+    key?: false,
+    sensitive?: false
+  }
 
   # The controls a kind of a union can have: those that hold one value, and
   # the group of a value made of fields.
@@ -212,11 +251,11 @@ defmodule AshDataTable.Resource.Embedding do
             {_member, nil} ->
               nil
 
-            {%Field{name: name, type: {type, _constraints}}, :no_control} ->
+            {%{name: name, type: {type, _constraints}}, :no_control} ->
               "Its kind `#{name}` has the type `#{inspect(type)}`, which a table has no control " <>
                 "for in a union."
 
-            {%Field{name: name}, obstacle} ->
+            {%{name: name}, obstacle} ->
               "Its kind `#{name}` cannot be edited. " <> obstacle
           end)
       end
@@ -326,7 +365,7 @@ defmodule AshDataTable.Resource.Embedding do
 
         (sensitive = Enum.find(built, fn {field, _} -> field.input? and field.sensitive? end)) !=
             nil ->
-          {%Field{name: name}, _obstacle} = sensitive
+          {%{name: name}, _obstacle} = sensitive
 
           "Its field `#{name}` is declared `sensitive?: true`. A table shows a mask for such a " <>
             "field and does not put its value into a form, so it cannot edit the value around it."
@@ -391,10 +430,10 @@ defmodule AshDataTable.Resource.Embedding do
   # comes with what keeps it from being edited when it is a map cell itself.
   defp uneditable(built) do
     Enum.find_value(built, fn
-      {%Field{input?: true, editor: nil, name: name}, obstacle} when is_binary(obstacle) ->
+      {%{input?: true, editor: nil, name: name}, obstacle} when is_binary(obstacle) ->
         "Its field `#{name}` cannot be edited. " <> obstacle
 
-      {%Field{input?: true, editor: nil, name: name, type: {type, _constraints}}, nil} ->
+      {%{input?: true, editor: nil, name: name, type: {type, _constraints}}, nil} ->
         "Its field `#{name}` has the type `#{inspect(type)}`, which a table has no control for."
 
       _field ->
@@ -420,19 +459,18 @@ defmodule AshDataTable.Resource.Embedding do
       end
 
     field =
-      struct!(
-        %Field{
-          name: name,
-          label: Model.humanize(name),
-          type: {type, constraints},
-          cell_type: cell_type,
-          values: values,
-          fields: nested && nested.fields,
-          members: nested && nested.members,
-          editor: editor
-        },
-        more
-      )
+      @field
+      |> Map.merge(%{
+        name: name,
+        label: Words.humanize(name),
+        type: {type, constraints},
+        cell_type: cell_type,
+        values: values,
+        fields: nested && nested.fields,
+        members: nested && nested.members,
+        editor: editor
+      })
+      |> Map.merge(more)
 
     {field, nested && nested.obstacle}
   end

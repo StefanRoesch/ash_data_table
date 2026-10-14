@@ -54,7 +54,7 @@ defmodule AshDataTable.Model.Column do
   #     operator first: those of the cell type that Ash supports for the field.
   #     It is empty for a column without a filter: one the resource does not
   #     allow to be filtered, one of cell type `:other`, an array, a map
-  #     cell, a union, or one the block switched off. See `AshDataTable.Model.Operator`.
+  #     cell, a union, or one the block switched off. See `AshDataTable.Resource.Operator`.
   #   * `editable?` says whether a person can edit the cells of this column in
   #     principle: the column is an attribute, the attribute is writable, an
   #     update action accepts it and its cell type has an editor; or it is a
@@ -150,12 +150,12 @@ defmodule AshDataTable.Model.Column do
           kind: :attribute | :calculation | :aggregate | :reference,
           label: String.t(),
           type: {Ash.Type.t() | nil, keyword},
-          cell_type: AshDataTable.Model.CellType.t(),
+          cell_type: AshDataTable.Resource.CellType.t(),
           values: [{atom | String.t(), String.t()}] | nil,
           fields: [AshDataTable.Model.Field.t()] | nil,
           members: [AshDataTable.Model.Field.t()] | nil,
           sortable?: boolean,
-          operators: [AshDataTable.Model.Operator.t()],
+          operators: [AshDataTable.Resource.Operator.t()],
           editable?: boolean,
           required?: boolean,
           update_action: atom | nil,

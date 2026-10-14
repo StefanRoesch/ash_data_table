@@ -63,7 +63,7 @@ defmodule AshDataTable.Test do
       {:ok, pub_sub} ->
         listeners =
           for {pid, _value} <-
-                Registry.lookup(pub_sub, AshDataTable.Notifier.topic(resource, tenant)),
+                Registry.lookup(pub_sub, AshDataTable.Resource.Notifier.topic(resource, tenant)),
               listener?(pid),
               do: pid
 

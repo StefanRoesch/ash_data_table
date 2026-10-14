@@ -5,12 +5,12 @@ defmodule AshDataTable.Resource.Editing do
   # (which report a mistake) and the table model (which builds on the answer).
 
   alias Ash.Resource.Info
-  alias AshDataTable.Model.CellType
+  alias AshDataTable.Resource.CellType
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Table
   alias AshDataTable.Resource.Managing
   alias AshDataTable.Resource.Referencing
-  alias AshDataTable.Sensitive
+  alias AshDataTable.Resource.Exposing
 
   # The cell types with an editor.
   @editors [:text, :number, :boolean, :date, :datetime, :enum]
@@ -226,7 +226,7 @@ defmodule AshDataTable.Resource.Editing do
   writable and of a cell type that has an editor (a map cell where a person
   can give every one of its inputs, and a union where they can give every
   kind: `AshDataTable.Resource.Embedding`), and where it is sensitive, of one
-  whose editor hides what is typed (`AshDataTable.Sensitive.typed?/1`); and a
+  whose editor hides what is typed (`AshDataTable.Resource.Exposing.typed?/1`); and a
   belongs-to
   relationship, whose cell is a reference cell, when a person can choose
   its related record in a picker (`AshDataTable.Resource.Referencing.choosing/1`).
@@ -256,7 +256,7 @@ defmodule AshDataTable.Resource.Editing do
 
       # what is typed for a sensitive field is hidden, which a table can do
       # for text and for a number alone
-      Sensitive.sensitive?(attribute) and not Sensitive.typed?(editor(resource, attribute)) ->
+      Exposing.sensitive?(attribute) and not Exposing.typed?(editor(resource, attribute)) ->
         {:sensitive, attribute.type}
 
       true ->

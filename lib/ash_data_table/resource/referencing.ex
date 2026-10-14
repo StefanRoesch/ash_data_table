@@ -124,10 +124,15 @@ defmodule AshDataTable.Resource.Referencing do
       cond do
         attribute = Info.attribute(resource, name) ->
           cond do
-            not attribute.public? -> {:error, {:label_not_public, name}}
+            not attribute.public? ->
+              {:error, {:label_not_public, name}}
+
             # what a record is called is shown wherever the record is named
-            AshDataTable.Sensitive.sensitive?(attribute) -> {:error, {:label_sensitive, name}}
-            true -> {:ok, attribute}
+            AshDataTable.Resource.Exposing.sensitive?(attribute) ->
+              {:error, {:label_sensitive, name}}
+
+            true ->
+              {:ok, attribute}
           end
 
         Info.relationship(resource, name) ->
@@ -417,7 +422,7 @@ defmodule AshDataTable.Resource.Referencing do
   end
 
   defp shown(action, argument) do
-    if AshDataTable.Sensitive.sensitive?(argument),
+    if AshDataTable.Resource.Exposing.sensitive?(argument),
       do: {:error, {:reference_sensitive, action, argument.name}},
       else: :ok
   end

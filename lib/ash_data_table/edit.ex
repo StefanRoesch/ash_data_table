@@ -96,7 +96,7 @@ defmodule AshDataTable.Edit do
             failed(model, record, Text.t(:edit_not_allowed), opts)
 
           value ->
-            if AshDataTable.Sensitive.empty?(value),
+            if AshDataTable.Resource.Exposing.empty?(value),
               do: unchanged(model, record, opts),
               else: submit(model, column, record, nil, opts)
         end

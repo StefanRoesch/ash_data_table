@@ -170,7 +170,7 @@ defmodule AshDataTable.Errors do
             [Text.t(:value_position, column: label, position: index + 1) | labels]
 
           name, labels ->
-            [Text.label(Model.humanize(name)) | labels]
+            [Text.label(AshDataTable.Resource.Words.humanize(name)) | labels]
         end)
 
       Enum.reduce(labels, Text.error(error), fn label, message ->

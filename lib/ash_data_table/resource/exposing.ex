@@ -116,4 +116,35 @@ defmodule AshDataTable.Resource.Exposing do
   defp name(%{name: name}) when is_atom(name), do: name
   defp name(name) when is_atom(name), do: name
   defp name(_other), do: nil
+
+  # Whether a field is `sensitive?`, and what a table makes of that, as the
+  # declaration's rules and the table both ask it (`AshDataTable.Sensitive`
+  # says what a table does with such a value).
+
+  # the editors that can hide what is typed: one line, in a password input
+  @typed [:text, :number]
+
+  @doc "Whether a field, an argument or a column says that it is sensitive."
+  @spec sensitive?(term) :: boolean
+  def sensitive?(%{sensitive?: true}), do: true
+  def sensitive?(_field), do: false
+
+  @doc """
+  Whether a table hides what is typed into an editor of that kind: text and
+  numbers, which are typed as one line. Every other editor shows what it
+  holds (a box, a menu, a date), so a sensitive field has none of them.
+  """
+  @spec typed?(atom | nil) :: boolean
+  def typed?(editor), do: editor in @typed
+
+  @doc """
+  Whether a sensitive field holds nothing: such a cell is empty and has
+  nothing to show.
+  """
+  @spec empty?(term) :: boolean
+  def empty?(nil), do: true
+  def empty?(""), do: true
+  def empty?([]), do: true
+  def empty?(%Ash.NotLoaded{}), do: true
+  def empty?(_value), do: false
 end

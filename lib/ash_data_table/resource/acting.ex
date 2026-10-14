@@ -13,7 +13,7 @@ defmodule AshDataTable.Resource.Acting do
   # it a row action too.
 
   alias Ash.Resource.Info
-  alias AshDataTable.Model.CellType
+  alias AshDataTable.Resource.CellType
   alias AshDataTable.Resource.Editing
   alias AshDataTable.Resource.Managing
   alias AshDataTable.Resource.Referencing
@@ -59,8 +59,8 @@ defmodule AshDataTable.Resource.Acting do
           cell_type: CellType.t(),
           values: CellType.values() | nil,
           editor: Editing.editor() | :plain | :file | :reference | :references | nil,
-          fields: [AshDataTable.Model.Field.t()] | nil,
-          members: [AshDataTable.Model.Field.t()] | nil,
+          fields: [AshDataTable.Resource.Embedding.field()] | nil,
+          members: [AshDataTable.Resource.Embedding.field()] | nil,
           reference: Referencing.managing() | nil,
           required?: boolean,
           sensitive?: boolean,
@@ -226,7 +226,7 @@ defmodule AshDataTable.Resource.Acting do
   """
   @spec hidden_as_typed(input) :: input
   def hidden_as_typed(%{sensitive?: true, editor: editor} = input) do
-    if AshDataTable.Sensitive.typed?(editor),
+    if AshDataTable.Resource.Exposing.typed?(editor),
       do: input,
       else: %{input | editor: nil, reference: nil}
   end
@@ -337,7 +337,7 @@ defmodule AshDataTable.Resource.Acting do
       members: members(cell_type, type, constraints),
       reference: nil,
       required?: required?,
-      sensitive?: AshDataTable.Sensitive.sensitive?(field),
+      sensitive?: AshDataTable.Resource.Exposing.sensitive?(field),
       default: if(computed?(field), do: nil, else: field.default)
     }
   end
