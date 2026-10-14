@@ -232,7 +232,7 @@ offers. "Fixed" means neither.
 | S17 | Time zone | The tag's `time_zone` attr; the domain's `time_zone_assign` for a mounted table (`lib/ash_table/live/page.ex:329`). Checked by `Zone.check!/2`; `Format.format/3`, `input/3`, `summary/3` and `Model.zoned/2` take it. Kept in `Caller` from stage 2 | Host | A zone name | Exists |
 | S18 | URL state | Parameters under the table id: `ID[sort]`, `ID[f]`, `ID[a]`, `ID[c]`, `ID[page]`, `ID[per]`, `ID[of]` (today `State.to_params/2`, `Related.to_param/2`). Tag: `url` attr; attach: `url: true` with a `handle_params` hook | Library | Claims, parsed by `State.from_params/2`, `Related.from_params/5` | Exists for page and tag; attach in stage 4 |
 | S19 | Data contract for a UI technology | `AshDataTable.Present` (rows, cells, panel fields, picker rows as the person may see them) and `AshDataTable.Intent` (what comes back). Section 7 | Library; a later adapter | Values (not texts, RQ6), flags; no sensitive value; intents as claims | New, stage 3a. Internal until a second adapter exists (Q14) |
-| S20 | Browser transport | The hook's code talks to the server through one object: `push(event, payload) -> Promise(reply)`, `on(event, handler)`. The LiveView hook is the first implementation | Library | Event names and payloads of S6 | New, stage 1b. An internal JS module, not a documented seam, until a second transport exists (F16) |
+| S20 | Browser transport | The hook's code talks to the server through one object: `push(event, payload) -> Promise(reply)`, `on(event, handler)`, `off(event)`. The LiveView hook is the first implementation. The other half of this seam is the hook's life cycle (`el`, `mounted`, `beforeUpdate(toEl)`, `updated`, `destroyed`): a second UI technology needs both (stage 1b drift check, finding 7) | Library | Event names and payloads of S6 | Built in stage 1b. An internal JS module, not a documented seam, until a second transport exists (F16). The package's `exports` expose only the hooks wrapped for LiveView until then |
 | S21 | Test support | `AshDataTable.Test` (flush, nested tables through portals, events by name), `use AshDataTable.KitCase, kit: Mod` | Library; host's tests | — | `flush/1` exists (`lib/ash_table/test.ex`); rest new (D-nested: test helper "yes, if needed") |
 
 ---
@@ -421,7 +421,7 @@ Today's sections and their target files:
 | the message of a failed cell (8732) | `grid/failure.js` |
 | the whole text of a cell (8760) | `grid/whole_text.js` |
 | `.Panel` (5272), `.Picker` (5465), `.Pagination` (5205) | `panel.js`, `picker.js`, `pagination.js` |
-| (new) | `transport/live_view.js`, `markers.js` (the names of S5 in one place) |
+| (new) | `transport/live_view.js`; `markers.js` (the names of S5 in one place: started in stage 1b with `GRID` and `HANDLE`, filled in stage 7); `grid/shared.js` (constants, `PLACE`, page-wide state `page`; it keeps the grid's sections free of circular imports). The "shared-state object" is the merged hook `this`, plus `page` for what is shared across tables (stage 1b drift check, findings 5–6) |
 
 ### 4.6 Part 4: ready-made wiring
 
