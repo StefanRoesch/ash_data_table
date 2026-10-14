@@ -93,8 +93,9 @@ defmodule DemoWeb.Tables.PageSizeTest do
 
       assert column(html, "task", "title") == titles(60..51//-1)
       assert text(html, "#task-range") == "1–10 of 60"
-      # the rows of all pages are numbered as before: 60 and the two header rows
-      assert attribute(html, "#task-table", "aria-rowcount") == ["62"]
+      # the rows of all pages are numbered as before: 60, the two header rows
+      # and the footer row of the tasks' summaries
+      assert attribute(html, "#task-table", "aria-rowcount") == ["63"]
     end
 
     test "the pages are those of the chosen size", %{conn: conn} do
