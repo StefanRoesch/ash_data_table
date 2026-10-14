@@ -77,7 +77,7 @@ export default {
       const add = button.dataset.addGroup !== undefined
       let path = null
       try { path = JSON.parse(add ? button.dataset.addGroup : button.dataset.removeGroup) } catch (_error) { return }
-      this.transport.push(add ? "panel_add" : "panel_remove", {path}, reply => this.into(reply && reply.focus))
+      this.transport.push(add ? "panel_add" : "panel_remove", {path}).then(reply => this.into(reply && reply.focus))
     })
     // A field that holds several related records: the server takes
     // one out, and says where focus goes then: to the button of the
@@ -87,7 +87,7 @@ export default {
       if (!button) return
       let named = null
       try { named = JSON.parse(button.dataset.unpick) } catch (_error) { return }
-      this.transport.push("panel_unpick", {input: named[0], key: named[1]}, reply => this.into(reply && reply.focus))
+      this.transport.push("panel_unpick", {input: named[0], key: named[1]}).then(reply => this.into(reply && reply.focus))
     })
     // A sensitive field that can be emptied: its button asks the
     // server to note it, or to take it back, and has the focus
@@ -95,7 +95,7 @@ export default {
     dialog.addEventListener("click", e => {
       const button = e.target.closest && e.target.closest("[data-clear-field]")
       if (!button) return
-      this.transport.push("panel_clear", {input: button.dataset.clearField}, reply => this.into(reply && reply.focus))
+      this.transport.push("panel_clear", {input: button.dataset.clearField}).then(reply => this.into(reply && reply.focus))
     })
     // The panel of a cell asks the column's question only when
     // something was changed: what its form holds as it opens is

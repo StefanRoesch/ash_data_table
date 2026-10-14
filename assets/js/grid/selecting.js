@@ -280,7 +280,7 @@ export default {
     const payload = all ? {action: button.dataset.bulk, all: true} : {action: button.dataset.bulk, rows}
     // one question at a time
     this.asking = true
-    this.transport.push("bulk", payload, reply => {
+    this.transport.push("bulk", payload).then(reply => {
       if (!reply || !reply.ask) { this.asking = false; return }
       // Cancel, and Escape: the browser puts focus back on the button
       this.ask(reply.ask, button.dataset.destructive !== undefined).then(confirmed => {

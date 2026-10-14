@@ -91,7 +91,7 @@ export default {
     // @ts-expect-error: a FormData is what URLSearchParams takes; TypeScript's DOM types say otherwise
     const held = line ? new URLSearchParams(new FormData(line)).toString() : null
     const payload = this.several ? {rows: row, arguments: held} : {row, confirmed: !!confirmed, arguments: held}
-    this.transport.push("picked", payload, reply => {
+    this.transport.push("picked", payload).then(reply => {
       this.busy = false
       if (cell) cell.removeAttribute("aria-busy")
       if (reply && reply.ask && this.grid) {

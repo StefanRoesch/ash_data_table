@@ -161,7 +161,7 @@ export default {
     if (this.picking) return
     this.picking = true
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
-    this.transport.push("pick", payload, reply => {
+    this.transport.push("pick", payload).then(reply => {
       this.picking = false
       if (!reply || !reply.error || !cell.isConnected) return
       this.fail(cell, reply.error, () => {
@@ -179,7 +179,7 @@ export default {
     if (this.picking) return
     this.picking = true
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
-    this.transport.push("edit", payload, reply => {
+    this.transport.push("edit", payload).then(reply => {
       this.picking = false
       if (!reply || !reply.error || !cell.isConnected) return
       this.fail(cell, reply.error, () => {

@@ -41,7 +41,7 @@ export default {
     if (this.revealing) return
     this.revealing = true
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
-    this.transport.push("reveal", payload, reply => {
+    this.transport.push("reveal", payload).then(reply => {
       this.revealing = false
       // a patch may have brought the cell anew meanwhile
       const now = cell.isConnected && this.secretOf(cell)

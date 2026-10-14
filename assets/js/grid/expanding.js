@@ -24,7 +24,7 @@ export default {
       this.transport.push("toggle", {row, relationship: cell.dataset.line})
     } else {
       button.dataset.pending = ""
-      this.transport.push("expand", {row: this.rowKey(cell)}, reply => {
+      this.transport.push("expand", {row: this.rowKey(cell)}).then(reply => {
         delete button.dataset.pending
         if (reply && typeof reply.open === "boolean") button.setAttribute("aria-expanded", String(reply.open))
       })

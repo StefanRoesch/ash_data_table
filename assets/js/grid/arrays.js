@@ -268,7 +268,7 @@ export default {
       cell.focus()
       cell.setAttribute("aria-busy", "true")
       const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
-      this.transport.push("clear", payload, reply => {
+      this.transport.push("clear", payload).then(reply => {
         if (!cell.isConnected || !cell.hasAttribute("aria-busy")) return
         cell.removeAttribute("aria-busy")
         // the record is gone: there is no row to send, so the cell is marked here
@@ -402,7 +402,7 @@ export default {
   save(cell, value, old, restore, ed) {
     cell.setAttribute("aria-busy", "true")
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell), value}
-    this.transport.push("save", payload, reply => {
+    this.transport.push("save", payload).then(reply => {
       if (!cell.isConnected) return
       if (ed && this.editing === ed) return this.committed(ed, value, old, reply)
       if (!cell.hasAttribute("aria-busy")) return

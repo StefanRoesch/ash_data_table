@@ -17,7 +17,7 @@ export default {
       this.note(cell, button)
       cell.setAttribute("aria-busy", "true")
       const payload = {row: this.rowKey(cell), action: button.dataset.action}
-      this.transport.push("act", payload, reply => {
+      this.transport.push("act", payload).then(reply => {
         if (reply && reply.removed) return this.refocus()
         if (!cell.isConnected) return
         cell.removeAttribute("aria-busy")
