@@ -3687,7 +3687,25 @@ defmodule AshTable.Live.TableComponent do
 
     socket
     |> assign(running: action, result: nil, panel: nil)
-    |> start_async(:bulk, fn -> Bulk.run(model, action, selection, input, opts) end)
+    |> start_async(:bulk, in_locale(fn -> Bulk.run(model, action, selection, input, opts) end))
+  end
+
+  # A bulk run makes texts (why a record was not done), and so does the
+  # host's error translator; both read the locale from the process. The task
+  # `start_async` runs in is a process of its own, which inherits nothing of
+  # it: it is handed the locales of this one, Gettext's own and each
+  # backend's.
+  defp in_locale(fun) do
+    locales =
+      Enum.filter(Process.get(), fn {key, _locale} ->
+        key == Gettext or
+          (is_atom(key) and Code.ensure_loaded?(key) and function_exported?(key, :__gettext__, 1))
+      end)
+
+    fn ->
+      Enum.each(locales, fn {key, locale} -> Process.put(key, locale) end)
+      fun.()
+    end
   end
 
   # Runs the action of the panel of a selection. What the action makes of a

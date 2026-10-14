@@ -861,8 +861,12 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
       html = run_bulk(view, "archive", [own.id, other.id])
 
-      assert %{summary: "Archivieren: 1 erledigt, 1 nicht erledigt.", failures: [_refusal]} =
+      assert %{summary: "Archivieren: 1 erledigt, 1 nicht erledigt.", failures: [refusal]} =
                bulk_result(html)
+
+      # why the other was not done is German too: it is made where the run
+      # is, in a process of its own, which is handed the page's locale
+      assert refusal =~ "Das dürfen Sie nicht tun."
     end
   end
 end
