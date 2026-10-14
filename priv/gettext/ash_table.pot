@@ -536,3 +536,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Rows per page"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "This time does not exist in %{zone}."
+msgstr ""

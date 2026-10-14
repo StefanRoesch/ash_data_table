@@ -30,6 +30,15 @@ defmodule AshTable.Live.Page do
   The table follows the person who mounted the page: a host that changes who
   is logged in mounts the page again, as a login or logout does.
 
+  ## Time zone
+
+  Datetimes are shown, typed and filtered by in the time zone of the socket
+  assign the resource's domain names as `time_zone_assign` (`time_zone`
+  with nothing said there), which the host's `on_mount` hooks set; in UTC
+  where it is not assigned or nil. A name that is no time zone, or a zone
+  without a time zone database configured, is an `ArgumentError` that names
+  the assign. See the guide "Time zones".
+
   ## What a person may not see or do
 
   The table has no rules of its own; it asks Ash and shows the answer.
@@ -177,7 +186,10 @@ defmodule AshTable.Live.Page do
     * the assigns the resource's domain names as `scope_assign`,
       `actor_assign` and `tenant_assign` (`AshTable.Domain`), under those
       names, each when the socket has it. With the default names these are
-      the ones above.
+      the ones above;
+    * the assign it names as `time_zone_assign` (`time_zone` by default),
+      when the socket has it, so that the layout can say which zone the
+      datetimes are in.
 
   So a host whose domain says `actor_assign :current_account` has a layout
   that is given `current_account`. A single table can be given another
@@ -267,6 +279,7 @@ defmodule AshTable.Live.Page do
           live?={@table.live?}
           mounted?={true}
           page_assigns={page_assigns(assigns)}
+          time_zone={time_zone(@table.resource, assigns)}
           {reader(@table.resource, assigns)}
         />
       </div>
@@ -283,10 +296,12 @@ defmodule AshTable.Live.Page do
   # conventional ones. An assign the socket does not have is not passed,
   # except `current_scope`, which the layout of a new Phoenix app expects.
   defp layout_assigns(assigns) do
-    names = assigns.table.resource |> AshTable.Domain.Info.assign_names() |> Map.values()
+    resource = assigns.table.resource
+    names = resource |> AshTable.Domain.Info.assign_names() |> Map.values()
+    zone = AshTable.Domain.Info.time_zone_assign(resource)
 
     assigns
-    |> Map.take([:flash, :current_user | names])
+    |> Map.take([:flash, :current_user, zone | names])
     |> Map.put(:current_scope, assigns[:current_scope])
   end
 
@@ -306,6 +321,17 @@ defmodule AshTable.Live.Page do
   # and this page's.
   defp page_assigns(assigns),
     do: Map.drop(assigns, [:__changed__, :socket, :flash, :live_action, :table, :url, :layout])
+
+  # The zone of the page, from the assign the resource's domain names.
+  defp time_zone(resource, assigns) do
+    name = AshTable.Domain.Info.time_zone_assign(resource)
+
+    AshTable.Zone.check!(
+      assigns[name],
+      "The socket assign `#{inspect(name)}` (the `time_zone_assign` of the domain of " <>
+        "#{inspect(resource)})"
+    )
+  end
 
   # Who is asking, from the assigns the resource's domain names.
   defp reader(resource, assigns) do

@@ -42,6 +42,7 @@ spark_locals_without_parens = [
   table: 1,
   table: 2,
   tenant_assign: 1,
+  time_zone_assign: 1,
   update_action: 1,
   upload: 1,
   upload: 2

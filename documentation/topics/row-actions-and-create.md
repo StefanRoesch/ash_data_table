@@ -229,7 +229,7 @@ input's type, and one more:
 | number | A number input. |
 | boolean | A checkbox. |
 | date | A date input. |
-| datetime | A datetime input, in UTC, to the second. |
+| datetime | A datetime input, to the second, in the page's time zone (UTC unless the page gives one; see [Time zones](time-zones.md)). |
 | enum | A menu of the values, with an empty choice when the input is not required. |
 | array of enum values | Multiple choice: a box per value of the enum, in declared order, under the field's label. |
 | array of text, numbers, booleans, dates or datetimes | A row per value, with the control of its type and a button that takes the value away, and the button "Add value" under them. |

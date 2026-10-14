@@ -33,6 +33,7 @@ for translations.)
   heading={2}
   actor={@current_user}
   tenant={@current_tenant}
+  time_zone={@time_zone}
 />
 ```
 
@@ -56,6 +57,7 @@ assigns:
 | `current_scope` | The socket's `current_scope`, or nil when it has none. |
 | `current_user`, `current_tenant` | The socket's, each only when the socket has that assign. |
 | The assigns the resource's domain names as `scope_assign`, `actor_assign` and `tenant_assign` | The socket's, under those names, each only when the socket has that assign. |
+| The assign it names as `time_zone_assign` (`time_zone` by default) | The socket's, when it has it: the zone the table's datetimes are in ([Time zones](time-zones.md)). |
 
 This fits the `app/1` that Phoenix 1.8 generates. With the default names the
 last row adds nothing to the two above it. A domain that names its own
@@ -158,6 +160,7 @@ a section of its own:
     heading={2}
     actor={@current_user}
     tenant={@current_tenant}
+    time_zone={@time_zone}
   />
 </section>
 ```
@@ -173,6 +176,7 @@ a section of its own:
 | `url` | | The page's current URL. When given, the table keeps its state in it. See [State in the URL](state-in-the-url.md#a-table-inside-your-own-liveview). |
 | `label` | | The table's name: the accessible name of the grid, and the text of the line above it. Defaults to the name described above. |
 | `heading` | | How the name is shown on the line above the table: `true` (the default), a number from 1 to 6, or `false`. See below. |
+| `time_zone` | | The zone its datetimes are shown, typed and filtered in. Nil is UTC. See [Time zones](time-zones.md). |
 
 The table is a LiveComponent, so the page has to be a LiveView. It renders
 no layout; that is yours.
@@ -247,6 +251,7 @@ function looks at, such as `assigns={%{current_user: @current_user}}`; see
 | The table's name, above the grid | an `h1` | text, a heading of the level `heading` gives, or left out |
 | `id` | defaults to the resource's name | required |
 | Who is asking | the socket assigns the domain names | the attributes `scope`, or `actor` and `tenant` |
+| The time zone | the socket assign the domain names | the attribute `time_zone` |
 | `authorize?` | the domain's | the domain's, unless the attribute is given |
 | Sort, filters and page | in the URL | in the component, unless `url` is given |
 | Several on one page | no: one table per route | yes, each with its own `id` |

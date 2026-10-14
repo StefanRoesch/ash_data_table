@@ -11,7 +11,7 @@ The extension has four parts. This is the target structure agreed with the owner
 | Part | What it is | Where it is today |
 | --- | --- | --- |
 | 1. Table declaration | The `table` and `tables` blocks of a resource, the `table` block of a domain, and the checks at compile time. | `lib/ash_table/resource.ex`, `lib/ash_table/resource/**`, `lib/ash_table/domain.ex`, `lib/ash_table/domain/**` |
-| 2. Table internals | Logic and state, no markup. This part keeps the table safe. | `lib/ash_table/model.ex`, `lib/ash_table/model/**`, `state.ex`, `query.ex`, `record.ex`, `related.ex`, `pick.ex`, `edit.ex`, `act.ex`, `bulk.ex`, `errors.ex`, `format.ex`, `text.ex`, `sensitive.ex`, `notifier.ex`, `listener.ex` (all in `lib/ash_table/`) |
+| 2. Table internals | Logic and state, no markup. This part keeps the table safe. | `lib/ash_table/model.ex`, `lib/ash_table/model/**`, `state.ex`, `query.ex`, `record.ex`, `related.ex`, `pick.ex`, `edit.ex`, `act.ex`, `bulk.ex`, `errors.ex`, `format.ex`, `text.ex`, `sensitive.ex`, `zone.ex`, `notifier.ex`, `listener.ex` (all in `lib/ash_table/`) |
 | 3. Table UI components | Markup and the browser hooks. | `render/1`, the function components and the four hooks in `lib/ash_table/live/table_component.ex`; the behaviour `lib/ash_table/component.ex` and the shipped components in `lib/ash_table/components/` |
 | 4. Ready-made wiring | The router line, the page and the live component that connect 2 and 3. | `lib/ash_table/router.ex`, `lib/ash_table/routes.ex`, `lib/ash_table/live/page.ex`, `AshTable.table/1` in `lib/ash_table.ex`, and `mount/1`, `update/2`, `handle_event/3`, `handle_async/3` of the table component |
 
@@ -27,7 +27,7 @@ One line per module. The functions named are the ones other modules call.
 - `AshTable.Resource.Table` (`resource/table.ex`): one table as written. `options/0` is the option schema that the `table` block and a named table share. `path/1`, `anno/2`, `option_anno/3` find where an error points to. `in_words/1` names the table in a message.
 - `AshTable.Resource.Column`, `.Ask`, `.Relationship`, `.Action`, `.Reference`, `.Argument`, `.Upload` (`resource/*.ex`): the structs of the entities, each with `schema/0`.
 - `AshTable.Resource.Info` (`resource/info.ex`): read a declaration. `tables/1`, `table/2`, `table!/2`, `no_table/2`; for the default table `columns/1`, `relationships/1`, `actions/1`, `arguments/1`, `uploads/1` and the generated `table_*` functions.
-- `AshTable.Domain` and `AshTable.Domain.Info`: the domain's `table` block (`authorize?`, `scope_assign`, `actor_assign`, `tenant_assign`, `pub_sub`). `Info.authorize?/1`, `Info.reader/2`, `Info.assign_names/1`, `Info.pub_sub/1`. Its one verifier, `Domain.Verifiers.VerifyPubSub` (`domain/verifiers/`), reports a domain that names no `pub_sub` and has a resource that says `live? true`.
+- `AshTable.Domain` and `AshTable.Domain.Info`: the domain's `table` block (`authorize?`, `scope_assign`, `actor_assign`, `tenant_assign`, `time_zone_assign`, `pub_sub`). `Info.authorize?/1`, `Info.reader/2`, `Info.assign_names/1`, `Info.time_zone/2`, `Info.time_zone_assign/1`, `Info.pub_sub/1`. Its one verifier, `Domain.Verifiers.VerifyPubSub` (`domain/verifiers/`), reports a domain that names no `pub_sub` and has a resource that says `live? true`.
 - `AshTable.Resource.Transformers.Announce` (`resource/transformers/announce.ex`): the extension's one transformer. It gives a resource that says `live? true` the notifier `AshTable.Notifier`.
 - `Mix.Tasks.AshTable.Install` (`lib/mix/tasks/ash_table.install.ex`): the Igniter installer.
 
@@ -55,7 +55,7 @@ A new diagnostic goes in two places. Put the rule and its `message/1` clause int
 
 The model:
 
-- `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `summarised/1` (the columns with a `summary`), `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name.
+- `AshTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `hideable/1`, `summarised/1` (the columns with a `summary`), `label_column/1`, `humanize/1`. Its `sticky_label?` is the table's option of that name. `zoned/2` puts the page's time zone into the model (`time_zone`) and its arguments.
 - `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key. `Pagination.size/2` is how many records a page holds for the size a person asked for: one of `page_sizes`, else `page_size`.
 - `Model.CellType`: Ash type to cell type. `of/2`, `classify/2`.
 - `Model.Operator`: filter operators per cell type. `available/2`, `to_ash/2`; `takes/1` (no value, one, several, a range), `predicates/2`, `negated?/1`.
@@ -90,7 +90,8 @@ Writes:
 
 Texts and values:
 
-- `AshTable.Format` (`format.ex`): what a cell shows. `format/2`, `input/2`; `summary/2` for a footer summary.
+- `AshTable.Format` (`format.ex`): what a cell shows. `format/3`, `input/3` (with the page's zone; `/2` is UTC); `summary/3` for a footer summary.
+- `AshTable.Zone` (`zone.ex`): the time zone of the page. `check/1`, `check!/2` (the zone a page gives), `local/2` (shown), `zoned?/1` (a type whose values are instants), `given/3` (what a write is given for a wall time typed there: the UTC instant), `gaps/3` (wall times the zone skips), `read/3` (the same for a filter or an argument). Used by `Format`, `Edit.save/5`, `Act` (`taken`, `gaps/3`), `Model.supply/2`, `Query` (filters).
 - `AshTable.Text` (`text.ex`): every text a person reads. `t/2` and `n/3` for the table's own messages, by key; `label/1` for the resource's wording; `error/1` for an action's message.
 - `AshTable.Gettext` (`gettext.ex`): the default backend, without translations. The template is `priv/gettext/ash_table.pot`.
 - `AshTable.Errors` (`errors.ex`): what an error says to a person and at which field. `of_read/2`, `of_action/3`, `of_form/4`, `at_field/4`.
@@ -154,7 +155,7 @@ The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`
 
 ### Assigns that matter
 
-- Given by the caller (`update/2`): `id`, `resource`, `table`, `scope`, `actor`, `tenant`, `authorize?`, `live?` (kept as `live_given`), `url`, `label`, `heading`, `mounted?`, `select`, `choose`, `page_assigns`; for a nested table `via`, `parent_key`, `parent_authorize?`, `parent_arguments`, `depth`, `depth_limit`, and for a nested table and a picker `lineage`.
+- Given by the caller (`update/2`): `id`, `resource`, `table`, `scope`, `actor`, `tenant`, `authorize?`, `live?` (kept as `live_given`), `url`, `label`, `heading`, `mounted?`, `select`, `choose`, `page_assigns`, `time_zone` (checked, nil is `"Etc/UTC"`; passed on to nested tables and pickers, and kept in an open panel); for a nested table `via`, `parent_key`, `parent_authorize?`, `parent_arguments`, `depth`, `depth_limit`, and for a nested table and a picker `lineage`.
 - `live`, `waiting`, `held`, `notice?`: live updates. `live` is the table's listener and topic, nil for a table that does not follow. `leaving` are the rows that go once the hook answers. Every table of a page is also noted in the process dictionary of the LiveView (`@tables`): the ids of the tables around it, its listener, whether a panel or picker is open in it, whether it holds rows back. A table reads it to know what is open under its rows; nothing is told by `send_update`, which would render the table around again.
 - `built`: the models as `Model.build/2` gives them, kept for the life of the component. `model`: the model for this person, made on every update.
 - `state`: the `%AshTable.State{}`. `read`: what the last read was of; a read runs only when this changes.
@@ -218,7 +219,7 @@ Every change must keep these. They are what part 2 is for.
 - **Nothing sensitive reaches the browser before "Show".** A row is rendered from a record that went through `AshTable.Sensitive.scrub/2`. The value is sent only as the reply to `reveal`, after the record was read again. An editor of a sensitive column opens empty.
 - **An announcement is a claim too.** A live update names a primary key and nothing else. The table shows only what its own read returns for that key, as the person (`Query.rows/4`), and says that there are new or changed records only after asking, as the person and with their filters, whether one is theirs to see (`Query.any?/5`). The notifier never sends a record.
 - **A summary says no more than the rows.** `Query.summaries/4` asks `Ash.aggregate/3` with `authorize_fields?: true` and with the table's read action as each aggregate's `read_action` (Ash would otherwise judge field policies as the primary read action meets them), and asks for nothing over a column that is `partly_hidden?` for the person: its footer cell is a dash. `summary` is refused on a `sensitive?` column.
-- **Values from the browser are claims.** A row key, a column name, an action name, a picked record and a selection are looked up or read again before they are used. A page size from a URL or an event is taken only when it is one of the table's `page_sizes` (`State`, and once more where the query is built: `Model.Pagination.size/2`). Sort and filter go through `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. What a person typed goes to the action as typed; Ash casts and validates it. Text from outside never becomes an atom.
+- **Values from the browser are claims.** A row key, a column name, an action name, a picked record and a selection are looked up or read again before they are used. A page size from a URL or an event is taken only when it is one of the table's `page_sizes` (`State`, and once more where the query is built: `Model.Pagination.size/2`). Sort and filter go through `Ash.Query.sort_input/2` and `Ash.Query.filter_input/2`. What a person typed goes to the action as typed (but a wall time of a datetime, which goes as the UTC instant it is in the page's zone: `AshTable.Zone`); Ash casts and validates it. Text from outside never becomes an atom.
 
 ## Adding a feature
 

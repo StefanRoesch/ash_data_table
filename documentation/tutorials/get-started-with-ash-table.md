@@ -77,7 +77,7 @@ import {hooks as ashTableHooks} from "phoenix-colocated/ash_table"
 // ...
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken},
+  // ...
   hooks: {...colocatedHooks, ...ashTableHooks},
 })
 ```
@@ -159,7 +159,7 @@ import AshTable.Router
 scope "/", DemoWeb do
   pipe_through :browser
   # ...
-  live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale] do
+  live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
     # ...
     ash_table "/tasks", Demo.Tracker.Task
     ash_table "/projects", Demo.Tracker.Project

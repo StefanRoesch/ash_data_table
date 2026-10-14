@@ -33,6 +33,20 @@ defmodule AshTable.Domain do
   table placed in a page with `AshTable.table/1` is given `scope`, or `actor`
   and `tenant`, as attributes and does not look at the assign names.
 
+  ## The time zone
+
+  A mounted table shows, takes and filters by datetimes in the time zone
+  of the socket assign that `time_zone_assign` names, `time_zone` unless
+  the domain says otherwise, and in UTC where that is not assigned or nil.
+  A host's `on_mount` hook sets it, usually from the person's settings:
+
+      table do
+        time_zone_assign :zone
+      end
+
+  A table placed with `AshTable.table/1` is given `time_zone` as an
+  attribute. See the guide "Time zones".
+
   ## Switching authorization off
 
   > #### `authorize? false` removes every check {: .warning}
@@ -72,6 +86,7 @@ defmodule AshTable.Domain do
         scope_assign :scope
         actor_assign :current_account
         tenant_assign :current_organization
+        time_zone_assign :zone
       end
       """
     ],
@@ -97,6 +112,12 @@ defmodule AshTable.Domain do
         type: :atom,
         default: :current_tenant,
         doc: "The socket assign holding the tenant, used when there is no scope."
+      ],
+      time_zone_assign: [
+        type: :atom,
+        default: :time_zone,
+        doc:
+          "The socket assign holding the time zone of a mounted table, such as `\"Europe/Berlin\"`: its datetimes are shown, typed and filtered by in it. Not assigned, or nil, is UTC. See the guide \"Time zones\"."
       ],
       pub_sub: [
         type: :atom,

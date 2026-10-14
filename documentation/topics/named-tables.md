@@ -132,6 +132,7 @@ places two tables of the comments
   url={@url}
   actor={@current_user}
   tenant={@current_tenant}
+  time_zone={@time_zone}
 />
 ```
 

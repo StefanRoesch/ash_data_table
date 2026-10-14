@@ -58,6 +58,27 @@ defmodule AshTable.Domain.Info do
   end
 
   @doc """
+  The time zone of a mounted table of `resource`, read from the assigns of a
+  socket: the one its domain names as `time_zone_assign` (`time_zone` for a
+  resource without a domain). Nil where it is not there, which is UTC.
+  """
+  @spec time_zone(Ash.Resource.t(), map) :: term
+  def time_zone(resource, assigns), do: assigns[time_zone_assign(resource)]
+
+  @doc """
+  The name of the socket assign in which a mounted table of `resource`
+  finds its time zone: the `time_zone_assign` of its domain, and
+  `:time_zone` for a resource without a domain.
+  """
+  @spec time_zone_assign(Ash.Resource.t()) :: atom
+  def time_zone_assign(resource) do
+    case Ash.Resource.Info.domain(resource) do
+      nil -> :time_zone
+      domain -> table_time_zone_assign!(domain)
+    end
+  end
+
+  @doc """
   The name of the `Phoenix.PubSub` server that carries the live updates of
   `resource`: the `pub_sub` of its domain. Nil where the domain names none,
   and for a resource without a domain.

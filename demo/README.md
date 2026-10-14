@@ -223,6 +223,18 @@ arguments of their calculations, has a line of inputs above its grid.
 - `/comments`: "New comment", then "Choose" beside "Task": the tasks to
   choose from can be searched.
 
+### In your time zone
+
+The tables show, take and filter by datetimes ("Completed at" of `/tasks`)
+in the time zone of your browser, which `assets/js/app.js` sends when the
+page connects. `DemoWeb.Zone` (an `on_mount` hook) checks it against the
+time zone database (`tz`) and assigns it as `time_zone`, UTC for a zone it
+does not know. Where it is not UTC, a line above the tables says which:
+"Times in Europe/Berlin". To see another zone, start the browser in one
+(`TZ=America/New_York chromium`, or the "Sensors" panel of Chrome's
+developer tools), and open `/tasks` once more. The browser tests run in UTC,
+`zones.spec.ts` in Europe/Berlin.
+
 ### In German
 
 The language switcher beside the actor switcher posts to `POST /locale`,
@@ -960,6 +972,7 @@ started or stopped (`npm run test:server -- editing`; it sets
 | `named_tables.spec.ts` | named tables: the compact comments and the board of the tasks as pages of their own, each under its own id and with its state in the URL; editing a cell of the board and choosing its assignee in the picker, which shows the people's default table; the compact comments nested under a task of the board, their link to the full view on the page of the same table, with the board named as the parent, the limit through a sort and a reload, and the way back; the short labels, mounted nowhere, without a link; that `/tasks` still nests the default tables; two tables of the comments on one page, each with its own ids, tab stop, sort and page in the one URL; axe-core in these states, in both themes |
 | `long_text.spec.ts` | long text: a column with `max_lines 3` shows three lines of a comment with its line breaks and cuts off the rest, a row as high as its cell, a narrower column gives more lines; the whole text of a cell that cuts some off, under the cell on focus and when the pointer rests on it, not for a cell that shows everything and not while the arrow keys go through cells; Escape, the pointer on the text, scrolling; above the cell at the bottom of the window; in a nested table; a live update of the row; not while a cell is edited; none for a sensitive cell, masked or shown, and none for a field the person may not see; axe in both themes and forced colours |
 | `a11y-tables.spec.ts`, `a11y-editing.spec.ts`, `a11y-nesting.spec.ts`, `a11y-actions.spec.ts` | axe-core, every rule, on every table and in every state, on the dashboard with its two tables, in German, with nested tables open at every depth, and with the components of `/tasks`: at rest, a slider open, a failed one, and in the panels; in four files, so that they run side by side: the tables, the dashboard, German, each actor and the states of reading; the states of editing, the components and what a person may not see; nested tables; row actions and the action panel |
+| `zones.spec.ts` | the demo in a browser that is in Europe/Berlin: a time typed into a cell shown back as typed and stored as the instant it is (seen from a browser in UTC), a "between" filter on a datetime that means the times there and a URL that keeps them as typed; axe in both themes |
 | `contrast.spec.ts` | what axe does not judge, measured from the colours the browser computed, in the light and the dark theme: the focus ring of every kind of cell; the ring and the "!" of a failed cell, that they move nothing, and both rings on a failed cell with focus; the text of a saving cell and of a table that is reading; the muted text of the header and the filters; the edges of inputs, and of invalid ones; the label and the edge of a badge, the filled part of a progress bar against its track, and the track, the filled part and the thumb of a slider, read from the pixels the browser painted. In forced colours: that the focus ring, the failed cell, the expander's triangle, the current page, the edges of the dialog and the panel, and a badge, a bar and a slider are still drawn |
 
 How they are built (`e2e/support`):

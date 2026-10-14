@@ -29,6 +29,10 @@ config :ash,
   many_to_many_destroy_destination_on_match?: true,
   known_types: [AshPostgres.Timestamptz, AshPostgres.TimestamptzUsec]
 
+# A time zone database, for the zones other than UTC that the tables show
+# datetimes in (`DemoWeb.Zone`, `time_zone` of `AshTable.table/1`).
+config :elixir, :time_zone_database, Tz.TimeZoneDatabase
+
 config :spark,
   formatter: [
     remove_parens?: true,

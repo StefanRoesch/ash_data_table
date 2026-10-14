@@ -31,6 +31,11 @@ export default defineConfig({
     // run it again with `--trace on` to see its steps.
     trace: "off",
     screenshot: "only-on-failure",
+    // The browser's time zone, which the demo shows datetimes in
+    // (`DemoWeb.Zone`): UTC, whatever the machine's is, so that what the
+    // tests read and type does not depend on where they run. `zones.spec.ts`
+    // takes another one.
+    timezoneId: "UTC",
   },
   projects: [
     // Becomes each actor once and keeps the session cookies, which every

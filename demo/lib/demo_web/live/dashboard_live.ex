@@ -4,9 +4,10 @@ defmodule DemoWeb.DashboardLive do
   inside a host LiveView, where the router's `ash_table` gives a table a page
   to itself.
 
-  Each table is given who is asking as attributes, and keeps its sort,
-  filters and page itself: nothing of them is in the URL, and neither table
-  moves when the other does.
+  Each table is given who is asking as attributes, and the time zone of the
+  page (`DemoWeb.Zone`), and keeps its sort, filters and page itself:
+  nothing of them is in the URL, and neither table moves when the other
+  does.
   """
   use DemoWeb, :live_view
 
@@ -18,7 +19,7 @@ defmodule DemoWeb.DashboardLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} time_zone={@time_zone}>
       <div class="space-y-2">
         <h1 class="text-2xl font-semibold">Dashboard</h1>
         <p class="text-base-content/70">
@@ -37,6 +38,7 @@ defmodule DemoWeb.DashboardLive do
           heading={2}
           actor={@current_user}
           tenant={@current_tenant}
+          time_zone={@time_zone}
         />
       </section>
 
@@ -47,6 +49,7 @@ defmodule DemoWeb.DashboardLive do
           heading={2}
           actor={@current_user}
           tenant={@current_tenant}
+          time_zone={@time_zone}
         />
       </section>
     </Layouts.app>

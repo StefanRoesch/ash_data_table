@@ -74,6 +74,10 @@ defmodule Demo.MixProject do
       {:gettext, "~> 1.0"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.2.0"},
+      # The time zone database the tables convert datetimes with: the demo
+      # shows them in the zone of the person's browser (`DemoWeb.Zone`).
+      # `ash_table` brings none; a host configures its own.
+      {:tz, "~> 0.28"},
       {:bandit, "~> 1.5"}
     ]
   end

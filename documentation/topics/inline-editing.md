@@ -189,7 +189,7 @@ The rule for a cell is narrow:
 | number | `:integer`, `:float`, `:decimal` | A number input. |
 | boolean | `:boolean` | No edit mode: the value is toggled in place and saved at once. |
 | date | `:date` | A date input. |
-| datetime | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | A datetime input, in UTC, to the second. |
+| datetime | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | A datetime input, to the second, in the page's time zone (UTC unless the page gives one; see [Time zones](time-zones.md)). |
 | enum | an `Ash.Type.Enum`, `:atom` with `one_of` | A menu of the values, with an empty choice when the attribute can be nil. |
 | array of enum values | `{:array, type}` of an enum | Multiple choice: a list of boxes in the cell, one per value of the enum. See [Arrays](#arrays). |
 | array of text, numbers, booleans, dates or datetimes | `{:array, type}` of one of the types above | One control per value, with a button that takes the value away and a button that adds one. See [Arrays](#arrays). |

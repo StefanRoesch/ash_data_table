@@ -36,6 +36,20 @@ table is given them under the same names (see `AshTable.Live.Page`). A
 table placed in a page with `AshTable.table/1` is given `scope`, or `actor`
 and `tenant`, as attributes and does not look at the assign names.
 
+## The time zone
+
+A mounted table shows, takes and filters by datetimes in the time zone
+of the socket assign that `time_zone_assign` names, `time_zone` unless
+the domain says otherwise, and in UTC where that is not assigned or nil.
+A host's `on_mount` hook sets it, usually from the person's settings:
+
+    table do
+      time_zone_assign :zone
+    end
+
+A table placed with `AshTable.table/1` is given `time_zone` as an
+attribute. See the guide "Time zones".
+
 ## Switching authorization off
 
 > #### `authorize? false` removes every check {: .warning}
@@ -77,6 +91,7 @@ table do
   scope_assign :scope
   actor_assign :current_account
   tenant_assign :current_organization
+  time_zone_assign :zone
 end
 
 ```
@@ -92,6 +107,7 @@ end
 | [`scope_assign`](#table-scope_assign){: #table-scope_assign } | `atom` | `:current_scope` | The socket assign holding an `Ash.Scope`. When it is assigned and not nil, a mounted table passes it to Ash as the scope. |
 | [`actor_assign`](#table-actor_assign){: #table-actor_assign } | `atom` | `:current_user` | The socket assign holding the actor, used when there is no scope. |
 | [`tenant_assign`](#table-tenant_assign){: #table-tenant_assign } | `atom` | `:current_tenant` | The socket assign holding the tenant, used when there is no scope. |
+| [`time_zone_assign`](#table-time_zone_assign){: #table-time_zone_assign } | `atom` | `:time_zone` | The socket assign holding the time zone of a mounted table, such as `"Europe/Berlin"`: its datetimes are shown, typed and filtered by in it. Not assigned, or nil, is UTC. See the guide "Time zones". |
 | [`pub_sub`](#table-pub_sub){: #table-pub_sub } | `atom` |  | The name of the `Phoenix.PubSub` server that carries the live updates of this domain's resources: those whose `table` block says `live? true` announce their changes through it, and their tables listen to it. |
 
 

@@ -191,6 +191,7 @@ The demo's dashboard has two tables of this kind
   heading={2}
   actor={@current_user}
   tenant={@current_tenant}
+  time_zone={@time_zone}
 />
 ```
 

@@ -232,7 +232,9 @@ defmodule AshTable.Act do
       [] ->
         form = open_generic(model, action, id, opts)
 
-        case AshPhoenix.Form.submit(form, params: taken(action.inputs, params, given)) do
+        case AshPhoenix.Form.submit(form,
+               params: taken(action.inputs, params, given, model.time_zone)
+             ) do
           :ok -> {:done, nil}
           {:ok, value} -> {:done, value}
           {:error, form} -> {:error, form}
@@ -262,26 +264,32 @@ defmodule AshTable.Act do
   cast what a generic action returns.
   """
   @spec said(Action.t(), term) :: String.t() | nil
-  def said(%Action{} = action, value) do
+  def said(action, value), do: said(action, value, AshTable.Zone.utc())
+
+  @spec said(Action.t(), term, AshTable.Zone.t()) :: String.t() | nil
+  def said(%Action{} = action, value, zone) do
     text =
       case value do
         nil -> nil
-        value when is_boolean(value) -> Format.format(%{cell_type: :boolean}, value)
+        value when is_boolean(value) -> Format.format(%{cell_type: :boolean}, value, zone)
         value when is_binary(value) -> if String.valid?(value), do: value
-        value when is_number(value) -> Format.format(%{cell_type: :number}, value)
-        %Decimal{} -> Format.format(%{cell_type: :number}, value)
-        %Date{} -> Format.format(%{cell_type: :date}, value)
-        %DateTime{} -> Format.format(%{cell_type: :datetime}, value)
-        %NaiveDateTime{} -> Format.format(%{cell_type: :datetime}, value)
-        value when is_atom(value) -> by_name(action.returns, value)
+        value when is_number(value) -> Format.format(%{cell_type: :number}, value, zone)
+        %Decimal{} -> Format.format(%{cell_type: :number}, value, zone)
+        %Date{} -> Format.format(%{cell_type: :date}, value, zone)
+        # an instant as the clocks of the page's zone show it
+        %DateTime{} -> Format.format(%{cell_type: :datetime}, value, zone)
+        %NaiveDateTime{} -> Format.format(%{cell_type: :datetime}, value, zone)
+        value when is_atom(value) -> by_name(action.returns, value, zone)
         _records_and_everything_else -> nil
       end
 
     if is_binary(text) and String.trim(text) != "", do: text
   end
 
-  defp by_name(%{cell_type: :enum} = returns, value), do: Format.format(returns, value)
-  defp by_name(_returns, value), do: Format.format(%{cell_type: :other}, value)
+  defp by_name(%{cell_type: :enum} = returns, value, zone),
+    do: Format.format(returns, value, zone)
+
+  defp by_name(_returns, value, zone), do: Format.format(%{cell_type: :other}, value, zone)
 
   @doc """
   The inputs of a row action that a person can ask to be emptied on this
@@ -365,11 +373,12 @@ defmodule AshTable.Act do
   @doc """
   The form with what the person has typed so far, as the action sees it:
   `AshPhoenix.Form.validate/3`, with the values of `inputs` and no others.
-  `given` is what the table itself gives the action.
+  `given` is what the table itself gives the action, and `zone` the time
+  zone of the page, in which a datetime was typed (`AshTable.Zone`).
   """
-  @spec validate(form, [Model.Input.t()], map, map) :: form
-  def validate(form, inputs, params, given \\ %{}) do
-    AshPhoenix.Form.validate(form, taken(inputs, params, given))
+  @spec validate(form, [Model.Input.t()], map, map, AshTable.Zone.t()) :: form
+  def validate(form, inputs, params, given, zone) do
+    AshPhoenix.Form.validate(form, taken(inputs, params, given, zone))
   end
 
   @doc """
@@ -421,7 +430,8 @@ defmodule AshTable.Act do
               taken(
                 inputs,
                 params,
-                Map.merge(files(chooser), cleared(action, inputs, record, chooser))
+                Map.merge(files(chooser), cleared(action, inputs, record, chooser)),
+                model.time_zone
               ),
               opts
             )
@@ -452,7 +462,7 @@ defmodule AshTable.Act do
         submit(
           model,
           open_create(model, action, id, opts),
-          taken(action.inputs, params, given),
+          taken(action.inputs, params, given, model.time_zone),
           opts
         )
 
@@ -493,7 +503,11 @@ defmodule AshTable.Act do
   # Whether one of the keys an input was sent names a record the person
   # could not have chosen.
   defp refused?(input, sent, record, opts) do
-    case for(key <- List.wrap(typed(input, sent)), is_binary(key) and key != "", do: key) do
+    case for(
+           key <- List.wrap(typed(input, sent, AshTable.Zone.utc())),
+           is_binary(key) and key != "",
+           do: key
+         ) do
       [] ->
         false
 
@@ -568,10 +582,14 @@ defmodule AshTable.Act do
 
   @doc """
   What an action is given of what a panel's form sent: the values of
-  `inputs`, by name, as they were typed, and no others.
+  `inputs`, by name, as they were typed, and no others; a datetime as the
+  instant it is in `zone`, the time zone of the page.
   """
   @spec values([Model.Input.t()], map) :: map
-  def values(inputs, params), do: taken(inputs, params, %{})
+  def values(inputs, params), do: values(inputs, params, AshTable.Zone.utc())
+
+  @spec values([Model.Input.t()], map, AshTable.Zone.t()) :: map
+  def values(inputs, params, zone), do: taken(inputs, params, %{}, zone)
 
   defp submit(model, form, params, opts) do
     opts = Query.reader_opts(opts)
@@ -614,18 +632,51 @@ defmodule AshTable.Act do
     do: [as: "panel", id: id, warn_on_unhandled_errors?: false, forms: [auto?: false]]
 
   # The values of the inputs, by name, as they were typed, and what the table
-  # gives itself, which nothing from the browser replaces.
-  defp taken(inputs, params, given) when is_map(params) do
+  # gives itself, which nothing from the browser replaces. A datetime that
+  # was typed is a wall time in the page's zone, and given as the instant it
+  # is; one the zone does not have is text the action does not take
+  # (`AshTable.Zone.given/3`), and the panel says why at its field.
+  defp taken(inputs, params, given, zone) when is_map(params) do
     for input <- inputs,
         name = Atom.to_string(input.name),
         given?(input, params, name),
         into: %{} do
-      {name, typed(input, params[name])}
+      {value, _gaps} = AshTable.Zone.given(input, typed(input, params[name], zone), zone)
+      {name, value}
     end
     |> Map.merge(given)
   end
 
-  defp taken(_inputs, _params, given), do: given
+  defp taken(_inputs, _params, given, _zone), do: given
+
+  @doc """
+  Where the inputs of a panel hold a wall time that the time zone of the
+  page does not have (`AshTable.Zone`), as `errors/4` names the places of
+  errors: the input, or the way to a field of a value inside it. Each with
+  the message that says so.
+  """
+  @spec gaps([Model.Input.t()], map, AshTable.Zone.t()) :: %{
+          optional(atom | [atom | non_neg_integer]) => [String.t()]
+        }
+  def gaps(inputs, params, zone) when is_map(params) do
+    for input <- inputs,
+        name = Atom.to_string(input.name),
+        given?(input, params, name),
+        path <- AshTable.Zone.gaps(input, typed(input, params[name], zone), zone),
+        into: %{} do
+      # at the field of the value, as an error of Ash's about it is; one of
+      # the values of an array of datetimes is at the array's field
+      place =
+        case path |> Enum.reverse() |> Enum.drop_while(&is_integer/1) |> Enum.reverse() do
+          [] -> input.name
+          way -> [input.name | way]
+        end
+
+      {place, [Text.t(:no_such_time, zone: zone)]}
+    end
+  end
+
+  def gaps(_inputs, _params, _zone), do: %{}
 
   # A map cell always says what it holds: a group that is not there is no
   # value, and a list without groups is the empty list. So does a union: no
@@ -664,13 +715,16 @@ defmodule AshTable.Act do
   taken, whatever else was sent.
   """
   @spec typed(map, term) :: term
-  def typed(%{cell_type: :map, fields: [_ | _] = fields}, %{} = sent) do
+  def typed(input, sent), do: typed(input, sent, AshTable.Zone.utc())
+
+  @spec typed(map, term, AshTable.Zone.t()) :: term
+  def typed(%{cell_type: :map, fields: [_ | _] = fields}, %{} = sent, zone) do
     for %{name: name} = field <- fields, field.input? or field.key?, reduce: %{} do
       taken ->
         key = Atom.to_string(name)
 
         cond do
-          field.input? -> Map.put(taken, key, inner(field, sent[key]))
+          field.input? -> Map.put(taken, key, inner(field, sent[key], zone))
           # the key of an embedded resource, as it came: Ash matches by it
           is_binary(sent[key]) and sent[key] != "" -> Map.put(taken, key, sent[key])
           true -> taken
@@ -678,35 +732,37 @@ defmodule AshTable.Act do
     end
   end
 
-  def typed(%{cell_type: :map, fields: [_ | _]}, _nothing), do: nil
+  def typed(%{cell_type: :map, fields: [_ | _]}, _nothing, _zone), do: nil
 
-  def typed(%{cell_type: {:array, :map}, fields: [_ | _]} = field, %{} = sent),
-    do: for({_key, item} <- items(sent), do: typed(%{field | cell_type: :map}, item))
+  def typed(%{cell_type: {:array, :map}, fields: [_ | _]} = field, %{} = sent, zone),
+    do: for({_key, item} <- items(sent), do: typed(%{field | cell_type: :map}, item, zone))
 
-  def typed(%{cell_type: {:array, :map}, fields: [_ | _]}, _nothing), do: []
+  def typed(%{cell_type: {:array, :map}, fields: [_ | _]}, _nothing, _zone), do: []
 
   # The field of a union sends the kind and that kind's value. What remains
   # is the two as Ash takes them from outside (`Ash.Type.Union.cast_input/2`):
   # the kind by its name, and the value as its own field gives it. No kind
   # is no value.
-  def typed(%{cell_type: :union, members: [_ | _]} = field, sent) do
-    case kind(field, sent) do
+  def typed(%{cell_type: :union, members: [_ | _]} = field, sent, zone) do
+    case kind(field, sent, zone) do
       nil ->
         nil
 
       {member, held} ->
         %{
           "_union_type" => Atom.to_string(member.name),
-          "_union_value" => member |> inner(held) |> tagged(member)
+          "_union_value" => member |> inner(held, zone) |> tagged(member)
         }
     end
   end
 
-  def typed(%{cell_type: {:array, _item}}, [_own | values]), do: values
+  def typed(%{cell_type: {:array, _item}}, [_own | values], _zone), do: values
   # the keys of the records that were chosen: sent as an array is
-  def typed(%{editor: :references}, [_own | values]), do: Enum.filter(values, &is_binary/1)
-  def typed(%{editor: :references}, _nothing), do: []
-  def typed(_input, typed), do: typed
+  def typed(%{editor: :references}, [_own | values], _zone),
+    do: Enum.filter(values, &is_binary/1)
+
+  def typed(%{editor: :references}, _nothing, _zone), do: []
+  def typed(_input, typed, _zone), do: typed
 
   @doc """
   The kind a union's field holds, of what its form sent for it, and what it
@@ -718,20 +774,23 @@ defmodule AshTable.Act do
   this one, and it starts as a new value of it does (`fresh/1`).
   """
   @spec kind(map, term) :: {Model.Field.t(), term} | nil
-  def kind(%{members: [_ | _] = members}, %{"_union_type" => named} = sent)
+  def kind(field, sent), do: kind(field, sent, AshTable.Zone.utc())
+
+  @spec kind(map, term, AshTable.Zone.t()) :: {Model.Field.t(), term} | nil
+  def kind(%{members: [_ | _] = members}, %{"_union_type" => named} = sent, zone)
       when is_binary(named) do
     with %{} = member <- Enum.find(members, &(Atom.to_string(&1.name) == named)) do
       held = if Map.get(sent, "_of", named) == named, do: sent["_union_value"]
-      {member, if(is_nil(held), do: fresh(member), else: held)}
+      {member, if(is_nil(held), do: fresh(member, zone), else: held)}
     end
   end
 
-  def kind(_field, _sent), do: nil
+  def kind(_field, _sent, _zone), do: nil
 
   @doc "What the field of a kind of a union sends for a new value of that kind."
-  @spec fresh(map) :: term
-  def fresh(%{cell_type: :map, fields: [_ | _]} = member), do: blank(member)
-  def fresh(_member), do: ""
+  @spec fresh(map, AshTable.Zone.t()) :: term
+  def fresh(%{cell_type: :map, fields: [_ | _]} = member, zone), do: blank(member, zone)
+  def fresh(_member, _zone), do: ""
 
   # A union that tells its kinds apart by a key of the value is given that
   # key with the value: it is the kind's, not the person's to type.
@@ -742,17 +801,17 @@ defmodule AshTable.Act do
 
   # A field of a map cell always sends something: nothing is the value it
   # has when it is empty.
-  defp inner(%{cell_type: cell_type} = field, sent)
+  defp inner(%{cell_type: cell_type} = field, sent, zone)
        when cell_type in [:map, {:array, :map}, :union],
-       do: typed(field, sent)
+       do: typed(field, sent, zone)
 
-  defp inner(%{cell_type: {:array, _item}} = field, sent) when is_list(sent),
-    do: typed(field, sent)
+  defp inner(%{cell_type: {:array, _item}} = field, sent, zone) when is_list(sent),
+    do: typed(field, sent, zone)
 
-  defp inner(%{cell_type: {:array, _item}}, _nothing), do: []
-  defp inner(%{cell_type: :boolean}, sent), do: to_string(sent == "true")
-  defp inner(_field, sent) when is_binary(sent), do: sent
-  defp inner(_field, _nothing), do: ""
+  defp inner(%{cell_type: {:array, _item}}, _nothing, _zone), do: []
+  defp inner(%{cell_type: :boolean}, sent, _zone), do: to_string(sent == "true")
+  defp inner(_field, sent, _zone) when is_binary(sent), do: sent
+  defp inner(_field, _nothing, _zone), do: ""
 
   @doc """
   The values of an array of map cells as its field sent them, in their
@@ -770,8 +829,8 @@ defmodule AshTable.Act do
 
   @doc """
   What the field of a map cell sends for a value it holds: the opposite of
-  `typed/2`. `held` is the value as its editor holds it
-  (`AshTable.Format.input/2`). It is what the field starts with.
+  `typed/3`. `held` is the value as its editor holds it
+  (`AshTable.Format.input/3`). It is what the field starts with.
   """
   @spec sent(map, term) :: term
   def sent(%{cell_type: :map, fields: [_ | _] = fields}, %{} = held) do
@@ -818,18 +877,21 @@ defmodule AshTable.Act do
   out started the same way.
   """
   @spec blank(map) :: map
-  def blank(%{fields: fields}) do
+  def blank(field), do: blank(field, AshTable.Zone.utc())
+
+  @spec blank(map, AshTable.Zone.t()) :: map
+  def blank(%{fields: fields}, zone) do
     for %{name: name, input?: true} = field <- fields, into: %{"_present" => ""} do
       started =
         cond do
           not is_nil(field.default) ->
-            sent(field, Format.input(field, field.default))
+            sent(field, Format.input(field, field.default, zone))
 
           field.cell_type == :map and field.required? and is_list(field.fields) ->
-            blank(field)
+            blank(field, zone)
 
           true ->
-            sent(field, Format.input(field, nil))
+            sent(field, Format.input(field, nil, zone))
         end
 
       {Atom.to_string(name), started}
@@ -839,11 +901,16 @@ defmodule AshTable.Act do
   @doc """
   Whether what the field of a map cell sent is what the cell holds already:
   `value` as the record has it. Compared as the field itself would send
-  the value.
+  the value, in `zone`, the time zone of the page.
   """
   @spec unchanged?(map, term, term) :: boolean
-  def unchanged?(input, sent, value),
-    do: typed(input, sent) == typed(input, sent(input, Format.input(input, value)))
+  def unchanged?(input, sent, value), do: unchanged?(input, sent, value, AshTable.Zone.utc())
+
+  @spec unchanged?(map, term, term, AshTable.Zone.t()) :: boolean
+  def unchanged?(input, sent, value, zone),
+    do:
+      typed(input, sent, zone) ==
+        typed(input, sent(input, Format.input(input, value, zone)), zone)
 
   @doc """
   What a form's errors say to a person: by input, for the errors about one

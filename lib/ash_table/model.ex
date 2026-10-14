@@ -311,7 +311,8 @@ defmodule AshTable.Model do
     table: :default,
     on_forbidden: :not_found,
     live?: false,
-    sticky_label?: false
+    sticky_label?: false,
+    time_zone: "Etc/UTC"
   ]
 
   @type t :: %__MODULE__{
@@ -332,7 +333,8 @@ defmodule AshTable.Model do
           max_depth: non_neg_integer,
           via: Relationship.t() | nil,
           live?: boolean,
-          sticky_label?: boolean
+          sticky_label?: boolean,
+          time_zone: AshTable.Zone.t()
         }
 
   @doc """
@@ -826,6 +828,20 @@ defmodule AshTable.Model do
   end
 
   @doc """
+  The model in the time zone of the page (`AshTable.Zone`): its datetimes
+  are shown, edited and filtered in it, and so are those of its argument
+  line. `zone` is one that `AshTable.Zone.check/1` has taken.
+  """
+  @spec zoned(t, AshTable.Zone.t()) :: t
+  def zoned(%__MODULE__{} = model, zone) do
+    %{
+      model
+      | time_zone: zone,
+        arguments: Enum.map(model.arguments, &%{&1 | time_zone: zone})
+    }
+  end
+
+  @doc """
   The model with what a person chose for its arguments: `chosen` holds, by
   the key of an argument (`AshTable.Model.Argument.key/1`), what they typed
   or picked for it. Whatever else it holds is not looked at.
@@ -839,10 +855,11 @@ defmodule AshTable.Model do
   @spec supply(t, %{optional(Argument.key()) => Argument.typed()}) :: t
   def supply(%__MODULE__{arguments: arguments, columns: columns} = model, chosen)
       when is_map(chosen) do
+    # what was typed for a datetime is a wall time in the page's zone
     given =
       for argument <- arguments,
           {:ok, value} <- [Argument.given(argument, chosen)],
-          do: {argument, value}
+          do: {argument, AshTable.Zone.read(argument, value, model.time_zone)}
 
     read = for {%{column: nil, name: name}, value} <- given, into: %{}, do: {name, value}
 
