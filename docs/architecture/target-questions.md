@@ -18,6 +18,21 @@ Questions 2–20 of the names-and-details table below: **taken as recommended** 
 
 Also agreed: the **test seams** recommended in [test-coupling.md](test-coupling.md) join the preparation before stage 0.
 
+## Decided by the owner, 2026-10-14, on the review
+
+The review's questions and options are in section 5 of [target-review.md](target-review.md). All answers are written into [target.md](target.md).
+
+| # | Question | Answer |
+| --- | --- | --- |
+| F1 | Sensitive values and the drawing | Never handed to the drawing (rows, cells, panel fields, picker rows and labels, failed edits, messages, events to the host), except through "Show" for one cell: read again as the person, field policy checked. A sensitive panel field starts empty; "Clear" sends only the instruction. |
+| RQ1 | Where selection lives | On the server: the entry holds the selected keys as claims; the browser mirrors them. Built in stage 6. |
+| RQ2 | Order of stages 4 and 5 | Swapped: flat list and portals first, inside today's component; then `attach` on the final shape. |
+| RQ3 | Live component per nested table | None. Fallback (live components inside the library, as today) if a LiveView release breaks portals inside streams, or the browser tests of the combination cannot be made stable. |
+| RQ4 | Commands in tag mode | No: commands only with `attach` and on the router page; the tag sends events only. |
+| RQ5 | Bulk locale bug | Fixed (`d1489d6`). The message terms of stage 3b still apply. |
+| RQ6 | Values or texts for a cell | Values; formatting and translation next to the drawing; `Format` a helper on the drawing side. |
+| — | The record in an event | Sent with sensitive values masked; the developer reads the record if they need a sensitive field. |
+
 ---
 
 The first six change how the library is built or used. Questions 7 to 20 are
