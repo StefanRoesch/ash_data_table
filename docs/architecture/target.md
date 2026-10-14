@@ -805,6 +805,24 @@ stage 4 (RQ2); the numbers are kept because other documents use them. Before
 stage 3, a short design note settles what this document leaves to it (the
 owner asked for one before stages 3–7).
 
+**Checked against this document (owner, 2026-10-14).** So that the stages do
+not stray from the target:
+
+- **After every stage, a drift check.** An independent reviewer that did not
+  build the stage compares what was built with this document: the modules,
+  their responsibilities and parts; the dependency rules, including what the
+  dependency test cannot see (data coupling, presentation hints carried as
+  data); the safety rules (no sensitive value on any path to the drawing but
+  "Show", the re-read before a write, values from the browser as claims);
+  that only the agreed tests changed; nothing built that this document does
+  not ask for, nothing left out that it does. It reports, it does not fix. A
+  stage is done only after this check. Where the code is right and this
+  document is wrong, the document is amended, with the owner's yes for a
+  change of design.
+- **After stage 7, a final conformance review**, adversarial: it assumes the
+  result has strayed from this document and tries to prove where, across all
+  stages together. A judge weighs its findings; the owner gets what holds.
+
 ### Preparation (before stage 0)
 
 - [ ] Test seams of `test-coupling.md` (in part done, see its "Done" section).
@@ -920,3 +938,7 @@ In the order of Q19.
 - [ ] The presentation hints of `Model.Column` documented as such (F3).
 - [ ] `AshDataTable.KitCase` and `AshDataTable.Test.Resource`; `KitCase` asserts that no rendered state of any part holds a sensitive value of the test resource (F1).
 - [ ] Development-mode marker check in the hook.
+
+### After stage 7: final conformance review
+- [ ] Adversarial review of the whole result against this document, then a judge; findings that hold go to the owner.
+- [ ] Then the one documentation pass: guides, README, CHANGELOG, module docs, the code tour (owner, 2026-10-14: documentation is updated once the refactor is finished and working).
