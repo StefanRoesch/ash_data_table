@@ -151,7 +151,7 @@ All arrive in `handle_event/3`. A name from the browser is looked up as text (`c
 
 `handle_event/3`, `update/2` and `handle_async/3` are each defined twice: the clauses, then `defoverridable`, then one definition that calls them (`super`) and ends in `tidy/1`. A new clause goes above `defoverridable`. `tidy/1` looks at what was announced, forgets the nested tables and pickers that are no longer rendered and stops their listeners, notes in `@tables` whether the table has a panel or picker open, and tells the tables around it that hold a row back for it when it has none any more.
 
-The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`, `ash_table:bulk`, `ash_table:unselect`, `ash_table:leaving` (a row whose record a live update found gone). The hooks tell each other with DOM events on the grid: `ash_table:selection`, `ash_table:choose`.
+Each event's payload and answer are listed in "Events" in the comment at the top of the component. The server tells the hooks with `push_event`: `ash_table:focus`, `ash_table:ask`, `ash_table:bulk`, `ash_table:unselect`, `ash_table:leaving` (a row whose record a live update found gone). The hooks tell each other with DOM events on the grid: `ash_table:selection`, `ash_table:choose`.
 
 ### Assigns that matter
 
@@ -232,8 +232,10 @@ Every change must keep these. They are what part 2 is for.
 7. **Demo.** Resources are in `demo/lib/demo/tracker/` and `demo/lib/demo/kitchen_sink/`, routes in `demo/lib/demo_web/router.ex`, seeds in `demo/priv/repo/seeds.exs`. A resource that exists for tests only goes into `demo/test/support/*_tables.ex` and under `/support` in the router. Describe a new page in `demo/README.md`.
 8. **Tests**, at three boundaries:
    - `test/` in the root: declaration, verifiers, model and the modules of part 2, against the resources in `test/support/`.
-   - `demo/test/demo_web/tables/`: the rendered table through LiveView tests, with the helpers of `DemoWeb.TablePage` (`demo/test/support/table_page.ex`). A test that changes a record of a live resource and then looks at an open page calls `AshTable.Test.flush(view)`; it never sleeps for the 100 ms.
-   - `demo/e2e/*.spec.ts`: the browser, with the `Table` class of `demo/e2e/support/table.ts` and `demo/e2e/support/actors.ts`.
+   - `demo/test/demo_web/tables/`: the rendered table through LiveView tests, with the helpers of `DemoWeb.TablePage` (`demo/test/support/table_page.ex`). A test that changes a record of a live resource and then looks at an open page calls `AshTable.Test.flush(view)`; it never sleeps for the 100 ms. The helpers have three seams, which the refactor changes in one place: every event goes through `send_event` (tests send what a browser never sends with `forge/5`, never with `render_hook`); every reader goes through `query/2`, which reads a portal's content where it is shown (use `click/2` and `has?/3` for controls of nested tables and pickers); and `ran/1` waits until nothing says `aria-busy`. A count of listeners is `AshTable.Test.listening/2`. The ids, attributes and events the helpers rely on are written down at the top of the table component ("What the tests rely on besides", "Events").
+   - `demo/test/demo_web/markup_snapshot_test.exs`: the markup in sixteen states, compared with `demo/test/snapshots/`. A change of the markup on purpose: `MIX_SNAPSHOT_UPDATE=1 mix test test/demo_web/markup_snapshot_test.exs`, and look at the diff.
+   - `demo/e2e/*.spec.ts`: the browser, with the `Table` class of `demo/e2e/support/table.ts` and `demo/e2e/support/actors.ts`. A spec never reaches into the hook: `Table.forge` sends an event by hand, `Table.ask` opens the question dialog.
+   - `demo/perf/baseline.mjs`: the performance baseline of the refactor (`docs/architecture/baseline.md`).
 9. **Guide.** One file in `documentation/topics/`. A new guide is added to the list in `test/documentation_test.exs` and to `extras` in `mix.exs`. Every code block needs `<!-- source: path/from/root -->` on the line above it, or `<!-- sketch -->`. The test checks that the block is in that file, that links resolve, and that a guide ends with its three closing sections.
 
 ## Running things
