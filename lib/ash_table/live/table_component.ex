@@ -52,6 +52,143 @@ defmodule AshTable.Live.TableComponent do
   #     click: `phoenix_html`, which a Phoenix application loads, asks the
   #     browser's own `confirm` for every click inside such an element.
   #
+  # ## What the tests rely on besides
+  #
+  # The test helpers (`DemoWeb.TablePage` in `demo/test/support/table_page.ex`
+  # and `Table` in `demo/e2e/support/table.ts`) find the parts below by these
+  # ids and attributes. They are part of the contract as much as those above:
+  # a change of one is a change of the contract, and of the helpers. The
+  # sections that follow say what each part is for.
+  #
+  #   * the root element `ID` (`data-read` once the table has read); in it
+  #     the line of the table's name, `ID-header`, with the name `ID-name`,
+  #     the create button `ID-create` and the table actions `ID-do-ACTION`
+  #     (`data-table-action`);
+  #   * `ID-grid`, the grid's hook's element (`data-ash-table`, `data-lead`,
+  #     `data-select`, `data-choose`, `data-chosen-rows`); in it `ID-table`,
+  #     the `<table role="grid">`, which says `aria-busy` while it reads, and
+  #     while a table action or an action on the selected rows runs; its
+  #     header `ID-head` with the rows `ID-head-row` and `ID-filter-row`, and
+  #     `ID-foot`;
+  #   * a row: its `<tr>` `ID-row-KEY-r`; the cell with the box
+  #     `ID-row-KEY-s` (`data-selector`, the `<input>` its only child); the
+  #     expander `ID-row-KEY-e` (`data-expander`, a `button[aria-expanded]`);
+  #     the actions cell `ID-row-KEY-a` (`data-actions`) whose buttons are its
+  #     children, `ID-row-KEY-a-ACTION` (`data-action`, `data-question`,
+  #     `data-destructive`). Its `<tbody>` says `data-key` where rows are
+  #     selected and `data-current` in a table to choose from;
+  #   * the detail of a row says `data-detail` and `data-row` (the key of its
+  #     row); the cell of a line `data-line` (the relationship), with
+  #     `ID-row-KEY-l-NAME-c > div > button`s: the one that opens it
+  #     (`aria-expanded`), then `ID-row-KEY-l-NAME-create` and the nested
+  #     table's actions `ID-row-KEY-l-NAME-do-ACTION`; the cell of a nested
+  #     table `data-nested`;
+  #   * a failed cell, and a failed actions cell: `aria-invalid` and
+  #     `aria-describedby`, which names the message, a child of the cell
+  #     (`[popover]`); what the cell shows are its other children;
+  #   * a sensitive cell: `button[data-reveal]`, `[data-mask]`,
+  #     `[data-masked]`, `[data-secret]`;
+  #   * the editor of a column: `template` `ID-editor-FIELD` (`data-editor`,
+  #     `data-confirm`), and in the editor of an array `[data-list]` with the
+  #     row of a value in a `template` of its own (`button[data-remove]`) and
+  #     `button[data-add]`;
+  #   * around the rows: `ID-status` (the live region), `ID-error`,
+  #     `ID-loading`, `ID-empty`, `ID-fill`, `ID-notice`, `ID-read-again`,
+  #     `ID-result` (`[data-summary]`, `[data-failure]`), the question dialog
+  #     `ID-dialog` (`ID-dialog-question`), `ID-related-parent`;
+  #   * the pages: `ID-pagination`, `ID-range`, `ID-pager`, `ID-previous`,
+  #     `ID-next`, `ID-page-N`; the "Rows per page" menu `ID-page-size` in
+  #     the form `ID-page-size-form`, which sends it as `size`;
+  #   * the filter row: `ID-clear-filters`, `ID-select-head`,
+  #     `ID-select-filter`, `ID-expander-head`, `ID-expander-filter`,
+  #     `ID-actions-head`, `ID-actions-filter`; a filter's controls are
+  #     `select[id$='-operator']` and `select[id$='-value']`;
+  #   * the "Columns" list: its button says `data-columns-button`, a hidden
+  #     column's entry `data-flag`, and `ID-columns-status` is its live
+  #     region;
+  #   * the argument line: `form[data-arguments]`, each argument a child
+  #     `[data-argument=NAME]` with its `[data-label]` and `[data-error]`s;
+  #   * the line of the selection: `ID-selection` (`data-more`,
+  #     `data-selected`, `data-all`), each action's button `data-bulk`;
+  #   * the action panel `ID-panel` (`data-question`): `ID-panel-title`,
+  #     `ID-panel-form`, `ID-panel-errors`, `ID-panel-cancel`,
+  #     `ID-panel-submit`. A field says its name in `data-field`; its label
+  #     ends in `-label` and holds the word "required" as `.sr-only` where
+  #     it is required; its messages are `[data-error]` in a `div` that ends
+  #     in `-error`. A value made of fields says `data-group` (its add and
+  #     remove buttons `data-add-group`, `data-remove-group`), an array of them
+  #     `data-groups` with `data-group-item`s, a union `data-union`, an array
+  #     `[data-list] > [data-item]`, a field emptied on purpose
+  #     `data-cleared` (its button `ID-panel-f-NAME-clear`, `data-clear-field`).
+  #     A field of a related record holds its key in `input[data-key]` and
+  #     says what it is called in `ID-panel-f-NAME-chosen` (`data-chosen`),
+  #     beside `ID-panel-f-NAME-choose`; one of several records says
+  #     `data-references`, with a button per record `ID-panel-f-NAME-r-N`;
+  #   * the picker `ID-picker` (`data-question`): `ID-picker-title`,
+  #     `ID-picker-error`, the table to choose from `ID-pick-NAME` a direct
+  #     child, and the buttons in its last child.
+  #
+  # ## Events
+  #
+  # Every event goes to the table it is of: the element it is sent from
+  # says so (`phx-target`). The hooks send theirs with `pushEventTo` on
+  # their own element; the others are sent by the markup. A key of a row is
+  # the key in the row's DOM id; a column, action, relationship or input is
+  # named as text. The answer, where there is one, goes to the hook alone.
+  #
+  # From the grid's hook, on `ID-grid`:
+  #
+  #   * `expand` `{row}`: answers `{open}`, whether the row is expanded now;
+  #   * `toggle` `{row, relationship}`: no answer;
+  #   * `save` `{row, column, value}` (`value` a list for an array) and
+  #     `clear` `{row, column}`: `{ok: true}`, `{ok: false}`, or
+  #     `{ok: false, error}` where the record is gone;
+  #   * `discard` `{row, column}`, `dismiss` `{row}`, `left` `{row}`: no
+  #     answer;
+  #   * `reveal` `{row, column}`: `{ok: true, value}`, `{ok: false}` or
+  #     `{ok: false, error}`;
+  #   * `act` `{row, action}`: `{ok: true}`, `{ok: true, removed: true}`,
+  #     `{ok: true, panel: true}`, `{ok: false}` or `{ok: false, error}`;
+  #   * `pick` and `edit` `{row, column}`: `{ok: true}`, `{ok: false}` or
+  #     `{ok: false, error}`;
+  #   * `bulk` `{action, rows}` or `{action, all: true}`: `{panel: true}`,
+  #     `{ask}` (the question to ask first) or `{ok: false}`; `bulk_run`,
+  #     the same, once the person has confirmed: no answer;
+  #   * `bulk_seen` `{}`, `table_run` `{action}`: no answer.
+  #
+  # From the panel's hook, on `ID-panel`: `panel_add` and `panel_remove`
+  # `{path}`, `panel_unpick` `{input, key}` and `panel_clear` `{input}`,
+  # each answered with `{focus}` (the id that gets the focus) or `{}`;
+  # `panel_cancel` `{}`, no answer.
+  #
+  # From the picker's hook, on `ID-picker`: `picked` `{row, confirmed,
+  # arguments}` (`row` nil for "None"), or `{rows, arguments}` where several
+  # are chosen, `arguments` what the argument line of its table holds, as
+  # a query string, or nil: answered `{ok: true}`, `{ok: false}`,
+  # `{ok: false, error}` or `{ask}` (the column's question, after which it
+  # is sent again with `confirmed: true`); `picker_cancel` `{}`, no answer.
+  # The pagination's hook sends nothing.
+  #
+  # From the markup: `sort` `{column}` (a header's button), `filter` (the
+  # form `ID-filters`), `clear_filter` `{column}`, `clear_filters`,
+  # `arguments` (the form `ID-arguments`), `argument_add` `{argument}`,
+  # `argument_remove` `{argument, at}`, `page` `{to}` (a number, `previous`
+  # or `next`), `page_size` `{size}`, `create`, `table_act` `{action}`,
+  # `pick_input` `{input}`, `panel_validate` and `panel_submit` (the form
+  # `ID-panel-form`), `read_again`.
+  #
+  # The server tells a grid's hook with `push_event`, each with `table`,
+  # the id of the table it is for (every hook of the page hears it, and
+  # only that table's acts): `ash_table:focus` `{table, cell}` (the id to
+  # focus), `ash_table:ask` `{table, action, question}` (answered with
+  # `table_run`), `ash_table:bulk` `{table, failed}` or `{table}` (the rows
+  # an action on the selection did not run on, which stay selected),
+  # `ash_table:unselect` `{table, row}`, `ash_table:leaving` `{table, row}`
+  # (answered with `left`). A grid's hook tells whoever listens with DOM
+  # events on its grid, `ash_table:selection` and, where it is told to
+  # choose, `ash_table:choose`, each with what `selected()` gives:
+  # `{table, mode, all, rows}`.
+  #
   # ## The argument line
   #
   # A table whose read action takes arguments from a person, or whose
