@@ -1,4 +1,5 @@
-// Types for the check of the hooks (`npm run check`), not shipped code.
+// Types for the check of the hooks (`npm run check`). The file ships
+// with the hooks, but no build loads it: it holds no code.
 //
 // The hooks look elements up by id and selector, and use them as what
 // the table renders there: a dialog, a template, a table body. The DOM
