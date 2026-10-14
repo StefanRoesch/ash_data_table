@@ -362,13 +362,13 @@ where a part needs a declaration fact), LV. Must not depend on 2b, 4. Pure
 | --- | --- | --- | --- |
 | `AshDataTable.Parts.Grid` | The grid skeleton: scroll area, `table`, header row, filter row, body rows, cells, footer, editor templates; the root that carries the `.Grid` hook. Gets `Model.hideable/1` with the markup that uses it (F3, stage 1) | internal component; parts through the kit | `render/1` `4511-5204` (grid `4686-4981`, editors `5075-5094`, scrollbar `5100`); `columns` `10916`; `resizer` `10828`; `editor` `11382`; view helpers `11607-11991`; `hideable/1` `model.ex:1011` |
 | `Parts.Heading` | The line of the table's name; create; table actions | kit part `heading` | `4520-4548`; `create` `10626`; `table_actions` `10647` |
-| `Parts.Arguments` | The argument line | kit part `argument_line` | `4567-4605`; `lines` `8977`; `argument` `9119` |
+| `Parts.Arguments` | The argument line | kit part `argument_line` | `4567-4605`; `argument` `9119` |
 | `Parts.Filter` | One column's filter control; values of "is any of" | kit part `filter` | filter form `4606`; `filter` `11013`; `choices` `11161` |
 | `Parts.Selection` | The selection line and bulk buttons | kit part `selection_line` | `4615-4674`; `selection` `10537` |
 | `Parts.Pagination` | Pages, "Rows per page" | kit part `pagination` | `pagination` `10702`; `pages` `10726` |
 | `Parts.Panel` | The action panel, fields, groups, unions, chosen records; draws from `Present`'s field map, never from an `AshPhoenix.Form` (F1) | kit parts `panel`, `field`, `control` | `panel` `9308`; `field` `9587`; `group` `10008`; `groups` `10077`; `union` `10175`; `members` `10277` |
-| `Parts.Picker` | The picker dialog around a registry entry | kit part `picker` | `picker` `9405`; `picker_reader` `10416` |
-| `Parts.Related` | Relationship lines, the portal of each open nested table, the full-view link | kit part `line` | `related` `10472`; `nested_reader` `10439`; `4549`, `5051-5074` |
+| `Parts.Picker` | The picker dialog around a registry entry | kit part `picker` | `picker` `9405` (`picker_reader` stays in the live layer: it builds who is asking — Caller / `Live.Core.Nesting`; stage 1 drift check F6) |
+| `Parts.Related` | Relationship lines, the portal of each open nested table, the full-view link | kit part `line` | `lines` `8977` (stage 1 drift check F5); `related` `10472`; `4549`, `5051-5074` (`nested_reader` stays in the live layer, as `picker_reader`; F6) |
 | `Parts.Summary` | The footer summaries row | kit part `footer` | `summary` `10859`; `4982-5038` |
 | `Parts.Messages` | Status live region, notice of changes, fill, error, loading, confirm dialog, failure popover, whole-text popover | kit parts `message`, `confirm` | `4633-4651`, `4675-4685`, `5095-5099`, `5116-5153`, `5164-5193` |
 | `Parts.Editors` | Built-in editors: text counter, list editor | kit parts `cell`, `editor` | `count` `11427`; `list` `11488`; `list_item` `11538` |
@@ -555,7 +555,7 @@ Against the target classification (1 declaration, 2a, 2b, 3, 3w, 4):
 | V7 | `resource/presenting.ex` → `component.ex`, `component/column.ex` (export) | runtime, export | 1 → 3 | Allowed as 1 → 3c |
 | V8 | `resource/relating.ex` → `resource.ex` | runtime | 5.3 rule 2; closes the 30-file cycle | Ask Spark/Ash for the extension list |
 | V9 | `model/argument.ex` → `format.ex` | runtime | 2a → 3w once `Format` is in the words; today it also pulls `format.ex` into the compile-connected cycle through V1 | The cycle goes with V1. The 2a → 3w edge: to settle in the design note of stage 3b (4.3) |
-| V10 | Cycle of 30 files with 4 compile edges: `domain.ex`, `domain/info.ex`, `domain/verifiers/verify_pub_sub.ex`, `format.ex`, `model.ex`, `model/argument.ex`, `notifier.ex`, `resource.ex`, `resource/info.ex`, 11 topic modules, `transformers/announce.ex`, 10 verifiers | cycle with compile edges | No compile-connected cycle; 2a files inside a declaration cycle | V1–V8. What remains is the Spark-required `resource.ex` ⇄ `resource/info.ex` and `domain.ex` ⇄ `domain/info.ex` loops, which hold no internals |
+| V10 | Cycle of 30 files with 4 compile edges: `domain.ex`, `domain/info.ex`, `domain/verifiers/verify_pub_sub.ex`, `format.ex`, `model.ex`, `model/argument.ex`, `notifier.ex`, `resource.ex`, `resource/info.ex`, 11 topic modules, `transformers/announce.ex`, 10 verifiers | cycle with compile edges | No compile-connected cycle; 2a files inside a declaration cycle | V1–V8. What remains, and is allowed: one cycle per extension inside part 1, if only Spark's compile edges are in it (the extension compiles against its entities, verifiers and transformers; verifiers read `Info`; `Info` compiles against the extension). After stage 1: 21 files for the resource extension, 4 for the domain extension; nothing outside part 1 is compile-connected (stage 1 drift check F7) |
 | V11 | `lib/ash_table.ex` ⇄ `live/table_component.ex` | cycle (runtime) | Cycle between 4 and the core | The core calls `AshTable.label/1` (`table_component.ex:9440`); `label/1` moves to 2a (`Model` or `Text`), `AshDataTable.label/1` delegates |
 | V12 | `related.ex` → `routes.ex` | runtime | 2a → 4 if `Routes` were wiring | `Routes` is 2a (Q13); its coupling to the router's metadata is named in §6 |
 | V13 | `live/table_component.ex` → 29 files of all parts | — | One file holds 2b, 3 and 4 | The split of 4.8 |
@@ -591,7 +591,7 @@ One ExUnit test in the root, no new dependency (Q17).
 - Run the same task with `--label compile-connected` and assert that every
   file it lists is in part 1.
 - Run `--format cycles` and assert that no cycle has files of two parts and
-  that no cycle has a compile edge, except the Spark-required pairs of 5.4 V10.
+  that no cycle has a compile edge, except one cycle per extension inside part 1 made only of Spark's compile edges (5.4 V10).
 - For the "no LiveView and no words in 2a" rules xref is not enough (it sees
   only our files). Add: no file of 2a mentions `Phoenix.LiveView`,
   `Phoenix.Component`, `Phoenix.PubSub`, `Gettext.` or a module of 3w (a grep
