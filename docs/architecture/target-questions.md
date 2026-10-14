@@ -1,8 +1,22 @@
 # Open questions of the target architecture: options, pros and cons
 
 A companion to section 8 of [target.md](target.md). Each question has the
-options, what speaks for and against each, and a suggested answer. Nothing
-here is decided until the owner says so.
+options, what speaks for and against each, and a suggested answer.
+
+## Answered by the owner, 2026-10-14
+
+| # | Question | Answer |
+| --- | --- | --- |
+| 1 (Q1) | What `<AshDataTable.table>` becomes | **a, as the owner put it:** the separation of the stateful logic and the plain Phoenix component stays, and the developer can hook in between. Using them directly (`attach` + the plain component) has no live component at all. The tag is only a ready-made default wiring: one live component that holds the same stateful core and renders the same plain component. Nested tables get their state from the top in every mode (the flat list); never a live component per nested table. |
+| 2 (Q15) | How the hooks are shipped | **Both, from one source:** the hooks are real JS files in the package; for LiveView, colocated hooks stay (zero setup) and are thin imports of those files; other UI technologies and custom builds import the same files through `app.js`/npm. To verify early: a colocated hook importing from the package works in a release build. |
+| 3 (Q14) | Row data contract | a: internal until a second adapter exists (for now). |
+| 4 (Q11) | Replaceable source of rows | a: no `Source` behaviour now; the checked rule that only `Query`, `Record`, `Pick`, `Bulk` read from Ash (for now). |
+| 5 (Q8) | Where "open" is declared | a: by the page. |
+| 6 (Q20) | React/Vue/Hologram in v1 | a: none in v1; `live_vue` first afterwards. |
+
+Still open: questions 7–20 below (names and details).
+
+---
 
 The first six change how the library is built or used. Questions 7 to 20 are
 names and details.
