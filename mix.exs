@@ -15,6 +15,11 @@ defmodule AshDataTable.MixProject do
       # Writes the colocated hook's manifest (`phoenix-colocated/ash_data_table`),
       # also when this project is compiled as a dependency of a host app.
       compilers: [:phoenix_live_view] ++ Mix.compilers(),
+      # The colocated hooks import the hooks of the package, `assets/js/`.
+      # LiveView links `node_modules` beside them to this path of the
+      # package, wherever the package is (a path, `deps/`): they import
+      # `../node_modules/js/index.js`. The table has no npm dependencies.
+      phoenix_live_view: [colocated_assets: [node_modules_path: "assets"]],
       deps: deps(),
       # The template is shipped for hosts to copy into their own backend.
       # Without reference comments its messages count as written by hand
@@ -152,7 +157,8 @@ defmodule AshDataTable.MixProject do
     [
       licenses: ["MIT"],
       links: %{"GitHub" => @source_url},
-      files: ~w(lib priv documentation .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
+      files:
+        ~w(lib priv assets/js package.json documentation .formatter.exs mix.exs README.md CHANGELOG.md LICENSE)
     ]
   end
 end

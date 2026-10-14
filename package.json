@@ -1,0 +1,17 @@
+{
+  "name": "ash_data_table",
+  "version": "0.1.0",
+  "description": "The browser hooks of ash_data_table, for custom builds and other UI technologies. A LiveView host needs none of this: the table's colocated hooks bring them.",
+  "license": "MIT",
+  "main": "./assets/js/index.js",
+  "exports": {
+    ".": "./assets/js/index.js"
+  },
+  "files": [
+    "assets/js"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/StefanRoesch/ash_data_table.git"
+  }
+}
