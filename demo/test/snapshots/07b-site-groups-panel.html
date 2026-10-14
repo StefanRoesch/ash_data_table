@@ -1,0 +1,361 @@
+<div id="site-page">
+<div id="site" class="ash-table" data-read="">
+<div id="site-header" class="mb-4 flex min-h-8 items-center justify-between gap-2">
+<h1 id="site-name" class="text-lg font-semibold">
+      Site
+    </h1>
+<div class="ms-auto flex flex-wrap items-center justify-end gap-2">
+<button type="button" id="site-create" class="btn btn-sm" phx-click="create" phx-target="T">
+  New site
+</button>
+</div>
+</div>
+<form id="site-filters" phx-change="filter" phx-submit="filter" phx-target="T">
+</form>
+<div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
+<div id="site-selection" role="group" aria-label="Selected rows" data-selection="" data-scope="31832193" data-selected="{n} selected" data-all="All 1 that match are selected" class="flex flex-wrap items-center gap-2">
+<p id="site-selected" role="status" phx-update="ignore" class="text-sm">
+</p>
+<div id="site-selection-controls" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" class="flex flex-wrap items-center gap-2">
+<button type="button" id="site-select-all" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" data-select-all="" class="btn btn-sm">
+      Select all 1 that match
+    </button>
+<button type="button" id="site-clear-selection" data-clear="" class="btn btn-sm">
+      Clear selection
+    </button>
+<button type="button" id="site-bulk-relocate" data-bulk="relocate" class="btn btn-sm ">
+      Relocate
+    </button>
+</div>
+</div>
+<div id="site-columns-control" class="ms-auto">
+<button type="button" id="site-columns-button" aria-expanded="false" aria-controls="site-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" data-columns-button="" data-text="Columns" data-text-with="Columns ({details})" data-text-hidden="{n} hidden" data-text-filtered="{n} filtered" data-text-sorted="{n} sorted" data-say-hidden="{column} hidden" data-say-shown="{column} shown" class="btn btn-sm">
+<span id="site-columns-text" phx-update="ignore">Columns</span>
+</button>
+<div id="site-columns" role="group" aria-label="Columns" popover="manual" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" data-columns-list="" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow">
+<label id="site-column-place-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-place" checked="" data-head="site-head-place" data-label="Place" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Place</span>
+</label>
+<label id="site-column-contact-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-contact" checked="" data-head="site-head-contact" data-label="Contact" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Contact</span>
+</label>
+<label id="site-column-parts-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-parts" checked="" data-head="site-head-parts" data-label="Parts" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Parts</span>
+</label>
+<label id="site-column-places-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-places" checked="" data-head="site-head-places" data-label="Places" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Places</span>
+</label>
+<label id="site-column-settings-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-settings" checked="" data-head="site-head-settings" data-label="Settings" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Settings</span>
+</label>
+<label id="site-column-entries-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-entries" checked="" data-head="site-head-entries" data-label="Entries" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Entries</span>
+</label>
+<label id="site-column-notes-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-notes" checked="" data-head="site-head-notes" data-label="Notes" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Notes</span>
+</label>
+<label id="site-column-base-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-base" checked="" data-head="site-head-base" data-label="Base" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Base</span>
+</label>
+<label id="site-column-sealed-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-sealed" checked="" data-head="site-head-sealed" data-label="Sealed" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Sealed</span>
+</label>
+<label id="site-column-mixed-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-mixed" checked="" data-head="site-head-mixed" data-label="Mixed" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Mixed</span>
+</label>
+<label id="site-column-vault-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-vault" checked="" data-head="site-head-vault" data-label="Vault" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Vault</span>
+</label>
+<label id="site-column-frozen-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="site-column-frozen" checked="" data-head="site-head-frozen" data-label="Kept" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Kept</span>
+</label>
+</div>
+<p id="site-columns-status" role="status" phx-update="ignore" class="sr-only">
+</p>
+</div>
+</div>
+<p id="site-status" role="status" aria-live="polite" class="sr-only">
+</p>
+<div id="site-grid" phx-hook=".Grid" phx-target="T" data-ash-table="" data-lead="1" data-select="multi" tabindex="-1" class="overflow-x-auto outline-none ">
+<table id="site-table" role="grid" aria-label="Site" aria-rowcount="3" aria-colcount="15" aria-multiselectable="true" data-first-row="3" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" phx-update="stream">
+<thead id="site-head">
+<tr id="site-head-row" role="row" aria-rowindex="1">
+<th id="site-select-head" role="columnheader" scope="col" aria-colindex="1" tabindex="-1" data-select-page="" class="w-0">
+<input type="checkbox" tabindex="-1" aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</th>
+<th id="site-head-name" role="columnheader" scope="col" aria-colindex="2" aria-sort="none" aria-label="Name" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="name" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Name<span aria-hidden="true">
+</span>
+<span id="site-resize-name" role="separator" aria-orientation="vertical" aria-label="Resize Name" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-place" role="columnheader" scope="col" aria-colindex="3" aria-label="Place" tabindex="-1" class="relative whitespace-nowrap ">Place<span id="site-resize-place" role="separator" aria-orientation="vertical" aria-label="Resize Place" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-contact" role="columnheader" scope="col" aria-colindex="4" aria-label="Contact" tabindex="-1" class="relative whitespace-nowrap ">Contact<span id="site-resize-contact" role="separator" aria-orientation="vertical" aria-label="Resize Contact" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-parts" role="columnheader" scope="col" aria-colindex="5" aria-label="Parts" tabindex="-1" class="relative whitespace-nowrap ">Parts<span id="site-resize-parts" role="separator" aria-orientation="vertical" aria-label="Resize Parts" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-places" role="columnheader" scope="col" aria-colindex="6" aria-label="Places" tabindex="-1" class="relative whitespace-nowrap ">Places<span id="site-resize-places" role="separator" aria-orientation="vertical" aria-label="Resize Places" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-settings" role="columnheader" scope="col" aria-colindex="7" aria-label="Settings" tabindex="-1" class="relative whitespace-nowrap ">Settings<span id="site-resize-settings" role="separator" aria-orientation="vertical" aria-label="Resize Settings" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-entries" role="columnheader" scope="col" aria-colindex="8" aria-label="Entries" tabindex="-1" class="relative whitespace-nowrap ">Entries<span id="site-resize-entries" role="separator" aria-orientation="vertical" aria-label="Resize Entries" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-notes" role="columnheader" scope="col" aria-colindex="9" aria-label="Notes" tabindex="-1" class="relative whitespace-nowrap ">Notes<span id="site-resize-notes" role="separator" aria-orientation="vertical" aria-label="Resize Notes" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-base" role="columnheader" scope="col" aria-colindex="10" aria-label="Base" tabindex="-1" class="relative whitespace-nowrap ">Base<span id="site-resize-base" role="separator" aria-orientation="vertical" aria-label="Resize Base" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-sealed" role="columnheader" scope="col" aria-colindex="11" aria-label="Sealed" tabindex="-1" class="relative whitespace-nowrap ">Sealed<span id="site-resize-sealed" role="separator" aria-orientation="vertical" aria-label="Resize Sealed" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-mixed" role="columnheader" scope="col" aria-colindex="12" aria-label="Mixed" tabindex="-1" class="relative whitespace-nowrap ">Mixed<span id="site-resize-mixed" role="separator" aria-orientation="vertical" aria-label="Resize Mixed" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-vault" role="columnheader" scope="col" aria-colindex="13" aria-label="Vault" tabindex="-1" class="relative whitespace-nowrap ">Vault<span id="site-resize-vault" role="separator" aria-orientation="vertical" aria-label="Resize Vault" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-head-frozen" role="columnheader" scope="col" aria-colindex="14" aria-label="Kept" tabindex="-1" class="relative whitespace-nowrap ">Kept<span id="site-resize-frozen" role="separator" aria-orientation="vertical" aria-label="Resize Kept" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="site-actions-head" role="columnheader" scope="col" aria-colindex="15" tabindex="-1" class="whitespace-nowrap">
+            Actions
+          </th>
+</tr>
+<tr id="site-filter-row" role="row" aria-rowindex="2">
+<td id="site-select-filter" role="gridcell" aria-colindex="1" tabindex="-1">
+</td>
+<td id="site-filter-name" role="gridcell" aria-colindex="2" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="site-filter-name-operator" name="filter[name][o]" form="site-filters" tabindex="-1" aria-label="How to filter Name" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="contains">
+      contains
+    </option>
+<option value="equals">
+      equals
+    </option>
+<option value="starts_with">
+      starts with
+    </option>
+</select>
+<input type="text" id="site-filter-name-value" name="filter[name][v]" form="site-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Name" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="site-filter-place" role="gridcell" aria-colindex="3" tabindex="-1">
+</td>
+<td id="site-filter-contact" role="gridcell" aria-colindex="4" tabindex="-1">
+</td>
+<td id="site-filter-parts" role="gridcell" aria-colindex="5" tabindex="-1">
+</td>
+<td id="site-filter-places" role="gridcell" aria-colindex="6" tabindex="-1">
+</td>
+<td id="site-filter-settings" role="gridcell" aria-colindex="7" tabindex="-1">
+</td>
+<td id="site-filter-entries" role="gridcell" aria-colindex="8" tabindex="-1">
+</td>
+<td id="site-filter-notes" role="gridcell" aria-colindex="9" tabindex="-1">
+</td>
+<td id="site-filter-base" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="site-filter-sealed" role="gridcell" aria-colindex="11" tabindex="-1">
+</td>
+<td id="site-filter-mixed" role="gridcell" aria-colindex="12" tabindex="-1">
+</td>
+<td id="site-filter-vault" role="gridcell" aria-colindex="13" tabindex="-1">
+</td>
+<td id="site-filter-frozen" role="gridcell" aria-colindex="14" tabindex="-1">
+</td>
+<td id="site-actions-filter" role="gridcell" aria-colindex="15" tabindex="-1">
+</td>
+</tr>
+</thead>
+<tbody id="site-row-uuid-1">
+<tr id="site-row-uuid-1-r" role="row" aria-rowindex="3">
+<td id="site-row-uuid-1-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="site-row-uuid-1-c-name" role="gridcell" aria-colindex="2" tabindex="-1">Harbour</td>
+<td id="site-row-uuid-1-c-place" role="gridcell" aria-colindex="3" tabindex="-1">Street: Quay 1, City: Kiel, Floor: 2, Open?: No, Since: 2020-05-01</td>
+<td id="site-row-uuid-1-c-contact" role="gridcell" aria-colindex="4" tabindex="-1">Name: Ida, Place: Street: Lane 5, City: Bonn, Open?: No</td>
+<td id="site-row-uuid-1-c-parts" role="gridcell" aria-colindex="5" tabindex="-1">Name: Crane, Quantity: 2; Name: Winch</td>
+<td id="site-row-uuid-1-c-places" role="gridcell" aria-colindex="6" tabindex="-1">
+</td>
+<td id="site-row-uuid-1-c-settings" role="gridcell" aria-colindex="7" tabindex="-1">
+</td>
+<td id="site-row-uuid-1-c-entries" role="gridcell" aria-colindex="8" tabindex="-1">
+</td>
+<td id="site-row-uuid-1-c-notes" role="gridcell" aria-colindex="9" tabindex="-1" aria-readonly="true">
+</td>
+<td id="site-row-uuid-1-c-base" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="site-row-uuid-1-c-sealed" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+</td>
+<td id="site-row-uuid-1-c-mixed" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">
+</td>
+<td id="site-row-uuid-1-c-vault" role="gridcell" aria-colindex="13" tabindex="-1">
+</td>
+<td id="site-row-uuid-1-c-frozen" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+</td>
+<td id="site-row-uuid-1-a" role="gridcell" aria-colindex="15" tabindex="-1" data-actions="">
+<button type="button" id="site-row-uuid-1-a-relocate" tabindex="-1" data-action="relocate" class="btn btn-xs -my-1 me-1">Relocate</button>
+</td>
+</tr>
+</tbody>
+</table>
+<template id="site-editor-name" data-editor="text">
+<textarea rows="1" aria-label="Name" aria-required="true" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none">
+</textarea>
+</template>
+<template id="site-editor-place" data-editor="group">
+</template>
+<template id="site-editor-contact" data-editor="group" data-confirm="Change the contact?">
+</template>
+<template id="site-editor-parts" data-editor="groups">
+</template>
+<template id="site-editor-places" data-editor="groups">
+</template>
+<template id="site-editor-settings" data-editor="group">
+</template>
+<template id="site-editor-entries" data-editor="groups">
+</template>
+<template id="site-editor-base" data-editor="group">
+</template>
+<template id="site-editor-vault" data-editor="group">
+</template>
+<template id="site-failure">
+<span popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">
+</span>
+</template>
+</div>
+<div id="site-scrollbar" phx-update="ignore" aria-hidden="true" tabindex="-1" hidden="" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="">
+<div class="h-px">
+</div>
+</div>
+<div id="site-whole" popover="manual" phx-update="ignore" aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="">
+</div>
+<div id="site-dialogs" phx-update="ignore">
+<dialog id="site-dialog" aria-labelledby="site-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border">
+<form method="dialog">
+<p id="site-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button value="cancel" class="btn">Cancel</button>
+<button value="confirm" class="btn btn-primary">Confirm</button>
+</div>
+</form>
+</dialog>
+</div>
+<dialog id="site-panel" phx-hook=".Panel" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]" phx-target="T" data-ask="changed" aria-labelledby="site-panel-title" class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border">
+<form phx-target="T" phx-submit="panel_submit" phx-change="panel_validate" novalidate="" id="site-panel-form" method="put">
+<h2 id="site-panel-title" class="mb-4 text-lg font-semibold">Parts: Harbour</h2>
+<div class="fieldset mb-2" data-field="parts">
+<div id="site-panel-f-parts" role="group" aria-labelledby="site-panel-f-parts-label" data-groups="">
+<span id="site-panel-f-parts-label" class="label mb-1 text-base-content">
+<span data-label="">Parts</span>
+</span>
+<input type="hidden" name="panel[parts][_present]" value=""/>
+<div id="site-panel-f-parts-0" role="group" aria-labelledby="site-panel-f-parts-0-label" data-group-item="" class="mb-2">
+<div class="flex items-center gap-1">
+<span id="site-panel-f-parts-0-label" class="label mb-1 text-base-content">
+        Parts 1
+      </span>
+<button type="button" id="site-panel-f-parts-0-remove" data-remove-group="[&quot;parts&quot;,&quot;0&quot;]" aria-label="Remove Parts 1" class="btn btn-ghost btn-xs mb-1">
+<span aria-hidden="true">✕</span>
+</button>
+</div>
+<div class="ps-4">
+<input type="hidden" name="panel[parts][0][_present]" value=""/>
+<input type="hidden" name="panel[parts][0][id]" value="uuid-2"/>
+<div class="fieldset mb-2" data-field="parts.0.name">
+<label for="site-panel-f-parts-0-f-name" class="label mb-1 text-base-content">
+<span data-label="">Name</span>
+<span aria-hidden="true">*</span>
+</label>
+<textarea id="site-panel-f-parts-0-f-name" name="panel[parts][0][name]" rows="3" aria-required="true" class="textarea w-full not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">Crane</textarea>
+</div>
+<div class="fieldset mb-2" data-field="parts.0.quantity">
+<label for="site-panel-f-parts-0-f-quantity" class="label mb-1 text-base-content">
+<span data-label="">Quantity</span>
+</label>
+<input type="number" step="1" min="0" id="site-panel-f-parts-0-f-quantity" name="panel[parts][0][quantity]" value="2" class="input w-full not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</div>
+</div>
+<div id="site-panel-f-parts-1" role="group" aria-labelledby="site-panel-f-parts-1-label" data-group-item="" class="mb-2">
+<div class="flex items-center gap-1">
+<span id="site-panel-f-parts-1-label" class="label mb-1 text-base-content">
+        Parts 2
+      </span>
+<button type="button" id="site-panel-f-parts-1-remove" data-remove-group="[&quot;parts&quot;,&quot;1&quot;]" aria-label="Remove Parts 2" class="btn btn-ghost btn-xs mb-1">
+<span aria-hidden="true">✕</span>
+</button>
+</div>
+<div class="ps-4">
+<input type="hidden" name="panel[parts][1][_present]" value=""/>
+<input type="hidden" name="panel[parts][1][id]" value="uuid-3"/>
+<div class="fieldset mb-2" data-field="parts.1.name">
+<label for="site-panel-f-parts-1-f-name" class="label mb-1 text-base-content">
+<span data-label="">Name</span>
+<span aria-hidden="true">*</span>
+</label>
+<textarea id="site-panel-f-parts-1-f-name" name="panel[parts][1][name]" rows="3" aria-required="true" class="textarea w-full not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">Winch</textarea>
+</div>
+<div class="fieldset mb-2" data-field="parts.1.quantity">
+<label for="site-panel-f-parts-1-f-quantity" class="label mb-1 text-base-content">
+<span data-label="">Quantity</span>
+</label>
+<input type="number" step="1" min="0" id="site-panel-f-parts-1-f-quantity" name="panel[parts][1][quantity]" value="" class="input w-full not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</div>
+</div>
+<button type="button" id="site-panel-f-parts-add" data-add-group="[&quot;parts&quot;]" class="btn btn-sm">
+    Add value
+  </button>
+</div>
+</div>
+<div class="mt-6 flex justify-end gap-2">
+<button type="button" id="site-panel-cancel" class="btn" data-cancel="">
+        Cancel
+      </button>
+<button type="submit" id="site-panel-submit" class="btn btn-primary">
+        Save
+      </button>
+</div>
+</form>
+</dialog>
+<nav id="site-pagination" phx-hook=".Pagination" aria-label="Pagination: Site" class="mt-4 flex flex-wrap items-center justify-between gap-4">
+<p id="site-range" class="me-auto text-sm">1–1 of 1</p>
+<div class="join">
+<button type="button" id="site-previous" class="join-item btn btn-sm" disabled="" phx-click="page" phx-value-to="previous" phx-target="T">
+    Previous
+  </button>
+<span class="contents [&amp;&gt;:first-child]:ms-[calc(var(--border)*-1)]">
+<button type="button" id="site-page-1" class="join-item btn btn-sm forced-colors:aria-[current=page]:underline btn-active" aria-label="Go to page 1" aria-current="page" phx-click="page" phx-value-to="1" phx-target="T">
+      1
+    </button>
+</span>
+<button type="button" id="site-next" class="join-item btn btn-sm" disabled="" phx-click="page" phx-value-to="next" phx-target="T">
+    Next
+  </button>
+</div>
+</nav>
+</div>
+</div>

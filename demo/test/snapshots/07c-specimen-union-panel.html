@@ -1,0 +1,50 @@
+<dialog id="specimen-panel" phx-hook=".Panel" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;open&quot;]}]]" phx-target="T" data-ask="changed" aria-labelledby="specimen-panel-title" class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border">
+<form phx-target="T" phx-submit="panel_submit" phx-change="panel_validate" novalidate="" id="specimen-panel-form" method="put">
+<h2 id="specimen-panel-title" class="mb-4 text-lg font-semibold">A union: uuid-1</h2>
+<div class="fieldset mb-2" data-field="a_union">
+<div id="specimen-panel-f-a_union" role="group" aria-labelledby="specimen-panel-f-a_union-label" data-union="">
+<span id="specimen-panel-f-a_union-label" class="label mb-1 text-base-content">
+<span data-label="">A union</span>
+</span>
+<div class="ps-4">
+<input type="hidden" name="panel[a_union][_of]" value="number"/>
+<div class="fieldset mb-2" data-field="a_union._union_type">
+<label for="specimen-panel-f-a_union-kind" class="label mb-1 text-base-content">
+<span data-label="">Kind</span>
+</label>
+<select id="specimen-panel-f-a_union-kind" name="panel[a_union][_union_type]" class="select w-full not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">
+</option>
+<option value="number" selected="">
+          Number
+        </option>
+<option value="text">
+          Text
+        </option>
+<option value="shade">
+          Shade
+        </option>
+<option value="address">
+          Address
+        </option>
+</select>
+</div>
+<div class="fieldset mb-2" data-field="a_union._union_value">
+<label for="specimen-panel-f-a_union-value" class="label mb-1 text-base-content">
+<span data-label="">Number</span>
+</label>
+<input type="number" step="1" min="0" id="specimen-panel-f-a_union-value" name="panel[a_union][_union_value]" value="12" class="input w-full not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</div>
+</div>
+</div>
+<div class="mt-6 flex justify-end gap-2">
+<button type="button" id="specimen-panel-cancel" class="btn" data-cancel="">
+        Cancel
+      </button>
+<button type="submit" id="specimen-panel-submit" class="btn btn-primary">
+        Save
+      </button>
+</div>
+</form>
+</dialog>

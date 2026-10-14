@@ -5,6 +5,11 @@ defmodule Demo.Perf do
   """
   use Ash.Domain, otp_app: :demo, extensions: [AshTable.Domain]
 
+  # the task says `live? true`, as the demo's does
+  table do
+    pub_sub Demo.PubSub
+  end
+
   resources do
     resource Demo.Perf.Task
   end
@@ -19,8 +24,8 @@ defmodule Demo.Perf.TaskSource do
   /tasks has no control for it. To measure the same table at 100 rows, the
   performance scripts need the same resource with another `default_limit`.
   Writing it out a second time would let the two drift apart, so it is made
-  from the source of the first: three places are replaced and the rest is
-  compiled as it stands, with the same table, columns, actions, policies and
+  from the source of the first: four places are replaced and the rest is
+  compiled as it stands (the sizes the table offers gain 100), with the same table, columns, actions, policies and
   field policies.
   """
   @path Path.expand("../../lib/demo/tracker/task.ex", __DIR__)
@@ -39,5 +44,7 @@ defmodule Demo.Perf.TaskSource do
   |> replace.("domain: Demo.Tracker,", "domain: Demo.Perf,")
   # the first one is the primary read action's, which the table reads with
   |> replace.("default_limit: 25", "default_limit: 100")
+  # the size a table opens with is one of the sizes it offers
+  |> replace.("page_sizes [10, 25, 50]", "page_sizes [10, 25, 50, 100]")
   |> Code.compile_string(@path)
 end

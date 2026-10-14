@@ -1,0 +1,2537 @@
+<div id="app-layout" class="px-4 py-8 sm:px-6 lg:px-8">
+<div class="mx-auto max-w-7xl space-y-6">
+<div id="task-page">
+<div id="task" class="ash-table" data-read="">
+<div id="task-header" class="mb-4 flex min-h-8 items-center justify-between gap-2">
+<h1 id="task-name" class="text-lg font-semibold">
+      Tasks
+    </h1>
+<div class="ms-auto flex flex-wrap items-center justify-end gap-2">
+<button type="button" id="task-create" class="btn btn-sm" phx-click="create" phx-target="T">
+  New task
+</button>
+</div>
+</div>
+<form id="task-arguments" phx-change="arguments" phx-submit="arguments" phx-target="T" novalidate="" data-arguments="" class="flex flex-wrap items-start gap-x-4 gap-y-2 mb-2">
+<div class="flex flex-col" data-argument="search">
+<div class="flex min-h-8 flex-wrap items-center gap-2">
+<label for="task-arg-search" class="label text-sm text-base-content">
+<span data-label="">Search</span>
+</label>
+<input type="text" id="task-arg-search" name="arguments[a][search]" value="" phx-debounce="blur" aria-describedby="task-arg-search-count" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span id="task-arg-search-count" data-count="codepoints" data-max="60" data-trim="" class="text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold shrink-0 opacity-70 data-[over]:opacity-100">0/60</span>
+</div>
+</div>
+<div class="flex flex-col" data-argument="due_within-days">
+<div class="flex min-h-8 flex-wrap items-center gap-2">
+<label for="task-arg-due_within-days" class="label text-sm text-base-content">
+<span data-label="">Due within: Days</span>
+<span aria-hidden="true">*</span>
+</label>
+<input type="number" step="1" min="0" id="task-arg-due_within-days" name="arguments[c][due_within][days]" value="30" phx-debounce="blur" aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</div>
+</form>
+<form id="task-filters" phx-change="filter" phx-submit="filter" phx-target="T">
+</form>
+<div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
+<div id="task-selection" role="group" aria-label="Selected rows" data-selection="" data-scope="31832193" data-more="" data-selected="{n} selected" data-all="All 30 that match are selected" class="flex flex-wrap items-center gap-2">
+<p id="task-selected" role="status" phx-update="ignore" class="text-sm">
+</p>
+<div id="task-selection-controls" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" class="flex flex-wrap items-center gap-2">
+<button type="button" id="task-select-all" hidden="" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" data-select-all="" class="btn btn-sm">
+      Select all 30 that match
+    </button>
+<button type="button" id="task-clear-selection" data-clear="" class="btn btn-sm">
+      Clear selection
+    </button>
+<button type="button" id="task-bulk-archive" data-bulk="archive" class="btn btn-sm ">
+      Archive
+    </button>
+<button type="button" id="task-bulk-reassign" data-bulk="reassign" class="btn btn-sm ">
+      Reassign
+    </button>
+<button type="button" id="task-bulk-set_progress" data-bulk="set_progress" class="btn btn-sm ">
+      Set progress
+    </button>
+<button type="button" id="task-bulk-destroy" data-bulk="destroy" data-destructive="" class="btn btn-sm ">
+      Destroy
+    </button>
+<button type="button" id="task-bulk-set_labels" data-bulk="set_labels" class="btn btn-sm ">
+      Set labels
+    </button>
+</div>
+</div>
+<div id="task-columns-control" class="ms-auto">
+<button type="button" id="task-columns-button" aria-expanded="false" aria-controls="task-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" data-columns-button="" data-text="Columns" data-text-with="Columns ({details})" data-text-hidden="{n} hidden" data-text-filtered="{n} filtered" data-text-sorted="{n} sorted" data-say-hidden="{column} hidden" data-say-shown="{column} shown" class="btn btn-sm">
+<span id="task-columns-text" phx-update="ignore">Columns</span>
+</button>
+<div id="task-columns" role="group" aria-label="Columns" popover="manual" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" data-columns-list="" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow">
+<label id="task-column-status-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-status" checked="" data-head="task-head-status" data-label="State" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>State</span>
+</label>
+<label id="task-column-priority-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-priority" checked="" data-head="task-head-priority" data-label="Priority" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Priority</span>
+</label>
+<label id="task-column-progress-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-progress" checked="" data-head="task-head-progress" data-label="Progress" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Progress</span>
+</label>
+<label id="task-column-estimate_hours-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-estimate_hours" checked="" data-head="task-head-estimate_hours" data-label="Estimate hours" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Estimate hours</span>
+</label>
+<label id="task-column-billable?-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-billable?" checked="" data-head="task-head-billable?" data-label="Billable?" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Billable?</span>
+</label>
+<label id="task-column-due_on-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-due_on" checked="" data-head="task-head-due_on" data-label="Due on" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Due on</span>
+</label>
+<label id="task-column-completed_at-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-completed_at" checked="" data-head="task-head-completed_at" data-label="Completed at" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Completed at</span>
+</label>
+<label id="task-column-overdue?-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-overdue?" checked="" data-head="task-head-overdue?" data-label="Overdue?" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Overdue?</span>
+</label>
+<label id="task-column-comment_count-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-comment_count" checked="" data-head="task-head-comment_count" data-label="Comments" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Comments</span>
+</label>
+<label id="task-column-headline-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-headline" checked="" data-head="task-head-headline" data-label="Headline" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Headline</span>
+</label>
+<label id="task-column-due_within?-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-due_within?" checked="" data-head="task-head-due_within?" data-label="Due within 7 days" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Due within 7 days</span>
+</label>
+<label id="task-column-due_within-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-due_within" checked="" data-head="task-head-due_within" data-label="Due within" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Due within</span>
+</label>
+<label id="task-column-description-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-description" checked="" data-head="task-head-description" data-label="Description" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Description</span>
+</label>
+<label id="task-column-tags-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-tags" checked="" data-head="task-head-tags" data-label="Tags" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Tags</span>
+</label>
+<label id="task-column-checks-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-checks" checked="" data-head="task-head-checks" data-label="Checks" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Checks</span>
+</label>
+<label id="task-column-recurrence-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-recurrence" checked="" data-head="task-head-recurrence" data-label="Repeats" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Repeats</span>
+</label>
+<label id="task-column-inserted_at-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-inserted_at" checked="" data-head="task-head-inserted_at" data-label="Inserted at" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Inserted at</span>
+</label>
+<label id="task-column-project-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-project" checked="" data-head="task-head-project" data-label="Project" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Project</span>
+</label>
+<label id="task-column-assignee-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-assignee" checked="" data-head="task-head-assignee" data-label="Assignee" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Assignee</span>
+</label>
+<label id="task-column-reporter-entry" class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap">
+<input type="checkbox" id="task-column-reporter" checked="" data-head="task-head-reporter" data-label="Reported by" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+<span>Reported by</span>
+</label>
+</div>
+<p id="task-columns-status" role="status" phx-update="ignore" class="sr-only">
+</p>
+</div>
+</div>
+<p id="task-status" role="status" aria-live="polite" class="sr-only">Archive failed: You are not allowed to do this.</p>
+<div id="task-grid" phx-hook=".Grid" phx-target="T" data-ash-table="" data-lead="2" data-select="multi" tabindex="-1" class="overflow-x-auto outline-none ">
+<table id="task-table" role="grid" aria-label="Tasks" aria-rowcount="33" aria-colcount="24" aria-multiselectable="true" data-first-row="3" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" phx-update="stream">
+<thead id="task-head">
+<tr id="task-head-row" role="row" aria-rowindex="1">
+<th id="task-select-head" role="columnheader" scope="col" aria-colindex="1" tabindex="-1" data-select-page="" class="w-0">
+<input type="checkbox" tabindex="-1" aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</th>
+<th id="task-expander-head" role="columnheader" scope="col" aria-colindex="2" tabindex="-1" class="w-0">
+<span class="sr-only">Related records</span>
+</th>
+<th id="task-head-title" role="columnheader" scope="col" aria-colindex="3" aria-sort="none" aria-label="Title" tabindex="-1" data-label="" data-sort="" phx-click="sort" phx-value-column="title" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Title<span aria-hidden="true">
+</span>
+<span id="task-resize-title" role="separator" aria-orientation="vertical" aria-label="Resize Title" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-status" role="columnheader" scope="col" aria-colindex="4" aria-sort="none" aria-label="State" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="status" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">State<span aria-hidden="true">
+</span>
+<span id="task-resize-status" role="separator" aria-orientation="vertical" aria-label="Resize State" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-priority" role="columnheader" scope="col" aria-colindex="5" aria-sort="none" aria-label="Priority" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="priority" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Priority<span aria-hidden="true">
+</span>
+<span id="task-resize-priority" role="separator" aria-orientation="vertical" aria-label="Resize Priority" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-progress" role="columnheader" scope="col" aria-colindex="6" aria-sort="none" aria-label="Progress" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="progress" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Progress<span aria-hidden="true">
+</span>
+<span id="task-resize-progress" role="separator" aria-orientation="vertical" aria-label="Resize Progress" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-estimate_hours" role="columnheader" scope="col" aria-colindex="7" aria-sort="none" aria-label="Estimate hours" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="estimate_hours" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Estimate hours<span aria-hidden="true">
+</span>
+<span id="task-resize-estimate_hours" role="separator" aria-orientation="vertical" aria-label="Resize Estimate hours" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-billable?" role="columnheader" scope="col" aria-colindex="8" aria-sort="none" aria-label="Billable?" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="billable?" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Billable?<span aria-hidden="true">
+</span>
+<span id="task-resize-billable?" role="separator" aria-orientation="vertical" aria-label="Resize Billable?" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-due_on" role="columnheader" scope="col" aria-colindex="9" aria-sort="none" aria-label="Due on" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="due_on" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Due on<span aria-hidden="true">
+</span>
+<span id="task-resize-due_on" role="separator" aria-orientation="vertical" aria-label="Resize Due on" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-completed_at" role="columnheader" scope="col" aria-colindex="10" aria-sort="none" aria-label="Completed at" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="completed_at" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Completed at<span aria-hidden="true">
+</span>
+<span id="task-resize-completed_at" role="separator" aria-orientation="vertical" aria-label="Resize Completed at" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-overdue?" role="columnheader" scope="col" aria-colindex="11" aria-sort="none" aria-label="Overdue?" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="overdue?" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Overdue?<span aria-hidden="true">
+</span>
+<span id="task-resize-overdue?" role="separator" aria-orientation="vertical" aria-label="Resize Overdue?" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-comment_count" role="columnheader" scope="col" aria-colindex="12" aria-sort="none" aria-label="Comments" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="comment_count" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Comments<span aria-hidden="true">
+</span>
+<span id="task-resize-comment_count" role="separator" aria-orientation="vertical" aria-label="Resize Comments" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-headline" role="columnheader" scope="col" aria-colindex="13" aria-label="Headline" tabindex="-1" class="relative whitespace-nowrap ">Headline<span id="task-resize-headline" role="separator" aria-orientation="vertical" aria-label="Resize Headline" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-due_within?" role="columnheader" scope="col" aria-colindex="14" aria-sort="none" aria-label="Due within 7 days" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="due_within?" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Due within 7 days<span aria-hidden="true">
+</span>
+<span id="task-resize-due_within?" role="separator" aria-orientation="vertical" aria-label="Resize Due within 7 days" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-due_within" role="columnheader" scope="col" aria-colindex="15" aria-sort="none" aria-label="Due within" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="due_within" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Due within<span aria-hidden="true">
+</span>
+<span id="task-resize-due_within" role="separator" aria-orientation="vertical" aria-label="Resize Due within" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-description" role="columnheader" scope="col" aria-colindex="16" aria-label="Description" tabindex="-1" class="relative whitespace-nowrap ">Description<span id="task-resize-description" role="separator" aria-orientation="vertical" aria-label="Resize Description" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-tags" role="columnheader" scope="col" aria-colindex="17" aria-label="Tags" tabindex="-1" class="relative whitespace-nowrap ">Tags<span id="task-resize-tags" role="separator" aria-orientation="vertical" aria-label="Resize Tags" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-checks" role="columnheader" scope="col" aria-colindex="18" aria-label="Checks" tabindex="-1" class="relative whitespace-nowrap ">Checks<span id="task-resize-checks" role="separator" aria-orientation="vertical" aria-label="Resize Checks" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-recurrence" role="columnheader" scope="col" aria-colindex="19" aria-label="Repeats" tabindex="-1" class="relative whitespace-nowrap ">Repeats<span id="task-resize-recurrence" role="separator" aria-orientation="vertical" aria-label="Resize Repeats" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-inserted_at" role="columnheader" scope="col" aria-colindex="20" aria-sort="none" aria-label="Inserted at" tabindex="-1" data-sort="" phx-click="sort" phx-value-column="inserted_at" phx-target="T" class="relative whitespace-nowrap cursor-pointer select-none">Inserted at<span aria-hidden="true">
+</span>
+<span id="task-resize-inserted_at" role="separator" aria-orientation="vertical" aria-label="Resize Inserted at" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-project" role="columnheader" scope="col" aria-colindex="21" aria-label="Project" tabindex="-1" class="relative whitespace-nowrap ">Project<span id="task-resize-project" role="separator" aria-orientation="vertical" aria-label="Resize Project" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-assignee" role="columnheader" scope="col" aria-colindex="22" aria-label="Assignee" tabindex="-1" class="relative whitespace-nowrap ">Assignee<span id="task-resize-assignee" role="separator" aria-orientation="vertical" aria-label="Resize Assignee" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-head-reporter" role="columnheader" scope="col" aria-colindex="23" aria-label="Reported by" tabindex="-1" class="relative whitespace-nowrap ">Reported by<span id="task-resize-reporter" role="separator" aria-orientation="vertical" aria-label="Resize Reported by" aria-valuemin="48" aria-valuemax="1000" tabindex="-1" data-resize="" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]">
+</span>
+</th>
+<th id="task-actions-head" role="columnheader" scope="col" aria-colindex="24" tabindex="-1" class="whitespace-nowrap">
+            Actions
+          </th>
+</tr>
+<tr id="task-filter-row" role="row" aria-rowindex="2">
+<td id="task-select-filter" role="gridcell" aria-colindex="1" tabindex="-1">
+</td>
+<td id="task-expander-filter" role="gridcell" aria-colindex="2" tabindex="-1">
+</td>
+<td id="task-filter-title" role="gridcell" aria-colindex="3" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-title-operator" name="filter[title][o]" form="task-filters" tabindex="-1" aria-label="How to filter Title" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="contains">
+      contains
+    </option>
+<option value="equals">
+      equals
+    </option>
+<option value="starts_with">
+      starts with
+    </option>
+</select>
+<input type="text" id="task-filter-title-value" name="filter[title][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Title" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-status" role="gridcell" aria-colindex="4" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-status-operator" name="filter[status][o]" form="task-filters" tabindex="-1" aria-label="How to filter State" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="is">
+      is
+    </option>
+<option value="any_of">
+      is any of
+    </option>
+<option value="none_of">
+      is none of
+    </option>
+</select>
+<select id="task-filter-status-value" name="filter[status][v]" form="task-filters" tabindex="-1" aria-label="Filter State" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">Any</option>
+<option value="backlog">
+      Backlog
+    </option>
+<option value="todo">
+      To do
+    </option>
+<option value="in_progress">
+      In progress
+    </option>
+<option value="in_review">
+      In review
+    </option>
+<option value="done">
+      Done
+    </option>
+<option value="archived">
+      Archived
+    </option>
+</select>
+</div>
+</td>
+<td id="task-filter-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-priority-operator" name="filter[priority][o]" form="task-filters" tabindex="-1" aria-label="How to filter Priority" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="is">
+      is
+    </option>
+<option value="any_of">
+      is any of
+    </option>
+<option value="none_of">
+      is none of
+    </option>
+</select>
+<select id="task-filter-priority-value" name="filter[priority][v]" form="task-filters" tabindex="-1" aria-label="Filter Priority" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">Any</option>
+<option value="low">
+      Low
+    </option>
+<option value="medium">
+      Medium
+    </option>
+<option value="high">
+      High
+    </option>
+<option value="urgent">
+      Urgent
+    </option>
+</select>
+</div>
+</td>
+<td id="task-filter-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-progress-operator" name="filter[progress][o]" form="task-filters" tabindex="-1" aria-label="How to filter Progress" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="equals">
+      equals
+    </option>
+<option value="greater_than">
+      greater than
+    </option>
+<option value="less_than">
+      less than
+    </option>
+<option value="at_least">
+      at least
+    </option>
+<option value="at_most">
+      at most
+    </option>
+<option value="between">
+      between
+    </option>
+</select>
+<input type="number" step="any" id="task-filter-progress-value" name="filter[progress][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Progress" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-estimate_hours-operator" name="filter[estimate_hours][o]" form="task-filters" tabindex="-1" aria-label="How to filter Estimate hours" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="equals">
+      equals
+    </option>
+<option value="greater_than">
+      greater than
+    </option>
+<option value="less_than">
+      less than
+    </option>
+<option value="at_least">
+      at least
+    </option>
+<option value="at_most">
+      at most
+    </option>
+<option value="between">
+      between
+    </option>
+<option value="is_empty">
+      is empty
+    </option>
+</select>
+<input type="number" step="any" id="task-filter-estimate_hours-value" name="filter[estimate_hours][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Estimate hours" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-billable?-value" name="filter[billable?][o]" form="task-filters" tabindex="-1" aria-label="Filter Billable?" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">Any</option>
+<option value="yes">
+      Yes
+    </option>
+<option value="no">
+      No
+    </option>
+</select>
+</div>
+</td>
+<td id="task-filter-due_on" role="gridcell" aria-colindex="9" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-due_on-operator" name="filter[due_on][o]" form="task-filters" tabindex="-1" aria-label="How to filter Due on" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="on">
+      on
+    </option>
+<option value="before">
+      before
+    </option>
+<option value="after">
+      after
+    </option>
+<option value="between">
+      between
+    </option>
+<option value="is_empty">
+      is empty
+    </option>
+</select>
+<input type="date" id="task-filter-due_on-value" name="filter[due_on][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Due on" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-completed_at" role="gridcell" aria-colindex="10" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-completed_at-operator" name="filter[completed_at][o]" form="task-filters" tabindex="-1" aria-label="How to filter Completed at" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="before">
+      before
+    </option>
+<option value="after">
+      after
+    </option>
+<option value="between">
+      between
+    </option>
+<option value="is_empty">
+      is empty
+    </option>
+</select>
+<input type="datetime-local" step="1" id="task-filter-completed_at-value" name="filter[completed_at][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Completed at" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-overdue?-value" name="filter[overdue?][o]" form="task-filters" tabindex="-1" aria-label="Filter Overdue?" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">Any</option>
+<option value="yes">
+      Yes
+    </option>
+<option value="no">
+      No
+    </option>
+</select>
+</div>
+</td>
+<td id="task-filter-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-comment_count-operator" name="filter[comment_count][o]" form="task-filters" tabindex="-1" aria-label="How to filter Comments" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="equals">
+      equals
+    </option>
+<option value="greater_than">
+      greater than
+    </option>
+<option value="less_than">
+      less than
+    </option>
+<option value="at_least">
+      at least
+    </option>
+<option value="at_most">
+      at most
+    </option>
+<option value="between">
+      between
+    </option>
+</select>
+<input type="number" step="any" id="task-filter-comment_count-value" name="filter[comment_count][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Comments" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-headline" role="gridcell" aria-colindex="13" tabindex="-1">
+</td>
+<td id="task-filter-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-due_within?-value" name="filter[due_within?][o]" form="task-filters" tabindex="-1" aria-label="Filter Due within 7 days" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">Any</option>
+<option value="yes">
+      Yes
+    </option>
+<option value="no">
+      No
+    </option>
+</select>
+</div>
+</td>
+<td id="task-filter-due_within" role="gridcell" aria-colindex="15" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-due_within-value" name="filter[due_within][o]" form="task-filters" tabindex="-1" aria-label="Filter Due within" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="">Any</option>
+<option value="yes">
+      Yes
+    </option>
+<option value="no">
+      No
+    </option>
+</select>
+</div>
+</td>
+<td id="task-filter-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-filter-tags" role="gridcell" aria-colindex="17" tabindex="-1">
+</td>
+<td id="task-filter-checks" role="gridcell" aria-colindex="18" tabindex="-1">
+</td>
+<td id="task-filter-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-filter-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" data-filter="">
+<div class="flex items-center gap-1">
+<select id="task-filter-inserted_at-operator" name="filter[inserted_at][o]" form="task-filters" tabindex="-1" aria-label="How to filter Inserted at" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="before">
+      before
+    </option>
+<option value="after">
+      after
+    </option>
+<option value="between">
+      between
+    </option>
+</select>
+<input type="datetime-local" step="1" id="task-filter-inserted_at-value" name="filter[inserted_at][v]" form="task-filters" phx-debounce="blur" tabindex="-1" aria-label="Filter Inserted at" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+</div>
+</td>
+<td id="task-filter-project" role="gridcell" aria-colindex="21" tabindex="-1">
+</td>
+<td id="task-filter-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-filter-reporter" role="gridcell" aria-colindex="23" tabindex="-1">
+</td>
+<td id="task-actions-filter" role="gridcell" aria-colindex="24" tabindex="-1">
+</td>
+</tr>
+</thead>
+<tbody id="task-row-uuid-1">
+<tr id="task-row-uuid-1-r" role="row" aria-rowindex="3">
+<td id="task-row-uuid-1-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-1-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-1-c-title" role="gridcell" aria-colindex="3" tabindex="-1" aria-invalid="true" aria-describedby="task-row-uuid-1-c-title-error" data-value="" data-saved="Task 30">
+<span id="task-row-uuid-1-c-title-error" popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">is required</span>
+</td>
+<td id="task-row-uuid-1-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-1-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-1-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="0">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="0" max="100" aria-hidden="true">
+</progress>0</span>
+</td>
+<td id="task-row-uuid-1-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" data-value="12.5">12.5 h</td>
+<td id="task-row-uuid-1-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-1-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-03-03</td>
+<td id="task-row-uuid-1-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-1-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-1-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">12</td>
+<td id="task-row-uuid-1-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 30 (0%)</td>
+<td id="task-row-uuid-1-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-1-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-1-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-1-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-1-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-1-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-1-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T18:00:00</td>
+<td id="task-row-uuid-1-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-1-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">Gus Maier</td>
+<td id="task-row-uuid-1-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-1-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-1-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-1-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-1-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-1-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-1-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-1-x" hidden="" data-detail="" data-row="uuid-1">
+</tbody>
+<tbody id="task-row-uuid-2">
+<tr id="task-row-uuid-2-r" role="row" aria-rowindex="4">
+<td id="task-row-uuid-2-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-2-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-2-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 29</td>
+<td id="task-row-uuid-2-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-2-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-2-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="90">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="90" max="100" aria-hidden="true">
+</progress>90</span>
+</td>
+<td id="task-row-uuid-2-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-2-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-2-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-03-02</td>
+<td id="task-row-uuid-2-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-2-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-2-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-2-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 29 (90%)</td>
+<td id="task-row-uuid-2-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-2-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-2-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-2-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-2-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-2-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-2-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T17:00:00</td>
+<td id="task-row-uuid-2-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-2-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-2-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-2-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="" aria-invalid="true" aria-describedby="task-row-uuid-2-a-error">
+<button type="button" id="task-row-uuid-2-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-2-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-2-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-2-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-2-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+<span id="task-row-uuid-2-a-error" popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">You are not allowed to do this.</span>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-2-x" hidden="" data-detail="" data-row="uuid-2">
+</tbody>
+<tbody id="task-row-uuid-3">
+<tr id="task-row-uuid-3-r" role="row" aria-rowindex="5">
+<td id="task-row-uuid-3-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-3-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-3-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 28</td>
+<td id="task-row-uuid-3-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-3-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-3-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="80">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="80" max="100" aria-hidden="true">
+</progress>80</span>
+</td>
+<td id="task-row-uuid-3-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-3-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-3-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-03-01</td>
+<td id="task-row-uuid-3-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-3-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-3-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-3-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 28 (80%)</td>
+<td id="task-row-uuid-3-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-3-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-3-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-3-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-3-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-3-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-3-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T16:00:00</td>
+<td id="task-row-uuid-3-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-3-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-3-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-3-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-3-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-3-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-3-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-3-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-3-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-3-x" hidden="" data-detail="" data-row="uuid-3">
+</tbody>
+<tbody id="task-row-uuid-4">
+<tr id="task-row-uuid-4-r" role="row" aria-rowindex="6">
+<td id="task-row-uuid-4-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-4-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-4-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 27</td>
+<td id="task-row-uuid-4-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-4-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-4-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="70">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="70" max="100" aria-hidden="true">
+</progress>70</span>
+</td>
+<td id="task-row-uuid-4-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-4-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-4-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-28</td>
+<td id="task-row-uuid-4-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-4-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-4-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-4-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 27 (70%)</td>
+<td id="task-row-uuid-4-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-4-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-4-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-4-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-4-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-4-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-4-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T15:00:00</td>
+<td id="task-row-uuid-4-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-4-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-4-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-4-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-4-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-4-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-4-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-4-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-4-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-4-x" hidden="" data-detail="" data-row="uuid-4">
+</tbody>
+<tbody id="task-row-uuid-5">
+<tr id="task-row-uuid-5-r" role="row" aria-rowindex="7">
+<td id="task-row-uuid-5-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-5-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-5-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 26</td>
+<td id="task-row-uuid-5-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-5-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-5-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="60">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="60" max="100" aria-hidden="true">
+</progress>60</span>
+</td>
+<td id="task-row-uuid-5-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-5-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-5-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-27</td>
+<td id="task-row-uuid-5-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-5-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-5-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-5-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 26 (60%)</td>
+<td id="task-row-uuid-5-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-5-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-5-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-5-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-5-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-5-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-5-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T14:00:00</td>
+<td id="task-row-uuid-5-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-5-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-5-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-5-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-5-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-5-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-5-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-5-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-5-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-5-x" hidden="" data-detail="" data-row="uuid-5">
+</tbody>
+<tbody id="task-row-uuid-6">
+<tr id="task-row-uuid-6-r" role="row" aria-rowindex="8">
+<td id="task-row-uuid-6-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-6-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-6-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 25</td>
+<td id="task-row-uuid-6-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-6-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-6-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="50">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="50" max="100" aria-hidden="true">
+</progress>50</span>
+</td>
+<td id="task-row-uuid-6-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-6-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-6-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-26</td>
+<td id="task-row-uuid-6-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-6-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-6-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-6-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 25 (50%)</td>
+<td id="task-row-uuid-6-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-6-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-6-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-6-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-6-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-6-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-6-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T13:00:00</td>
+<td id="task-row-uuid-6-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-6-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-6-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-6-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-6-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-6-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-6-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-6-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-6-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-6-x" hidden="" data-detail="" data-row="uuid-6">
+</tbody>
+<tbody id="task-row-uuid-7">
+<tr id="task-row-uuid-7-r" role="row" aria-rowindex="9">
+<td id="task-row-uuid-7-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-7-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-7-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 24</td>
+<td id="task-row-uuid-7-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-7-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-7-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="40">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="40" max="100" aria-hidden="true">
+</progress>40</span>
+</td>
+<td id="task-row-uuid-7-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-7-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-7-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-25</td>
+<td id="task-row-uuid-7-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-7-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-7-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-7-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 24 (40%)</td>
+<td id="task-row-uuid-7-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-7-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-7-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-7-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-7-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-7-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-7-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T12:00:00</td>
+<td id="task-row-uuid-7-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-7-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-7-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-7-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-7-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-7-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-7-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-7-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-7-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-7-x" hidden="" data-detail="" data-row="uuid-7">
+</tbody>
+<tbody id="task-row-uuid-8">
+<tr id="task-row-uuid-8-r" role="row" aria-rowindex="10">
+<td id="task-row-uuid-8-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-8-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-8-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 23</td>
+<td id="task-row-uuid-8-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-8-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-8-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="30">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="30" max="100" aria-hidden="true">
+</progress>30</span>
+</td>
+<td id="task-row-uuid-8-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-8-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-8-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-24</td>
+<td id="task-row-uuid-8-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-8-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-8-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-8-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 23 (30%)</td>
+<td id="task-row-uuid-8-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-8-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-8-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-8-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-8-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-8-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-8-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T11:00:00</td>
+<td id="task-row-uuid-8-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-8-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-8-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-8-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-8-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-8-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-8-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-8-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-8-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-8-x" hidden="" data-detail="" data-row="uuid-8">
+</tbody>
+<tbody id="task-row-uuid-9">
+<tr id="task-row-uuid-9-r" role="row" aria-rowindex="11">
+<td id="task-row-uuid-9-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-9-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-9-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 22</td>
+<td id="task-row-uuid-9-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-9-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-9-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="20">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="20" max="100" aria-hidden="true">
+</progress>20</span>
+</td>
+<td id="task-row-uuid-9-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-9-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-9-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-23</td>
+<td id="task-row-uuid-9-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-9-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-9-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-9-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 22 (20%)</td>
+<td id="task-row-uuid-9-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-9-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-9-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-9-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-9-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-9-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-9-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T10:00:00</td>
+<td id="task-row-uuid-9-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-9-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-9-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-9-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-9-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-9-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-9-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-9-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-9-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-9-x" hidden="" data-detail="" data-row="uuid-9">
+</tbody>
+<tbody id="task-row-uuid-10">
+<tr id="task-row-uuid-10-r" role="row" aria-rowindex="12">
+<td id="task-row-uuid-10-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-10-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-10-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 21</td>
+<td id="task-row-uuid-10-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-10-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-10-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="10">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="10" max="100" aria-hidden="true">
+</progress>10</span>
+</td>
+<td id="task-row-uuid-10-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-10-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-10-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-22</td>
+<td id="task-row-uuid-10-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-10-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-10-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-10-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 21 (10%)</td>
+<td id="task-row-uuid-10-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-10-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-10-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-10-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-10-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-10-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-10-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T09:00:00</td>
+<td id="task-row-uuid-10-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-10-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-10-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-10-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-10-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-10-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-10-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-10-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-10-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-10-x" hidden="" data-detail="" data-row="uuid-10">
+</tbody>
+<tbody id="task-row-uuid-11">
+<tr id="task-row-uuid-11-r" role="row" aria-rowindex="13">
+<td id="task-row-uuid-11-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-11-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-11-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 20</td>
+<td id="task-row-uuid-11-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-11-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-11-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="0">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="0" max="100" aria-hidden="true">
+</progress>0</span>
+</td>
+<td id="task-row-uuid-11-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-11-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-11-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-21</td>
+<td id="task-row-uuid-11-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-11-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-11-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-11-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 20 (0%)</td>
+<td id="task-row-uuid-11-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-11-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-11-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-11-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-11-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-11-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-11-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T08:00:00</td>
+<td id="task-row-uuid-11-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-11-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-11-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-11-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-11-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-11-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-11-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-11-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-11-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-11-x" hidden="" data-detail="" data-row="uuid-11">
+</tbody>
+<tbody id="task-row-uuid-12">
+<tr id="task-row-uuid-12-r" role="row" aria-rowindex="14">
+<td id="task-row-uuid-12-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-12-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-12-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 19</td>
+<td id="task-row-uuid-12-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-12-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-12-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="90">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="90" max="100" aria-hidden="true">
+</progress>90</span>
+</td>
+<td id="task-row-uuid-12-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-12-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-12-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-20</td>
+<td id="task-row-uuid-12-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-12-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-12-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-12-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 19 (90%)</td>
+<td id="task-row-uuid-12-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-12-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-12-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-12-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-12-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-12-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-12-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T07:00:00</td>
+<td id="task-row-uuid-12-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-12-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-12-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-12-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-12-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-12-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-12-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-12-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-12-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-12-x" hidden="" data-detail="" data-row="uuid-12">
+</tbody>
+<tbody id="task-row-uuid-13">
+<tr id="task-row-uuid-13-r" role="row" aria-rowindex="15">
+<td id="task-row-uuid-13-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-13-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-13-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 18</td>
+<td id="task-row-uuid-13-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-13-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-13-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="80">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="80" max="100" aria-hidden="true">
+</progress>80</span>
+</td>
+<td id="task-row-uuid-13-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-13-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-13-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-19</td>
+<td id="task-row-uuid-13-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-13-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-13-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-13-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 18 (80%)</td>
+<td id="task-row-uuid-13-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-13-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-13-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-13-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-13-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-13-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-13-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T06:00:00</td>
+<td id="task-row-uuid-13-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-13-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-13-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-13-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-13-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-13-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-13-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-13-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-13-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-13-x" hidden="" data-detail="" data-row="uuid-13">
+</tbody>
+<tbody id="task-row-uuid-14">
+<tr id="task-row-uuid-14-r" role="row" aria-rowindex="16">
+<td id="task-row-uuid-14-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-14-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-14-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 17</td>
+<td id="task-row-uuid-14-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-14-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-14-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="70">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="70" max="100" aria-hidden="true">
+</progress>70</span>
+</td>
+<td id="task-row-uuid-14-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-14-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-14-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-18</td>
+<td id="task-row-uuid-14-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-14-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-14-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-14-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 17 (70%)</td>
+<td id="task-row-uuid-14-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-14-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-14-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-14-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-14-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-14-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-14-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T05:00:00</td>
+<td id="task-row-uuid-14-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-14-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-14-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-14-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-14-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-14-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-14-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-14-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-14-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-14-x" hidden="" data-detail="" data-row="uuid-14">
+</tbody>
+<tbody id="task-row-uuid-15">
+<tr id="task-row-uuid-15-r" role="row" aria-rowindex="17">
+<td id="task-row-uuid-15-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-15-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-15-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 16</td>
+<td id="task-row-uuid-15-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-15-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-15-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="60">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="60" max="100" aria-hidden="true">
+</progress>60</span>
+</td>
+<td id="task-row-uuid-15-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-15-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-15-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-17</td>
+<td id="task-row-uuid-15-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-15-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-15-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-15-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 16 (60%)</td>
+<td id="task-row-uuid-15-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-15-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-15-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-15-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-15-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-15-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-15-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T04:00:00</td>
+<td id="task-row-uuid-15-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-15-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-15-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-15-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-15-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-15-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-15-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-15-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-15-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-15-x" hidden="" data-detail="" data-row="uuid-15">
+</tbody>
+<tbody id="task-row-uuid-16">
+<tr id="task-row-uuid-16-r" role="row" aria-rowindex="18">
+<td id="task-row-uuid-16-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-16-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-16-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 15</td>
+<td id="task-row-uuid-16-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-16-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-16-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="50">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="50" max="100" aria-hidden="true">
+</progress>50</span>
+</td>
+<td id="task-row-uuid-16-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-16-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-16-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-16</td>
+<td id="task-row-uuid-16-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-16-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-16-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-16-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 15 (50%)</td>
+<td id="task-row-uuid-16-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-16-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-16-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-16-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-16-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-16-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-16-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T03:00:00</td>
+<td id="task-row-uuid-16-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-16-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-16-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-16-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-16-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-16-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-16-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-16-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-16-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-16-x" hidden="" data-detail="" data-row="uuid-16">
+</tbody>
+<tbody id="task-row-uuid-17">
+<tr id="task-row-uuid-17-r" role="row" aria-rowindex="19">
+<td id="task-row-uuid-17-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-17-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-17-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 14</td>
+<td id="task-row-uuid-17-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-17-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-17-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="40">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="40" max="100" aria-hidden="true">
+</progress>40</span>
+</td>
+<td id="task-row-uuid-17-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-17-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-17-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-15</td>
+<td id="task-row-uuid-17-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-17-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-17-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-17-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 14 (40%)</td>
+<td id="task-row-uuid-17-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-17-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-17-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-17-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-17-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-17-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-17-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T02:00:00</td>
+<td id="task-row-uuid-17-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-17-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-17-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-17-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-17-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-17-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-17-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-17-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-17-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-17-x" hidden="" data-detail="" data-row="uuid-17">
+</tbody>
+<tbody id="task-row-uuid-18">
+<tr id="task-row-uuid-18-r" role="row" aria-rowindex="20">
+<td id="task-row-uuid-18-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-18-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-18-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 13</td>
+<td id="task-row-uuid-18-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-18-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-18-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="30">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="30" max="100" aria-hidden="true">
+</progress>30</span>
+</td>
+<td id="task-row-uuid-18-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-18-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-18-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-14</td>
+<td id="task-row-uuid-18-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-18-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-18-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-18-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 13 (30%)</td>
+<td id="task-row-uuid-18-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-18-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-18-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-18-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-18-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-18-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-18-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T01:00:00</td>
+<td id="task-row-uuid-18-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-18-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-18-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-18-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-18-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-18-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-18-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-18-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-18-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-18-x" hidden="" data-detail="" data-row="uuid-18">
+</tbody>
+<tbody id="task-row-uuid-19">
+<tr id="task-row-uuid-19-r" role="row" aria-rowindex="21">
+<td id="task-row-uuid-19-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-19-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-19-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 12</td>
+<td id="task-row-uuid-19-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-19-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-19-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="20">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="20" max="100" aria-hidden="true">
+</progress>20</span>
+</td>
+<td id="task-row-uuid-19-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-19-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-19-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-13</td>
+<td id="task-row-uuid-19-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-19-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-19-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-19-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 12 (20%)</td>
+<td id="task-row-uuid-19-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-19-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-19-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-19-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-19-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-19-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-19-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-02T00:00:00</td>
+<td id="task-row-uuid-19-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-19-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-19-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-19-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-19-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-19-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-19-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-19-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-19-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-19-x" hidden="" data-detail="" data-row="uuid-19">
+</tbody>
+<tbody id="task-row-uuid-20">
+<tr id="task-row-uuid-20-r" role="row" aria-rowindex="22">
+<td id="task-row-uuid-20-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-20-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-20-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 11</td>
+<td id="task-row-uuid-20-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-20-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-20-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="10">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="10" max="100" aria-hidden="true">
+</progress>10</span>
+</td>
+<td id="task-row-uuid-20-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-20-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-20-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-12</td>
+<td id="task-row-uuid-20-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-20-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-20-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-20-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 11 (10%)</td>
+<td id="task-row-uuid-20-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-20-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-20-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-20-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-20-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-20-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-20-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-01T23:00:00</td>
+<td id="task-row-uuid-20-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-20-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-20-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-20-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-20-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-20-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-20-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-20-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-20-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-20-x" hidden="" data-detail="" data-row="uuid-20">
+</tbody>
+<tbody id="task-row-uuid-21">
+<tr id="task-row-uuid-21-r" role="row" aria-rowindex="23">
+<td id="task-row-uuid-21-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-21-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-21-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 10</td>
+<td id="task-row-uuid-21-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-21-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-21-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="0">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="0" max="100" aria-hidden="true">
+</progress>0</span>
+</td>
+<td id="task-row-uuid-21-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-21-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-21-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-11</td>
+<td id="task-row-uuid-21-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-21-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-21-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-21-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 10 (0%)</td>
+<td id="task-row-uuid-21-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-21-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-21-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-21-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-21-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-21-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-21-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-01T22:00:00</td>
+<td id="task-row-uuid-21-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-21-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-21-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-21-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-21-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-21-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-21-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-21-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-21-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-21-x" hidden="" data-detail="" data-row="uuid-21">
+</tbody>
+<tbody id="task-row-uuid-22">
+<tr id="task-row-uuid-22-r" role="row" aria-rowindex="24">
+<td id="task-row-uuid-22-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-22-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-22-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 09</td>
+<td id="task-row-uuid-22-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-22-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-22-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="90">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="90" max="100" aria-hidden="true">
+</progress>90</span>
+</td>
+<td id="task-row-uuid-22-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-22-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-22-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-10</td>
+<td id="task-row-uuid-22-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-22-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-22-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-22-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 09 (90%)</td>
+<td id="task-row-uuid-22-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-22-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-22-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-22-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-22-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-22-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-22-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-01T21:00:00</td>
+<td id="task-row-uuid-22-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-22-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-22-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-22-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-22-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-22-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-22-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-22-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-22-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-22-x" hidden="" data-detail="" data-row="uuid-22">
+</tbody>
+<tbody id="task-row-uuid-23">
+<tr id="task-row-uuid-23-r" role="row" aria-rowindex="25">
+<td id="task-row-uuid-23-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-23-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-23-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 08</td>
+<td id="task-row-uuid-23-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-23-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-23-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="80">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="80" max="100" aria-hidden="true">
+</progress>80</span>
+</td>
+<td id="task-row-uuid-23-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-23-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-23-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-09</td>
+<td id="task-row-uuid-23-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-23-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-23-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-23-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 08 (80%)</td>
+<td id="task-row-uuid-23-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-23-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-23-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-23-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-23-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-23-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-23-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-01T20:00:00</td>
+<td id="task-row-uuid-23-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-23-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-23-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-23-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-23-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-23-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-23-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-23-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-23-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-23-x" hidden="" data-detail="" data-row="uuid-23">
+</tbody>
+<tbody id="task-row-uuid-24">
+<tr id="task-row-uuid-24-r" role="row" aria-rowindex="26">
+<td id="task-row-uuid-24-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-24-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-24-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 07</td>
+<td id="task-row-uuid-24-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-24-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-24-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="70">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="70" max="100" aria-hidden="true">
+</progress>70</span>
+</td>
+<td id="task-row-uuid-24-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-24-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="false">
+<span aria-hidden="true">–</span>
+<span class="sr-only">No</span>
+</td>
+<td id="task-row-uuid-24-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-08</td>
+<td id="task-row-uuid-24-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-24-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-24-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-24-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 07 (70%)</td>
+<td id="task-row-uuid-24-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-24-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-24-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-24-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-24-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-24-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-24-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-01T19:00:00</td>
+<td id="task-row-uuid-24-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-24-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-24-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-24-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-24-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-24-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-24-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-24-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-24-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-24-x" hidden="" data-detail="" data-row="uuid-24">
+</tbody>
+<tbody id="task-row-uuid-25">
+<tr id="task-row-uuid-25-r" role="row" aria-rowindex="27">
+<td id="task-row-uuid-25-s" role="gridcell" aria-colindex="1" tabindex="-1" data-selector="">
+<input type="checkbox" tabindex="-1" aria-label="Select row" class="checkbox checkbox-xs border-base-content/50"/>
+</td>
+<td id="task-row-uuid-25-e" role="gridcell" aria-colindex="2" tabindex="-1" data-expander="">
+<button type="button" tabindex="-1" aria-expanded="false" aria-label="Related records">
+</button>
+</td>
+<td id="task-row-uuid-25-c-title" role="gridcell" aria-colindex="3" tabindex="-1">Task 06</td>
+<td id="task-row-uuid-25-c-status" role="gridcell" aria-colindex="4" tabindex="-1" data-value="in_progress">
+<span class="badge border-base-content/50 bg-transparent align-top">In progress</span>
+</td>
+<td id="task-row-uuid-25-c-priority" role="gridcell" aria-colindex="5" tabindex="-1" data-value="medium">
+<span class="badge border-base-content/50 bg-transparent align-top">Medium</span>
+</td>
+<td id="task-row-uuid-25-c-progress" role="gridcell" aria-colindex="6" tabindex="-1" data-value="60">
+<span class="flex items-center gap-2">
+<progress class="progress w-16 forced-color-adjust-none forced-colors:text-[CanvasText]" value="60" max="100" aria-hidden="true">
+</progress>60</span>
+</td>
+<td id="task-row-uuid-25-c-estimate_hours" role="gridcell" aria-colindex="7" tabindex="-1" aria-readonly="true">
+<span class="sr-only">Not available</span>
+</td>
+<td id="task-row-uuid-25-c-billable?" role="gridcell" aria-colindex="8" tabindex="-1" data-value="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-25-c-due_on" role="gridcell" aria-colindex="9" tabindex="-1">2026-02-07</td>
+<td id="task-row-uuid-25-c-completed_at" role="gridcell" aria-colindex="10" tabindex="-1">
+</td>
+<td id="task-row-uuid-25-c-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-25-c-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" aria-readonly="true">0</td>
+<td id="task-row-uuid-25-c-headline" role="gridcell" aria-colindex="13" tabindex="-1" aria-readonly="true">Medium: Task 06 (60%)</td>
+<td id="task-row-uuid-25-c-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-25-c-due_within" role="gridcell" aria-colindex="15" tabindex="-1" aria-readonly="true">
+<span aria-hidden="true">✓</span>
+<span class="sr-only">Yes</span>
+</td>
+<td id="task-row-uuid-25-c-description" role="gridcell" aria-colindex="16" tabindex="-1">
+</td>
+<td id="task-row-uuid-25-c-tags" role="gridcell" aria-colindex="17" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-25-c-checks" role="gridcell" aria-colindex="18" tabindex="-1" data-value="[]">
+</td>
+<td id="task-row-uuid-25-c-recurrence" role="gridcell" aria-colindex="19" tabindex="-1">
+</td>
+<td id="task-row-uuid-25-c-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" aria-readonly="true">2026-01-01T18:00:00</td>
+<td id="task-row-uuid-25-c-project" role="gridcell" aria-colindex="21" tabindex="-1">Project 1</td>
+<td id="task-row-uuid-25-c-assignee" role="gridcell" aria-colindex="22" tabindex="-1">
+</td>
+<td id="task-row-uuid-25-c-reporter" role="gridcell" aria-colindex="23" tabindex="-1" aria-readonly="true">Hana Graf</td>
+<td id="task-row-uuid-25-a" role="gridcell" aria-colindex="24" tabindex="-1" data-actions="">
+<button type="button" id="task-row-uuid-25-a-archive" tabindex="-1" data-action="archive" class="btn btn-xs -my-1 me-1">Archive</button>
+<button type="button" id="task-row-uuid-25-a-reassign" tabindex="-1" data-action="reassign" class="btn btn-xs -my-1 me-1">Reassign</button>
+<button type="button" id="task-row-uuid-25-a-set_progress" tabindex="-1" data-action="set_progress" class="btn btn-xs -my-1 me-1">Set progress</button>
+<button type="button" id="task-row-uuid-25-a-destroy" tabindex="-1" data-action="destroy" data-question="Delete this task? This cannot be undone." data-destructive="" class="btn btn-xs -my-1 me-1">Destroy</button>
+<button type="button" id="task-row-uuid-25-a-set_labels" tabindex="-1" data-action="set_labels" class="btn btn-xs -my-1 me-1">Set labels</button>
+</td>
+</tr>
+</tbody>
+<tbody id="task-row-uuid-25-x" hidden="" data-detail="" data-row="uuid-25">
+</tbody>
+<tfoot id="task-foot" class="font-normal text-base-content">
+<tr id="task-summaries" role="row" aria-rowindex="33" data-summaries="">
+<td id="task-summaries-select" role="gridcell" aria-colindex="1" tabindex="-1">
+</td>
+<td id="task-summaries-expander" role="gridcell" aria-colindex="2" tabindex="-1">
+</td>
+<td id="task-summary-title" role="gridcell" aria-colindex="3" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-status" role="gridcell" aria-colindex="4" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-priority" role="gridcell" aria-colindex="5" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-progress" role="gridcell" aria-colindex="6" aria-busy="true" tabindex="-1" data-summary="avg" class="whitespace-nowrap">
+<span data-summary-kind="" class="text-xs">Average </span>
+<span data-summary-value="" class="font-medium">45</span>
+</td>
+<td id="task-summary-estimate_hours" role="gridcell" aria-colindex="7" aria-busy="true" tabindex="-1" data-summary="sum" class="whitespace-nowrap">
+<span data-summary-kind="" class="text-xs">Sum </span>
+<span data-summary-unavailable="">
+<span aria-hidden="true">–</span>
+<span class="sr-only">Not available</span>
+</span>
+</td>
+<td id="task-summary-billable?" role="gridcell" aria-colindex="8" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-due_on" role="gridcell" aria-colindex="9" aria-busy="true" tabindex="-1" data-summary="max" class="whitespace-nowrap">
+<span data-summary-kind="" class="text-xs">Max </span>
+<span data-summary-value="" class="font-medium">2026-03-03</span>
+</td>
+<td id="task-summary-completed_at" role="gridcell" aria-colindex="10" aria-busy="true" tabindex="-1" data-summary="count" class="whitespace-nowrap">
+<span data-summary-kind="" class="text-xs">Count </span>
+<span data-summary-value="" class="font-medium">0</span>
+</td>
+<td id="task-summary-overdue?" role="gridcell" aria-colindex="11" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-comment_count" role="gridcell" aria-colindex="12" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-headline" role="gridcell" aria-colindex="13" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-due_within?" role="gridcell" aria-colindex="14" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-due_within" role="gridcell" aria-colindex="15" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-description" role="gridcell" aria-colindex="16" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-tags" role="gridcell" aria-colindex="17" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-checks" role="gridcell" aria-colindex="18" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-recurrence" role="gridcell" aria-colindex="19" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-inserted_at" role="gridcell" aria-colindex="20" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-project" role="gridcell" aria-colindex="21" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-assignee" role="gridcell" aria-colindex="22" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summary-reporter" role="gridcell" aria-colindex="23" tabindex="-1" class="whitespace-nowrap">
+</td>
+<td id="task-summaries-actions" role="gridcell" aria-colindex="24" tabindex="-1">
+</td>
+</tr>
+</tfoot>
+</table>
+<template id="task-editor-title" data-editor="text">
+<div>
+<textarea rows="1" data-control="" aria-label="Title" aria-required="true" aria-describedby="task-editor-title-count" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none">
+</textarea>
+<span id="task-editor-title-count" popover="manual" data-count="codepoints" data-max="120" data-trim="" class="text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold inset-auto m-0 rounded border border-base-content/40 bg-base-100 px-1.5 py-0.5 text-base-content/70 shadow data-[over]:text-base-content">0/120</span>
+</div>
+</template>
+<template id="task-editor-status" data-editor="enum" data-confirm="Change the state of this task?">
+<select aria-label="State" aria-required="true" class="block h-5 w-full bg-transparent p-0 text-sm outline-none">
+<option value="backlog">Backlog</option>
+<option value="todo">To do</option>
+<option value="in_progress">In progress</option>
+<option value="in_review">In review</option>
+<option value="done">Done</option>
+<option value="archived">Archived</option>
+</select>
+</template>
+<template id="task-editor-priority" data-editor="enum">
+<select aria-label="Priority" aria-required="true" class="block h-5 w-full bg-transparent p-0 text-sm outline-none">
+<option value="low">Low</option>
+<option value="medium">Medium</option>
+<option value="high">High</option>
+<option value="urgent">Urgent</option>
+</select>
+</template>
+<template id="task-editor-progress" data-editor="component" data-commit="change">
+<span class="flex items-center gap-2">
+<input type="range" min="0" max="100" step="1" value="" class="range [--range-bg:color-mix(in_oklab,currentColor_50%,transparent)] forced-color-adjust-none forced-colors:text-[CanvasText] forced-colors:[--range-thumb:Canvas] range-xs w-24 focus-visible:outline-none" aria-label="Progress" aria-required="true" data-control=""/>
+<span data-value-text="" aria-hidden="true" class="text-sm tabular-nums">
+</span>
+</span>
+</template>
+<template id="task-editor-estimate_hours" data-editor="component" data-commit="enter">
+<span class="flex items-center gap-1">
+<input type="number" min="0" step="0.5" value="" class="block h-5 w-20 bg-transparent p-0 text-sm outline-none" aria-label="Estimate hours" data-control=""/>
+<span aria-hidden="true">h</span>
+</span>
+</template>
+<template id="task-editor-billable?" data-editor="boolean">
+<input type="checkbox" tabindex="-1" aria-label="Billable?" class="checkbox checkbox-xs pointer-events-none"/>
+</template>
+<template id="task-editor-due_on" data-editor="date">
+<input type="date" aria-label="Due on" class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"/>
+</template>
+<template id="task-editor-completed_at" data-editor="datetime">
+<input type="datetime-local" step="1" aria-label="Completed at" class="block h-5 w-full min-w-24 bg-transparent p-0 text-sm outline-none"/>
+</template>
+<template id="task-editor-description" data-editor="text">
+<textarea rows="1" aria-label="Description" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none">
+</textarea>
+</template>
+<template id="task-editor-tags" data-editor="list">
+<div id="task-editor-tags-list" data-list="" data-value-label="Tags {n}" data-remove-label="Remove Tags {n}" class="flex flex-col gap-1 items-start py-0.5" role="group" aria-label="Tags">
+<template>
+<div data-item="" class="flex items-center gap-1">
+<textarea rows="1" class="textarea min-h-0 textarea-xs w-48 resize-none not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+</textarea>
+<span data-count="codepoints" data-max="20" data-trim="" class="text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold shrink-0 opacity-70 data-[over]:opacity-100">0/20</span>
+<button type="button" data-remove="" class="btn btn-ghost btn-xs">
+<span aria-hidden="true">✕</span>
+</button>
+</div>
+</template>
+<button type="button" data-add="" class="btn self-start btn-xs">
+    Add value
+  </button>
+</div>
+</template>
+<template id="task-editor-checks" data-editor="choices">
+<div role="group" aria-label="Checks" class="flex flex-col items-start gap-1 py-0.5">
+<label class="flex items-center gap-2">
+<input type="checkbox" value="reviewed" class="checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+    Reviewed
+  </label>
+<label class="flex items-center gap-2">
+<input type="checkbox" value="tested" class="checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+    Tested
+  </label>
+<label class="flex items-center gap-2">
+<input type="checkbox" value="documented" class="checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+    Documented
+  </label>
+<label class="flex items-center gap-2">
+<input type="checkbox" value="released" class="checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]"/>
+    Released
+  </label>
+</div>
+</template>
+<template id="task-editor-recurrence" data-editor="group" data-confirm="Change how often this task comes round?">
+</template>
+<template id="task-editor-project" data-editor="reference" data-confirm="Move this task to another project?">
+</template>
+<template id="task-editor-assignee" data-editor="reference">
+</template>
+<template id="task-failure">
+<span popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">
+</span>
+</template>
+</div>
+<div id="task-scrollbar" phx-update="ignore" aria-hidden="true" tabindex="-1" hidden="" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="">
+<div class="h-px">
+</div>
+</div>
+<div id="task-whole" popover="manual" phx-update="ignore" aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="">
+</div>
+<div id="task-dialogs" phx-update="ignore">
+<dialog id="task-dialog" aria-labelledby="task-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border">
+<form method="dialog">
+<p id="task-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button value="cancel" class="btn">Cancel</button>
+<button value="confirm" class="btn btn-primary">Confirm</button>
+</div>
+</form>
+</dialog>
+</div>
+<nav id="task-pagination" phx-hook=".Pagination" aria-label="Pagination: Tasks" class="mt-4 flex flex-wrap items-center justify-between gap-4">
+<p id="task-range" class="me-auto text-sm">1–25 of 30</p>
+<div class="join">
+<button type="button" id="task-previous" class="join-item btn btn-sm" disabled="" phx-click="page" phx-value-to="previous" phx-target="T">
+    Previous
+  </button>
+<span class="contents [&amp;&gt;:first-child]:ms-[calc(var(--border)*-1)]">
+<button type="button" id="task-page-1" class="join-item btn btn-sm forced-colors:aria-[current=page]:underline btn-active" aria-label="Go to page 1" aria-current="page" phx-click="page" phx-value-to="1" phx-target="T">
+      1
+    </button>
+<button type="button" id="task-page-2" class="join-item btn btn-sm forced-colors:aria-[current=page]:underline " aria-label="Go to page 2" phx-click="page" phx-value-to="2" phx-target="T">
+      2
+    </button>
+</span>
+<button type="button" id="task-next" class="join-item btn btn-sm" phx-click="page" phx-value-to="next" phx-target="T">
+    Next
+  </button>
+</div>
+<form id="task-page-size-form" phx-change="page_size" phx-target="T" class="flex items-center gap-2">
+<label for="task-page-size" class="text-sm">Rows per page</label>
+<select id="task-page-size" name="size" class="select select-sm w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]">
+<option value="10">
+      10
+    </option>
+<option value="25" selected="">
+      25
+    </option>
+<option value="50">
+      50
+    </option>
+</select>
+</form>
+</nav>
+</div>
+</div>
+</div>
+</div>
+<div id="flash-group" aria-live="polite">
+<div id="client-error" phx-click="[[&quot;push&quot;,{&quot;value&quot;:{&quot;key&quot;:&quot;error&quot;},&quot;event&quot;:&quot;lv:clear-flash&quot;}],[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}]]" role="alert" class="toast toast-top toast-end z-50" hidden="" phx-connected="[[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}],[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;hidden&quot;,&quot;&quot;]}]]" phx-disconnected="[[&quot;show&quot;,{&quot;time&quot;:300,&quot;to&quot;:&quot;.phx-client-error #client-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-out&quot;,&quot;duration-300&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;]]}],[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;hidden&quot;}]]">
+<div class="alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap alert-error">
+<span class="hero-exclamation-circle size-5 shrink-0">
+</span>
+<div>
+<p class="font-semibold">We can&#39;t find the internet</p>
+<p>
+    Attempting to reconnect
+    <span class="hero-arrow-path ml-1 size-3 motion-safe:animate-spin">
+</span>
+</p>
+</div>
+<div class="flex-1">
+</div>
+<button type="button" class="group self-start cursor-pointer" aria-label="close">
+<span class="hero-x-mark size-5 opacity-40 group-hover:opacity-70">
+</span>
+</button>
+</div>
+</div>
+<div id="server-error" phx-click="[[&quot;push&quot;,{&quot;value&quot;:{&quot;key&quot;:&quot;error&quot;},&quot;event&quot;:&quot;lv:clear-flash&quot;}],[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}]]" role="alert" class="toast toast-top toast-end z-50" hidden="" phx-connected="[[&quot;hide&quot;,{&quot;time&quot;:200,&quot;to&quot;:&quot;#server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-in&quot;,&quot;duration-200&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;]]}],[&quot;set_attr&quot;,{&quot;attr&quot;:[&quot;hidden&quot;,&quot;&quot;]}]]" phx-disconnected="[[&quot;show&quot;,{&quot;time&quot;:300,&quot;to&quot;:&quot;.phx-server-error #server-error&quot;,&quot;transition&quot;:[[&quot;transition-all&quot;,&quot;ease-out&quot;,&quot;duration-300&quot;],[&quot;opacity-0&quot;,&quot;translate-y-4&quot;,&quot;sm:translate-y-0&quot;,&quot;sm:scale-95&quot;],[&quot;opacity-100&quot;,&quot;translate-y-0&quot;,&quot;sm:scale-100&quot;]]}],[&quot;remove_attr&quot;,{&quot;attr&quot;:&quot;hidden&quot;}]]">
+<div class="alert w-80 sm:w-96 max-w-80 sm:max-w-96 text-wrap alert-error">
+<span class="hero-exclamation-circle size-5 shrink-0">
+</span>
+<div>
+<p class="font-semibold">Something went wrong!</p>
+<p>
+    Attempting to reconnect
+    <span class="hero-arrow-path ml-1 size-3 motion-safe:animate-spin">
+</span>
+</p>
+</div>
+<div class="flex-1">
+</div>
+<button type="button" class="group self-start cursor-pointer" aria-label="close">
+<span class="hero-x-mark size-5 opacity-40 group-hover:opacity-70">
+</span>
+</button>
+</div>
+</div>
+</div>
