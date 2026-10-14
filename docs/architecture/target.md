@@ -278,7 +278,7 @@ depend on 2a, 2b, 3 (except 3c), 3w, 4, LV. The one exception is
 | `.Referencing` | Reference cells, `label_field`, picker, `sticky_label?` | as today | 1 only | `resource/referencing.ex` |
 | `.Managing` | Arguments `manage_relationship` hands on | as today | none | `resource/managing.ex` |
 | `.Embedding` | Fields of a map cell, kinds of a union | `of/2`, `union/2`, `kind/2`, returning its own answer, not `Model.Field` | 1 only. Today it builds `Model.Field` and calls `Model.humanize/1` (5.4) | `resource/embedding.ex` |
-| `.Presenting` | A column's `component`, `max_lines`; the words of a cell type (`shown_as/1`) | as today | 1 and 3c | `resource/presenting.ex`; `shown_as/1` from `lib/ash_table/components.ex` |
+| `.Presenting` | A column's `component`, `max_lines` | as today | 1 and 3c | `resource/presenting.ex` (`shown_as/1`, the words of a cell type, lives in `AshDataTable.Component`, which parts 1 and 3 may both call: owner, 2026-10-14, stage 1 drift check F7) |
 | `.Uploading` | Limits of a file argument | as today | 1 only | `resource/uploading.ex` |
 | `.Exposing` | Field-policy exposure; `sensitive?/1`, `typed?/1`, `empty?/1` of a field | as today plus the moved predicates | none | `resource/exposing.ex`; predicates from `lib/ash_table/sensitive.ex:41-61` |
 | `.Summarising` | `summary` rules | as today | 1 only | `resource/summarising.ex` |
@@ -857,7 +857,7 @@ not stray from the target:
 - [ ] `render/1` → `Parts.Grid`, `Parts.Heading`, `Parts.Arguments`, `Parts.Selection`, `Parts.Messages`, `Parts.Summary`.
 - [ ] `Model.hideable/1` moves to part 3 with the markup that uses it (F3).
 - [ ] Hooks stay in the component module, so the rendered `phx-hook` names stay (M2).
-- [ ] `shown_as/1` from `AshTable.Components` into `Resource.Presenting`.
+- [ ] `shown_as/1` from `AshTable.Components` into `AshDataTable.Component` (owner, 2026-10-14; first moved into `Resource.Presenting`, which broke §5.1).
 - [ ] Update `docs/agents/architecture.md`.
 
 ### Stage 1b: hooks to JS files (Q15)
