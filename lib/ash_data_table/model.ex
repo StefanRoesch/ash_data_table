@@ -1001,20 +1001,11 @@ defmodule AshDataTable.Model do
     label ++ Enum.filter(columns, &(&1.kind == :attribute and not &1.sensitive?))
   end
 
-  @doc """
-  The columns a person can hide, in the table's order: every column but the
-  one a record is called by, the attribute of the resource's `label_field`,
-  without which a row cannot be told from another. A table that has no
-  such column lets every column be hidden; one of them stays, whichever,
-  and that is the browser's to see to (`keeps_one?/1`).
-  """
-  @spec hideable(t) :: [Column.t()]
-  def hideable(%__MODULE__{columns: columns} = model) do
-    case label_column(model) do
-      nil -> columns
-      label -> List.delete(columns, label)
-    end
-  end
+  @doc false
+  # A facade for the duration of the refactor: which columns a person can
+  # hide is the drawing's (`AshDataTable.Parts.Grid.hideable/1`, stage 1),
+  # and the tests still ask the model. Removed in a later stage.
+  defdelegate hideable(model), to: AshDataTable.Parts.Grid
 
   @doc """
   Whether nothing but a rule keeps the table from being left without a
