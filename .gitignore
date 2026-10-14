@@ -9,3 +9,4 @@ ash_data_table-*.tar
 
 # Local overrides for docker compose and the demo
 .env
+/node_modules/

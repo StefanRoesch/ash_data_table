@@ -7,6 +7,12 @@
   "exports": {
     ".": "./assets/js/index.js"
   },
+  "scripts": {
+    "check": "tsc -p assets"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
   "files": [
     "assets/js"
   ],
