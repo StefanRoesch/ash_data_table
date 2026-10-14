@@ -516,6 +516,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   alias AshDataTable.Act
   alias AshDataTable.Bulk
+  alias AshDataTable.Caller
   alias AshDataTable.Edit
   alias AshDataTable.Errors
   alias AshDataTable.Format
@@ -533,6 +534,7 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Sensitive
   alias AshDataTable.State
   alias AshDataTable.Text
+  alias AshDataTable.Table
 
   # Where the tables of a page are noted, by their ids: for each, where it
   # is (the ids from the table on the page down to its own), its listener
@@ -550,127 +552,21 @@ defmodule AshDataTable.Live.TableComponent do
      |> stream_configure(:rows, dom_id: & &1.dom_id)
      # a nested table is rendered before its first read has come back
      |> stream(:rows, [])
-     |> assign(state: %State{}, page: nil, error: nil, row_count: 0, busy?: false, read: nil)
-     # The argument line. `missing` are the arguments the read action does
-     # not run without and that are empty, and `fill` what the table says in
-     # place of its rows while there are any. `refused` holds, by argument,
-     # what a person typed that Ash does not take, with Ash's messages, and
-     # `lines` the rows of the arguments that are given value by value.
-     # `page_assigns` are the assigns of the page, which a default of an
-     # asked argument may be a function of, and `parent_arguments` what the
-     # read action of the table around a nested one is given.
-     |> assign(missing: [], fill: nil, refused: %{}, lines: %{})
-     |> assign(page_assigns: %{}, parent_arguments: %{})
-     # The time zone of the page, in which datetimes are shown, typed and
-     # filtered by (`AshDataTable.Zone`); a nested table and a picker are in
-     # that of the table they are rendered in.
-     |> assign(time_zone: AshDataTable.Zone.utc())
-     # Whether the table is a page of its own, which a refused read can turn
-     # into "not found", and whether a refused read has left it with nothing
-     # to show at all.
-     |> assign(mounted?: false, gone?: false)
-     # How the table's name is shown on the line above it: a heading of that
-     # level, `true` for a name that is no heading, `false` for none.
-     |> assign(heading: false)
-     # The rows of the page by the key in their DOM id: each one's primary key
-     # and row index. What an edit event names is looked up here.
-     |> assign(rows: %{})
-     # The edits that failed, by row key: what was typed into each cell with
-     # the action's message, and the record, as a failed row is rendered more
-     # than once. A new read forgets them.
-     |> assign(failed: %{})
-     # What the live region says, and how often it has spoken. `announce?` is
-     # set by a filter change and answered by the read that follows it.
-     |> assign(announce?: false, announcement: nil, announcements: 0)
-     # What a person typed into a filter that is not a value of its column:
-     # shown in the filter, marked, and not applied.
-     |> assign(rejected: %{})
-     # What the filter row was last sent, by column (`State.pending/2`): an
-     # operator that was chosen without its value is no filter, but shown,
-     # as "is any of" and "between" have controls of their own, which are
-     # there to be used only once the operator is. `among` are the filters
-     # they were chosen among, before and after: once the table is filtered
-     # by anything else, they are forgotten (`shown_filter/4`).
-     |> assign(pending: %{controls: %{}, among: []})
-     # The rows that are expanded, by row key: the names of their open
-     # lines. A new read forgets them.
-     |> assign(open: %{})
-     # What makes a table a nested one: the relationship it is reached
-     # through and the primary key of the row it belongs to. `depth` counts
-     # from the table on the page; `depth_limit` is that table's `max_depth`.
-     |> assign(via: nil, parent_key: nil, parent_authorize?: true, depth: 0, depth_limit: nil)
-     # Which of the resource's tables this is: `:default` for its default
-     # table, else the name of a named table. A nested table is the one its
-     # relationship nests, and the table in a picker the default table.
-     |> assign(table: :default)
-     # The ids of the elements that name a nested table's grid, in place of
-     # `label`; and whether its first read is still on its way.
-     |> assign(labelledby: nil, loading?: false)
-     # Whether the table is inside a row of another. What the URL limits a
-     # table of its own to (`AshDataTable.Related`), and what the record it is
-     # limited to is called, once that record has been read for the person.
-     # Where a nested table's records are shown in the full view.
-     |> assign(nested?: false, related: nil, related_title: nil, full_view: nil)
-     # What the resources and their blocks say, the same for everybody, built
-     # once for as long as the component lives: the table's model, and that
-     # of a nested table by its relationship. See `build/1`.
-     |> assign(built: nil)
-     # The action panel, while it is open: the one action a person is giving
-     # the inputs of, with its form. At most one per table; a new read
-     # closes it.
-     |> assign(panel: nil)
-     # The files of the panel's uploads that an action has been given, by
-     # the entry LiveView knows each by: those are LiveView's to drop.
-     # And the copies of the files that an action on the selected rows is
-     # running with, which are taken away when it is done.
-     |> assign(spent: MapSet.new(), running_files: [])
-     # The picker, while it is open: the cell, or the field of the panel,
-     # that a person is choosing a related record for. At most one per
-     # table; a new read closes it. And what makes a table the one in a
-     # picker: the read action it reads through, and the key of the record
-     # that is chosen now (`choose`).
-     |> assign(picker: nil, choose: nil)
-     # Whether rows can be selected, and how. `select` is what the table was
-     # told (`:multi` or `:single`), and `selecting` what it does: what it
-     # was told, else `:multi` while it has an action that runs on several
-     # rows (`bulk`), else nil. Which rows are selected is the hook's alone.
-     # `lead` is the number of columns before the first data column.
-     |> assign(select: nil, selecting: nil, bulk: [], lead: 0)
-     # The action that is running on the selected rows, while it does, and
-     # what the last one came to, until the person selects something else.
-     |> assign(running: nil, result: nil)
-     # Live updates (see "Live updates" at the top). `live_given` is what the
-     # table was told about them, and `live` its listener while it follows
-     # them: the process and the topic it listens to. `waiting` is what was
-     # announced and not looked at yet, and `held` the keys of the rows that
-     # are read again once the person is done with them. `notice?` says
-     # that there are new or changed records to read again for.
-     |> assign(live_given: nil, live: nil, waiting: [], held: [], notice?: false)
-     # the rows that go once the hook says that no cell of them is edited
-     |> assign(leaving: MapSet.new())
-     # The footer row (see "Footer summaries" at the top). `summary` holds,
-     # by column, what the last answer said: `{:ok, value}` or
-     # `:unavailable`; nil before the first answer, and while an argument
-     # the read action requires is empty. `summing?` says that an answer is
-     # on its way, `summed` what the last question was of, and `summary_due`
-     # that there is one to ask once this update is done (`tidy/1`):
-     # `:changed` after a read, `:force` after something was written or
-     # announced.
-     |> assign(summary: nil, summing?: false, summed: nil, summary_due: nil)
-     |> assign(summarised?: false)
-     # The tables this one is rendered in, nested in a row or in a picker:
-     # their ids, from the table on the page down to the one that renders
-     # this one. A table stops the listeners of the tables under it that it
-     # no longer renders (`close/1`).
-     |> assign(lineage: [])}
+     # Everything the table holds, in one value: what it was told, who is
+     # asking, and the table itself (`AshDataTable.Table`; every field is
+     # explained where it is defined).
+     |> assign(table: Table.new())}
   end
+
+  # Puts fields of the table where each lives (`AshDataTable.Table.put/2`).
+  defp put(socket, fields), do: assign(socket, table: Table.put(socket.assigns.table, fields))
 
   # What a listener hands over (`AshDataTable.Listener`): a batch of what was
   # announced, each the action's type and the record's primary key. It is
   # looked at once this update is done (`tidy/1`).
   @impl true
   def update(%{live: {:heard, batch}}, socket) do
-    {:ok, assign(socket, waiting: socket.assigns.waiting ++ batch)}
+    {:ok, put(socket, waiting: socket.assigns.table.entry.waiting ++ batch)}
   end
 
   # Something that was open under one of this table's rows is open no
@@ -680,7 +576,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   def update(assigns, socket) do
     socket =
-      assign(
+      put(
         socket,
         Map.take(
           assigns,
@@ -691,13 +587,13 @@ defmodule AshDataTable.Live.TableComponent do
       )
 
     # what the table was told about live updates: nil where it was told nothing
-    socket = assign(socket, live_given: assigns[:live?])
+    socket = put(socket, live_given: assigns[:live?])
 
     # the zone of the page, nil and "UTC" being UTC
     socket =
       if Map.has_key?(assigns, :time_zone),
         do:
-          assign(socket,
+          put(socket,
             time_zone: AshDataTable.Zone.check!(assigns.time_zone, "The `time_zone` of the table")
           ),
         else: socket
@@ -705,73 +601,78 @@ defmodule AshDataTable.Live.TableComponent do
     # Unless the table is told, it authorizes as its resource's domain says.
     # What it was told is kept as it was given, for the tables nested in it.
     socket =
-      assign(socket,
+      put(socket,
         authorize_given: assigns[:authorize?],
         authorize?:
           case assigns[:authorize?] do
-            nil -> AshDataTable.Domain.Info.authorize?(socket.assigns.resource)
+            nil -> AshDataTable.Domain.Info.authorize?(socket.assigns.table.entry.resource)
             authorize? -> authorize?
           end
       )
 
     # nil is the default table, as `:default` is
-    socket = assign(socket, table: socket.assigns.table || :default)
+    socket = put(socket, table: socket.assigns.table.entry.table || :default)
 
-    socket = socket |> assign(nested?: socket.assigns.depth > 0) |> relate() |> build()
+    socket = socket |> put(nested?: socket.assigns.table.entry.depth > 0) |> relate() |> build()
 
     # The table as the person asking meets it: without the columns they can
     # never see, and with the columns they can never edit read-only. Ash is
     # asked again on every update, which for a table with its state in the
     # URL is every sort, filter and page change; it costs no query.
     model =
-      socket.assigns.built.model
+      socket.assigns.table.entry.built.model
       |> Model.for_actor(reader(socket.assigns))
-      |> Model.zoned(socket.assigns.time_zone)
+      |> Model.zoned(socket.assigns.table.caller.time_zone)
       |> in_words()
-      |> Model.defaults(socket.assigns.page_assigns)
+      |> Model.defaults(socket.assigns.table.options.page_assigns)
 
     # What the person chose for the arguments is given to Ash to look at,
     # here and before every read: the model then holds what the read action
     # and the calculations are given. What Ash refuses is not kept.
     {state, model, missing, refused} =
-      settle(model, current_state(socket.assigns, model), reader(socket.assigns))
+      settle(model, current_state(socket.assigns.table, model), reader(socket.assigns))
 
     # what was refused before is shown for as long as nothing else has
     # taken its place
     refused =
-      socket.assigns.refused
+      socket.assigns.table.entry.refused
       |> Map.filter(fn {key, %{held: held}} -> Map.get(state.arguments, key) == held end)
       |> Map.merge(refused)
 
     # How deep a person can expand is said by the table on the page, for
     # everything beneath it.
-    depth_limit = socket.assigns.depth_limit || model.max_depth
+    depth_limit = socket.assigns.table.entry.depth_limit || model.max_depth
 
-    expandable? = expandable?(model, socket.assigns.depth, depth_limit)
-    selecting = selecting(socket.assigns.select, model)
+    expandable? = expandable?(model, socket.assigns.table.entry.depth, depth_limit)
+    selecting = selecting(socket.assigns.table.options.select, model)
 
     {:ok,
      socket
-     |> assign(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
-     |> assign(
-       pending: awaited(socket.assigns.pending, socket.assigns.state.filters, state.filters)
+     |> put(model: model, state: state, editing?: Enum.any?(model.columns, & &1.editable?))
+     |> put(
+       pending:
+         awaited(
+           socket.assigns.table.entry.pending,
+           socket.assigns.table.entry.state.filters,
+           state.filters
+         )
      )
-     |> assign(missing: missing, refused: refused)
-     |> assign(lines: lines(socket.assigns.lines, model, state, refused))
+     |> put(missing: missing, refused: refused)
+     |> put(lines: lines(socket.assigns.table.entry.lines, model, state, refused))
      # whether the rows have an actions cell: the last column of the grid
-     |> assign(acting?: model.actions != [])
+     |> put(acting?: model.actions != [])
      # whether the grid has a footer row: a column of this person's has a summary
-     |> assign(summarised?: Model.summarised(model) != [])
+     |> put(summarised?: Model.summarised(model) != [])
      # the table actions are offered once the table has read, as create is
-     |> assign(offered: model.table_actions)
-     |> assign(depth_limit: depth_limit)
-     |> assign(expandable?: expandable?)
+     |> put(offered: model.table_actions)
+     |> put(depth_limit: depth_limit)
+     |> put(expandable?: expandable?)
      # the column that stays in view when the table scrolls sideways
-     |> assign(label_column: Model.label_column(model))
+     |> put(label_column: Model.label_column(model))
      # the actions offered for the selected rows are this person's row
      # actions that run on several records
-     |> assign(selecting: selecting, lead: lead(selecting, expandable?))
-     |> assign(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
+     |> put(selecting: selecting, lead: lead(selecting, expandable?))
+     |> put(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
      |> creates()
      # before the read: what changes from here on is heard
      |> listen()
@@ -792,32 +693,46 @@ defmodule AshDataTable.Live.TableComponent do
   # full view. A table with its state in the URL finds it there, and is then
   # read as a nested table is: through the parent, read again as the person.
   # Any other table is not limited.
-  defp relate(%{assigns: %{nested?: true, via: via, parent_key: key}} = socket) do
+  defp relate(
+         %{assigns: %{table: %{entry: %{nested?: true, via: via, parent_key: key}}}} = socket
+       ) do
     # on a page that is mounted as this table was told to authorize
-    assign(socket,
+    put(socket,
       full_view:
-        Related.path(socket.router, socket.endpoint, via, key, socket.assigns.authorize_given)
+        Related.path(
+          socket.router,
+          socket.endpoint,
+          via,
+          key,
+          socket.assigns.table.options.authorize_given
+        )
     )
   end
 
-  defp relate(%{assigns: %{url: url, id: id, resource: resource, table: table}} = socket)
+  defp relate(
+         %{
+           assigns: %{
+             table: %{options: %{url: url}, entry: %{id: id, resource: resource, table: table}}
+           }
+         } = socket
+       )
        when is_binary(url) do
     params = url |> query_params() |> Map.get(id)
 
     case Related.from_params(resource, table, params, reader(socket.assigns), socket.endpoint) do
       nil ->
-        assign(socket, via: nil, parent_key: nil, related: nil, related_title: nil)
+        put(socket, via: nil, parent_key: nil, related: nil, related_title: nil)
 
       %{via: via, key: key} = related ->
         # as the table around a nested one says for it: what this table was
         # told, else what the parent's own domain says
         parent_authorize? =
-          case socket.assigns.authorize_given do
+          case socket.assigns.table.options.authorize_given do
             nil -> AshDataTable.Domain.Info.authorize?(via.source)
             authorize? -> authorize?
           end
 
-        assign(socket,
+        put(socket,
           via: via,
           parent_key: key,
           parent_authorize?: parent_authorize?,
@@ -842,9 +757,16 @@ defmodule AshDataTable.Live.TableComponent do
   # be what the block says now.
   #
   # A table to choose from is built for the read action it is told.
-  defp build(%{assigns: %{resource: resource, table: table, via: via, built: built}} = socket) do
-    read = socket.assigns.choose && socket.assigns.choose.read_action
-    live = socket.assigns.live_given
+  defp build(
+         %{
+           assigns: %{
+             table: %{entry: %{resource: resource, table: table, via: via, built: built}}
+           }
+         } =
+           socket
+       ) do
+    read = socket.assigns.table.entry.choose && socket.assigns.table.entry.choose.read_action
+    live = socket.assigns.table.options.live_given
 
     if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read, live: ^live}, built) and
          not reloading?(socket) do
@@ -852,7 +774,7 @@ defmodule AshDataTable.Live.TableComponent do
     else
       model = Model.build(resource, table: table, via: via, choose: read, live?: live)
 
-      assign(socket,
+      put(socket,
         built: %{
           resource: resource,
           table: table,
@@ -872,7 +794,7 @@ defmodule AshDataTable.Live.TableComponent do
   # The model of the nested table of a relationship, as far as it is the
   # same for everybody: built when it is first asked for, and kept with the
   # table's own.
-  defp nested_model(%{assigns: %{built: built}} = socket, relationship) do
+  defp nested_model(%{assigns: %{table: %{entry: %{built: built}}}} = socket, relationship) do
     case built.nested do
       %{^relationship => model} ->
         {model, socket}
@@ -882,7 +804,7 @@ defmodule AshDataTable.Live.TableComponent do
           Model.build(relationship.destination, table: relationship.table, via: relationship)
 
         nested = Map.put(built.nested, relationship, model)
-        {model, assign(socket, built: %{built | nested: nested})}
+        {model, put(socket, built: %{built | nested: nested})}
     end
   end
 
@@ -896,7 +818,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Whether a nested table has a create action, and which table actions, is
   # its model's to say, and is the same for everybody. Whether this person
   # may run them is asked of Ash here, on every update.
-  defp creates(%{assigns: %{expandable?: true, model: model}} = socket) do
+  defp creates(%{assigns: %{table: %{entry: %{expandable?: true, model: model}}}} = socket) do
     reader = nested_reader(socket.assigns)
 
     {creates, socket} =
@@ -928,10 +850,10 @@ defmodule AshDataTable.Live.TableComponent do
           else: {creates, socket}
       end)
 
-    assign(socket, creates: creates)
+    put(socket, creates: creates)
   end
 
-  defp creates(socket), do: assign(socket, creates: %{})
+  defp creates(socket), do: put(socket, creates: %{})
 
   # Whether the rows of the table have an expander: there is something to
   # offer this person, the table lets its rows expand at all (`max_depth 0`
@@ -1070,12 +992,12 @@ defmodule AshDataTable.Live.TableComponent do
 
   # A table whose state lives in the URL takes it from there on every update;
   # an embedded table keeps what its own events set.
-  defp current_state(%{url: url, id: id}, model) when is_binary(url) do
+  defp current_state(%{options: %{url: url}, entry: %{id: id}}, model) when is_binary(url) do
     State.from_params(model, url |> query_params() |> Map.get(id))
   end
 
   # What it kept is fitted to the model of the person who is asking now.
-  defp current_state(%{state: state}, model), do: State.fit(state, model)
+  defp current_state(%{entry: %{state: state}}, model), do: State.fit(state, model)
 
   # What the arguments of a state come to for this person: the model with
   # them (`AshDataTable.Model.supply/2`), the arguments the read action
@@ -1137,7 +1059,9 @@ defmodule AshDataTable.Live.TableComponent do
   # once, and several that are opened together read side by side. Until its
   # first rows are there it says that it is loading.
   defp read(socket) do
-    %{model: model, state: state, parent_key: key, parent_arguments: arguments} = socket.assigns
+    %{model: model, state: state, parent_key: key, parent_arguments: arguments} =
+      socket.assigns.table.entry
+
     opts = reader(socket.assigns)
     read = {model, state, opts, key, arguments}
 
@@ -1147,7 +1071,10 @@ defmodule AshDataTable.Live.TableComponent do
       case model.via do
         %Relationship{} ->
           opts =
-            [parent_authorize?: socket.assigns.parent_authorize?, parent_arguments: arguments] ++
+            [
+              parent_authorize?: socket.assigns.table.entry.parent_authorize?,
+              parent_arguments: arguments
+            ] ++
               opts
 
           fn -> Query.read_related(model, state, key, opts) end
@@ -1159,31 +1086,31 @@ defmodule AshDataTable.Live.TableComponent do
     # with every read the summaries are asked for again (`summarise/1`): in
     # any case when the table reads again as it is, else when what they are
     # of has changed
-    due = if socket.assigns.read == :again, do: :force, else: :changed
+    due = if socket.assigns.table.entry.read == :again, do: :force, else: :changed
 
     cond do
-      read == socket.assigns.read ->
+      read == socket.assigns.table.entry.read ->
         socket
 
       # an argument the read action requires is empty: it is not run
-      socket.assigns.missing != [] ->
-        first_or_later = if is_nil(socket.assigns.read), do: :first, else: :later
-        socket |> assign(read: read) |> due(due) |> unfilled(first_or_later)
+      socket.assigns.table.entry.missing != [] ->
+        first_or_later = if is_nil(socket.assigns.table.entry.read), do: :first, else: :later
+        socket |> put(read: read) |> due(due) |> unfilled(first_or_later)
 
-      socket.assigns.read == :again ->
-        socket |> assign(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
+      socket.assigns.table.entry.read == :again ->
+        socket |> put(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
 
-      socket.assigns.nested? ->
+      socket.assigns.table.entry.nested? ->
         socket
-        |> assign(read: read, busy?: true, loading?: is_nil(socket.assigns.read))
+        |> put(read: read, busy?: true, loading?: is_nil(socket.assigns.table.entry.read))
         |> due(due)
         |> start_async(:read, fetch)
 
-      is_nil(socket.assigns.read) ->
-        socket |> assign(read: read) |> due(due) |> show(fetch.(), :first)
+      is_nil(socket.assigns.table.entry.read) ->
+        socket |> put(read: read) |> due(due) |> show(fetch.(), :first)
 
       true ->
-        socket |> assign(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
+        socket |> put(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
     end
   end
 
@@ -1194,8 +1121,8 @@ defmodule AshDataTable.Live.TableComponent do
   # Notes that the summaries are to be asked for again. What was written or
   # announced (`:force`) is not undone by a read that follows it.
   defp due(socket, nil), do: socket
-  defp due(%{assigns: %{summary_due: :force}} = socket, _due), do: socket
-  defp due(socket, due) when due in [:changed, :force], do: assign(socket, summary_due: due)
+  defp due(%{assigns: %{table: %{entry: %{summary_due: :force}}}} = socket, _due), do: socket
+  defp due(socket, due) when due in [:changed, :force], do: put(socket, summary_due: due)
 
   # Asks for the summaries, when there is something to ask: beside the
   # process, and beside the read of the rows, which never waits for it. What
@@ -1205,27 +1132,29 @@ defmodule AshDataTable.Live.TableComponent do
   #
   # After a read (`:changed`) only when what they are of has changed: the
   # sort a person chose says nothing about which records match.
-  defp summarise(%{assigns: %{summary_due: nil}} = socket), do: socket
+  defp summarise(%{assigns: %{table: %{entry: %{summary_due: nil}}}} = socket), do: socket
 
-  defp summarise(%{assigns: %{summarised?: false}} = socket),
-    do: assign(socket, summary_due: nil)
+  defp summarise(%{assigns: %{table: %{entry: %{summarised?: false}}}} = socket),
+    do: put(socket, summary_due: nil)
 
   # while an argument the read action requires is empty nothing is read,
   # and nothing summed
-  defp summarise(%{assigns: %{missing: [_ | _]}} = socket),
-    do: assign(socket, summary_due: nil, summary: nil, summing?: false, summed: nil)
+  defp summarise(%{assigns: %{table: %{entry: %{missing: [_ | _]}}}} = socket),
+    do: put(socket, summary_due: nil, summary: nil, summing?: false, summed: nil)
 
   defp summarise(socket) do
-    %{model: model, state: state, parent_key: parent, summary_due: due} = socket.assigns
+    %{model: model, state: state, parent_key: parent, summary_due: due} =
+      socket.assigns.table.entry
+
     opts = read_opts(socket.assigns)
     of = {model, %{state | sort: nil}, opts, parent}
-    socket = assign(socket, summary_due: nil)
+    socket = put(socket, summary_due: nil)
 
-    if due == :changed and of == socket.assigns.summed do
+    if due == :changed and of == socket.assigns.table.entry.summed do
       socket
     else
       socket
-      |> assign(summing?: true, summed: of)
+      |> put(summing?: true, summed: of)
       |> start_async(:summary, fn -> Query.summaries(model, state, parent, opts) end)
     end
   end
@@ -1234,7 +1163,7 @@ defmodule AshDataTable.Live.TableComponent do
   # are as they are. What the table's read is refused for is said by the
   # read; anything else is logged.
   defp unsummed(socket, reason) do
-    %{model: model} = socket.assigns
+    %{model: model} = socket.assigns.table.entry
 
     if not expected?(reason) do
       Logger.error(
@@ -1244,7 +1173,7 @@ defmodule AshDataTable.Live.TableComponent do
     end
 
     unavailable = Map.new(Model.summarised(model), &{&1.name, :unavailable})
-    assign(socket, summary: unavailable, summing?: false)
+    put(socket, summary: unavailable, summing?: false)
   end
 
   defp expected?(reason) when reason in [:parent_gone, :forbidden], do: true
@@ -1257,9 +1186,9 @@ defmodule AshDataTable.Live.TableComponent do
   # (`origin`): what it changes itself is not announced to it, as it shows
   # what its action returned (`AshDataTable.Query.reader_opts/1`).
   defp reader(assigns) do
-    reader = Map.to_list(Map.take(assigns, [:scope, :actor, :tenant, :authorize?]))
+    reader = Caller.reader_opts(assigns.table.caller)
 
-    case assigns[:live] do
+    case assigns.table.entry.live do
       %{pid: pid} -> [origin: pid] ++ reader
       _not_listening -> reader
     end
@@ -1274,22 +1203,22 @@ defmodule AshDataTable.Live.TableComponent do
   # does, and listens anew when the topic is another. Only once the page is
   # connected: the request that renders it first has nothing to update.
   defp listen(socket) do
-    %{resource: resource, model: model, live: live} = socket.assigns
+    %{resource: resource, model: model, live: live} = socket.assigns.table.entry
 
     topic =
       if connected?(socket) and model.live? and model.primary_key != [],
-        do: Notifier.topic(resource, tenant(socket.assigns))
+        do: Notifier.topic(resource, tenant(socket.assigns.table.caller))
 
     if (live && live.topic) == topic and (is_nil(live) or Process.alive?(live.pid)) do
       socket
     else
       if live, do: Listener.stop(live.pid)
-      assign(socket, live: topic && listener(socket, topic))
+      put(socket, live: topic && listener(socket, topic))
     end
   end
 
   defp listener(socket, topic) do
-    %{resource: resource, myself: myself} = socket.assigns
+    %{table: %{entry: %{resource: resource}}, myself: myself} = socket.assigns
     view = self()
 
     pub_sub =
@@ -1333,8 +1262,13 @@ defmodule AshDataTable.Live.TableComponent do
   #     longer, the tables around it that hold a row back for that are told
   #     to look again.
   defp tidy(socket) do
-    %{id: id, lineage: lineage, myself: myself, live: live, panel: panel, picker: picker} =
-      socket.assigns
+    %{
+      table: %{
+        options: %{lineage: lineage},
+        entry: %{id: id, live: live, panel: panel, picker: picker}
+      },
+      myself: myself
+    } = socket.assigns
 
     before = tables()
     was_open? = match?(%{open?: true}, before[id])
@@ -1348,7 +1282,7 @@ defmodule AshDataTable.Live.TableComponent do
       cid: myself,
       listener: live && live.pid,
       open?: open?,
-      held?: socket.assigns.held != []
+      held?: socket.assigns.table.entry.held != []
     }
 
     Process.put(@tables, Map.put(tables(), id, entry))
@@ -1376,8 +1310,8 @@ defmodule AshDataTable.Live.TableComponent do
   # server is not told when a component is taken out of the page, and
   # these would listen on until the page is left.
   defp close(socket) do
-    %{id: id} = socket.assigns
-    rendered = rendered(socket.assigns)
+    %{id: id} = socket.assigns.table.entry
+    rendered = rendered(socket.assigns.table.entry)
 
     for {other, %{path: path, listener: listener}} <- tables(),
         other != id,
@@ -1421,21 +1355,22 @@ defmodule AshDataTable.Live.TableComponent do
   # While a read is on its way, or an action on the selected rows, which
   # ends in one, it waits for that: the rows are then other rows. A table
   # that shows no rows has nothing to follow.
-  defp follow(%{assigns: %{waiting: [], held: []}} = socket), do: socket
+  defp follow(%{assigns: %{table: %{entry: %{waiting: [], held: []}}}} = socket), do: socket
 
-  defp follow(%{assigns: %{busy?: busy?, running: running}} = socket)
+  defp follow(%{assigns: %{table: %{entry: %{busy?: busy?, running: running}}}} = socket)
        when busy? or not is_nil(running),
        do: socket
 
-  defp follow(%{assigns: %{page: nil}} = socket), do: assign(socket, waiting: [], held: [])
+  defp follow(%{assigns: %{table: %{entry: %{page: nil}}}} = socket),
+    do: put(socket, waiting: [], held: [])
 
   defp follow(socket) do
-    %{model: model, rows: rows, waiting: waiting, held: held} = socket.assigns
+    %{model: model, rows: rows, waiting: waiting, held: held} = socket.assigns.table.entry
 
     {shown, others} =
       Enum.split_with(waiting, fn {_type, key} -> shown?(model, rows, key) end)
 
-    working = working(socket.assigns)
+    working = working(socket.assigns.table.entry)
 
     {held, free} =
       (held ++ Enum.map(shown, &elem(&1, 1)))
@@ -1444,7 +1379,7 @@ defmodule AshDataTable.Live.TableComponent do
       |> Enum.split_with(&(row_key(model, &1, 0) in working))
 
     socket
-    |> assign(waiting: [], held: held)
+    |> put(waiting: [], held: held)
     # whatever was announced may have changed what the summaries are of,
     # on this page or another: they are asked for again, once per batch
     |> due(if(waiting != [], do: :force))
@@ -1488,8 +1423,8 @@ defmodule AshDataTable.Live.TableComponent do
   # table, how the row it belongs to is read.
   defp read_opts(assigns) do
     [
-      parent_authorize?: assigns.parent_authorize?,
-      parent_arguments: assigns.parent_arguments
+      parent_authorize?: assigns.table.entry.parent_authorize?,
+      parent_arguments: assigns.table.entry.parent_arguments
     ] ++ reader(assigns)
   end
 
@@ -1499,7 +1434,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp refresh(socket, []), do: socket
 
   defp refresh(socket, keys) do
-    %{model: model, parent_key: parent} = socket.assigns
+    %{model: model, parent_key: parent} = socket.assigns.table.entry
 
     case Query.rows(model, parent, keys, read_opts(socket.assigns)) do
       {:ok, records} ->
@@ -1510,7 +1445,7 @@ defmodule AshDataTable.Live.TableComponent do
 
           cond do
             # the page is being read again: a row before this one was its last
-            not is_map_key(socket.assigns.rows, row) -> socket
+            not is_map_key(socket.assigns.table.entry.rows, row) -> socket
             record = found[key] -> socket |> stay(row) |> put_fresh(row, record)
             true -> leave(socket, row)
           end
@@ -1530,17 +1465,17 @@ defmodule AshDataTable.Live.TableComponent do
   # the record is sent again meanwhile, and whatever the person does with
   # the row reads the record first, and finds it gone.
   defp leave(socket, row) do
-    %{id: id, leaving: leaving} = socket.assigns
+    %{id: id, leaving: leaving} = socket.assigns.table.entry
 
     socket
-    |> assign(leaving: MapSet.put(leaving, row))
+    |> put(leaving: MapSet.put(leaving, row))
     |> push_event("ash_data_table:leaving", %{table: id, row: row})
   end
 
   # A row that was on its way out, and whose record is the person's to read
   # again.
   defp stay(socket, row),
-    do: assign(socket, leaving: MapSet.delete(socket.assigns.leaving, row))
+    do: put(socket, leaving: MapSet.delete(socket.assigns.table.entry.leaving, row))
 
   # A table that is rendered again for what a listener handed over puts
   # the details of its expanded rows into the stream again, with the nested
@@ -1550,7 +1485,7 @@ defmodule AshDataTable.Live.TableComponent do
   # a nested table that a later rendering of this table does not hold; a
   # browser patches a nested table where it stands.
   defp redetail(socket) do
-    %{rows: rows, open: open} = socket.assigns
+    %{rows: rows, open: open} = socket.assigns.table.entry
 
     Enum.reduce(open, socket, fn {key, lines}, socket ->
       if lines != [] and is_map_key(rows, key), do: put_detail(socket, key), else: socket
@@ -1561,7 +1496,7 @@ defmodule AshDataTable.Live.TableComponent do
   # is still shown, on the record as it is now.
   defp put_fresh(socket, key, record) do
     socket =
-      case socket.assigns.failed[key] do
+      case socket.assigns.table.entry.failed[key] do
         %{} = failures -> put_failed(socket, key, record, Map.take(failures, [:cells, :action]))
         nil -> socket
       end
@@ -1573,14 +1508,14 @@ defmodule AshDataTable.Live.TableComponent do
   # is a record the person would be shown; nothing otherwise, and nothing
   # twice. A page that is being read again will show what there is.
   defp notice(socket, []), do: socket
-  defp notice(%{assigns: %{notice?: true}} = socket, _keys), do: socket
-  defp notice(%{assigns: %{busy?: true}} = socket, _keys), do: socket
+  defp notice(%{assigns: %{table: %{entry: %{notice?: true}}}} = socket, _keys), do: socket
+  defp notice(%{assigns: %{table: %{entry: %{busy?: true}}}} = socket, _keys), do: socket
 
   defp notice(socket, keys) do
-    %{model: model, state: state, parent_key: parent} = socket.assigns
+    %{model: model, state: state, parent_key: parent} = socket.assigns.table.entry
 
     if Query.any?(model, state, parent, keys, read_opts(socket.assigns)),
-      do: socket |> assign(notice?: true) |> say(Text.t(:changed_records)),
+      do: socket |> put(notice?: true) |> say(Text.t(:changed_records)),
       else: socket
   end
 
@@ -1588,25 +1523,29 @@ defmodule AshDataTable.Live.TableComponent do
   # argument its read action requires: it was of other arguments, and
   # nothing of it is shown (`unfilled/2`).
   @impl true
-  def handle_async(:read, _result, %{assigns: %{missing: [_ | _]}} = socket),
+  def handle_async(:read, _result, %{assigns: %{table: %{entry: %{missing: [_ | _]}}}} = socket),
     do: {:noreply, socket}
 
   def handle_async(:read, {:ok, result}, socket) do
-    {:noreply, socket |> assign(busy?: false, loading?: false) |> show(result, :later)}
+    {:noreply, socket |> put(busy?: false, loading?: false) |> show(result, :later)}
   end
 
   def handle_async(:read, {:exit, reason}, socket) do
-    {:noreply, socket |> assign(busy?: false, loading?: false) |> show({:error, reason}, :later)}
+    {:noreply, socket |> put(busy?: false, loading?: false) |> show({:error, reason}, :later)}
   end
 
   # The summaries, or why there are none (see "Footer summaries" at the
   # top). An answer that comes while the table waits for an argument is of
   # other arguments, as a read is.
-  def handle_async(:summary, _result, %{assigns: %{missing: [_ | _]}} = socket),
-    do: {:noreply, socket}
+  def handle_async(
+        :summary,
+        _result,
+        %{assigns: %{table: %{entry: %{missing: [_ | _]}}}} = socket
+      ),
+      do: {:noreply, socket}
 
   def handle_async(:summary, {:ok, {:ok, summary}}, socket),
-    do: {:noreply, assign(socket, summary: summary, summing?: false)}
+    do: {:noreply, put(socket, summary: summary, summing?: false)}
 
   def handle_async(:summary, {:ok, {:error, reason}}, socket),
     do: {:noreply, unsummed(socket, reason)}
@@ -1618,7 +1557,7 @@ defmodule AshDataTable.Live.TableComponent do
   # by their keys and by what it names them by: those stay selected. The
   # table is read again, as the page may hold any of the records.
   def handle_async(:bulk, {:ok, outcome}, socket) do
-    %{id: id, model: model, running: action} = socket.assigns
+    %{id: id, model: model, running: action} = socket.assigns.table.entry
     not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
 
     summary =
@@ -1638,7 +1577,7 @@ defmodule AshDataTable.Live.TableComponent do
     {:noreply,
      socket
      |> drop_copies()
-     |> assign(running: nil, result: %{summary: summary, failures: failures})
+     |> put(running: nil, result: %{summary: summary, failures: failures})
      |> say(Enum.join([summary | failures], " "))
      |> push_event("ash_data_table:bulk", %{table: id, failed: failed})
      |> reread()}
@@ -1647,7 +1586,7 @@ defmodule AshDataTable.Live.TableComponent do
   # The run itself went down. What it had done by then is not known: the
   # rows stay selected, and the table is read again.
   def handle_async(:bulk, {:exit, reason}, socket) do
-    %{id: id, model: model, running: action} = socket.assigns
+    %{id: id, model: model, running: action} = socket.assigns.table.entry
 
     Logger.error(
       "ash_data_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
@@ -1659,7 +1598,7 @@ defmodule AshDataTable.Live.TableComponent do
     {:noreply,
      socket
      |> drop_copies()
-     |> assign(running: nil, result: %{summary: summary, failures: []})
+     |> put(running: nil, result: %{summary: summary, failures: []})
      |> say(summary)
      |> push_event("ash_data_table:bulk", %{table: id})
      |> reread()}
@@ -1676,10 +1615,10 @@ defmodule AshDataTable.Live.TableComponent do
   # anything: Ash says so without a read (`Ash.can/3`), and they are
   # answered as they are when the read itself is refused.
   defp unfilled(socket, first_or_later) do
-    %{model: model, missing: missing} = socket.assigns
+    %{model: model, missing: missing} = socket.assigns.table.entry
     reader = reader(socket.assigns)
 
-    socket = assign(socket, busy?: false, loading?: false)
+    socket = put(socket, busy?: false, loading?: false)
 
     if Keyword.get(reader, :authorize?, true) and
          Model.Access.forbidden_actions(model.resource, [model.read_action], reader) != [] do
@@ -1688,9 +1627,9 @@ defmodule AshDataTable.Live.TableComponent do
       text = Text.t(:fill_in, argument: Enum.map_join(missing, ", ", & &1.label))
 
       socket
-      |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
-      |> assign(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
-      |> assign(fill: text, notice?: false, held: [], leaving: MapSet.new())
+      |> put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
+      |> put(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
+      |> put(fill: text, notice?: false, held: [], leaving: MapSet.new())
       |> stream(:rows, [], reset: true)
       |> say(text)
     end
@@ -1699,7 +1638,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Shows what a read gave. `read` says which one it was: the `:first` of
   # this table, done while it is mounted, or a `:later` one.
   defp show(socket, {:ok, %Query.Page{} = page}, _read) do
-    %{id: id, model: model} = socket.assigns
+    %{id: id, model: model} = socket.assigns.table.entry
 
     rows =
       page.records
@@ -1721,24 +1660,27 @@ defmodule AshDataTable.Live.TableComponent do
     # each row, and after it its detail when rows can be expanded: closed
     items =
       Enum.flat_map(rows, fn row ->
-        current? = current?(socket.assigns.choose, model, row.record)
+        current? = current?(socket.assigns.table.entry.choose, model, row.record)
         record = Sensitive.scrub(row.record, model.columns)
 
         [item(id, row.key, record, row.rowindex, %{}, false, row.names, current?)] ++
-          if(socket.assigns.expandable?, do: [detail(id, row.key, nil, nil)], else: [])
+          if(socket.assigns.table.entry.expandable?,
+            do: [detail(id, row.key, nil, nil)],
+            else: []
+          )
       end)
 
     socket
-    |> assign(page: %{page | records: [], parent: nil}, row_count: length(rows))
-    |> assign(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
-    |> assign(fill: nil)
+    |> put(page: %{page | records: [], parent: nil}, row_count: length(rows))
+    |> put(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
+    |> put(fill: nil)
     # what was announced before this read is in it: there is nothing left
     # to read again for, and no row is waiting for its person
-    |> assign(notice?: false, held: [], leaving: MapSet.new())
+    |> put(notice?: false, held: [], leaving: MapSet.new())
     # the rows are other rows now: a panel never acts on a record that the
     # table no longer shows, and neither does a picker
-    |> assign(panel: nil, picker: nil)
-    |> assign(
+    |> put(panel: nil, picker: nil)
+    |> put(
       rows: Map.new(rows, &{&1.key, %{rowindex: &1.rowindex, pk: primary_key(model, &1.record)}}),
       failed: %{},
       open: %{}
@@ -1758,9 +1700,9 @@ defmodule AshDataTable.Live.TableComponent do
   # so it says something in every case: that they are not allowed when the
   # destination's table is declared with `on_forbidden :message`, and no more
   # than that the records are not available otherwise. Never "No records".
-  defp show(%{assigns: %{nested?: true}} = socket, {:error, refusal}, _read)
+  defp show(%{assigns: %{table: %{entry: %{nested?: true}}}} = socket, {:error, refusal}, _read)
        when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
-    case socket.assigns.model.on_forbidden do
+    case socket.assigns.table.entry.model.on_forbidden do
       :message -> show_message(socket, Text.t(:not_allowed))
       :not_found -> show_message(socket, Text.t(:records_not_available))
     end
@@ -1769,8 +1711,12 @@ defmodule AshDataTable.Live.TableComponent do
   # A table to choose from whose read is refused: the picker has told the
   # person that there is a table, so it says something in every case, as a
   # nested table does.
-  defp show(%{assigns: %{choose: %{}}} = socket, {:error, %Ash.Error.Forbidden{}}, _read) do
-    case socket.assigns.model.on_forbidden do
+  defp show(
+         %{assigns: %{table: %{entry: %{choose: %{}}}}} = socket,
+         {:error, %Ash.Error.Forbidden{}},
+         _read
+       ) do
+    case socket.assigns.table.entry.model.on_forbidden do
       :message -> show_message(socket, Text.t(:not_allowed))
       :not_found -> show_message(socket, Text.t(:records_not_available))
     end
@@ -1787,30 +1733,30 @@ defmodule AshDataTable.Live.TableComponent do
   # nothing of it is rendered, and a table that is a page of its own answers
   # as a page that does not exist.
   defp show(socket, {:error, %Ash.Error.Forbidden{} = error}, read) do
-    case socket.assigns.model.on_forbidden do
+    case socket.assigns.table.entry.model.on_forbidden do
       :message -> show_error(socket, error)
-      :not_found -> socket |> show_error(error) |> assign(gone?: true) |> not_found(read)
+      :not_found -> socket |> show_error(error) |> put(gone?: true) |> not_found(read)
     end
   end
 
   defp show(socket, {:error, error}, _read), do: show_error(socket, error)
 
   defp show_error(socket, error),
-    do: show_message(socket, error_text(error, socket.assigns.model))
+    do: show_message(socket, error_text(error, socket.assigns.table.entry.model))
 
   # The message is an alert of its own, in place of the rows.
   defp show_message(socket, text) do
     socket
-    |> assign(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
+    |> put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
     # nothing is said of a record that was not read for this person
-    |> assign(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
-    |> assign(fill: nil, notice?: false, held: [], leaving: MapSet.new())
+    |> put(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
+    |> put(fill: nil, notice?: false, held: [], leaving: MapSet.new())
     |> stream(:rows, [], reset: true)
   end
 
   # A table placed in a page of the host's cannot make that page disappear:
   # it renders nothing.
-  defp not_found(%{assigns: %{mounted?: false}} = socket, _read), do: socket
+  defp not_found(%{assigns: %{table: %{options: %{mounted?: false}}}} = socket, _read), do: socket
 
   # While the page is mounted, an exception is how a LiveView says "not
   # found": Phoenix answers the request with 404, and over a live connection
@@ -1819,7 +1765,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Later, the page is on screen. The browser is sent to ask for it afresh,
   # which raises the exception above; nothing crashes for it.
-  defp not_found(%{assigns: %{url: url}} = socket, :later) do
+  defp not_found(%{assigns: %{table: %{options: %{url: url}}}} = socket, :later) do
     uri = URI.parse(url)
     redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())
   end
@@ -1888,10 +1834,10 @@ defmodule AshDataTable.Live.TableComponent do
   # edits of the row that have failed. Its detail is another item and stays
   # as it is: what is open under the row stays open.
   defp put_row(socket, key, record) do
-    %{id: id, model: model, rows: rows, failed: failed, open: open} = socket.assigns
+    %{id: id, model: model, rows: rows, failed: failed, open: open} = socket.assigns.table.entry
     names = names(model, record, key)
     # in a table to choose from: whether this is the record chosen now
-    current? = current?(socket.assigns.choose, model, record)
+    current? = current?(socket.assigns.table.entry.choose, model, record)
     record = Sensitive.scrub(record, model.columns)
 
     # a row is put back after something was done with its record
@@ -1917,7 +1863,7 @@ defmodule AshDataTable.Live.TableComponent do
   # reads nothing for it; one that is no longer rendered is gone, with its
   # state.
   defp put_detail(socket, key) do
-    %{id: id, rows: rows, open: open} = socket.assigns
+    %{id: id, rows: rows, open: open} = socket.assigns.table.entry
 
     stream_insert(socket, :rows, detail(id, key, rows[key].pk, open[key]))
   end
@@ -1925,7 +1871,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Notes that the save of a cell has failed, or with `nil` that it no longer
   # has. The record is kept with the failures of its row, and only then.
   defp put_failure(socket, key, record, name, failure) do
-    row = socket.assigns.failed[key] || %{}
+    row = socket.assigns.table.entry.failed[key] || %{}
     cells = Map.get(row, :cells, %{})
     cells = if failure, do: Map.put(cells, name, failure), else: Map.delete(cells, name)
 
@@ -1935,20 +1881,20 @@ defmodule AshDataTable.Live.TableComponent do
   # Notes that a row action has failed, with the action's message, or with
   # `nil` that the row's actions cell has nothing to say any more.
   defp put_action_failure(socket, key, record, message) do
-    row = socket.assigns.failed[key] || %{}
+    row = socket.assigns.table.entry.failed[key] || %{}
 
     put_failed(socket, key, record, %{cells: Map.get(row, :cells, %{}), action: message})
   end
 
   defp put_failed(socket, key, _record, %{cells: cells, action: nil}) when cells == %{},
-    do: assign(socket, failed: Map.delete(socket.assigns.failed, key))
+    do: put(socket, failed: Map.delete(socket.assigns.table.entry.failed, key))
 
   # the record is kept as a row holds it: without its sensitive values
   defp put_failed(socket, key, record, failures) do
-    record = Sensitive.scrub(record, socket.assigns.model.columns)
+    record = Sensitive.scrub(record, socket.assigns.table.entry.model.columns)
 
-    assign(socket,
-      failed: Map.put(socket.assigns.failed, key, Map.put(failures, :record, record))
+    put(socket,
+      failed: Map.put(socket.assigns.table.entry.failed, key, Map.put(failures, :record, record))
     )
   end
 
@@ -1958,7 +1904,7 @@ defmodule AshDataTable.Live.TableComponent do
   # record is gone for certain. A page that is left without rows is read
   # again.
   defp remove_row(socket, key) do
-    %{id: id, rows: rows, page: page} = socket.assigns
+    %{id: id, rows: rows, page: page} = socket.assigns.table.entry
     %{rowindex: removed} = rows[key]
 
     rows =
@@ -1970,11 +1916,11 @@ defmodule AshDataTable.Live.TableComponent do
 
     socket =
       socket
-      |> assign(rows: rows, row_count: map_size(rows))
-      |> assign(failed: Map.delete(socket.assigns.failed, key))
-      |> assign(open: Map.delete(socket.assigns.open, key))
-      |> assign(leaving: MapSet.delete(socket.assigns.leaving, key))
-      |> assign(page: %{page | total: page.total && max(page.total - 1, 0)})
+      |> put(rows: rows, row_count: map_size(rows))
+      |> put(failed: Map.delete(socket.assigns.table.entry.failed, key))
+      |> put(open: Map.delete(socket.assigns.table.entry.open, key))
+      |> put(leaving: MapSet.delete(socket.assigns.table.entry.leaving, key))
+      |> put(page: %{page | total: page.total && max(page.total - 1, 0)})
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}")
       |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}-x")
       |> unselect(key)
@@ -1985,13 +1931,17 @@ defmodule AshDataTable.Live.TableComponent do
 
   # A row that is gone is selected no longer: the hook, which alone knows
   # what is selected, is told.
-  defp unselect(%{assigns: %{selecting: nil}} = socket, _key), do: socket
+  defp unselect(%{assigns: %{table: %{entry: %{selecting: nil}}}} = socket, _key), do: socket
 
   defp unselect(socket, key),
-    do: push_event(socket, "ash_data_table:unselect", %{table: socket.assigns.id, row: key})
+    do:
+      push_event(socket, "ash_data_table:unselect", %{
+        table: socket.assigns.table.entry.id,
+        row: key
+      })
 
   # Reads the page again as it is asked for now, beside the process.
-  defp reread(socket), do: socket |> assign(read: :again) |> read()
+  defp reread(socket), do: socket |> put(read: :again) |> read()
 
   defp primary_key(%{primary_key: primary_key}, record), do: Map.take(record, primary_key)
 
@@ -1999,13 +1949,16 @@ defmodule AshDataTable.Live.TableComponent do
   # its resource's table calls a record by, as far as this person may see it
   # on this record. Taken from the record as it was read for them, and from
   # nothing else: a record that was not read has no name here.
-  defp related_title(%{related: %{via: via}} = assigns, %Query.Page{parent: %_{} = parent}),
-    do:
-      via.source
-      |> Model.build(table: via.source_table)
-      |> Model.zoned(assigns.time_zone)
-      |> in_words()
-      |> title_of(parent)
+  defp related_title(
+         %{table: %{entry: %{related: %{via: via}}}} = assigns,
+         %Query.Page{parent: %_{} = parent}
+       ),
+       do:
+         via.source
+         |> Model.build(table: via.source_table)
+         |> Model.zoned(assigns.table.caller.time_zone)
+         |> in_words()
+         |> title_of(parent)
 
   defp related_title(_assigns, _page), do: nil
 
@@ -2029,21 +1982,21 @@ defmodule AshDataTable.Live.TableComponent do
   # After a filter change, the result is put into the live region: the count
   # when the read action counts, under either pagination strategy, else
   # only that the rows have changed.
-  defp announce(%{assigns: %{announce?: true}} = socket, page) do
+  defp announce(%{assigns: %{table: %{entry: %{announce?: true}}}} = socket, page) do
     text =
       case page.total do
         nil -> Text.t(:results_updated)
         total -> Text.n(:results, total)
       end
 
-    socket |> assign(announce?: false) |> say(text)
+    socket |> put(announce?: false) |> say(text)
   end
 
   defp announce(socket, _page), do: socket
 
   # Puts a text into the live region, to be read out.
   defp say(socket, text) do
-    assign(socket, announcement: text, announcements: socket.assigns.announcements + 1)
+    put(socket, announcement: text, announcements: socket.assigns.table.entry.announcements + 1)
   end
 
   defp error_text(%Ash.Error.Forbidden{}, _model), do: Text.t(:not_allowed)
@@ -2094,7 +2047,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   @impl true
   def handle_event("sort", %{"column" => name}, socket) do
-    %{state: state, model: model} = socket.assigns
+    %{state: state, model: model} = socket.assigns.table.entry
     {:noreply, go(socket, State.cycle_sort(state, model, name))}
   end
 
@@ -2103,7 +2056,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the form of the filter row when a filter is left or a choice is
   # made, with every filter of the row.
   def handle_event("filter", params, socket) do
-    %{state: state, model: model} = socket.assigns
+    %{state: state, model: model} = socket.assigns.table.entry
 
     form =
       case params do
@@ -2114,11 +2067,11 @@ defmodule AshDataTable.Live.TableComponent do
     {filtered, rejected} = State.filter(state, model, form)
     pending = %{controls: State.pending(model, form), among: [state.filters, filtered.filters]}
 
-    {:noreply, socket |> assign(rejected: rejected, pending: pending) |> refilter(filtered)}
+    {:noreply, socket |> put(rejected: rejected, pending: pending) |> refilter(filtered)}
   end
 
   def handle_event("clear_filter", %{"column" => name}, socket) when is_binary(name) do
-    %{state: state, pending: pending} = socket.assigns
+    %{state: state, pending: pending} = socket.assigns.table.entry
     cleared = State.clear_filter(state, name)
 
     # the other columns keep the controls they show
@@ -2128,20 +2081,20 @@ defmodule AshDataTable.Live.TableComponent do
       among: [state.filters, cleared.filters]
     }
 
-    {:noreply, socket |> assign(pending: pending) |> refilter(cleared)}
+    {:noreply, socket |> put(pending: pending) |> refilter(cleared)}
   end
 
   def handle_event("clear_filters", _params, socket) do
-    state = State.clear_filters(socket.assigns.state)
+    state = State.clear_filters(socket.assigns.table.entry.state)
 
     {:noreply,
-     socket |> assign(rejected: %{}, pending: %{controls: %{}, among: []}) |> refilter(state)}
+     socket |> put(rejected: %{}, pending: %{controls: %{}, among: []}) |> refilter(state)}
   end
 
   # Sent by the form of the argument line when one of its controls changes
   # or is left, and on Enter, with everything the line holds.
   def handle_event("arguments", params, socket) do
-    %{state: state, model: model} = socket.assigns
+    %{state: state, model: model} = socket.assigns.table.entry
 
     form =
       case params do
@@ -2156,23 +2109,23 @@ defmodule AshDataTable.Live.TableComponent do
           into: %{},
           do: {Model.Argument.key(argument), rows}
 
-    {:noreply, socket |> assign(lines: lines) |> reargue(State.argue(state, model, form))}
+    {:noreply, socket |> put(lines: lines) |> reargue(State.argue(state, model, form))}
   end
 
   # Sent by the button of an argument that is given value by value: a row
   # is added for one more value. An empty row holds no value, so nothing is
   # read for it; focus goes into it.
   def handle_event("argument_add", %{"argument" => named}, socket) do
-    %{id: id, lines: lines} = socket.assigns
+    %{id: id, lines: lines} = socket.assigns.table.entry
 
-    case listed(socket.assigns, named) do
+    case listed(socket.assigns.table.entry, named) do
       nil ->
         {:noreply, socket}
 
       {key, rows} ->
         {:noreply,
          socket
-         |> assign(lines: Map.put(lines, key, rows ++ [""]))
+         |> put(lines: Map.put(lines, key, rows ++ [""]))
          |> push_event("ash_data_table:focus", %{
            table: id,
            cell: "#{id}-arg-#{named}-#{length(rows)}"
@@ -2185,16 +2138,16 @@ defmodule AshDataTable.Live.TableComponent do
   # else to the button that adds one.
   def handle_event("argument_remove", %{"argument" => named, "at" => at}, socket)
       when is_binary(at) do
-    %{id: id, state: state, model: model, lines: lines} = socket.assigns
+    %{id: id, state: state, model: model, lines: lines} = socket.assigns.table.entry
 
-    with {key, rows} <- listed(socket.assigns, named),
+    with {key, rows} <- listed(socket.assigns.table.entry, named),
          {at, ""} when at >= 0 and at < length(rows) <- Integer.parse(at) do
       rows = List.delete_at(rows, at)
       focus = if rows == [], do: "add", else: min(at, length(rows) - 1)
 
       {:noreply,
        socket
-       |> assign(lines: Map.put(lines, key, rows))
+       |> put(lines: Map.put(lines, key, rows))
        |> reargue(State.put_argument(state, model, key, rows))
        |> push_event("ash_data_table:focus", %{table: id, cell: "#{id}-arg-#{named}-#{focus}"})}
     else
@@ -2206,7 +2159,7 @@ defmodule AshDataTable.Live.TableComponent do
     do: {:noreply, socket}
 
   def handle_event("page", %{"to" => to}, socket) when is_binary(to) do
-    {:noreply, go(socket, target(socket.assigns, to))}
+    {:noreply, go(socket, target(socket.assigns.table.entry, to))}
   end
 
   # Sent by the "Rows per page" menu: the size as text. It is a claim: only
@@ -2214,7 +2167,7 @@ defmodule AshDataTable.Live.TableComponent do
   # anything else changes nothing. The table starts at its first page with
   # it, as after a new sort; the sort, the filters and the arguments stay.
   def handle_event("page_size", %{"size" => size}, socket) when is_binary(size) do
-    %{state: state, model: model} = socket.assigns
+    %{state: state, model: model} = socket.assigns.table.entry
     {:noreply, go(socket, State.resize(state, model, size))}
   end
 
@@ -2231,12 +2184,12 @@ defmodule AshDataTable.Live.TableComponent do
   # expanders: this is where the depth limit holds against an event that the
   # table never offered.
   def handle_event("expand", %{"row" => key}, socket) when is_binary(key) do
-    %{rows: rows, open: open, expandable?: expandable?} = socket.assigns
+    %{rows: rows, open: open, expandable?: expandable?} = socket.assigns.table.entry
 
     if expandable? and is_map_key(rows, key) do
       open = if is_map_key(open, key), do: Map.delete(open, key), else: Map.put(open, key, [])
 
-      {:reply, %{open: is_map_key(open, key)}, socket |> assign(open: open) |> put_detail(key)}
+      {:reply, %{open: is_map_key(open, key)}, socket |> put(open: open) |> put_detail(key)}
     else
       {:reply, %{open: false}, socket}
     end
@@ -2252,14 +2205,14 @@ defmodule AshDataTable.Live.TableComponent do
   # page, and for a relationship this person is offered.
   def handle_event("toggle", %{"row" => key, "relationship" => name}, socket)
       when is_binary(key) do
-    %{model: model, open: open, expandable?: expandable?} = socket.assigns
+    %{model: model, open: open, expandable?: expandable?} = socket.assigns.table.entry
 
     with true <- expandable?,
          lines when is_list(lines) <- open[key],
          %Relationship{name: name} <- Model.relationship(model, name) do
       lines = if name in lines, do: List.delete(lines, name), else: lines ++ [name]
 
-      {:noreply, socket |> assign(open: Map.put(open, key, lines)) |> put_detail(key)}
+      {:noreply, socket |> put(open: Map.put(open, key, lines)) |> put_detail(key)}
     else
       _ -> {:noreply, socket}
     end
@@ -2272,7 +2225,7 @@ defmodule AshDataTable.Live.TableComponent do
   # the value as it was typed. For an array that is a list, of its values as
   # they were typed.
   def handle_event("save", %{"row" => key, "column" => name, "value" => typed}, socket) do
-    %{model: model, rows: rows} = socket.assigns
+    %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true} = column <- column(model, name),
          true <- Edit.typed?(column, typed),
@@ -2294,7 +2247,7 @@ defmodule AshDataTable.Live.TableComponent do
   # column has to be one this person edits and one that can be emptied, the
   # row one of the page, and the record is read again, as the person.
   def handle_event("clear", %{"row" => key, "column" => name}, socket) when is_binary(key) do
-    %{model: model, rows: rows} = socket.assigns
+    %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true} = column <- column(model, name),
          true <- Edit.clearable?(column),
@@ -2317,7 +2270,7 @@ defmodule AshDataTable.Live.TableComponent do
   # A value Ash hides from them on this record is not given; whoever may
   # see the field may ask (`sensitive?` is no access rule).
   def handle_event("reveal", %{"row" => key, "column" => name}, socket) when is_binary(key) do
-    %{model: model, rows: rows} = socket.assigns
+    %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{sensitive?: true} = column <- column(model, name),
          %{} = row <- rows[key] do
@@ -2341,7 +2294,7 @@ defmodule AshDataTable.Live.TableComponent do
   # offers this person, and the row one of the page. Whether the action runs
   # straight away or opens its panel is the table's to say, not the event's.
   def handle_event("act", %{"row" => key, "action" => name}, socket) when is_binary(key) do
-    %{model: model, rows: rows} = socket.assigns
+    %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %Model.Action{} = action <- action(model, name),
          %{} = row <- rows[key] do
@@ -2361,9 +2314,9 @@ defmodule AshDataTable.Live.TableComponent do
   # with a question has the hook ask it, and runs when the answer comes
   # (`table_run`). Any other runs now.
   def handle_event("table_act", %{"action" => name}, socket) do
-    %{id: id, model: model} = socket.assigns
+    %{id: id, model: model} = socket.assigns.table.entry
 
-    case table_action(socket.assigns, name) do
+    case table_action(socket.assigns.table.entry, name) do
       %Model.Action{panel?: true} = action ->
         panel =
           panel(socket.assigns, & &1.default, %{
@@ -2398,7 +2351,7 @@ defmodule AshDataTable.Live.TableComponent do
   # action with Confirm: the action runs. Whether it has a panel is the
   # table's to say, not the event's.
   def handle_event("table_run", %{"action" => name}, socket) do
-    case table_action(socket.assigns, name) do
+    case table_action(socket.assigns.table.entry, name) do
       %Model.Action{panel?: false} = action -> {:noreply, run_table(socket, action)}
       _none_or_with_inputs -> {:noreply, socket}
     end
@@ -2418,8 +2371,8 @@ defmodule AshDataTable.Live.TableComponent do
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
   def handle_event("bulk", params, socket) do
-    with {:ok, action, selection} <- bulk(params, socket.assigns) do
-      question = question(action, selected(selection, socket.assigns))
+    with {:ok, action, selection} <- bulk(params, socket.assigns.table.entry) do
+      question = question(action, selected(selection, socket.assigns.table.entry))
 
       if action.panel?,
         do: {:reply, %{panel: true}, open_bulk(socket, action, selection, question)},
@@ -2433,7 +2386,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Confirm, for an action without a panel: the action runs on what is
   # selected. Whether it has a panel is the table's to say, not the event's.
   def handle_event("bulk_run", params, socket) do
-    case bulk(params, socket.assigns) do
+    case bulk(params, socket.assigns.table.entry) do
       {:ok, %Model.Action{panel?: false} = action, selection} ->
         {:noreply, run_bulk(socket, action, selection, %{})}
 
@@ -2444,12 +2397,16 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Sent by the hook when the person changes the selection while the table
   # still says what the last run came to: that is said no longer.
-  def handle_event("bulk_seen", _params, socket), do: {:noreply, assign(socket, result: nil)}
+  def handle_event("bulk_seen", _params, socket), do: {:noreply, put(socket, result: nil)}
 
   # Sent by the panel's form as the person types: what its fields hold. The
   # action is given it, as `AshPhoenix.Form.validate/3` does, and says what
   # it makes of it; nothing runs.
-  def handle_event("panel_validate", params, %{assigns: %{panel: %{} = panel}} = socket) do
+  def handle_event(
+        "panel_validate",
+        params,
+        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+      ) do
     typed = typed(params)
     form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
     # a field whose record was chosen is one the person has been in
@@ -2457,7 +2414,7 @@ defmodule AshDataTable.Live.TableComponent do
     panel = sent(%{panel | form: form, used: used, typed: typed}, typed)
 
     {:noreply,
-     socket |> assign(panel: errors(panel, socket.assigns.model)) |> say_refused_files()}
+     socket |> put(panel: errors(panel, socket.assigns.table.entry.model)) |> say_refused_files()}
   end
 
   # Sent by the panel's form when the person uses its button: the action
@@ -2466,7 +2423,11 @@ defmodule AshDataTable.Live.TableComponent do
   #
   # A wall time that the page's zone does not have runs nothing: the panel
   # says so at its field (`AshDataTable.Act.gaps/3`).
-  def handle_event("panel_submit", params, %{assigns: %{panel: %{} = panel}} = socket) do
+  def handle_event(
+        "panel_submit",
+        params,
+        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+      ) do
     typed = typed(params)
 
     if Act.gaps(panel.inputs, typed, panel.time_zone) == %{},
@@ -2479,7 +2440,11 @@ defmodule AshDataTable.Live.TableComponent do
   # the way to the group, as the names it is sent under. The panel is
   # rendered again with the group, or without it, and the action is told as
   # it is of anything typed. The answer says where focus goes.
-  def handle_event(event, %{"path" => path}, %{assigns: %{panel: %{} = panel}} = socket)
+  def handle_event(
+        event,
+        %{"path" => path},
+        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+      )
       when event in ["panel_add", "panel_remove"] and is_list(path) do
     change = if event == "panel_add", do: :add, else: :remove
 
@@ -2495,9 +2460,10 @@ defmodule AshDataTable.Live.TableComponent do
       form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
       used = MapSet.put(panel.used, name)
       panel = %{panel | form: form, typed: typed, groups: groups, used: used}
-      focus = Enum.join(["#{socket.assigns.id}-panel-f-#{name}" | focus], "-")
+      focus = Enum.join(["#{socket.assigns.table.entry.id}-panel-f-#{name}" | focus], "-")
 
-      {:reply, %{focus: focus}, assign(socket, panel: errors(panel, socket.assigns.model))}
+      {:reply, %{focus: focus},
+       put(socket, panel: errors(panel, socket.assigns.table.entry.model))}
     else
       _ -> {:reply, %{}, socket}
     end
@@ -2511,7 +2477,7 @@ defmodule AshDataTable.Live.TableComponent do
   # value's fields; nothing is saved. The record is read first, as the
   # person.
   def handle_event("edit", %{"row" => key, "column" => name}, socket) when is_binary(key) do
-    %{id: id, model: model, rows: rows} = socket.assigns
+    %{id: id, model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true} = column <- column(model, name),
          true <- Model.group?(column),
@@ -2542,7 +2508,7 @@ defmodule AshDataTable.Live.TableComponent do
               submit: Text.t(:save)
             })
 
-          {:reply, %{ok: true}, assign(socket, panel: panel)}
+          {:reply, %{ok: true}, put(socket, panel: panel)}
 
         # not theirs to see on this record, and so not theirs to change
         :hidden ->
@@ -2569,13 +2535,13 @@ defmodule AshDataTable.Live.TableComponent do
   def handle_event(
         "panel_unpick",
         %{"input" => name, "key" => key},
-        %{assigns: %{panel: %{} = panel}} = socket
+        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
       )
       when is_binary(name) and is_binary(key) do
     with %{editor: :references} = input <- reference_input(panel, name),
          at when is_integer(at) <- Enum.find_index(panel.refs[name], &(&1 == key)) do
       keys = List.delete_at(panel.refs[name], at)
-      field = "#{socket.assigns.id}-panel-f-#{name}"
+      field = "#{socket.assigns.table.entry.id}-panel-f-#{name}"
 
       focus =
         cond do
@@ -2585,7 +2551,7 @@ defmodule AshDataTable.Live.TableComponent do
         end
 
       {:reply, %{focus: focus},
-       assign(socket, panel: errors(hold(panel, input, keys), socket.assigns.model))}
+       put(socket, panel: errors(hold(panel, input, keys), socket.assigns.table.entry.model))}
     else
       _ -> {:reply, %{}, socket}
     end
@@ -2602,7 +2568,9 @@ defmodule AshDataTable.Live.TableComponent do
   def handle_event(
         "panel_clear",
         %{"input" => name},
-        %{assigns: %{panel: %{clearable: clearable, cleared: cleared} = panel}} = socket
+        %{
+          assigns: %{table: %{entry: %{panel: %{clearable: clearable, cleared: cleared} = panel}}}
+        } = socket
       )
       when is_binary(name) do
     case Enum.find(clearable, &(Atom.to_string(&1) == name)) do
@@ -2615,8 +2583,8 @@ defmodule AshDataTable.Live.TableComponent do
             do: MapSet.delete(cleared, input),
             else: MapSet.put(cleared, input)
 
-        {:reply, %{focus: "#{socket.assigns.id}-panel-f-#{name}-clear"},
-         assign(socket, panel: %{panel | cleared: cleared})}
+        {:reply, %{focus: "#{socket.assigns.table.entry.id}-panel-f-#{name}-clear"},
+         put(socket, panel: %{panel | cleared: cleared})}
     end
   end
 
@@ -2624,14 +2592,14 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Sent by the panel's hook for Cancel and Escape.
   def handle_event("panel_cancel", _params, socket),
-    do: {:noreply, assign(socket, panel: nil, picker: nil)}
+    do: {:noreply, put(socket, panel: nil, picker: nil)}
 
   # Sent by the hook when a person opens the editor of a reference cell: the
   # row by the key in its DOM id, and the column. The picker opens; nothing
   # is saved. The record is read first, as the person: the picker opens on
   # the record the cell points at now.
   def handle_event("pick", %{"row" => key, "column" => name}, socket) when is_binary(key) do
-    %{model: model, rows: rows} = socket.assigns
+    %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true, kind: :reference, reference: reference} = column <-
            column(model, name),
@@ -2657,7 +2625,7 @@ defmodule AshDataTable.Live.TableComponent do
                 error: nil
               }
 
-              {:reply, %{ok: true}, assign(socket, picker: picker)}
+              {:reply, %{ok: true}, put(socket, picker: picker)}
           end
 
         :error ->
@@ -2676,7 +2644,11 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the button of a field of the action panel that holds the key of
   # a related record: the picker opens on top of the panel, on the record
   # the field holds now.
-  def handle_event("pick_input", %{"input" => name}, %{assigns: %{panel: %{} = panel}} = socket)
+  def handle_event(
+        "pick_input",
+        %{"input" => name},
+        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+      )
       when is_binary(name) do
     case reference_input(panel, name) do
       nil ->
@@ -2700,7 +2672,7 @@ defmodule AshDataTable.Live.TableComponent do
           error: nil
         }
 
-        {:noreply, assign(socket, picker: picker)}
+        {:noreply, put(socket, picker: picker)}
 
       input ->
         picker = %{
@@ -2716,7 +2688,7 @@ defmodule AshDataTable.Live.TableComponent do
           error: nil
         }
 
-        {:noreply, assign(socket, picker: picker)}
+        {:noreply, put(socket, picker: picker)}
     end
   end
 
@@ -2730,9 +2702,13 @@ defmodule AshDataTable.Live.TableComponent do
   #
   # The row is a claim. Which cell or field it is chosen for is the
   # server's to say, from what the picker was opened for.
-  def handle_event("picked", params, %{assigns: %{picker: %{} = picker}} = socket)
+  def handle_event(
+        "picked",
+        params,
+        %{assigns: %{table: %{entry: %{picker: %{} = picker}}}} = socket
+      )
       when is_map(params) do
-    %{model: model, rows: rows, panel: panel} = socket.assigns
+    %{model: model, rows: rows, panel: panel} = socket.assigns.table.entry
     named = params["row"]
     # what the picker's read action is given: what its argument line holds
     arguments = picked_with(socket.assigns, picker.reference, params["arguments"])
@@ -2744,7 +2720,7 @@ defmodule AshDataTable.Live.TableComponent do
              %{} = row <- rows[key] do
           refer(socket, key, row, column, named, params["confirmed"] == true, arguments)
         else
-          _ -> {:reply, %{ok: false}, assign(socket, picker: nil)}
+          _ -> {:reply, %{ok: false}, put(socket, picker: nil)}
         end
 
       {:input, name} ->
@@ -2756,7 +2732,7 @@ defmodule AshDataTable.Live.TableComponent do
             choose_input(socket, panel, input, named, arguments)
 
           _ ->
-            {:reply, %{ok: false}, assign(socket, picker: nil)}
+            {:reply, %{ok: false}, put(socket, picker: nil)}
         end
     end
   end
@@ -2765,7 +2741,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Sent by the picker's hook for Cancel and Escape.
   def handle_event("picker_cancel", _params, socket),
-    do: {:noreply, assign(socket, picker: nil)}
+    do: {:noreply, put(socket, picker: nil)}
 
   # the form of a panel that is no longer open
   def handle_event(event, _params, socket) when event in ["panel_validate", "panel_submit"],
@@ -2774,8 +2750,12 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the table's create button. The panel opens with the form of the
   # create action; nothing is created yet. A nested table creates under the
   # row it belongs to, which is read first, as the person.
-  def handle_event("create", _params, %{assigns: %{model: %{create: %{} = action}}} = socket) do
-    %{id: id, model: model} = socket.assigns
+  def handle_event(
+        "create",
+        _params,
+        %{assigns: %{table: %{entry: %{model: %{create: %{} = action}}}}} = socket
+      ) do
+    %{id: id, model: model} = socket.assigns.table.entry
 
     case parent_link(socket.assigns, action) do
       {:ok, given} ->
@@ -2805,8 +2785,8 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the hook when a person presses Escape on a cell whose save has
   # failed: the edit is given up, and the cell shows its record's value again.
   def handle_event("discard", %{"row" => key, "column" => name}, socket) do
-    with %{} = column <- column(socket.assigns.model, name),
-         %{record: record, cells: %{}} <- socket.assigns.failed[key] do
+    with %{} = column <- column(socket.assigns.table.entry.model, name),
+         %{record: record, cells: %{}} <- socket.assigns.table.entry.failed[key] do
       {:noreply, socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
     else
       _ -> {:noreply, socket}
@@ -2818,7 +2798,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the hook when a person presses Escape on a row's actions cell
   # that shows the message of an action that failed: the message is given up.
   def handle_event("dismiss", %{"row" => key}, socket) do
-    case socket.assigns.failed[key] do
+    case socket.assigns.table.entry.failed[key] do
       %{record: record, action: message} when is_binary(message) ->
         {:noreply, socket |> put_action_failure(key, record, nil) |> put_row(key, record)}
 
@@ -2834,15 +2814,15 @@ defmodule AshDataTable.Live.TableComponent do
   # its way out is taken away, and only while nothing is open in it or
   # under it: then it waits, and is asked about again when that is closed.
   def handle_event("left", %{"row" => row}, socket) when is_binary(row) do
-    %{leaving: leaving, rows: rows} = socket.assigns
+    %{leaving: leaving, rows: rows} = socket.assigns.table.entry
 
     cond do
       not MapSet.member?(leaving, row) or not is_map_key(rows, row) ->
         {:noreply, socket}
 
-      row in working(socket.assigns) ->
-        held = Enum.uniq([rows[row].pk | socket.assigns.held])
-        {:noreply, socket |> stay(row) |> assign(held: held)}
+      row in working(socket.assigns.table.entry) ->
+        held = Enum.uniq([rows[row].pk | socket.assigns.table.entry.held])
+        {:noreply, socket |> stay(row) |> put(held: held)}
 
       true ->
         {:noreply, socket |> stay(row) |> remove_row(row)}
@@ -2911,7 +2891,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Either way the row is put back with what is true now: the action's
   # result, or the record as it is and the cell marked with what was typed.
   defp save(socket, key, row, column, typed) do
-    socket.assigns.model
+    socket.assigns.table.entry.model
     |> Edit.save(column, row.pk, typed, reader(socket.assigns))
     |> saved(socket, key, column, typed)
   end
@@ -2953,7 +2933,7 @@ defmodule AshDataTable.Live.TableComponent do
       [ask?: not is_nil(column.confirm) and not confirmed?, arguments: arguments] ++
         chooser(socket.assigns)
 
-    case Edit.refer(socket.assigns.model, column, row.pk, named, opts) do
+    case Edit.refer(socket.assigns.table.entry.model, column, row.pk, named, opts) do
       :changed ->
         {:reply, %{ask: column.confirm}, socket}
 
@@ -2963,19 +2943,19 @@ defmodule AshDataTable.Live.TableComponent do
       {:ok, record} ->
         {:reply, %{ok: true},
          socket
-         |> assign(picker: nil)
+         |> put(picker: nil)
          |> put_failure(key, record, column.name, nil)
          |> put_row(key, record)}
 
       {:error, %_{} = record, message, chosen} ->
         {:reply, %{ok: false},
          socket
-         |> assign(picker: nil)
+         |> put(picker: nil)
          |> put_failure(
            key,
            record,
            column.name,
-           {referred(column, chosen, socket.assigns.time_zone), message, []}
+           {referred(column, chosen, socket.assigns.table.caller.time_zone), message, []}
          )
          |> put_row(key, record)
          |> say(Text.t(:not_saved, column: column.label, message: message))}
@@ -2983,7 +2963,7 @@ defmodule AshDataTable.Live.TableComponent do
       {:error, nil, message} ->
         {:reply, %{ok: false, error: message},
          socket
-         |> assign(picker: nil)
+         |> put(picker: nil)
          |> say(Text.t(:not_saved, column: column.label, message: message))}
     end
   end
@@ -3007,7 +2987,7 @@ defmodule AshDataTable.Live.TableComponent do
                named,
                [arguments: arguments] ++ chooser(socket.assigns)
              ),
-           {:ok, entry} <- entry(input, record, socket.assigns.time_zone) do
+           {:ok, entry} <- entry(input, record, socket.assigns.table.caller.time_zone) do
         entry
       else
         true -> {"", nil}
@@ -3030,9 +3010,9 @@ defmodule AshDataTable.Live.TableComponent do
         keys = if text == "", do: [], else: [text]
 
         {:reply, %{ok: true},
-         assign(socket,
+         put(socket,
            picker: nil,
-           panel: errors(hold(panel, input, keys), socket.assigns.model)
+           panel: errors(hold(panel, input, keys), socket.assigns.table.entry.model)
          )}
     end
   end
@@ -3068,7 +3048,7 @@ defmodule AshDataTable.Live.TableComponent do
       Enum.reduce_while(Enum.uniq_by(rows, &named/1), [], fn row, added ->
         with false <- named(row) in held,
              {:ok, record} <- Pick.chosen(input.reference, row, opts),
-             {:ok, entry} <- entry(input, record, socket.assigns.time_zone) do
+             {:ok, entry} <- entry(input, record, socket.assigns.table.caller.time_zone) do
           {:cont, added ++ [entry]}
         else
           true -> {:cont, added}
@@ -3099,9 +3079,9 @@ defmodule AshDataTable.Live.TableComponent do
         keys = kept ++ Enum.map(added, &elem(&1, 0))
 
         {:reply, %{ok: true},
-         assign(socket,
+         put(socket,
            picker: nil,
-           panel: errors(hold(panel, input, keys), socket.assigns.model)
+           panel: errors(hold(panel, input, keys), socket.assigns.table.entry.model)
          )}
     end
   end
@@ -3182,10 +3162,10 @@ defmodule AshDataTable.Live.TableComponent do
   # The row the browser named is none of a record this person may read
   # through the picker's read action: nothing is chosen, and the picker
   # stays open and says so.
-  defp unavailable(%{assigns: %{picker: picker}} = socket) do
+  defp unavailable(%{assigns: %{table: %{entry: %{picker: picker}}}} = socket) do
     message = Text.t(:record_gone)
 
-    socket |> assign(picker: %{picker | error: message}) |> say(message)
+    socket |> put(picker: %{picker | error: message}) |> say(message)
   end
 
   # The input of a panel that is given by choosing a related record, by its
@@ -3215,7 +3195,8 @@ defmodule AshDataTable.Live.TableComponent do
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
   # picker's table is told too (`AshDataTable.Pick.reader/2`).
-  defp chooser(assigns), do: [authorize_given: assigns.authorize_given] ++ reader(assigns)
+  defp chooser(assigns),
+    do: [authorize_given: assigns.table.options.authorize_given] ++ reader(assigns)
 
   # The same for the keys a panel holds: with what the picker's read action
   # was given when each was chosen.
@@ -3232,8 +3213,8 @@ defmodule AshDataTable.Live.TableComponent do
       reference.destination
       |> Model.build(choose: reference.choose_action)
       |> Model.for_actor(reader)
-      |> Model.zoned(assigns.time_zone)
-      |> Model.defaults(assigns.page_assigns)
+      |> Model.zoned(assigns.table.caller.time_zone)
+      |> Model.defaults(assigns.table.options.page_assigns)
 
     form =
       case decoded(sent) do
@@ -3289,7 +3270,7 @@ defmodule AshDataTable.Live.TableComponent do
           case {input.kind, Map.fetch(related, input.name)} do
             {:argument, {:ok, records}} ->
               for record <- records,
-                  {:ok, entry} <- [entry(input, record, assigns.time_zone)],
+                  {:ok, entry} <- [entry(input, record, assigns.table.caller.time_zone)],
                   do: entry
 
             {:argument, :error} ->
@@ -3320,7 +3301,8 @@ defmodule AshDataTable.Live.TableComponent do
     # what each field made of groups starts with, as its form sends it
     groups =
       for input <- panel.inputs, Model.group?(input), into: %{} do
-        {Atom.to_string(input.name), started(input, held.(input), panel.kind, assigns.time_zone)}
+        {Atom.to_string(input.name),
+         started(input, held.(input), panel.kind, assigns.table.caller.time_zone)}
       end
 
     Map.merge(
@@ -3342,7 +3324,7 @@ defmodule AshDataTable.Live.TableComponent do
         clearable: [],
         cleared: MapSet.new(),
         # the zone of the page, in which its fields show and take datetimes
-        time_zone: assigns.time_zone
+        time_zone: assigns.table.caller.time_zone
       },
       Map.delete(panel, :related)
     )
@@ -3353,10 +3335,10 @@ defmodule AshDataTable.Live.TableComponent do
   # One they may not read there is held all the same, and called nothing.
   defp known(assigns, input, value) do
     with {:ok, record} <- Pick.current(input.reference, value, chooser(assigns)),
-         {:ok, entry} <- entry(input, record, assigns.time_zone) do
+         {:ok, entry} <- entry(input, record, assigns.table.caller.time_zone) do
       entry
     else
-      :error -> {key_text(input, value, assigns.time_zone), nil}
+      :error -> {key_text(input, value, assigns.table.caller.time_zone), nil}
     end
   end
 
@@ -3486,7 +3468,7 @@ defmodule AshDataTable.Live.TableComponent do
   # cell marked with the action's message. A record that was destroyed is
   # taken out of the page.
   defp act(socket, key, row, %Model.Action{panel?: false} = action) do
-    socket.assigns.model
+    socket.assigns.table.entry.model
     |> Act.run(action, row.pk, reader(socket.assigns))
     |> ran(socket, key, action)
   end
@@ -3495,7 +3477,7 @@ defmodule AshDataTable.Live.TableComponent do
   # again, as the person, and the form of the action on it is what the panel
   # shows. Nothing runs yet.
   defp act(socket, key, row, %Model.Action{panel?: true} = action) do
-    %{id: id, model: model} = socket.assigns
+    %{id: id, model: model} = socket.assigns.table.entry
 
     case Act.open(model, action, row.pk, "#{id}-panel", reader(socket.assigns)) do
       {:ok, record, form, inputs} ->
@@ -3628,10 +3610,10 @@ defmodule AshDataTable.Live.TableComponent do
   # record. The selection is kept with the panel, as a row's key is with
   # the panel of a row.
   defp open_bulk(socket, action, selection, question) do
-    %{id: id, model: model} = socket.assigns
+    %{id: id, model: model} = socket.assigns.table.entry
 
     title =
-      case selected(selection, socket.assigns) do
+      case selected(selection, socket.assigns.table.entry) do
         nil -> Text.t(:bulk_on_all, action: action.label)
         count -> Text.n(:bulk_on, count, action: action.label)
       end
@@ -3657,18 +3639,18 @@ defmodule AshDataTable.Live.TableComponent do
   # grid is marked busy until `handle_async/3` has the outcome.
   defp run_bulk(socket, action, selection, input) do
     %{model: model, state: state, parent_key: key, parent_authorize?: authorize?} =
-      socket.assigns
+      socket.assigns.table.entry
 
     opts =
       [
         state: state,
         parent_key: key,
         parent_authorize?: authorize?,
-        parent_arguments: socket.assigns.parent_arguments
+        parent_arguments: socket.assigns.table.entry.parent_arguments
       ] ++ reader(socket.assigns)
 
     socket
-    |> assign(running: action, result: nil, panel: nil)
+    |> put(running: action, result: nil, panel: nil)
     |> start_async(:bulk, in_locale(fn -> Bulk.run(model, action, selection, input, opts) end))
   end
 
@@ -3696,7 +3678,7 @@ defmodule AshDataTable.Live.TableComponent do
   # depends on the record, and is said when it has run.
   defp submit(socket, %{kind: :bulk, action: action, selection: selection} = panel, params) do
     form = Act.validate(panel.form, panel.inputs, params, files(panel), panel.time_zone)
-    panel = errors(%{panel | form: form}, socket.assigns.model)
+    panel = errors(%{panel | form: form}, socket.assigns.table.entry.model)
 
     # a panel is never open beside a run: the run that starts closes it
     cond do
@@ -3716,7 +3698,7 @@ defmodule AshDataTable.Live.TableComponent do
 
         {:noreply,
          socket
-         |> assign(running_files: for({_name, %{path: path}} <- copies, do: path))
+         |> put(running_files: for({_name, %{path: path}} <- copies, do: path))
          |> run_bulk(action, selection, input)}
     end
   end
@@ -3727,7 +3709,7 @@ defmodule AshDataTable.Live.TableComponent do
   # as the person. What is not saved leaves the panel open, with what the
   # action said.
   defp submit(socket, %{kind: :cell, key: key, column: name, inputs: [input]} = panel, params) do
-    %{id: id, model: model, rows: rows} = socket.assigns
+    %{id: id, model: model, rows: rows} = socket.assigns.table.entry
 
     column =
       Enum.find(model.columns, &(&1.name == name and &1.editable? and Model.group?(&1)))
@@ -3736,7 +3718,7 @@ defmodule AshDataTable.Live.TableComponent do
       %{} = row ->
         case Edit.put(model, column, input, row.pk, params, "#{id}-panel", reader(socket.assigns)) do
           {:ok, record} ->
-            {:noreply, socket |> assign(panel: nil) |> put_row(key, record)}
+            {:noreply, socket |> put(panel: nil) |> put_row(key, record)}
 
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
@@ -3747,18 +3729,18 @@ defmodule AshDataTable.Live.TableComponent do
         end
 
       _gone ->
-        {:noreply, assign(socket, panel: nil)}
+        {:noreply, put(socket, panel: nil)}
     end
   end
 
   # Runs the action of a row's panel. The row has to be one of the page
   # still; its record is read again, as the person, before the action runs.
   defp submit(socket, %{kind: :row, key: key, action: action} = panel, params) do
-    %{id: id, model: model, rows: rows} = socket.assigns
+    %{id: id, model: model, rows: rows} = socket.assigns.table.entry
 
     case rows[key] do
       nil ->
-        {:noreply, assign(socket, panel: nil)}
+        {:noreply, put(socket, panel: nil)}
 
       row ->
         case Act.submit_row(
@@ -3781,7 +3763,7 @@ defmodule AshDataTable.Live.TableComponent do
             {:noreply, failed_panel(socket, panel, message)}
 
           ran ->
-            {:reply, _reply, socket} = ran(ran, assign(socket, panel: nil), key, action)
+            {:reply, _reply, socket} = ran(ran, put(socket, panel: nil), key, action)
             {:noreply, socket}
         end
     end
@@ -3791,9 +3773,9 @@ defmodule AshDataTable.Live.TableComponent do
   # action says about a field is shown at the field, and the panel stays
   # open; done, the panel closes and the table says what came of it.
   defp submit(socket, %{kind: :table, action: action} = panel, params) do
-    %{id: id, model: model} = socket.assigns
+    %{id: id, model: model} = socket.assigns.table.entry
 
-    case table_action(socket.assigns, Atom.to_string(action.name)) do
+    case table_action(socket.assigns.table.entry, Atom.to_string(action.name)) do
       %Model.Action{} = action ->
         case Act.submit_generic(
                model,
@@ -3804,7 +3786,7 @@ defmodule AshDataTable.Live.TableComponent do
                chooser(socket.assigns, panel)
              ) do
           {:done, value} ->
-            {:noreply, socket |> assign(panel: nil) |> done(action, value)}
+            {:noreply, socket |> put(panel: nil) |> done(action, value)}
 
           {:error, %AshPhoenix.Form{} = form} ->
             {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
@@ -3818,7 +3800,7 @@ defmodule AshDataTable.Live.TableComponent do
 
       # no longer an action of this person's
       nil ->
-        {:noreply, assign(socket, panel: nil)}
+        {:noreply, put(socket, panel: nil)}
     end
   end
 
@@ -3826,7 +3808,7 @@ defmodule AshDataTable.Live.TableComponent do
   # joined to the row the table belongs to: by that row's own value, read
   # again now, as the person. Nothing the form sends can say otherwise.
   defp submit(socket, %{kind: :create, action: action} = panel, params) do
-    %{id: id, model: model} = socket.assigns
+    %{id: id, model: model} = socket.assigns.table.entry
 
     case parent_link(socket.assigns, action) do
       {:ok, given} ->
@@ -3841,14 +3823,14 @@ defmodule AshDataTable.Live.TableComponent do
           {:ok, record} ->
             {:noreply,
              socket
-             |> assign(panel: nil)
+             |> put(panel: nil)
              |> add_row(record)
              |> say(Text.t(:created, name: created_name(model)))}
 
           # created, and not this person's to read: there is no row to show
           :gone ->
             {:noreply,
-             socket |> assign(panel: nil) |> say(Text.t(:created, name: created_name(model)))}
+             socket |> put(panel: nil) |> say(Text.t(:created, name: created_name(model)))}
 
           {:unchosen, inputs} ->
             {:noreply, failed_panel(socket, panel, unchosen(inputs))}
@@ -3897,7 +3879,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     socket =
       Enum.reduce(file_inputs(panel), socket, fn input, socket ->
-        name = upload_name(socket.assigns.id, input)
+        name = upload_name(socket.assigns.table.entry.id, input)
 
         if is_map_key(socket.assigns[:uploads] || %{}, name) do
           socket
@@ -3910,13 +3892,13 @@ defmodule AshDataTable.Live.TableComponent do
         end
       end)
 
-    assign(socket, panel: panel)
+    put(socket, panel: panel)
   end
 
   # Gives up the files of the panel's uploads: those a person chose and no
   # action was given. What an action was given is LiveView's to take away.
   defp drop_files(socket) do
-    spent = socket.assigns.spent
+    spent = socket.assigns.table.entry.spent
 
     Enum.reduce(socket.assigns[:uploads] || %{}, socket, fn
       # every upload of this component is one of a panel's fields; what else
@@ -3947,7 +3929,7 @@ defmodule AshDataTable.Live.TableComponent do
       Enum.any?(inputs, fn input ->
         match?(
           %{done?: false},
-          entry(upload_of(socket.assigns[:uploads], socket.assigns.id, input))
+          entry(upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input))
         )
       end)
 
@@ -3956,8 +3938,7 @@ defmodule AshDataTable.Live.TableComponent do
         run.(panel)
 
       refused != [] ->
-        {:noreply,
-         socket |> assign(panel: %{panel | refused_files: refused}) |> say_files(refused)}
+        {:noreply, socket |> put(panel: %{panel | refused_files: refused}) |> say_files(refused)}
 
       waiting? ->
         {:noreply, say(socket, Text.t(:upload_failed))}
@@ -3972,7 +3953,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp attach(_socket, [], files, run), do: run.(files)
 
   defp attach(socket, [input | rest], files, run) do
-    case entry(upload_of(socket.assigns[:uploads], socket.assigns.id, input)) do
+    case entry(upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input)) do
       %{done?: true} = entry ->
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
           file = %Plug.Upload{
@@ -3986,7 +3967,8 @@ defmodule AshDataTable.Live.TableComponent do
             attach(socket, rest, Map.put(files, Atom.to_string(input.name), file), run)
 
           # the file is gone when this returns: its entry is LiveView's to drop
-          {:ok, {:noreply, assign(socket, spent: MapSet.put(socket.assigns.spent, entry.ref))}}
+          {:ok,
+           {:noreply, put(socket, spent: MapSet.put(socket.assigns.table.entry.spent, entry.ref))}}
         end)
 
       _no_file ->
@@ -4005,8 +3987,8 @@ defmodule AshDataTable.Live.TableComponent do
   end
 
   defp drop_copies(socket) do
-    Enum.each(socket.assigns.running_files, &File.rm/1)
-    assign(socket, running_files: [])
+    Enum.each(socket.assigns.table.entry.running_files, &File.rm/1)
+    put(socket, running_files: [])
   end
 
   # What LiveView says of the files of a panel that it does not take: by
@@ -4014,20 +3996,22 @@ defmodule AshDataTable.Live.TableComponent do
   defp refused_files(socket, panel) do
     for input <- file_inputs(panel),
         texts =
-          upload_errors_of(upload_of(socket.assigns[:uploads], socket.assigns.id, input)),
+          upload_errors_of(
+            upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input)
+          ),
         texts != [],
         do: {input.label, texts}
   end
 
   # Read out when it changes: a file is refused as it is chosen, without
   # the panel's button having been used.
-  defp say_refused_files(%{assigns: %{panel: panel}} = socket) do
+  defp say_refused_files(%{assigns: %{table: %{entry: %{panel: panel}}}} = socket) do
     case refused_files(socket, panel) do
       refused when refused == panel.refused_files ->
         socket
 
       refused ->
-        socket |> assign(panel: %{panel | refused_files: refused}) |> say_files(refused)
+        socket |> put(panel: %{panel | refused_files: refused}) |> say_files(refused)
     end
   end
 
@@ -4115,7 +4099,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   # What the panel is given of its file fields, by name: the upload of
   # each, and what is said of its file at the field (`said_of/4`).
-  defp panel_files(%{panel: panel, id: id} = assigns) do
+  defp panel_files(%{table: %{entry: %{panel: panel, id: id}}} = assigns) do
     for input <- file_inputs(panel), into: %{} do
       {input.name,
        %{
@@ -4154,15 +4138,21 @@ defmodule AshDataTable.Live.TableComponent do
   defp parent_link(_assigns, %Model.Action{link: nil}), do: {:ok, %{}}
 
   defp parent_link(assigns, %Model.Action{link: {source, destination}}) do
-    %{model: %{via: via}, parent_key: key} = assigns
+    %{model: %{via: via}, parent_key: key} = assigns.table.entry
 
     opts =
       assigns
       |> reader()
       |> Query.reader_opts()
-      |> Keyword.update!(:authorize?, &(&1 or assigns.parent_authorize?))
+      |> Keyword.update!(:authorize?, &(&1 or assigns.table.entry.parent_authorize?))
 
-    case Query.get(via.source, via.source_read_action, key, assigns.parent_arguments, opts) do
+    case Query.get(
+           via.source,
+           via.source_read_action,
+           key,
+           assigns.table.entry.parent_arguments,
+           opts
+         ) do
       {:ok, %_{} = parent} ->
         case Map.get(parent, source) do
           hidden when is_struct(hidden, Ash.ForbiddenField) or is_nil(hidden) -> :error
@@ -4180,7 +4170,7 @@ defmodule AshDataTable.Live.TableComponent do
   # one more: this record is there for certain, though a new read may not
   # find it on this page, or under these filters at all.
   defp add_row(socket, record) do
-    %{id: id, model: model, rows: rows, page: page} = socket.assigns
+    %{id: id, model: model, rows: rows, page: page} = socket.assigns.table.entry
     key = row_key(model, record, map_size(rows))
 
     if is_map_key(rows, key) do
@@ -4192,11 +4182,11 @@ defmodule AshDataTable.Live.TableComponent do
 
       socket
       |> due(:force)
-      |> assign(rows: rows, row_count: map_size(rows))
-      |> assign(page: page && %{page | total: page.total && page.total + 1})
+      |> put(rows: rows, row_count: map_size(rows))
+      |> put(page: page && %{page | total: page.total && page.total + 1})
       # the detail first: each goes to the top, so the row ends up above it
       |> then(fn socket ->
-        if socket.assigns.expandable?,
+        if socket.assigns.table.entry.expandable?,
           do: stream_insert(socket, :rows, detail(id, key, nil, nil), at: 0),
           else: socket
       end)
@@ -4228,16 +4218,20 @@ defmodule AshDataTable.Live.TableComponent do
     # where the action has run: its form is then another than the one the
     # panel held, which was never given a file. The entry is still listed:
     # LiveView drops it after this event.
-    ran? = panel.form != (socket.assigns.panel && socket.assigns.panel.form)
-    panel = errors(%{Map.delete(panel, :files) | submitted?: true}, socket.assigns.model)
+    ran? =
+      panel.form != (socket.assigns.table.entry.panel && socket.assigns.table.entry.panel.form)
+
+    panel =
+      errors(%{Map.delete(panel, :files) | submitted?: true}, socket.assigns.table.entry.model)
 
     panel =
       if ran? do
         told =
           for input <- file_inputs(panel), into: %{} do
             {input.name,
-             {entry_ref(upload_of(socket.assigns[:uploads], socket.assigns.id, input)),
-              Map.get(panel.errors, input.name, [])}}
+             {entry_ref(
+                upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input)
+              ), Map.get(panel.errors, input.name, [])}}
           end
 
         %{panel | file_errors: told}
@@ -4252,7 +4246,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     said =
       for input <- [nil | panel.inputs],
-          text <- said_of(panel, input, socket.assigns.id, socket.assigns[:uploads]) do
+          text <- said_of(panel, input, socket.assigns.table.entry.id, socket.assigns[:uploads]) do
         if input, do: Text.t(:error_on_field, field: input.label, message: text), else: text
       end
 
@@ -4271,7 +4265,7 @@ defmodule AshDataTable.Live.TableComponent do
         _action -> Text.t(:action_not_done, action: panel.action.label, message: message)
       end
 
-    socket |> assign(panel: panel) |> say(said)
+    socket |> put(panel: panel) |> say(said)
   end
 
   # What a field inside a group is called, for the live region: the labels
@@ -4337,13 +4331,13 @@ defmodule AshDataTable.Live.TableComponent do
   # the grid, where the outcome of an action on the selected rows is said:
   # there is no row to say it on.
   defp run_table(socket, action) do
-    case Act.run_generic(socket.assigns.model, action, %{}, reader(socket.assigns)) do
+    case Act.run_generic(socket.assigns.table.entry.model, action, %{}, reader(socket.assigns)) do
       {:done, value} ->
         done(socket, action, value)
 
       {:error, message} ->
         text = Text.t(:action_not_done, action: action.label, message: message)
-        socket |> assign(result: %{summary: text, failures: []}) |> say(text)
+        socket |> put(result: %{summary: text, failures: []}) |> say(text)
     end
   end
 
@@ -4351,12 +4345,12 @@ defmodule AshDataTable.Live.TableComponent do
   # can be said in a word or a line, else that it is done, and reads again.
   defp done(socket, action, value) do
     text =
-      case Act.said(action, value, socket.assigns.time_zone) do
+      case Act.said(action, value, socket.assigns.table.caller.time_zone) do
         nil -> Text.t(:action_done, action: action.label)
         said -> Text.t(:action_result, action: action.label, result: said)
       end
 
-    socket |> assign(result: %{summary: text, failures: []}) |> say(text) |> reread()
+    socket |> put(result: %{summary: text, failures: []}) |> say(text) |> reread()
   end
 
   # The table action an event names, among those this table offers this
@@ -4400,7 +4394,7 @@ defmodule AshDataTable.Live.TableComponent do
   # with Ash's message, which is read out. What is left is a change like
   # one of the filters.
   defp reargue(socket, chosen) do
-    %{model: model, state: state} = socket.assigns
+    %{model: model, state: state} = socket.assigns.table.entry
     reader = reader(socket.assigns)
 
     {next, model, missing, refused} =
@@ -4427,7 +4421,7 @@ defmodule AshDataTable.Live.TableComponent do
           do: Text.t(:error_on_field, field: argument.label, message: message)
 
     socket
-    |> assign(model: model, missing: missing, refused: refused)
+    |> put(model: model, missing: missing, refused: refused)
     |> then(&if(said == [], do: &1, else: say(&1, Enum.join(said, "; "))))
     |> refilter(next)
   end
@@ -4453,30 +4447,32 @@ defmodule AshDataTable.Live.TableComponent do
   defp listed(_assigns, _named), do: nil
 
   # A change of the filters is announced once its rows have been read.
-  defp refilter(%{assigns: %{state: state}} = socket, state), do: socket
+  defp refilter(%{assigns: %{table: %{entry: %{state: state}}}} = socket, state), do: socket
   # The hook gives the selection up with the filters it was made under, and
   # with it goes what the last run on a selection came to.
   defp refilter(socket, state),
-    do: socket |> assign(announce?: true, result: nil) |> go(state)
+    do: socket |> put(announce?: true, result: nil) |> go(state)
 
   # With the state in the URL the change is a patch, and the new state comes
   # back through `update/2`. Otherwise the component holds it.
-  defp go(%{assigns: %{state: state}} = socket, state), do: socket
+  defp go(%{assigns: %{table: %{entry: %{state: state}}}} = socket, state), do: socket
 
-  defp go(%{assigns: %{url: url, id: id}} = socket, state) when is_binary(url) do
+  defp go(%{assigns: %{table: %{options: %{url: url}, entry: %{id: id}}}} = socket, state)
+       when is_binary(url) do
     # what the table is limited to stays, whatever else changes
     limit =
-      case socket.assigns.related do
+      case socket.assigns.table.entry.related do
         nil -> %{}
         %{param: param} -> %{Related.param() => param}
       end
 
     push_patch(socket,
-      to: path(url, id, Map.merge(State.to_params(state, socket.assigns.model), limit))
+      to:
+        path(url, id, Map.merge(State.to_params(state, socket.assigns.table.entry.model), limit))
     )
   end
 
-  defp go(socket, state), do: socket |> assign(state: state) |> read()
+  defp go(socket, state), do: socket |> put(state: state) |> read()
 
   # The URL with these parameters for the table `id`, and those of the
   # page's other tables as they are.
@@ -4499,9 +4495,9 @@ defmodule AshDataTable.Live.TableComponent do
   end
 
   @impl true
-  def render(%{gone?: true} = assigns) do
+  def render(%{table: %{entry: %{gone?: true}}} = assigns) do
     ~H"""
-    <div id={@id} hidden></div>
+    <div id={@table.entry.id} hidden></div>
     """
   end
 
@@ -4514,141 +4510,143 @@ defmodule AshDataTable.Live.TableComponent do
   # sets up nothing for it.
   def render(assigns) do
     ~H"""
-    <div id={@id} class="ash-data-table" data-read={not is_nil(@page)}>
+    <div id={@table.entry.id} class="ash-data-table" data-read={not is_nil(@table.entry.page)}>
       <Parts.Heading.heading
-        heading={@heading}
-        id={@id}
-        label={@label}
-        model={@model}
+        heading={@table.options.heading}
+        id={@table.entry.id}
+        label={@table.options.label}
+        model={@table.entry.model}
         myself={@myself}
-        nested?={@nested?}
-        offered={@offered}
-        page={@page}
-        related={@related}
+        nested?={@table.entry.nested?}
+        offered={@table.entry.offered}
+        page={@table.entry.page}
+        related={@table.entry.related}
       />
       <Parts.Related.related
-        :if={@related}
-        id={@id}
-        via={@related.via}
-        title={@related_title}
+        :if={@table.entry.related}
+        id={@table.entry.id}
+        via={@table.entry.related.via}
+        title={@table.entry.related_title}
         parent={
           Routes.table(
             @socket.router,
-            @related.via.source,
-            @related.via.source_table,
-            @authorize_given
+            @table.entry.related.via.source,
+            @table.entry.related.via.source_table,
+            @table.options.authorize_given
           )
         }
-        clear={path(@url, @id, %{})}
-        create={@page && @model.create}
-        actions={if @page, do: @offered, else: []}
+        clear={path(@table.options.url, @table.entry.id, %{})}
+        create={@table.entry.page && @table.entry.model.create}
+        actions={if @table.entry.page, do: @table.entry.offered, else: []}
         target={@myself}
       />
       <Parts.Arguments.argument_line
-        id={@id}
-        lines={@lines}
-        model={@model}
+        id={@table.entry.id}
+        lines={@table.entry.lines}
+        model={@table.entry.model}
         myself={@myself}
-        nested?={@nested?}
-        refused={@refused}
-        state={@state}
+        nested?={@table.entry.nested?}
+        refused={@table.entry.refused}
+        state={@table.entry.state}
       />
       <Parts.Filter.filter_form
-        id={@id}
+        id={@table.entry.id}
         myself={@myself}
       />
       <Parts.Selection.selection_line
-        bulk={@bulk}
-        choose={@choose}
-        id={@id}
-        model={@model}
+        bulk={@table.entry.bulk}
+        choose={@table.entry.choose}
+        id={@table.entry.id}
+        model={@table.entry.model}
         myself={@myself}
-        nested?={@nested?}
-        notice?={@notice?}
-        page={@page}
-        related={@related}
-        row_count={@row_count}
-        running={@running}
-        selecting={@selecting}
-        state={@state}
+        nested?={@table.entry.nested?}
+        notice?={@table.entry.notice?}
+        page={@table.entry.page}
+        related={@table.entry.related}
+        row_count={@table.entry.row_count}
+        running={@table.entry.running}
+        selecting={@table.entry.selecting}
+        state={@table.entry.state}
       />
       <Parts.Messages.status
-        announcement={@announcement}
-        announcements={@announcements}
-        id={@id}
-        result={@result}
+        announcement={@table.entry.announcement}
+        announcements={@table.entry.announcements}
+        id={@table.entry.id}
+        result={@table.entry.result}
       />
       <Parts.Grid.grid
-        acting?={@acting?}
-        busy?={@busy?}
-        choose={@choose}
+        acting?={@table.entry.acting?}
+        busy?={@table.entry.busy?}
+        choose={@table.entry.choose}
         component={__MODULE__}
-        creates={@creates}
-        editing?={@editing?}
-        expandable?={@expandable?}
-        full_view={@full_view}
-        id={@id}
-        label={@label}
-        label_column={@label_column}
-        labelledby={@labelledby}
-        lead={@lead}
-        model={@model}
+        creates={@table.entry.creates}
+        editing?={@table.entry.editing?}
+        expandable?={@table.entry.expandable?}
+        full_view={@table.entry.full_view}
+        id={@table.entry.id}
+        label={@table.options.label}
+        label_column={@table.entry.label_column}
+        labelledby={@table.options.labelledby}
+        lead={@table.entry.lead}
+        model={@table.entry.model}
         myself={@myself}
-        nested?={@nested?}
+        nested?={@table.entry.nested?}
         nested_reader={nested_reader(assigns)}
-        page={@page}
-        pending={@pending}
-        rejected={@rejected}
-        row_count={@row_count}
-        running={@running}
-        selecting={@selecting}
-        state={@state}
+        page={@table.entry.page}
+        pending={@table.entry.pending}
+        rejected={@table.entry.rejected}
+        row_count={@table.entry.row_count}
+        running={@table.entry.running}
+        selecting={@table.entry.selecting}
+        state={@table.entry.state}
         streams={@streams}
-        summarised?={@summarised?}
-        summary={@summary}
-        summing?={@summing?}
-        time_zone={@time_zone}
+        summarised?={@table.entry.summarised?}
+        summary={@table.entry.summary}
+        summing?={@table.entry.summing?}
+        time_zone={@table.caller.time_zone}
       />
-      <Parts.Messages.whole id={@id} />
+      <Parts.Messages.whole id={@table.entry.id} />
       <Parts.Messages.dialog
-        bulk={@bulk}
-        id={@id}
-        model={@model}
+        bulk={@table.entry.bulk}
+        id={@table.entry.id}
+        model={@table.entry.model}
       />
       <Parts.Panel.panel
-        :if={@panel}
-        id={@id}
-        panel={@panel}
+        :if={@table.entry.panel}
+        id={@table.entry.id}
+        panel={@table.entry.panel}
         files={panel_files(assigns)}
         target={@myself}
       />
       <%!-- After the panel, and so on top of it when both are open: a picker
       that a field of the panel has opened. --%>
       <Parts.Picker.picker
-        :if={@picker}
-        id={@id}
-        picker={@picker}
+        :if={@table.entry.picker}
+        id={@table.entry.id}
+        picker={@table.entry.picker}
         reader={picker_reader(assigns)}
         target={@myself}
         component={__MODULE__}
       />
       <Parts.Messages.messages
-        error={@error}
-        fill={@fill}
-        id={@id}
-        loading?={@loading?}
-        nested?={@nested?}
-        row_count={@row_count}
+        error={@table.entry.error}
+        fill={@table.entry.fill}
+        id={@table.entry.id}
+        loading?={@table.entry.loading?}
+        nested?={@table.entry.nested?}
+        row_count={@table.entry.row_count}
       />
       <Parts.Pagination.pagination
-        :if={not @nested? and Parts.Pagination.pages?(@page, @model)}
-        id={@id}
+        :if={
+          not @table.entry.nested? and Parts.Pagination.pages?(@table.entry.page, @table.entry.model)
+        }
+        id={@table.entry.id}
         nested?={false}
-        page={@page}
-        model={@model}
-        state={@state}
-        row_count={@row_count}
-        label={@label}
+        page={@table.entry.page}
+        model={@table.entry.model}
+        state={@table.entry.state}
+        row_count={@table.entry.row_count}
+        label={@table.options.label}
         target={@myself}
       />
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">
@@ -4680,14 +4678,14 @@ defmodule AshDataTable.Live.TableComponent do
   # else as its own resource's domain says.
   defp picker_reader(assigns) do
     %{
-      scope: assigns.scope,
-      actor: assigns.actor,
-      tenant: assigns.tenant,
-      authorize?: assigns.authorize_given,
-      page_assigns: assigns.page_assigns,
-      time_zone: assigns.time_zone,
-      lineage: assigns.lineage ++ [assigns.id],
-      live?: passed_on(assigns.live_given)
+      scope: assigns.table.caller.scope,
+      actor: assigns.table.caller.actor,
+      tenant: assigns.table.caller.tenant,
+      authorize?: assigns.table.options.authorize_given,
+      page_assigns: assigns.table.options.page_assigns,
+      time_zone: assigns.table.caller.time_zone,
+      lineage: assigns.table.options.lineage ++ [assigns.table.entry.id],
+      live?: passed_on(assigns.table.options.live_given)
     }
   end
 
@@ -4703,18 +4701,18 @@ defmodule AshDataTable.Live.TableComponent do
   # nested table authorizes as its own resource's domain says.
   defp nested_reader(assigns) do
     %{
-      scope: assigns.scope,
-      actor: assigns.actor,
-      tenant: assigns.tenant,
-      authorize?: assigns.authorize_given,
-      parent_authorize?: assigns.authorize?,
-      parent_arguments: assigns.model.read_arguments,
-      page_assigns: assigns.page_assigns,
-      time_zone: assigns.time_zone,
-      depth: assigns.depth + 1,
-      depth_limit: assigns.depth_limit,
-      lineage: assigns.lineage ++ [assigns.id],
-      live?: passed_on(assigns.live_given)
+      scope: assigns.table.caller.scope,
+      actor: assigns.table.caller.actor,
+      tenant: assigns.table.caller.tenant,
+      authorize?: assigns.table.options.authorize_given,
+      parent_authorize?: assigns.table.caller.authorize?,
+      parent_arguments: assigns.table.entry.model.read_arguments,
+      page_assigns: assigns.table.options.page_assigns,
+      time_zone: assigns.table.caller.time_zone,
+      depth: assigns.table.entry.depth + 1,
+      depth_limit: assigns.table.entry.depth_limit,
+      lineage: assigns.table.options.lineage ++ [assigns.table.entry.id],
+      live?: passed_on(assigns.table.options.live_given)
     }
   end
 
