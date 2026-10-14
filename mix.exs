@@ -73,6 +73,7 @@ defmodule AshTable.MixProject do
         "documentation/topics/authorization.md",
         "documentation/topics/keyboard-and-accessibility.md",
         "documentation/topics/messages-and-translations.md",
+        "documentation/topics/time-zones.md",
         "documentation/topics/layout-and-embedding.md",
         "documentation/topics/mistakes-at-compile-time.md",
         "documentation/dsls/DSL-AshTable.Resource.md",
@@ -135,7 +136,10 @@ defmodule AshTable.MixProject do
       {:ex_doc, "~> 0.37", only: [:dev, :test], runtime: false},
       # The solver Ash's policies need. Only the test resources have policies;
       # a host application brings its own.
-      {:simple_sat, "~> 0.1", only: :test}
+      {:simple_sat, "~> 0.1", only: :test},
+      # A time zone database for the tests of zones other than UTC. A host
+      # configures its own (`tz` or `tzdata`); the library needs none.
+      {:tz, "~> 0.28", only: :test}
     ]
   end
 

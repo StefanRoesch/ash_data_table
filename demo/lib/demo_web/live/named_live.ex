@@ -25,7 +25,7 @@ defmodule DemoWeb.NamedLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <Layouts.app flash={@flash}>
+    <Layouts.app flash={@flash} time_zone={@time_zone}>
       <div class="space-y-2">
         <h1 class="text-2xl font-semibold">Named tables</h1>
         <p id="named-about" class="text-base-content/70">
@@ -56,6 +56,7 @@ defmodule DemoWeb.NamedLive do
           url={@url}
           actor={@current_user}
           tenant={@current_tenant}
+          time_zone={@time_zone}
         />
       </section>
 
@@ -68,6 +69,7 @@ defmodule DemoWeb.NamedLive do
           url={@url}
           actor={@current_user}
           tenant={@current_tenant}
+          time_zone={@time_zone}
         />
       </section>
     </Layouts.app>

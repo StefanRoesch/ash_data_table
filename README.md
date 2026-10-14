@@ -80,6 +80,7 @@ examples from the demo app and each topic's edge cases.
 - [Named tables](documentation/topics/named-tables.md)
 - [Live updates](documentation/topics/live-updates.md): `live? true` makes a table follow what other people change
 - [Footer summaries](documentation/topics/footer-summaries.md): `summary :sum` on a column shows one number under it, over every record that matches
+- [Time zones](documentation/topics/time-zones.md): `time_zone="Europe/Berlin"` shows, takes and filters by datetimes in the person's zone
 - [Custom components](documentation/topics/custom-components.md)
 - [Sensitive columns](documentation/topics/sensitive-columns.md)
 - [Authorization](documentation/topics/authorization.md)
@@ -360,7 +361,8 @@ attribute is case-sensitive: "report" does not find "Report". A filter on a
 `:ci_string` attribute is not. If people should find text whatever its case,
 make the attribute a `:ci_string`.
 
-A datetime is filtered in the same terms as it is shown: UTC, to the second.
+A datetime is filtered in the same terms as it is shown: in the page's time
+zone (UTC unless the page gives one), to the second.
 
 A value that is not one of the column's type (a number with decimals in an
 integer column, say) is not applied; its filter is marked as invalid and says
@@ -511,7 +513,7 @@ table is read-only.
   | `:integer`, `:float`, `:decimal` | number input |
   | `:boolean` | toggled in place |
   | `:date` | date input |
-  | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input, UTC, to the second |
+  | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime input, to the second, in the page's time zone (UTC unless given) |
   | an `Ash.Type.Enum`, an `:atom` with `one_of` | choice of the values, and of none when the attribute can be nil |
   | an array of enum values | multiple choice: a list of boxes in the cell, one per value |
   | an array of any other type above | one control per value, with a button that takes the value away and one that adds a value |

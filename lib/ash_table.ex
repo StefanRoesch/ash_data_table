@@ -122,6 +122,18 @@ defmodule AshTable do
   The element of the name has the id of the table followed by `-name`, for a
   page that labels a region by it (`aria-labelledby="tasks-name"`). A table
   whose read is refused outright renders nothing, this line included.
+
+  ## Time zone
+
+  Datetimes are shown, typed and filtered by in UTC, unless the page gives
+  its time zone, usually the person's:
+
+      <AshTable.table id="tasks" resource={MyApp.Tracker.Task} time_zone={@time_zone} />
+
+  See the guide "Time zones". A zone other than UTC needs a time zone
+  database (`tz` or `tzdata`) configured in the application; a name that is
+  no zone, or a zone without a database, is an `ArgumentError` when the
+  table is rendered.
   """
   attr :id, :string,
     default: nil,
@@ -165,6 +177,11 @@ defmodule AshTable do
     doc:
       "How the table's name is shown on the line above it, with the create button and the buttons of the table actions at the other end. `true` shows it as text that is no heading, since a table cannot know the outline of the page it is in; a number from 1 to 6 makes it a heading of that level; `false` leaves it out, for a page that names the table itself."
 
+  attr :time_zone, :string,
+    default: nil,
+    doc:
+      "The time zone of the page, such as `\"Europe/Berlin\"`: a datetime is shown in it, what a person types into a datetime is a time there, and a filter on a datetime means times there. Nil is UTC. A zone other than UTC needs a time zone database (`config :elixir, :time_zone_database, …`). See the guide \"Time zones\"."
+
   attr :assigns, :map,
     default: %{},
     doc:
@@ -188,6 +205,8 @@ defmodule AshTable do
         id: assigns.id || AshTable.Routes.default_id(assigns.resource, table)
       )
 
+    AshTable.Zone.check!(assigns.time_zone, "The `time_zone` of <AshTable.table>")
+
     if assigns.heading not in [true, false, 1, 2, 3, 4, 5, 6] do
       raise ArgumentError,
             "the `heading` of <AshTable.table> is `true`, `false` or a heading level from 1 to 6, " <>
@@ -210,6 +229,7 @@ defmodule AshTable do
       heading={@heading}
       mounted?={false}
       page_assigns={@assigns}
+      time_zone={@time_zone}
     />
     """
   end

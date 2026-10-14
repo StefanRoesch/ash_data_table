@@ -259,6 +259,9 @@ msgstr "Die Datei konnte nicht hochgeladen werden."
 msgid "This could not be saved."
 msgstr "Das konnte nicht gespeichert werden."
 
+msgid "This time does not exist in %{zone}."
+msgstr "Diese Uhrzeit gibt es in %{zone} nicht."
+
 msgid "This record is no longer available."
 msgstr "Dieser Eintrag ist nicht mehr verfügbar."
 

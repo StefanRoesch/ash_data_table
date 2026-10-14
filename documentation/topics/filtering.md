@@ -77,8 +77,9 @@ The list is shortened to what Ash supports for the field:
   only, and an enum "is" only: Ash takes neither a range nor a list for it.
 - **An operator the data layer cannot run** for the field is left out.
 
-A datetime is filtered in the terms it is shown in: UTC, to the second. A
-value picked to the minute means the start of that minute.
+A datetime is filtered in the terms it is shown in: in the page's time zone
+(UTC unless the page gives one; see [Time zones](time-zones.md)), to the
+second. A value picked to the minute means the start of that minute.
 
 ## When a filter applies
 

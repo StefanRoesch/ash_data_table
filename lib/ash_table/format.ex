@@ -10,49 +10,65 @@ defmodule AshTable.Format do
   # A field of a map cell that its embedded resource declares `sensitive?`
   # is a mask (`AshTable.Sensitive`).
   # Nothing is parsed here: what a person types goes to the resource's action
-  # as typed.
+  # as typed, but for a wall time, which `AshTable.Zone` gives as its instant.
+  #
+  # Every function takes the zone of the page (`AshTable.Zone`): a datetime
+  # that is an instant (a `DateTime`) is shown as the clocks of that zone
+  # show it, without the zone, which the page states once if it wants to. A
+  # naive datetime has no zone and is shown as it is.
 
   alias AshTable.Model
   alias AshTable.Model.Column
   alias AshTable.Resource.Embedding
   alias AshTable.Sensitive
   alias AshTable.Text
+  alias AshTable.Zone
+
+  @utc Zone.utc()
 
   @doc """
   The text shown for `value` in a cell of `column`.
 
   For a boolean it is the accessible text ("Yes" or "No"); the check indicator
-  is markup and belongs to the component. Nil is empty.
+  is markup and belongs to the component. Nil is empty. A datetime that is
+  an instant is shown in `zone`, the time zone of the page; `format/2` in
+  UTC.
   """
   @spec format(Column.t() | AshTable.Model.Input.t(), term) :: String.t()
-  def format(_column, nil), do: ""
+  def format(column, value), do: format(column, value, @utc)
+
+  @spec format(Column.t() | AshTable.Model.Input.t(), term, Zone.t()) :: String.t()
+  def format(_column, nil, _zone), do: ""
   # A field the actor may not see has a placeholder, which is markup and
   # belongs to the component.
-  def format(_column, %Ash.ForbiddenField{}), do: ""
-  def format(_column, %Ash.NotLoaded{}), do: ""
+  def format(_column, %Ash.ForbiddenField{}, _zone), do: ""
+  def format(_column, %Ash.NotLoaded{}, _zone), do: ""
   # what a table keeps in place of a sensitive value: never the value
-  def format(_column, %Sensitive.Masked{}), do: Sensitive.mask()
+  def format(_column, %Sensitive.Masked{}, _zone), do: Sensitive.mask()
 
-  def format(%{cell_type: :text}, value), do: to_string(value)
+  def format(%{cell_type: :text}, value, _zone), do: to_string(value)
 
-  def format(%{cell_type: :number}, %Decimal{} = value),
+  def format(%{cell_type: :number}, %Decimal{} = value, _zone),
     do: Decimal.to_string(value, :normal)
 
-  def format(%{cell_type: :number}, value), do: to_string(value)
+  def format(%{cell_type: :number}, value, _zone), do: to_string(value)
 
-  def format(%{cell_type: :boolean}, true), do: Text.t(:yes)
-  def format(%{cell_type: :boolean}, false), do: Text.t(:no)
+  def format(%{cell_type: :boolean}, true, _zone), do: Text.t(:yes)
+  def format(%{cell_type: :boolean}, false, _zone), do: Text.t(:no)
 
-  def format(%{cell_type: :date}, %Date{} = value), do: Date.to_iso8601(value)
+  def format(%{cell_type: :date}, %Date{} = value, _zone), do: Date.to_iso8601(value)
 
-  def format(%{cell_type: :datetime}, %struct{} = value)
-      when struct in [DateTime, NaiveDateTime],
-      do: Calendar.strftime(value, "%Y-%m-%dT%H:%M:%S")
+  # an instant as the clocks of the page's zone show it
+  def format(%{cell_type: :datetime}, %DateTime{} = value, zone),
+    do: value |> Zone.local(zone) |> Calendar.strftime("%Y-%m-%dT%H:%M:%S")
 
-  def format(%{cell_type: :enum, values: values}, value) do
+  def format(%{cell_type: :datetime}, %NaiveDateTime{} = value, _zone),
+    do: Calendar.strftime(value, "%Y-%m-%dT%H:%M:%S")
+
+  def format(%{cell_type: :enum, values: values}, value, zone) do
     case List.keyfind(values || [], value, 0) do
       {_value, label} -> label
-      nil -> other(value)
+      nil -> other(value, zone)
     end
   end
 
@@ -60,11 +76,11 @@ defmodule AshTable.Format do
   # each called what a column of that name is called. Plain text, with
   # nothing around it; a field that is itself such a value follows its name
   # the same way.
-  def format(%{cell_type: :map} = field, value) when is_map(value) do
+  def format(%{cell_type: :map} = field, value, zone) when is_map(value) do
     parts =
       case fields(field, value) do
         nil ->
-          for {key, held} <- undeclared(value), text = other(held), text != "" do
+          for {key, held} <- undeclared(value), text = other(held, zone), text != "" do
             {Text.label(Model.humanize(key)), text}
           end
 
@@ -72,7 +88,7 @@ defmodule AshTable.Format do
           # not the key Ash tells the values of an array apart by, when
           # nobody gives it: it says which value this is, not what it holds
           for %{name: name, label: label, key?: false} = inner <- fields,
-              text = shown(inner, held(value, name)),
+              text = shown(inner, held(value, name), zone),
               text != "" do
             {label, text}
           end
@@ -86,37 +102,37 @@ defmodule AshTable.Format do
   # A union is shown as the value it holds, as a value of that kind's type
   # is shown: a number as a number, a value made of fields as its one line.
   # Nothing says which kind it is.
-  def format(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value}) do
+  def format(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value}, zone) do
     case Enum.find(members(field) || [], &(&1.name == kind)) do
-      nil -> other(value)
-      member -> format(member, value)
+      nil -> other(value, zone)
+      member -> format(member, value, zone)
     end
   end
 
   # the values of an array of unions, set apart as those of an array of
   # values made of fields are: one of them may be such a value
-  def format(%{cell_type: {:array, :union}} = column, values) when is_list(values) do
+  def format(%{cell_type: {:array, :union}} = column, values, zone) when is_list(values) do
     column = %{cell_type: :union, members: members(column) || []}
 
     values
-    |> Enum.map(&format(column, &1))
+    |> Enum.map(&format(column, &1, zone))
     |> Enum.reject(&(&1 == ""))
     |> Enum.join("; ")
   end
 
   # the values of an array, each as a cell of its type shows it; values
   # that are made of fields themselves are set apart from each other
-  def format(%{cell_type: {:array, :map}} = column, values) when is_list(values) do
+  def format(%{cell_type: {:array, :map}} = column, values, zone) when is_list(values) do
     values
-    |> Enum.map(&format(%{column | cell_type: :map}, &1))
+    |> Enum.map(&format(%{column | cell_type: :map}, &1, zone))
     |> Enum.reject(&(&1 == ""))
     |> Enum.join("; ")
   end
 
-  def format(%{cell_type: {:array, item}} = column, values) when is_list(values),
-    do: Enum.map_join(values, ", ", &format(%{column | cell_type: item}, &1))
+  def format(%{cell_type: {:array, item}} = column, values, zone) when is_list(values),
+    do: Enum.map_join(values, ", ", &format(%{column | cell_type: item}, &1, zone))
 
-  def format(%{cell_type: _}, value), do: other(value)
+  def format(%{cell_type: _}, value, zone), do: other(value, zone)
 
   @doc """
   The text shown for the summary of `column`, of the kind its `summary`
@@ -125,23 +141,31 @@ defmodule AshTable.Format do
   decimal places at most. Nil, the summary of no values, is empty.
   """
   @spec summary(Column.t(), term) :: String.t()
-  def summary(_column, nil), do: ""
-  def summary(%{summary: :count}, value) when is_integer(value), do: Integer.to_string(value)
+  # in UTC
+  def summary(column, value), do: summary(column, value, @utc)
 
-  def summary(%{summary: :avg}, %Decimal{} = value),
-    do: format(%{cell_type: :number}, value |> Decimal.round(2) |> Decimal.normalize())
+  @spec summary(Column.t(), term, Zone.t()) :: String.t()
+  def summary(_column, nil, _zone), do: ""
 
-  def summary(%{summary: :avg}, value) when is_float(value) do
+  def summary(%{summary: :count}, value, _zone) when is_integer(value),
+    do: Integer.to_string(value)
+
+  def summary(%{summary: :avg}, %Decimal{} = value, zone),
+    do: format(%{cell_type: :number}, value |> Decimal.round(2) |> Decimal.normalize(), zone)
+
+  def summary(%{summary: :avg}, value, zone) when is_float(value) do
     rounded = Float.round(value, 2)
 
     # a whole number without ".0"
     if rounded == Float.round(rounded),
       do: Integer.to_string(round(rounded)),
-      else: format(%{cell_type: :number}, rounded)
+      else: format(%{cell_type: :number}, rounded, zone)
   end
 
-  def summary(%{summary: :avg}, value) when is_integer(value), do: Integer.to_string(value)
-  def summary(column, value), do: format(column, value)
+  def summary(%{summary: :avg}, value, _zone) when is_integer(value),
+    do: Integer.to_string(value)
+
+  def summary(column, value, zone), do: format(column, value, zone)
 
   @doc """
   The text the editor of a cell holds for `value`: what the cell shows, the
@@ -154,34 +178,39 @@ defmodule AshTable.Format do
   """
   @spec input(Column.t() | AshTable.Model.Input.t() | Model.Field.t(), term) ::
           String.t() | [String.t()] | map | [map] | nil
+  # in UTC
+  def input(column, value), do: input(column, value, @utc)
+
+  @spec input(Column.t() | AshTable.Model.Input.t() | Model.Field.t(), term, Zone.t()) ::
+          String.t() | [String.t()] | map | [map] | nil
   # The editor of a map cell holds its inputs by name, each as the editor of
   # its type holds it, and with them the primary key of an embedded resource
   # that is no input: Ash tells by it which value is which. Nil is no value.
-  def input(%{cell_type: :map, fields: [_ | _] = fields}, value) when is_map(value) do
+  def input(%{cell_type: :map, fields: [_ | _] = fields}, value, zone) when is_map(value) do
     for %{name: name} = inner <- fields, inner.input? or inner.key?, into: %{} do
       held = held(value, name)
 
       {Atom.to_string(name),
        if(inner.cell_type in [:map, :union],
-         do: input(inner, held),
-         else: input(inner, held) || ""
+         do: input(inner, held, zone),
+         else: input(inner, held, zone) || ""
        )}
     end
   end
 
-  def input(%{cell_type: :map}, _value), do: nil
+  def input(%{cell_type: :map}, _value, _zone), do: nil
 
   # The editor of a union holds the kind and that kind's value, as the
   # editor of its type holds it. Nil is no value, and so is a kind that
   # holds nothing: Ash keeps the kind of a value that was taken away.
-  def input(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value})
+  def input(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value}, zone)
       when not is_nil(value) do
     case Enum.find(members(field) || [], &(&1.name == kind)) do
       nil ->
         nil
 
       member ->
-        held = input(member, value)
+        held = input(member, value, zone)
 
         %{
           "_union_type" => Atom.to_string(kind),
@@ -190,41 +219,41 @@ defmodule AshTable.Format do
     end
   end
 
-  def input(%{cell_type: :union}, _value), do: nil
+  def input(%{cell_type: :union}, _value, _zone), do: nil
 
-  def input(%{cell_type: {:array, :map}} = column, values) when is_list(values),
-    do: Enum.map(values, &input(%{column | cell_type: :map}, &1))
+  def input(%{cell_type: {:array, :map}} = column, values, zone) when is_list(values),
+    do: Enum.map(values, &input(%{column | cell_type: :map}, &1, zone))
 
-  def input(%{cell_type: {:array, item}} = column, values) when is_list(values) do
+  def input(%{cell_type: {:array, item}} = column, values, zone) when is_list(values) do
     Enum.map(values, fn
       typed when is_binary(typed) -> typed
-      value -> input(%{column | cell_type: item}, value)
+      value -> input(%{column | cell_type: item}, value, zone)
     end)
   end
 
-  def input(%{cell_type: {:array, _item}}, _value), do: []
+  def input(%{cell_type: {:array, _item}}, _value, _zone), do: []
 
-  def input(%{cell_type: :boolean}, value) when is_boolean(value), do: to_string(value)
+  def input(%{cell_type: :boolean}, value, _zone) when is_boolean(value), do: to_string(value)
 
-  def input(%{cell_type: :enum}, value) when is_atom(value) and not is_nil(value),
+  def input(%{cell_type: :enum}, value, _zone) when is_atom(value) and not is_nil(value),
     do: Atom.to_string(value)
 
-  def input(%{cell_type: :enum}, value) when is_binary(value), do: value
-  def input(%{cell_type: cell_type}, _value) when cell_type in [:boolean, :enum], do: ""
-  def input(%{cell_type: _} = column, value), do: format(column, value)
+  def input(%{cell_type: :enum}, value, _zone) when is_binary(value), do: value
+  def input(%{cell_type: cell_type}, _value, _zone) when cell_type in [:boolean, :enum], do: ""
+  def input(%{cell_type: _} = column, value, zone), do: format(column, value, zone)
 
   # A field of such a value that is declared `sensitive?` is a mask where it
   # holds something, the same for every value, and nothing where it does
   # not: the line says that there is a value, never which.
-  defp shown(%{sensitive?: true} = inner, held) do
+  defp shown(%{sensitive?: true} = inner, held, zone) do
     cond do
-      is_struct(held, Ash.ForbiddenField) -> format(inner, held)
+      is_struct(held, Ash.ForbiddenField) -> format(inner, held, zone)
       Sensitive.empty?(held) -> ""
       true -> Sensitive.mask()
     end
   end
 
-  defp shown(inner, held), do: format(inner, held)
+  defp shown(inner, held, zone), do: format(inner, held, zone)
 
   # The fields of a map cell: those its column or field says, else those of
   # its type. An embedded resource that holds a value of its own type is
@@ -269,33 +298,40 @@ defmodule AshTable.Format do
   defp undeclared(value), do: Enum.sort_by(value, fn {key, _held} -> to_string(key) end)
 
   # Read-only text for everything without a cell type of its own.
-  defp other(nil), do: ""
+  defp other(nil, _zone), do: ""
 
-  defp other(value) when is_binary(value) do
+  defp other(value, _zone) when is_binary(value) do
     if String.valid?(value), do: value, else: inspect(value)
   end
 
-  defp other(value) when is_number(value), do: to_string(value)
+  defp other(value, _zone) when is_number(value), do: to_string(value)
 
   # A module is shown as it is written, without the `Elixir.` of its atom.
-  defp other(value) when is_atom(value) do
+  defp other(value, _zone) when is_atom(value) do
     case Atom.to_string(value) do
       "Elixir." <> _ -> inspect(value)
       text -> text
     end
   end
 
-  defp other(value) when is_list(value), do: Enum.map_join(value, ", ", &other/1)
+  defp other(value, zone) when is_list(value), do: Enum.map_join(value, ", ", &other(&1, zone))
 
   # a union whose kinds are not known here: the value it holds
-  defp other(%Ash.Union{value: value}), do: other(value)
+  defp other(%Ash.Union{value: value}, zone), do: other(value, zone)
 
-  defp other(%_{} = value) do
+  # An instant without a type that says so, in a zone other than UTC: as a
+  # datetime cell shows it. (In UTC it is the text of the struct, as it was
+  # before there were zones.)
+  defp other(%DateTime{} = value, zone) when zone != @utc,
+    do: format(%{cell_type: :datetime}, value, zone)
+
+  defp other(%_{} = value, _zone) do
     if String.Chars.impl_for(value), do: to_string(value), else: inspect(value)
   end
 
   # a map inside a map that declares no fields: the same one line
-  defp other(%{} = value), do: format(%{cell_type: :map, fields: nil, type: {nil, []}}, value)
+  defp other(%{} = value, zone),
+    do: format(%{cell_type: :map, fields: nil, type: {nil, []}}, value, zone)
 
-  defp other(value), do: inspect(value)
+  defp other(value, _zone), do: inspect(value)
 end

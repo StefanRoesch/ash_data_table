@@ -422,7 +422,7 @@ decides how a value is shown, which filter the column gets and which editor.
 | `:integer`, `:float`, `:decimal` | number | The digits, without grouping. A decimal is written out in full, never in exponent notation. |
 | `:boolean` | boolean | A mark, ✓ or –, with the text "Yes" or "No" for screen readers. |
 | `:date` | date | ISO 8601: `2026-10-06`. |
-| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime | To the second, without a zone: `2026-10-06T14:23:03`. The UTC types are shown in UTC. |
+| `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | datetime | To the second, without a zone: `2026-10-06T14:23:03`. The UTC types are shown in the page's time zone, UTC unless the page gives one ([Time zones](time-zones.md)). |
 | A module that uses `Ash.Type.Enum`; `:atom` with the constraint `one_of`; `:duration_name` | enum | The label of the value: what the enum's `label/1` returns, else the value in words (`:in_progress` becomes "In progress"). |
 | An embedded resource; `:map`, with the `fields` constraint or without | map | Its fields on one line, as plain text: `Name: Lumen, Key account?: No`. Each field is called by its name in words and shown as a cell of its type shows it. See [Maps and embedded resources](maps-and-embedded-resources.md). |
 | `:union`, with its kinds as `types` | union | The value it holds, as a cell of that kind's type shows it: `12` for a number, `Street: Unionsweg 5, City: Köln` for an embedded resource. Nothing says which kind it is. See [Unions](unions.md). |

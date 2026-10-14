@@ -415,6 +415,10 @@ defmodule AshTable.Live.TableComponent do
      # read action of the table around a nested one is given.
      |> assign(missing: [], fill: nil, refused: %{}, lines: %{})
      |> assign(page_assigns: %{}, parent_arguments: %{})
+     # The time zone of the page, in which datetimes are shown, typed and
+     # filtered by (`AshTable.Zone`); a nested table and a picker are in
+     # that of the table they are rendered in.
+     |> assign(time_zone: AshTable.Zone.utc())
      # Whether the table is a page of its own, which a refused read can turn
      # into "not found", and whether a refused read has left it with nothing
      # to show at all.
@@ -543,6 +547,15 @@ defmodule AshTable.Live.TableComponent do
     # what the table was told about live updates: nil where it was told nothing
     socket = assign(socket, live_given: assigns[:live?])
 
+    # the zone of the page, nil and "UTC" being UTC
+    socket =
+      if Map.has_key?(assigns, :time_zone),
+        do:
+          assign(socket,
+            time_zone: AshTable.Zone.check!(assigns.time_zone, "The `time_zone` of the table")
+          ),
+        else: socket
+
     # Unless the table is told, it authorizes as its resource's domain says.
     # What it was told is kept as it was given, for the tables nested in it.
     socket =
@@ -567,6 +580,7 @@ defmodule AshTable.Live.TableComponent do
     model =
       socket.assigns.built.model
       |> Model.for_actor(reader(socket.assigns))
+      |> Model.zoned(socket.assigns.time_zone)
       |> in_words()
       |> Model.defaults(socket.assigns.page_assigns)
 
@@ -1853,8 +1867,13 @@ defmodule AshTable.Live.TableComponent do
   # its resource's table calls a record by, as far as this person may see it
   # on this record. Taken from the record as it was read for them, and from
   # nothing else: a record that was not read has no name here.
-  defp related_title(%{related: %{via: via}}, %Query.Page{parent: %_{} = parent}),
-    do: via.source |> Model.build(table: via.source_table) |> in_words() |> title_of(parent)
+  defp related_title(%{related: %{via: via}} = assigns, %Query.Page{parent: %_{} = parent}),
+    do:
+      via.source
+      |> Model.build(table: via.source_table)
+      |> Model.zoned(assigns.time_zone)
+      |> in_words()
+      |> title_of(parent)
 
   defp related_title(_assigns, _page), do: nil
 
@@ -1868,7 +1887,7 @@ defmodule AshTable.Live.TableComponent do
       case Map.get(record, column.name) do
         %Ash.ForbiddenField{} -> nil
         %Ash.NotLoaded{} -> nil
-        value -> blank_as_nil(Format.format(column, value))
+        value -> blank_as_nil(Format.format(column, value, model.time_zone))
       end
     end)
   end
@@ -2285,7 +2304,7 @@ defmodule AshTable.Live.TableComponent do
   # it makes of it; nothing runs.
   def handle_event("panel_validate", params, %{assigns: %{panel: %{} = panel}} = socket) do
     typed = typed(params)
-    form = Act.validate(panel.form, panel.inputs, typed, given(panel))
+    form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
     # a field whose record was chosen is one the person has been in
     used = MapSet.union(used(typed), panel.picked)
     panel = sent(%{panel | form: form, used: used, typed: typed}, typed)
@@ -2297,9 +2316,15 @@ defmodule AshTable.Live.TableComponent do
   # Sent by the panel's form when the person uses its button: the action
   # runs with what the fields hold, and with the files of its uploads,
   # which LiveView has received by then.
+  #
+  # A wall time that the page's zone does not have runs nothing: the panel
+  # says so at its field (`AshTable.Act.gaps/3`).
   def handle_event("panel_submit", params, %{assigns: %{panel: %{} = panel}} = socket) do
     typed = typed(params)
-    filed(socket, sent(panel, typed), &submit(socket, &1, typed))
+
+    if Act.gaps(panel.inputs, typed, panel.time_zone) == %{},
+      do: filed(socket, sent(panel, typed), &submit(socket, &1, typed)),
+      else: {:noreply, failed_panel(socket, sent(%{panel | typed: typed}, typed), nil)}
   end
 
   # Sent by the panel's hook when a person uses the button that adds a
@@ -2315,11 +2340,12 @@ defmodule AshTable.Live.TableComponent do
          true <- Enum.all?(rest, &is_binary/1),
          %{} = input <-
            Enum.find(panel.inputs, &(group?(&1) and Atom.to_string(&1.name) == name)),
-         {:ok, held, focus} <- regroup(input, panel.groups[name], rest, change) do
+         {:ok, held, focus} <-
+           regroup(input, panel.groups[name], rest, change, panel.time_zone) do
       groups = Map.put(panel.groups, name, held)
       # every group as the panel holds it, with what the form sent last
       typed = Map.merge(panel.typed, groups)
-      form = Act.validate(panel.form, panel.inputs, typed, given(panel))
+      form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
       used = MapSet.put(panel.used, name)
       panel = %{panel | form: form, typed: typed, groups: groups, used: used}
       focus = Enum.join(["#{socket.assigns.id}-panel-f-#{name}" | focus], "-")
@@ -2722,7 +2748,7 @@ defmodule AshTable.Live.TableComponent do
          {:ok, record} <- with_column(model, column, record, opts) do
       case value(column, record) do
         %Ash.ForbiddenField{} -> :hidden
-        value -> {:ok, Format.format(column, value)}
+        value -> {:ok, Format.format(column, value, model.time_zone)}
       end
     else
       _gone_or_refused -> :error
@@ -2798,7 +2824,12 @@ defmodule AshTable.Live.TableComponent do
         {:reply, %{ok: false},
          socket
          |> assign(picker: nil)
-         |> put_failure(key, record, column.name, {referred(column, chosen), message, []})
+         |> put_failure(
+           key,
+           record,
+           column.name,
+           {referred(column, chosen, socket.assigns.time_zone), message, []}
+         )
          |> put_row(key, record)
          |> say(Text.t(:not_saved, column: column.label, message: message))}
 
@@ -2812,10 +2843,10 @@ defmodule AshTable.Live.TableComponent do
 
   # What a reference cell shows of a record that was chosen for it: its
   # label, as far as this person may see it. Nothing for no record.
-  defp referred(_column, nil), do: ""
+  defp referred(_column, nil, _zone), do: ""
 
-  defp referred(%{reference: %{label_field: label}} = column, chosen),
-    do: Format.format(column, Map.get(chosen, label))
+  defp referred(%{reference: %{label_field: label}} = column, chosen, zone),
+    do: Format.format(column, Map.get(chosen, label), zone)
 
   # The choice of a related record for a field of the action panel: its key
   # goes into the panel's form, as if it had been typed there, with what the
@@ -2829,7 +2860,7 @@ defmodule AshTable.Live.TableComponent do
                named,
                [arguments: arguments] ++ chooser(socket.assigns)
              ),
-           {:ok, entry} <- entry(input, record) do
+           {:ok, entry} <- entry(input, record, socket.assigns.time_zone) do
         entry
       else
         true -> {"", nil}
@@ -2890,7 +2921,7 @@ defmodule AshTable.Live.TableComponent do
       Enum.reduce_while(Enum.uniq_by(rows, &named/1), [], fn row, added ->
         with false <- named(row) in held,
              {:ok, record} <- Pick.chosen(input.reference, row, opts),
-             {:ok, entry} <- entry(input, record) do
+             {:ok, entry} <- entry(input, record, socket.assigns.time_zone) do
           {:cont, added ++ [entry]}
         else
           true -> {:cont, added}
@@ -2945,7 +2976,7 @@ defmodule AshTable.Live.TableComponent do
   # selects it (nil for a record of a table whose rows cannot be told
   # apart: one without a primary key). None for a record whose key this
   # person may not see.
-  defp entry(%{reference: reference} = input, record) do
+  defp entry(%{reference: reference} = input, record, zone) do
     with {:ok, value} <- Pick.value(reference, record) do
       model = Model.build(reference.destination)
       row_key = row_key(model, record, 0)
@@ -2956,14 +2987,14 @@ defmodule AshTable.Live.TableComponent do
           _key -> {row_key, names(model, record, row_key)}
         end
 
-      {:ok, {key_text(input, value), %{called: called(reference, record), row: row}}}
+      {:ok, {key_text(input, value, zone), %{called: called(reference, record, zone), row: row}}}
     end
   end
 
   # A key as a field of the panel writes it: an attribute's as the editor
   # of its type does, an argument's as a key is written.
-  defp key_text(%{kind: :attribute} = input, value), do: Format.input(input, value)
-  defp key_text(_argument, value), do: to_string(Pick.written(value))
+  defp key_text(%{kind: :attribute} = input, value, zone), do: Format.input(input, value, zone)
+  defp key_text(_argument, value, _zone), do: to_string(Pick.written(value))
 
   # Puts keys into a field of the panel that is given by choosing: as if
   # its form had sent them. The field is one the person has been in.
@@ -2981,7 +3012,7 @@ defmodule AshTable.Live.TableComponent do
 
     %{
       panel
-      | form: Act.validate(panel.form, panel.inputs, typed, given(panel)),
+      | form: Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone),
         typed: typed,
         refs:
           if(is_map_key(panel.refs, name), do: Map.put(panel.refs, name, keys), else: panel.refs),
@@ -2998,7 +3029,7 @@ defmodule AshTable.Live.TableComponent do
 
   defp held_key(panel, input) do
     default? = panel.kind == :create
-    field_value(input, AshPhoenix.Form.value(panel.form, input.name), default?)
+    field_value(input, AshPhoenix.Form.value(panel.form, input.name), default?, panel)
   end
 
   # The row the browser named is none of a record this person may read
@@ -3026,8 +3057,13 @@ defmodule AshTable.Live.TableComponent do
 
   # What a record of a destination is called, as far as this person may see
   # it on it: for the field of the panel that holds its key.
-  defp called(reference, record),
-    do: reference.destination |> Model.build() |> in_words() |> title_of(record)
+  defp called(reference, record, zone),
+    do:
+      reference.destination
+      |> Model.build()
+      |> Model.zoned(zone)
+      |> in_words()
+      |> title_of(record)
 
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
@@ -3049,6 +3085,7 @@ defmodule AshTable.Live.TableComponent do
       reference.destination
       |> Model.build(choose: reference.choose_action)
       |> Model.for_actor(reader)
+      |> Model.zoned(assigns.time_zone)
       |> Model.defaults(assigns.page_assigns)
 
     form =
@@ -3104,7 +3141,9 @@ defmodule AshTable.Live.TableComponent do
         entries =
           case {input.kind, Map.fetch(related, input.name)} do
             {:argument, {:ok, records}} ->
-              for record <- records, {:ok, entry} <- [entry(input, record)], do: entry
+              for record <- records,
+                  {:ok, entry} <- [entry(input, record, assigns.time_zone)],
+                  do: entry
 
             {:argument, :error} ->
               for value <- List.wrap(input.default), do: known(assigns, input, value)
@@ -3134,7 +3173,7 @@ defmodule AshTable.Live.TableComponent do
     # what each field made of groups starts with, as its form sends it
     groups =
       for input <- panel.inputs, group?(input), into: %{} do
-        {Atom.to_string(input.name), started(input, held.(input), panel.kind)}
+        {Atom.to_string(input.name), started(input, held.(input), panel.kind, assigns.time_zone)}
       end
 
     Map.merge(
@@ -3154,7 +3193,9 @@ defmodule AshTable.Live.TableComponent do
         # the sensitive fields a person can ask to be emptied, and those
         # they have asked for: of the panel of an update action on a row
         clearable: [],
-        cleared: MapSet.new()
+        cleared: MapSet.new(),
+        # the zone of the page, in which its fields show and take datetimes
+        time_zone: assigns.time_zone
       },
       Map.delete(panel, :related)
     )
@@ -3165,10 +3206,10 @@ defmodule AshTable.Live.TableComponent do
   # One they may not read there is held all the same, and called nothing.
   defp known(assigns, input, value) do
     with {:ok, record} <- Pick.current(input.reference, value, chooser(assigns)),
-         {:ok, entry} <- entry(input, record) do
+         {:ok, entry} <- entry(input, record, assigns.time_zone) do
       entry
     else
-      :error -> {key_text(input, value), nil}
+      :error -> {key_text(input, value, assigns.time_zone), nil}
     end
   end
 
@@ -3181,16 +3222,18 @@ defmodule AshTable.Live.TableComponent do
   # form sends it. Without a value, a list is empty, and a single value is
   # not there, unless a record is being created and cannot be without it:
   # then its fields are there to be filled in.
-  defp started(%{editor: :groups} = input, value, _kind),
-    do: Act.sent(input, Format.input(input, List.wrap(value)))
+  defp started(%{editor: :groups} = input, value, _kind, zone),
+    do: Act.sent(input, Format.input(input, List.wrap(value), zone))
 
   # a union always sends its kind: none where it has no value
-  defp started(%{editor: :union} = input, value, _kind),
-    do: Act.sent(input, Format.input(input, value))
+  defp started(%{editor: :union} = input, value, _kind, zone),
+    do: Act.sent(input, Format.input(input, value, zone))
 
-  defp started(input, %{} = value, _kind), do: Act.sent(input, Format.input(input, value))
-  defp started(%{required?: true} = input, _none, :create), do: Act.blank(input)
-  defp started(_input, _none, _kind), do: nil
+  defp started(input, %{} = value, _kind, zone),
+    do: Act.sent(input, Format.input(input, value, zone))
+
+  defp started(%{required?: true} = input, _none, :create, zone), do: Act.blank(input, zone)
+  defp started(_input, _none, _kind, _zone), do: nil
 
   # The panel with what its form sent for its fields made of groups, and
   # with the fields in them a person has been in. A group that was not sent
@@ -3234,19 +3277,21 @@ defmodule AshTable.Live.TableComponent do
   # the way from the field to the group, as the names it is sent under, and
   # is a claim: it is followed through the fields the input has, and through
   # nothing else.
-  defp regroup(%{cell_type: :map} = field, nil, [], :add), do: {:ok, Act.blank(field), []}
+  defp regroup(%{cell_type: :map} = field, nil, [], :add, zone),
+    do: {:ok, Act.blank(field, zone), []}
 
-  defp regroup(%{cell_type: :map, required?: false}, %{}, [], :remove), do: {:ok, nil, ["add"]}
+  defp regroup(%{cell_type: :map, required?: false}, %{}, [], :remove, _zone),
+    do: {:ok, nil, ["add"]}
 
-  defp regroup(%{cell_type: {:array, :map}} = field, held, [], :add) do
+  defp regroup(%{cell_type: {:array, :map}} = field, held, [], :add, zone) do
     held = if is_map(held), do: held, else: %{"_present" => ""}
     numbers = for {key, _item} <- Act.items(held), do: String.to_integer(key)
     key = Integer.to_string(Enum.max(numbers, fn -> -1 end) + 1)
 
-    {:ok, Map.put(held, key, Act.blank(field)), [key]}
+    {:ok, Map.put(held, key, Act.blank(field, zone)), [key]}
   end
 
-  defp regroup(%{cell_type: {:array, :map}} = field, %{} = held, [key | rest], change) do
+  defp regroup(%{cell_type: {:array, :map}} = field, %{} = held, [key | rest], change, zone) do
     keys = for {key, _item} <- Act.items(held), do: key
 
     cond do
@@ -3261,16 +3306,17 @@ defmodule AshTable.Live.TableComponent do
         {:ok, Map.delete(held, key), [focus]}
 
       true ->
-        with {:ok, item, focus} <- regroup(%{field | cell_type: :map}, held[key], rest, change),
+        with {:ok, item, focus} <-
+               regroup(%{field | cell_type: :map}, held[key], rest, change, zone),
              do: {:ok, Map.put(held, key, item), [key | focus]}
     end
   end
 
-  defp regroup(%{cell_type: :map, fields: fields}, %{} = held, [name | rest], change) do
+  defp regroup(%{cell_type: :map, fields: fields}, %{} = held, [name | rest], change, zone) do
     with %{} = field <- Enum.find(fields || [], &(group?(&1) and Atom.to_string(&1.name) == name)),
          # a union is no group that is added or taken away: only what is in it
          true <- field.editor != :union or rest != [],
-         {:ok, inner, focus} <- regroup(field, held[name], rest, change) do
+         {:ok, inner, focus} <- regroup(field, held[name], rest, change, zone) do
       # the id of a field in a group: see `members/1`
       {:ok, Map.put(held, name, inner), ["f", name | focus]}
     else
@@ -3280,17 +3326,17 @@ defmodule AshTable.Live.TableComponent do
 
   # Through a union, to a group inside the value of its kind: the value is
   # sent under a name of its own, and has no id of its own.
-  defp regroup(%{cell_type: :union} = field, %{} = held, ["_union_value" | rest], change) do
-    with {%{cell_type: :map} = member, %{} = value} <- Act.kind(field, held),
+  defp regroup(%{cell_type: :union} = field, %{} = held, ["_union_value" | rest], change, zone) do
+    with {%{cell_type: :map} = member, %{} = value} <- Act.kind(field, held, zone),
          [_ | _] <- rest,
-         {:ok, inner, focus} <- regroup(member, value, rest, change) do
+         {:ok, inner, focus} <- regroup(member, value, rest, change, zone) do
       {:ok, Map.merge(held, %{"_of" => held["_union_type"], "_union_value" => inner}), focus}
     else
       _ -> :error
     end
   end
 
-  defp regroup(_field, _held, _path, _change), do: :error
+  defp regroup(_field, _held, _path, _change, _zone), do: :error
 
   # A row action that runs straight away. The row is put back with what is
   # true now: the action's result, or the record as it is and the actions
@@ -3374,8 +3420,15 @@ defmodule AshTable.Live.TableComponent do
     refusal =
       if panel.kind == :cell, do: Text.t(:edit_not_allowed), else: Text.t(:action_not_allowed)
 
+    # a wall time the page's zone does not have: said at its field, in
+    # place of what the action makes of the text it was given for it
+    gaps = Act.gaps(panel.inputs, panel.typed, panel.time_zone)
+
     panel
-    |> Map.put(:errors, own(Act.errors(panel.form, model, panel.inputs, refusal), panel))
+    |> Map.put(
+      :errors,
+      own(Map.merge(Act.errors(panel.form, model, panel.inputs, refusal), gaps), panel)
+    )
     |> Map.put(:places, Act.places(panel.form, panel.inputs))
   end
 
@@ -3481,7 +3534,7 @@ defmodule AshTable.Live.TableComponent do
   # with the panel left open, as for a row. Everything else an action says
   # depends on the record, and is said when it has run.
   defp submit(socket, %{kind: :bulk, action: action, selection: selection} = panel, params) do
-    form = Act.validate(panel.form, panel.inputs, params, files(panel))
+    form = Act.validate(panel.form, panel.inputs, params, files(panel), panel.time_zone)
     panel = errors(%{panel | form: form}, socket.assigns.model)
 
     # a panel is never open beside a run: the run that starts closes it
@@ -3498,7 +3551,7 @@ defmodule AshTable.Live.TableComponent do
       # this process's until the run is done (`Plug.Upload`).
       true ->
         copies = copies(files(panel))
-        input = Map.merge(Act.values(panel.inputs, params), copies)
+        input = Map.merge(Act.values(panel.inputs, params, panel.time_zone), copies)
 
         {:noreply,
          socket
@@ -4123,7 +4176,7 @@ defmodule AshTable.Live.TableComponent do
   # can be said in a word or a line, else that it is done, and reads again.
   defp done(socket, action, value) do
     text =
-      case Act.said(action, value) do
+      case Act.said(action, value, socket.assigns.time_zone) do
         nil -> Text.t(:action_done, action: action.label)
         said -> Text.t(:action_result, action: action.label, result: said)
       end
@@ -4705,8 +4758,8 @@ defmodule AshTable.Live.TableComponent do
             role="gridcell"
             aria-colindex={colindex(index, @lead)}
             tabindex="-1"
-            {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row)}
-          >{cell_content("#{dom_id}-c-#{column.name}", column, row)}</td><td
+            {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row, @time_zone)}
+          >{cell_content("#{dom_id}-c-#{column.name}", column, row, @time_zone)}</td><td
             :if={@acting?}
             id={"#{dom_id}-a"}
             role="gridcell"
@@ -4778,7 +4831,7 @@ defmodule AshTable.Live.TableComponent do
                 data-summary={column.summary}
                 class="whitespace-nowrap"
                 phx-no-format
-              ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} /></td>
+              ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} time_zone={@time_zone} /></td>
               <td
                 :if={@acting?}
                 id={"#{@id}-summaries-actions"}
@@ -8884,7 +8937,8 @@ defmodule AshTable.Live.TableComponent do
               touched: @panel.touched,
               submitted?: @panel.submitted?,
               place: [input.name],
-              path: [Atom.to_string(input.name)]
+              path: [Atom.to_string(input.name)],
+              time_zone: @panel.time_zone
             }
           }
           target={@target}
@@ -9021,11 +9075,17 @@ defmodule AshTable.Live.TableComponent do
           _nothing_typed -> ""
         end
 
+      # A datetime that was typed is shown as it was typed, a wall time in
+      # the page's zone: the form holds the instant it was given as.
+      is_map_key(panel.typed, name) and AshTable.Zone.zoned?(input.type) ->
+        field_value(input, Act.typed(input, panel.typed[name], panel.time_zone), false, panel)
+
       true ->
         field_value(
           input,
           form[input.name].value,
-          panel.kind == :create or input.kind == :argument
+          panel.kind == :create or input.kind == :argument,
+          panel
         )
     end
   end
@@ -9686,10 +9746,15 @@ defmodule AshTable.Live.TableComponent do
 
   defp union(assigns) do
     {member, held} =
-      case Act.kind(assigns.field, assigns.held) do
-        {%{cell_type: :map} = member, held} when not is_map(held) -> {member, Act.fresh(member)}
-        {member, held} -> {member, held}
-        nil -> {nil, nil}
+      case Act.kind(assigns.field, assigns.held, assigns.inside.time_zone) do
+        {%{cell_type: :map} = member, held} when not is_map(held) ->
+          {member, Act.fresh(member, assigns.inside.time_zone)}
+
+        {member, held} ->
+          {member, held}
+
+        nil ->
+          {nil, nil}
       end
 
     single? = not is_nil(member) and member.cell_type != :map
@@ -9893,21 +9958,23 @@ defmodule AshTable.Live.TableComponent do
   # The field of an array holds a list: the values as they were typed, else
   # those of the record or of the default, each written as the editor of
   # its type writes it. Without any it is empty.
-  defp field_value(%{cell_type: {:array, _item}} = input, values, default?) do
+  defp field_value(%{cell_type: {:array, _item}} = input, values, default?, panel) do
     cond do
-      is_list(values) -> Format.input(input, values)
-      default? and is_list(input.default) -> Format.input(input, input.default)
+      is_list(values) -> Format.input(input, values, panel.time_zone)
+      default? and is_list(input.default) -> Format.input(input, input.default, panel.time_zone)
       true -> []
     end
   end
 
-  defp field_value(_input, typed, _default?) when is_binary(typed), do: typed
+  defp field_value(_input, typed, _default?, _panel) when is_binary(typed), do: typed
 
-  defp field_value(%{default: default} = input, nil, true) when not is_nil(default),
-    do: Format.input(input, default)
+  defp field_value(%{default: default} = input, nil, true, panel) when not is_nil(default),
+    do: Format.input(input, default, panel.time_zone)
 
-  defp field_value(_input, nil, _default?), do: ""
-  defp field_value(input, value, _default?), do: Format.input(input, value)
+  defp field_value(_input, nil, _default?, _panel), do: ""
+
+  defp field_value(input, value, _default?, panel),
+    do: Format.input(input, value, panel.time_zone)
 
   # The values of a multiple choice's field that are none of its choices.
   defp boxless(%{values: values}, held) do
@@ -9925,6 +9992,7 @@ defmodule AshTable.Live.TableComponent do
       tenant: assigns.tenant,
       authorize?: assigns.authorize_given,
       page_assigns: assigns.page_assigns,
+      time_zone: assigns.time_zone,
       lineage: assigns.lineage ++ [assigns.id],
       live?: passed_on(assigns.live_given)
     }
@@ -9949,6 +10017,7 @@ defmodule AshTable.Live.TableComponent do
       parent_authorize?: assigns.authorize?,
       parent_arguments: assigns.model.read_arguments,
       page_assigns: assigns.page_assigns,
+      time_zone: assigns.time_zone,
       depth: assigns.depth + 1,
       depth_limit: assigns.depth_limit,
       lineage: assigns.lineage ++ [assigns.id],
@@ -10323,6 +10392,7 @@ defmodule AshTable.Live.TableComponent do
   # them on some records, or the summary could not be computed.
   attr :column, :map, required: true
   attr :summary, :any, required: true
+  attr :time_zone, :string, required: true
 
   defp summary(assigns) do
     ~H"""
@@ -10333,7 +10403,7 @@ defmodule AshTable.Live.TableComponent do
       :if={match?({:ok, _value}, @summary)}
       data-summary-value
       class="font-medium"
-    >{Format.summary(@column, elem(@summary, 1))}</span>
+    >{Format.summary(@column, elem(@summary, 1), @time_zone)}</span>
     """
   end
 
@@ -11147,9 +11217,9 @@ defmodule AshTable.Live.TableComponent do
   # A cell of a sensitive column says that its editor holds nothing
   # (`data-value=""`), and nothing else: what was typed into it is never
   # sent back.
-  defp cell_attributes(false, _id, _column, _row), do: []
+  defp cell_attributes(false, _id, _column, _row, _zone), do: []
 
-  defp cell_attributes(true, id, column, row) do
+  defp cell_attributes(true, id, column, row, zone) do
     value = value(column, row.record)
 
     case {editable?(column, value, row.record), row.failed[column.name]} do
@@ -11182,12 +11252,12 @@ defmodule AshTable.Live.TableComponent do
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
           {"data-value", held(typed)},
-          {"data-saved", held(Format.input(column, value))}
+          {"data-saved", held(Format.input(column, value, zone))}
         ] ++ if(places == [], do: [], else: [{"data-invalid", held(places)}])
 
       {true, nil} ->
         if own_value?(column),
-          do: [{"data-value", held(Format.input(column, value))}],
+          do: [{"data-value", held(Format.input(column, value, zone))}],
           else: []
     end
   end
@@ -11253,23 +11323,23 @@ defmodule AshTable.Live.TableComponent do
   # popover the hook opens while the cell has focus or the pointer, so that
   # the row keeps its height; it is in the text colour on the page's
   # background, as the error colour is too faint for small text.
-  defp cell_content(id, column, row) do
+  defp cell_content(id, column, row, zone) do
     value = value(column, row.record)
 
     case editable?(column, value, row.record) && row.failed[column.name] do
       # a sensitive cell shows what it shows at rest, never what was typed
       {_typed, message, _places} when column.sensitive? ->
-        {:safe, shown} = column |> cell(value) |> Phoenix.HTML.html_escape()
+        {:safe, shown} = column |> cell(value, zone) |> Phoenix.HTML.html_escape()
         {:safe, message} = failure_message("#{id}-error", message)
         {:safe, [shown, message]}
 
       {typed, message, _places} ->
-        {:safe, shown} = typed |> typed(column) |> Phoenix.HTML.html_escape()
+        {:safe, shown} = typed |> typed(column, zone) |> Phoenix.HTML.html_escape()
         {:safe, message} = failure_message("#{id}-error", message)
         {:safe, [shown, message]}
 
       _none ->
-        cell(column, value)
+        cell(column, value, zone)
     end
   end
 
@@ -11285,18 +11355,18 @@ defmodule AshTable.Live.TableComponent do
   end
 
   # What was typed into an editor, as its cell shows it.
-  defp typed("true", %{editor: :boolean} = column), do: cell(column, true)
-  defp typed("false", %{editor: :boolean} = column), do: cell(column, false)
+  defp typed("true", %{editor: :boolean} = column, zone), do: cell(column, true, zone)
+  defp typed("false", %{editor: :boolean} = column, zone), do: cell(column, false, zone)
 
-  defp typed(typed, %{editor: :enum, values: values}) do
+  defp typed(typed, %{editor: :enum, values: values}, _zone) do
     Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
   end
 
   # the values of an array, each as its cell shows it
-  defp typed(typed, %{cell_type: {:array, item}} = column) when is_list(typed),
+  defp typed(typed, %{cell_type: {:array, item}} = column, _zone) when is_list(typed),
     do: Enum.map_join(typed, ", ", &typed_value(&1, item, column))
 
-  defp typed(typed, _column), do: typed
+  defp typed(typed, _column, _zone), do: typed
 
   defp typed_value("true", :boolean, _column), do: Text.t(:yes)
   defp typed_value("false", :boolean, _column), do: Text.t(:no)
@@ -11325,14 +11395,14 @@ defmodule AshTable.Live.TableComponent do
   defp editable?(column, _value, _record), do: column.editable?
 
   # A field the actor may not see on this row looks empty and is announced.
-  defp cell(_column, %Ash.ForbiddenField{}) do
+  defp cell(_column, %Ash.ForbiddenField{}, _zone) do
     {:safe, [~s(<span class="sr-only">), escape(Text.t(:not_available)), "</span>"]}
   end
 
   # A record that has no value has an empty cell, whatever its column: what
   # "empty" looks like is the table's to say, in one way for all columns.
-  defp cell(_column, nil), do: ""
-  defp cell(_column, %Ash.NotLoaded{}), do: ""
+  defp cell(_column, nil, _zone), do: ""
+  defp cell(_column, %Ash.NotLoaded{}, _zone), do: ""
 
   # A sensitive value is not shown: the cell holds a mask, the same for
   # every value and for the eye only, what a screen reader says in its
@@ -11343,7 +11413,7 @@ defmodule AshTable.Live.TableComponent do
   #
   # What is rendered is the same whatever the value is; the value itself is
   # not in the record a row is rendered from (`AshTable.Sensitive.scrub/2`).
-  defp cell(%{sensitive?: true} = column, value) do
+  defp cell(%{sensitive?: true} = column, value, _zone) do
     if Sensitive.empty?(value) do
       ""
     else
@@ -11375,27 +11445,31 @@ defmodule AshTable.Live.TableComponent do
   # which is given the value and what the table itself would show for it.
   # Below the clauses above on purpose: a value that is hidden from the
   # person never reaches a component, and neither does the lack of one.
-  defp cell(%{component: %{cell?: true} = component} = column, value) do
+  defp cell(%{component: %{cell?: true} = component} = column, value, zone) do
     component.module.cell(%{
       __changed__: nil,
       value: value,
-      text: Format.format(column, value),
+      text: Format.format(column, value, zone),
       column: component.column
     })
   end
 
   # A union shows the value it holds, as a cell of its kind's type shows
   # it: a yes or no among its kinds is the check indicator a boolean has.
-  defp cell(%{cell_type: :union, members: [_ | _] = members} = column, %Ash.Union{} = union) do
+  defp cell(
+         %{cell_type: :union, members: [_ | _] = members} = column,
+         %Ash.Union{} = union,
+         zone
+       ) do
     case Enum.find(members, &(&1.name == union.type)) do
-      nil -> Format.format(column, union)
-      kind -> cell(kind, union.value)
+      nil -> Format.format(column, union, zone)
+      kind -> cell(kind, union.value, zone)
     end
   end
 
   # A boolean is a check indicator with its accessible text beside it;
   # everything else is plain text.
-  defp cell(%{cell_type: :boolean} = column, value) when is_boolean(value) do
+  defp cell(%{cell_type: :boolean} = column, value, zone) when is_boolean(value) do
     mark = if value, do: "✓", else: "–"
 
     {:safe,
@@ -11403,12 +11477,12 @@ defmodule AshTable.Live.TableComponent do
        ~s(<span aria-hidden="true">),
        mark,
        ~s(</span><span class="sr-only">),
-       escape(Format.format(column, value)),
+       escape(Format.format(column, value, zone)),
        "</span>"
      ]}
   end
 
-  defp cell(column, value), do: Format.format(column, value)
+  defp cell(column, value, zone), do: Format.format(column, value, zone)
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 

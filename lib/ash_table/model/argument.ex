@@ -24,6 +24,8 @@ defmodule AshTable.Model.Argument do
   #     else the one the argument has in the resource; where that is
   #     computed, `default_fun` holds the function of the page's assigns, and
   #     `AshTable.Model.defaults/2` puts its value here.
+  #   * `time_zone` is the zone of the page, which its input shows a
+  #     datetime in (`AshTable.Model.zoned/2`).
 
   alias AshTable.Format
 
@@ -39,7 +41,8 @@ defmodule AshTable.Model.Argument do
     :editor,
     :default,
     :default_fun,
-    required?: false
+    required?: false,
+    time_zone: "Etc/UTC"
   ]
 
   @typedoc "What a person typed or chose for an argument: text, or for an array the texts of its values."
@@ -58,7 +61,8 @@ defmodule AshTable.Model.Argument do
           editor: AshTable.Resource.Editing.editor() | :plain,
           default: term,
           default_fun: (map -> term) | nil,
-          required?: boolean
+          required?: boolean,
+          time_zone: AshTable.Zone.t()
         }
 
   @doc "What an argument is told apart by: the column it belongs to, nil for the read action's, and its name."
@@ -72,11 +76,13 @@ defmodule AshTable.Model.Argument do
   """
   @spec rest(t) :: typed
   def rest(%__MODULE__{cell_type: {:array, _item}, default: default} = argument),
-    do: Format.input(argument, List.wrap(default))
+    do: Format.input(argument, List.wrap(default), argument.time_zone)
 
   def rest(%__MODULE__{cell_type: :boolean, default: nil}), do: "false"
   def rest(%__MODULE__{default: nil}), do: ""
-  def rest(%__MODULE__{default: default} = argument), do: Format.input(argument, default) || ""
+
+  def rest(%__MODULE__{default: default} = argument),
+    do: Format.input(argument, default, argument.time_zone) || ""
 
   @doc """
   What Ash is given for the argument: what the person chose (`chosen`, by

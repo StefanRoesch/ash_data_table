@@ -73,6 +73,7 @@ defmodule AshTable.Text do
           | :error_on_field
           | :edit_not_allowed
           | :save_failed
+          | :no_such_time
           | :not_saved
           | :cancel
           | :confirm
@@ -300,6 +301,11 @@ defmodule AshTable.Text do
     do: dgettext_noop("ash_table", "You are not allowed to change this.")
 
   defp msgid(:save_failed), do: dgettext_noop("ash_table", "This could not be saved.")
+
+  # a wall time that the clocks of the page's zone skip, when they go forward
+  defp msgid(:no_such_time),
+    do: dgettext_noop("ash_table", "This time does not exist in %{zone}.")
+
   defp msgid(:not_saved), do: dgettext_noop("ash_table", "%{column} was not saved: %{message}")
   defp msgid(:cancel), do: dgettext_noop("ash_table", "Cancel")
   defp msgid(:confirm), do: dgettext_noop("ash_table", "Confirm")

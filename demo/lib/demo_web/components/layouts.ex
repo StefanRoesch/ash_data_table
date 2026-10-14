@@ -28,12 +28,26 @@ defmodule DemoWeb.Layouts do
   """
   attr :flash, :map, required: true, doc: "the map of flash messages"
 
+  attr :time_zone, :string,
+    default: nil,
+    doc:
+      "the zone the tables show datetimes in (`DemoWeb.Zone`), said above the page unless it is UTC"
+
   slot :inner_block, required: true
 
   def app(assigns) do
     ~H"""
     <div id="app-layout" class="px-4 py-8 sm:px-6 lg:px-8">
       <div class="mx-auto max-w-7xl space-y-6">
+        <%!-- A table states no zone in its cells: the page says it once,
+        where it is not UTC (in UTC the page looks as it did before). --%>
+        <p
+          :if={@time_zone not in [nil, "UTC", "Etc/UTC"]}
+          id="time-zone"
+          class="text-sm text-base-content/70"
+        >
+          Times in {@time_zone}
+        </p>
         {render_slot(@inner_block)}
       </div>
     </div>

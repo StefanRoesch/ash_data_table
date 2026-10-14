@@ -930,6 +930,28 @@ declared in the resource and mounted with one line in the router.
   the last record reaches it; Page Down and Ctrl+End end at the last record.
 - See the guide [Footer summaries](documentation/topics/footer-summaries.md).
 
+### Time zones
+
+- A table shows, takes and filters by datetimes in the time zone of the
+  page: the attribute `time_zone` of `<AshTable.table>`, and for a mounted
+  table the socket assign its domain names as `time_zone_assign`
+  (`time_zone` by default). UTC where none is given, as before.
+- Only instants are converted (`:utc_datetime`, `:utc_datetime_usec`,
+  `:datetime`): in cells, values inside map cells, footer summaries, the
+  editors, the action panel, the argument line, filters and what a generic
+  action returns. A `:naive_datetime`, a `:date` and a `:time` are as they
+  were.
+- A wall time typed there is given to Ash as the UTC instant it is. One
+  the clocks repeat is the earlier instant; one they skip is not saved, and
+  the field says "This time does not exist in ZONE.". A filter and an
+  argument take the first moment after such a gap. The URL keeps what was
+  typed.
+- A name that is no zone, and a zone other than UTC without a time zone
+  database configured, are an `ArgumentError` that says where the zone was
+  given and what to add. The library depends on no time zone database.
+- The layout of a mounted table is given the zone's assign too.
+- See the guide [Time zones](documentation/topics/time-zones.md).
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive

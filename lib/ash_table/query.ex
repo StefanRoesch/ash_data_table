@@ -47,6 +47,7 @@ defmodule AshTable.Query do
   alias AshTable.Resource.Summarising
   alias AshTable.State
   alias AshTable.Text
+  alias AshTable.Zone
 
   # how many records are read at a time where records are read to the end
   @batch_size 100
@@ -714,7 +715,7 @@ defmodule AshTable.Query do
     model.resource
     |> Ash.Query.new()
     |> sort(known_sort(state.sort, model), model.via)
-    |> filter(known(state.filters, model))
+    |> filter(known(state.filters, model), model.time_zone)
     |> Ash.Query.load(loads)
     |> Ash.Query.for_read(model.read_action, model.read_arguments, read_opts)
   end
@@ -797,9 +798,17 @@ defmodule AshTable.Query do
   #
   # So is a column whose operator leaves out what its predicates match ("is
   # none of"): its filter is those predicates under `not`.
-  defp filter(query, []), do: query
+  #
+  # A datetime that was typed is a wall time in the page's zone: the filter
+  # holds the instant it is (`AshTable.Zone.read/3`), and the state, and so
+  # the URL, the text as it was typed.
+  defp filter(query, [], _zone), do: query
 
-  defp filter(query, filters) do
+  defp filter(query, filters, zone) do
+    filters =
+      for {column, {operator, value}} <- filters,
+          do: {column, {operator, instants(column, value, zone)}}
+
     {plain, apart} =
       Enum.split_with(filters, fn {column, {operator, _value}} ->
         column.arguments == %{} and column.field == column.name and
@@ -830,6 +839,11 @@ defmodule AshTable.Query do
       )
     end)
   end
+
+  defp instants(column, {from, to}, zone),
+    do: {Zone.read(column, from, zone), Zone.read(column, to, zone)}
+
+  defp instants(column, value, zone), do: Zone.read(column, value, zone)
 
   defp input(%{arguments: arguments, field: field, name: name})
        when arguments == %{} and field == name,

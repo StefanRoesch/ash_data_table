@@ -21,6 +21,7 @@ defmodule AshTable.Edit do
   alias AshTable.Query
   alias AshTable.Record
   alias AshTable.Text
+  alias AshTable.Zone
 
   @typedoc """
   What became of a save:
@@ -285,13 +286,13 @@ defmodule AshTable.Edit do
             {:error, nil, Text.t(:edit_not_allowed)}
 
           # A value that is the one the cell already holds calls nothing.
-          Act.unchanged?(input, params[name], value) ->
+          Act.unchanged?(input, params[name], value, model.time_zone) ->
             unchanged(model, record, opts)
 
           true ->
             record
             |> form(column, id, opts)
-            |> AshPhoenix.Form.submit(params: Act.values([input], params))
+            |> AshPhoenix.Form.submit(params: Act.values([input], params, model.time_zone))
             |> case do
               {:ok, saved} ->
                 case Record.load(model, saved, opts) do
@@ -341,15 +342,32 @@ defmodule AshTable.Edit do
       # A value that is the one the cell already holds calls nothing. The
       # editor of a sensitive cell starts empty, whatever the cell holds: an
       # empty one is an editor nothing was typed into, and calls nothing.
+      # A datetime is typed as a wall time in the page's zone, and given to
+      # the action as the instant it is. One the zone does not have is not
+      # saved (`AshTable.Zone`).
       value ->
-        if unchanged?(column, typed, value),
-          do: unchanged(model, record, opts),
-          else: submit(model, column, record, typed, opts)
+        cond do
+          unchanged?(column, typed, value, model.time_zone) ->
+            unchanged(model, record, opts)
+
+          (gaps = Zone.gaps(column, typed, model.time_zone)) != [] ->
+            failed(
+              model,
+              record,
+              Text.t(:no_such_time, zone: model.time_zone),
+              opts,
+              for([place | _rest] <- gaps, is_integer(place), do: place)
+            )
+
+          true ->
+            {typed, []} = Zone.given(column, typed, model.time_zone)
+            submit(model, column, record, typed, opts)
+        end
     end
   end
 
-  defp unchanged?(%Column{sensitive?: true}, typed, _value), do: typed == ""
-  defp unchanged?(column, typed, value), do: typed == Format.input(column, value)
+  defp unchanged?(%Column{sensitive?: true}, typed, _value, _zone), do: typed == ""
+  defp unchanged?(column, typed, value, zone), do: typed == Format.input(column, value, zone)
 
   defp unchanged(model, record, opts) do
     case Record.load(model, record, opts) do

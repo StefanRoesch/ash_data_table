@@ -25,7 +25,8 @@ defmodule DemoWeb.Router do
     post "/locale", LocaleController, :update
 
     # The same actor and tenant on the socket. The table routes go in here.
-    live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale] do
+    # The zone of the browser, for the datetimes of the tables (`DemoWeb.Zone`).
+    live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
       live "/", HomeLive
       # Two tables placed in a LiveView of the demo's own.
       live "/dashboard", DashboardLive
@@ -70,7 +71,8 @@ defmodule DemoWeb.Router do
   # unions (`union_tables.ex`), one whose actions take files
   # (`file_tables.ex`), one with sensitive columns (`sensitive_tables.ex`),
   # one whose numbers have limits where the demo has none (`limit_tables.ex`),
-  # one whose columns have summaries (`summary_tables.ex`),
+  # one whose columns have summaries (`summary_tables.ex`), one whose
+  # domain names the assign of its time zone (`zone_tables.ex`),
   # those that announce their changes for live updates (`live_tables.ex`),
   # those of a domain whose policies allow nothing, mounted with and without
   # authorization (`unchecked_tables.ex`), one whose
@@ -133,6 +135,10 @@ defmodule DemoWeb.Router do
         ash_table "/scans", Demo.Support.Files.Scan, layout: false
         ash_table "/safes", Demo.Support.Secrets.Safe, layout: false
         ash_table "/meters", Demo.Support.Limits.Meter, layout: false
+
+        # The time zone (`zone_tables.ex`): a table whose domain names the
+        # assign of its zone, and whose row action takes a datetime.
+        ash_table "/bookings", Demo.Support.Zones.Booking, layout: false
 
         # Footer summaries (`summary_tables.ex`): the efforts as their
         # domain says and without authorization, through the primary read
@@ -214,7 +220,7 @@ defmodule DemoWeb.Router do
     scope "/e2e", DemoWeb.E2E do
       pipe_through :browser
 
-      live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale] do
+      live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
         live "/select", SelectLive
       end
     end

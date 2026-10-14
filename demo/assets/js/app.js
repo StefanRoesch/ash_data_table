@@ -29,7 +29,12 @@ import topbar from "../vendor/topbar"
 const csrfToken = document.querySelector("meta[name='csrf-token']").getAttribute("content")
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
-  params: {_csrf_token: csrfToken},
+  params: {
+    _csrf_token: csrfToken,
+    // The browser's time zone, which the demo shows the tables' datetimes
+    // in (`DemoWeb.Zone`): a convenience of the demo's, which the server checks.
+    time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+  },
   hooks: {...colocatedHooks, ...ashTableHooks},
 })
 
