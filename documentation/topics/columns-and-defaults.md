@@ -418,7 +418,7 @@ decides how a value is shown, which filter the column gets and which editor.
 
 | Ash type | Cell type | Shown as |
 | --- | --- | --- |
-| `:string`, `:ci_string` | text | The text as it is, on one line. Long text is cut off at the column's maximum width. |
+| `:string`, `:ci_string` | text | The text as it is, on one line. Long text is cut off at the column's maximum width, unless the column says `max_lines`: see [Long text](#long-text). |
 | `:integer`, `:float`, `:decimal` | number | The digits, without grouping. A decimal is written out in full, never in exponent notation. |
 | `:boolean` | boolean | A mark, ✓ or –, with the text "Yes" or "No" for screen readers. |
 | `:date` | date | ISO 8601: `2026-10-06`. |
@@ -500,7 +500,8 @@ What to know about it:
 
 - **A column is between 48 and 1000 pixels wide.** Text that does not fit is
   cut off with an ellipsis, in the header as in the cells. Rows stay one line
-  high.
+  high. In a column with `max_lines` the text takes more lines instead, up
+  to that many: see [Long text](#long-text).
 - **The first change fixes every column.** Each column keeps the width it has
   at that moment, and from then on the table is as wide as its columns
   together: narrower than its place, or wider, in which case it scrolls
@@ -519,6 +520,76 @@ What to know about it:
 
 **Try it:** drag the edge of "Title" on `/tasks` in the demo, then sort by
 another column.
+
+## Long text
+
+A cell shows one line of its text and cuts off the rest with "…". That keeps
+every row one line high. Two things help with a text that is longer.
+
+**The whole text, under the cell.** When a cell cuts some of its text off,
+the whole text is shown in a small box under the cell:
+
+- when the cell has the focus (the keyboard, a click, or a tap), after
+  about half a second, and
+- when the pointer rests on the cell, after about half a second.
+
+It goes away at once when the focus moves on, when the pointer leaves, when
+the page scrolls, and with Escape. Escape does nothing else then: the focus
+stays where it is. The pointer can move onto the box, and the box stays for
+as long as the pointer is on it; a long text scrolls in it. Going through
+cells with the arrow keys shows nothing until you stop on one.
+
+This needs no declaration and works in every table and every column. It is
+not shown for a cell that shows all of its text, for a cell that is being
+edited (the editor holds the text), or for a cell whose save failed (its
+message is shown there).
+
+**More lines in a column.** `max_lines` on a column lets its cells show
+several lines:
+
+<!-- source: demo/lib/demo/tracker/comment/compact_table.ex -->
+```elixir
+      column :body do
+        max_lines 3
+      end
+```
+
+- **The text wraps** and is cut off with "…" after that many lines. A short
+  text still takes one line. The number is from 1 to 10; 1 is what a column
+  has without the option.
+- **Line breaks of the value are kept.** A text of three paragraphs shows as
+  three paragraphs, as far as the lines go. An empty line counts as a line.
+- **A row is as high as its highest cell.** In a table with such a column,
+  rows have different heights. The other cells of a row stay one line, in
+  the middle of the row. A table without the option keeps rows of one line.
+- **A narrower column gives more lines**, up to the number. When a person
+  drags the column narrower, a text that fitted one line takes two or three.
+- **Which columns:** the ones that are shown as text. That is a string, an
+  array, a map or embedded resource, a union, and a type shown as read-only
+  text. On a number, a date, a datetime, a boolean, an enum, a reference
+  cell, a sensitive column, or a column whose `component` shows the cell,
+  the option has no effect, and the compiler says so: see
+  [Mistakes at compile time](mistakes-at-compile-time.md#columns).
+- **Editing is as before.** The editor of a text opens in the cell and grows
+  with its lines.
+- **Each table says it for itself.** A nested table and the table of a
+  picker do what their own table's block says.
+
+What to know about the box with the whole text:
+
+- **It shows what the cell shows, and nothing else.** The browser takes the
+  text from the cell. The server sends nothing for it.
+- **A sensitive cell has none**, masked or shown. Nor has a cell of a field
+  the person may not see.
+- **A screen reader is not told of it.** The whole text is in the cell
+  already, and is read from there.
+- **It cannot be scrolled from the keyboard.** A text that is longer than
+  the box can be read in the cell's editor, or by making the column wider.
+- **A column header that is cut off has none.**
+
+**Try it:** open `/comments/compact` in the demo and stop on a comment that
+starts with "Done on my side". Then open `/comments`, where the same
+comments are one line, and do the same.
 
 ## Hiding columns
 
@@ -659,8 +730,9 @@ On `/labels`, in a narrow window, nothing does.
 - **An enum whose type has no label for a value** shows the value in words.
   An enum value that is no longer one of the type's values is shown as text.
 - **Width.** There is no width setting in the `table` block. Rows are one
-  line high; a cell wider than `20rem` is cut off with an ellipsis, until a
-  person makes the column wider: see [Column widths](#column-widths). The
+  line high, unless a column says `max_lines`; a cell wider than `20rem` is
+  cut off with an ellipsis, until a person makes the column wider: see
+  [Column widths](#column-widths) and [Long text](#long-text). The
   editor of a text cell is a field that grows with the lines of its text. In
   a column whose width a person set, an editor is as wide as the column.
 

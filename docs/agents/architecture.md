@@ -41,7 +41,7 @@ The rules of a declaration live in one module per topic. Each is shared by the v
 - `Resource.Referencing`: reference cells, `label_field`, the picker, and `sticky_label?`. `label_field/1`, `sticky_label/2`, `reference/1`, `picking/2`, `declared/4`.
 - `Resource.Managing`: arguments that a `manage_relationship` change hands to a relationship. `managed/3`, `handed/3`.
 - `Resource.Embedding`: fields of a map cell, kinds of a union. `of/2`, `union/2`, `kind/2`.
-- `Resource.Presenting`: the `component` of a column. `column/4`, `component/2`.
+- `Resource.Presenting`: the `component` of a column, and how many lines its cells show (`max_lines`). `column/4`, `component/2`, `max_lines/3`.
 - `Resource.Uploading`: limits of a file argument. `limits/2`, `mistakes/3`.
 - `Resource.Exposing`: columns that show a field a field policy protects. `exposures/2`.
 - `Resource.Summarising`: the `summary` of a column (footer summaries). `kinds/0`, `column/2` (an attribute, not sensitive, a kind that fits the type), `action/1` (not a manual read action), `data_layer/2`, `fits?/2`.
@@ -200,6 +200,7 @@ They are colocated hooks. A host gets them from `phoenix-colocated/ash_table`.
 | 7938 | sensitive cells | `reveal`, `hide` |
 | 8053 | the dialog | `ask`: the table's question dialog |
 | 8074 | the message of a failed cell | `showMessage` |
+| after it | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
 
 A method of the `.Grid` hook has to have a name no other has: the hook is one object, and a second `fit` or `reveal` silently takes the place of the first. esbuild warns of it ("Duplicate key") when the demo's assets are built.
 

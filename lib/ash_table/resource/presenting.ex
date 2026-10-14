@@ -16,6 +16,7 @@ defmodule AshTable.Resource.Presenting do
           | {:not_a_component, module}
           | {:no_part, module}
           | {:unsuitable, module, atom, String.t()}
+          | {:one_line, atom, :reference | :sensitive | {:component, module} | CellType.t()}
 
   @typedoc """
   A column's component: its module, which of the two parts it has, when its
@@ -106,7 +107,57 @@ defmodule AshTable.Resource.Presenting do
       else: :enter
   end
 
-  @doc "What is wrong with a column's component, for a diagnostic."
+  # The cell types whose cells are never more than a few characters on one
+  # line, and take no `max_lines`.
+  @short [:number, :boolean, :date, :datetime, :enum]
+
+  @doc """
+  How many lines a cell of a column shows at most: what the column's
+  `max_lines` says, where its cells are shown as text that can be long, and
+  1 where the block says nothing. `declared` is the column as written, or
+  nil for a column of the default set.
+
+  More than one line is refused where it can never have an effect: on a
+  reference cell, on a sensitive column, on a column whose component shows
+  the cell, and on a number, a date, a datetime, a boolean and an enum.
+  """
+  @spec max_lines(Ash.Resource.t(), struct, struct | nil) ::
+          {:ok, pos_integer} | {:error, reason}
+  def max_lines(resource, field, %{max_lines: lines} = declared)
+      when is_integer(lines) and lines > 1 do
+    cond do
+      is_struct(field, Ash.Resource.Relationships.BelongsTo) ->
+        {:error, {:one_line, declared.name, :reference}}
+
+      AshTable.Sensitive.sensitive?(field) ->
+        {:error, {:one_line, declared.name, :sensitive}}
+
+      shows?(declared.component) ->
+        {:error, {:one_line, declared.name, {:component, declared.component}}}
+
+      true ->
+        case CellType.of(resource, field) do
+          {cell_type, _values} when cell_type in @short ->
+            {:error, {:one_line, declared.name, cell_type}}
+
+          _text ->
+            {:ok, lines}
+        end
+    end
+  end
+
+  def max_lines(_resource, _field, _declared), do: {:ok, 1}
+
+  # Whether a column's component shows the cell. One that cannot be found
+  # shows nothing, and is reported for that.
+  defp shows?(nil), do: false
+
+  defp shows?(module),
+    do:
+      match?({:module, _module}, Code.ensure_compiled(module)) and
+        function_exported?(module, :cell, 1)
+
+  @doc "What is wrong with a column's component or its `max_lines`, for a diagnostic."
   @spec message(reason) :: String.t()
   def message({:sensitive, name}),
     do:
@@ -128,4 +179,29 @@ defmodule AshTable.Resource.Presenting do
 
   def message({:unsuitable, module, name, message}),
     do: "The component `#{inspect(module)}` cannot be used on `#{name}`: #{message}"
+
+  def message({:one_line, name, why}),
+    do:
+      "`max_lines` has no effect on `#{name}`: #{one_line(name, why)} " <>
+        "`max_lines` is for a column that is shown as text: a string, an array, a map, an " <>
+        "embedded resource, a union, or a type shown as read-only text. Remove `max_lines` " <>
+        "from this column."
+
+  defp one_line(_name, :reference),
+    do: "it shows the label of a related record, which is always one line."
+
+  defp one_line(_name, :sensitive),
+    do: "it is declared `sensitive?: true`, and its cells show a mask and a button on one line."
+
+  defp one_line(_name, {:component, module}),
+    do: "its cells are shown by the component `#{inspect(module)}`, which decides how they look."
+
+  defp one_line(_name, cell_type),
+    do: "it is shown as #{article(cell_type)}, which is always one line."
+
+  defp article(:number), do: "a number"
+  defp article(:boolean), do: "a boolean"
+  defp article(:date), do: "a date"
+  defp article(:datetime), do: "a datetime"
+  defp article(:enum), do: "an enum"
 end

@@ -24,6 +24,7 @@ defmodule AshTable.Resource.Column do
     :exposes_protected_field?,
     :arguments,
     :summary,
+    :max_lines,
     :__identifier__,
     :__spark_metadata__,
     asks: []
@@ -42,6 +43,7 @@ defmodule AshTable.Resource.Column do
           exposes_protected_field?: boolean | nil,
           arguments: keyword | nil,
           summary: :count | :sum | :avg | :min | :max | nil,
+          max_lines: 1..10 | nil,
           asks: [AshTable.Resource.Ask.t()]
         }
 
@@ -102,6 +104,11 @@ defmodule AshTable.Resource.Column do
       type: {:one_of, [:count, :sum, :avg, :min, :max]},
       doc:
         "One number under the column, in a footer row of the table: over every record the table matches, not only those of the page. `:count` is the number of records that have a value in this column; `:sum` and `:avg` are for integer, float and decimal attributes; `:min` and `:max` for numbers, dates, datetimes and times. For a column that shows an attribute, not a `sensitive?` one, in a table whose read action is not manual. It counts only values the person may see; where a field policy hides the attribute from them on some records, the footer says \"–\" in place of a number. See the guide \"Footer summaries\"."
+    ],
+    max_lines: [
+      type: {:in, 1..10},
+      doc:
+        "How many lines a cell of this column shows at most, from 1 to 10. Defaults to 1: one line, cut off with an ellipsis. With more, the text wraps, keeps its line breaks and is cut off after the last line, and a row is as high as its highest cell. For a column that is shown as text: a string, an array, a map, an embedded resource, a union, or a type shown as read-only text. Not for a number, a date, a boolean or an enum, nor for a reference cell, a sensitive column or a column whose `component` shows the cell."
     ]
   ]
 

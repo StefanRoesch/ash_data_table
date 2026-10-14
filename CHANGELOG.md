@@ -58,6 +58,21 @@ declared in the resource and mounted with one line in the router.
   (`td[data-line] > div > button`), and a nested table is two elements deep
   in its cell.
 
+### Long text
+
+- `max_lines` on a `column` (1 to 10, default 1): its cells wrap, keep the
+  line breaks of the value and are cut off after that many lines; a row is
+  as high as its highest cell. For a column shown as text. On a number, a
+  date, a datetime, a boolean, an enum, a reference cell, a sensitive column
+  or a column whose component shows the cell it is reported at compile time.
+- The whole text of a cell that cuts some of its text off, in any column, is
+  shown in a popover under the cell while the cell has the focus or the
+  pointer rests on it, after a moment. Escape takes it away without moving
+  the focus, the pointer can go onto it, and it scrolls when the text is
+  long. The browser fills it from the cell's own text: nothing is sent for
+  it. A sensitive cell has none. It is hidden from screen readers, which
+  read the text in the cell.
+
 ### Reading
 
 - Sorting, filtering and pagination on the server, through the read action,

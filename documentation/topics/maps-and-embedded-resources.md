@@ -489,7 +489,8 @@ translated once, for a column and for a field of a client alike.
 - **A value inside itself.** An embedded resource that holds a value of its
   own type is read-only. (Ash 3.34 does not compile one.)
 - **A long value** is cut off in the cell, as every cell's text is. The
-  panel shows all of it.
+  panel shows all of it, and so does the box under the cell: see
+  [Long text](columns-and-defaults.md#long-text).
 
 ## Things people trip over
 

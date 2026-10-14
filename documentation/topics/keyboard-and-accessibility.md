@@ -747,7 +747,10 @@ technology, a report of what you find is welcome in the
   the cell has focus or the pointer. It does not change the row's height.
   The ring and the "!" of the cell are there all the time.
 - **Long text is cut off** to keep rows one line high. The whole value is in
-  the cell for assistive technology, and in the editor.
+  the cell for assistive technology, and in the editor. For the eye it is
+  shown under the cell while the cell has the focus or the pointer, and
+  Escape takes it away: see
+  [Long text](columns-and-defaults.md#long-text).
 - **A mounted table brings no main landmark.** Its page is a heading and the
   table; `<main>` has to come from your layouts. See
   [Layout and embedding](layout-and-embedding.md).

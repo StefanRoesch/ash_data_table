@@ -106,6 +106,9 @@ defmodule AshTable.Model.Column do
   #     an attribute that is not `sensitive?`: see
   #     `AshTable.Resource.Summarising`. The number is asked for with
   #     `AshTable.Query.summaries/4`.
+  #   * `max_lines` is how many lines a cell of this column shows at most:
+  #     1 unless the block says more (`max_lines`), which it can for a
+  #     column that is shown as text. See `AshTable.Resource.Presenting`.
   #   * `partly_hidden?` is only ever `true` in a model from
   #     `AshTable.Model.for_actor/2`: the person sees the field on some records
   #     and not on others.
@@ -134,6 +137,7 @@ defmodule AshTable.Model.Column do
     apart?: false,
     partly_hidden?: false,
     sensitive?: false,
+    max_lines: 1,
     fixed: %{},
     arguments: %{}
   ]
@@ -175,6 +179,7 @@ defmodule AshTable.Model.Column do
           summary: AshTable.Resource.Summarising.kind() | nil,
           apart?: boolean,
           partly_hidden?: boolean,
-          sensitive?: boolean
+          sensitive?: boolean,
+          max_lines: pos_integer
         }
 end

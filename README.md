@@ -281,6 +281,9 @@ convenience and not a permission, and it is forgotten when the page is
 reloaded.
 See [Columns and defaults](documentation/topics/columns-and-defaults.md#hiding-columns).
 
+**Long text** is cut off after one line, or after as many as the column says with `max_lines 3`; the whole text of a cell that cuts some off is shown under the cell while it has the focus or the pointer.
+See [Columns and defaults](documentation/topics/columns-and-defaults.md#long-text).
+
 Mistakes in the block are reported when the resource is compiled. As with
 every Ash extension's verifiers, they surface as compile warnings. They fail
 a build under `mix compile --warnings-as-errors` only when the resource is

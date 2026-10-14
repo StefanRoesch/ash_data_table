@@ -1818,6 +1818,7 @@ defmodule AshTable.Model do
       # a sensitive field is masked, and neither sorted nor filtered by:
       # `Reading.sortable?/3` and `Operator.available/2` say so
       sensitive?: Sensitive.sensitive?(field),
+      max_lines: max_lines(resource, field, declared),
       fixed: fixed,
       arguments: fixed,
       editable?: not is_nil(update_action),
@@ -1847,6 +1848,16 @@ defmodule AshTable.Model do
           else: Operator.available(resource, field)
         )
     }
+  end
+
+  # How many lines a cell shows at most. Where the block asks for more than
+  # one on a column that is always one line, the verifier has said so
+  # (`VerifyColumns`); such a column is shown as it is without the option.
+  defp max_lines(resource, field, declared) do
+    case Presenting.max_lines(resource, field, declared) do
+      {:ok, lines} -> lines
+      {:error, _reason} -> 1
+    end
   end
 
   # What a choice in a reference cell gives the column's action, by the way

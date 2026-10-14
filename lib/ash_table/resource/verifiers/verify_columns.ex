@@ -5,6 +5,7 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
   alias AshTable.Model.Operator
   alias AshTable.Resource.Arguing
   alias AshTable.Resource.Editing
+  alias AshTable.Resource.Presenting
   alias AshTable.Resource.Reading
   alias AshTable.Resource.Referencing
   alias AshTable.Resource.Table
@@ -63,7 +64,19 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
       sortable_errors(column, module, table) ++
       filterable_errors(column, field, module, table) ++
       update_action_errors(column, field, module, table) ++
-      confirm_errors(column, field, module, table)
+      confirm_errors(column, field, module, table) ++
+      max_lines_errors(column, field, module, table)
+  end
+
+  # `max_lines` on a column whose cells are never more than one line.
+  defp max_lines_errors(column, field, module, table) do
+    case Presenting.max_lines(module, field, column) do
+      {:ok, _lines} ->
+        []
+
+      {:error, reason} ->
+        [option_error(column, module, table, :max_lines, Presenting.message(reason))]
+    end
   end
 
   # A column that names a relationship is a reference cell, which shows the
@@ -81,7 +94,8 @@ defmodule AshTable.Resource.Verifiers.VerifyColumns do
         argument_errors(column, relationship, module, table) ++
           reference_option_errors(column, module, table) ++
           update_action_errors(column, relationship, module, table) ++
-          confirm_errors(column, relationship, module, table)
+          confirm_errors(column, relationship, module, table) ++
+          max_lines_errors(column, relationship, module, table)
 
       {:error, reason} ->
         [error(column, module, table, Referencing.message(reason))]
