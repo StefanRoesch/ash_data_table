@@ -187,6 +187,11 @@ defmodule AshTable do
     doc:
       "What a default of an asked argument is given when it is a function (`ask :currency, default: &MyApp.Defaults.currency/1`): the assigns of the page that it looks at, such as `%{current_user: @current_user}`. A mounted table gives such a function the assigns of its socket."
 
+  # Rows to select with nothing to run on them, one at a time (`:single`) or
+  # several (`:multi`): how the table is shown for a person to choose from.
+  # Internal; the demo's pages for selection use it.
+  attr :select, :atom, default: nil, values: [nil, :single, :multi], doc: false
+
   def table(assigns) do
     assigns = assign_new(assigns, :grid_label, fn -> assigns.label || label(assigns.resource) end)
     table = assigns.table || :default
@@ -230,6 +235,7 @@ defmodule AshTable do
       mounted?={false}
       page_assigns={@assigns}
       time_zone={@time_zone}
+      select={@select}
     />
     """
   end

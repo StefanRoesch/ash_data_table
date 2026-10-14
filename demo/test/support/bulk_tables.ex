@@ -288,7 +288,7 @@ defmodule DemoWeb.Support.SelectLive do
   @moduledoc """
   A page whose tables are told that their rows can be selected, as the
   library's own code tells a table that it shows for a person to choose
-  from: the table component itself, given `select`. None of these tables
+  from: the table, given `select`. None of these tables
   has an action to run on a selection.
   """
   use Phoenix.LiveView
@@ -319,20 +319,7 @@ defmodule DemoWeb.Support.SelectLive do
 
   defp table(assigns) do
     ~H"""
-    <.live_component
-      module={AshTable.Live.TableComponent}
-      id={@id}
-      resource={@resource}
-      select={@select}
-      label={@id}
-      heading={false}
-      scope={nil}
-      actor={nil}
-      tenant={nil}
-      authorize?={nil}
-      url={nil}
-      mounted?={false}
-    />
+    <AshTable.table id={@id} resource={@resource} select={@select} label={@id} heading={false} />
     """
   end
 end
