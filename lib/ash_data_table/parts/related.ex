@@ -233,7 +233,7 @@ defmodule AshDataTable.Parts.Related do
               <td
                 id={"#{@id}-view"}
                 role="gridcell"
-                colspan={length(@model.columns) + @lead + Parts.Grid.trail(@acting?)}
+                colspan={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
                 aria-colindex="1"
                 tabindex="-1"
                 data-view

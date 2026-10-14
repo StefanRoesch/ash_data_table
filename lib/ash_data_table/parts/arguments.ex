@@ -251,11 +251,11 @@ defmodule AshDataTable.Parts.Arguments do
     >
         <.argument
           :for={argument <- @model.arguments}
-          id={"#{@id}-arg-#{argument_id(argument)}"}
-          named={argument_id(argument)}
+          id={"#{@id}-arg-#{Model.Argument.argument_id(argument)}"}
+          named={Model.Argument.argument_id(argument)}
           name={argument_name(argument)}
           argument={argument}
-          value={Map.get(@lines, Model.Argument.key(argument)) || shown(argument, @state, @refused)}
+          value={Map.get(@lines, Model.Argument.key(argument)) || Model.Argument.shown(argument, @state, @refused)}
           errors={
             case @refused[Model.Argument.key(argument)] do
               nil -> []
@@ -268,22 +268,7 @@ defmodule AshDataTable.Parts.Arguments do
     """
   end
 
-  # What an argument is called in the ids of the page, and what its control
-  # is sent under.
-  def argument_id(%{column: nil, name: name}), do: Atom.to_string(name)
-  def argument_id(%{column: column, name: name}), do: "#{column}-#{name}"
-
+  # What an argument's control is sent under.
   defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
   defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
-
-  # What an argument's input shows: what was typed and refused, else what
-  # the person chose, else what it holds with nothing chosen.
-  def shown(argument, state, refused) do
-    key = Model.Argument.key(argument)
-
-    case refused do
-      %{^key => %{typed: typed}} -> typed
-      _not_refused -> Map.get(state.arguments, key, Model.Argument.rest(argument))
-    end
-  end
 end

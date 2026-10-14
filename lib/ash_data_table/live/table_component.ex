@@ -391,7 +391,7 @@ defmodule AshDataTable.Live.TableComponent do
   # own (`AshDataTable.Listener`), which hands it what was announced in batches
   # (`update/2`, with `live`): the primary keys of records that were
   # created, updated or destroyed, and nothing else of them
-  # (`AshDataTable.Notifier`). Nothing of an announcement is shown. Each key is
+  # (`AshDataTable.Resource.Notifier`). Nothing of an announcement is shown. Each key is
   # read again as the person, through the table's read action
   # (`follow/1`): a row of the page is put back as that read returns it, or
   # taken away when it returns nothing; a record that is no row of the page
@@ -1123,7 +1123,7 @@ defmodule AshDataTable.Live.TableComponent do
           false
 
         argument ->
-          Enum.reject(rows, &(&1 == "")) == Parts.Arguments.shown(argument, state, refused)
+          Enum.reject(rows, &(&1 == "")) == Model.Argument.shown(argument, state, refused)
       end
     end)
   end
@@ -1714,7 +1714,7 @@ defmodule AshDataTable.Live.TableComponent do
           # 1-based, the header rows counted. Under offset pagination it
           # runs through all pages; a keyset page does not know how many
           # records lie before it, and counts from its own top.
-          rowindex: (page.offset || 0) + index + Parts.Grid.header_rows() + 1
+          rowindex: (page.offset || 0) + index + Parts.Common.header_rows() + 1
         }
       end)
 
@@ -2486,7 +2486,7 @@ defmodule AshDataTable.Live.TableComponent do
     with [name | rest] when is_binary(name) <- path,
          true <- Enum.all?(rest, &is_binary/1),
          %{} = input <-
-           Enum.find(panel.inputs, &(Parts.Panel.group?(&1) and Atom.to_string(&1.name) == name)),
+           Enum.find(panel.inputs, &(Model.group?(&1) and Atom.to_string(&1.name) == name)),
          {:ok, held, focus} <-
            regroup(input, panel.groups[name], rest, change, panel.time_zone) do
       groups = Map.put(panel.groups, name, held)
@@ -2514,7 +2514,7 @@ defmodule AshDataTable.Live.TableComponent do
     %{id: id, model: model, rows: rows} = socket.assigns
 
     with %{editable?: true} = column <- column(model, name),
-         true <- Parts.Panel.group?(column),
+         true <- Model.group?(column),
          %{} = row <- rows[key] do
       case Edit.open(model, column, row.pk, "#{id}-panel", reader(socket.assigns)) do
         {:ok, record, form} ->
@@ -2893,7 +2893,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     with {:ok, record} <- Record.fetch(model, key, opts),
          {:ok, record} <- with_column(model, column, record, opts) do
-      case Parts.Grid.value(column, record) do
+      case Model.Column.value(column, record) do
         %Ash.ForbiddenField{} -> :hidden
         value -> {:ok, Format.format(column, value, model.time_zone)}
       end
@@ -3319,7 +3319,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     # what each field made of groups starts with, as its form sends it
     groups =
-      for input <- panel.inputs, Parts.Panel.group?(input), into: %{} do
+      for input <- panel.inputs, Model.group?(input), into: %{} do
         {Atom.to_string(input.name), started(input, held.(input), panel.kind, assigns.time_zone)}
       end
 
@@ -3456,7 +3456,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   defp regroup(%{cell_type: :map, fields: fields}, %{} = held, [name | rest], change, zone) do
     with %{} = field <-
-           Enum.find(fields || [], &(Parts.Panel.group?(&1) and Atom.to_string(&1.name) == name)),
+           Enum.find(fields || [], &(Model.group?(&1) and Atom.to_string(&1.name) == name)),
          # a union is no group that is added or taken away: only what is in it
          true <- field.editor != :union or rest != [],
          {:ok, inner, focus} <- regroup(field, held[name], rest, change, zone) do
@@ -3730,7 +3730,7 @@ defmodule AshDataTable.Live.TableComponent do
     %{id: id, model: model, rows: rows} = socket.assigns
 
     column =
-      Enum.find(model.columns, &(&1.name == name and &1.editable? and Parts.Panel.group?(&1)))
+      Enum.find(model.columns, &(&1.name == name and &1.editable? and Model.group?(&1)))
 
     case column && rows[key] do
       %{} = row ->
@@ -3897,7 +3897,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     socket =
       Enum.reduce(file_inputs(panel), socket, fn input, socket ->
-        name = Parts.Panel.upload_name(socket.assigns.id, input)
+        name = upload_name(socket.assigns.id, input)
 
         if is_map_key(socket.assigns[:uploads] || %{}, name) do
           socket
@@ -3947,9 +3947,7 @@ defmodule AshDataTable.Live.TableComponent do
       Enum.any?(inputs, fn input ->
         match?(
           %{done?: false},
-          Parts.Panel.entry(
-            Parts.Panel.upload_of(socket.assigns[:uploads], socket.assigns.id, input)
-          )
+          entry(upload_of(socket.assigns[:uploads], socket.assigns.id, input))
         )
       end)
 
@@ -3974,9 +3972,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp attach(_socket, [], files, run), do: run.(files)
 
   defp attach(socket, [input | rest], files, run) do
-    case Parts.Panel.entry(
-           Parts.Panel.upload_of(socket.assigns[:uploads], socket.assigns.id, input)
-         ) do
+    case entry(upload_of(socket.assigns[:uploads], socket.assigns.id, input)) do
       %{done?: true} = entry ->
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
           file = %Plug.Upload{
@@ -4018,9 +4014,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp refused_files(socket, panel) do
     for input <- file_inputs(panel),
         texts =
-          Parts.Panel.upload_errors_of(
-            Parts.Panel.upload_of(socket.assigns[:uploads], socket.assigns.id, input)
-          ),
+          upload_errors_of(upload_of(socket.assigns[:uploads], socket.assigns.id, input)),
         texts != [],
         do: {input.label, texts}
   end
@@ -4048,10 +4042,94 @@ defmodule AshDataTable.Live.TableComponent do
     say(socket, text)
   end
 
+  # The name of the upload of a field: with the table's id before the
+  # argument's name. LiveView wants the name of an upload to be one of a
+  # kind in its process, and the tables of a page are all of one process:
+  # two tables placed in a LiveView, a table and the tables nested in it,
+  # a picker. Two of them can have an action with an argument of the same
+  # name, and each a file for it at the same time.
+  defp upload_name(id, %{name: name}), do: id <> "-file-" <> Atom.to_string(name)
+
+  # The upload of a field, as LiveView keeps it; nil for any other field.
+  defp upload_of(uploads, id, %{editor: :file} = input) when is_map(uploads),
+    do: Map.get(uploads, upload_name(id, input))
+
+  defp upload_of(_uploads, _id, _input), do: nil
+
+  # The file of an upload, which holds one at most, as LiveView knows it
+  # (an entry). A file that another has taken the place of is still among
+  # the upload's entries until LiveView has let go of it: it is none of the
+  # field's any more.
+  defp entry(%{entries: entries}), do: Enum.find(entries, &(not &1.cancelled?))
+  defp entry(_none), do: nil
+
+  defp entry_ref(upload), do: with(%{ref: ref} <- entry(upload), do: ref)
+
+  # What an upload's file is refused for, as a person reads it.
+  #
+  # The field takes one file, and a browser gives it one. A file that
+  # another has taken the place of is not counted: LiveView lists it for a
+  # moment longer, and says "too many" of the two.
+  defp upload_errors_of(nil), do: []
+
+  defp upload_errors_of(upload) do
+    reasons =
+      case Enum.reject(upload.entries, & &1.cancelled?) do
+        [entry] -> upload_errors(upload, entry)
+        [] -> []
+        several -> upload_errors(upload) ++ Enum.flat_map(several, &upload_errors(upload, &1))
+      end
+
+    for reason <- Enum.uniq(reasons) do
+      case reason do
+        :too_large -> Text.t(:upload_too_large, limit: size(upload.max_file_size))
+        :not_accepted -> Text.t(:upload_not_accepted)
+        _failure -> Text.t(:upload_failed)
+      end
+    end
+  end
+
+  # A number of bytes as a size, in the units LiveView counts in.
+  defp size(bytes) when bytes >= 1_000_000, do: "#{number(bytes / 1_000_000)} MB"
+  defp size(bytes) when bytes >= 1_000, do: "#{number(bytes / 1_000)} kB"
+  defp size(bytes), do: "#{bytes} B"
+
+  defp number(amount) do
+    rounded = Float.round(amount, 1)
+    if rounded == trunc(rounded), do: trunc(rounded), else: rounded
+  end
+
+  # What the action said of the file of a field: what it said when it last
+  # ran, of the file it was given then or of having been given none, until
+  # another file is chosen. A file that was chosen and not yet given has
+  # had nothing said of it.
+  defp file_errors(panel, input, upload) do
+    case {Map.get(panel.file_errors, input.name), entry_ref(upload)} do
+      # the file the action was given, for as long as LiveView lists it
+      {{given, texts}, given} -> texts
+      # no file since
+      {{_given, texts}, nil} -> texts
+      _another_file_or_never_run -> []
+    end
+  end
+
+  # What the panel is given of its file fields, by name: the upload of
+  # each, and what is said of its file at the field (`said_of/4`).
+  defp panel_files(%{panel: panel, id: id} = assigns) do
+    for input <- file_inputs(panel), into: %{} do
+      {input.name,
+       %{
+         upload: upload_of(assigns[:uploads], id, input),
+         errors: said_of(panel, input, id, assigns[:uploads])
+       }}
+    end
+  end
+
+  # What is read out of a field when the panel stays open: for a file, what
   # is shown at its field; for the rest, what the action said.
   defp said_of(panel, %{editor: :file} = input, id, uploads) do
-    upload = Parts.Panel.upload_of(uploads, id, input)
-    Parts.Panel.upload_errors_of(upload) ++ Parts.Panel.file_errors(panel, input, upload)
+    upload = upload_of(uploads, id, input)
+    upload_errors_of(upload) ++ file_errors(panel, input, upload)
   end
 
   defp said_of(panel, input, _id, _uploads), do: Map.get(panel.errors, input && input.name, [])
@@ -4158,9 +4236,8 @@ defmodule AshDataTable.Live.TableComponent do
         told =
           for input <- file_inputs(panel), into: %{} do
             {input.name,
-             {Parts.Panel.entry_ref(
-                Parts.Panel.upload_of(socket.assigns[:uploads], socket.assigns.id, input)
-              ), Map.get(panel.errors, input.name, [])}}
+             {entry_ref(upload_of(socket.assigns[:uploads], socket.assigns.id, input)),
+              Map.get(panel.errors, input.name, [])}}
           end
 
         %{panel | file_errors: told}
@@ -4362,14 +4439,14 @@ defmodule AshDataTable.Live.TableComponent do
        when is_binary(named) do
     case Enum.find(
            model.arguments,
-           &(&1.editor == :list and Parts.Arguments.argument_id(&1) == named)
+           &(&1.editor == :list and Model.Argument.argument_id(&1) == named)
          ) do
       nil ->
         nil
 
       argument ->
         key = Model.Argument.key(argument)
-        {key, Map.get(lines, key) || Parts.Arguments.shown(argument, state, refused)}
+        {key, Map.get(lines, key) || Model.Argument.shown(argument, state, refused)}
     end
   end
 
@@ -4535,7 +4612,7 @@ defmodule AshDataTable.Live.TableComponent do
         :if={@panel}
         id={@id}
         panel={@panel}
-        uploads={assigns[:uploads]}
+        files={panel_files(assigns)}
         target={@myself}
       />
       <%!-- After the panel, and so on top of it when both are open: a picker

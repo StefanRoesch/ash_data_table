@@ -87,7 +87,7 @@ defmodule AshDataTable.Parts.Messages do
     <%!-- The message of a cell whose save failed, for the one case in which
     the hook has to mark the cell itself: the record is gone, so there is
     no row to send. --%>
-    <template :if={@editing? or @acting?} phx-no-format id={"#{@id}-failure"}>{Parts.Grid.failure_message(nil, "")}</template>
+    <template :if={@editing? or @acting?} phx-no-format id={"#{@id}-failure"}>{Parts.Common.failure_message(nil, "")}</template>
     """
   end
 

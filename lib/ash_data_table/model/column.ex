@@ -182,4 +182,31 @@ defmodule AshDataTable.Model.Column do
           sensitive?: boolean,
           max_lines: pos_integer
         }
+
+  # What a record holds for a column. For a reference column that is the
+  # label of the related record, as Ash loaded it for this person:
+  #
+  #   * nil where there is no related record, and where there is one that is
+  #     not theirs to read. Ash gives nil for both, so the cell is empty for
+  #     both, and nothing in it tells the two apart;
+  #   * an `Ash.ForbiddenField` where they may read the related record and
+  #     not its label, or where the read of the destination was refused as a
+  #     whole: the cell of a hidden field.
+  @doc false
+  def value(%{kind: :reference, name: name, reference: %{label_field: label}}, record) do
+    case Map.get(record, name) do
+      %Ash.ForbiddenField{} = hidden -> hidden
+      %Ash.NotLoaded{} = not_loaded -> not_loaded
+      %_{} = related -> Map.get(related, label)
+      nil -> nil
+    end
+  end
+
+  # The second column of a calculation is loaded under its own name, and
+  # Ash puts what is loaded so among the record's `calculations`: the value,
+  # or what stands for one the person may not see.
+  def value(%{kind: :calculation, name: name, field: field}, record) when name != field,
+    do: Map.get(record.calculations, name, %Ash.NotLoaded{field: field, type: :calculation})
+
+  def value(column, record), do: Map.get(record, column.name)
 end

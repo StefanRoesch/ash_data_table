@@ -67,7 +67,7 @@ defmodule AshDataTable.Parts.Summary do
       phx-no-format
       id={"#{@id}-summaries"}
       role="row"
-      aria-rowindex={Parts.Grid.summary_rowindex(@page)}
+      aria-rowindex={Parts.Common.summary_rowindex(@page)}
       data-summaries
     >
               <td
@@ -90,7 +90,7 @@ defmodule AshDataTable.Parts.Summary do
                 :for={{column, index} <- Enum.with_index(@model.columns)}
                 id={"#{@id}-summary-#{column.name}"}
                 role="gridcell"
-                aria-colindex={Parts.Grid.colindex(index, @lead)}
+                aria-colindex={Parts.Common.colindex(index, @lead)}
                 aria-busy={column.summary && @summing? && "true"}
                 tabindex="-1"
                 data-summary={column.summary}

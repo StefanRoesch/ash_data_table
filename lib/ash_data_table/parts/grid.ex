@@ -18,12 +18,6 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
-  # The rows above the data rows: the header and the filter row.
-  @header_rows 2
-
-  @doc false
-  def header_rows, do: @header_rows
-
   # The handle at the end of a column's header, with which a person makes
   # the column wider or narrower: dragged, or moved with the arrow keys once
   # F2 on the header has put the focus on it. A separator that can be moved,
@@ -361,31 +355,20 @@ defmodule AshDataTable.Parts.Grid do
     Ash.Resource.Info.attribute(resource, column.name).allow_nil?
   end
 
-  # The columns after the last data column: the actions, when the rows have
-  # them.
-  def trail(true), do: 1
-  def trail(false), do: 0
-
-  # 1-based position of a data column among all columns of the grid.
-  def colindex(index, lead), do: lead + index + 1
-
   # The row index of the first row of the page: the hook numbers the rows
   # from it, in the order they stand in, after a row was added or taken out.
-  def first_row(%{offset: offset}) when is_integer(offset), do: offset + @header_rows + 1
-  def first_row(_page), do: @header_rows + 1
+  def first_row(%{offset: offset}) when is_integer(offset),
+    do: offset + Parts.Common.header_rows() + 1
+
+  def first_row(_page), do: Parts.Common.header_rows() + 1
 
   # The header rows are counted. -1 says the total is not known.
   # The rows of the grid in all pages: the header rows, the records, and
   # the footer row of the summaries where there is one. -1 says "unknown".
   defp aria_rowcount(%{total: total}, summarised?) when is_integer(total),
-    do: total + @header_rows + if(summarised?, do: 1, else: 0)
+    do: total + Parts.Common.header_rows() + if(summarised?, do: 1, else: 0)
 
   defp aria_rowcount(_page, _summarised?), do: -1
-
-  # The footer row of the summaries is the last row of all: after the
-  # records of every page. Where their number is not known it says nothing.
-  def summary_rowindex(%{total: total}) when is_integer(total), do: total + @header_rows + 1
-  def summary_rowindex(_page), do: nil
 
   defp aria_sort({name, :asc}, %{name: name}), do: "ascending"
   defp aria_sort({name, :desc}, %{name: name}), do: "descending"
@@ -415,7 +398,7 @@ defmodule AshDataTable.Parts.Grid do
   defp cell_attributes(false, _id, _column, _row, _zone), do: []
 
   defp cell_attributes(true, id, column, row, zone) do
-    value = value(column, row.record)
+    value = Model.Column.value(column, row.record)
 
     case {editable?(column, value, row.record), row.failed[column.name]} do
       {false, _failure} ->
@@ -485,33 +468,9 @@ defmodule AshDataTable.Parts.Grid do
     do: [{"aria-invalid", "true"}, {"aria-describedby", "#{id}-error"}]
 
   defp action_failure(_id, %{acted: nil}), do: []
-  defp action_failure(id, %{acted: message}), do: failure_message("#{id}-error", message)
 
-  # What a record holds for a column. For a reference column that is the
-  # label of the related record, as Ash loaded it for this person:
-  #
-  #   * nil where there is no related record, and where there is one that is
-  #     not theirs to read. Ash gives nil for both, so the cell is empty for
-  #     both, and nothing in it tells the two apart;
-  #   * an `Ash.ForbiddenField` where they may read the related record and
-  #     not its label, or where the read of the destination was refused as a
-  #     whole: the cell of a hidden field.
-  def value(%{kind: :reference, name: name, reference: %{label_field: label}}, record) do
-    case Map.get(record, name) do
-      %Ash.ForbiddenField{} = hidden -> hidden
-      %Ash.NotLoaded{} = not_loaded -> not_loaded
-      %_{} = related -> Map.get(related, label)
-      nil -> nil
-    end
-  end
-
-  # The second column of a calculation is loaded under its own name, and
-  # Ash puts what is loaded so among the record's `calculations`: the value,
-  # or what stands for one the person may not see.
-  def value(%{kind: :calculation, name: name, field: field}, record) when name != field,
-    do: Map.get(record.calculations, name, %Ash.NotLoaded{field: field, type: :calculation})
-
-  def value(column, record), do: Map.get(record, column.name)
+  defp action_failure(id, %{acted: message}),
+    do: Parts.Common.failure_message("#{id}-error", message)
 
   # A cell whose save failed shows what was typed, as the cell would show it
   # had it been saved, and holds the action's message. The message is a
@@ -519,18 +478,18 @@ defmodule AshDataTable.Parts.Grid do
   # the row keeps its height; it is in the text colour on the page's
   # background, as the error colour is too faint for small text.
   defp cell_content(id, column, row, zone) do
-    value = value(column, row.record)
+    value = Model.Column.value(column, row.record)
 
     case editable?(column, value, row.record) && row.failed[column.name] do
       # a sensitive cell shows what it shows at rest, never what was typed
       {_typed, message, _places} when column.sensitive? ->
         {:safe, shown} = column |> cell(value, zone) |> Phoenix.HTML.html_escape()
-        {:safe, message} = failure_message("#{id}-error", message)
+        {:safe, message} = Parts.Common.failure_message("#{id}-error", message)
         {:safe, [shown, message]}
 
       {typed, message, _places} ->
         {:safe, shown} = typed |> typed(column, zone) |> paragraph(column, typed)
-        {:safe, message} = failure_message("#{id}-error", message)
+        {:safe, message} = Parts.Common.failure_message("#{id}-error", message)
         {:safe, [shown, message]}
 
       _none ->
@@ -548,17 +507,6 @@ defmodule AshDataTable.Parts.Grid do
   defp paragraph(shown, _column, _value) do
     {:safe, shown} = Phoenix.HTML.html_escape(shown)
     if IO.iodata_length(shown) == 0, do: {:safe, shown}, else: {:safe, ["<p>", shown, "</p>"]}
-  end
-
-  def failure_message(id, message) do
-    {:safe,
-     [
-       "<span",
-       if(id, do: [~s( id="), escape(id), ~s(")], else: []),
-       ~s| popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">|,
-       escape(message),
-       "</span>"
-     ]}
   end
 
   # What was typed into an editor, as its cell shows it.
@@ -762,7 +710,7 @@ defmodule AshDataTable.Parts.Grid do
           aria-label={is_nil(@labelledby) && @label}
           aria-labelledby={@labelledby}
           aria-rowcount={aria_rowcount(@page, @summarised?)}
-          aria-colcount={length(@model.columns) + @lead + trail(@acting?)}
+          aria-colcount={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
           aria-multiselectable={@selecting && to_string(@selecting == :multi)}
           aria-busy={(@busy? or not is_nil(@running)) && "true"}
           data-first-row={first_row(@page)}
@@ -870,7 +818,7 @@ defmodule AshDataTable.Parts.Grid do
                 id={"#{@id}-head-#{column.name}"}
                 role="columnheader"
                 scope="col"
-                aria-colindex={colindex(index, @lead)}
+                aria-colindex={Parts.Common.colindex(index, @lead)}
                 aria-sort={column.sortable? && aria_sort(@state.sort, column)}
                 aria-label={column.label}
                 tabindex="-1"
@@ -918,7 +866,7 @@ defmodule AshDataTable.Parts.Grid do
                 :for={{column, index} <- Enum.with_index(@model.columns)}
                 id={"#{@id}-filter-#{column.name}"}
                 role="gridcell"
-                aria-colindex={colindex(index, @lead)}
+                aria-colindex={Parts.Common.colindex(index, @lead)}
                 tabindex="-1"
                 data-filter={column.operators != []}
               >
@@ -961,7 +909,7 @@ defmodule AshDataTable.Parts.Grid do
               id={@id}
               row={row}
               model={@model}
-              colspan={length(@model.columns) + @lead + trail(@acting?)}
+              colspan={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
               creates={@creates}
               reader={@nested_reader}
               component={@component}
@@ -988,7 +936,7 @@ defmodule AshDataTable.Parts.Grid do
               :for={{column, index} <- Enum.with_index(@model.columns)}
               id={"#{dom_id}-c-#{column.name}"}
               role="gridcell"
-              aria-colindex={colindex(index, @lead)}
+              aria-colindex={Parts.Common.colindex(index, @lead)}
               tabindex="-1"
               data-lines={column.max_lines > 1 && column.max_lines}
               {cell_attributes(@editing?, "#{dom_id}-c-#{column.name}", column, row, @time_zone)}
@@ -1049,7 +997,7 @@ defmodule AshDataTable.Parts.Grid do
               <td
                 id={"#{@id}-pager"}
                 role="gridcell"
-                colspan={length(@model.columns) + @lead + trail(@acting?)}
+                colspan={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
                 aria-colindex="1"
                 tabindex="-1"
                 data-pager

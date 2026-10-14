@@ -1,0 +1,39 @@
+defmodule AshDataTable.Parts.Common do
+  @moduledoc false
+  # The small helpers that several parts draw with: the place of a column
+  # and of a row in the grid, and the popover of a failure. A leaf: it calls
+  # no other part, so that the parts do not call each other in a circle
+  # (stage 1 drift check F8). A seed of `AshDataTable.Attrs` (stage 7).
+
+  # The rows above the data rows: the header and the filter row.
+  @header_rows 2
+
+  @doc false
+  def header_rows, do: @header_rows
+
+  # The columns after the last data column: the actions, when the rows have
+  # them.
+  def trail(true), do: 1
+  def trail(false), do: 0
+
+  # 1-based position of a data column among all columns of the grid.
+  def colindex(index, lead), do: lead + index + 1
+
+  # The footer row of the summaries is the last row of all: after the
+  # records of every page. Where their number is not known it says nothing.
+  def summary_rowindex(%{total: total}) when is_integer(total), do: total + @header_rows + 1
+  def summary_rowindex(_page), do: nil
+
+  def failure_message(id, message) do
+    {:safe,
+     [
+       "<span",
+       if(id, do: [~s( id="), escape(id), ~s(")], else: []),
+       ~s| popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">|,
+       escape(message),
+       "</span>"
+     ]}
+  end
+
+  defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
+end

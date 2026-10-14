@@ -8,6 +8,7 @@ defmodule AshDataTable.Parts.Panel do
 
   alias AshDataTable.Act
   alias AshDataTable.Format
+  alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
   alias AshDataTable.Resource.Exposing
@@ -23,7 +24,9 @@ defmodule AshDataTable.Parts.Panel do
   # action's errors are shown at their fields.
   attr :id, :string, required: true
   attr :panel, :map, required: true
-  attr :uploads, :any, default: nil
+  # the file fields, by name: the upload LiveView keeps for each, and what
+  # is said of its file (`errors`), as the live layer tells it
+  attr :files, :map, default: %{}
   attr :target, :any, required: true
 
   def panel(assigns) do
@@ -69,8 +72,8 @@ defmodule AshDataTable.Parts.Panel do
           input={input}
           name={@form[input.name].name}
           value={panel_value(@panel, @form, input)}
-          errors={field_errors(@panel, input, upload_of(@uploads, @id, input))}
-          places={field_places(@panel, input)}
+          errors={field_errors(@panel, input, @files)}
+          places={field_places(@panel, input, @files)}
           chosen={@panel.chosen[input.name]}
           clear={
             cond do
@@ -79,7 +82,7 @@ defmodule AshDataTable.Parts.Panel do
               true -> nil
             end
           }
-          upload={upload_of(@uploads, @id, input)}
+          upload={@files[input.name][:upload]}
           inside={
             %{
               errors: @panel.errors,
@@ -119,7 +122,7 @@ defmodule AshDataTable.Parts.Panel do
     name = Atom.to_string(input.name)
 
     cond do
-      group?(input) ->
+      Model.group?(input) ->
         panel.groups[name]
 
       is_map_key(panel.refs, name) and input.editor == :references ->
@@ -153,20 +156,23 @@ defmodule AshDataTable.Parts.Panel do
 
   # The errors of a field that are shown: all of them once the person has
   # used "Run", and until then those of the fields they have been in.
-  defp field_errors(panel, input, upload \\ nil)
-
   # of a file: what the action said of the file it was given
-  defp field_errors(panel, %{editor: :file} = input, upload),
-    do: file_errors(panel, input, upload)
+  # (`files`, with what LiveView says of the file before it)
+  defp field_errors(_panel, %{editor: :file} = input, files) do
+    case Map.get(files, input.name) do
+      %{errors: errors} -> errors
+      nil -> []
+    end
+  end
 
   # of a union: once they have been at its choice, or in its value
-  defp field_errors(panel, %{editor: :union} = input, _upload) do
+  defp field_errors(panel, %{editor: :union} = input, _files) do
     if panel.submitted? or in_union?(panel.touched, [Atom.to_string(input.name)]),
       do: Map.get(panel.errors, input.name, []),
       else: []
   end
 
-  defp field_errors(panel, input, _upload) do
+  defp field_errors(panel, input, _files) do
     if panel.submitted? or Atom.to_string(input.name) in panel.used,
       do: Map.get(panel.errors, input.name, []),
       else: []
@@ -188,8 +194,8 @@ defmodule AshDataTable.Parts.Panel do
 
   # The values of an array field that the errors shown at it are about, by
   # their places.
-  defp field_places(panel, input) do
-    if field_errors(panel, input) == [],
+  defp field_places(panel, input, files) do
+    if field_errors(panel, input, files) == [],
       do: [],
       else: panel |> Map.get(:places, %{}) |> Map.get(input.name, [])
   end
@@ -220,13 +226,6 @@ defmodule AshDataTable.Parts.Panel do
   defp field(assigns) do
     value = assigns.value
 
-    # what LiveView says of the file of an upload comes before what the
-    # action said of it
-    assigns =
-      if assigns.upload,
-        do: assign(assigns, errors: upload_errors_of(assigns.upload) ++ assigns.errors),
-        else: assigns
-
     # typed hidden: a password input in place of the control of its type
     secret? = Exposing.sensitive?(assigns.input)
 
@@ -253,7 +252,7 @@ defmodule AshDataTable.Parts.Panel do
         # what the constraints of a number say of its control; of an array,
         # of the control of each value
         limits: Limits.of(assigns.input),
-        group?: group?(assigns.input),
+        group?: Model.group?(assigns.input),
         secret?: secret?,
         file?: assigns.input.editor == :file and not is_nil(assigns.upload),
         reference?: assigns.input.editor == :reference,
@@ -995,6 +994,8 @@ defmodule AshDataTable.Parts.Panel do
   defp field_type(:plain), do: "text"
   defp field_type(editor), do: Parts.Editors.input_type(editor)
 
+  # Meaning, not drawing: it stays here until `AshDataTable.Present` takes it (stage 3a).
+  #
   # What a field holds: what the person typed, once they have; else the
   # value of the record; or, for an input that has no record to take one
   # from (an argument, an attribute of a record that is being created), its
@@ -1027,82 +1028,4 @@ defmodule AshDataTable.Parts.Panel do
     choices = Enum.map(values, fn {choice, _label} -> to_string(choice) end)
     Enum.reject(held, &(&1 in choices))
   end
-
-  # Whether a column, or an input of the panel, is a map cell or an array of
-  # them, edited as groups of fields, or a union, edited as its kind and that
-  # kind's value: the fields the server renders from what the panel holds.
-  def group?(%{editor: editor}), do: editor in [:group, :groups, :union]
-
-  # The name of the upload of a field: with the table's id before the
-  # argument's name. LiveView wants the name of an upload to be one of a
-  # kind in its process, and the tables of a page are all of one process:
-  # two tables placed in a LiveView, a table and the tables nested in it,
-  # a picker. Two of them can have an action with an argument of the same
-  # name, and each a file for it at the same time.
-  def upload_name(id, %{name: name}), do: id <> "-file-" <> Atom.to_string(name)
-
-  # The upload of a field, as LiveView keeps it; nil for any other field.
-  def upload_of(uploads, id, %{editor: :file} = input) when is_map(uploads),
-    do: Map.get(uploads, upload_name(id, input))
-
-  def upload_of(_uploads, _id, _input), do: nil
-
-  # The file of an upload, which holds one at most, as LiveView knows it
-  # (an entry). A file that another has taken the place of is still among
-  # the upload's entries until LiveView has let go of it: it is none of the
-  # field's any more.
-  def entry(%{entries: entries}), do: Enum.find(entries, &(not &1.cancelled?))
-  def entry(_none), do: nil
-
-  def entry_ref(upload), do: with(%{ref: ref} <- entry(upload), do: ref)
-
-  # What an upload's file is refused for, as a person reads it.
-  #
-  # The field takes one file, and a browser gives it one. A file that
-  # another has taken the place of is not counted: LiveView lists it for a
-  # moment longer, and says "too many" of the two.
-  def upload_errors_of(nil), do: []
-
-  def upload_errors_of(upload) do
-    reasons =
-      case Enum.reject(upload.entries, & &1.cancelled?) do
-        [entry] -> upload_errors(upload, entry)
-        [] -> []
-        several -> upload_errors(upload) ++ Enum.flat_map(several, &upload_errors(upload, &1))
-      end
-
-    for reason <- Enum.uniq(reasons) do
-      case reason do
-        :too_large -> Text.t(:upload_too_large, limit: size(upload.max_file_size))
-        :not_accepted -> Text.t(:upload_not_accepted)
-        _failure -> Text.t(:upload_failed)
-      end
-    end
-  end
-
-  # A number of bytes as a size, in the units LiveView counts in.
-  defp size(bytes) when bytes >= 1_000_000, do: "#{number(bytes / 1_000_000)} MB"
-  defp size(bytes) when bytes >= 1_000, do: "#{number(bytes / 1_000)} kB"
-  defp size(bytes), do: "#{bytes} B"
-
-  defp number(amount) do
-    rounded = Float.round(amount, 1)
-    if rounded == trunc(rounded), do: trunc(rounded), else: rounded
-  end
-
-  # What the action said of the file of a field: what it said when it last
-  # ran, of the file it was given then or of having been given none, until
-  # another file is chosen. A file that was chosen and not yet given has
-  # had nothing said of it.
-  def file_errors(panel, input, upload) do
-    case {Map.get(panel.file_errors, input.name), entry_ref(upload)} do
-      # the file the action was given, for as long as LiveView lists it
-      {{given, texts}, given} -> texts
-      # no file since
-      {{_given, texts}, nil} -> texts
-      _another_file_or_never_run -> []
-    end
-  end
-
-  # What is read out of a field when the panel stays open: for a file, what
 end

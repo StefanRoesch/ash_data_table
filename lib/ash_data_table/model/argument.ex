@@ -109,4 +109,22 @@ defmodule AshDataTable.Model.Argument do
 
   defp ungiven(%__MODULE__{cell_type: :boolean, default: nil}), do: {:ok, "false"}
   defp ungiven(_argument), do: :none
+
+  # What an argument is called in the ids of the page (and in the event of
+  # its line).
+  @doc false
+  def argument_id(%{column: nil, name: name}), do: Atom.to_string(name)
+  def argument_id(%{column: column, name: name}), do: "#{column}-#{name}"
+
+  # What an argument's input shows: what was typed and refused, else what
+  # the person chose, else what it holds with nothing chosen.
+  @doc false
+  def shown(argument, state, refused) do
+    key = key(argument)
+
+    case refused do
+      %{^key => %{typed: typed}} -> typed
+      _not_refused -> Map.get(state.arguments, key, rest(argument))
+    end
+  end
 end
