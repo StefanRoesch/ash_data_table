@@ -244,7 +244,7 @@ test.describe("between", () => {
         "task[f][progress][between][from]": "50",
         "task[f][progress][between][to]": "50",
       })
-    await tasks.ready()
+    await expect(tasks.grid).not.toHaveAttribute("aria-busy", "true")
     expect(await total(tasks)).toBe(fifty)
   })
 })
