@@ -324,7 +324,8 @@ these do not depend on a component, and work over one:
 - a cell whose save is on its way, which is dimmed;
 - a cell whose save failed: the ring, the "!" and the message;
 - one line per row: a cell is cut off at the column's maximum width, and a
-  component's markup with it.
+  component's markup with it. (`max_lines` is not for a column whose
+  component shows the cell.)
 
 ## What a component owes the people who use it
 

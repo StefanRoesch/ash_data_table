@@ -86,7 +86,8 @@ defmodule Demo.Generator do
     "Is this still relevant?",
     "Reproduced on staging.",
     "Waiting for feedback.",
-    "Done on my side, please review.",
+    # a long one, of several paragraphs: more than a cell shows
+    "Done on my side, please review.\n\nI went through the list twice. The first pass changed the wording of the three messages that confused people, and the second moved the check to where the value is read, so that it runs once and not on every row.\n\nWhat is left: the migration for the old records, which I would do in a change of its own, and a look at the page on a narrow screen. For whoever reviews: start with the tests, they say what changed and why, and leave the renaming for last, which is most of the lines and none of the risk. The two places where I was not sure are marked, and I would rather hear a no there than find out after the release.\n\nIf nobody objects by Friday I will merge it as it is.",
     "This needs a test.",
     "Moved to the next sprint.",
     "Looks good to me.",

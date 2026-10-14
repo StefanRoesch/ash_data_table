@@ -100,6 +100,9 @@ defmodule AshTable.Model.Column do
   #     when a person asks for it; it is neither sorted nor filtered by,
   #     has no component, and its editor hides what is typed. See
   #     `AshTable.Sensitive`.
+  #   * `max_lines` is how many lines a cell of this column shows at most:
+  #     1 unless the block says more (`max_lines`), which it can for a
+  #     column that is shown as text. See `AshTable.Resource.Presenting`.
   #   * `partly_hidden?` is only ever `true` in a model from
   #     `AshTable.Model.for_actor/2`: the person sees the field on some records
   #     and not on others.
@@ -127,6 +130,7 @@ defmodule AshTable.Model.Column do
     apart?: false,
     partly_hidden?: false,
     sensitive?: false,
+    max_lines: 1,
     fixed: %{},
     arguments: %{}
   ]
@@ -167,6 +171,7 @@ defmodule AshTable.Model.Column do
             | nil,
           apart?: boolean,
           partly_hidden?: boolean,
-          sensitive?: boolean
+          sensitive?: boolean,
+          max_lines: pos_integer
         }
 end

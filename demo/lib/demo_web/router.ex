@@ -70,6 +70,7 @@ defmodule DemoWeb.Router do
   # unions (`union_tables.ex`), one whose actions take files
   # (`file_tables.ex`), one with sensitive columns (`sensitive_tables.ex`),
   # one whose numbers have limits where the demo has none (`limit_tables.ex`),
+  # one whose columns show several lines of a long text (`long_text_tables.ex`),
   # those that announce their changes for live updates (`live_tables.ex`),
   # those of a domain whose policies allow nothing, mounted with and without
   # authorization (`unchecked_tables.ex`), one whose
@@ -132,6 +133,7 @@ defmodule DemoWeb.Router do
         ash_table "/scans", Demo.Support.Files.Scan, layout: false
         ash_table "/safes", Demo.Support.Secrets.Safe, layout: false
         ash_table "/meters", Demo.Support.Limits.Meter, layout: false
+        ash_table "/essays", Demo.Support.Long.Essay, layout: false
 
         # Live updates (`live_tables.ex`): the bulletins as their domain
         # says, without authorization, and without live updates; their

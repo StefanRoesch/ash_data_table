@@ -257,7 +257,13 @@ defmodule Demo.Tracker.Comment.CompactTable do
       on_forbidden :message
       max_depth 0
 
-      column :body
+      # Up to three lines of a comment, with its line breaks: a row is as
+      # high as its comment needs. What is cut off after that is shown
+      # under the cell while the cell has the focus or the pointer.
+      column :body do
+        max_lines 3
+      end
+
       # a reference cell: the author's name
       column :author
       column :inserted_at

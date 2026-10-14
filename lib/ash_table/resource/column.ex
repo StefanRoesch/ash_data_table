@@ -23,6 +23,7 @@ defmodule AshTable.Resource.Column do
     :component,
     :exposes_protected_field?,
     :arguments,
+    :max_lines,
     :__identifier__,
     :__spark_metadata__,
     asks: []
@@ -40,6 +41,7 @@ defmodule AshTable.Resource.Column do
           component: module | nil,
           exposes_protected_field?: boolean | nil,
           arguments: keyword | nil,
+          max_lines: 1..10 | nil,
           asks: [AshTable.Resource.Ask.t()]
         }
 
@@ -95,6 +97,11 @@ defmodule AshTable.Resource.Column do
       type: :keyword_list,
       doc:
         "The arguments the column's calculation is computed with, fixed here: `arguments currency: :eur`. For a column that names a calculation; each key an argument of it. An argument that a person is to give is declared with `ask` instead."
+    ],
+    max_lines: [
+      type: {:in, 1..10},
+      doc:
+        "How many lines a cell of this column shows at most, from 1 to 10. Defaults to 1: one line, cut off with an ellipsis. With more, the text wraps, keeps its line breaks and is cut off after the last line, and a row is as high as its highest cell. For a column that is shown as text: a string, an array, a map, an embedded resource, a union, or a type shown as read-only text. Not for a number, a date, a boolean or an enum, nor for a reference cell, a sensitive column or a column whose `component` shows the cell."
     ]
   ]
 
