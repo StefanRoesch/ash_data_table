@@ -30,8 +30,8 @@ One line per module. The functions named are the ones other modules call.
 - `AshDataTable.Resource.Column`, `.Ask`, `.Relationship`, `.Action`, `.Reference`, `.Argument`, `.Upload` (`resource/*.ex`): the structs of the entities, each with `schema/0`.
 - `AshDataTable.Resource.Info` (`resource/info.ex`): read a declaration. `tables/1`, `table/2`, `table!/2`, `no_table/2`; for the default table `columns/1`, `relationships/1`, `actions/1`, `arguments/1`, `uploads/1` and the generated `table_*` functions.
 - `AshDataTable.Domain` and `AshDataTable.Domain.Info`: the domain's `table` block (`authorize?`, `scope_assign`, `actor_assign`, `tenant_assign`, `time_zone_assign`, `pub_sub`). `Info.authorize?/1`, `Info.reader/2`, `Info.assign_names/1`, `Info.time_zone/2`, `Info.time_zone_assign/1`, `Info.pub_sub/1`. Its one verifier, `Domain.Verifiers.VerifyPubSub` (`domain/verifiers/`), reports a domain that names no `pub_sub` and has a resource that says `live? true`.
-- `AshDataTable.Resource.Transformers.Announce` (`resource/transformers/announce.ex`): the extension's one transformer. It gives a resource that says `live? true` the notifier `AshDataTable.Notifier`, named as an atom.
-- `AshDataTable.Resource.Notifier` (`resource/notifier.ex`): the notifier of live updates (see "Live updates" below). `AshDataTable.Notifier` (`notifier.ex`) is a facade of it, and the module a resource is given, until a later stage.
+- `AshDataTable.Resource.Transformers.Announce` (`resource/transformers/announce.ex`): the extension's one transformer. It gives a resource that says `live? true` the notifier `AshDataTable.Resource.Notifier`, named as an atom.
+- `AshDataTable.Resource.Notifier` (`resource/notifier.ex`): the notifier of live updates (see "Live updates" below). `AshDataTable.Notifier` (`notifier.ex`) keeps only `topic/2`, as a facade for the tests, until they may ask the declaration.
 - `AshDataTable.Resource.CellType` (`resource/cell_type.ex`): Ash type to cell type. `of/2`, `classify/2`.
 - `AshDataTable.Resource.Operator` (`resource/operator.ex`): filter operators per cell type. `available/2`, `to_ash/2`; `takes/1` (no value, one, several, a range), `predicates/2`, `negated?/1`. `AshDataTable.Model.Operator` is a facade of it for the tests.
 - `AshDataTable.Resource.Words` (`resource/words.ex`): `humanize/1`, a name in words.
@@ -47,7 +47,7 @@ The rules of a declaration live in one module per topic. Each is shared by the v
 - `Resource.Referencing`: reference cells, `label_field`, the picker, and `sticky_label?`. `label_field/1`, `sticky_label/2`, `reference/1`, `picking/2`, `declared/4`.
 - `Resource.Managing`: arguments that a `manage_relationship` change hands to a relationship. `managed/3`, `handed/3`.
 - `Resource.Embedding`: fields of a map cell, kinds of a union. `of/2`, `union/2`, `kind/2`.
-- `Resource.Presenting`: the `component` of a column, and how many lines its cells show (`max_lines`). `column/4`, `component/2`, `max_lines/3`; `shown_as/1`, a cell type in words, for the shipped components.
+- `Resource.Presenting`: the `component` of a column, and how many lines its cells show (`max_lines`). `column/4`, `component/2`, `max_lines/3`.
 - `Resource.Uploading`: limits of a file argument. `limits/2`, `mistakes/3`.
 - `Resource.Exposing`: columns that show a field a field policy protects. `exposures/2`. Also whether a field is `sensitive?`: `sensitive?/1`, `typed?/1`, `empty?/1`.
 - `Resource.Summarising`: the `summary` of a column (footer summaries). `kinds/0`, `column/2` (an attribute, not sensitive, a kind that fits the type), `action/1` (not a manual read action), `data_layer/2`, `fits?/2`.
@@ -61,8 +61,8 @@ A new diagnostic goes in two places. Put the rule and its `message/1` clause int
 
 The model (2a):
 
-- `AshDataTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `summarised/1` (the columns with a `summary`), `label_column/1`, `keeps_one?/1`, `label/1` (what a resource's table is called, before it is translated). `hideable/1` is a facade of `Parts.Grid.hideable/1` for the tests. Its `sticky_label?` is the table's option of that name. `zoned/2` puts the page's time zone into the model (`time_zone`) and its arguments.
-- `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key. `Pagination.size/2` is how many records a page holds for the size a person asked for: one of `page_sizes`, else `page_size`. `Field.from/1` makes fields of what `Resource.Embedding` gives, which are maps.
+- `AshDataTable.Model` (`model.ex`): everything a table is rendered from, built at runtime from `Ash.Resource.Info` and the declaration (ADR `docs/adr/0001-table-model-from-resource-info-not-manifest.md`). `build/2` builds it for a resource and a table name, the same for everybody. `for_actor/2` takes out the columns and actions this person can never see or use. `defaults/2` and `supply/2` fill in arguments. `bulk_actions/1`, `loads/1`, `relationship/2`, `nested_create/2`, `summarised/1` (the columns with a `summary`), `label_column/1`, `keeps_one?/1`, `label/1` (what a resource's table is called, before it is translated). `group?/1` (a column or input edited as groups of fields, or a union). `hideable/1` is a copy of `Parts.Grid.hideable/1` for the tests, without a call into part 3, until they may ask the part. Its `sticky_label?` is the table's option of that name. `zoned/2` puts the page's time zone into the model (`time_zone`) and its arguments.
+- `Model.Column`, `Model.Field`, `Model.Input`, `Model.Action`, `Model.Argument`, `Model.Relationship`, `Model.Pagination`: structs. Each file starts with a comment that explains every key. `Pagination.size/2` is how many records a page holds for the size a person asked for: one of `page_sizes`, else `page_size`. `Field.from/1` makes fields of what `Resource.Embedding` gives, which are maps. `Column.value/2` is what a record holds for a column. `Argument.argument_id/1` is what an argument is called in the page, `Argument.shown/3` what its input shows.
 - `Model.Limits`: `min`, `max`, `step` and the text counter. `of/2`, `counted/2`.
 - `Model.Access`: what Ash says the person may see and do, before any read. `hidden_fields/4`, `partly_hidden_fields/4`, `forbidden_actions/3`.
 
@@ -103,7 +103,7 @@ Texts and values:
 
 ### Part 3: UI components
 
-- `AshDataTable.Component` (`component.ex`): the behaviour of a column's `component` (`cell/1`, `editor/1`, `verify/1`, `commit/0`). `AshDataTable.Component.Column` is what a component is told about its column.
+- `AshDataTable.Component` (`component.ex`): the behaviour of a column's `component` (`cell/1`, `editor/1`, `verify/1`, `commit/0`). `AshDataTable.Component.Column` is what a component is told about its column. `shown_as/1` (`@doc false`) is a cell type in words, for the shipped components.
 - `AshDataTable.Components.Badge`, `.Image`, `.Progress`, `.Slider` (`components/`): the shipped components.
 - `AshDataTable.Parts.*` (`parts/`): the markup of the table, function components that still draw from the table component's assigns, passed as attributes. Per part: its public functions, then the function components it keeps to itself:
 
@@ -111,18 +111,19 @@ Texts and values:
 | --- | --- | --- |
 | `Parts.Heading` | The line of the table's name, create, table actions | `heading/1`; `create`, `table_actions` |
 | `Parts.Related` | What a table limited to related records says above its grid; the lines under an expanded row and the nested table in each; the link to the full view | `related/1`, `lines/1`, `full_view/1`, `full_view?/2` |
-| `Parts.Arguments` | The argument line | `argument_line/1`; `argument`; `argument_id/1`, `shown/3` |
+| `Parts.Arguments` | The argument line | `argument_line/1`; `argument` |
 | `Parts.Filter` | The filter row's form; one column's filter, "is any of" | `filter_form/1`, `filter/1`, `shown_filter/4`; `choices` |
 | `Parts.Selection` | The line above the grid: selection, notice, "Clear filters", "Columns" | `selection_line/1`; `selection` |
-| `Parts.Grid` | The grid: header, filter row, rows and cells, footer, editor templates, the scrollbar; "Columns"; the view helpers | `grid/1`, `columns/1`, `hideable/1`, `value/2`, `first_row/1`, `held/1`, `failure_message/2`, `colindex/2`, `trail/1`, `summary_rowindex/1`, `header_rows/0`; `resizer`, `editor`; the helpers of a cell (`cell_attributes`, `cell_content`, `cell`, `editable?`) |
+| `Parts.Grid` | The grid: header, filter row, rows and cells, footer, editor templates, the scrollbar; "Columns"; the view helpers | `grid/1`, `columns/1`, `hideable/1`, `first_row/1`, `held/1`; `resizer`, `editor`; the helpers of a cell (`cell_attributes`, `cell_content`, `cell`, `editable?`) |
 | `Parts.Summary` | The footer row of summaries | `summaries/1`; `summary` |
 | `Parts.Pagination` | Pages, "Rows per page" | `pagination/1`, `pages?/2`; `pages` |
-| `Parts.Panel` | The action panel, its fields, groups, unions, chosen records; the uploads of a field | `panel/1`, `field_value/4`, `group?/1`, `upload_name/2`, `upload_of/3`, `upload_errors_of/1`, `file_errors/3`, `entry/1`, `entry_ref/1`; `field`, `group`, `groups`, `union`, `members`, `field_editor`; `panel_value/3` |
+| `Parts.Panel` | The action panel, its fields, groups, unions, chosen records; the file fields, from the `files` the component gives it (the upload of each and what is said of its file) | `panel/1`, `field_value/4`; `field`, `group`, `groups`, `union`, `members`, `field_editor`; `panel_value/3` |
 | `Parts.Picker` | The picker dialog | `picker/1` |
 | `Parts.Messages` | The live region and a run's result, the notice of changes, the failure template, the whole-text popover, the question dialog, error, loading, fill and "No records" | `status/1`, `notice/1`, `failure/1`, `whole/1`, `dialog/1`, `messages/1` |
 | `Parts.Editors` | The counter of a text, the list editor; the edge and type of a control | `count/1`, `list/1`, `described/1`, `control_edge/0`, `box_edge/0`, `input_type/1`, `input_step/1` |
+| `Parts.Common` | Nothing of its own: the helpers several parts draw with. A leaf, so that the parts call each other in no circle | `failure_message/2`, `colindex/2`, `trail/1`, `summary_rowindex/1`, `header_rows/0` |
 
-The table component's code calls some of these (`value/2`, `field_value/4`, `first_row/1`, `shown/3`, `argument_id/1`, `group?/1` and the upload helpers): what its events and the markup both need is in the part until the stages of the refactor give it a place of its own. A part never calls the table component; the live component of a nested table or a picker is given to it as `component`.
+The table component's code calls few of these: `first_row/1` and `header_rows/0` (geometry, until `Attrs`) and `field_value/4` (meaning, until `Present` in stage 3a). What its events and the markup both mean is in part 2a (`Model.group?/1`, `Model.Column.value/2`, `Model.Argument.argument_id/1` and `shown/3`). The upload helpers (`upload_name/2`, `upload_of/3`, `upload_errors_of/1`, `file_errors/3`, `entry/1`, `entry_ref/1`) are the component's own, beside `said_of/4`; `panel_files/1` gives the panel what they say. A part never calls the table component; the live component of a nested table or a picker is given to it as `component`.
 
 The pieces that were `render/1` keep the indentation they had there, held by `phx-no-format` on their outermost elements: the text in an element keeps its whitespace, and the markup snapshots compare it byte for byte. Do not take the attribute away or reindent them.
 
@@ -154,10 +155,10 @@ grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|Colocated
 | 1668–2094 | Showing a read: `unfilled`, `show`, `not_found`, `item`, `put_row`, `put_failure`, `remove_row`, `announce`. |
 | 2095–2858 | `handle_event/3`, all clauses. |
 | 2859–2887 | `defoverridable`, and `update/2`, `handle_event/3` and `handle_async/3` once more: each calls the clauses above and ends in `tidy/1`. |
-| 2888–4423 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 3001), panel (from 3281), bulk (from 3588), `submit` (from 3697), files (from 3885), after a create or a run (from 4068), arguments (from 4325), `go` and the URL (from 4387). |
-| 4424–4569 | `render/1`: the parts of one table, in their order. |
-| 4570–8324 | The four hooks, inside `render/1`. |
-| 8325–8373 | What a picker and a nested table are given (`picker_reader`, `nested_reader`), and `lead/2`. |
+| 2888–4500 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 3001), panel (from 3281), bulk (from 3588), `submit` (from 3697), files (from 3885), after a create or a run (from 4145), arguments (from 4402), `go` and the URL (from 4464). |
+| 4501–4646 | `render/1`: the parts of one table, in their order. |
+| 4647–8401 | The four hooks, inside `render/1`. |
+| 8402–8450 | What a picker and a nested table are given (`picker_reader`, `nested_reader`), and `lead/2`. |
 
 ### Events
 
@@ -205,28 +206,28 @@ Each event's payload and answer are listed in "Events" in the comment at the top
 
 They are colocated hooks. A host gets them from `phoenix-colocated/ash_data_table`.
 
-- `.Pagination` (from 4570): keeps focus on the pagination control that was used, the "Rows per page" menu among them. No sections.
-- `.Panel` (from 4637): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
-- `.Picker` (from 4830): the picker dialog. Hears the selection of the table inside it and sends `picked`.
-- `.Grid` (from 4967): everything in the grid. It starts with a long comment and constants (among them `PLACE`, which places the scrollbars at the bottom edge of the window for all grids of a page at once), then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
+- `.Pagination` (from 4647): keeps focus on the pagination control that was used, the "Rows per page" menu among them. No sections.
+- `.Panel` (from 4714): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
+- `.Picker` (from 4907): the picker dialog. Hears the selection of the table inside it and sends `picked`.
+- `.Grid` (from 5044): everything in the grid. It starts with a long comment and constants (among them `PLACE`, which places the scrollbars at the bottom edge of the window for all grids of a page at once), then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
 
 | Line | Section | Owns |
 | --- | --- | --- |
-| 5414 | the counter of a text | the count beside a text with `max_length` |
-| 5482 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
-| 5875 | expanding | opening a row and going into a nested table |
-| 6054 | the widths of the columns | resizing; the server never hears of widths |
-| 6299 | hiding columns | the "Columns" list; the server never hears of it |
-| 6537 | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-data-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
-| 6764 | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
-| 6862 | selecting | which rows are selected, `selected()`, `bulk` |
-| 7148 | row actions | `act`, the question of an action, refocus |
-| 7208 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
-| 7543 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
-| 7961 | sensitive cells | `reveal`, `hide` |
-| 8076 | the dialog | `ask`: the table's question dialog |
-| 8097 | the message of a failed cell | `showMessage` |
-| 8125 | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
+| 5491 | the counter of a text | the count beside a text with `max_length` |
+| 5559 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
+| 5952 | expanding | opening a row and going into a nested table |
+| 6131 | the widths of the columns | resizing; the server never hears of widths |
+| 6376 | hiding columns | the "Columns" list; the server never hears of it |
+| 6614 | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-data-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
+| 6841 | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
+| 6939 | selecting | which rows are selected, `selected()`, `bulk` |
+| 7225 | row actions | `act`, the question of an action, refocus |
+| 7285 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
+| 7620 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
+| 8038 | sensitive cells | `reveal`, `hide` |
+| 8153 | the dialog | `ask`: the table's question dialog |
+| 8174 | the message of a failed cell | `showMessage` |
+| 8202 | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
 
 A method of the `.Grid` hook has to have a name no other has: the hook is one object, and a second `fit` or `reveal` silently takes the place of the first. esbuild warns of it ("Duplicate key") when the demo's assets are built.
 
