@@ -142,7 +142,8 @@ rejected by Spark while the module is being compiled. That stops any build:
 ## The read action
 
 The path of these findings is `table -> read_action`,
-`table -> paginate_with`, or `table -> argument -> NAME` for the last one.
+`table -> paginate_with`, `table -> page_sizes`, or
+`table -> argument -> NAME` for the last one.
 In the messages, capitals stand for a name from your block.
 
 | Message | Cause | Fix |
@@ -158,6 +159,25 @@ In the messages, capitals stand for a name from your block.
 An argument of the read action needs no declaration to be on the
 [argument line](arguments.md), and an optional one without an input is left
 out without a finding.
+
+### `page_sizes`
+
+The path is `table -> page_sizes`. The read action says what a page may hold
+and which size a table opens with; `page_sizes` only says which sizes a
+person is offered. See
+[Reading, sorting and pagination](reading-sorting-and-pagination.md#letting-a-person-choose-the-page-size).
+
+| Message | Cause | Fix |
+| --- | --- | --- |
+| The read action \`NAME\` has no pagination, and a table without pages cannot offer page sizes. Give the action a \`pagination\` line, or remove \`page_sizes\`. | The block has `page_sizes`, and its read action declares no `pagination`. | Add `pagination` to the action, or remove `page_sizes`. |
+| 50 is more than \`max_page_size: 25\` of \`:NAME\`. A table offers no page that its read action does not allow. Remove 50 from \`page_sizes\`, or raise the action's \`max_page_size\`. | A size is above the action's `max_page_size`. An action that names none has Ash's default, 250. | Remove the size, or raise `max_page_size`. |
+| The read action \`:NAME\` has \`default_limit: 25\`, and 25 is not one of the \`page_sizes\`. The action says which size a table opens with: add 25 to \`page_sizes\`, or change the action's \`default_limit\`. | The action's `default_limit` is not in the list. A `default_limit` above `max_page_size` counts as the maximum, and the message says "capped at". | Add the size to `page_sizes`, or change `default_limit`. |
+| \`page_sizes\` needs at least two sizes, got: [25]. One size is no choice. Add a size, or remove \`page_sizes\`: the page size is then the read action's \`default_limit\`. | The list has one size, or none. | Add a size, or remove the option. |
+| \`page_sizes\` names 10 more than once. | A size is in the list twice. | Remove one. |
+| invalid list in :page_sizes option: … expected positive integer, got: 0 | A size is no positive whole number. This one is Spark's own, and an error whatever the warning setting. | Write positive whole numbers. |
+
+An action without a `default_limit` is no mistake: the table opens with the
+first size as written.
 
 ## The table's update action
 
@@ -373,8 +393,13 @@ The path is `table -> relationship -> NAME`.
 | Got duplicate AshTable.Resource.Relationship: NAME | The block declares the same `relationship` twice. This one is Spark's, with the path `table -> NAME`. | Declare it once. |
 | \`NAME\` is to show the table \`:TABLE\` of its destination, but DESTINATION has no table named \`:TABLE\`. Its tables: \`:A\`, \`:B\`, and the default table. | The `table` of a `relationship` names a table the destination does not have. For a destination without named tables it ends "It has the default table only." | Correct the name, or declare the table on the destination. |
 
+| \`NAME\` shows the table of DESTINATION, which offers the page sizes [10, 25, 50], and reads it through \`:ACTION\`, the relationship's own \`read_action\`. 50 is more than \`max_page_size: 25\` of \`:ACTION\`. … | The nested table offers [`page_sizes`](#page_sizes), and the relationship reads it through a `read_action` of its own that does not allow them: a size above its `max_page_size`, or a `default_limit` that is not among them. The message ends as the one for the table's own read action does. | Change the sizes or the action, or give the relationship no `read_action` of its own. |
+
 With no `relationship` declared, a relationship whose destination has no
-table is simply not offered: nothing is reported.
+table is simply not offered: nothing is reported. One whose own
+`read_action` does not allow the `page_sizes` of its nested table is offered
+without the menu, with that action's page size. A nested table without pages
+has no menu and is not reported either.
 
 ## Row actions and the create action
 
@@ -706,6 +731,8 @@ any LiveView does that raises in its first render.
 | No primary read action, and no `read_action` | The same. |
 | A private primary read action, and no `read_action` | The same: "its read action cannot be used." |
 | An unsupported `paginate_with` | The same. |
+| Wrong `page_sizes` for the table's read action | The same. |
+| A `relationship` whose own `read_action` does not allow the `page_sizes` of its nested table | The nested table has that action's page size and no menu. |
 | A column that does not exist or is not public | The same. |
 | A column that names a relationship whose label cannot be shown: not a belongs-to, a destination without a table or without a usable `label_field` | The same. |
 | A `relationship` that is no public relationship, or whose destination has no table | The same. |

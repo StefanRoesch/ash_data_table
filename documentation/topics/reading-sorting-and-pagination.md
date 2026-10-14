@@ -1,8 +1,9 @@
 # Reading, sorting and pagination
 
 After reading this guide you can choose the read action behind a table, set
-its page size and default order, pick between offset and keyset pagination,
-and say which columns a person can sort by and why.
+its page size and default order, let a person choose the page size, pick
+between offset and keyset pagination, and say which columns a person can sort
+by and why.
 
 Filtering has [its own guide](filtering.md), and so have
 [what is kept in the URL](state-in-the-url.md) and the
@@ -88,7 +89,9 @@ unless the action says otherwise.
 | `max_page_size: 10`, no `default_limit` | 10 |
 | `default_limit: 500`, no `max_page_size` | 250 |
 
-A person cannot change the page size in the table.
+A person cannot change the page size in the table, unless the block
+offers them a choice: see
+[Letting a person choose the page size](#letting-a-person-choose-the-page-size).
 
 **Default sort.** It is the sort the action's preparations build, such as
 `prepare build(sort: [inserted_at: :desc, id: :desc])` above. While a person
@@ -136,6 +139,71 @@ The action has to be a `public?` read action of the resource. So has the
 primary read action, where the block names none: a table runs no private
 action, however it came by it. See
 [Authorization](authorization.md#every-action-a-table-runs-is-public).
+
+### Letting a person choose the page size
+
+`page_sizes` in the block puts a "Rows per page" menu beside the pagination.
+The demo's tasks offer three sizes:
+
+<!-- source: demo/lib/demo/tracker/task.ex -->
+```elixir
+page_sizes [10, 25, 50]
+```
+
+The read action stays the authority. The block only says which of the sizes
+the action allows a person is offered:
+
+- No size may be more than the action's `max_page_size` (250 when the action
+  names none).
+- The action's `default_limit` has to be one of the sizes. It is the size the
+  table opens with.
+- An action without a `default_limit` opens with the first size as you wrote
+  it. The 25 from the table above does not apply then, whether or not 25 is
+  in the list.
+- The list needs at least two sizes, each once. One size is no choice.
+
+Each of these is checked when the resource is compiled; see
+[Mistakes at compile time](mistakes-at-compile-time.md). The menu shows the
+sizes in ascending order, whatever order you wrote them in.
+
+Choosing a size applies at once. The table goes back to its first page and
+keeps the sort, the filters and the arguments. This is so under keyset
+pagination too: a cursor belongs to the size it was made with. The range
+("1–50 of 320"), the page numbers and "Select all 320 that match" follow the
+new size.
+
+The choice is part of the table's state, like the sort: `task[per]=50` in
+the URL of a mounted table, and kept by the table itself where it is nested
+or placed without `url`. The size the table opens with is left out of the
+URL. See [State in the URL](state-in-the-url.md).
+
+A size is a claim, wherever it comes from. One that is not in `page_sizes`
+(`/tasks?task[per]=1000`, or an event somebody made up) is ignored, and the
+table reads with the size it opens with. The server never reads a larger
+page than the block offers.
+
+`page_sizes` belongs to one table: a [named table](named-tables.md) has its
+own or none. A nested table and a picker show the menu of the table they
+show. Two cases differ:
+
+- A nested table without pages has no menu. That is a single related record,
+  a relationship Ash cannot page, or a read action with a required argument
+  (see [Nested tables](nested-tables.md)).
+- A relationship with a `read_action` of its own is read through that
+  action, so that action has to allow the sizes too. Where the relationship
+  is declared in a block, the compiler checks it. Where it is offered
+  without being declared, or a picker reads through an action of its own,
+  and that action does not allow the sizes, the table has that action's page
+  size and no menu.
+
+The menu is a native `<select>` with a visible label. It comes after Next:
+one more tab stop under a table of its own, and reached with Right Arrow in
+the last row of a nested table.
+
+**Try it:** `/tasks` in the demo. Choose 50 under the table: the range says
+"1–50 of 320" and the address ends in `?task[per]=50`. Then open
+`/tasks?task[per]=1000`: the page holds 25 tasks. `/comments` has the menu
+with keyset pagination, and `/projects` has none.
 
 ## Pagination
 
@@ -363,6 +431,7 @@ resource for it
 
 - **Looking for `page_size` or `sort` in the block.** They are
   `pagination default_limit:` and `prepare build(sort:)` on the read action.
+  `page_sizes` only offers a person a choice among sizes the action allows.
 - **A custom read action is not paginated by default.** `defaults [:read]`
   supports both strategies; `read :name do … end` supports none until it has
   a `pagination` line. Without one the table loads every record.
@@ -376,7 +445,7 @@ resource for it
 
 ## Not in the first version
 
-No sorting by several columns, no page-size control for the person, no
+No sorting by several columns, no
 virtual scrolling and no search across columns. The later slices and what is
 out of scope are listed in the
 [specification](https://github.com/StefanRoesch/ash_table/issues/21).

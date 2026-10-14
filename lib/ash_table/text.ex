@@ -35,6 +35,7 @@ defmodule AshTable.Text do
           | :next
           | :page
           | :go_to_page
+          | :rows_per_page
           | :range
           | :range_of_total
           | :yes
@@ -238,6 +239,7 @@ defmodule AshTable.Text do
   defp msgid(:next), do: dgettext_noop("ash_table", "Next")
   defp msgid(:page), do: dgettext_noop("ash_table", "Page %{page}")
   defp msgid(:go_to_page), do: dgettext_noop("ash_table", "Go to page %{page}")
+  defp msgid(:rows_per_page), do: dgettext_noop("ash_table", "Rows per page")
   defp msgid(:range), do: dgettext_noop("ash_table", "%{from}–%{to}")
   defp msgid(:range_of_total), do: dgettext_noop("ash_table", "%{from}–%{to} of %{total}")
   defp msgid(:yes), do: dgettext_noop("ash_table", "Yes")

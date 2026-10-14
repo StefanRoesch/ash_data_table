@@ -16,12 +16,17 @@ defmodule AshTable.State do
   #     then left to its default.
   #   * `page` is the 1-based page number under offset pagination.
   #   * `after` and `before` are keyset cursors; at most one is set.
+  #   * `per` is the page size a person chose, one of the table's
+  #     `page_sizes` other than the one it opens with; nil for that one, and
+  #     for a table that offers none. How many records a read asks for is
+  #     not taken from here as it stands: `AshTable.Model.Pagination.size/2`
+  #     says, and takes no size the table does not offer.
 
   alias AshTable.Model
   alias AshTable.Model.Argument
   alias AshTable.Model.Operator
 
-  defstruct sort: nil, filters: %{}, arguments: %{}, page: 1, after: nil, before: nil
+  defstruct sort: nil, filters: %{}, arguments: %{}, page: 1, after: nil, before: nil, per: nil
 
   @type sort :: {atom, :asc | :desc} | nil
   @type filter :: {Operator.t(), String.t() | nil}
@@ -31,7 +36,8 @@ defmodule AshTable.State do
           arguments: %{optional(Argument.key()) => Argument.typed()},
           page: pos_integer,
           after: String.t() | nil,
-          before: String.t() | nil
+          before: String.t() | nil,
+          per: pos_integer | nil
         }
 
   @doc """
@@ -41,7 +47,7 @@ defmodule AshTable.State do
   unknown or not sortable, a filter on a column that has none or with an
   operator the column does not offer, an argument the table's line does not
   have, a page that is not a positive number, a position of the wrong
-  pagination strategy.
+  pagination strategy, a page size that is not one the table offers.
 
   An argument's value is not looked at here: whether it is one the action
   takes is Ash's to say, when it is given to the action.
@@ -51,7 +57,8 @@ defmodule AshTable.State do
     %__MODULE__{
       sort: parse_sort(model, params["sort"]),
       filters: filters_from_params(model, params["f"]),
-      arguments: arguments_from_params(model, params)
+      arguments: arguments_from_params(model, params),
+      per: offered(model, params["per"])
     }
     |> put_position(model.pagination.strategy, params)
   end
@@ -62,8 +69,9 @@ defmodule AshTable.State do
   The state as far as it fits the model: without a sort by a column the
   table does not have or does not sort by, and without a filter on a column
   the table does not have, or with an operator the column does not offer,
-  and without an argument the table's line does not have. A state that loses
-  something starts at the first page again.
+  without an argument the table's line does not have, and without a page
+  size the table does not offer. A state that loses something starts at the
+  first page again.
 
   A table that keeps its state itself holds it across a change of who is
   asking, and what one person could sort and filter by is not what the next
@@ -88,7 +96,10 @@ defmodule AshTable.State do
     arguments =
       Map.filter(state.arguments, fn {key, _typed} -> not is_nil(Model.argument(model, key)) end)
 
-    if sort == state.sort and filters == state.filters and arguments == state.arguments do
+    per = offered(model, state.per)
+
+    if sort == state.sort and filters == state.filters and arguments == state.arguments and
+         per == state.per do
       state
     else
       %{
@@ -96,6 +107,7 @@ defmodule AshTable.State do
         | sort: sort,
           filters: filters,
           arguments: arguments,
+          per: per,
           page: 1,
           after: nil,
           before: nil
@@ -104,7 +116,8 @@ defmodule AshTable.State do
   end
 
   @doc """
-  The URL parameters of a state; a default is left out.
+  The URL parameters of a state; a default is left out. The page size a
+  person chose is under `"per"`; the size the table opens with is a default.
 
   The filters are under `"f"`, by column name. A filter with its column's
   default operator is the value alone, another one is the operator with its
@@ -131,6 +144,7 @@ defmodule AshTable.State do
       {"a", encode_arguments(model, state.arguments, &is_nil(&1.column))},
       {"c", encode_arguments(model, state.arguments, &(not is_nil(&1.column)))},
       {"sort", encode_sort(state.sort)},
+      {"per", if(offered(model, state.per), do: Integer.to_string(state.per))},
       {"page", if(state.page > 1, do: Integer.to_string(state.page))},
       {"after", state.after},
       {"before", state.before}
@@ -418,6 +432,49 @@ defmodule AshTable.State do
         end
 
       {Atom.to_string(column.name), param}
+    end
+  end
+
+  @doc """
+  The state after a person chose a page size: `size` is what the menu sent,
+  a number as text. One of the sizes the table offers is taken, and the
+  table starts at its first page again, under either pagination strategy: a
+  page number and a cursor belong to the size they were made with. The
+  sort, the filters and the arguments stay.
+
+  Anything else is no choice, and the state stays as it is: a size the
+  table does not offer, text that is no number, a table without sizes.
+  """
+  @spec resize(t, Model.t(), term) :: t
+  def resize(%__MODULE__{} = state, %Model{pagination: pagination} = model, size) do
+    with {:ok, size} <- size(size),
+         true <- size in pagination.page_sizes,
+         per = offered(model, size),
+         true <- per != state.per do
+      %{state | per: per, page: 1, after: nil, before: nil}
+    else
+      _no_choice -> state
+    end
+  end
+
+  defp size(size) when is_integer(size), do: {:ok, size}
+
+  defp size(text) when is_binary(text) do
+    case Integer.parse(text) do
+      {size, ""} -> {:ok, size}
+      _not_a_number -> :error
+    end
+  end
+
+  defp size(_other), do: :error
+
+  # The page size a person chose, as the state keeps it: one of the sizes
+  # the table offers, and not the one it opens with, which is nil. From the
+  # URL it is text.
+  defp offered(%Model{pagination: %{page_sizes: sizes, page_size: default}}, chosen) do
+    case size(chosen) do
+      {:ok, size} when size != default -> if size in sizes, do: size
+      _default_or_none -> nil
     end
   end
 

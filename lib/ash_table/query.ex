@@ -44,6 +44,7 @@ defmodule AshTable.Query do
   alias AshTable.Model
   alias AshTable.Model.Argument
   alias AshTable.Model.Operator
+  alias AshTable.Model.Pagination
   alias AshTable.State
   alias AshTable.Text
 
@@ -705,14 +706,14 @@ defmodule AshTable.Query do
     end)
   end
 
+  # How many records a page holds is never what a state says as it stands:
+  # a state can come from a URL. `Pagination.size/2` takes a size the table
+  # offers, and the read action's own for anything else.
   defp page_opts(%{pagination: %{strategy: :none}}, _state), do: false
 
   defp page_opts(%{pagination: %{strategy: :offset} = pagination} = model, state) do
-    [
-      limit: pagination.page_size,
-      offset: (state.page - 1) * pagination.page_size,
-      count: count?(model, state)
-    ]
+    size = Pagination.size(pagination, state.per)
+    [limit: size, offset: (state.page - 1) * size, count: count?(model, state)]
   end
 
   defp page_opts(%{pagination: %{strategy: :keyset} = pagination} = model, state) do
@@ -725,7 +726,7 @@ defmodule AshTable.Query do
 
     # Ash counts for a keyset page as it does for an offset one, when the
     # action is countable.
-    [limit: pagination.page_size, count: count?(model, state)] ++ position
+    [limit: Pagination.size(pagination, state.per), count: count?(model, state)] ++ position
   end
 
   # Whether the read asks for the total: when the action counts, and for a
@@ -754,7 +755,8 @@ defmodule AshTable.Query do
   end
 
   defp page(%Ash.Page.Offset{} = result, model, state) do
-    pages = result.count && max(1, ceil(result.count / model.pagination.page_size))
+    size = Pagination.size(model.pagination, state.per)
+    pages = result.count && max(1, ceil(result.count / size))
 
     # From a page beyond the last, back is the last page there is, when the
     # action counts; the pages in between are as empty as this one.

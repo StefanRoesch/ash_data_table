@@ -484,3 +484,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "There are new or changed records."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Rows per page"
+msgstr ""

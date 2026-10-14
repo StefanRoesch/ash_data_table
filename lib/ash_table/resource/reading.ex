@@ -17,6 +17,7 @@ defmodule AshTable.Resource.Reading do
           | {:not_public, atom}
           | {:primary_not_public, atom}
           | private_read
+          | page_sizes_reason
 
   @doc """
   The read action behind a table of the resource (`table`, an
@@ -112,6 +113,30 @@ defmodule AshTable.Resource.Reading do
       " Make `#{action}` public, #{remedy}or do not show `#{name}` as a column."
   end
 
+  def message({:page_sizes_without_pages, name}),
+    do:
+      "The read action `#{name}` has no pagination, and a table without pages cannot offer page sizes. Give the action a `pagination` line, or remove `page_sizes`."
+
+  def message({:page_sizes_too_few, sizes}),
+    do:
+      "`page_sizes` needs at least two sizes, got: #{inspect(sizes)}. One size is no choice. Add a size, or remove `page_sizes`: the page size is then the read action's `default_limit`."
+
+  def message({:page_size_twice, size}), do: "`page_sizes` names #{size} more than once."
+
+  def message({:page_size_above_max, size, max, name}),
+    do:
+      "#{size} is more than `max_page_size: #{max}` of `#{inspect(name)}`. A table offers no page that its read action does not allow. Remove #{size} from `page_sizes`, or raise the action's `max_page_size`."
+
+  def message({:default_limit_not_offered, default, limit, max, name}) do
+    opens =
+      cond do
+        limit == default -> "has `default_limit: #{default}`"
+        true -> "has `default_limit: #{limit}`, capped at its `max_page_size: #{max}`"
+      end
+
+    "The read action `#{inspect(name)}` #{opens}, and #{default} is not one of the `page_sizes`. The action says which size a table opens with: add #{default} to `page_sizes`, or change the action's `default_limit`."
+  end
+
   def message(:no_primary_read_action),
     do:
       "The resource has no primary read action. Name the read action behind the table with `read_action`."
@@ -142,6 +167,80 @@ defmodule AshTable.Resource.Reading do
   end
 
   def supported_strategies(_none), do: []
+
+  # the page size of a table whose read action names no `default_limit`
+  # and whose block names no `page_sizes`
+  @default_page_size 25
+
+  @typedoc """
+  What is wrong with the `page_sizes` of a table, read through the action
+  named last: the action has no pagination; the list holds fewer than two
+  sizes, or one of them twice; a size is more than the action's
+  `max_page_size`; the size the action opens with (its `default_limit`, as
+  written, and never more than `max_page_size`) is not among them.
+  """
+  @type page_sizes_reason ::
+          {:page_sizes_without_pages, atom}
+          | {:page_sizes_too_few, [pos_integer]}
+          | {:page_size_twice, pos_integer}
+          | {:page_size_above_max, pos_integer, pos_integer, atom}
+          | {:default_limit_not_offered, pos_integer, pos_integer, pos_integer, atom}
+
+  @doc """
+  The page size a table opens with, and the sizes a person can choose
+  between, in ascending order: for the `page_sizes` of a table's block (nil
+  for a block without) and the read action that is run.
+
+  The read action is the authority. Without `page_sizes` the size is its
+  `default_limit`, or 25 when it has none, and never more than its
+  `max_page_size`; nothing is offered. With them:
+
+    * no size may be more than `max_page_size` (250 in Ash, when the action
+      names none);
+    * the `default_limit` has to be one of them, and is what the table
+      opens with;
+    * an action without a `default_limit` opens with the first size as it
+      was written, whatever the order they are shown in. The 25 above does
+      not apply then.
+
+  Every mistake is returned, the list's own first.
+  """
+  @spec page_sizes([pos_integer] | nil, Ash.Resource.Actions.Read.t()) ::
+          {:ok, {pos_integer | nil, [pos_integer]}} | {:error, [page_sizes_reason]}
+  def page_sizes(nil, action), do: {:ok, {default_size(action.pagination, nil), []}}
+
+  def page_sizes(sizes, %{pagination: pagination, name: name}) when is_list(sizes) do
+    few = if match?([_, _ | _], sizes), do: [], else: [{:page_sizes_too_few, sizes}]
+    twice = for size <- Enum.uniq(sizes -- Enum.uniq(sizes)), do: {:page_size_twice, size}
+
+    of_action =
+      case supported_strategies(pagination) do
+        [] ->
+          [{:page_sizes_without_pages, name}]
+
+        _some ->
+          max = pagination.max_page_size
+          default = default_size(pagination, List.first(sizes))
+
+          for(size <- Enum.uniq(sizes), size > max, do: {:page_size_above_max, size, max, name}) ++
+            if default in sizes or sizes == [],
+              do: [],
+              else: [{:default_limit_not_offered, default, pagination.default_limit, max, name}]
+      end
+
+    case few ++ twice ++ of_action do
+      [] -> {:ok, {default_size(pagination, hd(sizes)), Enum.sort(sizes)}}
+      reasons -> {:error, reasons}
+    end
+  end
+
+  # The size a table opens with: the action's `default_limit`, else
+  # `first`, else 25; never more than the action allows.
+  defp default_size(%{default_limit: limit, max_page_size: max}, first)
+       when is_integer(max),
+       do: min(limit || first || @default_page_size, max)
+
+  defp default_size(_no_pagination, _first), do: nil
 
   @typedoc """
   A read action that Ash runs to compute a column, and that is private: of

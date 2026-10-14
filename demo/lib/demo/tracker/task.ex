@@ -67,6 +67,11 @@ defmodule Demo.Tracker.Task do
     # edited in place, unless the column says otherwise.
     update_action :update
 
+    # The page sizes a person can choose between, under the table. The read
+    # action allows them (`max_page_size: 100`), and its `default_limit`,
+    # 25, is the one the table opens with.
+    page_sizes [10, 25, 50]
+
     # What a task is called where a table shows it as one value.
     label_field :title
 

@@ -92,6 +92,9 @@ msgstr "Zugehörige Einträge"
 msgid "Results updated"
 msgstr "Ergebnisse aktualisiert"
 
+msgid "Rows per page"
+msgstr "Zeilen pro Seite"
+
 msgid "The records could not be loaded."
 msgstr "Die Einträge konnten nicht geladen werden."
 

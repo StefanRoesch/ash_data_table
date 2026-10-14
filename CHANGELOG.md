@@ -900,6 +900,25 @@ declared in the resource and mounted with one line in the router.
   follow.
 - See the guide [Live updates](documentation/topics/live-updates.md).
 
+### Choosing the page size
+
+- `page_sizes [10, 25, 50]` in a `table` block, or in a named table, puts a
+  "Rows per page" menu after the pagination buttons. Choosing a size applies
+  at once, goes back to the first page and keeps the sort, the filters and
+  the arguments, under offset and keyset pagination. A nested table and a
+  picker have the menu of the table they show.
+- The read action stays the authority, checked when the resource is
+  compiled: no size above its `max_page_size`, its `default_limit` among the
+  sizes, at least two sizes and none twice, and no `page_sizes` on an action
+  without pagination. An action without a `default_limit` opens with the
+  first size as written. A declared `relationship` with a `read_action` of
+  its own is checked against that action.
+- The choice is part of the table's state: `task[per]=50` in the URL of a
+  mounted table, left out for the size the table opens with. A size that is
+  not in `page_sizes`, from a URL or an event, is ignored: the server never
+  reads a larger page than the block offers.
+- See [Reading, sorting and pagination](documentation/topics/reading-sorting-and-pagination.md#letting-a-person-choose-the-page-size).
+
 ### Changed since sensitive columns were added
 
 - **The editor of a text column with a `max_length`, and of a sensitive

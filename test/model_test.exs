@@ -330,6 +330,186 @@ defmodule AshTable.ModelTest do
     end
   end
 
+  describe "page sizes" do
+    alias AshTable.Model.Pagination
+    alias AshTable.Query
+    alias AshTable.State
+    alias AshTable.Test.Reading.{Sized, SizedShelf}
+
+    defp nested_sized(name) do
+      relationship = Enum.find(Model.build(SizedShelf).relationships, &(&1.name == name))
+      Model.build(Sized, via: relationship)
+    end
+
+    test "are the block's, ascending, and the table opens with the action's `default_limit`" do
+      assert Model.build(Sized).pagination ==
+               %Pagination{
+                 strategy: :offset,
+                 page_size: 5,
+                 page_sizes: [5, 10, 20],
+                 countable?: true
+               }
+    end
+
+    test "are each table's own" do
+      assert %Pagination{strategy: :keyset, page_size: 5, page_sizes: [5, 10]} =
+               Model.build(Sized, table: :by_keyset).pagination
+    end
+
+    test "an action without a `default_limit` opens with the first size as it is written, not with 25" do
+      assert %Pagination{page_size: 30, page_sizes: [10, 20, 30]} =
+               Model.build(Sized, table: :first_wins).pagination
+    end
+
+    test "a table without `page_sizes` offers none" do
+      assert Model.build(AshTable.Test.Reading.Both).pagination.page_sizes == []
+    end
+
+    test "a nested table offers what the table it shows offers" do
+      assert %Pagination{strategy: :offset, page_size: 5, page_sizes: [5, 10, 20]} =
+               nested_sized(:items).pagination
+    end
+
+    test "a nested table that is shown without pages offers none" do
+      for name <- [:unpaged_items, :needy_items, :first_item] do
+        assert nested_sized(name).pagination ==
+                 %Pagination{strategy: :none, page_size: nil, countable?: false},
+               "#{name}"
+      end
+    end
+
+    # a relationship of the default set is not checked when the resource is
+    # compiled: the action that runs is the authority all the same
+    test "a nested table read through an action that does not allow the sizes has that action's size and no menu" do
+      model = nested_sized(:few_items)
+
+      assert model.read_action == :few
+      assert %Pagination{page_size: 5, page_sizes: []} = model.pagination
+    end
+
+    test "the table a picker shows offers the sizes of the table" do
+      assert %Pagination{page_size: 5, page_sizes: [5, 10, 20]} =
+               Model.build(Sized, choose: :read).pagination
+    end
+
+    test "Pagination.size/2 takes a size the table offers and nothing else" do
+      pagination = Model.build(Sized).pagination
+
+      assert Pagination.size(pagination, nil) == 5
+      assert Pagination.size(pagination, 10) == 10
+      assert Pagination.size(pagination, 20) == 20
+
+      for claim <- [50, 21, 1000, 0, -1, "10", 10.0, :all] do
+        assert Pagination.size(pagination, claim) == 5, inspect(claim)
+      end
+
+      # a table that offers none has its own size, whatever is asked for
+      assert Pagination.size(Model.build(AshTable.Test.Reading.Both).pagination, 50) == 5
+    end
+
+    test "State.from_params/2 takes a size the table offers; anything else is the size it opens with" do
+      model = Model.build(Sized)
+
+      assert State.from_params(model, %{"per" => "10"}).per == 10
+      assert State.from_params(model, %{"per" => "20", "page" => "2"}) == %State{per: 20, page: 2}
+
+      # the size the table opens with is no choice
+      assert State.from_params(model, %{"per" => "5"}).per == nil
+
+      for claim <- ["50", "1000", "0", "-10", "10.5", "10x", "", "all", ["10"], %{"a" => "10"}] do
+        assert State.from_params(model, %{"per" => claim}) == %State{}, inspect(claim)
+      end
+
+      # a URL from before there were sizes
+      assert State.from_params(model, %{"page" => "3"}) == %State{page: 3}
+
+      # a table that offers none takes none
+      assert State.from_params(Model.build(AshTable.Test.Reading.Both), %{"per" => "10"}) ==
+               %State{}
+    end
+
+    test "State.to_params/2 leaves out the size the table opens with" do
+      model = Model.build(Sized)
+
+      assert State.to_params(%State{}, model) == %{}
+      assert State.to_params(%State{per: 10}, model) == %{"per" => "10"}
+      assert State.to_params(%State{per: 10, page: 2}, model) == %{"per" => "10", "page" => "2"}
+
+      # what the table does not offer is not written either
+      assert State.to_params(%State{per: 1000}, model) == %{}
+
+      for per <- [nil, 10, 20] do
+        state = %State{per: per}
+        assert State.from_params(model, State.to_params(state, model)) == state
+      end
+    end
+
+    test "State.resize/3 takes a size the table offers and starts at the first page; the rest stays" do
+      model = Model.build(Sized)
+      state = %State{sort: {:title, :asc}, filters: %{title: {:contains, "a"}}, page: 3}
+
+      assert State.resize(state, model, "10") == %{state | per: 10, page: 1}
+      assert State.resize(%{state | per: 10}, model, "20") == %{state | per: 20, page: 1}
+      # back to the size the table opens with
+      assert State.resize(%{state | per: 10}, model, "5") == %{state | per: nil, page: 1}
+
+      # the size that is shown already changes nothing, the page neither
+      assert State.resize(state, model, "5") == state
+      assert State.resize(%{state | per: 10}, model, "10") == %{state | per: 10}
+
+      for claim <- ["50", "1000", "0", "-10", "ten", "", nil, %{}, 1000] do
+        assert State.resize(state, model, claim) == state, inspect(claim)
+      end
+    end
+
+    test "State.resize/3 gives up the cursor of a keyset table" do
+      model = Model.build(Sized, table: :by_keyset)
+
+      assert State.resize(%State{after: "cursor"}, model, "10") == %State{per: 10}
+      assert State.resize(%State{before: "cursor", per: 10}, model, "5") == %State{}
+    end
+
+    test "State.fit/2 drops a size the table does not offer, and starts at the first page" do
+      model = Model.build(Sized)
+
+      assert State.fit(%State{per: 10, page: 2}, model) == %State{per: 10, page: 2}
+      assert State.fit(%State{per: 1000, page: 2}, model) == %State{}
+
+      assert State.fit(%State{per: 10, page: 2}, Model.build(AshTable.Test.Reading.Both)) ==
+               %State{}
+    end
+
+    test "a read never asks for more than the table offers, whatever the state holds" do
+      for n <- 1..30, do: Ash.create!(Sized, %{title: "Item #{n}"}, authorize?: false)
+      on_exit(fn -> Ash.bulk_destroy!(Sized, :destroy, %{}, authorize?: false) end)
+
+      model = Model.build(Sized)
+      read = fn state -> Query.read(model, state, authorize?: false) end
+
+      assert {:ok, %{records: records, pages: 6}} = read.(%State{})
+      assert length(records) == 5
+
+      assert {:ok, %{records: records, pages: 3, offset: 10}} = read.(%State{per: 10, page: 2})
+      assert length(records) == 10
+
+      assert {:ok, %{records: records, pages: 2}} = read.(%State{per: 20})
+      assert length(records) == 20
+
+      # a size the table does not offer: the size it opens with, and its pages
+      for claim <- [30, 50, 1000, "20", -1] do
+        assert {:ok, %{records: records, pages: 6}} = read.(%State{per: claim})
+        assert length(records) == 5, inspect(claim)
+      end
+
+      # by keyset as well
+      keyset = Model.build(Sized, table: :by_keyset)
+      assert {:ok, %{records: records}} = Query.read(keyset, %State{per: 10}, authorize?: false)
+      assert length(records) == 10
+      assert {:ok, %{records: records}} = Query.read(keyset, %State{per: 20}, authorize?: false)
+      assert length(records) == 5
+    end
+  end
+
   describe "a column's sortability" do
     defp sortability(resource) do
       Enum.map(Model.build(resource).columns, &{&1.name, &1.sortable?})

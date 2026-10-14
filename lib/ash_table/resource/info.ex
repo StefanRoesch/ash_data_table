@@ -129,6 +129,7 @@ defmodule AshTable.Resource.Info do
       name: :default,
       read_action: option(table_read_action(resource)),
       paginate_with: option(table_paginate_with(resource)),
+      page_sizes: option(table_page_sizes(resource)),
       update_action: option(table_update_action(resource)),
       create_action: option(table_create_action(resource)),
       on_forbidden: table_on_forbidden!(resource),

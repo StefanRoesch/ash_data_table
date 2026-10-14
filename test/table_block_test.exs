@@ -1971,6 +1971,347 @@ defmodule AshTable.TableBlockTest do
     end
   end
 
+  describe "page_sizes" do
+    alias AshTable.Resource.Info
+
+    test "is declared per table, and is nil for a table without" do
+      assert Info.table_page_sizes(AshTable.Test.Reading.Sized) == {:ok, [20, 5, 10]}
+      assert Info.table!(AshTable.Test.Reading.Sized, :default).page_sizes == [20, 5, 10]
+      assert Info.table!(AshTable.Test.Reading.Sized, :by_keyset).page_sizes == [5, 10]
+      assert Info.table!(AshTable.Test.Reading.Both, :default).page_sizes == nil
+    end
+
+    # One resource per mistake: `read` is the action of the table, with the
+    # pagination given, and `sizes` what the block offers.
+    defmacrop sized(name, pagination, sizes) do
+      quote do
+        defmodule unquote(name) do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          actions do
+            read :read do
+              primary? true
+              pagination unquote(pagination)
+            end
+          end
+
+          table do
+            page_sizes unquote(sizes)
+          end
+        end
+      end
+    end
+
+    test "on a read action without pagination is an error: a table without pages cannot offer page sizes" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          defmodule Elixir.AshTable.TableBlockTest.SizesWithoutPages do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              read :read do
+                primary? true
+              end
+            end
+
+            table do
+              page_sizes [10, 25]
+            end
+          end
+        end
+
+      assert error.message =~
+               "The read action `read` has no pagination, and a table without pages cannot offer page sizes. " <>
+                 "Give the action a `pagination` line, or remove `page_sizes`."
+
+      # compiled despite the finding, the table is refused when it is built
+      assert_raise ArgumentError,
+                   "cannot build the table of AshTable.TableBlockTest.SizesWithoutPages: The read action `read` has no pagination, and a table without pages cannot offer page sizes. " <>
+                     "Give the action a `pagination` line, or remove `page_sizes`.",
+                   fn -> AshTable.Model.build(AshTable.TableBlockTest.SizesWithoutPages) end
+    end
+
+    test "a size above the action's `max_page_size` is an error that names the size and the limit" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          sized(
+            Elixir.AshTable.TableBlockTest.SizeAboveMaximum,
+            [offset?: true, default_limit: 10, max_page_size: 25],
+            [10, 25, 50]
+          )
+        end
+
+      assert error.message =~
+               "50 is more than `max_page_size: 25` of `:read`. A table offers no page that its read action does not allow. " <>
+                 "Remove 50 from `page_sizes`, or raise the action's `max_page_size`."
+
+      assert_raise ArgumentError, ~r/50 is more than `max_page_size: 25` of `:read`/, fn ->
+        AshTable.Model.build(AshTable.TableBlockTest.SizeAboveMaximum)
+      end
+    end
+
+    test "a size above Ash's own `max_page_size` of 250 is an error where the action names none" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          sized(
+            Elixir.AshTable.TableBlockTest.SizeAboveAshMaximum,
+            [offset?: true, default_limit: 100],
+            [100, 250, 500]
+          )
+        end
+
+      assert error.message =~ "500 is more than `max_page_size: 250` of `:read`."
+    end
+
+    test "a `default_limit` that is not one of the sizes is an error: the action says what a table opens with" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          sized(
+            Elixir.AshTable.TableBlockTest.DefaultLimitNotOffered,
+            [offset?: true, default_limit: 25, max_page_size: 100],
+            [10, 50]
+          )
+        end
+
+      assert error.message =~
+               "The read action `:read` has `default_limit: 25`, and 25 is not one of the `page_sizes`. " <>
+                 "The action says which size a table opens with: add 25 to `page_sizes`, or change the action's `default_limit`."
+    end
+
+    test "a `default_limit` above `max_page_size` counts as the maximum, as it does for a table without sizes" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          sized(
+            Elixir.AshTable.TableBlockTest.DefaultLimitCapped,
+            [offset?: true, default_limit: 500, max_page_size: 40],
+            [10, 20]
+          )
+        end
+
+      assert error.message =~
+               "The read action `:read` has `default_limit: 500`, capped at its `max_page_size: 40`, and 40 is not one of the `page_sizes`."
+
+      refute_dsl_errors do
+        sized(
+          Elixir.AshTable.TableBlockTest.DefaultLimitCappedAndOffered,
+          [offset?: true, default_limit: 500, max_page_size: 40],
+          [10, 40]
+        )
+      end
+    end
+
+    test "an action without a `default_limit` is no error, whether or not 25 is among the sizes" do
+      refute_dsl_errors do
+        sized(
+          Elixir.AshTable.TableBlockTest.SizesWithoutDefaultLimit,
+          [offset?: true, max_page_size: 40],
+          [30, 10]
+        )
+      end
+    end
+
+    test "one size is an error: it is no choice" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          sized(
+            Elixir.AshTable.TableBlockTest.OneSize,
+            [offset?: true, default_limit: 25],
+            [25]
+          )
+        end
+
+      assert error.message =~
+               "`page_sizes` needs at least two sizes, got: [25]. One size is no choice. " <>
+                 "Add a size, or remove `page_sizes`: the page size is then the read action's `default_limit`."
+    end
+
+    test "a size named twice is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :page_sizes]} do
+          sized(
+            Elixir.AshTable.TableBlockTest.SizeTwice,
+            [offset?: true, default_limit: 25],
+            [10, 25, 10]
+          )
+        end
+
+      assert error.message =~ "`page_sizes` names 10 more than once."
+    end
+
+    test "a size that is no positive whole number is refused by the option itself" do
+      assert_raise Spark.Error.DslError, ~r/page_sizes/, fn ->
+        sized(Elixir.AshTable.TableBlockTest.SizeZero, [offset?: true], [10, 0])
+      end
+
+      assert_raise Spark.Error.DslError, ~r/page_sizes/, fn ->
+        sized(Elixir.AshTable.TableBlockTest.SizeNegative, [offset?: true], [10, -5])
+      end
+
+      assert_raise Spark.Error.DslError, ~r/page_sizes/, fn ->
+        sized(Elixir.AshTable.TableBlockTest.SizeFraction, [offset?: true], [10, 2.5])
+      end
+
+      assert_raise Spark.Error.DslError, ~r/page_sizes/, fn ->
+        sized(Elixir.AshTable.TableBlockTest.SizeText, [offset?: true], [10, "25"])
+      end
+    end
+
+    test "a named table is checked against its own read action, and reported at that table" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:tables, :table, :wide, :page_sizes]} do
+          defmodule Elixir.AshTable.TableBlockTest.NamedSizes do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            actions do
+              read :read do
+                primary? true
+                pagination offset?: true, default_limit: 10, max_page_size: 100
+              end
+
+              read :narrow do
+                pagination offset?: true, default_limit: 10, max_page_size: 20
+              end
+            end
+
+            # the default table's own are fine
+            table do
+              page_sizes [10, 100]
+            end
+
+            tables do
+              table :wide do
+                read_action :narrow
+                page_sizes [10, 100]
+              end
+            end
+          end
+        end
+
+      assert error.message =~ "100 is more than `max_page_size: 20` of `:narrow`."
+    end
+
+    # A nested table offers what the table it shows offers, and can be read
+    # through the relationship's own read action: that action is then the
+    # authority, and is checked where the relationship is declared.
+    defmacrop shelf(name, read_action) do
+      quote do
+        defmodule unquote(name) do
+          use Ash.Resource,
+            domain: AshTable.Test.Domain,
+            extensions: [AshTable.Resource]
+
+          attributes do
+            uuid_primary_key :id
+          end
+
+          relationships do
+            has_many :items, AshTable.Test.Reading.Sized do
+              destination_attribute :shelf_id
+              read_action unquote(read_action)
+              public? true
+            end
+          end
+
+          actions do
+            defaults [:read]
+          end
+
+          table do
+            relationship :items
+          end
+        end
+      end
+    end
+
+    test "a declared relationship whose own read action allows less than the nested table offers is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :items]} do
+          shelf(Elixir.AshTable.TableBlockTest.ShelfOfFew, :few)
+        end
+
+      assert error.message =~
+               "`items` shows the table of AshTable.Test.Reading.Sized, which offers the page sizes [20, 5, 10], and reads it through `:few`, the relationship's own `read_action`. " <>
+                 "20 is more than `max_page_size: 10` of `:few`."
+    end
+
+    test "a declared relationship whose own read action opens with a size the nested table does not offer is an error" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :items]} do
+          shelf(Elixir.AshTable.TableBlockTest.ShelfOfSevens, :sevens)
+        end
+
+      assert error.message =~
+               "and reads it through `:sevens`, the relationship's own `read_action`. " <>
+                 "The read action `:sevens` has `default_limit: 7`, and 7 is not one of the `page_sizes`."
+    end
+
+    test "a declared relationship that shows the nested table without pages is no error: it has no menu" do
+      refute_dsl_errors do
+        # no pagination; and an argument the action requires, which Ash
+        # cannot page related records with
+        shelf(Elixir.AshTable.TableBlockTest.ShelfOfUnpaged, :unpaged)
+        shelf(Elixir.AshTable.TableBlockTest.ShelfOfNeedy, :needy)
+      end
+    end
+
+    test "a declared relationship is checked against the named table it shows" do
+      error =
+        assert_dsl_error %Spark.Error.DslError{path: [:table, :relationship, :items]} do
+          defmodule Elixir.AshTable.TableBlockTest.ShelfOfNamed do
+            use Ash.Resource,
+              domain: AshTable.Test.Domain,
+              extensions: [AshTable.Resource]
+
+            attributes do
+              uuid_primary_key :id
+            end
+
+            relationships do
+              has_many :items, AshTable.Test.Reading.Sized do
+                destination_attribute :shelf_id
+                read_action :few
+                public? true
+              end
+            end
+
+            actions do
+              defaults [:read]
+            end
+
+            table do
+              # `:first_wins` offers [30, 10, 20]
+              relationship :items do
+                table :first_wins
+              end
+            end
+          end
+        end
+
+      assert error.message =~
+               "`items` shows the table `:first_wins` of AshTable.Test.Reading.Sized, which offers the page sizes [30, 10, 20]"
+
+      assert error.message =~ "30 is more than `max_page_size: 10` of `:few`."
+    end
+  end
+
   describe "on_forbidden" do
     test "is `:not_found` unless the block says otherwise" do
       refute_dsl_errors do
