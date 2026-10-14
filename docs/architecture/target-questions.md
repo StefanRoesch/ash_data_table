@@ -14,7 +14,9 @@ options, what speaks for and against each, and a suggested answer.
 | 5 (Q8) | Where "open" is declared | a: by the page. |
 | 6 (Q20) | React/Vue/Hologram in v1 | a: none in v1; `live_vue` first afterwards. |
 
-Still open: questions 7–20 below (names and details).
+Questions 2–20 of the names-and-details table below: **taken as recommended** (owner, 2026-10-14).
+
+Also agreed: the **test seams** recommended in [test-coupling.md](test-coupling.md) join the preparation before stage 0.
 
 ---
 
