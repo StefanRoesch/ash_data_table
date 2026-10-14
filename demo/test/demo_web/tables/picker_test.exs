@@ -533,9 +533,7 @@ defmodule DemoWeb.Tables.PickerTest do
             true
           ] do
         html =
-          view
-          |> element("#task-picker")
-          |> render_hook("picked", %{"row" => row, "confirmed" => true})
+          forge(view, "task", "picked", %{"row" => row, "confirmed" => true})
 
         assert picker(html).error == "This record is no longer available."
       end
@@ -552,9 +550,7 @@ defmodule DemoWeb.Tables.PickerTest do
       other = task(world, "Another task")
       pick(view, task.id, "assignee")
 
-      view
-      |> element("#task-picker")
-      |> render_hook("picked", %{
+      forge(view, "task", "picked", %{
         "row" => world.member.id,
         "for" => other.id,
         "column" => "reporter",
@@ -573,9 +569,7 @@ defmodule DemoWeb.Tables.PickerTest do
       task: task,
       ada: ada
     } do
-      view
-      |> element("#task-grid")
-      |> render_hook("picked", %{"row" => world.member.id, "confirmed" => true})
+      forge(view, "task", "picked", %{"row" => world.member.id, "confirmed" => true}, on: :grid)
 
       assert_reply view, %{ok: false}
       assert stored!(task).assignee_id == ada.id
@@ -630,7 +624,7 @@ defmodule DemoWeb.Tables.PickerTest do
         assert_reply view, %{ok: false}
       end
 
-      html = view |> element("##{@projects}-grid") |> render_hook("create", %{})
+      html = forge(view, @projects, "create", %{})
       assert panel(html, @projects) == nil
 
       bulk(view, @projects, "set_status", [project.id])

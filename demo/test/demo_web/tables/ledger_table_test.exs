@@ -168,7 +168,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert attribute(html, "#job-head-assignee_name", "data-sort") == []
       assert filter_controls(html, "job", "assignee_name").input == nil
 
-      view |> element("#job-grid") |> render_hook("sort", %{"column" => "assignee_name"})
+      forge(view, "job", "sort", %{"column" => "assignee_name"})
       assert titles(render(view)) == ["A own", "B other", "C abroad", "D free"]
 
       for query <- ["?job[sort]=assignee_name", "?job[f][assignee_name]=a"] do
@@ -366,9 +366,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert attribute(html, "[id='#{id}-head-tagged?']", "data-sort") == [""]
 
       # asked for all the same, nothing happens: no sort, and no failed read
-      view
-      |> element("[id='#{id}-grid']")
-      |> render_hook("sort", %{"column" => "tagging_count"})
+      forge(view, id, "sort", %{"column" => "tagging_count"})
 
       html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
@@ -426,7 +424,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert attribute(html, "#job-head-remark_count", "data-sort") == []
       assert attribute(html, "#job-head-remark_count", "aria-sort") == []
 
-      view |> element("#job-grid") |> render_hook("sort", %{"column" => "remark_count"})
+      forge(view, "job", "sort", %{"column" => "remark_count"})
       html = render_async(view)
       assert text(html, "#job-error") == nil
       assert titles(html) == ["A own", "B other", "C abroad", "D free"]

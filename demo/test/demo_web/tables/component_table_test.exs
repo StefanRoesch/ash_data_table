@@ -220,9 +220,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       gauge = gauge()
       {:ok, view, _html} = open(conn, @admin)
 
-      view
-      |> element("#gauge-grid")
-      |> render_hook("save", %{
+      forge(view, "gauge", "save", %{
         "row" => to_string(gauge.id),
         "column" => "level",
         "value" => "7",

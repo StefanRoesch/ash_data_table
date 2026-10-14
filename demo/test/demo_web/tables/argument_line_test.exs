@@ -405,7 +405,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
             {"argument_remove", %{"argument" => "names", "at" => "x"}},
             {"argument_remove", %{"argument" => "kinds", "at" => "0"}}
           ] do
-        view |> element("#stock-grid") |> render_hook(event, params)
+        forge(view, "stock", event, params)
       end
 
       assert arguments(render(view), "stock") == arguments(before, "stock")
@@ -811,9 +811,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
       # as the picker's hook sends it: the row, and the line's form
       html =
-        view
-        |> element("#stock-picker")
-        |> render_hook("picked", %{
+        forge(view, "stock", "picked", %{
           "row" => basement.id,
           "confirmed" => false,
           "arguments" =>
@@ -842,9 +840,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
 
       # nor with a form that is none
       for sent <- ["%zz", "nonsense", "arguments=x"] do
-        view
-        |> element("#stock-picker")
-        |> render_hook("picked", %{"row" => basement.id, "arguments" => sent})
+        forge(view, "stock", "picked", %{"row" => basement.id, "arguments" => sent})
 
         assert_reply view, %{ok: false}
       end
@@ -870,9 +866,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       assert column(html, id, "name") == ["Attic", "Basement"]
 
       html =
-        view
-        |> element("#stock-picker")
-        |> render_hook("picked", %{"row" => basement.id, "arguments" => @closed_too})
+        forge(view, "stock", "picked", %{"row" => basement.id, "arguments" => @closed_too})
 
       assert_reply view, %{ok: true}
       assert [%{name: "shelf_id", chosen: "Basement"}] = panel(html, "stock").fields

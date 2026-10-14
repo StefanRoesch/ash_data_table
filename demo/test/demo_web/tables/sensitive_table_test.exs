@@ -543,7 +543,7 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
       main: main
     } do
       for name <- ~w(passphrase note name pin bogus) do
-        html = view |> element("#safe-panel") |> render_hook("panel_clear", %{"input" => name})
+        html = forge(view, "safe", "panel_clear", %{"input" => name})
         # the panel notes nothing: no field says that it will be cleared
         assert attribute(html, "#safe-panel [data-cleared]", "id") == []
       end

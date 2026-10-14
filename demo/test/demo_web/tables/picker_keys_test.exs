@@ -141,9 +141,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
             "DE-1"
           ] do
         html =
-          view
-          |> element("#stop-picker")
-          |> render_hook("picked", %{"row" => row, "confirmed" => true})
+          forge(view, "stop", "picked", %{"row" => row, "confirmed" => true})
 
         assert picker(html, "stop").error == "This record is no longer available.",
                inspect(row)
@@ -218,9 +216,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
       # bay three is taken: no record of the relationship, though anybody may read it
       for row <- ["3", 3, "three", "99"] do
         html =
-          view
-          |> element("#stop-picker")
-          |> render_hook("picked", %{"row" => row, "confirmed" => true})
+          forge(view, "stop", "picked", %{"row" => row, "confirmed" => true})
 
         assert picker(html, "stop").error == "This record is no longer available."
       end
@@ -246,9 +242,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
       # through the picker of another row's cell
       pick(view, "stop", stop.id, "zone")
 
-      view
-      |> element("#stop-picker")
-      |> render_hook("picked", %{"row" => ["DE", "2"], "for" => sealed.id})
+      forge(view, "stop", "picked", %{"row" => ["DE", "2"], "for" => sealed.id})
 
       assert stored!(sealed).zone_code == "DE-N"
     end

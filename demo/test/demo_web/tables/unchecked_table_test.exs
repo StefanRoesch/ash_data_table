@@ -406,9 +406,7 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
       assert text(html, cell("unchecked", first.id, "title")) == "Alpha one"
 
       # an event to the table that authorizes does nothing
-      view
-      |> element("#unchecked-grid")
-      |> render_hook("save", %{"row" => first.id, "column" => "title", "value" => "x"})
+      forge(view, "unchecked", "save", %{"row" => first.id, "column" => "title", "value" => "x"})
 
       assert stored(first).title == "x"
     end

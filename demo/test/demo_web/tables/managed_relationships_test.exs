@@ -281,9 +281,7 @@ defmodule DemoWeb.Tables.ManagedRelationshipsTest do
 
       # as the picker's hook sends it: the rows, and the line's form
       html =
-        view
-        |> element("#gig-picker")
-        |> render_hook("picked", %{
+        forge(view, "gig", "picked", %{
           "rows" => [skills["Alpha"].id, skills["Old"].id],
           "arguments" =>
             "arguments%5Ba%5D%5Bretired_too%5D=false&arguments%5Ba%5D%5Bretired_too%5D=true"

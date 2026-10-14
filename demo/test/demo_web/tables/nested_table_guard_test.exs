@@ -73,12 +73,12 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
   # A `filter` event as the filter row's form sends it, with whatever in it.
   defp send_filter(view, id, filter) do
-    view |> element("[id='#{id}-grid']") |> render_hook("filter", %{"filter" => filter})
+    forge(view, id, "filter", %{"filter" => filter})
     render_async(view)
   end
 
   defp send_sort(view, id, column) do
-    view |> element("[id='#{id}-grid']") |> render_hook("sort", %{"column" => column})
+    forge(view, id, "sort", %{"column" => column})
     render_async(view)
   end
 

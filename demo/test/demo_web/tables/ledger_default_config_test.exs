@@ -89,7 +89,7 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
     assert column(html, id, "tagging_count") == ["0", "0", "0"]
     assert attribute(html, "[id='#{id}-head-tagging_count']", "data-sort") == []
 
-    view |> element("[id='#{id}-grid']") |> render_hook("sort", %{"column" => "tagging_count"})
+    forge(view, id, "sort", %{"column" => "tagging_count"})
     html = render_async(view)
 
     assert text(html, "[id='#{id}-error']") == nil

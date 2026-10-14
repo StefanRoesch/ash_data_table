@@ -84,7 +84,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
     receive do
       {^ref, {:push_event, "ash_table:leaving", %{table: table, row: row}}} ->
-        view |> element("[id='#{table}-grid']") |> render_hook("left", %{"row" => row})
+        forge(view, table, "left", %{"row" => row})
         left(view)
     after
       0 -> :ok
@@ -820,16 +820,16 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       save(member, task.id, "title", "Typed meanwhile")
       assert_reply member, %{ok: false, error: "This record is no longer available."}
 
-      html = member |> element("#task-grid") |> render_hook("left", %{"row" => task.id})
+      html = forge(member, "task", "left", %{"row" => task.id})
       assert titles(html) == ["Staying"]
       assert text(html, "#task-range") == "1–1 of 1"
     end
 
     test "is the only row the hook can send away", %{member: member, task: task} do
-      html = member |> element("#task-grid") |> render_hook("left", %{"row" => task.id})
+      html = forge(member, "task", "left", %{"row" => task.id})
       assert titles(html) == ["Staying", "Going"]
 
-      html = member |> element("#task-grid") |> render_hook("left", %{"row" => "no-such-row"})
+      html = forge(member, "task", "left", %{"row" => "no-such-row"})
       assert titles(html) == ["Staying", "Going"]
       assert Ash.get!(Task, task.id, authorize?: false).title == "Going"
     end
@@ -861,7 +861,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       assert titles(render(member)) == ["Staying", "Back again"]
 
       # the answer to the first question comes late, and sends nothing away
-      html = member |> element("#task-grid") |> render_hook("left", %{"row" => task.id})
+      html = forge(member, "task", "left", %{"row" => task.id})
       assert titles(html) == ["Staying", "Back again"]
     end
 
@@ -895,7 +895,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       act(member, task.id, "reassign")
       assert panel(render(member)).heading =~ "Reassign"
 
-      html = member |> element("#task-grid") |> render_hook("left", %{"row" => task.id})
+      html = forge(member, "task", "left", %{"row" => task.id})
       assert titles(html) == ["Staying", "Going"]
       assert panel(html).heading =~ "Reassign"
 

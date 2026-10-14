@@ -240,9 +240,9 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
          %{conn: conn, world: world} do
       {:ok, view, _html} = conn |> log_in(world.member) |> live("/tasks")
 
-      render_hook(element(view, "#task-grid"), "sort", %{"column" => "external_ref"})
+      forge(view, "task", "sort", %{"column" => "external_ref"})
 
-      render_hook(element(view, "#task-grid"), "filter", %{
+      forge(view, "task", "filter", %{
         "filter" => %{"external_ref" => %{"o" => "equals", "v" => "EXT-2"}}
       })
 

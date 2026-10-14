@@ -472,14 +472,14 @@ defmodule DemoWeb.Tables.PickerPanelTest do
       task: task
     } do
       html =
-        view |> element("#task-grid") |> render_hook("pick_input", %{"input" => "assignee_id"})
+        forge(view, "task", "pick_input", %{"input" => "assignee_id"})
 
       assert picker(html) == nil
 
       act(view, task.id, "reassign")
 
       for name <- ["reason", "nothing", "title"] do
-        html = view |> element("#task-grid") |> render_hook("pick_input", %{"input" => name})
+        html = forge(view, "task", "pick_input", %{"input" => name})
         assert picker(html) == nil
       end
     end

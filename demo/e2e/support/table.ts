@@ -98,6 +98,33 @@ export class Table {
     return this.byId(`${this.id}-grid`)
   }
 
+  // ---- what a person could only send by hand -------------------------------
+
+  /**
+   * Sends the table `event` with exactly `payload`, as the grid's hook sends
+   * its events: for what no control of the page sends at that moment (a
+   * sort without a click, which would move the focus). The one place the
+   * browser tests reach into the hook to send an event.
+   */
+  async forge(event: string, payload: Record<string, unknown>): Promise<void> {
+    await this.hookRoot.evaluate(
+      (grid: any, [event, payload]) => grid._ashTable.pushEventTo(grid, event, payload),
+      [event, payload] as const,
+    )
+  }
+
+  /**
+   * Has the grid's hook ask `question` in the table's dialog, as it does
+   * before an action that asks first (`danger`: the action destroys).
+   * Resolves with the answer: true for Confirm.
+   */
+  ask(question: string, danger = false): Promise<boolean> {
+    return this.hookRoot.evaluate(
+      (grid: any, [question, danger]) => grid._ashTable.ask(question, danger),
+      [question, danger] as const,
+    )
+  }
+
   // ---- scrolling sideways ---------------------------------------------------
 
   /** The table's scrollbar at the bottom edge of the window, shown while its own is below it. */

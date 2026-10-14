@@ -178,7 +178,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       names = column(html, "roster", "name")
       assert length(names) == 2
 
-      view |> element("#roster-grid") |> render_hook("sort", %{"column" => "words"})
+      forge(view, "roster", "sort", %{"column" => "words"})
       assert column(render_async(view), "roster", "name") == names
 
       view

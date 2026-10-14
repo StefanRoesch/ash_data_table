@@ -222,7 +222,7 @@ defmodule DemoWeb.Tables.LabelActionsTest do
       html = table_act(view, "label", "count_unused")
       assert result(html, "label") == "Count unused: 2"
 
-      view |> element("#label-grid") |> render_hook("table_act", %{"action" => "recolour"})
+      forge(view, "label", "table_act", %{"action" => "recolour"})
       assert panel(render(view), "label") == nil
 
       confirm_table_action(view, "label", "remove_unused")

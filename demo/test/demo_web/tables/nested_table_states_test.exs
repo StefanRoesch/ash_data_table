@@ -206,9 +206,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
         ] do
       test "is not shown or announced while the amount is filtered by #{name}: only previous and next",
            %{view: view, id: id} do
-        view
-        |> element("[id='#{id}-grid']")
-        |> render_hook("filter", %{"filter" => %{"amount" => unquote(Macro.escape(entry))}})
+        forge(view, id, "filter", %{"filter" => %{"amount" => unquote(Macro.escape(entry))}})
 
         html = render_async(view)
 
@@ -233,9 +231,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
     end
 
     test "is back when the filter is gone", %{view: view, id: id} do
-      view
-      |> element("[id='#{id}-grid']")
-      |> render_hook("filter", %{"filter" => %{"amount" => %{"o" => "at_least", "v" => "20"}}})
+      forge(view, id, "filter", %{"filter" => %{"amount" => %{"o" => "at_least", "v" => "20"}}})
 
       render_async(view)
       view |> element("[id='#{id}-clear-filters']") |> render_click()

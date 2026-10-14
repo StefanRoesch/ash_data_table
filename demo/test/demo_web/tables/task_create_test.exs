@@ -274,12 +274,10 @@ defmodule DemoWeb.Tables.TaskCreateTest do
       world: world
     } do
       {:ok, view, _html} = conn |> log_in(world.viewer) |> live("/tasks")
-      grid = element(view, "#task-grid")
-
-      assert panel(render_hook(grid, "create", %{})) == nil
+      assert panel(forge(view, "task", "create", %{})) == nil
 
       html =
-        render_hook(grid, "panel_submit", %{
+        forge(view, "task", "panel_submit", %{
           "panel" => %{"title" => "Smuggled in", "project_id" => hd(world.projects).id}
         })
 

@@ -145,10 +145,10 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert html |> attribute("#task-table button[data-action]", "id") == []
 
       act(view, task.id, "destroy")
-      render_hook(element(view, "#task-grid"), "create", %{})
+      forge(view, "task", "create", %{})
 
       html =
-        render_hook(element(view, "#task-grid"), "panel_submit", %{
+        forge(view, "task", "panel_submit", %{
           "panel" => %{"title" => "Anonymous"}
         })
 
@@ -656,7 +656,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert panel(html) == nil
 
       # what its form would send now runs nothing
-      render_hook(element(view, "#task-grid"), "panel_submit", %{"panel" => %{"reason" => "Late"}})
+      forge(view, "task", "panel_submit", %{"panel" => %{"reason" => "Late"}})
 
       assert stored!(task).internal_note == nil
     end
@@ -670,7 +670,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       %{conn: conn, world: world, task: task, foreign: foreign}
     end
 
-    defp raw(view, event, params), do: view |> element("#task-grid") |> render_hook(event, params)
+    defp raw(view, event, params), do: forge(view, "task", event, params, on: :grid)
 
     test "for an action the table does not declare runs nothing", %{
       conn: conn,

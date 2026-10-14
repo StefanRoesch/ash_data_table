@@ -241,16 +241,14 @@ defmodule DemoWeb.Tables.ReferenceCellTest do
       assert newest_first == ["Third", "Second", "First"]
 
       for name <- ["assignee", "assignee.name", "assignee_id"] do
-        html = view |> element("#task-grid") |> render_hook("sort", %{"column" => name})
+        html = forge(view, "task", "sort", %{"column" => name})
 
         assert column(html, "task", "title") == newest_first
         assert_patch_none(view)
       end
 
       html =
-        view
-        |> element("#task-grid")
-        |> render_hook("filter", %{
+        forge(view, "task", "filter", %{
           "filter" => %{"assignee" => %{"o" => "contains", "v" => "Amy"}}
         })
 

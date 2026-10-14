@@ -334,9 +334,7 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
 
       # anything that is no list of rows
       html =
-        view
-        |> element("#task-picker")
-        |> render_hook("picked", %{"rows" => "everything", "row" => docs.id})
+        forge(view, "task", "picked", %{"rows" => "everything", "row" => docs.id})
 
       assert_reply view, %{ok: false}
       assert %{error: "This record is no longer available."} = picker(html)

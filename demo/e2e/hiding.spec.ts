@@ -549,7 +549,7 @@ test.describe("what is hidden outlives what the server sends", () => {
     const place = await tasks.columnsList.boundingBox()
     // sorted without a click, which would take the focus to the header
     await tasks.reads(() =>
-      tasks.hookRoot.evaluate((root: any) => root._ashTable.pushEventTo(root, "sort", { column: "title" })),
+      tasks.forge("sort", { column: "title" }),
     )
     await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
     await expect(tasks.columnsList).toBeVisible()
@@ -730,7 +730,7 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
 
     // sorted by another column: the button and the box follow, with the list open
     await tasks.reads(() =>
-      tasks.hookRoot.evaluate((root: any) => root._ashTable.pushEventTo(root, "sort", { column: "title" })),
+      tasks.forge("sort", { column: "title" }),
     )
     await expect(tasks.columnsList).toBeVisible()
     await expect(tasks.columnsButton).toHaveText("Columns (2 hidden, 1 filtered)")
@@ -757,7 +757,7 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
     await tasks.hide("priority")
     await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
 
-    await tasks.hookRoot.evaluate((root: any) => root._ashTable.pushEventTo(root, "sort", { column: "priority" }))
+    await tasks.forge("sort", { column: "priority" })
     await expect(tasks.header("priority")).toHaveAttribute("aria-sort", "ascending")
     await expect(tasks.columnsButton).toHaveText("Columns (1 hidden, 1 sorted)")
     await expect(tasks.columnFlag("priority")).toBeVisible()

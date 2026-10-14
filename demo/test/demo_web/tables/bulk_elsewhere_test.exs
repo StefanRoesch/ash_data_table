@@ -496,9 +496,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "the grid is busy, the buttons of the line say that they are not to be used, and the page answers",
          %{view: view, crates: [first, _second]} do
       html =
-        view
-        |> element("#crate-grid")
-        |> render_hook("bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+        forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
 
       assert attribute(html, "#crate-table", "aria-busy") == ["true"]
       assert attribute(html, "#crate-bulk-seal", "aria-disabled") == ["true"]
@@ -543,16 +541,12 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
     test "no other runs on that table: one is neither asked for nor run",
          %{view: view, crates: [first, second]} do
-      view
-      |> element("#crate-grid")
-      |> render_hook("bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
 
       bulk(view, "crate", "seal", [second.id])
       assert_reply view, %{ok: false}
 
-      view
-      |> element("#crate-grid")
-      |> render_hook("bulk_run", %{"action" => "seal", "rows" => [second.id]})
+      forge(view, "crate", "bulk_run", %{"action" => "seal", "rows" => [second.id]})
 
       html = ran(view)
 

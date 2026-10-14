@@ -745,13 +745,15 @@ defmodule DemoWeb.Tables.TaskEditTest do
       html = save(view, "00000000-0000-4000-8000-000000000000", "title", "Nobody's task")
       assert column(html, "task", "title") == ["Write the report"]
 
-      html = view |> element("#task-grid") |> render_hook("save", %{"row" => task.id})
+      html = forge(view, "task", "save", %{"row" => task.id})
       assert column(html, "task", "title") == ["Write the report"]
 
       html =
-        view
-        |> element("#task-grid")
-        |> render_hook("save", %{"row" => task.id, "column" => "title", "value" => %{"a" => 1}})
+        forge(view, "task", "save", %{
+          "row" => task.id,
+          "column" => "title",
+          "value" => %{"a" => 1}
+        })
 
       assert column(html, "task", "title") == ["Write the report"]
       assert stored(task).title == "Write the report"

@@ -102,12 +102,12 @@ defmodule DemoWeb.Tables.ProjectBudgetTest do
     end
 
     test "an event that sorts or filters by it changes nothing", %{view: view} do
-      view |> element("#project-grid") |> render_hook("sort", %{"column" => "budget"})
+      forge(view, "project", "sort", %{"column" => "budget"})
 
       html =
-        view
-        |> element("#project-grid")
-        |> render_hook("filter", %{"filter" => %{"budget" => %{"o" => "equals", "v" => @other}}})
+        forge(view, "project", "filter", %{
+          "filter" => %{"budget" => %{"o" => "equals", "v" => @other}}
+        })
 
       assert names(html) == ["Alpha", "Beta", "Gamma"]
       assert names(render_async(view)) == ["Alpha", "Beta", "Gamma"]

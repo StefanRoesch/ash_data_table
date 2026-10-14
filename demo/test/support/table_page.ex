@@ -178,9 +178,7 @@ defmodule DemoWeb.TablePage do
       save(view, task.id, "tags", ["api", "mobile"])
   """
   def save(view, id \\ "task", key, field, value) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("save", %{"row" => to_string(key), "column" => field, "value" => value})
+    send_event(view, id, "save", %{"row" => to_string(key), "column" => field, "value" => value})
   end
 
   @doc """
@@ -191,9 +189,7 @@ defmodule DemoWeb.TablePage do
       clear(view, "project", project.id, "budget")
   """
   def clear(view, id \\ "task", key, field) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("clear", %{"row" => to_string(key), "column" => field})
+    send_event(view, id, "clear", %{"row" => to_string(key), "column" => field})
   end
 
   @doc """
@@ -208,7 +204,7 @@ defmodule DemoWeb.TablePage do
       |> element("[id='#{id}-panel-f-#{name}-clear'][data-clear-field='#{name}']")
       |> Phoenix.LiveViewTest.has_element?()
 
-    view |> element("[id='#{id}-panel']") |> render_hook("panel_clear", %{"input" => name})
+    send_event(view, id, "panel_clear", %{"input" => name})
   end
 
   @doc """
@@ -216,9 +212,7 @@ defmodule DemoWeb.TablePage do
   when a person presses Escape on it. Returns the page.
   """
   def discard(view, id \\ "task", key, field) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("discard", %{"row" => to_string(key), "column" => field})
+    send_event(view, id, "discard", %{"row" => to_string(key), "column" => field})
   end
 
   @doc """
@@ -227,7 +221,7 @@ defmodule DemoWeb.TablePage do
   the page.
   """
   def expand(view, id \\ "task", key) do
-    view |> element("##{id}-grid") |> render_hook("expand", %{"row" => to_string(key)})
+    send_event(view, id, "expand", %{"row" => to_string(key)})
   end
 
   @doc """
@@ -239,9 +233,7 @@ defmodule DemoWeb.TablePage do
       toggle(view, nested("task", task.id, "comments"), comment.id, "author")
   """
   def toggle(view, id \\ "task", key, relationship) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("toggle", %{"row" => to_string(key), "relationship" => relationship})
+    send_event(view, id, "toggle", %{"row" => to_string(key), "relationship" => relationship})
 
     render_async(view, 10_000)
   end
@@ -269,9 +261,7 @@ defmodule DemoWeb.TablePage do
       pick(view, task.id, "assignee")
   """
   def pick(view, id \\ "task", key, field) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("pick", %{"row" => to_string(key), "column" => field})
+    send_event(view, id, "pick", %{"row" => to_string(key), "column" => field})
   end
 
   @doc """
@@ -311,7 +301,7 @@ defmodule DemoWeb.TablePage do
   def picked_rows(view, id \\ "task", rows) do
     rows = Enum.map(rows, &if(is_list(&1) or is_map(&1), do: &1, else: to_string(&1)))
 
-    view |> element("[id='#{id}-picker']") |> render_hook("picked", %{"rows" => rows})
+    send_event(view, id, "picked", %{"rows" => rows})
   end
 
   @doc """
@@ -320,9 +310,7 @@ defmodule DemoWeb.TablePage do
   event with the field and the record's key. Returns the page.
   """
   def unpick(view, id \\ "task", name, key) do
-    view
-    |> element("[id='#{id}-panel']")
-    |> render_hook("panel_unpick", %{"input" => name, "key" => to_string(key)})
+    send_event(view, id, "panel_unpick", %{"input" => name, "key" => to_string(key)})
   end
 
   @doc """
@@ -340,14 +328,12 @@ defmodule DemoWeb.TablePage do
   defp send_picked(view, id, row, confirmed?) do
     row = if is_nil(row) or is_list(row) or is_map(row), do: row, else: to_string(row)
 
-    view
-    |> element("[id='#{id}-picker']")
-    |> render_hook("picked", %{"row" => row, "confirmed" => confirmed?})
+    send_event(view, id, "picked", %{"row" => row, "confirmed" => confirmed?})
   end
 
   @doc "Closes the open picker as Cancel and Escape do. Returns the page."
   def cancel_picker(view, id \\ "task") do
-    view |> element("[id='#{id}-picker']") |> render_hook("picker_cancel", %{})
+    send_event(view, id, "picker_cancel", %{})
   end
 
   @doc """
@@ -421,9 +407,7 @@ defmodule DemoWeb.TablePage do
       edit(view, "project", project.id, "client")
   """
   def edit(view, id \\ "task", key, field) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("edit", %{"row" => to_string(key), "column" => field})
+    send_event(view, id, "edit", %{"row" => to_string(key), "column" => field})
   end
 
   @doc """
@@ -435,7 +419,7 @@ defmodule DemoWeb.TablePage do
       add_group(view, "project", ["milestones"])
   """
   def add_group(view, id \\ "task", path) do
-    view |> element("[id='#{id}-panel']") |> render_hook("panel_add", %{"path" => path})
+    send_event(view, id, "panel_add", %{"path" => path})
   end
 
   @doc """
@@ -446,7 +430,7 @@ defmodule DemoWeb.TablePage do
       remove_group(view, "project", ["milestones", "0"])
   """
   def remove_group(view, id \\ "task", path) do
-    view |> element("[id='#{id}-panel']") |> render_hook("panel_remove", %{"path" => path})
+    send_event(view, id, "panel_remove", %{"path" => path})
   end
 
   @doc """
@@ -458,9 +442,7 @@ defmodule DemoWeb.TablePage do
       act(view, nested("task", task.id, "comments"), comment.id, "destroy")
   """
   def act(view, id \\ "task", key, action) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("act", %{"row" => to_string(key), "action" => action})
+    send_event(view, id, "act", %{"row" => to_string(key), "action" => action})
   end
 
   @doc """
@@ -507,7 +489,7 @@ defmodule DemoWeb.TablePage do
   and the table has read again.
   """
   def confirm_table_action(view, id \\ "task", action) do
-    view |> element("##{id}-grid") |> render_hook("table_run", %{"action" => action})
+    send_event(view, id, "table_run", %{"action" => action})
     ran(view)
   end
 
@@ -526,9 +508,7 @@ defmodule DemoWeb.TablePage do
       assert_reply view, %{ask: "Run “Archive” on 2 records?"}
   """
   def bulk(view, id \\ "task", action, selection) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("bulk", Map.put(selected(selection), "action", action))
+    send_event(view, id, "bulk", Map.put(selected(selection), "action", action))
   end
 
   @doc """
@@ -537,9 +517,7 @@ defmodule DemoWeb.TablePage do
   Returns the page once the action has run and the table has read again.
   """
   def run_bulk(view, id \\ "task", action, selection) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("bulk_run", Map.put(selected(selection), "action", action))
+    send_event(view, id, "bulk_run", Map.put(selected(selection), "action", action))
 
     ran(view)
   end
@@ -614,7 +592,7 @@ defmodule DemoWeb.TablePage do
   when a person presses Escape on it. Returns the page.
   """
   def dismiss(view, id \\ "task", key) do
-    view |> element("##{id}-grid") |> render_hook("dismiss", %{"row" => to_string(key)})
+    send_event(view, id, "dismiss", %{"row" => to_string(key)})
   end
 
   @doc """
@@ -920,7 +898,7 @@ defmodule DemoWeb.TablePage do
 
   @doc "Closes the open action panel as Cancel and Escape do. Returns the page."
   def cancel_panel(view, id \\ "task") do
-    view |> element("[id='#{id}-panel']") |> render_hook("panel_cancel", %{})
+    send_event(view, id, "panel_cancel", %{})
   end
 
   @doc "What the table's live region says."
@@ -1047,9 +1025,7 @@ defmodule DemoWeb.TablePage do
   answer goes to the hook alone: see `Phoenix.LiveViewTest.assert_reply/2`.
   """
   def reveal(view, id \\ "task", key, field) do
-    view
-    |> element("##{id}-grid")
-    |> render_hook("reveal", %{"row" => to_string(key), "column" => field})
+    send_event(view, id, "reveal", %{"row" => to_string(key), "column" => field})
   end
 
   @doc """
@@ -1121,6 +1097,41 @@ defmodule DemoWeb.TablePage do
       structs: false
     )
   end
+
+  @doc """
+  Sends the table `id` an event with exactly `payload`, as a browser does
+  not: for what a person could only send by hand (a row that is not on the
+  page, a column of another shape, an event the table never offers).
+  Returns the page.
+
+  It is sent from where the hook that sends it in a browser is: the events
+  of the panel's hook from the action panel, those of the picker's hook
+  from the picker, every other from the grid. `on: :grid`, `on: :panel` or
+  `on: :picker` sends it from there all the same: an event of the panel
+  while no panel is open.
+
+      forge(view, "task", "save", %{"row" => task.id})
+      forge(view, "task", "panel_cancel", %{}, on: :grid)
+  """
+  def forge(view, id, event, payload, opts \\ []),
+    do: send_event(view, id, event, payload, opts[:on])
+
+  # The one place that sends a table an event, as its hooks do. Every helper
+  # that sends one goes through here, and so does `forge/5`: how an event
+  # reaches its table (today the element's `phx-target`) changes here only.
+  defp send_event(view, id, event, payload, on \\ nil) do
+    view
+    |> element("[id='#{id}-#{on || hook_of(event)}']")
+    |> render_hook(event, payload)
+  end
+
+  # The element of the hook that sends an event in a browser.
+  defp hook_of(event)
+       when event in ~w(panel_add panel_remove panel_unpick panel_clear panel_cancel),
+       do: :panel
+
+  defp hook_of(event) when event in ~w(picked picker_cancel), do: :picker
+  defp hook_of(_event), do: :grid
 
   @doc "The value of an attribute of each element matching `selector`."
   def attribute(html, selector, name) do

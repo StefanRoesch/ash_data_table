@@ -986,7 +986,7 @@ test.describe("the action panel", () => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
     await tasks.field("reason").focus()
 
-    const answer = tasks.hookRoot.evaluate((grid) => (grid as any)._ashTable.ask("Sure?", true))
+    const answer = tasks.ask("Sure?", true)
     await expect(tasks.question).toBeVisible()
     await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveClass(/\bbtn-error\b/)
     await tasks.press("Escape")

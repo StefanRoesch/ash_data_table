@@ -52,7 +52,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
     receive do
       {^ref, {:push_event, "ash_table:leaving", %{table: table, row: row}}} ->
-        view |> element("[id='#{table}-grid']") |> render_hook("left", %{"row" => row})
+        forge(view, table, "left", %{"row" => row})
         left(view)
     after
       0 -> :ok

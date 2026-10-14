@@ -323,9 +323,9 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
       # events of another shape
       for params <- [%{}, %{"action" => "archive"}, %{"action" => 1, "rows" => [first.id]}] do
-        view |> element("#task-grid") |> render_hook("bulk", params)
+        forge(view, "task", "bulk", params)
         assert_reply view, %{ok: false}
-        view |> element("#task-grid") |> render_hook("bulk_run", params)
+        forge(view, "task", "bulk_run", params)
       end
 
       assert stored!(first).status == :in_progress
@@ -406,7 +406,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert bulk_result(html).summary == "Archive: 1 done."
 
       # the hook says that the person has selected something else
-      html = view |> element("#task-grid") |> render_hook("bulk_seen", %{})
+      html = forge(view, "task", "bulk_seen", %{})
       assert bulk_result(html) == nil
 
       run_bulk(view, "archive", [first.id])
@@ -624,7 +624,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
         end
 
         html =
-          render_hook(element(view, "#task-grid"), "panel_submit", %{
+          forge(view, "task", "panel_submit", %{
             "panel" => %{"progress" => "99"}
           })
 

@@ -285,9 +285,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       id = nested(task.id, "comments")
 
       html =
-        view
-        |> element("#task-grid")
-        |> render_hook("toggle", %{"row" => task.id, "relationship" => "comments"})
+        forge(view, "task", "toggle", %{"row" => task.id, "relationship" => "comments"})
 
       assert text(html, "[id='#{id}-loading']") == "Loading…"
       assert attribute(html, "[id='#{id}-table']", "aria-busy") == ["true"]
@@ -1172,7 +1170,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "#task-table td[data-line]", "id") == []
 
       # nor without a row at all
-      view |> element("#task-grid") |> render_hook("expand", %{})
+      forge(view, "task", "expand", %{})
       assert_reply view, %{open: false}
     end
 
@@ -1193,9 +1191,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # `organization` and `task_labels` are private; neither is declared
       for name <- ["organization", "task_labels", "no_such_relationship", "", nil, %{"a" => "b"}] do
         html =
-          view
-          |> element("#task-grid")
-          |> render_hook("toggle", %{"row" => task.id, "relationship" => name})
+          forge(view, "task", "toggle", %{"row" => task.id, "relationship" => name})
 
         assert attribute(html, "[id='task-row-#{task.id}-x'] [role=grid]", "id") == []
       end
@@ -1362,9 +1358,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
                ]
 
       html =
-        view
-        |> element("#task-grid")
-        |> render_hook("toggle", %{"row" => task.id, "relationship" => "assignee"})
+        forge(view, "task", "toggle", %{"row" => task.id, "relationship" => "assignee"})
 
       assert text(html, "[id='#{nested(task.id, "assignee")}-loading']") == "Lädt…"
 
