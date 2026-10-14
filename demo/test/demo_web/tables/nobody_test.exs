@@ -33,7 +33,7 @@ defmodule DemoWeb.Tables.NobodyTest do
       assert attribute(html, "##{unquote(id)}-table td", "aria-readonly") == []
       # the page is alive: it can be sorted
       [header | _] = attribute(html, "##{unquote(id)}-table th[data-sort]", "id")
-      view |> element("##{header}") |> render_click()
+      click(view, "##{header}")
       assert text(render_async(view), "##{unquote(id)}-empty") == "No records"
     end
   end

@@ -183,7 +183,7 @@ defmodule DemoWeb.Tables.NestedTableReadsTest do
     toggle(view, task.id, "labels")
     forget()
 
-    view |> element("[id='#{nested(task.id, "comments")}-head-body']") |> render_click()
+    click(view, "[id='#{nested(task.id, "comments")}-head-body']")
     render_async(view)
 
     assert Enum.sort(reads(:read)) == [:comment, :task]

@@ -649,7 +649,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       # the table around it shows tasks, and says nothing
       assert notice(html) == ""
 
-      member |> element("[id='#{nested}-read-again']") |> render_click()
+      click(member, "[id='#{nested}-read-again']")
       html = render_async(member, 10_000)
       assert column(html, nested, "body") == ["Second comment", "First comment, edited"]
     end
@@ -728,7 +728,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
     test "hold the row while a panel is open in one of them, and let it go when the panel closes",
          %{world: world, member: member, task: task, comments: comments} do
-      member |> element("[id='task-row-#{task.id}-l-comments-create']") |> render_click()
+      click(member, "[id='task-row-#{task.id}-l-comments-create']")
       assert panel(render(member), comments).heading == "New comment"
 
       Ash.update!(task, %{title: "Changed under an open panel"}, as(world.admin))
@@ -767,7 +767,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
     test "keep a row that is gone for as long as a panel is open under it: the panel says so, and then the row goes",
          %{world: world, member: member, task: task, comments: comments} do
-      member |> element("[id='task-row-#{task.id}-l-comments-create']") |> render_click()
+      click(member, "[id='task-row-#{task.id}-l-comments-create']")
 
       Ash.destroy!(task, as(world.admin))
 
@@ -789,7 +789,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
     test "let a row go that is closed while something was open under it",
          %{world: world, member: member, task: task, comments: comments} do
-      member |> element("[id='task-row-#{task.id}-l-comments-create']") |> render_click()
+      click(member, "[id='task-row-#{task.id}-l-comments-create']")
       Ash.update!(task, %{title: "Changed under an open panel"}, as(world.admin))
       assert titles(heard(member)) == ["Another task", "With comments"]
 

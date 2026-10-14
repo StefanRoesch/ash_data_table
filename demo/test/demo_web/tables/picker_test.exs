@@ -195,7 +195,7 @@ defmodule DemoWeb.Tables.PickerTest do
       assert column(html, @people, "name") == ["Ada Lovelace"]
       assert picker(html).heading == "Assignee: choose user"
 
-      html = view |> element("##{@people}-head-email") |> render_click()
+      html = click(view, "##{@people}-head-email")
       render_async(view)
       assert attribute(html, "##{@people}-head-email", "aria-sort") == ["ascending"]
 

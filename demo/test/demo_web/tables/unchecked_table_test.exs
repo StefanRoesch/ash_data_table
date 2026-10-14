@@ -290,7 +290,7 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
       open_entries(view, first.id)
       id = nested("case", first.id, "entries")
 
-      view |> element("[id='case-row-#{first.id}-l-entries-create']") |> render_click()
+      click(view, "[id='case-row-#{first.id}-l-entries-create']")
       html = run_panel(view, id, text: "three")
 
       assert panel(html, id) == nil

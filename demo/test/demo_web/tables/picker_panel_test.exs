@@ -497,7 +497,7 @@ defmodule DemoWeb.Tables.PickerPanelTest do
       toggle(view, "project", project.id, "tasks")
       tasks = nested("project", project.id, "tasks")
 
-      html = view |> element("[id='project-row-#{project.id}-l-tasks-create']") |> render_click()
+      html = click(view, "[id='project-row-#{project.id}-l-tasks-create']")
       names = Enum.map(panel(html, tasks).fields, & &1.name)
       assert "assignee_id" in names
       refute "project_id" in names

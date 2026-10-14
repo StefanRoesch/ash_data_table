@@ -381,7 +381,7 @@ defmodule DemoWeb.Tables.PageSizeTest do
       assert column(html, id, "body") == bodies(45..36//-1)
       assert page_sizes(html, id).chosen == ["10"]
 
-      view |> element("[id='#{id}-next']") |> render_click()
+      click(view, "[id='#{id}-next']")
       html = render_async(view)
       assert column(html, id, "body") == bodies(35..26//-1)
 

@@ -112,7 +112,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
       assert column(html, id, "title") == ["Page one"]
 
       Gate.close()
-      view |> element("[id='#{id}-head-title']") |> render_click()
+      click(view, "[id='#{id}-head-title']")
       html = render_async(view)
 
       assert text(html, "[id='#{id}-error']") == "You are not allowed to see these records."
@@ -221,7 +221,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
 
         assert attribute(html, "[id='#{id}-next']", "disabled") == []
 
-        view |> element("[id='#{id}-next']") |> render_click()
+        click(view, "[id='#{id}-next']")
         html = render_async(view)
 
         assert length(column(html, id, "title")) == 3
@@ -234,7 +234,7 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
       forge(view, id, "filter", %{"filter" => %{"amount" => %{"o" => "at_least", "v" => "20"}}})
 
       render_async(view)
-      view |> element("[id='#{id}-clear-filters']") |> render_click()
+      click(view, "[id='#{id}-clear-filters']")
       html = render_async(view)
 
       assert text(html, "[id='#{id}-range']") == "16 records"

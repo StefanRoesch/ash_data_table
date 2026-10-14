@@ -14,7 +14,6 @@ defmodule DemoWeb.TablePage do
       render_change: 2,
       render_async: 2,
       render_hook: 3,
-      render_click: 1,
       render_submit: 1,
       render_submit: 2
     ]
@@ -199,10 +198,7 @@ defmodule DemoWeb.TablePage do
   """
   def clear_in_panel(view, id \\ "task", name) do
     # the button is there, and says which field it is of
-    true =
-      view
-      |> element("[id='#{id}-panel-f-#{name}-clear'][data-clear-field='#{name}']")
-      |> Phoenix.LiveViewTest.has_element?()
+    true = has?(view, "[id='#{id}-panel-f-#{name}-clear'][data-clear-field='#{name}']")
 
     send_event(view, id, "panel_clear", %{"input" => name})
   end
@@ -269,7 +265,7 @@ defmodule DemoWeb.TablePage do
   a related record: the picker opens on top of the panel. Returns the page.
   """
   def pick_input(view, id \\ "task", name) do
-    view |> element("[id='#{id}-panel-f-#{name}-choose']") |> render_click()
+    click(view, "[id='#{id}-panel-f-#{name}-choose']")
   end
 
   @doc """
@@ -479,7 +475,7 @@ defmodule DemoWeb.TablePage do
   """
   def table_act(view, id \\ "task", action, opts \\ []) do
     button = opts[:on] || "#{id}-do-#{action}"
-    view |> element("[id='#{button}']") |> render_click()
+    click(view, "[id='#{button}']")
     ran(view)
   end
 
@@ -867,7 +863,7 @@ defmodule DemoWeb.TablePage do
   Uses the create button of the table `id`. Returns the page.
   """
   def open_create(view, id \\ "task") do
-    view |> element("[id='#{id}-create']") |> render_click()
+    click(view, "[id='#{id}-create']")
   end
 
   @doc """
@@ -1168,7 +1164,197 @@ defmodule DemoWeb.TablePage do
   defp none_as_nil([]), do: nil
   defp none_as_nil(list), do: list
 
-  defp query(html, selector) do
-    html |> LazyHTML.from_fragment() |> LazyHTML.query(selector)
+  @doc """
+  Uses the element of the page that `selector` finds, as a click does: the
+  event of its `phx-click` (a name, or the `push` of a `JS` command), with
+  its `phx-value-*`, sent to the table it is for (its `phx-target`).
+  Returns the page.
+
+  It finds the element where a person sees it: in a portal's content, too
+  (see `query/2`), where `Phoenix.LiveViewTest.element/2` finds nothing.
+  For a table's controls; anything else is clicked with
+  `Phoenix.LiveViewTest.render_click/1`.
+
+      click(view, "[id='\#{nested("task", task.id, "comments")}-next']")
+  """
+  def click(view, selector) do
+    page = document(Phoenix.LiveViewTest.render(view))
+
+    {attributes, values} =
+      case page |> LazyHTML.query(selector) |> LazyHTML.to_tree() do
+        [{_tag, attributes, _children}] ->
+          {attributes,
+           for({"phx-value-" <> key, value} <- attributes, into: %{}, do: {key, value})
+           |> then(
+             &if(value = attribute_of(attributes, "value"),
+               do: Map.put(&1, "value", value),
+               else: &1
+             )
+           )}
+
+        found ->
+          raise ArgumentError,
+                "click/2 needs exactly one element for #{inspect(selector)}, found #{length(found)}"
+      end
+
+    if attribute_of(attributes, "disabled"),
+      do: raise(ArgumentError, "cannot click #{inspect(selector)}: it is disabled")
+
+    pushes =
+      case attribute_of(attributes, "phx-click") do
+        nil -> raise ArgumentError, "#{inspect(selector)} has no phx-click"
+        "[" <> _ = js -> for ["push", %{"event" => _} = push] <- Jason.decode!(js), do: push
+        event -> [%{"event" => event}]
+      end
+
+    Enum.reduce(pushes, nil, fn push, _html ->
+      target = push["target"] || attribute_of(attributes, "phx-target")
+      payload = Map.merge(values, push["value"] || %{})
+      send_event(view, table_of(page, target, selector), push["event"], payload)
+    end)
+  end
+
+  # The table an element's `phx-target` names: the component's id, which is
+  # the `phx-target` of that table's grid too, or a selector of the table's
+  # root element, whose id is the table's.
+  defp table_of(_page, nil, selector),
+    do: raise(ArgumentError, "#{inspect(selector)} is no table's: it has no phx-target")
+
+  defp table_of(page, target, selector) when is_integer(target),
+    do: table_of(page, Integer.to_string(target), selector)
+
+  defp table_of(page, target, selector) do
+    found =
+      if target =~ ~r/\A\d+\z/,
+        do: page |> LazyHTML.query("[data-ash-table][phx-target='#{target}']"),
+        else: LazyHTML.query(page, target)
+
+    case Enum.flat_map(found, &LazyHTML.attribute(&1, "id")) do
+      [id | _] -> String.replace_suffix(id, "-grid", "")
+      [] -> raise ArgumentError, "no table found for the phx-target of #{inspect(selector)}"
+    end
+  end
+
+  defp attribute_of(attributes, name), do: :proplists.get_value(name, attributes, nil)
+
+  @doc """
+  Whether the page has an element that `selector` finds, where a person
+  sees it: in a portal's content too (see `query/2`). With `text`, an
+  element whose text holds it (a string) or matches it (a regex), as
+  `Phoenix.LiveViewTest.has_element?/3` takes it.
+  """
+  def has?(view, selector, text \\ nil) do
+    view
+    |> Phoenix.LiveViewTest.render()
+    |> query(selector)
+    |> Enum.any?(fn element ->
+      case text do
+        nil -> true
+        %Regex{} -> LazyHTML.text(element) =~ text
+        text -> String.contains?(LazyHTML.text(element), text)
+      end
+    end)
+  end
+
+  # Every reader goes through here: the page as a person sees it. A
+  # `<.portal>` renders its content in a `<template data-phx-portal=TARGET>`
+  # where it is, and the browser moves that content (its one element) to
+  # the end of the element TARGET finds; a query does not look into a
+  # template. So the content is put where the browser puts it first, and the
+  # template is left empty, as a query sees it in a browser. A portal in the
+  # content of another is moved once that one has been (LiveView's client
+  # does the same, up to five rounds).
+  defp query(html, selector), do: html |> document() |> LazyHTML.query(selector)
+
+  defp document(html) do
+    if String.contains?(html, "data-phx-portal") do
+      html
+      |> LazyHTML.from_fragment()
+      |> LazyHTML.to_tree()
+      |> teleport(1)
+      |> LazyHTML.from_tree()
+    else
+      LazyHTML.from_fragment(html)
+    end
+  end
+
+  defp teleport(tree, round) do
+    case take_portals(tree) do
+      {tree, []} ->
+        tree
+
+      {_tree, _moved} when round > 5 ->
+        raise "portals in portals more than five deep"
+
+      {tree, moved} ->
+        moved
+        |> Enum.reduce(tree, fn {target, element}, tree ->
+          put_into(tree, target_id(tree, target), element)
+        end)
+        |> teleport(round + 1)
+    end
+  end
+
+  # Empties every portal's template, and says what was in it and where it
+  # goes, in the order of the page. Other templates are left as they are.
+  defp take_portals(nodes) when is_list(nodes) do
+    Enum.map_reduce(nodes, [], &take_portal/2)
+  end
+
+  defp take_portal({"template", attributes, children} = node, moved) do
+    with target when is_binary(target) <- attribute_of(attributes, "data-phx-portal"),
+         {_tag, _attributes, _children} = element <-
+           Enum.find(children, &(is_tuple(&1) and tuple_size(&1) == 3)) do
+      {{"template", attributes, []}, moved ++ [{target, element}]}
+    else
+      _ -> {node, moved}
+    end
+  end
+
+  defp take_portal({tag, attributes, children}, moved) do
+    {children, inner} = take_portals(children)
+    {{tag, attributes, children}, moved ++ inner}
+  end
+
+  defp take_portal(other, moved), do: {other, moved}
+
+  defp target_id(tree, target) do
+    case tree |> LazyHTML.from_tree() |> LazyHTML.query(target) |> Enum.take(1) do
+      [element] ->
+        case LazyHTML.attribute(element, "id") do
+          [id] -> id
+          [] -> raise "the target of a portal, #{inspect(target)}, has no id"
+        end
+
+      [] ->
+        raise "the target of a portal, #{inspect(target)}, is not in the page"
+    end
+  end
+
+  # Appends `element` to the first element whose id is `id`.
+  defp put_into(nodes, id, element) do
+    {nodes, _done?} =
+      Enum.map_reduce(nodes, false, fn
+        node, true ->
+          {node, true}
+
+        {tag, attributes, children}, false ->
+          if attribute_of(attributes, "id") == id do
+            {{tag, attributes, children ++ [element]}, true}
+          else
+            {children, done?} = put_into_children(children, id, element)
+            {{tag, attributes, children}, done?}
+          end
+
+        other, false ->
+          {other, false}
+      end)
+
+    nodes
+  end
+
+  defp put_into_children(children, id, element) do
+    put = put_into(children, id, element)
+    {put, put != children}
   end
 end

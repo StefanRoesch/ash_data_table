@@ -262,15 +262,13 @@ defmodule DemoWeb.Tables.ActionFieldsTest do
       expand(view, "customer", customer.id)
       toggle(view, "customer", customer.id, "visits")
       visits = nested("customer", customer.id, "visits")
-      button = element(view, "[id='customer-row-#{customer.id}-l-visits-create']")
-
-      render_click(button)
+      click(view, "[id='customer-row-#{customer.id}-l-visits-create']")
       html = run_panel(view, visits, note: "First visit")
       assert panel(html, visits) == nil
       assert visits() == [{"First visit", customer.id}]
 
       # the customer changes hands while the panel is open: no longer the member's to read
-      render_click(button)
+      click(view, "[id='customer-row-#{customer.id}-l-visits-create']")
       Ash.Seed.update!(customer, %{keeper: "ada"})
 
       html = run_panel(view, visits, note: "Second visit")
@@ -280,7 +278,9 @@ defmodule DemoWeb.Tables.ActionFieldsTest do
 
       # and the button opens nothing for it any more
       cancel_panel(view, visits)
-      assert panel(render_click(button), visits) == nil
+
+      assert panel(click(view, "[id='customer-row-#{customer.id}-l-visits-create']"), visits) ==
+               nil
     end
   end
 end

@@ -211,16 +211,14 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
            comments: comments
          } do
       # a comment under the task
-      view
-      |> element("[id='#{tasks}-row-#{task.id}-l-comments-create']")
-      |> render_click()
+      click(view, "[id='#{tasks}-row-#{task.id}-l-comments-create']")
 
       html = run_panel(view, comments, body: "Deep down")
       assert hd(column(html, comments, "body")) == "Deep down"
       assert {"Deep down", task.id, world.member.id} in comments()
 
       # a task under the project: `project_id` is no field, and is the project's
-      html = view |> element("[id='project-row-#{project.id}-l-tasks-create']") |> render_click()
+      html = click(view, "[id='project-row-#{project.id}-l-tasks-create']")
       assert text(html, "[id='project-row-#{project.id}-l-tasks-create']") == "New task"
       refute "project_id" in Enum.map(panel(html, tasks).fields, & &1.name)
 

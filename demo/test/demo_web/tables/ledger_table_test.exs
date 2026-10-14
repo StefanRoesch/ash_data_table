@@ -343,7 +343,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
 
         # and the next page is found from the last of these records: its
         # place in the order, or its cursor, is as the read gave it
-        view |> element("[id='#{id}-next']") |> render_click()
+        click(view, "[id='#{id}-next']")
         html = render_async(view)
 
         assert column(html, id, "body") == ["Remark 4"]
@@ -372,7 +372,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert text(html, "[id='#{id}-error']") == nil
       assert length(column(html, id, "body")) == 3
 
-      view |> element("[id='#{id}-head-tagged?']") |> render_click()
+      click(view, "[id='#{id}-head-tagged?']")
       html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
       assert attribute(html, "[id='#{id}-head-tagged?']", "aria-sort") == ["ascending"]
@@ -389,7 +389,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       toggle(view, "job", other.id, "remarks")
       id = nested("job", other.id, "remarks")
 
-      view |> element("[id='#{id}-head-tagging_count']") |> render_click()
+      click(view, "[id='#{id}-head-tagging_count']")
       html = render_async(view)
 
       assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == ["ascending"]

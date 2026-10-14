@@ -175,7 +175,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
         assert attribute(html, "[id='#{id}-next']", "disabled") == []
 
-        view |> element("[id='#{id}-next']") |> render_click()
+        click(view, "[id='#{id}-next']")
         html = render_async(view)
 
         assert length(column(html, id, "title")) == unquote(visible) - 25

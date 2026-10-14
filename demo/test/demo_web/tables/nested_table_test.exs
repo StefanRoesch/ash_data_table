@@ -455,7 +455,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       toggle(view, task.id, "comments")
       id = nested(task.id, "comments")
 
-      view |> element("[id='#{id}-head-body']") |> render_click()
+      click(view, "[id='#{id}-head-body']")
       html = render_async(view)
 
       assert column(html, id, "body") == ["Apple", "Banana", "Cherry"]
@@ -465,7 +465,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert column(html, "task", "title") == ["Write the report", "Another task"]
       assert attribute(html, "#task-head-title", "aria-sort") == ["none"]
 
-      view |> element("[id='#{id}-head-body']") |> render_click()
+      click(view, "[id='#{id}-head-body']")
       html = render_async(view)
 
       assert column(html, id, "body") == ["Cherry", "Banana", "Apple"]
@@ -488,7 +488,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert column(html, "task", "title") == ["Write the report", "Another task"]
       assert attribute(html, "#task-clear-filters", "id") == []
 
-      view |> element("[id='#{id}-clear-filters']") |> render_click()
+      click(view, "[id='#{id}-clear-filters']")
       html = render_async(view)
 
       assert column(html, id, "body") == ["Cherry", "Apple", "Banana"]
@@ -523,17 +523,17 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       assert attribute(html, "[id='#{id}-pagination'] button", "tabindex") == ["-1", "-1"]
 
-      view |> element("[id='#{id}-next']") |> render_click()
+      click(view, "[id='#{id}-next']")
       html = render_async(view)
       assert column(html, id, "body") == numbered.(25..6//-1)
       refute_patched()
 
-      view |> element("[id='#{id}-next']") |> render_click()
+      click(view, "[id='#{id}-next']")
       html = render_async(view)
       assert column(html, id, "body") == numbered.(5..1//-1)
       assert attribute(html, "[id='#{id}-next']", "disabled") == [""]
 
-      view |> element("[id='#{id}-previous']") |> render_click()
+      click(view, "[id='#{id}-previous']")
       html = render_async(view)
       assert column(html, id, "body") == numbered.(25..6//-1)
     end
@@ -562,7 +562,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # 30 records, the two header rows and the footer row of the summaries
       assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["33"]
 
-      view |> element("[id='#{id}-page-2']") |> render_click()
+      click(view, "[id='#{id}-page-2']")
       html = render_async(view)
 
       assert column(html, id, "title") == ["Task 05", "Task 04", "Task 03", "Task 02", "Task 01"]
@@ -1263,7 +1263,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       refute html =~ "4 results"
 
       # with the filter gone, the total is back
-      view |> element("[id='#{id}-filter-estimate_hours-clear']") |> render_click()
+      click(view, "[id='#{id}-filter-estimate_hours-clear']")
       html = render_async(view)
 
       assert text(html, "[id='#{id}-range']") == "1–4 of 4"
@@ -1322,7 +1322,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
         Ecto.UUID.dump!(task.id)
       ])
 
-      view |> element("[id='#{id}-head-body']") |> render_click()
+      click(view, "[id='#{id}-head-body']")
       html = render_async(view)
 
       assert text(html, "[id='#{id}-error']") == "This record is no longer available."

@@ -282,7 +282,7 @@ defmodule DemoWeb.Tables.LabelImportTest do
         ])
 
       render_upload(file, "labels.csv")
-      html = view |> element("[id='#{nested}-panel-form']") |> render_submit(%{})
+      html = send_panel(view, nested, %{})
 
       assert panel(html, nested) == nil
       assert result(html, nested) == "Import: 1"

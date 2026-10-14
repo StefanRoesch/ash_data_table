@@ -973,7 +973,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
       # the row, its notes, and the dossier each note's reference cell names
       assert reads() == [{:dossier, :open}, {:note, :read}, {:dossier, :open}]
 
-      view |> element("[id='dossier-row-#{open.id}-l-notes-create']") |> render_click()
+      click(view, "[id='dossier-row-#{open.id}-l-notes-create']")
       assert reads() == [{:dossier, :open}]
     end
 

@@ -166,7 +166,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
     end
 
     defp press(view, key, relationship),
-      do: view |> element(line_create(key, relationship)) |> render_click()
+      do: click(view, line_create(key, relationship))
 
     test "opens the panel of that table, without the field that joins the record to the row",
          %{view: view, task: task, comments: comments} do
