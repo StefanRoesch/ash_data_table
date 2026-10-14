@@ -13,11 +13,11 @@ The extension has four parts. This is the target structure agreed with the owner
 | 1. Table declaration | The `table` and `tables` blocks of a resource, the `table` block of a domain, the checks at compile time, and the notifier of live updates. | `lib/ash_data_table/resource.ex`, `lib/ash_data_table/resource/**`, `lib/ash_data_table/domain.ex`, `lib/ash_data_table/domain/**` |
 | 2a. Table internals, data | Logic and state, no markup, no socket. This part keeps the table safe. | `lib/ash_data_table/model.ex`, `lib/ash_data_table/model/**`, and the other files at the top of `lib/ash_data_table/`: `state.ex`, `query.ex`, `record.ex`, `related.ex`, `routes.ex`, `pick.ex`, `edit.ex`, `act.ex`, `bulk.ex`, `errors.ex`, `sensitive.ex`, `zone.ex` |
 | 2b. Table internals, live | The core over a LiveView socket. | `lib/ash_data_table/live/**` but the page: `listener.ex`, and `mount/1`, `update/2`, `handle_event/3`, `handle_async/3` and their helpers in `live/table_component.ex` |
-| 3. Table UI components | Markup and the browser hooks. | `lib/ash_data_table/parts/*.ex` (`AshDataTable.Parts.*`), the four hooks in `live/table_component.ex`, the behaviour `lib/ash_data_table/component.ex` and the shipped components in `lib/ash_data_table/components/` |
+| 3. Table UI components | Markup and the browser hooks. | `lib/ash_data_table/parts/*.ex` (`AshDataTable.Parts.*`), the four hooks in `assets/js/` (JS files of the package; the table component imports them), the behaviour `lib/ash_data_table/component.ex` and the shipped components in `lib/ash_data_table/components/` |
 | 3w. The words | What turns values and messages into text. | `text.ex`, `format.ex`, `gettext.ex` in `lib/ash_data_table/` |
 | 4. Ready-made wiring | The router line, the page and the live component that connect 2 and 3. | `lib/ash_data_table/router.ex`, `lib/ash_data_table/live/page.ex`, `AshDataTable.table/1` in `lib/ash_data_table.ex`, `not_found_error.ex`, and `render/1` of the table component, which composes the parts |
 
-`lib/ash_data_table/live/table_component.ex` still holds 2b, the hooks and the composition of the parts in one file. The stages of the refactor take it apart further; do not start one inside a feature build.
+`lib/ash_data_table/live/table_component.ex` still holds 2b and the composition of the parts in one file, and imports the hooks. The stages of the refactor take it apart further; do not start one inside a feature build.
 
 ## Module map
 
@@ -127,7 +127,7 @@ The table component's code calls few of these: `first_row/1` and `header_rows/0`
 
 The pieces that were `render/1` keep the indentation they had there, held by `phx-no-format` on their outermost elements: the text in an element keeps its whitespace, and the markup snapshots compare it byte for byte. Do not take the attribute away or reindent them.
 
-- The four hooks are still in the table component (below). A part names one in full (`phx-hook="AshDataTable.Live.TableComponent.Grid"`), as the component's `.Grid` renders.
+- The four hooks are JS files in `assets/js/` ("The four hooks", below). The table component keeps one colocated hook per hook, which imports it, so a part names one in full (`phx-hook="AshDataTable.Live.TableComponent.Grid"`), as the component's `.Grid` renders.
 
 ### Part 4: wiring
 
@@ -138,7 +138,7 @@ The pieces that were `render/1` keep the indentation they had there, held by `ph
 
 ## The table component
 
-`lib/ash_data_table/live/table_component.ex` is about 8,400 lines. It is a `Phoenix.LiveComponent`. Its markup is in `AshDataTable.Parts` (part 3, above); `render/1` composes the parts and holds the four hooks. The line ranges below come from this command:
+`lib/ash_data_table/live/table_component.ex` is about 4,700 lines. It is a `Phoenix.LiveComponent`. Its markup is in `AshDataTable.Parts` (part 3, above); `render/1` composes the parts and ends with the four colocated hooks, each an import of `assets/js/`. The line ranges below come from this command:
 
 ```sh
 grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|ColocatedHook\|// ---- \|^  defp [a-z_?]*(assigns)' lib/ash_data_table/live/table_component.ex
@@ -156,9 +156,8 @@ grep -n '^  def \(mount\|update\|handle_async\|handle_event\|render\)\|Colocated
 | 2095–2858 | `handle_event/3`, all clauses. |
 | 2859–2887 | `defoverridable`, and `update/2`, `handle_event/3` and `handle_async/3` once more: each calls the clauses above and ends in `tidy/1`. |
 | 2888–4500 | Helpers behind the events: cells (`revealed`, `save`, `refer`), picker and chosen inputs (from 3001), panel (from 3281), bulk (from 3588), `submit` (from 3697), files (from 3885), after a create or a run (from 4145), arguments (from 4402), `go` and the URL (from 4464). |
-| 4501–4646 | `render/1`: the parts of one table, in their order. |
-| 4647–8401 | The four hooks, inside `render/1`. |
-| 8402–8450 | What a picker and a nested table are given (`picker_reader`, `nested_reader`), and `lead/2`. |
+| 4501–4676 | `render/1`: the parts of one table, in their order; at the end the four colocated hooks (from 4654), four lines each, which import the hooks of `assets/js/`. |
+| 4677–4726 | What a picker and a nested table are given (`picker_reader`, `nested_reader`), and `lead/2`. |
 
 ### Events
 
@@ -204,32 +203,37 @@ Each event's payload and answer are listed in "Events" in the comment at the top
 
 ### The four hooks
 
-They are colocated hooks. A host gets them from `phoenix-colocated/ash_data_table`.
+They are JS files of the package, in `assets/js/`. The table component keeps four colocated hooks of four lines, `import {Grid} from "../node_modules/js/index.js"` and the like, so the rendered names stay and a LiveView host gets them from `phoenix-colocated/ash_data_table` and sets up nothing more. The path works because `mix.exs` sets `phoenix_live_view: [colocated_assets: [node_modules_path: "assets"]]`: LiveView puts a link named `node_modules` beside the extracted hooks, in `_build/ENV/phoenix-colocated/ash_data_table/`, and points it at the package's `assets/`, wherever the package is (the parent directory for the demo, `deps/` in a host).
 
-- `.Pagination` (from 4647): keeps focus on the pagination control that was used, the "Rows per page" menu among them. No sections.
-- `.Panel` (from 4714): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
-- `.Picker` (from 4907): the picker dialog. Hears the selection of the table inside it and sends `picked`.
-- `.Grid` (from 5044): everything in the grid. It starts with a long comment and constants (among them `PLACE`, which places the scrollbars at the bottom edge of the window for all grids of a page at once), then `mounted`, `beforeUpdate`, `destroyed`. Its sections are marked `// ---- name ----`:
+- `assets/js/index.js`: the four hooks as LiveView hooks (`Grid`, `Pagination`, `Panel`, `Picker`) and `hooks`, the same by the names the table renders. `package.json` in the root names it, for a custom build or another UI technology (`import {hooks} from "ash_data_table"`, from `deps/`).
+- `assets/js/transport/live_view.js`: the transport (target.md S20). A hook never calls LiveView: it has `this.transport`, with `push(event, payload[, onReply])` (a Promise of the reply; `onReply` is called in the same turn as the patch, as LiveView calls it, which the hooks that move focus by a reply rely on) and `on(event, handler)`. `hook(behaviour)` gives a hook its transport before `mounted`. Internal.
+- `assets/js/markers.js`: the marker names that several modules use (`GRID`, `HANDLE`). The other selectors are still written where they are used (stage 7 moves them).
+- `assets/js/pagination.js` (`.Pagination`): keeps focus on the pagination control that was used, the "Rows per page" menu among them.
+- `assets/js/panel.js` (`.Panel`): the action panel as a modal dialog. Focus in and back, Escape and Cancel, holding back a form with an unreadable control, adding and removing groups and chosen records (`snapshot`, `into`, `mark`).
+- `assets/js/picker.js` (`.Picker`): the picker dialog. Hears the selection of the table inside it and sends `picked`.
+- `assets/js/grid/` (`.Grid`): everything in the grid. `index.js` starts with a long comment, then `mounted`, `beforeUpdate`, `updated`, `destroyed`, and puts the hook together from the modules below into one object. `shared.js` holds the constants and helpers that need no hook, `PLACE` (which places the scrollbars at the bottom edge of the window for all grids of a page at once) and `page.tabbing`. One module per section:
 
-| Line | Section | Owns |
+| Module | Section | Owns |
 | --- | --- | --- |
-| 5491 | the counter of a text | the count beside a text with `max_length` |
-| 5559 | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
-| 5952 | expanding | opening a row and going into a nested table |
-| 6131 | the widths of the columns | resizing; the server never hears of widths |
-| 6376 | hiding columns | the "Columns" list; the server never hears of it |
-| 6614 | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-data-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
-| 6841 | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
-| 6939 | selecting | which rows are selected, `selected()`, `bulk` |
-| 7225 | row actions | `act`, the question of an action, refocus |
-| 7285 | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
-| 7620 | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
-| 8038 | sensitive cells | `reveal`, `hide` |
-| 8153 | the dialog | `ask`: the table's question dialog |
-| 8174 | the message of a failed cell | `showMessage` |
-| 8202 | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
+| `counter.js` | the counter of a text | the count beside a text with `max_length` |
+| `tree.js` | the tree of grids | one tab stop for nested grids, arrow keys, focus, clicks, `onKeydown` |
+| `expanding.js` | expanding | opening a row and going into a nested table |
+| `widths.js` | the widths of the columns | resizing; the server never hears of widths |
+| `hiding.js` | hiding columns | the "Columns" list; the server never hears of it |
+| `scrolling.js` | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-data-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
+| `choices.js` | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
+| `selecting.js` | selecting | which rows are selected, `selected()`, `bulk` |
+| `actions.js` | row actions | `act`, the question of an action, refocus |
+| `editing.js` | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
+| `arrays.js` | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
+| `sensitive.js` | sensitive cells | `reveal`, `hide` |
+| `dialog.js` | the dialog | `ask`: the table's question dialog |
+| `failure.js` | the message of a failed cell | `showMessage` |
+| `whole_text.js` | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
 
-A method of the `.Grid` hook has to have a name no other has: the hook is one object, and a second `fit` or `reveal` silently takes the place of the first. esbuild warns of it ("Duplicate key") when the demo's assets are built.
+The methods of all these modules are one object and share its state through `this` (set in `mounted`). A method needs a name no other has: `grid/index.js` throws when two modules name one alike, and esbuild warns of two in one module ("Duplicate key") when the demo's assets are built.
+
+`npm run check` in the root (with the Node version of `demo/e2e/.tool-versions`, after `npm install`) runs TypeScript over `assets/js/` (`assets/tsconfig.json`): a name that no module defines or imports, an unused import. It is not part of the suites.
 
 ### The footer row
 
@@ -253,7 +257,7 @@ Every change must keep these. They are what part 2 is for.
 2. **Regenerate**, in the repository root: `mix spark.formatter` (writes `.formatter.exs`) and `mix spark.cheat_sheets` (writes `documentation/dsls/`).
 3. **Verifier.** See "A new diagnostic" above.
 4. **Model.** Put the answer into `AshDataTable.Model` or one of its structs. What depends on the person belongs in `for_actor/2`.
-5. **Component.** Assign in `mount/1`, event in `handle_event/3`, markup in the part of `AshDataTable.Parts` it belongs to (an assign it needs is passed to the part as an attribute from `render/1`), browser behaviour in a section of the `.Grid` hook. Add what the markup promises to the comment at the top.
+5. **Component.** Assign in `mount/1`, event in `handle_event/3`, markup in the part of `AshDataTable.Parts` it belongs to (an assign it needs is passed to the part as an attribute from `render/1`), browser behaviour in a module of `assets/js/grid/` (a new module is added to the list in `grid/index.js`). Add what the markup promises to the comment at the top.
 6. **Texts.** Add the key to `@type key` and a `msgid/1` clause in `lib/ash_data_table/text.ex`. Run `mix gettext.extract` in the root to update `priv/gettext/ash_data_table.pot`. Add the German text to `demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po`.
 7. **Demo.** Resources are in `demo/lib/demo/tracker/` and `demo/lib/demo/kitchen_sink/`, routes in `demo/lib/demo_web/router.ex`, seeds in `demo/priv/repo/seeds.exs`. A resource that exists for tests only goes into `demo/test/support/*_tables.ex` and under `/support` in the router. Describe a new page in `demo/README.md`.
 8. **Tests**, at three boundaries:
@@ -280,6 +284,9 @@ mix test
 MIX_ENV=e2e mix compile --warnings-as-errors
 mix phx.server                    # the dev server, http://127.0.0.1:4478
 
+# the hooks' JS (TypeScript over assets/js; `npm install` once)
+ASDF_NODEJS_VERSION=$(awk '/nodejs/{print $2}' demo/e2e/.tool-versions) npm run check
+
 # browser tests
 cd demo/e2e
 ASDF_NODEJS_VERSION=$(awk '/nodejs/{print $2}' .tool-versions) npm test
@@ -295,6 +302,8 @@ Known traps:
 - A file restored with the same modification time leaves a stale beam. After restoring a file, run `mix compile --force`.
 - Never use `pkill -f` or `pgrep -f` with a pattern that matches your own command line. Stop a server by its process id.
 - The dev server and the e2e servers write the asset bundle to the same path, `demo/priv/static/assets/`. A browser run rebuilds it.
+- LiveView makes the `node_modules` link beside the extracted hooks once and keeps it. A `_build` from before the hooks moved has it pointing at `assets/node_modules`, and esbuild cannot resolve `../node_modules/js/index.js`: delete `_build/*/phoenix-colocated/ash_data_table/node_modules` (or `mix clean`), and the next compile makes it again.
+- Tailwind scans `lib/` (the host's `@source` line), not `assets/js/`. A class the hooks set must also be written in the markup of `lib/`.
 
 ## Build rules (agreed 2026-10-13)
 
