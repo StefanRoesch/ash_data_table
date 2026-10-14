@@ -66,7 +66,7 @@ no name of who changed something: only which record to look at again.
 
 <!-- sketch -->
 ```elixir
-{:ash_data_table, MyApp.Tracker.Task, :update, %{id: "0b0f…"}, "the-tenant"}
+{:ash_data_table_changed, MyApp.Tracker.Task, :update, %{id: "0b0f…"}, "the-tenant"}
 ```
 
 ## What a person sees

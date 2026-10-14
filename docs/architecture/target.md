@@ -205,6 +205,8 @@ offers. "Fixed" means neither.
 
 ---
 
+> **Paths after the rename (stage 0, done 2026-10-14):** where this document points at today's code as `lib/ash_table/…` or `AshTable.*`, read `lib/ash_data_table/…` and `AshDataTable.*`.
+
 ## 3. Seams
 
 "Exists" means it is in the code today. "New" means a refactor stage creates it.
@@ -829,18 +831,18 @@ not stray from the target:
 - [x] Markup snapshots and the performance baseline (`baseline.md`, `142c393`).
 - [x] Bulk locale fix (`d1489d6`, RQ5).
 - [x] The target refreshed against the code and amended after the review (this version).
-- [ ] Tag the commit before stage 0.
+- [x] Tag the commit before stage 0.
 
 ### Stage 0: rename (D-rename)
 
-- [ ] Package and app `ash_data_table`; `mix.exs`; `AshTable.*` → `AshDataTable.*` in `lib/`, `test/`, `demo/`.
-- [ ] Router macro `ash_data_table/3` (`AshDataTable.Router`); tag `<AshDataTable.table>`.
-- [ ] Gettext domain and `priv/gettext/ash_data_table.pot`; `demo/priv/gettext/de/LC_MESSAGES/`.
-- [ ] Config key `:ash_data_table` (`layout`, `gettext_backend`, `translate_error`).
-- [ ] Installer `Mix.Tasks.AshDataTable.Install`; colocated import path.
-- [ ] Prefixes per Q3: message tag, topic, `push_event` names, DOM events, `data-*`, CSS properties.
-- [ ] The notifier's own private tag `:ash_data_table_changed` (Q2), so no message name changes after stage 0 (M1).
-- [ ] Docs, guides, `CONTEXT.md` title, `docs/agents/architecture.md`, repository name.
+- [x] Package and app `ash_data_table`; `mix.exs`; `AshTable.*` → `AshDataTable.*` in `lib/`, `test/`, `demo/`.
+- [x] Router macro `ash_data_table/3` (`AshDataTable.Router`); tag `<AshDataTable.table>`.
+- [x] Gettext domain and `priv/gettext/ash_data_table.pot`; `demo/priv/gettext/de/LC_MESSAGES/`.
+- [x] Config key `:ash_data_table` (`layout`, `gettext_backend`, `translate_error`).
+- [x] Installer `Mix.Tasks.AshDataTable.Install`; colocated import path.
+- [x] Prefixes per Q3: message tag, topic, `push_event` names, DOM events, `data-*`, CSS properties.
+- [x] The notifier's own private tag `:ash_data_table_changed` (Q2), so no message name changes after stage 0 (M1).
+- [x] Docs, guides, `CONTEXT.md` title, `docs/agents/architecture.md`, repository name.
 
 ### Stage 1: split
 
