@@ -2211,7 +2211,13 @@ defmodule AshDataTable.Live.TableComponent do
         {:reply, %{ok: false}, socket}
 
       result ->
-        saved(result, socket, key, column(socket.assigns.table.entry.model, name), typed)
+        saved(
+          result,
+          socket,
+          key,
+          Operation.column(socket.assigns.table.entry.model, name),
+          typed
+        )
     end
   end
 
@@ -2223,8 +2229,11 @@ defmodule AshDataTable.Live.TableComponent do
   # row one of the page, and the record is read again, as the person.
   defp on({:clear, key, name} = intent, socket) do
     case Operation.clear(operation(socket, intent)) do
-      :refused -> {:reply, %{ok: false}, socket}
-      result -> saved(result, socket, key, column(socket.assigns.table.entry.model, name), "")
+      :refused ->
+        {:reply, %{ok: false}, socket}
+
+      result ->
+        saved(result, socket, key, Operation.column(socket.assigns.table.entry.model, name), "")
     end
   end
 
@@ -2242,7 +2251,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     case Operation.reveal(operation(socket, intent)) do
       {:ok, value} ->
-        text = Format.format(column(model, name), value, model.time_zone)
+        text = Format.format(Operation.column(model, name), value, model.time_zone)
         {:reply, %{ok: true, value: text}, socket}
 
       {:error, message} ->
@@ -2263,7 +2272,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp on({:act, key, name}, socket) do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
-    with %Model.Action{} = action <- action(model, name),
+    with %Model.Action{} = action <- Operation.action(model.actions, name),
          %{} = row <- rows[key] do
       if action.panel?,
         do: open_act(socket, key, row, action),
@@ -2283,7 +2292,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp on({:table_act, name}, socket) do
     %{id: id, model: model} = socket.assigns.table.entry
 
-    case table_action(socket.assigns.table.entry, name) do
+    case Operation.table_action(operation(socket, {:table_act, name}), name) do
       %Model.Action{panel?: true} = action ->
         panel =
           panel(socket.assigns, & &1.default, %{
@@ -2318,7 +2327,7 @@ defmodule AshDataTable.Live.TableComponent do
   # action with Confirm: the action runs. Whether it has a panel is the
   # table's to say, not the event's.
   defp on({:table_run, name}, socket) do
-    case table_action(socket.assigns.table.entry, name) do
+    case Operation.table_action(operation(socket, {:table_run, name}), name) do
       %Model.Action{panel?: false} = action ->
         {:noreply, run_table(socket, {:table_run, name}, action)}
 
@@ -2338,7 +2347,8 @@ defmodule AshDataTable.Live.TableComponent do
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
   defp on({:bulk, name, selection}, socket) do
-    with {:ok, action, selection} <- bulk(name, selection, socket.assigns.table.entry) do
+    with {:ok, action, selection} <-
+           Operation.bulk_action(operation(socket, {:bulk, name, selection}), name, selection) do
       question = question(action, selected(selection, socket.assigns.table.entry))
 
       if action.panel?,
@@ -2353,8 +2363,10 @@ defmodule AshDataTable.Live.TableComponent do
   # Confirm, for an action without a panel: the action runs on what is
   # selected. Whether it has a panel is the table's to say, not the event's.
   defp on({:bulk_run, name, selection} = intent, socket) do
-    with {:ok, action, _selection} <- bulk(name, selection, socket.assigns.table.entry),
-         {:start, run, files} <- Operation.bulk(operation(socket, intent)) do
+    input = operation(socket, intent)
+
+    with {:ok, action, _selection} <- Operation.bulk_action(input, name, selection),
+         {:start, run, files} <- Operation.bulk(input) do
       {:noreply, start_bulk(socket, action, run, files)}
     else
       {:halted, message} -> {:noreply, say(socket, message)}
@@ -2438,7 +2450,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp on({:edit, key, name}, socket) do
     %{id: id, model: model, rows: rows} = socket.assigns.table.entry
 
-    with %{editable?: true} = column <- column(model, name),
+    with %{editable?: true} = column <- Operation.column(model, name),
          true <- Model.group?(column),
          %{} = row <- rows[key] do
       case Edit.open(model, column, row.pk, "#{id}-panel", reader(socket.assigns)) do
@@ -2557,7 +2569,7 @@ defmodule AshDataTable.Live.TableComponent do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true, kind: :reference, reference: reference} = column <-
-           column(model, name),
+           Operation.column(model, name),
          %{} = row <- rows[key] do
       case Record.fetch(model, row.pk, Query.reader_opts(reader(socket.assigns))) do
         {:ok, record} ->
@@ -2729,7 +2741,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the hook when a person presses Escape on a cell whose save has
   # failed: the edit is given up, and the cell shows its record's value again.
   defp on({:discard, key, name}, socket) do
-    with %{} = column <- column(socket.assigns.table.entry.model, name),
+    with %{} = column <- Operation.column(socket.assigns.table.entry.model, name),
          %{record: record, cells: %{}} <- socket.assigns.table.entry.failed[key] do
       {:noreply, socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
     else
@@ -3527,29 +3539,6 @@ defmodule AshDataTable.Live.TableComponent do
   defp own(errors, %{kind: :bulk}), do: Map.delete(errors, nil)
   defp own(errors, _panel), do: errors
 
-  # An action and a selection as an event names them: the action among those
-  # this table offers this person for a selection, by its name as text, and
-  # the selection as far as it is one. None while another run is on its way.
-  defp bulk(name, selection, %{running: nil, bulk: bulk} = assigns) do
-    with %Model.Action{} = action <- Enum.find(bulk, &(Atom.to_string(&1.name) == name)),
-         selection when not is_nil(selection) <- selection(selection, assigns) do
-      {:ok, action, selection}
-    else
-      _ -> :error
-    end
-  end
-
-  defp bulk(_name, _selection, _assigns), do: :error
-
-  # "All that match" is of a table that has read; rows are at least one
-  # (`AshDataTable.Intent`). An event that says both is of every record
-  # where the table has read, and else of the rows.
-  defp selection(all, %{page: %Query.Page{}}) when all == :all or elem(all, 0) == :all,
-    do: :all
-
-  defp selection({_rows_or_all, rows}, _assigns), do: {:rows, rows}
-  defp selection(:all, _assigns), do: nil
-
   # How many records a selection is: the rows that were named, or what the
   # last read counted, nil where the read action does not count.
   defp selected(:all, %{page: page}), do: page.total
@@ -3664,7 +3653,9 @@ defmodule AshDataTable.Live.TableComponent do
     do: {:noreply, socket |> put(panel: nil) |> put_row(key, record)}
 
   defp submitted(socket, %{kind: :table, action: action}, {:ok, %Operation.Outcome{} = done}) do
-    action = table_action(socket.assigns.table.entry, Atom.to_string(action.name)) || action
+    action =
+      Operation.table_action(operation(socket, nil), Atom.to_string(action.name)) || action
+
     {:noreply, socket |> put(panel: nil) |> done(action, done.value)}
   end
 
@@ -4189,25 +4180,6 @@ defmodule AshDataTable.Live.TableComponent do
 
     socket |> put(result: %{summary: text, failures: []}) |> say(text) |> reread()
   end
-
-  # The table action an event names, among those this table offers this
-  # person, and only once the table has read.
-  defp table_action(%{page: %Query.Page{}, offered: offered}, name) when is_binary(name),
-    do: Enum.find(offered, &(Atom.to_string(&1.name) == name))
-
-  defp table_action(_assigns, _name), do: nil
-
-  # Looked up by its name as text, so that text from the outside is never
-  # turned into an atom.
-  defp action(model, name) when is_binary(name),
-    do: Enum.find(model.actions, &(Atom.to_string(&1.name) == name))
-
-  defp action(_model, _name), do: nil
-
-  defp column(model, name) when is_binary(name),
-    do: Enum.find(model.columns, &(Atom.to_string(&1.name) == name))
-
-  defp column(_model, _name), do: nil
 
   defp target(%{page: %{previous: %State{} = state}}, "previous"), do: state
   defp target(%{page: %{next: %State{} = state}}, "next"), do: state

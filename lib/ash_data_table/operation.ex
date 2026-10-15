@@ -374,22 +374,14 @@ defmodule AshDataTable.Operation do
   """
   @spec bulk(Input.t()) :: {:start, (-> Bulk.outcome()), map} | {:halted, term} | :refused
   def bulk(%Input{intent: {:bulk_run, name, selection}} = input) do
-    with %Model.Action{panel?: false} = action <-
-           Enum.find(input.offered.bulk, &(Atom.to_string(&1.name) == name)),
-         selection when not is_nil(selection) <- selection(selection, input.read?),
+    with {:ok, %Model.Action{panel?: false} = action, selection} <-
+           bulk_action(input, name, selection),
          :cont <- input.veto.() do
       start(input, action, selection, %{}, %{})
     else
       halted -> halted(halted)
     end
   end
-
-  # "All that match" is of a table that has read; rows are at least one
-  # (`AshDataTable.Intent`). An event that says both is of every record
-  # where the table has read, and else of the rows.
-  defp selection(all, true) when all == :all or elem(all, 0) == :all, do: :all
-  defp selection({_rows_or_all, rows}, _read?), do: {:rows, rows}
-  defp selection(:all, false), do: nil
 
   # The rows are not looked up among those of the page, as a selection
   # outlives its page: they are claims, and the run reads each as the
@@ -477,19 +469,53 @@ defmodule AshDataTable.Operation do
   defp halted({:halt, message}), do: {:halted, message}
   defp halted(_refused), do: :refused
 
-  # Looked up by its name as text, so that text from the outside is never
-  # turned into an atom.
-  defp column(model, name) when is_binary(name),
+  # What the browser names is looked up here, and only here: the live
+  # layer asks these too, where it chooses between opening a panel and a
+  # write. A name is looked up as text, so that text from the outside is
+  # never turned into an atom.
+
+  @doc "The column of `model` a claim names, by its name as text; nil for none."
+  @spec column(Model.t(), term) :: Model.Column.t() | nil
+  def column(model, name) when is_binary(name),
     do: Enum.find(model.columns, &(Atom.to_string(&1.name) == name))
 
-  defp column(_model, _name), do: nil
+  def column(_model, _name), do: nil
 
-  defp action(actions, name) when is_binary(name),
+  @doc "The action among `actions` a claim names, by its name as text; nil for none."
+  @spec action([Model.Action.t()], term) :: Model.Action.t() | nil
+  def action(actions, name) when is_binary(name),
     do: Enum.find(actions, &(Atom.to_string(&1.name) == name))
 
-  defp action(_actions, _name), do: nil
+  def action(_actions, _name), do: nil
 
-  # A table action is offered once the table has read.
-  defp table_action(%Input{read?: true} = input, name), do: action(input.offered.table, name)
-  defp table_action(_input, _name), do: nil
+  @doc """
+  The table action a claim names, among those offered now; nil for none. A
+  table action is offered once the table has read.
+  """
+  @spec table_action(Input.t(), term) :: Model.Action.t() | nil
+  def table_action(%Input{read?: true} = input, name), do: action(input.offered.table, name)
+  def table_action(_input, _name), do: nil
+
+  @doc """
+  The action on a selection and the selection a claim names: the action
+  among those offered now for a selection (none while a run is on its way),
+  and the selection as far as it is one. "All that match" is of a table
+  that has read; rows are at least one (`AshDataTable.Intent`). An event
+  that says both is of every record where the table has read, and else of
+  the rows.
+  """
+  @spec bulk_action(Input.t(), term, AshDataTable.Intent.selection()) ::
+          {:ok, Model.Action.t(), Bulk.selection()} | :error
+  def bulk_action(%Input{} = input, name, selection) do
+    with %Model.Action{} = action <- action(input.offered.bulk, name),
+         selection when not is_nil(selection) <- selection(selection, input.read?) do
+      {:ok, action, selection}
+    else
+      _ -> :error
+    end
+  end
+
+  defp selection(all, true) when all == :all or elem(all, 0) == :all, do: :all
+  defp selection({_rows_or_all, rows}, _read?), do: {:rows, rows}
+  defp selection(:all, false), do: nil
 end
