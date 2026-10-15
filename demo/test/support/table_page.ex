@@ -6,17 +6,7 @@ defmodule DemoWeb.TablePage do
   `id` is the table's id, the last part of its resource's name: `"task"`.
   """
 
-  import Phoenix.LiveViewTest,
-    only: [
-      element: 2,
-      form: 3,
-      render_change: 1,
-      render_change: 2,
-      render_async: 2,
-      render_hook: 3,
-      render_submit: 1,
-      render_submit: 2
-    ]
+  import Phoenix.LiveViewTest, only: [render_async: 2]
 
   @doc """
   Sets a column's filter and leaves it, as a person does who types a value or
@@ -1141,50 +1131,13 @@ defmodule DemoWeb.TablePage do
   # event's name.
   defp send_event(view, id, event, payload, on \\ nil) do
     plain = event |> String.split(":") |> List.last()
-
-    named =
-      if String.starts_with?(event, "ash_data_table:"),
-        do: event,
-        else: "ash_data_table:#{id}:#{event}"
-
-    selector = "[id='#{id}-#{on || hook_of(plain)}']"
-
-    seen_or_portal(
-      view,
-      selector,
-      &(&1 |> element(selector) |> render_hook(named, payload)),
-      fn cid ->
-        view |> Phoenix.LiveViewTest.with_target(cid) |> render_hook(named, payload)
-      end
-    )
+    AshDataTable.Test.send_event(view, id, event, payload, from: on || hook_of(plain))
   end
 
-  # Runs `seen` where LiveViewTest sees the element `selector` finds; where
-  # only a person does, in a portal's content, `portal` with the component
-  # it is for. Where neither does, what `element/2` says of it is raised.
-  defp seen_or_portal(view, selector, seen, portal) do
-    seen.(view)
-  rescue
-    error in ArgumentError ->
-      with true <- error.message =~ "but got none",
-           cid when is_integer(cid) <-
-             view
-             |> Phoenix.LiveViewTest.render()
-             |> document()
-             |> LazyHTML.query(selector)
-             |> component_of() do
-        portal.(cid)
-      else
-        _ -> reraise error, __STACKTRACE__
-      end
-  end
-
-  defp component_of(found) do
-    case found |> Enum.take(1) |> Enum.flat_map(&LazyHTML.attribute(&1, "phx-target")) do
-      [cid] -> String.to_integer(cid)
-      [] -> nil
-    end
-  end
+  # Sends a form of the page as a browser does, inside a portal too
+  # (`AshDataTable.Test.send_form/5`).
+  defp send_form(view, selector, kind, values, opts \\ [check: true]),
+    do: AshDataTable.Test.send_form(view, selector, kind, values, opts)
 
   # The table an event's name is for: `ash_data_table:ID:event`, split at
   # the first and the last `:`.
@@ -1194,84 +1147,6 @@ defmodule DemoWeb.TablePage do
       _unnamed -> raise ArgumentError, "#{inspect(event)} names no table"
     end
   end
-
-  # Sends a form of the page as a browser does: what its named controls
-  # hold (checked boxes, selected options), with `values` merged in, as the
-  # event of its `phx-change` or `phx-submit`. Where LiveViewTest sees the
-  # form, through `form/3` (`check: true`, which raises for a name the form
-  # lacks) or `element/2`. A form in a portal's content is read from the
-  # page as a person sees it, and a name it lacks raises in the same way.
-  defp send_form(view, selector, kind, values, opts \\ [check: true]) do
-    seen = fn view ->
-      cond do
-        opts[:check] ->
-          form = form(view, selector, values)
-          if kind == :change, do: render_change(form), else: render_submit(form)
-
-        kind == :change ->
-          view |> element(selector) |> render_change(values)
-
-        true ->
-          view |> element(selector) |> render_submit(values)
-      end
-    end
-
-    seen_or_portal(view, selector, seen, fn _cid ->
-      page = document(Phoenix.LiveViewTest.render(view))
-
-      [{"form", attributes, _children} = form] =
-        page |> LazyHTML.query(selector) |> LazyHTML.to_tree()
-
-      if opts[:check], do: check_names(form, page, selector, values)
-
-      params = deep_merge(Phoenix.LiveViewTest.DOM.collect_form_values(form, page), values)
-      event = attribute_of(attributes, "phx-#{kind}")
-      send_event(view, table_named(event), event, params)
-    end)
-  end
-
-  # Each name `values` gives must be a control of the form, as `form/3`
-  # wants it.
-  defp check_names(form, page, selector, values) do
-    names =
-      form
-      |> Phoenix.LiveViewTest.DOM.all_value_inputs(page)
-      |> Enum.filter(&Phoenix.LiveViewTest.TreeDOM.attribute(&1, "name"))
-      |> Enum.reject(&Phoenix.LiveViewTest.TreeDOM.attribute(&1, "disabled"))
-      |> MapSet.new(&Phoenix.LiveViewTest.TreeDOM.attribute(&1, "name"))
-
-    for name <- names_of(values, ""), not MapSet.member?(names, name) do
-      raise ArgumentError,
-            "could not find non-disabled input, select or textarea with name " <>
-              "#{inspect(name)} in #{inspect(selector)}"
-    end
-
-    :ok
-  end
-
-  defp names_of(%{} = values, prefix) do
-    Enum.flat_map(values, fn {key, value} ->
-      name = if prefix == "", do: to_string(key), else: "#{prefix}[#{key}]"
-      names_of(value, name)
-    end)
-  end
-
-  defp names_of(values, prefix) when is_list(values), do: [prefix <> "[]"]
-  defp names_of(_value, name), do: [name]
-
-  defp deep_merge(%{} = into, %{} = values) do
-    Enum.reduce(values, into, fn {key, value}, into ->
-      Map.update(into, to_string(key), stringify(value), &deep_merge(&1, value))
-    end)
-  end
-
-  defp deep_merge(_into, value), do: stringify(value)
-
-  defp stringify(%{} = values), do: Map.new(values, fn {k, v} -> {to_string(k), stringify(v)} end)
-  defp stringify(values) when is_list(values), do: Enum.map(values, &stringify/1)
-  defp stringify(nil), do: ""
-  defp stringify(value) when is_binary(value), do: value
-  defp stringify(value), do: to_string(value)
 
   # The element of the hook that sends an event in a browser.
   defp hook_of(event)
@@ -1408,104 +1283,5 @@ defmodule DemoWeb.TablePage do
   """
   def seen(html), do: document(html)
 
-  defp document(html) do
-    if String.contains?(html, "data-phx-portal") do
-      html
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.to_tree()
-      |> teleport(1)
-      |> LazyHTML.from_tree()
-    else
-      LazyHTML.from_fragment(html)
-    end
-  end
-
-  defp teleport(tree, round) do
-    case take_portals(tree) do
-      {tree, []} ->
-        tree
-
-      {_tree, _moved} when round > 5 ->
-        raise "portals in portals more than five deep"
-
-      {tree, moved} ->
-        moved
-        |> Enum.reduce(tree, fn {target, content}, tree ->
-          put_into(tree, target_id(tree, target), content)
-        end)
-        |> teleport(round + 1)
-    end
-  end
-
-  # Empties every portal's template, and says what was in it and where it
-  # goes, in the order of the page. Other templates are left as they are.
-  defp take_portals(nodes) when is_list(nodes) do
-    Enum.map_reduce(nodes, [], &take_portal/2)
-  end
-
-  # The browser keeps the portal's wrapper (`_lv_portal_wrap_ID`), which
-  # takes no part in the layout (`display: contents`): the page is read
-  # without it, as the markup snapshots are.
-  defp take_portal({"template", attributes, children} = node, moved) do
-    with target when is_binary(target) <- attribute_of(attributes, "data-phx-portal"),
-         {_tag, wrapper, inner} = element <-
-           Enum.find(children, &(is_tuple(&1) and tuple_size(&1) == 3)) do
-      content =
-        case attribute_of(wrapper, "id") do
-          "_lv_portal_wrap_" <> _ -> inner
-          _other -> [element]
-        end
-
-      {{"template", attributes, []}, moved ++ [{target, content}]}
-    else
-      _ -> {node, moved}
-    end
-  end
-
-  defp take_portal({tag, attributes, children}, moved) do
-    {children, inner} = take_portals(children)
-    {{tag, attributes, children}, moved ++ inner}
-  end
-
-  defp take_portal(other, moved), do: {other, moved}
-
-  defp target_id(tree, target) do
-    case tree |> LazyHTML.from_tree() |> LazyHTML.query(target) |> Enum.take(1) do
-      [element] ->
-        case LazyHTML.attribute(element, "id") do
-          [id] -> id
-          [] -> raise "the target of a portal, #{inspect(target)}, has no id"
-        end
-
-      [] ->
-        raise "the target of a portal, #{inspect(target)}, is not in the page"
-    end
-  end
-
-  # Appends `content` to the first element whose id is `id`.
-  defp put_into(nodes, id, content) do
-    {nodes, _done?} =
-      Enum.map_reduce(nodes, false, fn
-        node, true ->
-          {node, true}
-
-        {tag, attributes, children}, false ->
-          if attribute_of(attributes, "id") == id do
-            {{tag, attributes, children ++ content}, true}
-          else
-            {children, done?} = put_into_children(children, id, content)
-            {{tag, attributes, children}, done?}
-          end
-
-        other, false ->
-          {other, false}
-      end)
-
-    nodes
-  end
-
-  defp put_into_children(children, id, content) do
-    put = put_into(children, id, content)
-    {put, put != children}
-  end
+  defp document(html), do: AshDataTable.Test.page(html)
 end

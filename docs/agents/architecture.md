@@ -93,7 +93,7 @@ Live updates:
 
 - `AshDataTable.Resource.Notifier` (`resource/notifier.ex`, part 1): the Ash notifier of a resource that says `live? true`. Broadcasts `{:ash_data_table_changed, resource, action_type, primary_key, tenant}` and nothing else. `topic/2` is the topic of a resource and a tenant.
 - `AshDataTable.Listener` (`live/listener.ex`, 2b): the process through which one table hears. `start/3` subscribes and hands batches (100 ms) to the table with `send_update`; `stop/1`; `flush/1` and `of/1` for tests. It ends with the LiveView.
-- `AshDataTable.Test` (`test.ex`): public help for a host's tests. `flush/1` hands a page what was announced so far.
+- `AshDataTable.Test` (`test.ex`): public help for a host's tests. `flush/1` hands a page what was announced so far; `listening/2` counts listeners. For nested tables and pickers, which `Phoenix.LiveViewTest` does not see inside a portal: `page/1` (the page as the browser shows it, a `LazyHTML`), `send_event/5` (a table's event by its name, through the component that draws it), `send_form/5` (a form as the browser sends it, inside a portal too). `DemoWeb.TablePage` calls them.
 - In `AshDataTable.Query`: `rows/4` reads announced keys again as rows are read, `any?/5` asks whether one of them is the person's to see under their filters. `reader_opts/1` passes a table's own listener on as `context` (`origin`), so that the notifier leaves it out.
 
 Writes:
