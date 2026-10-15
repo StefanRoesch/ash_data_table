@@ -807,7 +807,7 @@ defmodule AshDataTable.Parts.Grid do
                 tabindex="-1"
                 data-label={@model.sticky_label? and column == @label_column}
                 data-sort={column.sortable?}
-                phx-click={column.sortable? && "sort"}
+                phx-click={column.sortable? && Parts.Common.event(@id, "sort")}
                 phx-value-column={column.sortable? && column.name}
                 phx-target={column.sortable? && @myself}
                 class={[
@@ -856,6 +856,7 @@ defmodule AshDataTable.Parts.Grid do
                 <Parts.Filter.filter
                   :if={column.operators != []}
                   id={"#{@id}-filter-#{column.name}"}
+                  table={@id}
                   form={"#{@id}-filters"}
                   column={column}
                   filter={Parts.Filter.shown_filter(@rejected, @pending, @state, column.name)}

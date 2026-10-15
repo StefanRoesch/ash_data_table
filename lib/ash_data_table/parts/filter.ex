@@ -146,7 +146,7 @@ defmodule AshDataTable.Parts.Filter do
         tabindex="-1"
         aria-label={Text.t(:clear_filter, column: @column.label)}
         class="btn btn-ghost btn-xs"
-        phx-click="clear_filter"
+        phx-click={Parts.Common.event(@table, "clear_filter")}
         phx-value-column={@column.name}
         phx-target={@target}
       >
@@ -253,8 +253,8 @@ defmodule AshDataTable.Parts.Filter do
     <form
       phx-no-format
       id={"#{@id}-filters"}
-      phx-change="filter"
-      phx-submit="filter"
+      phx-change={Parts.Common.event(@id, "filter")}
+      phx-submit={Parts.Common.event(@id, "filter")}
       phx-target={@myself}
     >
       </form>

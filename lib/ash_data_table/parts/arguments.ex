@@ -31,6 +31,7 @@ defmodule AshDataTable.Parts.Arguments do
   attr :value, :any, required: true
   attr :errors, :list, required: true
   attr :target, :any, required: true
+  attr :table, :string, required: true
 
   defp argument(assigns) do
     assigns =
@@ -180,7 +181,7 @@ defmodule AshDataTable.Parts.Arguments do
               id={"#{@id}-#{at}-remove"}
               aria-label={Text.t(:remove_value, column: @argument.label, position: at + 1)}
               class="btn btn-ghost btn-xs"
-              phx-click="argument_remove"
+              phx-click={Parts.Common.event(@table, "argument_remove")}
               phx-value-argument={@named}
               phx-value-at={at}
               phx-target={@target}
@@ -193,7 +194,7 @@ defmodule AshDataTable.Parts.Arguments do
             type="button"
             id={"#{@id}-add"}
             class="btn btn-sm"
-            phx-click="argument_add"
+            phx-click={Parts.Common.event(@table, "argument_add")}
             phx-value-argument={@named}
             phx-target={@target}
           >
@@ -241,8 +242,8 @@ defmodule AshDataTable.Parts.Arguments do
       :if={@model.arguments != []}
       phx-no-format
       id={"#{@id}-arguments"}
-      phx-change="arguments"
-      phx-submit="arguments"
+      phx-change={Parts.Common.event(@id, "arguments")}
+      phx-submit={Parts.Common.event(@id, "arguments")}
       phx-target={@myself}
       novalidate
       data-arguments
@@ -265,6 +266,7 @@ defmodule AshDataTable.Parts.Arguments do
             end
           }
           target={@myself}
+          table={@id}
         />
       </form>
     """

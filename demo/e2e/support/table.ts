@@ -108,7 +108,9 @@ export class Table {
    */
   async forge(event: string, payload: Record<string, unknown>): Promise<void> {
     await this.hookRoot.evaluate(
-      (grid: any, [event, payload]) => grid._ashDataTable.pushEventTo(grid, event, payload),
+      // named with the table, as the hooks' transport names it
+      (grid: any, [event, payload]) =>
+        grid._ashDataTable.pushEventTo(grid, `ash_data_table:${grid._ashDataTable.id}:${event}`, payload),
       [event, payload] as const,
     )
   }

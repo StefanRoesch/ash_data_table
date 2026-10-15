@@ -10,6 +10,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
   writes them anew. A file that is not there is an error, not written.
 
   Normalised before they are compared: the module part of `phx-hook` names,
+  the table's id in the name of an event (`ash_data_table:ID:`),
   the values of `phx-target`, every `data-phx-*` attribute, LiveView's own
   ids, CSRF tokens, record keys (each uuid becomes `uuid-N` by its first
   place in the page) and what the per-test ids put into an email.
@@ -141,6 +142,10 @@ defmodule DemoWeb.MarkupSnapshotTest do
     html =
       html
       |> String.replace(~r/ phx-hook="[^"]*?(\.[A-Za-z]+)"/, ~s( phx-hook="\\1"))
+      |> String.replace(
+        ~r/((?: phx-(?:click|change|submit)="|&quot;event&quot;:&quot;))ash_data_table:[^:"&]+:/,
+        "\\1"
+      )
       |> String.replace(~r/ phx-target="[^"]*"/, ~s( phx-target="T"))
       |> String.replace(~r/ data-phx-[a-z-]+(="[^"]*")?/, "")
       |> String.replace(~r/\bphx-[A-Za-z0-9_-]{16,}\b/, "phx-ID")

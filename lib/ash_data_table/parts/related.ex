@@ -74,7 +74,7 @@ defmodule AshDataTable.Parts.Related do
               tabindex="-1"
               data-create
               class="btn btn-xs ms-2 hidden h-5 align-top"
-              phx-click="create"
+              phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "create")}
               phx-target={"##{@row_id}-t-#{relationship.name}"}
             >
               {@creates[relationship.name].create}
@@ -91,7 +91,7 @@ defmodule AshDataTable.Parts.Related do
               tabindex="-1"
               data-table-action={action.name}
               class="btn btn-xs ms-2 hidden h-5 align-top"
-              phx-click="table_act"
+              phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "table_act")}
               phx-value-action={action.name}
               phx-target={"##{@row_id}-t-#{relationship.name}"}
             >

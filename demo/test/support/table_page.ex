@@ -1129,11 +1129,20 @@ defmodule DemoWeb.TablePage do
 
   # The one place that sends a table an event, as its hooks do. Every helper
   # that sends one goes through here, and so does `forge/5`: how an event
-  # reaches its table (today the element's `phx-target`) changes here only.
+  # reaches its table (today the element's `phx-target`, and its name
+  # `ash_data_table:ID:event`) changes here only. A name read from the
+  # markup (`click/2`) is named with its table already.
   defp send_event(view, id, event, payload, on \\ nil) do
+    plain = event |> String.split(":") |> List.last()
+
+    named =
+      if String.starts_with?(event, "ash_data_table:"),
+        do: event,
+        else: "ash_data_table:#{id}:#{event}"
+
     view
-    |> element("[id='#{id}-#{on || hook_of(event)}']")
-    |> render_hook(event, payload)
+    |> element("[id='#{id}-#{on || hook_of(plain)}']")
+    |> render_hook(named, payload)
   end
 
   # The element of the hook that sends an event in a browser.

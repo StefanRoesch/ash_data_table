@@ -51,8 +51,8 @@ defmodule AshDataTable.Parts.Panel do
       <form
         id={"#{@id}-panel-form"}
         method={@panel.method}
-        phx-change="panel_validate"
-        phx-submit="panel_submit"
+        phx-change={Parts.Common.event(@id, "panel_validate")}
+        phx-submit={Parts.Common.event(@id, "panel_submit")}
         phx-target={@target}
         novalidate
       >
@@ -77,7 +77,7 @@ defmodule AshDataTable.Parts.Panel do
           chosen={field.chosen}
           clear={field.clear}
           upload={@files[field.name][:upload]}
-          inside={Map.merge(@panel.inside, %{place: [field.name], path: field.path})}
+          inside={Map.merge(@panel.inside, %{place: [field.name], path: field.path, table: @id})}
           target={@target}
         />
         <div class="mt-6 flex justify-end gap-2">
@@ -105,7 +105,8 @@ defmodule AshDataTable.Parts.Panel do
   # control holds it (`field_value/3`). A field inside a group is one of
   # these too: `input` is then a field of a map cell
   # (`AshDataTable.Model.Field`). `inside` is what a field made of groups needs
-  # to know of the panel for the fields in it: see `group/1`. Its `path` is
+  # to know of the panel for the fields in it: see `group/1`; and the
+  # `table`'s id, which its events name. Its `path` is
   # also what the field says of itself (`data-field`): its name, and for a
   # field inside a group the names on the way to it, with a dot between.
   attr :id, :string, required: true
@@ -232,7 +233,7 @@ defmodule AshDataTable.Parts.Panel do
           id={"#{@id}-choose"}
           class="btn btn-sm"
           aria-describedby={@called && "#{@id}-chosen"}
-          phx-click="pick_input"
+          phx-click={Parts.Common.event(@inside.table, "pick_input")}
           phx-value-input={@input.name}
           phx-target={@target}
         >
@@ -284,7 +285,7 @@ defmodule AshDataTable.Parts.Panel do
           type="button"
           id={"#{@id}-choose"}
           class="btn btn-sm self-start"
-          phx-click="pick_input"
+          phx-click={Parts.Common.event(@inside.table, "pick_input")}
           phx-value-input={@input.name}
           phx-target={@target}
         >

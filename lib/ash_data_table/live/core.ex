@@ -61,19 +61,35 @@ defmodule AshDataTable.Live.Core do
 
   # Every event is parsed first (`AshDataTable.Intent`): what it asks for,
   # its values still claims, handed to the module of its topic. One whose
-  # payload has another shape gets the answer the table gives such an
-  # event (`malformed/2`).
+  # payload has another shape, and one that is not named for this table,
+  # gets the answer the table gives such an event (`malformed/2`).
   def handle_event(event, params, socket) do
+    {own?, plain} = addressed(event, socket.assigns.table.entry.id)
+
     result =
-      case Intent.parse(event, params) do
+      case own? && Intent.parse(plain, params) do
         {:ok, intent} -> topic(intent).on(intent, socket)
-        :malformed -> malformed(event, socket)
+        _another_table_or_malformed -> malformed(plain, socket)
       end
 
     # Every update, event and answer ends the same way: see `tidy/1`.
     case result do
       {:noreply, socket} -> {:noreply, tidy(socket)}
       {:reply, reply, socket} -> {:reply, reply, tidy(socket)}
+    end
+  end
+
+  # The browser names an event with the table it is for (target.md Q4):
+  # `ash_data_table:ID:event`, split at the first and the last `:`. Whether
+  # it is this table's, and the event's own name.
+  defp addressed(event, id) do
+    case String.split(event, ":") do
+      ["ash_data_table" | [_, _ | _] = rest] ->
+        {ids, [plain]} = Enum.split(rest, -1)
+        {Enum.join(ids, ":") == id, plain}
+
+      _unaddressed ->
+        {false, event}
     end
   end
 

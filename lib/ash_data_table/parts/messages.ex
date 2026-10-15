@@ -43,7 +43,7 @@ defmodule AshDataTable.Parts.Messages do
             tabindex={@nested? && "-1"}
             class="btn btn-sm"
             phx-click={
-              JS.push("read_again", target: @myself)
+              JS.push(Parts.Common.event(@id, "read_again"), target: @myself)
               |> JS.focus(to: "##{@id}-table [tabindex='0']")
             }
           >

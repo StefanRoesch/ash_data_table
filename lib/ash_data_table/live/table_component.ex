@@ -131,8 +131,13 @@ defmodule AshDataTable.Live.TableComponent do
   # ## Events
   #
   # Every event goes to the table it is of: the element it is sent from
-  # says so (`phx-target`). The hooks send theirs with `pushEventTo` on
-  # their own element; the others are sent by the markup. A key of a row is
+  # says so (`phx-target`), and its name too: `ash_data_table:ID:event`,
+  # where `ID` is the table's id and `event` one of the names below
+  # (target.md Q4). The hooks send theirs with `pushEventTo` on their own
+  # element, named so by their transport (`assets/js/transport/`), which
+  # takes the id from the element's; the others are sent by the markup
+  # (`AshDataTable.Parts.Common.event/2`). An event named for another table,
+  # or not named so, is answered as one of another shape. A key of a row is
   # the key in the row's DOM id; a column, action, relationship or input is
   # named as text. The answer, where there is one, goes to the hook alone.
   # Each event is parsed once, as it arrives (`AshDataTable.Intent`): a

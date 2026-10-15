@@ -73,7 +73,7 @@ defmodule AshDataTable.Parts.Pagination do
         class="join-item btn btn-sm"
         tabindex={@nested? && "-1"}
         disabled={is_nil(@page.previous)}
-        phx-click="page"
+        phx-click={Parts.Common.event(@id, "page")}
         phx-value-to="previous"
         phx-target={@target}
       >
@@ -99,7 +99,7 @@ defmodule AshDataTable.Parts.Pagination do
           tabindex={@nested? && "-1"}
           aria-label={Text.t(:go_to_page, page: number)}
           aria-current={number == @state.page && "page"}
-          phx-click="page"
+          phx-click={Parts.Common.event(@id, "page")}
           phx-value-to={number}
           phx-target={@target}
         >
@@ -112,7 +112,7 @@ defmodule AshDataTable.Parts.Pagination do
         class="join-item btn btn-sm"
         tabindex={@nested? && "-1"}
         disabled={is_nil(@page.next)}
-        phx-click="page"
+        phx-click={Parts.Common.event(@id, "page")}
         phx-value-to="next"
         phx-target={@target}
       >
@@ -125,7 +125,7 @@ defmodule AshDataTable.Parts.Pagination do
     <form
       :if={@model.pagination.page_sizes != []}
       id={"#{@id}-page-size-form"}
-      phx-change="page_size"
+      phx-change={Parts.Common.event(@id, "page_size")}
       phx-target={@target}
       class="flex items-center gap-2"
     >
