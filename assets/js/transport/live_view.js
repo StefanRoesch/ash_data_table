@@ -28,7 +28,23 @@ export function liveView(hook) {
 
   return {
     push(event, payload) {
-      return hook.pushEventTo(hook.el, named(hook.el, event), payload).then(results => {
+      const name = named(hook.el, event)
+      // LiveView locks the element of a hook while its event is on its way:
+      // what the server sends meanwhile is kept aside and put in only once
+      // the event is answered. A grid holds the cells nested tables are
+      // drawn into, and a nested table is drawn elsewhere and moved into its
+      // cell (`<.portal>`): kept aside, the cell would not be there when its
+      // table is moved, and LiveView would fail. So a grid is not locked;
+      // its hook keeps what a person is doing in it (`beforeUpdate`).
+      if (hook.el.hasAttribute("data-ash-data-table")) {
+        const unlock = pushed => {
+          if (pushed.target !== hook.el) return
+          hook.el.removeEventListener(`phx:push:${name}`, unlock)
+          pushed.detail.unlock(hook.el)
+        }
+        hook.el.addEventListener(`phx:push:${name}`, unlock)
+      }
+      return hook.pushEventTo(hook.el, name, payload).then(results => {
         const result = results && results[0]
         // a Promise of its own each time: one shared Promise would keep every
         // reply handler waiting on it, and what they hold, alive for good

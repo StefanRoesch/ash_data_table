@@ -1148,34 +1148,35 @@ defmodule DemoWeb.TablePage do
         else: "ash_data_table:#{id}:#{event}"
 
     selector = "[id='#{id}-#{on || hook_of(plain)}']"
-    html = Phoenix.LiveViewTest.render(view)
 
-    case visible(html, selector) do
-      :seen ->
-        view |> element(selector) |> render_hook(named, payload)
-
-      {:portal, cid} ->
+    seen_or_portal(
+      view,
+      selector,
+      &(&1 |> element(selector) |> render_hook(named, payload)),
+      fn cid ->
         view |> Phoenix.LiveViewTest.with_target(cid) |> render_hook(named, payload)
-
-      :none ->
-        # as `element/2` says of an element that is not there
-        view |> element(selector) |> render_hook(named, payload)
-    end
+      end
+    )
   end
 
-  # Whether LiveViewTest sees the element `selector` finds, or only a
-  # person does, in a portal's content: then the component it is for.
-  defp visible(html, selector) do
-    cond do
-      html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> Enum.any?() ->
-        :seen
-
-      cid = html |> document() |> LazyHTML.query(selector) |> component_of() ->
-        {:portal, cid}
-
-      true ->
-        :none
-    end
+  # Runs `seen` where LiveViewTest sees the element `selector` finds; where
+  # only a person does, in a portal's content, `portal` with the component
+  # it is for. Where neither does, what `element/2` says of it is raised.
+  defp seen_or_portal(view, selector, seen, portal) do
+    seen.(view)
+  rescue
+    error in ArgumentError ->
+      with true <- error.message =~ "but got none",
+           cid when is_integer(cid) <-
+             view
+             |> Phoenix.LiveViewTest.render()
+             |> document()
+             |> LazyHTML.query(selector)
+             |> component_of() do
+        portal.(cid)
+      else
+        _ -> reraise error, __STACKTRACE__
+      end
   end
 
   defp component_of(found) do
@@ -1201,40 +1202,32 @@ defmodule DemoWeb.TablePage do
   # lacks) or `element/2`. A form in a portal's content is read from the
   # page as a person sees it, and a name it lacks raises in the same way.
   defp send_form(view, selector, kind, values, opts \\ [check: true]) do
-    html = Phoenix.LiveViewTest.render(view)
+    seen = fn view ->
+      cond do
+        opts[:check] ->
+          form = form(view, selector, values)
+          if kind == :change, do: render_change(form), else: render_submit(form)
 
-    case {visible(html, selector), opts[:check]} do
-      {{:portal, _cid}, check?} ->
-        page = document(html)
+        kind == :change ->
+          view |> element(selector) |> render_change(values)
 
-        form =
-          case page |> LazyHTML.query(selector) |> LazyHTML.to_tree() do
-            [{"form", _attributes, _children} = form] ->
-              form
-
-            found ->
-              raise ArgumentError,
-                    "expected one form for #{inspect(selector)}, found #{length(found)}"
-          end
-
-        if check?, do: check_names(form, page, selector, values)
-
-        params = deep_merge(Phoenix.LiveViewTest.DOM.collect_form_values(form, page), values)
-        {"form", attributes, _children} = form
-        event = attribute_of(attributes, "phx-#{kind}")
-        send_event(view, table_named(event), event, params)
-
-      {_seen_or_none, true} ->
-        form = form(view, selector, values)
-        if kind == :change, do: render_change(form), else: render_submit(form)
-
-      {_seen_or_none, _unchecked} ->
-        element = element(view, selector)
-
-        if kind == :change,
-          do: render_change(element, values),
-          else: render_submit(element, values)
+        true ->
+          view |> element(selector) |> render_submit(values)
+      end
     end
+
+    seen_or_portal(view, selector, seen, fn _cid ->
+      page = document(Phoenix.LiveViewTest.render(view))
+
+      [{"form", attributes, _children} = form] =
+        page |> LazyHTML.query(selector) |> LazyHTML.to_tree()
+
+      if opts[:check], do: check_names(form, page, selector, values)
+
+      params = deep_merge(Phoenix.LiveViewTest.DOM.collect_form_values(form, page), values)
+      event = attribute_of(attributes, "phx-#{kind}")
+      send_event(view, table_named(event), event, params)
+    end)
   end
 
   # Each name `values` gives must be a control of the form, as `form/3`
