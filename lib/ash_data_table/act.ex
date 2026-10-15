@@ -920,7 +920,7 @@ defmodule AshDataTable.Act do
         &elem(&1, 1)
       )
 
-    Map.new(grouped, fn {field, messages} -> {field, Enum.uniq(messages)} end)
+    Map.new(grouped, fn {field, messages} -> {field, Errors.uniq(messages)} end)
   end
 
   # What Ash says of a record an argument hands to a relationship, where it

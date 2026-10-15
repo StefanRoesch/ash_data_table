@@ -39,6 +39,44 @@ defmodule AshDataTable.Errors do
   def joined([message]), do: message
   def joined(messages), do: {:join, "; ", messages}
 
+  @doc """
+  Messages each once: one that says what another says is left out, as a
+  text that is shown twice would be. Two say the same where they are of the
+  same kind and key, or the same action message, with the same values in
+  its placeholders: a variable the message does not name (Ash adds `index`
+  and `field`) changes nothing, and a name is said as its text (`:medium`
+  as `"medium"`).
+  """
+  @spec uniq([message]) :: [message]
+  def uniq(messages), do: Enum.uniq_by(messages, &said/1)
+
+  @doc "Whether two messages say the same (`uniq/1`)."
+  @spec same?(message, message) :: boolean
+  def same?(message, other), do: said(message) == said(other)
+
+  defp said({:ash, message, vars}) do
+    named = for [_, name] <- Regex.scan(~r/%\{(\w+)\}/, message), into: MapSet.new(), do: name
+
+    vars =
+      for {name, value} <- List.wrap(if(is_map(vars), do: Map.to_list(vars), else: vars)),
+          (is_atom(name) or is_binary(name)) and
+            (to_string(name) in named or to_string(name) == "count"),
+          do: {to_string(name), said_value(value)}
+
+    {:ash, message, Enum.sort(vars)}
+  end
+
+  defp said({:text, key, bindings}),
+    do: {:text, key, Enum.sort(for {name, value} <- bindings, do: {name, said(value)})}
+
+  defp said({:join, separator, messages}), do: {:join, separator, Enum.map(messages, &said/1)}
+  defp said({:label, _text} = label), do: label
+  defp said(value), do: said_value(value)
+
+  defp said_value(value) when is_binary(value) or is_number(value), do: value
+  defp said_value(value) when is_atom(value), do: to_string(value)
+  defp said_value(value), do: inspect(value)
+
   @doc "An action's message with its variables, as a message."
   @spec ash({String.t(), keyword | map}) :: message
   def ash({message, vars}) when is_binary(message), do: {:ash, message, vars}
@@ -144,7 +182,7 @@ defmodule AshDataTable.Errors do
           text = nested_text(model, path, field, error),
           do: text
 
-    Enum.uniq(at_fields ++ nested ++ without_fields(form, refusal))
+    uniq(at_fields ++ nested ++ without_fields(form, refusal))
   end
 
   @doc """
@@ -279,7 +317,7 @@ defmodule AshDataTable.Errors do
   def of_read(error, %Model{} = model) do
     case Ash.Error.to_error_class(error) do
       %Ash.Error.Invalid{errors: errors} ->
-        errors |> Enum.flat_map(&texts(&1, model)) |> Enum.uniq()
+        errors |> Enum.flat_map(&texts(&1, model)) |> uniq()
 
       _other ->
         []
@@ -299,7 +337,7 @@ defmodule AshDataTable.Errors do
         [refusal]
 
       %Ash.Error.Invalid{errors: errors} ->
-        errors |> Enum.flat_map(&texts(&1, model)) |> Enum.uniq()
+        errors |> Enum.flat_map(&texts(&1, model)) |> uniq()
 
       _other ->
         []

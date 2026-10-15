@@ -277,10 +277,11 @@ defmodule AshDataTable.Bulk do
   # the failures, latest first, with one more of `message`
   defp count(failures, _message, count) when count <= 0, do: failures
 
+  # one that says what a failure counted already is that failure (`Errors.same?/2`)
   defp count(failures, message, count) do
-    case List.keyfind(failures, message, 0) do
+    case Enum.find_index(failures, fn {known, _count} -> Errors.same?(known, message) end) do
       nil -> [{message, count} | failures]
-      {_message, known} -> List.keyreplace(failures, message, 0, {message, known + count})
+      at -> List.update_at(failures, at, fn {known, before} -> {known, before + count} end)
     end
   end
 

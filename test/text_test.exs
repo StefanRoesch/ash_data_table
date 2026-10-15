@@ -59,4 +59,25 @@ defmodule AshDataTable.TextTest do
       assert Text.say("Title") == "Title"
     end
   end
+
+  describe "AshDataTable.Errors.uniq/1" do
+    test "keeps each message once by what it says, as the texts were kept once" do
+      a =
+        {:ash, "atom must be one of %{atom_list}, got: %{value}", [atom_list: "a, b", value: "c"]}
+
+      # a variable the message does not name, and a name for a text
+      b =
+        {:ash, "atom must be one of %{atom_list}, got: %{value}",
+         [index: 1, atom_list: "a, b", value: :c]}
+
+      other =
+        {:ash, "atom must be one of %{atom_list}, got: %{value}", [atom_list: "a, b", value: "d"]}
+
+      assert Text.say(a) == Text.say(b)
+      assert AshDataTable.Errors.uniq([a, b, other]) == [a, other]
+
+      field = &{:text, :error_on_field, field: "Sizes", message: &1}
+      assert AshDataTable.Errors.uniq([field.(a), field.(b)]) == [field.(a)]
+    end
+  end
 end
