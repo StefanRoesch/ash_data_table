@@ -135,6 +135,10 @@ defmodule AshDataTable.Live.TableComponent do
   # their own element; the others are sent by the markup. A key of a row is
   # the key in the row's DOM id; a column, action, relationship or input is
   # named as text. The answer, where there is one, goes to the hook alone.
+  # Each event is parsed once, as it arrives (`AshDataTable.Intent`): a
+  # payload of another shape than the one listed here is answered as one
+  # that names nothing the table has (`{ok: false}`, `{open: false}`, `{}`,
+  # or no answer).
   #
   # From the grid's hook, on `ID-grid`:
   #
@@ -522,11 +526,13 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Edit
   alias AshDataTable.Errors
   alias AshDataTable.Format
+  alias AshDataTable.Intent
   alias AshDataTable.Listener
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
   alias AshDataTable.Parts
   alias AshDataTable.Pick
+  alias AshDataTable.Present
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Related
@@ -2032,24 +2038,26 @@ defmodule AshDataTable.Live.TableComponent do
     end)
   end
 
+  # Every event is parsed first (`AshDataTable.Intent`): what it asks for,
+  # its values still claims. One whose payload has another shape gets the
+  # answer the table gives such an event (`malformed/2`).
   @impl true
-  def handle_event("sort", %{"column" => name}, socket) do
+  def handle_event(event, params, socket) do
+    case Intent.parse(event, params) do
+      {:ok, intent} -> on(intent, socket)
+      :malformed -> malformed(event, socket)
+    end
+  end
+
+  defp on({:sort, name}, socket) do
     %{state: state, model: model} = socket.assigns.table.entry
     {:noreply, go(socket, State.cycle_sort(state, model, name))}
   end
 
-  def handle_event("sort", _params, socket), do: {:noreply, socket}
-
   # Sent by the form of the filter row when a filter is left or a choice is
   # made, with every filter of the row.
-  def handle_event("filter", params, socket) do
+  defp on({:filter, form}, socket) do
     %{state: state, model: model} = socket.assigns.table.entry
-
-    form =
-      case params do
-        %{"filter" => %{} = form} -> form
-        _other -> %{}
-      end
 
     {filtered, rejected} = State.filter(state, model, form)
     pending = %{controls: State.pending(model, form), among: [state.filters, filtered.filters]}
@@ -2057,7 +2065,7 @@ defmodule AshDataTable.Live.TableComponent do
     {:noreply, socket |> put(rejected: rejected, pending: pending) |> refilter(filtered)}
   end
 
-  def handle_event("clear_filter", %{"column" => name}, socket) when is_binary(name) do
+  defp on({:clear_filter, name}, socket) do
     %{state: state, pending: pending} = socket.assigns.table.entry
     cleared = State.clear_filter(state, name)
 
@@ -2071,7 +2079,7 @@ defmodule AshDataTable.Live.TableComponent do
     {:noreply, socket |> put(pending: pending) |> refilter(cleared)}
   end
 
-  def handle_event("clear_filters", _params, socket) do
+  defp on(:clear_filters, socket) do
     state = State.clear_filters(socket.assigns.table.entry.state)
 
     {:noreply,
@@ -2080,14 +2088,8 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Sent by the form of the argument line when one of its controls changes
   # or is left, and on Enter, with everything the line holds.
-  def handle_event("arguments", params, socket) do
+  defp on({:arguments, form}, socket) do
     %{state: state, model: model} = socket.assigns.table.entry
-
-    form =
-      case params do
-        %{"arguments" => %{} = form} -> form
-        _other -> %{}
-      end
 
     # the rows of the arguments that are given value by value, as they stand
     lines =
@@ -2102,7 +2104,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the button of an argument that is given value by value: a row
   # is added for one more value. An empty row holds no value, so nothing is
   # read for it; focus goes into it.
-  def handle_event("argument_add", %{"argument" => named}, socket) do
+  defp on({:argument_add, named}, socket) do
     %{id: id, lines: lines} = socket.assigns.table.entry
 
     case listed(socket.assigns.table.entry, named) do
@@ -2123,12 +2125,11 @@ defmodule AshDataTable.Live.TableComponent do
   # And by the button of one of its rows: the value is taken away. Focus
   # goes to the row that stands in its place, else to the one before it,
   # else to the button that adds one.
-  def handle_event("argument_remove", %{"argument" => named, "at" => at}, socket)
-      when is_binary(at) do
+  defp on({:argument_remove, named, at}, socket) do
     %{id: id, state: state, model: model, lines: lines} = socket.assigns.table.entry
 
     with {key, rows} <- listed(socket.assigns.table.entry, named),
-         {at, ""} when at >= 0 and at < length(rows) <- Integer.parse(at) do
+         true <- at < length(rows) do
       rows = List.delete_at(rows, at)
       focus = if rows == [], do: "add", else: min(at, length(rows) - 1)
 
@@ -2142,10 +2143,7 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event(event, _params, socket) when event in ["argument_add", "argument_remove"],
-    do: {:noreply, socket}
-
-  def handle_event("page", %{"to" => to}, socket) when is_binary(to) do
+  defp on({:page, to}, socket) do
     {:noreply, go(socket, target(socket.assigns.table.entry, to))}
   end
 
@@ -2153,14 +2151,10 @@ defmodule AshDataTable.Live.TableComponent do
   # a size the table offers is taken (`AshDataTable.State.resize/3`), and
   # anything else changes nothing. The table starts at its first page with
   # it, as after a new sort; the sort, the filters and the arguments stay.
-  def handle_event("page_size", %{"size" => size}, socket) when is_binary(size) do
+  defp on({:page_size, size}, socket) do
     %{state: state, model: model} = socket.assigns.table.entry
     {:noreply, go(socket, State.resize(state, model, size))}
   end
-
-  # An event of a shape the table never sends: nothing happens.
-  def handle_event(event, _params, socket) when event in ["clear_filter", "page", "page_size"],
-    do: {:noreply, socket}
 
   # Sent by the hook when a person uses the expander of a row: the row by
   # the key in its DOM id. The row is expanded to its lines, or closed with
@@ -2170,7 +2164,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Only a row of the page can be expanded, and only where the table has
   # expanders: this is where the depth limit holds against an event that the
   # table never offered.
-  def handle_event("expand", %{"row" => key}, socket) when is_binary(key) do
+  defp on({:expand, key}, socket) do
     %{rows: rows, open: open, expandable?: expandable?} = socket.assigns.table.entry
 
     if expandable? and is_map_key(rows, key) do
@@ -2182,16 +2176,13 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("expand", _params, socket), do: {:reply, %{open: false}, socket}
-
   # Sent by the hook when a person uses a line under an expanded row: the
   # row, and the relationship by name. The line's nested table is opened, or
   # closed and forgotten.
   #
   # Only a line that is on the page can be used: of an expanded row of the
   # page, and for a relationship this person is offered.
-  def handle_event("toggle", %{"row" => key, "relationship" => name}, socket)
-      when is_binary(key) do
+  defp on({:toggle, key, name}, socket) do
     %{model: model, open: open, expandable?: expandable?} = socket.assigns.table.entry
 
     with true <- expandable?,
@@ -2205,13 +2196,11 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("toggle", _params, socket), do: {:noreply, socket}
-
   # Sent by the hook when a person has changed a cell's value and pressed
   # Enter or left the cell: the row by the key in its DOM id, the column, and
   # the value as it was typed. For an array that is a list, of its values as
   # they were typed.
-  def handle_event("save", %{"row" => key, "column" => name, "value" => typed}, socket) do
+  defp on({:save, key, name, typed}, socket) do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true} = column <- column(model, name),
@@ -2225,15 +2214,13 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("save", _params, socket), do: {:reply, %{ok: false}, socket}
-
   # Sent by the hook when a person uses "Clear" in the editor of a sensitive
   # cell: the row by the key in its DOM id, and the column. Nothing typed
   # says "no value" for such a cell (an empty editor saves nothing), so this
   # is asked for by name, and is the save of a cell in everything else: the
   # column has to be one this person edits and one that can be emptied, the
   # row one of the page, and the record is read again, as the person.
-  def handle_event("clear", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+  defp on({:clear, key, name}, socket) do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true} = column <- column(model, name),
@@ -2245,8 +2232,6 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("clear", _params, socket), do: {:reply, %{ok: false}, socket}
-
   # Sent by the hook when a person asks for the value of a sensitive cell:
   # the row by the key in its DOM id, and the column. The record is read
   # again, as the person, through the table's read action, and the answer
@@ -2256,7 +2241,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Only a cell of a sensitive column this person has, in a row of the page.
   # A value Ash hides from them on this record is not given; whoever may
   # see the field may ask (`sensitive?` is no access rule).
-  def handle_event("reveal", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+  defp on({:reveal, key, name}, socket) do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{sensitive?: true} = column <- column(model, name),
@@ -2271,8 +2256,6 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("reveal", _params, socket), do: {:reply, %{ok: false}, socket}
-
   # Sent by the hook when a person uses a button of a row's actions cell,
   # once they have answered the question of an action that has one: the row
   # by the key in its DOM id, and the action by name.
@@ -2280,7 +2263,7 @@ defmodule AshDataTable.Live.TableComponent do
   # Nothing of it is taken on trust: the action has to be one this table
   # offers this person, and the row one of the page. Whether the action runs
   # straight away or opens its panel is the table's to say, not the event's.
-  def handle_event("act", %{"row" => key, "action" => name}, socket) when is_binary(key) do
+  defp on({:act, key, name}, socket) do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %Model.Action{} = action <- action(model, name),
@@ -2291,8 +2274,6 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("act", _params, socket), do: {:reply, %{ok: false}, socket}
-
   # Sent by the button of a table action: the action by name. It has to be
   # one this table offers this person, and the table has to have read: a
   # table that could not read offers nothing.
@@ -2300,7 +2281,7 @@ defmodule AshDataTable.Live.TableComponent do
   # An action with inputs opens the action panel, and nothing runs. One
   # with a question has the hook ask it, and runs when the answer comes
   # (`table_run`). Any other runs now.
-  def handle_event("table_act", %{"action" => name}, socket) do
+  defp on({:table_act, name}, socket) do
     %{id: id, model: model} = socket.assigns.table.entry
 
     case table_action(socket.assigns.table.entry, name) do
@@ -2337,15 +2318,12 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the hook once the person has answered the question of a table
   # action with Confirm: the action runs. Whether it has a panel is the
   # table's to say, not the event's.
-  def handle_event("table_run", %{"action" => name}, socket) do
+  defp on({:table_run, name}, socket) do
     case table_action(socket.assigns.table.entry, name) do
       %Model.Action{panel?: false} = action -> {:noreply, run_table(socket, action)}
       _none_or_with_inputs -> {:noreply, socket}
     end
   end
-
-  def handle_event(event, _params, socket) when event in ["table_act", "table_run"],
-    do: {:noreply, socket}
 
   # Sent by the hook when a person uses a button of the line above the grid,
   # with what they have selected: `rows`, each as the hook names it (its
@@ -2357,8 +2335,8 @@ defmodule AshDataTable.Live.TableComponent do
   # The rows are not looked up among those of the page, as a selection
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
-  def handle_event("bulk", params, socket) do
-    with {:ok, action, selection} <- bulk(params, socket.assigns.table.entry) do
+  defp on({:bulk, name, selection}, socket) do
+    with {:ok, action, selection} <- bulk(name, selection, socket.assigns.table.entry) do
       question = question(action, selected(selection, socket.assigns.table.entry))
 
       if action.panel?,
@@ -2372,8 +2350,8 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the hook once the person has answered that question with
   # Confirm, for an action without a panel: the action runs on what is
   # selected. Whether it has a panel is the table's to say, not the event's.
-  def handle_event("bulk_run", params, socket) do
-    case bulk(params, socket.assigns.table.entry) do
+  defp on({:bulk_run, name, selection}, socket) do
+    case bulk(name, selection, socket.assigns.table.entry) do
       {:ok, %Model.Action{panel?: false} = action, selection} ->
         {:noreply, run_bulk(socket, action, selection, %{})}
 
@@ -2384,17 +2362,15 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Sent by the hook when the person changes the selection while the table
   # still says what the last run came to: that is said no longer.
-  def handle_event("bulk_seen", _params, socket), do: {:noreply, put(socket, result: nil)}
+  defp on(:bulk_seen, socket), do: {:noreply, put(socket, result: nil)}
 
   # Sent by the panel's form as the person types: what its fields hold. The
   # action is given it, as `AshPhoenix.Form.validate/3` does, and says what
   # it makes of it; nothing runs.
-  def handle_event(
-        "panel_validate",
-        params,
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      ) do
-    typed = typed(params)
+  defp on(
+         {:panel_validate, typed},
+         %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+       ) do
     form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
     # a field whose record was chosen is one the person has been in
     used = MapSet.union(used(typed), panel.picked)
@@ -2410,13 +2386,10 @@ defmodule AshDataTable.Live.TableComponent do
   #
   # A wall time that the page's zone does not have runs nothing: the panel
   # says so at its field (`AshDataTable.Act.gaps/3`).
-  def handle_event(
-        "panel_submit",
-        params,
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      ) do
-    typed = typed(params)
-
+  defp on(
+         {:panel_submit, typed},
+         %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+       ) do
     if Act.gaps(panel.inputs, typed, panel.time_zone) == %{},
       do: filed(socket, sent(panel, typed), &submit(socket, &1, typed)),
       else: {:noreply, failed_panel(socket, sent(%{panel | typed: typed}, typed), nil)}
@@ -2427,17 +2400,14 @@ defmodule AshDataTable.Live.TableComponent do
   # the way to the group, as the names it is sent under. The panel is
   # rendered again with the group, or without it, and the action is told as
   # it is of anything typed. The answer says where focus goes.
-  def handle_event(
-        event,
-        %{"path" => path},
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      )
-      when event in ["panel_add", "panel_remove"] and is_list(path) do
-    change = if event == "panel_add", do: :add, else: :remove
+  defp on(
+         {event, [name | rest]},
+         %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+       )
+       when event in [:panel_add, :panel_remove] do
+    change = if event == :panel_add, do: :add, else: :remove
 
-    with [name | rest] when is_binary(name) <- path,
-         true <- Enum.all?(rest, &is_binary/1),
-         %{} = input <-
+    with %{} = input <-
            Enum.find(panel.inputs, &(Model.group?(&1) and Atom.to_string(&1.name) == name)),
          {:ok, held, focus} <-
            regroup(input, panel.groups[name], rest, change, panel.time_zone) do
@@ -2456,14 +2426,14 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event(event, _params, socket) when event in ["panel_add", "panel_remove"],
+  defp on({event, _path}, socket) when event in [:panel_add, :panel_remove],
     do: {:reply, %{}, socket}
 
   # Sent by the hook when a person opens the editor of a map cell: the row
   # by the key in its DOM id, and the column. The side panel opens with the
   # value's fields; nothing is saved. The record is read first, as the
   # person.
-  def handle_event("edit", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+  defp on({:edit, key, name}, socket) do
     %{id: id, model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true} = column <- column(model, name),
@@ -2512,19 +2482,15 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("edit", _params, socket), do: {:reply, %{ok: false}, socket}
-
   # Sent by the panel's hook when a person uses the button that takes one
   # of the chosen records out of a field that holds several: the field, and
   # the record's key as the field holds it. The panel is rendered again
   # without it, and the action is told as it is of anything typed. The
   # answer says where focus goes: to what stands where the record stood.
-  def handle_event(
-        "panel_unpick",
-        %{"input" => name, "key" => key},
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      )
-      when is_binary(name) and is_binary(key) do
+  defp on(
+         {:panel_unpick, name, key},
+         %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+       ) do
     with %{editor: :references} = input <- reference_input(panel, name),
          at when is_integer(at) <- Enum.find_index(panel.refs[name], &(&1 == key)) do
       keys = List.delete_at(panel.refs[name], at)
@@ -2544,7 +2510,7 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("panel_unpick", _params, socket), do: {:reply, %{}, socket}
+  defp on({:panel_unpick, _name, _key}, socket), do: {:reply, %{}, socket}
 
   # Sent by the panel's hook for the button beside a sensitive field of a
   # row action's panel: "Clear", and "Keep", which takes it back. The panel
@@ -2552,14 +2518,14 @@ defmodule AshDataTable.Live.TableComponent do
   # runs. Only for a field the panel offers it for
   # (`AshDataTable.Act.clearable/3`). The answer says where focus goes: back to
   # the button.
-  def handle_event(
-        "panel_clear",
-        %{"input" => name},
-        %{
-          assigns: %{table: %{entry: %{panel: %{clearable: clearable, cleared: cleared} = panel}}}
-        } = socket
-      )
-      when is_binary(name) do
+  defp on(
+         {:panel_clear, name},
+         %{
+           assigns: %{
+             table: %{entry: %{panel: %{clearable: clearable, cleared: cleared} = panel}}
+           }
+         } = socket
+       ) do
     case Enum.find(clearable, &(Atom.to_string(&1) == name)) do
       nil ->
         {:reply, %{}, socket}
@@ -2575,17 +2541,17 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("panel_clear", _params, socket), do: {:reply, %{}, socket}
+  defp on({:panel_clear, _name}, socket), do: {:reply, %{}, socket}
 
   # Sent by the panel's hook for Cancel and Escape.
-  def handle_event("panel_cancel", _params, socket),
+  defp on(:panel_cancel, socket),
     do: {:noreply, put(socket, panel: nil, picker: nil)}
 
   # Sent by the hook when a person opens the editor of a reference cell: the
   # row by the key in its DOM id, and the column. The picker opens; nothing
   # is saved. The record is read first, as the person: the picker opens on
   # the record the cell points at now.
-  def handle_event("pick", %{"row" => key, "column" => name}, socket) when is_binary(key) do
+  defp on({:pick, key, name}, socket) do
     %{model: model, rows: rows} = socket.assigns.table.entry
 
     with %{editable?: true, kind: :reference, reference: reference} = column <-
@@ -2626,17 +2592,13 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("pick", _params, socket), do: {:reply, %{ok: false}, socket}
-
   # Sent by the button of a field of the action panel that holds the key of
   # a related record: the picker opens on top of the panel, on the record
   # the field holds now.
-  def handle_event(
-        "pick_input",
-        %{"input" => name},
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      )
-      when is_binary(name) do
+  defp on(
+         {:pick_input, name},
+         %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
+       ) do
     case reference_input(panel, name) do
       nil ->
         {:noreply, socket}
@@ -2679,7 +2641,7 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("pick_input", _params, socket), do: {:noreply, socket}
+  defp on({:pick_input, _name}, socket), do: {:noreply, socket}
 
   # Sent by the picker's hook when the person has chosen: the row they
   # selected, as the grid's hook names it (its primary key), or nil for no
@@ -2689,23 +2651,21 @@ defmodule AshDataTable.Live.TableComponent do
   #
   # The row is a claim. Which cell or field it is chosen for is the
   # server's to say, from what the picker was opened for.
-  def handle_event(
-        "picked",
-        params,
-        %{assigns: %{table: %{entry: %{picker: %{} = picker}}}} = socket
-      )
-      when is_map(params) do
+  defp on(
+         {:picked, picked},
+         %{assigns: %{table: %{entry: %{picker: %{} = picker}}}} = socket
+       ) do
     %{model: model, rows: rows, panel: panel} = socket.assigns.table.entry
-    named = params["row"]
+    named = picked.row
     # what the picker's read action is given: what its argument line holds
-    arguments = picked_with(socket.assigns, picker.reference, params["arguments"])
+    arguments = picked_with(socket.assigns, picker.reference, picked.arguments)
 
     case picker.for do
       {:cell, key, name} ->
         with %{editable?: true, kind: :reference} = column <-
                Enum.find(model.columns, &(&1.name == name)),
              %{} = row <- rows[key] do
-          refer(socket, key, row, column, named, params["confirmed"] == true, arguments)
+          refer(socket, key, row, column, named, picked.confirmed?, arguments)
         else
           _ -> {:reply, %{ok: false}, put(socket, picker: nil)}
         end
@@ -2713,7 +2673,7 @@ defmodule AshDataTable.Live.TableComponent do
       {:input, name} ->
         case panel && reference_input(panel, Atom.to_string(name)) do
           %{editor: :references} = input ->
-            choose_inputs(socket, panel, input, params["rows"], arguments)
+            choose_inputs(socket, panel, input, picked.rows, arguments)
 
           %{} = input ->
             choose_input(socket, panel, input, named, arguments)
@@ -2724,24 +2684,20 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("picked", _params, socket), do: {:reply, %{ok: false}, socket}
+  defp on({:picked, _picked}, socket), do: {:reply, %{ok: false}, socket}
 
   # Sent by the picker's hook for Cancel and Escape.
-  def handle_event("picker_cancel", _params, socket),
+  defp on(:picker_cancel, socket),
     do: {:noreply, put(socket, picker: nil)}
 
   # the form of a panel that is no longer open
-  def handle_event(event, _params, socket) when event in ["panel_validate", "panel_submit"],
+  defp on({event, _typed}, socket) when event in [:panel_validate, :panel_submit],
     do: {:noreply, socket}
 
   # Sent by the table's create button. The panel opens with the form of the
   # create action; nothing is created yet. A nested table creates under the
   # row it belongs to, which is read first, as the person.
-  def handle_event(
-        "create",
-        _params,
-        %{assigns: %{table: %{entry: %{model: %{create: %{} = action}}}}} = socket
-      ) do
+  defp on(:create, %{assigns: %{table: %{entry: %{model: %{create: %{} = action}}}}} = socket) do
     %{id: id, model: model} = socket.assigns.table.entry
 
     case parent_link(socket.assigns, action) do
@@ -2767,11 +2723,11 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("create", _params, socket), do: {:noreply, socket}
+  defp on(:create, socket), do: {:noreply, socket}
 
   # Sent by the hook when a person presses Escape on a cell whose save has
   # failed: the edit is given up, and the cell shows its record's value again.
-  def handle_event("discard", %{"row" => key, "column" => name}, socket) do
+  defp on({:discard, key, name}, socket) do
     with %{} = column <- column(socket.assigns.table.entry.model, name),
          %{record: record, cells: %{}} <- socket.assigns.table.entry.failed[key] do
       {:noreply, socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
@@ -2780,11 +2736,9 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("discard", _params, socket), do: {:noreply, socket}
-
   # Sent by the hook when a person presses Escape on a row's actions cell
   # that shows the message of an action that failed: the message is given up.
-  def handle_event("dismiss", %{"row" => key}, socket) do
+  defp on({:dismiss, key}, socket) do
     case socket.assigns.table.entry.failed[key] do
       %{record: record, action: message} when is_binary(message) ->
         {:noreply, socket |> put_action_failure(key, record, nil) |> put_row(key, record)}
@@ -2794,13 +2748,11 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("dismiss", _params, socket), do: {:noreply, socket}
-
   # Sent by the hook for a row it was asked about (`ash_data_table:leaving`): no
   # cell of the row is being edited, and it can go. Only a row that is on
   # its way out is taken away, and only while nothing is open in it or
   # under it: then it waits, and is asked about again when that is closed.
-  def handle_event("left", %{"row" => row}, socket) when is_binary(row) do
+  defp on({:left, row}, socket) do
     %{leaving: leaving, rows: rows} = socket.assigns.table.entry
 
     cond do
@@ -2816,12 +2768,30 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
-  def handle_event("left", _params, socket), do: {:noreply, socket}
-
   # Sent by "Read again", beside the notice that there are new or changed
   # records: the page is read again as it is asked for now, with its sort,
   # filters and position.
-  def handle_event("read_again", _params, socket), do: {:noreply, reread(socket)}
+  defp on(:read_again, socket), do: {:noreply, reread(socket)}
+
+  # What an event of a shape the table never sends is answered with: what
+  # the hook that sends it takes as "nothing came of it". An event the table
+  # does not know has no answer: it is no event of the table's.
+  defp malformed(event, socket)
+       when event in ~w(save clear reveal act bulk edit pick picked),
+       do: {:reply, %{ok: false}, socket}
+
+  defp malformed("expand", socket), do: {:reply, %{open: false}, socket}
+
+  defp malformed(event, socket)
+       when event in ~w(panel_add panel_remove panel_unpick panel_clear),
+       do: {:reply, %{}, socket}
+
+  defp malformed(event, socket)
+       when event in ~w(sort filter clear_filter clear_filters arguments argument_add
+                        argument_remove page page_size toggle table_act table_run bulk_run
+                        bulk_seen panel_validate panel_submit panel_cancel pick_input
+                        picker_cancel create discard dismiss left read_again),
+       do: {:noreply, socket}
 
   # Every update, event and answer ends the same way: see `tidy/1`.
   defoverridable update: 2, handle_event: 3, handle_async: 3
@@ -3516,9 +3486,6 @@ defmodule AshDataTable.Live.TableComponent do
 
   # What the panel's form sends: the values of its fields, by name. Which of
   # them are taken is decided where the action is given them (`AshDataTable.Act`).
-  defp typed(%{"panel" => %{} = params}), do: params
-  defp typed(_params), do: %{}
-
   # The fields of the panel a person has been in, by name. The browser says
   # which they have not (`_unused_NAME`, as for `Phoenix.Component.used_input?/1`),
   # and the action is not given that.
@@ -3562,22 +3529,25 @@ defmodule AshDataTable.Live.TableComponent do
   # An action and a selection as an event names them: the action among those
   # this table offers this person for a selection, by its name as text, and
   # the selection as far as it is one. None while another run is on its way.
-  defp bulk(params, %{running: nil, bulk: bulk} = assigns) when is_map(params) do
-    with name when is_binary(name) <- params["action"],
-         %Model.Action{} = action <- Enum.find(bulk, &(Atom.to_string(&1.name) == name)),
-         selection when not is_nil(selection) <- selection(params, assigns) do
+  defp bulk(name, selection, %{running: nil, bulk: bulk} = assigns) do
+    with %Model.Action{} = action <- Enum.find(bulk, &(Atom.to_string(&1.name) == name)),
+         selection when not is_nil(selection) <- selection(selection, assigns) do
       {:ok, action, selection}
     else
       _ -> :error
     end
   end
 
-  defp bulk(_params, _assigns), do: :error
+  defp bulk(_name, _selection, _assigns), do: :error
 
-  # "All that match" is of a table that has read; rows are at least one.
-  defp selection(%{"all" => true}, %{page: %Query.Page{}}), do: :all
-  defp selection(%{"rows" => [_ | _] = rows}, _assigns), do: {:rows, rows}
-  defp selection(_params, _assigns), do: nil
+  # "All that match" is of a table that has read; rows are at least one
+  # (`AshDataTable.Intent`). An event that says both is of every record
+  # where the table has read, and else of the rows.
+  defp selection(all, %{page: %Query.Page{}}) when all == :all or elem(all, 0) == :all,
+    do: :all
+
+  defp selection({_rows_or_all, rows}, _assigns), do: {:rows, rows}
+  defp selection(:all, _assigns), do: nil
 
   # How many records a selection is: the rows that were named, or what the
   # last read counted, nil where the read action does not count.
