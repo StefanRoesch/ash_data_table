@@ -1,5 +1,8 @@
 # Stage 5: design note (nested tables and pickers without live components)
 
+
+> **Decided by the owner, 2026-10-15:** all recommendations D1–D9 accepted, incl. D5 (a new test group K: the nested-upload part of `label_import_test.exs:280` moves into a browser test; the demo test keeps the part up to the panel) and D8 (the measurable stability rule; two fixing attempts, then the fallback, and the owner is told). Also from the stage 3c drift check: the actor-change race (`nested_create_test.exs:127`) is fixed in this stage — when who is asking changes, what is open below closes first; and the changed expected value in `argument_line_test.exs:170–171` is kept as an agreed change.
+
 Status: **for the owner to decide.** Nothing of it is built. Code references are of `9f1031f` (the end of stage 3c). Names follow [target.md](target.md); words follow `CONTEXT.md`. The decisions are in section 8.
 
 Stage 5 runs before stage 4 (RQ2). It is the riskiest stage: the mechanism that shows a nested table changes. The research proved it in a toy (`ash_reference/headless-table-architecture.md` §10, files under `…/scratchpad/headless-research/exp/`: `lib/portal_live.ex`, `test/portal_test.exs`, `browser/portal.mjs`). This note says how it fits the real code.
