@@ -272,7 +272,7 @@ Still allowed after 3c: the couplings through data that xref cannot see and that
 | Wording drifts in 3b | the demo suite asserts texts; German tests; snapshots |
 | Root tests of groups B and C | arguments unchanged; only the agreed new group (D3) changes, and only the expected value |
 | `Intent` stricter than today | it refuses no payload today's clauses accept; the demo tests that send odd payloads through `forge/5` must stay green unchanged |
-| Change tracking: more bytes per action | `demo/perf/baseline.mjs` after 3a and 3c. The prefixed event names add a few bytes to a first render; the bytes of an event must not grow |
+| Change tracking: more bytes per action | `demo/perf/baseline.mjs` after 3a and 3c. Growth is measured and explained, not forbidden (owner, 2026-10-15). After 3c: page change +660 bytes (0.4%), nested table about +890 (3%), picker +444, a keystroke in a panel +104 (2%), cell save and expand unchanged — event names inside `:for` items now carry the table id, which LiveView sends per item; accepted |
 | The 3c move hides a change | move first, alone, like stage 1; then the namespacing, then fail mode, each its own commit |
 | Diff size | 3a about 1,000 lines changed, 3b about 1,500 (2a and the handlers), 3c about 3,700 moved. Each sub-stage is its own green run and drift check (F6) |
 | The order of a write changes with `Operation` | one function per write; root tests for `Operation` that drive each step (refused claim, veto, gone record), with a mutation check on the re-read |
