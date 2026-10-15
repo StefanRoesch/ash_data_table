@@ -167,8 +167,13 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       {grid, _} = :binary.match(html, ~s(id="stock-grid"))
       assert line < grid
 
-      assert attribute(html, "#stock-arguments", "phx-change") == ["arguments"]
-      assert attribute(html, "#stock-arguments", "phx-submit") == ["arguments"]
+      assert attribute(html, "#stock-arguments", "phx-change") == [
+               "ash_data_table:stock:arguments"
+             ]
+
+      assert attribute(html, "#stock-arguments", "phx-submit") == [
+               "ash_data_table:stock:arguments"
+             ]
 
       # every control of one value has a label that names it
       for name <- ~w(term at_least kind any_kind? on at key amount_asked-rate) do
