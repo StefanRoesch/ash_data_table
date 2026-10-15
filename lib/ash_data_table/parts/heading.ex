@@ -50,9 +50,9 @@ defmodule AshDataTable.Parts.Heading do
     """
   end
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :heading, :any, required: true
   attr :id, :any, required: true
   attr :label, :any, required: true

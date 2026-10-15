@@ -1069,9 +1069,8 @@ defmodule AshDataTable.Act do
     end
   end
 
-  @doc "Everything a form's errors say, as the messages of an action that failed."
-  @spec messages(form, Model.t()) :: [Errors.message()]
-  def messages(form, %Model{} = model) do
+  # Everything a form's errors say, as the messages of an action that failed.
+  defp messages(form, %Model{} = model) do
     case Errors.of_form(form, model, nil, {:text, :action_not_allowed, []}) do
       [] -> [{:text, :action_failed, []}]
       messages -> messages

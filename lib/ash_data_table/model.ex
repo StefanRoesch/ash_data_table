@@ -1030,18 +1030,6 @@ defmodule AshDataTable.Model do
   end
 
   @doc """
-  What a field of the resource is called in this table: the label of its
-  column, or its humanised name when the table has no column for it.
-  """
-  @spec field_label(t, atom) :: String.t()
-  def field_label(%__MODULE__{columns: columns}, name) when is_atom(name) do
-    case Enum.find(columns, &(&1.name == name)) do
-      nil -> humanize(name)
-      column -> column.label
-    end
-  end
-
-  @doc """
   The relationship of the table that a person names, looked up by its name as
   text, so that text from the outside is never turned into an atom. Nil when
   the table, as this model has it, offers none of that name.

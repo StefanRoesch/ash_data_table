@@ -21,9 +21,9 @@ defmodule AshDataTable.Parts.Messages do
       bulk != [] or Enum.any?(model.columns, & &1.confirm) or
         Enum.any?(model.actions ++ model.table_actions, & &1.confirm)
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :id, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
@@ -53,9 +53,9 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :announcement, :any, required: true
   attr :announcements, :any, required: true
   attr :id, :any, required: true
@@ -77,9 +77,9 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :acting?, :any, required: true
   attr :editing?, :any, required: true
   attr :id, :any, required: true
@@ -93,9 +93,9 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :id, :any, required: true
 
   def whole(assigns) do
@@ -120,9 +120,9 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :bulk, :any, required: true
   attr :id, :any, required: true
   attr :model, :any, required: true
@@ -154,9 +154,9 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :error, :any, required: true
   attr :fill, :any, required: true
   attr :id, :any, required: true

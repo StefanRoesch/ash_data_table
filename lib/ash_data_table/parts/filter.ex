@@ -241,9 +241,9 @@ defmodule AshDataTable.Parts.Filter do
 
   defp operator_text(operator), do: Text.t(String.to_existing_atom("operator_#{operator}"))
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :id, :any, required: true
   attr :myself, :any, required: true
 

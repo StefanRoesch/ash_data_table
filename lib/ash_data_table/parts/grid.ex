@@ -631,9 +631,9 @@ defmodule AshDataTable.Parts.Grid do
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
-  # Part of the component's `render/1` until stage 1 of the refactor. Its
-  # markup keeps the indentation it had there, held by `phx-no-format`, so
-  # that the text in it, and with it the page, is the same byte for byte.
+  # Its markup keeps the indentation it had in the table component's
+  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
+  # the page, is the same byte for byte.
   attr :acting?, :any, required: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
