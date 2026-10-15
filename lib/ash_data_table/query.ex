@@ -41,6 +41,7 @@ defmodule AshDataTable.Query do
   #   * #32: see `AshDataTable.Resource.Reading.apart/2`. The aggregates it
   #     names are loaded last, in a step that holds nothing else.
 
+  alias AshDataTable.Errors
   alias AshDataTable.Model
   alias AshDataTable.Model.Argument
   alias AshDataTable.Resource.Operator
@@ -701,11 +702,11 @@ defmodule AshDataTable.Query do
   # The message of an error about an argument, as the host translates the
   # messages of actions.
   defp said(%{message: message} = error) when is_binary(message),
-    do: {:ash, message, Map.get(error, :vars) || []}
+    do: Errors.ash({message, Map.get(error, :vars) || []})
 
   defp said(%Ash.Error.Unknown.UnknownError{error: message, value: vars})
        when is_binary(message),
-       do: {:ash, message, if(Keyword.keyword?(vars), do: vars, else: [])}
+       do: Errors.ash({message, if(Keyword.keyword?(vars), do: vars, else: [])})
 
   defp said(_error), do: {:text, :invalid_filter, []}
 

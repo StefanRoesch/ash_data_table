@@ -44,9 +44,24 @@ defmodule AshDataTable.Errors do
   def joined([message]), do: message
   def joined(messages), do: {:once, "; ", messages}
 
-  @doc "An action's message with its variables, as a message."
+  @doc """
+  An action's message with its variables, as a message: only those the
+  message names, and `count`, which a translation's plural form is chosen
+  by. What else Ash gives (`field`, `index`, a custom validation's own,
+  which may hold what was typed) goes no further.
+  """
   @spec ash({String.t(), keyword | map}) :: message
-  def ash({message, vars}) when is_binary(message), do: {:ash, message, vars}
+  def ash({message, vars}) when is_binary(message) do
+    named = for [_, name] <- Regex.scan(~r/%\{(\w+)\}/, message), into: MapSet.new(), do: name
+
+    kept =
+      for {name, value} <- List.wrap(if(is_map(vars), do: Map.to_list(vars), else: vars)),
+          is_atom(name) or is_binary(name),
+          to_string(name) in named or to_string(name) == "count",
+          do: {name, value}
+
+    {:ash, message, kept}
+  end
 
   @doc """
   The text of a message about `field`, as it is shown on a cell of the column
@@ -121,7 +136,7 @@ defmodule AshDataTable.Errors do
   """
   @spec without_field(term) :: message | nil
   def without_field(%{class: :invalid, message: message} = error) when is_binary(message),
-    do: {:ash, message, Map.get(error, :vars) || []}
+    do: ash({message, Map.get(error, :vars) || []})
 
   def without_field(_error), do: nil
 

@@ -1278,7 +1278,7 @@ defmodule AshDataTable.ModelTest do
       assert errors[[:places, 0, :street]] == [{:ash, "is refused", []}]
       assert errors[[:contact, :places, 2, :street]] == [{:ash, "is refused", []}]
       # among its variables, as for an array of maps
-      assert errors[[:entries, 1, :label]] == [{:ash, "is refused", [index: 1]}]
+      assert errors[[:entries, 1, :label]] == [{:ash, "is refused", []}]
     end
 
     test "at a value inside the value, when the error is about that value as a whole", %{
@@ -4485,8 +4485,7 @@ defmodule AshDataTable.ModelTest do
 
       assert refused == %{
                {:amount_asked, :rate} => [
-                 {:ash, "must be greater than or equal to %{min}",
-                  [message: "must be greater than or equal to %{min}", min: 1]}
+                 {:ash, "must be greater than or equal to %{min}", [min: 1]}
                ]
              }
     end

@@ -419,7 +419,7 @@ defmodule AshDataTable.SensitiveTest do
     test "says what the action says where it refuses", %{} do
       pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: 1})
 
-      assert {:error, record, {:ash, "stays on a pinned vault", [keys: "pin", exactly: 1]}, []} =
+      assert {:error, record, {:ash, "stays on a pinned vault", []}, []} =
                Edit.clear(model(), column(:pin), %{id: pinned.id}, actor: @admin)
 
       assert record.pin == 1
@@ -548,7 +548,7 @@ defmodule AshDataTable.SensitiveTest do
                run(reissue, %{id: pinned.id}, %{"token" => "t2"}, cleared: [:pin])
 
       assert Act.errors(form, model(), reissue.inputs) == %{
-               pin: [{:ash, "stays on a pinned vault", [keys: "pin", exactly: 1]}]
+               pin: [{:ash, "stays on a pinned vault", []}]
              }
 
       assert stored(%{id: pinned.id}).pin == 1
