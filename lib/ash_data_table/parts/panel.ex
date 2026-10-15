@@ -11,27 +11,25 @@ defmodule AshDataTable.Parts.Panel do
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
-  alias AshDataTable.Resource.Exposing
+  alias AshDataTable.Present
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
   # The action panel: where a person gives the inputs of a row action, or of
   # the create action, before it runs. A modal dialog at the right edge of
   # the window, which its hook opens when it is put into the page and which
-  # goes when the server takes it out again. Its form is an
-  # `AshPhoenix.Form` of the action, kept by the table while the panel is
-  # open: what is typed is given to the action as it is typed, and the
-  # action's errors are shown at their fields.
+  # goes when the server takes it out again. Its form is the form of an
+  # `AshPhoenix.Form` of the action, which the table keeps while the panel
+  # is open: what is typed is given to the action as it is typed, and the
+  # action's errors are shown at their fields. What is drawn is what
+  # `AshDataTable.Present.panel/2` gives of it (`panel`): never the form.
   attr :id, :string, required: true
-  attr :panel, :map, required: true
-  # the file fields, by name: the upload LiveView keeps for each, and what
-  # is said of its file (`errors`), as the live layer tells it
+  attr :panel, Present.Panel, required: true
+  # the file fields, by name: the upload LiveView keeps for each
   attr :files, :map, default: %{}
   attr :target, :any, required: true
 
   def panel(assigns) do
-    assigns = assign(assigns, form: to_form(assigns.panel.form))
-
     ~H"""
     <%!-- `open` is the hook's: a patch leaves it alone. Not daisyUI's `modal`,
     for the reason given at the other dialog. --%>
@@ -40,17 +38,17 @@ defmodule AshDataTable.Parts.Panel do
       phx-hook="AshDataTable.Live.TableComponent.Panel"
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
-      data-question={Map.get(@panel, :question) || @panel.action.confirm}
+      data-question={@panel.question}
       data-ask={@panel.kind == :cell && "changed"}
-      data-destructive={@panel.action.type == :destroy}
+      data-destructive={@panel.destructive?}
       aria-labelledby={"#{@id}-panel-title"}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
     >
       <%!-- `novalidate`, for the reason given at the argument line: the
       limits on a field describe, and the action judges. --%>
-      <.form
-        for={@form}
+      <form
         id={"#{@id}-panel-form"}
+        method={@panel.method}
         phx-change="panel_validate"
         phx-submit="panel_submit"
         phx-target={@target}
@@ -59,40 +57,25 @@ defmodule AshDataTable.Parts.Panel do
         <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{@panel.title}</h2>
         <%!-- what the action says that is about none of the fields --%>
         <div
-          :if={@panel.errors[nil]}
+          :if={@panel.errors}
           id={"#{@id}-panel-errors"}
           role="alert"
           class="mb-4 text-sm font-medium"
         >
-          <p :for={message <- @panel.errors[nil]}>{message}</p>
+          <p :for={message <- @panel.errors}>{message}</p>
         </div>
         <.field
-          :for={input <- @panel.inputs}
-          id={"#{@id}-panel-f-#{input.name}"}
-          input={input}
-          name={@form[input.name].name}
-          value={panel_value(@panel, @form, input)}
-          errors={field_errors(@panel, input, @files)}
-          places={field_places(@panel, input, @files)}
-          chosen={@panel.chosen[input.name]}
-          clear={
-            cond do
-              input.name in @panel.cleared -> :asked
-              input.name in @panel.clearable -> :offered
-              true -> nil
-            end
-          }
-          upload={@files[input.name][:upload]}
-          inside={
-            %{
-              errors: @panel.errors,
-              touched: @panel.touched,
-              submitted?: @panel.submitted?,
-              place: [input.name],
-              path: [Atom.to_string(input.name)],
-              time_zone: @panel.time_zone
-            }
-          }
+          :for={field <- @panel.fields}
+          id={"#{@id}-panel-f-#{field.name}"}
+          input={field.input}
+          name={field.form_name}
+          value={field.value}
+          errors={field.errors}
+          places={field.places}
+          chosen={field.chosen}
+          clear={field.clear}
+          upload={@files[field.name][:upload]}
+          inside={Map.merge(@panel.inside, %{place: [field.name], path: field.path})}
           target={@target}
         />
         <div class="mt-6 flex justify-end gap-2">
@@ -102,102 +85,14 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="submit"
             id={"#{@id}-panel-submit"}
-            class={["btn", if(@panel.action.type == :destroy, do: "btn-error", else: "btn-primary")]}
+            class={["btn", if(@panel.destructive?, do: "btn-error", else: "btn-primary")]}
           >
             {@panel.submit}
           </button>
         </div>
-      </.form>
+      </form>
     </dialog>
     """
-  end
-
-  # What a field of the panel holds, as its control holds it: a field made
-  # of groups as its form sends it; the field of an argument that is given
-  # by choosing related records their keys, as the panel keeps them (a list
-  # for several, one key or "" for one); a sensitive field what was typed
-  # into it; and any other what the action's form holds for it
-  # (`field_value/3`).
-  defp panel_value(panel, form, input) do
-    name = Atom.to_string(input.name)
-
-    cond do
-      Model.group?(input) ->
-        panel.groups[name]
-
-      is_map_key(panel.refs, name) and input.editor == :references ->
-        panel.refs[name]
-
-      is_map_key(panel.refs, name) ->
-        List.first(panel.refs[name], "")
-
-      # A sensitive field holds what was typed into it, and nothing else:
-      # never what the record has, nor a default. It starts empty.
-      Exposing.sensitive?(input) ->
-        case panel.typed do
-          %{^name => typed} when is_binary(typed) -> typed
-          _nothing_typed -> ""
-        end
-
-      # A datetime that was typed is shown as it was typed, a wall time in
-      # the page's zone: the form holds the instant it was given as.
-      is_map_key(panel.typed, name) and AshDataTable.Zone.zoned?(input.type) ->
-        field_value(input, Act.typed(input, panel.typed[name], panel.time_zone), false, panel)
-
-      true ->
-        field_value(
-          input,
-          form[input.name].value,
-          panel.kind == :create or input.kind == :argument,
-          panel
-        )
-    end
-  end
-
-  # The errors of a field that are shown: all of them once the person has
-  # used "Run", and until then those of the fields they have been in.
-  # of a file: what the action said of the file it was given
-  # (`files`, with what LiveView says of the file before it)
-  defp field_errors(_panel, %{editor: :file} = input, files) do
-    case Map.get(files, input.name) do
-      %{errors: errors} -> errors
-      nil -> []
-    end
-  end
-
-  # of a union: once they have been at its choice, or in its value
-  defp field_errors(panel, %{editor: :union} = input, _files) do
-    if panel.submitted? or in_union?(panel.touched, [Atom.to_string(input.name)]),
-      do: Map.get(panel.errors, input.name, []),
-      else: []
-  end
-
-  defp field_errors(panel, input, _files) do
-    if panel.submitted? or Atom.to_string(input.name) in panel.used,
-      do: Map.get(panel.errors, input.name, []),
-      else: []
-  end
-
-  # Whether a person has been in the field of a union: at the choice of its
-  # kind, or in the value of the kind. `path` is the way to the field, as
-  # the names it is sent under. That the field was sent says nothing: it
-  # always is, and so are the entries of its own that say what is there
-  # (`_of`, `_present`).
-  defp in_union?(touched, path) do
-    value = path ++ ["_union_value"]
-    inside = Enum.filter(touched, &(List.starts_with?(&1, value) and &1 != value))
-
-    (path ++ ["_union_type"]) in touched or
-      Enum.any?(inside, &(List.last(&1) not in ["_present", "_of"])) or
-      (inside == [] and value in touched)
-  end
-
-  # The values of an array field that the errors shown at it are about, by
-  # their places.
-  defp field_places(panel, input, files) do
-    if field_errors(panel, input, files) == [],
-      do: [],
-      else: panel |> Map.get(:places, %{}) |> Map.get(input.name, [])
   end
 
   # One field of the action panel: its label, the control of its type, and
@@ -227,7 +122,7 @@ defmodule AshDataTable.Parts.Panel do
     value = assigns.value
 
     # typed hidden: a password input in place of the control of its type
-    secret? = Exposing.sensitive?(assigns.input)
+    secret? = Map.get(assigns.input, :sensitive?) == true
 
     # The counter of a text that has a most it can be long, and of each
     # value of an array of such texts. Not of a sensitive one: nothing is
@@ -261,7 +156,7 @@ defmodule AshDataTable.Parts.Panel do
         # holds that key
         called:
           case assigns.chosen do
-            %{^value => %{called: called}} -> called
+            %{^value => %{label: label}} -> called(label)
             _other -> nil
           end,
         # the records a field of several holds, each with its key, what it
@@ -269,7 +164,8 @@ defmodule AshDataTable.Parts.Panel do
         entries:
           if assigns.input.editor == :references do
             for {key, position} <- Enum.with_index(value, 1) do
-              {key, with(%{called: called} <- (assigns.chosen || %{})[key], do: called), position}
+              {key, with(%{label: label} <- (assigns.chosen || %{})[key], do: called(label)),
+               position}
             end
           end
       )
@@ -952,7 +848,7 @@ defmodule AshDataTable.Parts.Panel do
 
     been? =
       if field.editor == :union,
-        do: in_union?(inside.touched, path),
+        do: Present.in_union?(inside.touched, path),
         else: path in inside.touched
 
     if inside.submitted? or been?,
@@ -994,34 +890,10 @@ defmodule AshDataTable.Parts.Panel do
   defp field_type(:plain), do: "text"
   defp field_type(editor), do: Parts.Editors.input_type(editor)
 
-  # Meaning, not drawing: it stays here until `AshDataTable.Present` takes it (stage 3a).
-  #
-  # What a field holds: what the person typed, once they have; else the
-  # value of the record; or, for an input that has no record to take one
-  # from (an argument, an attribute of a record that is being created), its
-  # default. Written as the editor of its type writes it. An attribute that
-  # is empty on a record is empty in the field, whatever its default.
-  #
-  # The field of an array holds a list: the values as they were typed, else
-  # those of the record or of the default, each written as the editor of
-  # its type writes it. Without any it is empty.
-  def field_value(%{cell_type: {:array, _item}} = input, values, default?, panel) do
-    cond do
-      is_list(values) -> Format.input(input, values, panel.time_zone)
-      default? and is_list(input.default) -> Format.input(input, input.default, panel.time_zone)
-      true -> []
-    end
-  end
-
-  def field_value(_input, typed, _default?, _panel) when is_binary(typed), do: typed
-
-  def field_value(%{default: default} = input, nil, true, panel) when not is_nil(default),
-    do: Format.input(input, default, panel.time_zone)
-
-  def field_value(_input, nil, _default?, _panel), do: ""
-
-  def field_value(input, value, _default?, panel),
-    do: Format.input(input, value, panel.time_zone)
+  # What a record that a field holds is called: the value its label is,
+  # as a cell of that column shows it (`AshDataTable.Present.Field`).
+  defp called({column, value, zone}), do: Format.format(column, value, zone)
+  defp called(nil), do: nil
 
   # The values of a multiple choice's field that are none of its choices.
   defp boxless(%{values: values}, held) do

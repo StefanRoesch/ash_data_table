@@ -6,7 +6,7 @@ defmodule AshDataTable.Parts.Picker do
   # component's assigns.
   use Phoenix.Component
 
-  alias AshDataTable.Model
+  alias AshDataTable.Present
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
@@ -20,7 +20,8 @@ defmodule AshDataTable.Parts.Picker do
   # The table is as wide as its columns need, so the dialog is wider than
   # the panel, and the table scrolls sideways in it as it does on a page.
   attr :id, :string, required: true
-  attr :picker, :map, required: true
+  # what `AshDataTable.Present.picker/1` gives of the open picker
+  attr :picker, Present.Picker, required: true
   attr :reader, :map, required: true
   attr :component, :atom, required: true
   attr :target, :any, required: true
@@ -50,17 +51,17 @@ defmodule AshDataTable.Parts.Picker do
       <.live_component
         module={@component}
         id={"#{@id}-pick-#{@picker.name}"}
-        resource={@picker.reference.destination}
+        resource={@picker.destination}
         table={:default}
         select={if @picker.several?, do: :multi, else: :single}
         choose={
           %{
-            read_action: @picker.reference.choose_action,
-            current: {@picker.reference.destination_attribute, @picker.current},
+            read_action: @picker.choose_action,
+            current: {@picker.destination_attribute, @picker.current},
             chosen: @picker.chosen
           }
         }
-        label={Text.label(Model.label(@picker.reference.destination))}
+        label={Text.label(@picker.label)}
         heading={false}
         url={nil}
         mounted?={false}

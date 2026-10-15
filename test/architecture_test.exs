@@ -35,9 +35,7 @@ defmodule AshDataTable.ArchitectureTest do
       2b, for a nested table and for a picker (until stage 4 and 5);
     * the parts name the hooks of the live component by their names, as
       strings (`phx-hook="AshDataTable.Live.TableComponent.Grid"`), and the
-      hooks stay in the component (until stage 1b);
-    * `Parts.Panel` draws from the `AshPhoenix.Form` of the panel, through
-      `to_form/1`, and not from what `Present` gives it (until stage 3a).
+      hooks stay in the component (until stage 1b).
 
   It reports and does not fail until the end of stage 3c of the refactor,
   when `@report_only` becomes false.

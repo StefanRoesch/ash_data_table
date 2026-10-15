@@ -342,8 +342,10 @@ defmodule AshDataTable.Live.TableComponent do
   # A cell of a column whose field is declared `sensitive?` shows a mask,
   # the same for every value, and a button (`data-reveal`); an empty one is
   # empty, as any cell is. The value is not in the page, and not in what the
-  # server keeps of a row: a record is given to the stream with its
-  # sensitive values replaced (`AshDataTable.Sensitive.scrub/2`).
+  # server keeps of a row: a row goes into the stream as
+  # `AshDataTable.Present.row/3` gives it, which replaces the record's
+  # sensitive values first (`AshDataTable.Sensitive.scrub/2`) and gives a
+  # sensitive cell no value at all.
   #
   # The hook asks for the value of one cell with one `reveal` event, with
   # the row and the column, and the server answers with the value as text:
@@ -530,6 +532,7 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Related
   alias AshDataTable.Resource.Listening
   alias AshDataTable.Resource.Notifier
+  alias AshDataTable.Present
   alias AshDataTable.Routes
   alias AshDataTable.Sensitive
   alias AshDataTable.State
@@ -1661,9 +1664,16 @@ defmodule AshDataTable.Live.TableComponent do
     items =
       Enum.flat_map(rows, fn row ->
         current? = current?(socket.assigns.table.entry.choose, model, row.record)
-        record = Sensitive.scrub(row.record, model.columns)
 
-        [item(id, row.key, record, row.rowindex, %{}, false, row.names, current?)] ++
+        [
+          Present.row(model, row.record, %{
+            id: id,
+            key: row.key,
+            rowindex: row.rowindex,
+            names: row.names,
+            current?: current?
+          })
+        ] ++
           if(socket.assigns.table.entry.expandable?,
             do: [detail(id, row.key, nil, nil)],
             else: []
@@ -1770,30 +1780,6 @@ defmodule AshDataTable.Live.TableComponent do
     redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())
   end
 
-  # A row as the stream holds it. `failed` holds what has failed in the row:
-  # under `cells`, by column name, what was typed into a cell whose save
-  # failed and the action's message, and under `action` the message of a row
-  # action that failed. `open?` says whether the row is expanded, and `names`
-  # what the hook names the row by where the key in its id does not (see
-  # `names/3`). `current?` says, in a table to choose from, that this is the
-  # record that is chosen now.
-  #
-  # `record` is the record without its sensitive values
-  # (`AshDataTable.Sensitive.scrub/2`): what a row is rendered from never holds
-  # one.
-  defp item(id, key, record, rowindex, failed, open?, names, current? \\ false) do
-    %{
-      dom_id: "#{id}-row-#{key}",
-      record: record,
-      rowindex: rowindex,
-      failed: Map.get(failed, :cells, %{}),
-      acted: Map.get(failed, :action),
-      open?: open?,
-      names: names,
-      current?: current?
-    }
-  end
-
   # Whether a record of a table to choose from is the one the key points at
   # now: the row the picker opens with, where it is on the page.
   defp current?(%{current: {attribute, value}}, model, record),
@@ -1838,23 +1824,21 @@ defmodule AshDataTable.Live.TableComponent do
     names = names(model, record, key)
     # in a table to choose from: whether this is the record chosen now
     current? = current?(socket.assigns.table.entry.choose, model, record)
-    record = Sensitive.scrub(record, model.columns)
 
     # a row is put back after something was done with its record
     socket
     |> due(:force)
     |> stream_insert(
       :rows,
-      item(
-        id,
-        key,
-        record,
-        rows[key].rowindex,
-        failed[key] || %{},
-        is_map_key(open, key),
-        names,
-        current?
-      )
+      Present.row(model, record, %{
+        id: id,
+        key: key,
+        rowindex: rows[key].rowindex,
+        failed: failed[key],
+        open?: is_map_key(open, key),
+        names: names,
+        current?: current?
+      })
     )
   end
 
@@ -1966,14 +1950,17 @@ defmodule AshDataTable.Live.TableComponent do
   # record by that holds something this person may see on it. Nil when none
   # does.
   defp title_of(model, record) do
-    model
-    |> Model.naming()
-    |> Enum.find_value(fn column ->
-      case Map.get(record, column.name) do
-        %Ash.ForbiddenField{} -> nil
-        %Ash.NotLoaded{} -> nil
-        value -> blank_as_nil(Format.format(column, value, model.time_zone))
-      end
+    case label(model, record) do
+      {column, value} -> Format.format(column, value, model.time_zone)
+      nil -> nil
+    end
+  end
+
+  # The same as a value, with its column (`AshDataTable.Present.label/3`):
+  # a value whose text would be blank calls nothing.
+  defp label(model, record) do
+    Present.label(model, record, fn column, value ->
+      is_nil(blank_as_nil(Format.format(column, value, model.time_zone)))
     end)
   end
 
@@ -3114,7 +3101,7 @@ defmodule AshDataTable.Live.TableComponent do
           _key -> {row_key, names(model, record, row_key)}
         end
 
-      {:ok, {key_text(input, value, zone), %{called: called(reference, record, zone), row: row}}}
+      {:ok, {key_text(input, value, zone), %{label: called(reference, record, zone), row: row}}}
     end
   end
 
@@ -3156,7 +3143,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   defp held_key(panel, input) do
     default? = panel.kind == :create
-    Parts.Panel.field_value(input, AshPhoenix.Form.value(panel.form, input.name), default?, panel)
+    Present.field_value(input, AshPhoenix.Form.value(panel.form, input.name), default?, panel)
   end
 
   # The row the browser named is none of a record this person may read
@@ -3183,14 +3170,20 @@ defmodule AshDataTable.Live.TableComponent do
     do: Text.t(:choose_for, column: label, name: Text.label(Model.name(reference.destination)))
 
   # What a record of a destination is called, as far as this person may see
-  # it on it: for the field of the panel that holds its key.
-  defp called(reference, record, zone),
-    do:
+  # it on it: for the field of the panel that holds its key. A value, with
+  # its column and the zone it is shown in, which the panel formats.
+  defp called(reference, record, zone) do
+    model =
       reference.destination
       |> Model.build()
       |> Model.zoned(zone)
       |> in_words()
-      |> title_of(record)
+
+    case label(model, record) do
+      {column, value} -> {column, value, zone}
+      nil -> nil
+    end
+  end
 
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
@@ -3245,8 +3238,10 @@ defmodule AshDataTable.Live.TableComponent do
   #
   #   * `chosen` is what the panel knows of the records they hold: by
   #     field, and by a record's key as the field writes it, what the
-  #     record is called and what the row of its table is named by
-  #     (`entry/2`); nil for a key of a record this person may not read;
+  #     record is called (`label`: the value of the column it is called by,
+  #     with that column and the zone, which the panel formats) and what
+  #     the row of its table is named by (`entry/3`); nil for a key of a
+  #     record this person may not read;
   #   * `refs` is what the field of an argument holds, by the name it is
   #     sent under: the keys of its records, in their order. An attribute's
   #     field holds what the action's form holds for it; an argument's
@@ -4192,15 +4187,12 @@ defmodule AshDataTable.Live.TableComponent do
       end)
       |> stream_insert(
         :rows,
-        item(
-          id,
-          key,
-          Sensitive.scrub(record, model.columns),
-          first,
-          %{},
-          false,
-          names(model, record, key)
-        ),
+        Present.row(model, record, %{
+          id: id,
+          key: key,
+          rowindex: first,
+          names: names(model, record, key)
+        }),
         at: 0
       )
       |> push_event("ash_data_table:focus", %{table: id, cell: first_cell(id, key, model)})
@@ -4614,7 +4606,7 @@ defmodule AshDataTable.Live.TableComponent do
       <Parts.Panel.panel
         :if={@table.entry.panel}
         id={@table.entry.id}
-        panel={@table.entry.panel}
+        panel={Present.panel(@table.entry.panel, panel_files(assigns))}
         files={panel_files(assigns)}
         target={@myself}
       />
@@ -4623,7 +4615,7 @@ defmodule AshDataTable.Live.TableComponent do
       <Parts.Picker.picker
         :if={@table.entry.picker}
         id={@table.entry.id}
-        picker={@table.entry.picker}
+        picker={Present.picker(@table.entry.picker)}
         reader={picker_reader(assigns)}
         target={@myself}
         component={__MODULE__}

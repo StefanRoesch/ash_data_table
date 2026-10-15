@@ -12,8 +12,6 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
-  alias AshDataTable.Resource.Embedding
-  alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
@@ -395,18 +393,21 @@ defmodule AshDataTable.Parts.Grid do
   # A cell of a sensitive column says that its editor holds nothing
   # (`data-value=""`), and nothing else: what was typed into it is never
   # sent back.
+  #
+  # `row` is a `AshDataTable.Present.Row`: each cell says whether it can be
+  # edited and what failed in it (`AshDataTable.Present.Cell`).
   defp cell_attributes(false, _id, _column, _row, _zone), do: []
 
   defp cell_attributes(true, id, column, row, zone) do
-    value = Model.Column.value(column, row.record)
+    cell = row.cells[column.name]
 
-    case {editable?(column, value, row.record), row.failed[column.name]} do
+    case {cell.editable?, cell.failure} do
       {false, _failure} ->
         [{"aria-readonly", "true"}]
 
       # a reference cell has no editor that holds a value: it is edited in
       # the picker, which opens on the record the row has
-      {true, {_shown, _message, _places}} when column.kind == :reference ->
+      {true, %{}} when column.kind == :reference ->
         [{"aria-invalid", "true"}, {"aria-describedby", "#{id}-error"}]
 
       {true, nil} when column.kind == :reference ->
@@ -414,7 +415,7 @@ defmodule AshDataTable.Parts.Grid do
 
       # The editor of a sensitive cell starts empty, and holds nothing of
       # the record: neither does the cell.
-      {true, {_typed, _message, _places}} when column.sensitive? ->
+      {true, %{}} when column.sensitive? ->
         [
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
@@ -425,17 +426,17 @@ defmodule AshDataTable.Parts.Grid do
       {true, nil} when column.sensitive? ->
         [{"data-value", ""}]
 
-      {true, {typed, _message, places}} ->
+      {true, %{typed: typed, places: places}} ->
         [
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
           {"data-value", held(typed)},
-          {"data-saved", held(Format.input(column, value, zone))}
+          {"data-saved", held(Format.input(column, cell.value, zone))}
         ] ++ if(places == [], do: [], else: [{"data-invalid", held(places)}])
 
       {true, nil} ->
         if own_value?(column),
-          do: [{"data-value", held(Format.input(column, value, zone))}],
+          do: [{"data-value", held(Format.input(column, cell.value, zone))}],
           else: []
     end
   end
@@ -462,14 +463,14 @@ defmodule AshDataTable.Parts.Grid do
   # What the actions cell of a row says about an action that failed: as a
   # cell whose save failed, `aria-invalid` and `aria-describedby` naming the
   # action's message.
-  defp action_attributes(_id, %{acted: nil}), do: []
+  defp action_attributes(_id, %{action_failure: nil}), do: []
 
   defp action_attributes(id, _row),
     do: [{"aria-invalid", "true"}, {"aria-describedby", "#{id}-error"}]
 
-  defp action_failure(_id, %{acted: nil}), do: []
+  defp action_failure(_id, %{action_failure: nil}), do: []
 
-  defp action_failure(id, %{acted: message}),
+  defp action_failure(id, %{action_failure: message}),
     do: Parts.Common.failure_message("#{id}-error", message)
 
   # A cell whose save failed shows what was typed, as the cell would show it
@@ -478,22 +479,22 @@ defmodule AshDataTable.Parts.Grid do
   # the row keeps its height; it is in the text colour on the page's
   # background, as the error colour is too faint for small text.
   defp cell_content(id, column, row, zone) do
-    value = Model.Column.value(column, row.record)
+    cell = row.cells[column.name]
 
-    case editable?(column, value, row.record) && row.failed[column.name] do
+    case cell.failure do
       # a sensitive cell shows what it shows at rest, never what was typed
-      {_typed, message, _places} when column.sensitive? ->
-        {:safe, shown} = column |> cell(value, zone) |> Phoenix.HTML.html_escape()
+      %{message: message} when column.sensitive? ->
+        {:safe, shown} = column |> shown(cell, zone) |> Phoenix.HTML.html_escape()
         {:safe, message} = Parts.Common.failure_message("#{id}-error", message)
         {:safe, [shown, message]}
 
-      {typed, message, _places} ->
-        {:safe, shown} = typed |> typed(column, zone) |> paragraph(column, typed)
+      %{typed: typed, message: message} ->
+        {:safe, shown} = typed |> typed(column, zone) |> paragraph(column, false)
         {:safe, message} = Parts.Common.failure_message("#{id}-error", message)
         {:safe, [shown, message]}
 
-      _none ->
-        column |> cell(value, zone) |> paragraph(column, value)
+      nil ->
+        column |> shown(cell, zone) |> paragraph(column, cell.state == :forbidden)
     end
   end
 
@@ -501,10 +502,10 @@ defmodule AshDataTable.Parts.Grid do
   # what wraps and is cut off after the last line. An empty cell holds
   # nothing, as everywhere, and the cell of a field the person may not see
   # holds what it holds in every column.
-  defp paragraph(shown, %{max_lines: 1}, _value), do: Phoenix.HTML.html_escape(shown)
-  defp paragraph(shown, _column, %Ash.ForbiddenField{}), do: Phoenix.HTML.html_escape(shown)
+  defp paragraph(shown, %{max_lines: 1}, _forbidden?), do: Phoenix.HTML.html_escape(shown)
+  defp paragraph(shown, _column, true), do: Phoenix.HTML.html_escape(shown)
 
-  defp paragraph(shown, _column, _value) do
+  defp paragraph(shown, _column, false) do
     {:safe, shown} = Phoenix.HTML.html_escape(shown)
     if IO.iodata_length(shown) == 0, do: {:safe, shown}, else: {:safe, ["<p>", shown, "</p>"]}
   end
@@ -532,32 +533,16 @@ defmodule AshDataTable.Parts.Grid do
 
   defp typed_value(typed, _item, _column), do: typed
 
-  # Whether a person can edit this cell: its column is editable, and the
-  # field is not hidden from them on this row. The field of a reference cell
-  # is the foreign key an edit of it writes: the cell is edited where they
-  # see the key, whatever they see of the record it points at.
-  defp editable?(%{kind: :reference, editable?: true, reference: reference}, _value, record),
-    do: not is_struct(Map.get(record, reference.source_attribute), Ash.ForbiddenField)
-
-  defp editable?(_column, %Ash.ForbiddenField{}, _record), do: false
-
-  # A map cell that holds something the person may not see (a field that a
-  # field policy of the embedded resource hides) is not theirs to edit.
-  defp editable?(%{editable?: true, cell_type: cell_type}, value, _record)
-       when cell_type in [:map, {:array, :map}, :union],
-       do: not Embedding.hidden?(value)
-
-  defp editable?(column, _value, _record), do: column.editable?
-
+  # What a cell shows, by what it holds (`AshDataTable.Present.Cell`).
+  #
   # A field the actor may not see on this row looks empty and is announced.
-  defp cell(_column, %Ash.ForbiddenField{}, _zone) do
+  defp shown(_column, %{state: :forbidden}, _zone) do
     {:safe, [~s(<span class="sr-only">), escape(Text.t(:not_available)), "</span>"]}
   end
 
   # A record that has no value has an empty cell, whatever its column: what
   # "empty" looks like is the table's to say, in one way for all columns.
-  defp cell(_column, nil, _zone), do: ""
-  defp cell(_column, %Ash.NotLoaded{}, _zone), do: ""
+  defp shown(_column, %{state: :empty}, _zone), do: ""
 
   # A sensitive value is not shown: the cell holds a mask, the same for
   # every value and for the eye only, what a screen reader says in its
@@ -567,39 +552,43 @@ defmodule AshDataTable.Parts.Grid do
   # cell is: that there is nothing is all it says.
   #
   # What is rendered is the same whatever the value is; the value itself is
-  # not in the record a row is rendered from (`AshDataTable.Sensitive.scrub/2`).
-  defp cell(%{sensitive?: true} = column, value, _zone) do
-    if Exposing.empty?(value) do
-      ""
-    else
-      {:safe,
-       [
-         ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
-         Sensitive.mask(),
-         ~s(</span><span data-masked class="sr-only">),
-         escape(Text.t(:hidden_value)),
-         ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),
-         ~s(<button type="button" tabindex="-1" data-reveal data-show="),
-         escape(Text.t(:show)),
-         ~s(" data-hide="),
-         escape(Text.t(:hide)),
-         ~s(" data-show-label="),
-         escape(Text.t(:show_value, column: column.label)),
-         ~s(" data-hide-label="),
-         escape(Text.t(:hide_value, column: column.label)),
-         ~s(" aria-label="),
-         escape(Text.t(:show_value, column: column.label)),
-         ~s(" class="btn btn-xs -my-1 ms-2 shrink-0">),
-         escape(Text.t(:show)),
-         "</button></span>"
-       ]}
-    end
+  # not in what a row is rendered from (`AshDataTable.Present`).
+  defp shown(column, %{state: :masked}, _zone) do
+    {:safe,
+     [
+       ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
+       Sensitive.mask(),
+       ~s(</span><span data-masked class="sr-only">),
+       escape(Text.t(:hidden_value)),
+       ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),
+       ~s(<button type="button" tabindex="-1" data-reveal data-show="),
+       escape(Text.t(:show)),
+       ~s(" data-hide="),
+       escape(Text.t(:hide)),
+       ~s(" data-show-label="),
+       escape(Text.t(:show_value, column: column.label)),
+       ~s(" data-hide-label="),
+       escape(Text.t(:hide_value, column: column.label)),
+       ~s(" aria-label="),
+       escape(Text.t(:show_value, column: column.label)),
+       ~s(" class="btn btn-xs -my-1 ms-2 shrink-0">),
+       escape(Text.t(:show)),
+       "</button></span>"
+     ]}
   end
+
+  defp shown(column, %{state: :value, value: value}, zone), do: cell(column, value, zone)
+
+  # The kind of a union is no sensitive field: what it holds is shown as a
+  # cell of its own type shows it.
+  defp cell(_column, %Ash.ForbiddenField{}, zone), do: shown(nil, %{state: :forbidden}, zone)
+  defp cell(_column, nil, _zone), do: ""
+  defp cell(_column, %Ash.NotLoaded{}, _zone), do: ""
 
   # A column whose component shows: the cell's content is the component's,
   # which is given the value and what the table itself would show for it.
-  # Below the clauses above on purpose: a value that is hidden from the
-  # person never reaches a component, and neither does the lack of one.
+  # Only for a value: a value that is hidden from the person never reaches
+  # a component, and neither does the lack of one.
   defp cell(%{component: %{cell?: true} = component} = column, value, zone) do
     component.module.cell(%{
       __changed__: nil,
@@ -898,14 +887,14 @@ defmodule AshDataTable.Parts.Grid do
           <tbody
             :for={{dom_id, row} <- @streams.rows}
             id={dom_id}
-            hidden={row[:detail?] && is_nil(row.lines)}
-            data-detail={row[:detail?]}
-            data-row={row[:detail?] && row.key}
-            data-key={@selecting && !row[:detail?] && row.names && held(row.names)}
-            data-current={row[:current?]}
+            hidden={detail?(row) && is_nil(row.lines)}
+            data-detail={detail?(row)}
+            data-row={detail?(row) && row.key}
+            data-key={@selecting && !detail?(row) && row.names && held(row.names)}
+            data-current={current?(row)}
             phx-no-format
           ><Parts.Related.lines
-              :if={row[:detail?] && row.lines}
+              :if={detail?(row) && row.lines}
               id={@id}
               row={row}
               model={@model}
@@ -914,7 +903,7 @@ defmodule AshDataTable.Parts.Grid do
               reader={@nested_reader}
               component={@component}
             /><tr
-              :if={!row[:detail?]}
+              :if={!detail?(row)}
               id={"#{dom_id}-r"}
               role="row"
               aria-rowindex={row.rowindex}
@@ -1071,6 +1060,15 @@ defmodule AshDataTable.Parts.Grid do
       </div>
     """
   end
+
+  # An item of the stream is a row (`AshDataTable.Present.Row`) or the
+  # detail under one, a map that says `detail?`. Nil, not false, where it
+  # is not: an attribute that is nil is left out, as one that is false.
+  defp detail?(%{detail?: true}), do: true
+  defp detail?(_row), do: nil
+
+  defp current?(%{current?: current?}), do: current?
+  defp current?(_detail), do: nil
 
   # opens: each as `[key in its id, what the server is told of it]`, the
   # second nil where the key says it.
