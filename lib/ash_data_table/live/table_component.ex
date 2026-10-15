@@ -521,7 +521,6 @@ defmodule AshDataTable.Live.TableComponent do
   require Logger
 
   alias AshDataTable.Act
-  alias AshDataTable.Bulk
   alias AshDataTable.Caller
   alias AshDataTable.Edit
   alias AshDataTable.Errors
@@ -530,6 +529,7 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Listener
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
+  alias AshDataTable.Operation
   alias AshDataTable.Parts
   alias AshDataTable.Pick
   alias AshDataTable.Present
@@ -2201,17 +2201,15 @@ defmodule AshDataTable.Live.TableComponent do
   # Enter or left the cell: the row by the key in its DOM id, the column, and
   # the value as it was typed. For an array that is a list, of its values as
   # they were typed.
-  defp on({:save, key, name, typed}, socket) do
-    %{model: model, rows: rows} = socket.assigns.table.entry
-
-    with %{editable?: true} = column <- column(model, name),
-         true <- Edit.typed?(column, typed),
-         %{} = row <- rows[key] do
-      save(socket, key, row, column, typed)
-    else
+  defp on({:save, key, name, typed} = intent, socket) do
+    case Operation.save(operation(socket, intent)) do
       # not a cell this table lets anyone edit: nothing a person can send
       # through the table, so nothing is shown for it either
-      _ -> {:reply, %{ok: false}, socket}
+      :refused ->
+        {:reply, %{ok: false}, socket}
+
+      result ->
+        saved(result, socket, key, column(socket.assigns.table.entry.model, name), typed)
     end
   end
 
@@ -2221,15 +2219,10 @@ defmodule AshDataTable.Live.TableComponent do
   # is asked for by name, and is the save of a cell in everything else: the
   # column has to be one this person edits and one that can be emptied, the
   # row one of the page, and the record is read again, as the person.
-  defp on({:clear, key, name}, socket) do
-    %{model: model, rows: rows} = socket.assigns.table.entry
-
-    with %{editable?: true} = column <- column(model, name),
-         true <- Edit.clearable?(column),
-         %{} = row <- rows[key] do
-      saved(Edit.clear(model, column, row.pk, reader(socket.assigns)), socket, key, column, "")
-    else
-      _ -> {:reply, %{ok: false}, socket}
+  defp on({:clear, key, name} = intent, socket) do
+    case Operation.clear(operation(socket, intent)) do
+      :refused -> {:reply, %{ok: false}, socket}
+      result -> saved(result, socket, key, column(socket.assigns.table.entry.model, name), "")
     end
   end
 
@@ -2242,18 +2235,19 @@ defmodule AshDataTable.Live.TableComponent do
   # Only a cell of a sensitive column this person has, in a row of the page.
   # A value Ash hides from them on this record is not given; whoever may
   # see the field may ask (`sensitive?` is no access rule).
-  defp on({:reveal, key, name}, socket) do
-    %{model: model, rows: rows} = socket.assigns.table.entry
+  defp on({:reveal, _key, name} = intent, socket) do
+    %{model: model} = socket.assigns.table.entry
 
-    with %{sensitive?: true} = column <- column(model, name),
-         %{} = row <- rows[key] do
-      case revealed(model, column, row.pk, reader(socket.assigns)) do
-        {:ok, text} -> {:reply, %{ok: true, value: text}, socket}
-        :hidden -> {:reply, %{ok: false}, socket}
-        :error -> {:reply, %{ok: false, error: Text.t(:record_gone)}, socket}
-      end
-    else
-      _ -> {:reply, %{ok: false}, socket}
+    case Operation.reveal(operation(socket, intent)) do
+      {:ok, value} ->
+        text = Format.format(column(model, name), value, model.time_zone)
+        {:reply, %{ok: true, value: text}, socket}
+
+      {:error, message} ->
+        {:reply, %{ok: false, error: Text.say(message)}, socket}
+
+      _hidden_or_refused ->
+        {:reply, %{ok: false}, socket}
     end
   end
 
@@ -2269,7 +2263,9 @@ defmodule AshDataTable.Live.TableComponent do
 
     with %Model.Action{} = action <- action(model, name),
          %{} = row <- rows[key] do
-      act(socket, key, row, action)
+      if action.panel?,
+        do: open_act(socket, key, row, action),
+        else: ran(Operation.run(operation(socket, {:act, key, name})), socket, key, action)
     else
       _ -> {:reply, %{ok: false}, socket}
     end
@@ -2309,7 +2305,7 @@ defmodule AshDataTable.Live.TableComponent do
          })}
 
       %Model.Action{} = action ->
-        {:noreply, run_table(socket, action)}
+        {:noreply, run_table(socket, {:table_act, name}, action)}
 
       nil ->
         {:noreply, socket}
@@ -2321,8 +2317,11 @@ defmodule AshDataTable.Live.TableComponent do
   # table's to say, not the event's.
   defp on({:table_run, name}, socket) do
     case table_action(socket.assigns.table.entry, name) do
-      %Model.Action{panel?: false} = action -> {:noreply, run_table(socket, action)}
-      _none_or_with_inputs -> {:noreply, socket}
+      %Model.Action{panel?: false} = action ->
+        {:noreply, run_table(socket, {:table_run, name}, action)}
+
+      _none_or_with_inputs ->
+        {:noreply, socket}
     end
   end
 
@@ -2351,13 +2350,13 @@ defmodule AshDataTable.Live.TableComponent do
   # Sent by the hook once the person has answered that question with
   # Confirm, for an action without a panel: the action runs on what is
   # selected. Whether it has a panel is the table's to say, not the event's.
-  defp on({:bulk_run, name, selection}, socket) do
-    case bulk(name, selection, socket.assigns.table.entry) do
-      {:ok, %Model.Action{panel?: false} = action, selection} ->
-        {:noreply, run_bulk(socket, action, selection, %{})}
-
-      _other ->
-        {:noreply, socket}
+  defp on({:bulk_run, name, selection} = intent, socket) do
+    with {:ok, action, _selection} <- bulk(name, selection, socket.assigns.table.entry),
+         {:start, run, files} <- Operation.bulk(operation(socket, intent)) do
+      {:noreply, start_bulk(socket, action, run, files)}
+    else
+      {:halted, message} -> {:noreply, say(socket, message)}
+      _other -> {:noreply, socket}
     end
   end
 
@@ -2392,7 +2391,7 @@ defmodule AshDataTable.Live.TableComponent do
          %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
        ) do
     if Act.gaps(panel.inputs, typed, panel.time_zone) == %{},
-      do: filed(socket, sent(panel, typed), &submit(socket, &1, typed)),
+      do: filed(socket, sent(panel, typed), typed),
       else: {:noreply, failed_panel(socket, sent(%{panel | typed: typed}, typed), nil)}
   end
 
@@ -2656,19 +2655,18 @@ defmodule AshDataTable.Live.TableComponent do
          {:picked, picked},
          %{assigns: %{table: %{entry: %{picker: %{} = picker}}}} = socket
        ) do
-    %{model: model, rows: rows, panel: panel} = socket.assigns.table.entry
+    %{model: model, panel: panel} = socket.assigns.table.entry
     named = picked.row
     # what the picker's read action is given: what its argument line holds
     arguments = picked_with(socket.assigns, picker.reference, picked.arguments)
 
     case picker.for do
       {:cell, key, name} ->
-        with %{editable?: true, kind: :reference} = column <-
-               Enum.find(model.columns, &(&1.name == name)),
-             %{} = row <- rows[key] do
-          refer(socket, key, row, column, named, picked.confirmed?, arguments)
-        else
-          _ -> {:reply, %{ok: false}, put(socket, picker: nil)}
+        intent = {:refer, key, name, named, picked.confirmed?, arguments}
+
+        case Operation.refer(operation(socket, intent)) do
+          :refused -> {:reply, %{ok: false}, put(socket, picker: nil)}
+          result -> referred(result, socket, key, Enum.find(model.columns, &(&1.name == name)))
         end
 
       {:input, name} ->
@@ -2701,7 +2699,7 @@ defmodule AshDataTable.Live.TableComponent do
   defp on(:create, %{assigns: %{table: %{entry: %{model: %{create: %{} = action}}}}} = socket) do
     %{id: id, model: model} = socket.assigns.table.entry
 
-    case parent_link(socket.assigns, action) do
+    case Operation.link(operation(socket, :create), action) do
       {:ok, given} ->
         panel =
           panel(socket.assigns, & &1.default, %{
@@ -2823,45 +2821,16 @@ defmodule AshDataTable.Live.TableComponent do
     {:noreply, if(name == :summary, do: redetail(socket), else: socket)}
   end
 
-  # The value of one sensitive cell, as text: of the record as it is read
-  # now, for this person. A calculation or an aggregate is loaded onto it as
-  # the rows of a page have it, through the table's read action.
-  defp revealed(model, column, key, reader) do
-    opts = Query.reader_opts(reader)
-
-    with {:ok, record} <- Record.fetch(model, key, opts),
-         {:ok, record} <- with_column(model, column, record, opts) do
-      case Model.Column.value(column, record) do
-        %Ash.ForbiddenField{} -> :hidden
-        value -> {:ok, Format.format(column, value, model.time_zone)}
-      end
-    else
-      _gone_or_refused -> :error
-    end
-  end
-
-  defp with_column(_model, %{kind: :attribute}, record, _opts), do: {:ok, record}
-
-  defp with_column(model, column, record, opts) do
-    Query.load(record, %{model | columns: [column]}, [action: model.read_action] ++ opts)
-  end
-
+  # What became of the save of a cell, as the row and the hook are told it.
   # Either way the row is put back with what is true now: the action's
   # result, or the record as it is and the cell marked with what was typed.
-  defp save(socket, key, row, column, typed) do
-    socket.assigns.table.entry.model
-    |> Edit.save(column, row.pk, typed, reader(socket.assigns))
-    |> saved(socket, key, column, typed)
-  end
-
-  # What became of the save of a cell, as the row and the hook are told it.
   defp saved(result, socket, key, column, typed) do
     case result do
-      {:ok, record} ->
+      {:ok, %Operation.Outcome{record: record}} ->
         {:reply, %{ok: true},
          socket |> put_failure(key, record, column.name, nil) |> put_row(key, record)}
 
-      {:error, %_{} = record, message, places} ->
+      {:error, %Operation.Failure{record: %_{} = record, message: message, places: places}} ->
         # what was typed into a sensitive cell is not kept, and not shown
         typed = if column.sensitive?, do: "", else: typed
 
@@ -2873,39 +2842,37 @@ defmodule AshDataTable.Live.TableComponent do
 
       # The record is gone, or no longer this person's to read: there is
       # nothing to show the row from, so it stays as it is, and the hook
-      # marks the cell with the message.
-      {:error, nil, message} ->
+      # marks the cell with the message. A veto says no in the same way.
+      {_error_or_halted, message_or_failure} ->
+        message = message(message_or_failure)
+
         {:reply, %{ok: false, error: Text.say(message)},
          say(socket, {:text, :not_saved, column: column.label, message: message})}
     end
   end
 
-  # The choice of a related record for a reference cell. A column with a
-  # question is asked first whether the choice changes the row at all, and
-  # the hook asks the person; a choice that changes nothing calls nothing.
-  # Then, as for any cell, the row is put back with what is true now: the
-  # action's result, or the record as it is and the cell marked, with what
-  # the chosen record is called in it.
-  defp refer(socket, key, row, column, named, confirmed?, arguments) do
-    opts =
-      [ask?: not is_nil(column.confirm) and not confirmed?, arguments: arguments] ++
-        chooser(socket.assigns)
+  # The choice of a related record for a reference cell (`Operation.refer/1`).
+  # A column with a question is asked first whether the choice changes the
+  # row at all, and the hook asks the person; a choice that changes nothing
+  # calls nothing. Then, as for any cell, the row is put back with what is
+  # true now: the action's result, or the record as it is and the cell
+  # marked, with what the chosen record is called in it.
+  defp referred(result, socket, key, column) do
+    case result do
+      {:ask, question} ->
+        {:reply, %{ask: Text.say(question)}, socket}
 
-    case Edit.refer(socket.assigns.table.entry.model, column, row.pk, named, opts) do
-      :changed ->
-        {:reply, %{ask: column.confirm}, socket}
-
-      :unavailable ->
+      {:error, %Operation.Failure{unchosen: [_ | _]}} ->
         {:reply, %{ok: false}, unavailable(socket)}
 
-      {:ok, record} ->
+      {:ok, %Operation.Outcome{record: record}} ->
         {:reply, %{ok: true},
          socket
          |> put(picker: nil)
          |> put_failure(key, record, column.name, nil)
          |> put_row(key, record)}
 
-      {:error, %_{} = record, message, chosen} ->
+      {:error, %Operation.Failure{record: %_{} = record, message: message, chosen: chosen}} ->
         {:reply, %{ok: false},
          socket
          |> put(picker: nil)
@@ -2913,12 +2880,14 @@ defmodule AshDataTable.Live.TableComponent do
            key,
            record,
            column.name,
-           {referred(column, chosen, socket.assigns.table.caller.time_zone), message, []}
+           {chosen_text(column, chosen, socket.assigns.table.caller.time_zone), message, []}
          )
          |> put_row(key, record)
          |> say({:text, :not_saved, column: column.label, message: message})}
 
-      {:error, nil, message} ->
+      {_error_or_halted, message_or_failure} ->
+        message = message(message_or_failure)
+
         {:reply, %{ok: false, error: Text.say(message)},
          socket
          |> put(picker: nil)
@@ -2926,11 +2895,15 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
+  # The message of a failure, or of a veto.
+  defp message(%Operation.Failure{message: message}), do: message
+  defp message(message), do: message
+
   # What a reference cell shows of a record that was chosen for it: its
   # label, as far as this person may see it. Nothing for no record.
-  defp referred(_column, nil, _zone), do: ""
+  defp chosen_text(_column, nil, _zone), do: ""
 
-  defp referred(%{reference: %{label_field: label}} = column, chosen, zone),
+  defp chosen_text(%{reference: %{label_field: label}} = column, chosen, zone),
     do: Format.format(column, Map.get(chosen, label), zone)
 
   # The choice of a related record for a field of the action panel: its key
@@ -3159,12 +3132,41 @@ defmodule AshDataTable.Live.TableComponent do
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
   # picker's table is told too (`AshDataTable.Pick.reader/2`).
-  defp chooser(assigns),
-    do: [authorize_given: assigns.table.options.authorize_given] ++ reader(assigns)
+  defp chooser(assigns), do: picking(assigns) ++ reader(assigns)
 
-  # The same for the keys a panel holds: with what the picker's read action
-  # was given when each was chosen.
-  defp chooser(assigns, panel), do: [picked_with: panel.picked_with] ++ chooser(assigns)
+  defp picking(assigns), do: [authorize_given: assigns.table.options.authorize_given]
+
+  # What a write is given (`AshDataTable.Operation.Input`): the intent, and
+  # the table as it is now. The veto and the page values are the defaults
+  # until stage 6.
+  defp operation(socket, intent, more \\ []) do
+    %{assigns: assigns} = socket
+    entry = assigns.table.entry
+
+    parent =
+      if entry.parent_key,
+        do: %{
+          key: entry.parent_key,
+          authorize?: entry.parent_authorize?,
+          arguments: entry.parent_arguments
+        }
+
+    struct!(
+      %Operation.Input{
+        intent: intent,
+        model: entry.model,
+        state: entry.state,
+        parent: parent,
+        opts: reader(assigns),
+        picking: picking(assigns),
+        rows: entry.rows,
+        panel: entry.panel,
+        read?: match?(%Query.Page{}, entry.page),
+        offered: %{table: entry.offered, bulk: if(entry.running, do: [], else: entry.bulk)}
+      },
+      more
+    )
+  end
 
   # What the read action of a picker is given, from what the picker's hook
   # says its argument line holds: the line's form, as a form sends it. It
@@ -3429,20 +3431,11 @@ defmodule AshDataTable.Live.TableComponent do
 
   defp regroup(_field, _held, _path, _change, _zone), do: :error
 
-  # A row action that runs straight away. The row is put back with what is
-  # true now: the action's result, or the record as it is and the actions
-  # cell marked with the action's message. A record that was destroyed is
-  # taken out of the page.
-  defp act(socket, key, row, %Model.Action{panel?: false} = action) do
-    socket.assigns.table.entry.model
-    |> Act.run(action, row.pk, reader(socket.assigns))
-    |> ran(socket, key, action)
-  end
-
   # A row action with inputs opens the action panel: the record is read
   # again, as the person, and the form of the action on it is what the panel
-  # shows. Nothing runs yet.
-  defp act(socket, key, row, %Model.Action{panel?: true} = action) do
+  # shows. Nothing runs yet. A row action without inputs runs straight away
+  # (`Operation.run/1`): see `ran/4`.
+  defp open_act(socket, key, row, %Model.Action{panel?: true} = action) do
     %{id: id, model: model} = socket.assigns.table.entry
 
     case Act.open(model, action, row.pk, "#{id}-panel", reader(socket.assigns)) do
@@ -3481,7 +3474,7 @@ defmodule AshDataTable.Live.TableComponent do
         {:reply, %{ok: true, panel: true}, opened(socket, panel)}
 
       :error ->
-        ran({:error, nil, {:text, :record_gone, []}}, socket, key, action)
+        ran({:error, %Operation.Failure{message: {:text, :record_gone, []}}}, socket, key, action)
     end
   end
 
@@ -3604,196 +3597,86 @@ defmodule AshDataTable.Live.TableComponent do
 
   # Runs an action on the selected rows, beside the process: a run takes as
   # long as its records are many, and the page stays in use meanwhile. The
-  # grid is marked busy until `handle_async/3` has the outcome.
-  defp run_bulk(socket, action, selection, input) do
-    %{model: model, state: state, parent_key: key, parent_authorize?: authorize?} =
-      socket.assigns.table.entry
-
-    opts =
-      [
-        state: state,
-        parent_key: key,
-        parent_authorize?: authorize?,
-        parent_arguments: socket.assigns.table.entry.parent_arguments
-      ] ++ reader(socket.assigns)
-
+  # grid is marked busy until `handle_async/3` has the outcome. `files` are
+  # the copies of the panel's files the run holds, removed when it is done.
+  defp start_bulk(socket, action, run, files) do
     socket
     |> put(running: action, result: nil, panel: nil)
+    |> put(running_files: for({_name, %{path: path}} <- files, do: path))
     # The run says why a record was not done as message terms: their words
     # are made when the outcome is drawn, in this process, whose locale it is.
-    |> start_async(:bulk, fn -> Bulk.run(model, action, selection, input, opts) end)
+    |> start_async(:bulk, run)
   end
 
-  # Runs the action of the panel of a selection. What the action makes of a
-  # value as such is known without a record, and is shown at its field
-  # with the panel left open, as for a row. Everything else an action says
-  # depends on the record, and is said when it has run.
-  defp submit(socket, %{kind: :bulk, action: action, selection: selection} = panel, params) do
-    form = Act.validate(panel.form, panel.inputs, params, files(panel), panel.time_zone)
-    panel = errors(%{panel | form: form}, socket.assigns.table.entry.model)
+  # Runs the action of the open panel (`Operation.submit/1`), with the files
+  # of its uploads, and shows what came of it. What the action says about a
+  # field is shown at the field, and the panel stays open; done, the panel
+  # closes and the table says what came of it. A panel whose row, column or
+  # action is no longer this person's closes.
+  defp submit(socket, panel, params) do
+    input =
+      operation(socket, {:panel_submit, params},
+        panel: panel,
+        with_files: &attach(socket, panel, &1)
+      )
 
-    # a panel is never open beside a run: the run that starts closes it
-    cond do
-      # at a field of the panel, or at a field of a value inside one
-      Enum.any?(Map.keys(panel.errors), &(not is_nil(&1))) ->
-        {:noreply, failed_panel(socket, panel, nil)}
+    result = Operation.submit(input)
 
-      (unchosen = Act.unchosen(panel.inputs, params, nil, chooser(socket.assigns, panel))) != [] ->
-        {:noreply, failed_panel(socket, panel, unchosen(unchosen))}
-
-      # A file goes to every record, and the run outlasts this event, which
-      # is as long as LiveView keeps the file: it runs with a copy, which is
-      # this process's until the run is done (`Plug.Upload`).
-      true ->
-        copies = copies(files(panel))
-        input = Map.merge(Act.values(panel.inputs, params, panel.time_zone), copies)
-
-        {:noreply,
-         socket
-         |> put(running_files: for({_name, %{path: path}} <- copies, do: path))
-         |> run_bulk(action, selection, input)}
-    end
+    socket
+    |> spend(panel, result)
+    |> submitted(panel, result)
   end
 
-  # Saves the map cell of a panel: the column's update action, with the
-  # column's attribute as its one input. The row has to be one of the page
-  # still, and the column one this person edits; the record is read again,
-  # as the person. What is not saved leaves the panel open, with what the
-  # action said.
-  defp submit(socket, %{kind: :cell, key: key, column: name, inputs: [input]} = panel, params) do
-    %{id: id, model: model, rows: rows} = socket.assigns.table.entry
+  defp submitted(socket, _panel, :refused), do: {:noreply, put(socket, panel: nil)}
 
-    column =
-      Enum.find(model.columns, &(&1.name == name and &1.editable? and Model.group?(&1)))
+  defp submitted(socket, panel, {:halted, message}),
+    do: {:noreply, failed_panel(socket, panel, message)}
 
-    case column && rows[key] do
-      %{} = row ->
-        case Edit.put(model, column, input, row.pk, params, "#{id}-panel", reader(socket.assigns)) do
-          {:ok, record} ->
-            {:noreply, socket |> put(panel: nil) |> put_row(key, record)}
+  defp submitted(
+         socket,
+         panel,
+         {:error, %Operation.Failure{form: %AshPhoenix.Form{} = form} = failure}
+       ) do
+    panel = %{panel | form: form}
+    panel = if failure.given, do: %{panel | given: failure.given}, else: panel
 
-          {:error, %AshPhoenix.Form{} = form} ->
-            {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
-
-          # the record is gone, or the value is not this person's to change
-          {:error, nil, message} ->
-            {:noreply, failed_panel(socket, panel, message)}
-        end
-
-      _gone ->
-        {:noreply, put(socket, panel: nil)}
-    end
+    message = if failure.unchosen != [], do: unchosen(failure.unchosen)
+    {:noreply, failed_panel(socket, panel, message)}
   end
 
-  # Runs the action of a row's panel. The row has to be one of the page
-  # still; its record is read again, as the person, before the action runs.
-  defp submit(socket, %{kind: :row, key: key, action: action} = panel, params) do
-    %{id: id, model: model, rows: rows} = socket.assigns.table.entry
+  defp submitted(socket, panel, {:error, %Operation.Failure{unchosen: [_ | _] = inputs}}),
+    do: {:noreply, failed_panel(socket, panel, unchosen(inputs))}
 
-    case rows[key] do
-      nil ->
-        {:noreply, put(socket, panel: nil)}
+  # the record is gone, or no longer this person's to read, or the value
+  # is not theirs to change
+  defp submitted(socket, panel, {:error, %Operation.Failure{record: nil, message: message}}),
+    do: {:noreply, failed_panel(socket, panel, message)}
 
-      row ->
-        case Act.submit_row(
-               model,
-               action,
-               row.pk,
-               params,
-               "#{id}-panel",
-               [files: files(panel), cleared: MapSet.to_list(panel.cleared)] ++
-                 chooser(socket.assigns, panel)
-             ) do
-          {:error, %AshPhoenix.Form{} = form} ->
-            {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
+  defp submitted(socket, %{kind: :bulk, action: action}, {:start, run, files}),
+    do: {:noreply, start_bulk(socket, action, run, files)}
 
-          {:unchosen, inputs} ->
-            {:noreply, failed_panel(socket, panel, unchosen(inputs))}
+  defp submitted(socket, %{kind: :cell, key: key}, {:ok, %Operation.Outcome{record: record}}),
+    do: {:noreply, socket |> put(panel: nil) |> put_row(key, record)}
 
-          # the record is gone, or no longer this person's to read
-          {:error, nil, message} ->
-            {:noreply, failed_panel(socket, panel, message)}
-
-          ran ->
-            {:reply, _reply, socket} = ran(ran, put(socket, panel: nil), key, action)
-            {:noreply, socket}
-        end
-    end
+  defp submitted(socket, %{kind: :table, action: action}, {:ok, %Operation.Outcome{} = done}) do
+    action = table_action(socket.assigns.table.entry, Atom.to_string(action.name)) || action
+    {:noreply, socket |> put(panel: nil) |> done(action, done.value)}
   end
 
-  # Runs the table action of a panel, with what its fields hold. What the
-  # action says about a field is shown at the field, and the panel stays
-  # open; done, the panel closes and the table says what came of it.
-  defp submit(socket, %{kind: :table, action: action} = panel, params) do
-    %{id: id, model: model} = socket.assigns.table.entry
+  defp submitted(socket, %{kind: :create}, {:ok, %Operation.Outcome{} = created}) do
+    model = socket.assigns.table.entry.model
 
-    case table_action(socket.assigns.table.entry, Atom.to_string(action.name)) do
-      %Model.Action{} = action ->
-        case Act.submit_generic(
-               model,
-               action,
-               params,
-               files(panel),
-               "#{id}-panel",
-               chooser(socket.assigns, panel)
-             ) do
-          {:done, value} ->
-            {:noreply, socket |> put(panel: nil) |> done(action, value)}
+    socket =
+      if created.gone?,
+        do: put(socket, panel: nil),
+        else: socket |> put(panel: nil) |> add_row(created.record)
 
-          {:error, %AshPhoenix.Form{} = form} ->
-            {:noreply, failed_panel(socket, %{panel | form: form}, nil)}
-
-          {:unchosen, inputs} ->
-            {:noreply, failed_panel(socket, panel, unchosen(inputs))}
-
-          {:error, nil, message} ->
-            {:noreply, failed_panel(socket, panel, message)}
-        end
-
-      # no longer an action of this person's
-      nil ->
-        {:noreply, put(socket, panel: nil)}
-    end
+    {:noreply, say(socket, {:text, :created, name: created_name(model)})}
   end
 
-  # Runs the table's create action. In a nested table the new record is
-  # joined to the row the table belongs to: by that row's own value, read
-  # again now, as the person. Nothing the form sends can say otherwise.
-  defp submit(socket, %{kind: :create, action: action} = panel, params) do
-    %{id: id, model: model} = socket.assigns.table.entry
-
-    case parent_link(socket.assigns, action) do
-      {:ok, given} ->
-        case Act.submit_create(
-               model,
-               action,
-               params,
-               Map.merge(files(panel), given),
-               "#{id}-panel",
-               chooser(socket.assigns, panel)
-             ) do
-          {:ok, record} ->
-            {:noreply,
-             socket
-             |> put(panel: nil)
-             |> add_row(record)
-             |> say({:text, :created, name: created_name(model)})}
-
-          # created, and not this person's to read: there is no row to show
-          :gone ->
-            {:noreply,
-             socket |> put(panel: nil) |> say({:text, :created, name: created_name(model)})}
-
-          {:unchosen, inputs} ->
-            {:noreply, failed_panel(socket, panel, unchosen(inputs))}
-
-          {:error, form} ->
-            {:noreply, failed_panel(socket, %{panel | form: form, given: given}, nil)}
-        end
-
-      :error ->
-        {:noreply, failed_panel(socket, panel, {:text, :record_gone, []})}
-    end
+  defp submitted(socket, %{kind: :row, key: key, action: action}, result) do
+    {:reply, _reply, socket} = ran(result, put(socket, panel: nil), key, action)
+    {:noreply, socket}
   end
 
   # ## Files
@@ -3817,8 +3700,6 @@ defmodule AshDataTable.Live.TableComponent do
   # (`opened/2`).
 
   defp file_inputs(%{inputs: inputs}), do: Enum.filter(inputs, &(&1.editor == :file))
-  # The files a panel's action is given: by the name of the argument.
-  defp files(panel), do: Map.get(panel, :files, %{})
 
   # A panel is opened: with an upload for each of its fields that takes a
   # file, and without a file that an earlier panel left behind. A panel that
@@ -3867,11 +3748,10 @@ defmodule AshDataTable.Live.TableComponent do
     end)
   end
 
-  # Runs a panel's action with the files of its uploads: `run` is given the
-  # panel with them (`files/1`), and answers as an event is answered.
+  # Runs a panel's action with the files of its uploads (`submit/3`).
   # Nothing runs while LiveView does not take a file, or has not received
   # one: that is said, and the panel stays.
-  defp filed(socket, panel, run) do
+  defp filed(socket, panel, params) do
     inputs = file_inputs(panel)
     refused = refused_files(socket, panel)
 
@@ -3886,22 +3766,29 @@ defmodule AshDataTable.Live.TableComponent do
       end)
 
     cond do
-      inputs == [] ->
-        run.(panel)
-
-      refused != [] ->
+      inputs != [] and refused != [] ->
         {:noreply, socket |> put(panel: %{panel | refused_files: refused}) |> say_files(refused)}
 
       waiting? ->
         {:noreply, say(socket, {:text, :upload_failed, []})}
 
       true ->
-        attach(socket, inputs, %{}, &run.(Map.put(panel, :files, &1)))
+        submit(socket, panel, params)
     end
   end
 
-  # Each file in turn, the action inside the last: LiveView takes a file
-  # away when the function it is given for it returns.
+  # What the action of a panel is run inside (`with_files` of
+  # `AshDataTable.Operation.Input`): each file in turn, the action inside the
+  # last, by the argument's name. LiveView takes a file away when the
+  # function it is given for it returns. A run on a selection outlasts the
+  # event, which is as long as LiveView keeps the file: it runs with a copy,
+  # which is this process's until the run is done (`Plug.Upload`).
+  defp attach(socket, panel, run) do
+    attach(socket, file_inputs(panel), %{}, fn files ->
+      run.(if panel.kind == :bulk, do: copies(files), else: files)
+    end)
+  end
+
   defp attach(_socket, [], files, run), do: run.(files)
 
   defp attach(socket, [input | rest], files, run) do
@@ -3915,17 +3802,29 @@ defmodule AshDataTable.Live.TableComponent do
             content_type: entry.client_type
           }
 
-          {:noreply, socket} =
-            attach(socket, rest, Map.put(files, Atom.to_string(input.name), file), run)
-
           # the file is gone when this returns: its entry is LiveView's to drop
-          {:ok,
-           {:noreply, put(socket, spent: MapSet.put(socket.assigns.table.entry.spent, entry.ref))}}
+          {:ok, attach(socket, rest, Map.put(files, Atom.to_string(input.name), file), run)}
         end)
 
       _no_file ->
         attach(socket, rest, files, run)
     end
+  end
+
+  # The files an action has been given are LiveView's to take away: every
+  # file of the panel's uploads, once the write got past its checks and
+  # its veto (`attach/3` ran).
+  defp spend(socket, _panel, result) when result == :refused or elem(result, 0) == :halted,
+    do: socket
+
+  defp spend(socket, panel, _result) do
+    given =
+      for input <- file_inputs(panel),
+          %{done?: true, ref: ref} <-
+            [entry(upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input))],
+          do: ref
+
+    put(socket, spent: MapSet.union(socket.assigns.table.entry.spent, MapSet.new(given)))
   end
 
   # Copies of the files for a run that outlasts the event: temporary files
@@ -4086,41 +3985,6 @@ defmodule AshDataTable.Live.TableComponent do
   # What one record of the table is called, at the start of a sentence.
   defp created_name(model), do: model.name |> Text.label() |> String.capitalize()
 
-  # What a nested table gives its create action: the field that joins the
-  # new record to the row the table belongs to, with that row's value. The
-  # row is read for it, as the person and through the read action of the
-  # table that shows it, with that table's arguments, and with authorization
-  # when either table authorizes: a key proves nothing. A table of its own
-  # gives nothing.
-  defp parent_link(_assigns, %Model.Action{link: nil}), do: {:ok, %{}}
-
-  defp parent_link(assigns, %Model.Action{link: {source, destination}}) do
-    %{model: %{via: via}, parent_key: key} = assigns.table.entry
-
-    opts =
-      assigns
-      |> reader()
-      |> Query.reader_opts()
-      |> Keyword.update!(:authorize?, &(&1 or assigns.table.entry.parent_authorize?))
-
-    case Query.get(
-           via.source,
-           via.source_read_action,
-           key,
-           assigns.table.entry.parent_arguments,
-           opts
-         ) do
-      {:ok, %_{} = parent} ->
-        case Map.get(parent, source) do
-          hidden when is_struct(hidden, Ash.ForbiddenField) or is_nil(hidden) -> :error
-          value -> {:ok, %{Atom.to_string(destination) => value}}
-        end
-
-      _gone_or_refused ->
-        :error
-    end
-  end
-
   # Puts a record that was created at the top of the page, as a row like
   # the others, with its detail when rows expand. It stays there until the
   # table reads again. The rows after it move down by one, and the total is
@@ -4176,7 +4040,7 @@ defmodule AshDataTable.Live.TableComponent do
       panel.form != (socket.assigns.table.entry.panel && socket.assigns.table.entry.panel.form)
 
     panel =
-      errors(%{Map.delete(panel, :files) | submitted?: true}, socket.assigns.table.entry.model)
+      errors(%{panel | submitted?: true}, socket.assigns.table.entry.model)
 
     panel =
       if ran? do
@@ -4245,7 +4109,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   # What became of a row action, run straight away or from its panel: the
   # reply to the hook, and the page as it is now.
-  defp ran({:ok, record}, socket, key, action) do
+  defp ran({:ok, %Operation.Outcome{record: %_{} = record}}, socket, key, action) do
     {:reply, %{ok: true},
      socket
      |> put_action_failure(key, record, nil)
@@ -4253,19 +4117,24 @@ defmodule AshDataTable.Live.TableComponent do
      |> say({:text, :action_done, action: action.label})}
   end
 
-  # A generic action returns no row: the table says what it returned and
-  # reads again, as any record may be another by now.
-  defp ran({:done, value}, socket, _key, action),
-    do: {:reply, %{ok: true}, done(socket, action, value)}
-
   # destroyed, or no longer this person's to read: the row is not theirs to
   # see any more
-  defp ran(removed, socket, key, action) when removed in [:destroyed, :gone] do
+  defp ran({:ok, %Operation.Outcome{gone?: true}}, socket, key, action) do
     {:reply, %{ok: true, removed: true},
      socket |> remove_row(key) |> say({:text, :action_done, action: action.label})}
   end
 
-  defp ran({:error, %_{} = record, message}, socket, key, action) do
+  # A generic action returns no row: the table says what it returned and
+  # reads again, as any record may be another by now.
+  defp ran({:ok, %Operation.Outcome{value: value}}, socket, _key, action),
+    do: {:reply, %{ok: true}, done(socket, action, value)}
+
+  defp ran(
+         {:error, %Operation.Failure{record: %_{} = record, message: message}},
+         socket,
+         key,
+         action
+       ) do
     {:reply, %{ok: false},
      socket
      |> put_action_failure(key, record, message)
@@ -4275,23 +4144,32 @@ defmodule AshDataTable.Live.TableComponent do
 
   # The record is gone, or no longer this person's to read: there is nothing
   # to show the row from, so it stays as it is, and the hook marks the
-  # actions cell with the message.
-  defp ran({:error, nil, message}, socket, _key, action) do
+  # actions cell with the message. A veto says no in the same way.
+  defp ran({error, message_or_failure}, socket, _key, action) when error in [:error, :halted] do
+    message = message(message_or_failure)
+
     {:reply, %{ok: false, error: Text.say(message)},
      say(socket, {:text, :action_not_done, action: action.label, message: message})}
   end
 
-  # A table action that runs straight away. What came of it is said above
-  # the grid, where the outcome of an action on the selected rows is said:
-  # there is no row to say it on.
-  defp run_table(socket, action) do
-    case Act.run_generic(socket.assigns.table.entry.model, action, %{}, reader(socket.assigns)) do
-      {:done, value} ->
+  defp ran(:refused, socket, _key, _action), do: {:reply, %{ok: false}, socket}
+
+  # A table action that runs straight away (`Operation.run/1`). What came of
+  # it is said above the grid, where the outcome of an action on the
+  # selected rows is said: there is no row to say it on.
+  defp run_table(socket, intent, action) do
+    case Operation.run(operation(socket, intent)) do
+      {:ok, %Operation.Outcome{value: value}} ->
         done(socket, action, value)
 
-      {:error, message} ->
-        text = {:text, :action_not_done, action: action.label, message: message}
+      {error, message_or_failure} when error in [:error, :halted] ->
+        text =
+          {:text, :action_not_done, action: action.label, message: message(message_or_failure)}
+
         socket |> put(result: %{summary: text, failures: []}) |> say(text)
+
+      :refused ->
+        socket
     end
   end
 
