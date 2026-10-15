@@ -18,7 +18,7 @@ import os from "node:os"
 import path from "node:path"
 import { chromium } from "@playwright/test"
 import { BASE, sleep, startServer, versions } from "./lib/server.mjs"
-import { logIn, open } from "./lib/table.mjs"
+import { logIn, open, Table } from "./lib/table.mjs"
 
 const REPS = Number(process.env.PERF_REPS ?? 15)
 const log = (...words) => console.log(new Date().toISOString().slice(11, 19), ...words)
@@ -205,6 +205,43 @@ try {
     await page.locator('[id="task-picker"]').waitFor({ state: "detached" })
     return run
   })
+
+  // ---- a cell save in a nested table, and one in the top table while a
+  // nested table is open (stage 5: every table of a page is in one
+  // component). The comments of the first task that has any.
+  let withComments = null
+  for (const k of keys) {
+    await expander(k).click()
+    await page.locator(`[id="task-row-${k}-x"] td[data-line]`).first().waitFor()
+    await page.locator(`[id="task-row-${k}-l-comments-b"]`).click()
+    await page.waitForFunction(new Function(`return ${read(k)}`))
+    if ((await page.locator(`#${nested(k)}-table > tbody:not([data-detail])`).count()) > 0) {
+      withComments = k
+      break
+    }
+    await page.locator(`[id="task-row-${k}-l-comments-b"]`).click()
+    await page.locator(`[id="${nested(k)}"]`).waitFor({ state: "detached" })
+    await expander(k).click()
+  }
+  if (withComments === null) throw new Error("no task on the first page has comments")
+  const comments = new Table(page, nested(withComments), tasks.received, tasks.sent)
+  const comment = (await comments.rowKeys())[0]
+  const body = await comments.cell(comment, "body").textContent()
+  results.cell_save_nested = await measured("cell save in a nested table", REPS, (i) =>
+    save(comments, comment, "body", `Baseline comment ${i}`),
+  )
+  await save(comments, comment, "body", body.trim())
+  const other = keys.find((k) => k !== withComments)
+  const otherTitle = await tasks.cell(other, "title").textContent()
+  results.cell_save_nested_open = await measured(
+    "cell save with a nested table open",
+    REPS,
+    (i) => save(tasks, other, "title", `Baseline edit ${i}`),
+  )
+  await save(tasks, other, "title", otherTitle.trim())
+  await page.locator(`[id="task-row-${withComments}-l-comments-b"]`).click()
+  await page.locator(`[id="${nested(withComments)}"]`).waitFor({ state: "detached" })
+  await expander(withComments).click()
 
   // ---- a page change: the click on "Next" to the rows of the next page
   // forth and back between the first two pages
