@@ -7,7 +7,9 @@ import { Table } from "./table"
 /**
  * What the page sent to the server over its WebSocket, heartbeats left out.
  * LiveView sends `[join_ref, ref, topic, event, payload]`; an event a person
- * causes has the event "event" and names itself in the payload.
+ * causes has the event "event" and names itself in the payload. A table
+ * names each of its events with itself (`ash_data_table:TABLE_ID:save`);
+ * kept here by its own name (`save`), as the snapshots keep it.
  */
 export class Frames {
   private sent: string[] = []
@@ -18,7 +20,8 @@ export class Frames {
         // the parts of an uploaded file are sent as bytes: no event of a person
         if (typeof frame.payload !== "string") return
         const text = String(frame.payload)
-        if (!text.includes('"heartbeat"')) this.sent.push(text)
+        if (!text.includes('"heartbeat"'))
+          this.sent.push(text.replace(/"event":"ash_data_table:[^":]+:/g, '"event":"'))
       })
     })
   }
