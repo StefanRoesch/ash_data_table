@@ -27,22 +27,28 @@ defmodule AshDataTable.ArchitectureTest do
       is allowed, for `AshDataTable.Routes` (F15);
     * only `Query`, `Record`, `Pick` and `Bulk` read from Ash (S1, Q11).
 
+  The table component (`live/table_component.ex`) is wiring (4) from stage
+  3c of the refactor (design note 4.1): its callbacks hand the socket to
+  `AshDataTable.Live.Core` and its `render/1` composes the parts.
+
   What it cannot see (5.5): coupling through data, not through a call.
-  Known today, and expected until the stage named:
+  Known today, and allowed by the target until the stage named:
 
-    * the live component gives the parts itself, as `component={__MODULE__}`
-      (`Parts.Grid`, `Parts.Picker`): part 3 renders the live component of
-      2b, for a nested table and for a picker (until stage 4 and 5);
-    * the parts name the hooks of the live component by their names, as
-      strings (`phx-hook="AshDataTable.Live.TableComponent.Grid"`), and the
-      hooks stay in the component (until stage 1b).
+    * the table component gives the parts itself, as
+      `component={__MODULE__}` (`Parts.Grid`, `Parts.Picker`): part 3
+      renders the live component, for a nested table and for a picker
+      (until stages 4 and 5; design note 4.3);
+    * the parts name the hooks by the names the table component's
+      colocated hooks have, as strings
+      (`phx-hook="AshDataTable.Live.TableComponent.Grid"`; target 4.5, Q15);
+    * the presentation hints of `Model.Column` (`component`, `max_lines`,
+      `sticky_label?`, `editor`), which the core passes on (target 6, F3).
 
-  It reports and does not fail until the end of stage 3c of the refactor,
-  when `@report_only` becomes false.
+  It fails on any finding from the end of stage 3c (target 5.5).
   """
   use ExUnit.Case, async: false
 
-  @report_only true
+  @report_only false
 
   @lib "lib/ash_data_table"
 
