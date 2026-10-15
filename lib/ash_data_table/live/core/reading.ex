@@ -15,7 +15,6 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
-  alias AshDataTable.Parts
   alias AshDataTable.Pick
   alias AshDataTable.Present
   alias AshDataTable.Query
@@ -271,7 +270,7 @@ defmodule AshDataTable.Live.Core.Reading do
           # 1-based, the header rows counted. Under offset pagination it
           # runs through all pages; a keyset page does not know how many
           # records lie before it, and counts from its own top.
-          rowindex: (page.offset || 0) + index + Parts.Common.header_rows() + 1
+          rowindex: (page.offset || 0) + index + Present.header_rows() + 1
         }
       end)
 
@@ -383,13 +382,12 @@ defmodule AshDataTable.Live.Core.Reading do
   # it renders nothing.
   defp not_found(%{assigns: %{table: %{options: %{mounted?: false}}}} = socket, _read), do: socket
 
-  # While the page is mounted, an exception is how a LiveView says "not
-  # found": Phoenix answers the request with 404, and over a live connection
-  # the browser is told to ask for the page afresh, which gets that answer.
-  defp not_found(_socket, :first), do: raise(AshDataTable.NotFoundError)
+  # While the page is mounted, the first read is the request's: the table
+  # is `gone?`, and the component raises (`AshDataTable.NotFoundError`).
+  defp not_found(socket, :first), do: socket
 
   # Later, the page is on screen. The browser is sent to ask for it afresh,
-  # which raises the exception above; nothing crashes for it.
+  # which raises the exception; nothing crashes for it.
   defp not_found(%{assigns: %{table: %{options: %{url: url}}}} = socket, :later) do
     uri = URI.parse(url)
     redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())

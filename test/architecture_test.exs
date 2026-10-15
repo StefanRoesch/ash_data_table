@@ -48,8 +48,11 @@ defmodule AshDataTable.ArchitectureTest do
 
   # the files of the words, by name (3w)
   @words ~w(text.ex format.ex gettext.ex)
-  # the files of the wiring, by name (4)
-  @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex)
+  # the files of the wiring, by name (4); the table component is wiring
+  # from stage 3c (design note 4.1): its callbacks hand the socket to the
+  # live core, and its `render/1` composes the parts (`Live.Embedded` in
+  # stage 4)
+  @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex live/table_component.ex)
   # the files that may read from Ash (S1)
   @readers ~w(query.ex record.ex pick.ex bulk.ex)
 

@@ -354,18 +354,11 @@ defmodule AshDataTable.Parts.Grid do
     Ash.Resource.Info.attribute(resource, column.name).allow_nil?
   end
 
-  # The row index of the first row of the page: the hook numbers the rows
-  # from it, in the order they stand in, after a row was added or taken out.
-  def first_row(%{offset: offset}) when is_integer(offset),
-    do: offset + Parts.Common.header_rows() + 1
-
-  def first_row(_page), do: Parts.Common.header_rows() + 1
-
   # The header rows are counted. -1 says the total is not known.
   # The rows of the grid in all pages: the header rows, the records, and
   # the footer row of the summaries where there is one. -1 says "unknown".
   defp aria_rowcount(%{total: total}, summarised?) when is_integer(total),
-    do: total + Parts.Common.header_rows() + if(summarised?, do: 1, else: 0)
+    do: total + Present.header_rows() + if(summarised?, do: 1, else: 0)
 
   defp aria_rowcount(_page, _summarised?), do: -1
 
@@ -703,7 +696,7 @@ defmodule AshDataTable.Parts.Grid do
           aria-colcount={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
           aria-multiselectable={@selecting && to_string(@selecting == :multi)}
           aria-busy={(@busy? or not is_nil(@running)) && "true"}
-          data-first-row={first_row(@page)}
+          data-first-row={Present.first_row(@page)}
           class={
             [
               "table",

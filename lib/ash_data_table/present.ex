@@ -163,6 +163,24 @@ defmodule AshDataTable.Present do
     @type t :: %__MODULE__{}
   end
 
+  # The rows above the data rows: the header and the filter row.
+  @header_rows 2
+
+  @doc """
+  How many rows of the grid are above its data rows: the header and the
+  filter row. A row's index (`aria-rowindex`) counts them.
+  """
+  @spec header_rows() :: pos_integer
+  def header_rows, do: @header_rows
+
+  @doc """
+  The row index of the first row of the page: the hook numbers the rows
+  from it, in the order they stand in, after a row was added or taken out.
+  """
+  @spec first_row(map | nil) :: pos_integer
+  def first_row(%{offset: offset}) when is_integer(offset), do: offset + @header_rows + 1
+  def first_row(_page), do: @header_rows + 1
+
   @doc """
   What is drawn in place of a sensitive value that is there: the same for
   every value. A `:masked` cell holds no value; this is what the part draws.

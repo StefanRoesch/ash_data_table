@@ -5,13 +5,8 @@ defmodule AshDataTable.Parts.Common do
   # no other part, so that the parts do not call each other in a circle
   # (stage 1 drift check F8). A seed of `AshDataTable.Attrs` (stage 7).
 
+  alias AshDataTable.Present
   alias AshDataTable.Text
-
-  # The rows above the data rows: the header and the filter row.
-  @header_rows 2
-
-  @doc false
-  def header_rows, do: @header_rows
 
   # The columns after the last data column: the actions, when the rows have
   # them.
@@ -23,7 +18,9 @@ defmodule AshDataTable.Parts.Common do
 
   # The footer row of the summaries is the last row of all: after the
   # records of every page. Where their number is not known it says nothing.
-  def summary_rowindex(%{total: total}) when is_integer(total), do: total + @header_rows + 1
+  def summary_rowindex(%{total: total}) when is_integer(total),
+    do: total + Present.header_rows() + 1
+
   def summary_rowindex(_page), do: nil
 
   @doc """

@@ -15,7 +15,6 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Model
   alias AshDataTable.Operation
-  alias AshDataTable.Parts
   alias AshDataTable.Pick
   alias AshDataTable.Present
   alias AshDataTable.Text
@@ -655,7 +654,7 @@ defmodule AshDataTable.Live.Core.Panel do
     if is_map_key(rows, key) do
       Reading.put_row(socket, key, record)
     else
-      first = Parts.Grid.first_row(page)
+      first = Present.first_row(page)
       rows = Map.new(rows, fn {key, row} -> {key, %{row | rowindex: row.rowindex + 1}} end)
       rows = Map.put(rows, key, %{rowindex: first, pk: Reading.primary_key(model, record)})
 
