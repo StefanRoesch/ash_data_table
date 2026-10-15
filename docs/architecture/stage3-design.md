@@ -192,6 +192,13 @@ What the build added to the shapes above, each because the code needed it:
 - **Files.** `with_files` runs the action inside `consume_uploaded_entry/3`. A file is spent once a write got past its checks and its veto; a write refused before closes its panel without taking the file, which the next panel gives up.
 - **`Operation.link/2`** is public: the create panel asks it as it opens, as before.
 
+After the drift check of 3b (fixed at the start of 3c):
+
+- **Each text once, where it is said.** Before 3b, messages were made unique by their words; 3b compared terms by an approximation (`Errors.uniq/1`, `same?/2`), which showed the same words twice in four cases. Both are gone. 2a keeps each term once (`Enum.uniq`); the words are made unique in the LiveView's process after `Text.say/1`: `Text.once/1` (the errors at a panel's field), `Text.counted/1` (a run's failures, counts added up in the place of the first), and a fifth term, `{:once, separator, messages}`, which `Errors.joined/1` and a failed read give: said, each text once.
+- **`{:ash, message, vars}` keeps only the variables the message names, and `count`** (`Errors.ash/1`, which every `{:ash, …}` of 2a goes through, `Query`'s too). Four expected values of root tests lost the variables Ash adds (`index`, a custom validation's `keys`/`exactly`, `message`).
+- `Text.message/0` is `Errors.message() | String.t()`; `Text.error/1` and `Act.messages/2` are private; `Model.field_label/2` is gone.
+- **The claim lookups exist once**, in `Operation`: `column/2`, `action/2`, `table_action/2`, `bulk_action/3` are public, and the live core asks them where it chooses between a panel and a write (target 4.8).
+
 ## 4. 3c: `Live.Core`
 
 ### 4.1 The split
@@ -236,6 +243,15 @@ Every event from the browser is named `ash_data_table:TABLE_ID:event`; `TABLE_ID
 | `live/table_component.ex` → `parts/*` (11), → `not_found_error.ex` | 3c | the component counts as part 4 (4.1) |
 
 Still allowed after 3c: the couplings through data that xref cannot see and that the test's comment lists. The live component is given to `Parts.Grid` and `Parts.Picker` as `component` until stage 5. The presentation hints in `Model.Column` stay (F3). The S1 rule holds for the new modules: `Operation`, `Present` and `Live.Core.*` read only through `Query`, `Record`, `Pick` and `Bulk`.
+
+### 4.4 As built (3c, 2026-10-15)
+
+- **The split.** As 4.1, with these placements: `tidy/1` stays in `Live.Core` (4.1) together with the page's tables in the process dictionary it writes (`@tables`, `tables/0`, `close/1`, `rendered/1`), until `Live.Registry` (stage 5); `Live.Core.Updates` has the rest of live updates. `read_opts/1` and the page's `target/2` are `Reading`'s; `panel_unpick` (a chosen record taken out of a field) is `Picker`'s; `edit` (the panel of a map cell) is `Cells`'. Each topic module has `on/2`, one clause per intent of its topic, and `Live.Core.topic/1` names the module of an intent; `Reading` and `Bulk` have `handle_async/3` of their names. `update/2`, `handle_event/3` and `handle_async/3` of the core each end in `tidy/1`; `defoverridable` is gone.
+- **The component** keeps the comment of the markup contract, its four callbacks (one line each, but `update/2`, which raises `NotFoundError` when the table is mounted, its first read was refused and the entry is `gone?`) and `render/1` with the colocated hooks.
+- **Geometry.** The core counted rows with `Parts.Common.header_rows/0` and `Parts.Grid.first_row/1`, which would be 2b → 3: both are `Present`'s now (`header_rows/0`, `first_row/1`), and the parts call them there.
+- **Event names.** `Parts.Common.event/2` names an event in the markup. A part that is not given the table's id gets it: `Parts.Filter.filter` and the argument of the line as `table`, a field of the panel in `inside.table`. The transport takes the id from the hook's element by its suffix (`-grid`, `-panel`, `-picker`, `-pagination`). `Live.Core.addressed/2` splits the name.
+- **D8.** `Model.Column` has `takes` (by operator, what `Resource.Operator.takes/1` says), which `Parts.Filter` reads. `Format` reads `Model.Field.of/2` (a type's fields and kinds as the model's fields; `Model` builds its columns' with it too), `Model.Field.undeclared/1` (what a map that declares no fields holds, by its keys in words) and `Sensitive.masked/1` (what a sensitive value is kept as, public now).
+- **The dependency test** fails from here, with no finding; what it cannot see is listed in its moduledoc with the target's sections.
 
 ## 5. Cross-cutting (§6a): what stage 3 decides
 
