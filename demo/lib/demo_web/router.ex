@@ -135,6 +135,7 @@ defmodule DemoWeb.Router do
         ash_data_table "/gifts", Demo.Support.Unions.Gift, layout: false
         ash_data_table "/scans", Demo.Support.Files.Scan, layout: false
         ash_data_table "/safes", Demo.Support.Secrets.Safe, layout: false
+        ash_data_table "/lockers", Demo.Support.Secrets.Locker, layout: false
         ash_data_table "/meters", Demo.Support.Limits.Meter, layout: false
         ash_data_table "/essays", Demo.Support.Long.Essay, layout: false
 

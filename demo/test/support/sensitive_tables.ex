@@ -15,6 +15,7 @@ defmodule Demo.Support.Secrets do
 
   resources do
     resource Demo.Support.Secrets.Safe
+    resource Demo.Support.Secrets.Locker
   end
 end
 
@@ -167,5 +168,54 @@ defmodule Demo.Support.Secrets.Safe do
       public? true
       sensitive? true
     end
+  end
+end
+
+defmodule Demo.Support.Secrets.Lock do
+  @moduledoc "An embedded resource whose primary key is sensitive, and its only other field a plain one."
+  use Ash.Resource, data_layer: :embedded
+
+  actions do
+    defaults [:read, :destroy, create: [:dial], update: [:dial]]
+  end
+
+  attributes do
+    uuid_primary_key :id, public?: true, sensitive?: true
+    attribute :dial, :string, public?: true
+  end
+end
+
+defmodule Demo.Support.Secrets.Locker do
+  @moduledoc """
+  A locker, whose lock is a value with a sensitive primary key. The table
+  does not edit such a value: a form of it would hold the key.
+  """
+  use Ash.Resource,
+    domain: Demo.Support.Secrets,
+    data_layer: Ash.DataLayer.Ets,
+    extensions: [AshDataTable.Resource],
+    primary_read_warning?: false
+
+  table do
+    update_action :update
+
+    column :name
+    column :lock
+  end
+
+  actions do
+    defaults [:read, :destroy, create: [:name, :lock]]
+
+    update :update do
+      primary? true
+      require_atomic? false
+      accept [:name, :lock]
+    end
+  end
+
+  attributes do
+    uuid_primary_key :id
+    attribute :name, :string, public?: true
+    attribute :lock, Demo.Support.Secrets.Lock, public?: true
   end
 end

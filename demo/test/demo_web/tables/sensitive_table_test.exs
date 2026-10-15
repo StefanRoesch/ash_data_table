@@ -685,4 +685,35 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
       assert_reply view, %{ok: true, value: @token}
     end
   end
+
+  describe "a value whose own primary key is sensitive" do
+    setup %{conn: conn} do
+      on_exit(fn -> Demo.Support.Ets.stop(Demo.Support.Secrets.Locker) end)
+
+      key = Ash.UUID.generate()
+
+      locker =
+        Ash.Seed.seed!(Demo.Support.Secrets.Locker, %{
+          name: "north",
+          lock: %Demo.Support.Secrets.Lock{id: key, dial: "left"}
+        })
+
+      {:ok, view, html} = live(as(conn, :admin), "/support/lockers")
+      %{view: view, html: html, locker: locker, key: key}
+    end
+
+    test "is not edited, and its key is never in the page", %{
+      view: view,
+      html: html,
+      locker: locker,
+      key: key
+    } do
+      assert editors(html, "locker") == ~w(name)
+      refute html =~ key
+
+      html = edit(view, "locker", locker.id, "lock")
+      assert panel(html, "locker") == nil
+      refute html =~ key
+    end
+  end
 end

@@ -41,9 +41,11 @@ defmodule AshDataTable.Resource.Embedding do
   # what it held. Hence all or nothing: a value with an input a table has
   # no control for is read-only, and so is one whose action needs something
   # a table cannot give (a private attribute or an argument it does not run
-  # without). So is an embedded resource with an input that is declared
-  # `sensitive?`: its one line shows a mask for that field, and a form of
-  # the value would have to hold what the mask hides.
+  # without). So is an embedded resource with an input, or a primary key,
+  # that is declared `sensitive?`: its one line shows a mask for that field,
+  # and a form of the value would have to hold what the mask hides (a form
+  # holds the key of a value it does not take as an input, so that Ash
+  # finds the value it changes).
   #
   # ## Unions
   #
@@ -363,7 +365,8 @@ defmodule AshDataTable.Resource.Embedding do
         (needed = needed(resource, [create | List.wrap(update)])) != nil ->
           needed
 
-        (sensitive = Enum.find(built, fn {field, _} -> field.input? and field.sensitive? end)) !=
+        (sensitive =
+           Enum.find(built, fn {field, _} -> (field.input? or field.key?) and field.sensitive? end)) !=
             nil ->
           {%{name: name}, _obstacle} = sensitive
 
