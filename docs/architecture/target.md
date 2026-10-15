@@ -762,6 +762,16 @@ Do not:
 
 ---
 
+### 7.5 Later ideas, after the first release (owner, 2026-10-15)
+
+Not built and not planned for v1; noted so they are not lost. Each is a "second user" of the data contract of 2a, which stays internal until one of them is real (Q14).
+
+| Idea | How | Cost |
+| --- | --- | --- |
+| A table in the terminal (CLI) | An Elixir terminal app calls 2a directly: the model for the person, `Query` for rows, `Present` for drawing data, `Operation` for writes, `Text.say/1` for words | Small: 2a is LiveView-free; live updates and uploads need small adapters |
+| An in-game UI (e.g. Unity) | A Phoenix Channel adapter: the core runs on the server per player; the client sends commands and draws the state it receives | Large: a server-side transport (the counterpart of S20) and a wire format |
+| **The table's capabilities as an API, through Ash's own interfaces** | The extension adds generic actions to a resource (e.g. "read the table": state in, columns + rows + offered actions + summaries out; "run a table command"). The developer exposes them as with any action, in the resource's existing `json_api` / `graphql` block (e.g. `graphql do queries do action :task_table, :read_table end end`); ash_json_api, ash_graphql and ash_typescript serve them — no API layer of our own. Live updates as a GraphQL subscription | Medium: the return types as Ash types with named fields (ash_graphql needs them for a typed schema); stateless requests carry the state, every value a claim |
+
 ## 8. Questions, all answered
 
 The options, pros and cons are in [target-questions.md](target-questions.md).
