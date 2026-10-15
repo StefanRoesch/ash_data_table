@@ -219,6 +219,10 @@ defmodule AshDataTable.Intent do
     end
   end
 
+  # A payload that is no map at all (a forged push) sent no form either,
+  # as the table took it before.
+  defp form(_params, _name), do: %{}
+
   # "All that match", or rows: at least one.
   defp selection(%{"all" => true, "rows" => [_ | _] = rows}), do: {:all, rows}
   defp selection(%{"all" => true}), do: :all

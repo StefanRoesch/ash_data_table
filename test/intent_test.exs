@@ -18,6 +18,18 @@ defmodule AshDataTable.IntentTest do
 
     # a form that sent nothing is an empty one
     assert parse("filter", %{"_target" => ["x"]}) == {:ok, {:filter, %{}}}
+
+    # a payload that is no map is taken as no form, as before Intent
+    for {event, tag} <- [
+          {"filter", :filter},
+          {"arguments", :arguments},
+          {"panel_validate", :panel_validate},
+          {"panel_submit", :panel_submit}
+        ],
+        payload <- ["text", 7, nil, ["a"]] do
+      assert parse(event, payload) == {:ok, {tag, %{}}}
+    end
+
     assert parse("clear_filter", %{"column" => "title"}) == {:ok, {:clear_filter, "title"}}
     assert parse("clear_filters", %{}) == {:ok, :clear_filters}
     assert parse("page", %{"to" => "next"}) == {:ok, {:page, "next"}}
