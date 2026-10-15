@@ -1,5 +1,8 @@
 # Stage 3: design note (3a, 3b, 3c)
 
+
+> **Decided by the owner, 2026-10-15:** all ten recommendations (D1–D10) accepted; D3 yes — the root tests that assert a returned text change their expected value to the message term, as a new agreed test group of stage 3b.
+
 Status: **for the owner to decide.** Nothing of it is built. Code references are of `d8e8c6e` (the end of stage 2). Names follow [target.md](target.md); words follow `CONTEXT.md`. The decisions are in section 7.
 
 ## 1. What stage 3 changes, and what it does not
