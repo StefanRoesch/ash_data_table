@@ -224,8 +224,9 @@ defmodule DemoWeb.Router do
   # For the browser tests (`e2e/`), in the e2e environment only: seeds the
   # database again, so that a test that edits starts from known data,
   # deletes a task behind the table's back, and makes the reads of the
-  # comments fail; and a page whose tables let their rows be selected with
-  # nothing to run on them.
+  # comments fail; a page whose tables let their rows be selected with
+  # nothing to run on them; and one whose table is given another actor
+  # while it is open.
   if Application.compile_env(:demo, :e2e_routes, false) do
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
@@ -239,6 +240,7 @@ defmodule DemoWeb.Router do
 
       live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
         live "/select", SelectLive
+        live "/switch", SwitchLive
       end
     end
   end

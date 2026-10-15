@@ -284,19 +284,16 @@ defmodule AshDataTable.Live.Core.Files do
 
   # What the panel is given of its file fields, by name: the upload of
   # each, and what is said of its file at the field (`said_of/4`).
-  def panel_files(%{table: %{entry: %{panel: panel, id: id}}} = assigns) do
+  def panel_files(%{panel: panel, id: id}, uploads) do
     for input <- file_inputs(panel), into: %{} do
       {input.name,
-       %{
-         upload: upload_of(assigns[:uploads], id, input),
-         errors: said_of(panel, input, id, assigns[:uploads])
-       }}
+       %{upload: upload_of(uploads, id, input), errors: said_of(panel, input, id, uploads)}}
     end
   end
 
   # What is said at each file field of the panel, by name (`said_of/4`).
-  def files_said(assigns),
-    do: Map.new(panel_files(assigns), fn {name, %{errors: errors}} -> {name, errors} end)
+  def files_said(entry, uploads),
+    do: Map.new(panel_files(entry, uploads), fn {name, %{errors: errors}} -> {name, errors} end)
 
   # What is read out of a field when the panel stays open: for a file, what
   # is shown at its field; for the rest, what the action said.

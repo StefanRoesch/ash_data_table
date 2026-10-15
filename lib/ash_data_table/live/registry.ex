@@ -93,4 +93,79 @@ defmodule AshDataTable.Live.Registry do
 
     {name, socket |> assign(table: %{table | pool: pool}) |> stream(name, [], reset: true)}
   end
+
+  @doc "Gives a stream name back to the pool, emptied."
+  def give_back(socket, name) do
+    %{pool: pool} = table = socket.assigns.table
+
+    socket
+    |> stream(name, [], reset: true)
+    |> assign(table: %{table | pool: %{pool | free: [name | pool.free]}})
+  end
+
+  # ---- opening and closing --------------------------------------------
+
+  @doc """
+  Adds the table `id`, placed in the cell `target` of the table it is in,
+  with a stream of its own and nothing else yet: it is told what it is with
+  `within/3`.
+  """
+  def add(socket, id, target) do
+    {stream, socket} = take_stream(socket)
+    %{entries: entries} = table = socket.assigns.table
+    entry = %{AshDataTable.Live.Entry.new() | id: id, target: target, stream: stream}
+
+    assign(socket, table: %{table | entries: Map.put(entries, id, entry)})
+  end
+
+  @doc """
+  Closes the table `id`, which is not the one on the page: its listener
+  stopped, its tasks cancelled, the copies of a run's files removed, its
+  uploads cancelled and given up, its stream emptied and its name back in
+  the pool, its entry gone. What closes a table closes the tables under it
+  too (`reconcile`): a table is never left without the one it is in.
+  """
+  def close(socket, id) do
+    socket =
+      within(socket, id, fn socket ->
+        %{live: live, uploads: uploads, running_files: files} = socket.assigns.table.entry
+
+        if live, do: AshDataTable.Listener.stop(live.pid)
+        Enum.each(files, &File.rm/1)
+
+        socket =
+          Enum.reduce([:read, :summary, :bulk], socket, &cancel_async(&2, async(&2, &1)))
+
+        # an upload with entries cannot be given up: they are cancelled first
+        Enum.reduce(uploads, socket, fn name, socket ->
+          case socket.assigns[:uploads] do
+            %{^name => %{entries: entries}} ->
+              entries
+              |> Enum.reduce(socket, &cancel_upload(&2, name, &1.ref))
+              |> disallow_upload(name)
+
+            _gone ->
+              socket
+          end
+        end)
+      end)
+
+    %{entries: %{^id => %{stream: stream}} = entries} = table = socket.assigns.table
+
+    socket
+    |> assign(table: %{table | entries: Map.delete(entries, id)})
+    |> give_back(stream)
+  end
+
+  @doc """
+  The tables drawn into a cell of another's row, parents before their
+  children: LiveView moves the portals of one patch in the order of the
+  page, and a portal whose cell is not there yet fails.
+  """
+  def portals(%{entries: entries}) do
+    entries
+    |> Map.values()
+    |> Enum.filter(& &1.target)
+    |> Enum.sort_by(&{length(&1.path), &1.id})
+  end
 end

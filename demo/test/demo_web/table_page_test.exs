@@ -1,7 +1,7 @@
 defmodule DemoWeb.TablePageTest do
   # The helpers read a page where a person sees it: what a `<.portal>`
-  # renders into a template is read at its target. No table renders one
-  # yet; nested tables and pickers will (stage 5 of the refactor).
+  # renders into a template is read at its target, without the portal's
+  # wrapper, which takes no part in the layout (stage 5 of the refactor).
   use ExUnit.Case, async: true
   import DemoWeb.TablePage
 
@@ -16,7 +16,7 @@ defmodule DemoWeb.TablePageTest do
     assert picker(html).heading == "Pick"
     assert picker(html).question == "Q?"
     assert picker(html).buttons == ["Cancel"]
-    assert text(html, "#spot > div > #task-picker > h2") == "Pick"
+    assert text(html, "#spot > #task-picker > h2") == "Pick"
     assert text(html, "#inner #deep") == "deep"
     assert editor(html, "task", "title").control == "text"
     assert picker("<div id=\"x\"></div>") == nil

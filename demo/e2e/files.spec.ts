@@ -248,3 +248,31 @@ test.describe("in German", () => {
     await expect(input).toHaveAccessibleDescription("Die Datei ist zu groß. Die Grenze liegt bei 100 kB.")
   })
 })
+
+test.describe("in a nested table", () => {
+  // The labels under a task: "Import" is on their line, and the panel it
+  // opens is the nested table's, drawn into the task's row by a portal
+  // (stage 5). Its file input is that table's upload: the file reaches the
+  // action, and a label is made of it. (Moved here from the demo test
+  // "the labels under a task have the action on their line…", whose
+  // LiveView test cannot reach a file input inside a portal.)
+  test("its panel has the upload of the nested table, which sends the file to the action", async ({ page }) => {
+    const tasks = new Table(page, "task", "/tasks")
+    await tasks.open()
+    const nested = await tasks.openLine(SEED.task.second, "labels")
+
+    await tasks.lineAction(SEED.task.second, "labels", "import").click()
+    await expect(nested.panel).toBeVisible()
+    expect(await nested.fields()).toEqual(["file"])
+
+    await fileInput(nested).setInputFiles(csv("labels.csv", "idea\n"))
+    await nested.panelSettled()
+    await nested.panelSubmit.click()
+
+    await expect(nested.panel).toHaveCount(0)
+    await expect(nested.result).toHaveText("Import: 1")
+
+    await labels.open()
+    expect(await labels.columnTexts("name")).toEqual(expect.arrayContaining(["idea"]))
+  })
+})

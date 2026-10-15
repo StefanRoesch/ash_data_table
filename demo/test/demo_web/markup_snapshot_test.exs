@@ -141,6 +141,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
   def normalise(html) do
     html =
       html
+      |> portals()
       |> String.replace(~r/ phx-hook="[^"]*?(\.[A-Za-z]+)"/, ~s( phx-hook="\\1"))
       |> String.replace(
         ~r/((?: phx-(?:click|change|submit)="|&quot;event&quot;:&quot;))ash_data_table:[^:"&]+:/,
@@ -169,6 +170,91 @@ defmodule DemoWeb.MarkupSnapshotTest do
     |> sort_attributes()
     |> String.replace("><", ">\n<")
     |> Kernel.<>("\n")
+  end
+
+  # The page as the browser makes it of `<.portal>`'s markup, a nested
+  # table's. LiveView renders a portal as
+  # `<template data-phx-portal=TARGET><div id="_lv_portal_wrap_ID">…</div></template>`
+  # where the portal stands, and its client moves the template's content to
+  # the end of the element TARGET finds. Here, in the order of the page (a
+  # parent's portal comes before its children's): the content goes to the
+  # end of its target, the emptied template is dropped, and the wrapper,
+  # which takes no part in the layout (`display: contents`), gives its
+  # place to what it holds.
+  defp portals(html) do
+    case :binary.match(html, "<template") |> template_at(html) do
+      nil ->
+        html
+
+      {start, stop, target, inner} ->
+        html = binary_part(html, 0, start) <> binary_part(html, stop, byte_size(html) - stop)
+        html |> put_into(target, inner) |> portals()
+    end
+  end
+
+  # The first portal's template from `match` on: where it starts and ends,
+  # the id of its target, and the content of its wrapper.
+  defp template_at(:nomatch, _html), do: nil
+
+  defp template_at({at, _}, html) do
+    open_end =
+      at + (html |> binary_part(at, byte_size(html) - at) |> :binary.match(">") |> elem(0)) + 1
+
+    tag = binary_part(html, at, open_end - at)
+
+    case Regex.run(~r/data-phx-portal="\[id=(?:&#39;|')([^'&]+)(?:&#39;|')\]"/, tag) do
+      [_, target] ->
+        stop = closing(html, open_end, "template", 1)
+        content = binary_part(html, open_end, stop - open_end - byte_size("</template>"))
+
+        [_, inner] =
+          Regex.run(~r/\A\s*<div id="_lv_portal_wrap_[^"]*"[^>]*>(.*)<\/div>\s*\z/s, content)
+
+        {at, stop, target, String.trim(inner)}
+
+      nil ->
+        rest = open_end
+
+        html
+        |> binary_part(rest, byte_size(html) - rest)
+        |> :binary.match("<template")
+        |> case do
+          :nomatch -> nil
+          {next, length} -> template_at({rest + next, length}, html)
+        end
+    end
+  end
+
+  # The end of the element whose start tag ends at `from`, by counting the
+  # tags of its name.
+  defp closing(html, from, tag, depth) do
+    rest = binary_part(html, from, byte_size(html) - from)
+
+    {open_at, _} =
+      :binary.match(rest, "<#{tag}") |> then(&if &1 == :nomatch, do: {:infinity, 0}, else: &1)
+
+    {close_at, close_length} = :binary.match(rest, "</#{tag}>")
+
+    cond do
+      open_at < close_at -> closing(html, from + open_at + 1, tag, depth + 1)
+      depth == 1 -> from + close_at + close_length
+      true -> closing(html, from + close_at + close_length, tag, depth - 1)
+    end
+  end
+
+  # Puts `inner` at the end of the element with the id `id`.
+  defp put_into(html, id, inner) do
+    {at, _} = :binary.match(html, ~s(id="#{id}"))
+    tag_start = html |> binary_part(0, at) |> :binary.matches("<") |> List.last() |> elem(0)
+    [_, tag] = Regex.run(~r/\A<([a-zA-Z0-9-]+)/, binary_part(html, tag_start, at - tag_start))
+
+    open_end =
+      at + (html |> binary_part(at, byte_size(html) - at) |> :binary.match(">") |> elem(0)) + 1
+
+    stop = closing(html, open_end, tag, 1) - byte_size("</#{tag}>")
+    before = html |> binary_part(0, stop) |> String.trim_trailing()
+
+    before <> inner <> binary_part(html, stop, byte_size(html) - stop)
   end
 
   # The order in which a tag's attributes come out is not part of the markup:

@@ -109,7 +109,7 @@ defmodule AshDataTable.Live.Core.Updates do
     {shown, others} =
       Enum.split_with(waiting, fn {_type, key} -> shown?(model, rows, key) end)
 
-    working = working(socket.assigns.table.entry)
+    working = working(socket.assigns.table)
 
     {held, free} =
       (held ++ Enum.map(shown, &elem(&1, 1)))
@@ -131,9 +131,10 @@ defmodule AshDataTable.Live.Core.Updates do
 
   # The rows a person is working on, by the key in their id: the row the
   # action panel or the picker of this table is open for, and every row
-  # under which a panel or a picker is open, in a nested table at whatever
-  # depth (`@tables`).
-  defp working(%{id: id, open: open, panel: panel, picker: picker}) do
+  # under which a panel or a picker is open, in a table at whatever depth
+  # below it (by `path`). A picker's table that is a component of its own
+  # is found in `@tables`.
+  defp working(%{entry: %{id: id, open: open, panel: panel, picker: picker}, entries: entries}) do
     of_panel =
       case panel do
         %{key: key} when is_binary(key) -> [key]
@@ -146,8 +147,15 @@ defmodule AshDataTable.Live.Core.Updates do
         _no_row -> []
       end
 
+    shown =
+      for {other, entry} <- entries,
+          into: %{},
+          do:
+            {other,
+             %{path: entry.path, open?: not is_nil(entry.panel) or not is_nil(entry.picker)}}
+
     under =
-      for {other, %{open?: true, path: path}} <- Core.tables(),
+      for {other, %{open?: true, path: path}} <- Map.merge(Core.tables(), shown),
           other != id,
           [^id, child | _] <- [Enum.drop_while(path, &(&1 != id))],
           {key, lines} <- open,
@@ -265,7 +273,7 @@ defmodule AshDataTable.Live.Core.Updates do
       not MapSet.member?(leaving, row) or not is_map_key(rows, row) ->
         {:noreply, socket}
 
-      row in working(socket.assigns.table.entry) ->
+      row in working(socket.assigns.table) ->
         held = Enum.uniq([rows[row].pk | socket.assigns.table.entry.held])
         {:noreply, socket |> stay(row) |> Core.put(held: held)}
 

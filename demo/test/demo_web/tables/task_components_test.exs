@@ -38,7 +38,7 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
 
   # the one element matching `selector`, as a tree
   defp tree(html, selector) do
-    [node] = html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> LazyHTML.to_tree()
+    [node] = html |> seen() |> LazyHTML.query(selector) |> LazyHTML.to_tree()
     node
   end
 

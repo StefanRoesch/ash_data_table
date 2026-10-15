@@ -527,6 +527,7 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Nesting
   alias AshDataTable.Live.Core.Url
+  alias AshDataTable.Live.Registry
   alias AshDataTable.Parts
   alias AshDataTable.Present
   alias AshDataTable.Routes
@@ -565,6 +566,61 @@ defmodule AshDataTable.Live.TableComponent do
     """
   end
 
+  # The table on the page, and in it, after everything else, the portals
+  # of the tables shown in its rows and in theirs: each drawn here, at the
+  # top of the template, where it follows its entry, and moved by the
+  # browser into the cell of the row it belongs to (`<.portal>`), parents
+  # before their children (`AshDataTable.Live.Registry.portals/1`). The two
+  # elements around a nested table pin it to the left edge of the scroll
+  # area around it and make it as wide as that area: the portal's own
+  # wrapper takes no part in the layout (`display: contents`).
+  def render(assigns) do
+    ~H"""
+    <div id={@table.entry.id} class="ash-data-table" data-read={not is_nil(@table.entry.page)}>
+      <.body
+        entry={@table.entry}
+        options={@table.options}
+        caller={@table.caller}
+        time_zone={@table.caller.time_zone}
+        rows={rows(@streams, @table.entry)}
+        myself={@myself}
+        uploads={assigns[:uploads]}
+        router={@socket.router}
+      />
+      <.portal
+        :for={entry <- Registry.portals(@table)}
+        :key={entry.id}
+        id={"#{entry.id}-portal"}
+        target={"[id='#{entry.target}']"}
+        class="contents"
+      >
+        <div class="sticky left-0 w-0" data-pin>
+          <div class="w-[var(--ash-data-table-view)]">
+            <div
+              :if={!entry.gone?}
+              id={entry.id}
+              class="ash-data-table"
+              data-read={not is_nil(entry.page)}
+            >
+              <.body
+                entry={entry}
+                options={%{@table.options | url: nil, heading: false, mounted?: false}}
+                caller={@table.caller}
+                time_zone={@table.caller.time_zone}
+                rows={rows(@streams, entry)}
+                myself={@myself}
+                uploads={assigns[:uploads]}
+                router={@socket.router}
+              />
+            </div>
+            <div :if={entry.gone?} id={entry.id} hidden></div>
+          </div>
+        </div>
+      </.portal>
+    </div>
+    """
+  end
+
   # The four hooks at the end are JS files in the package, under
   # `assets/js/` (`assets/js/index.js`). LiveView writes a colocated hook
   # into `_build/ENV/phoenix-colocated/ash_data_table/`, beside a link named
@@ -572,168 +628,178 @@ defmodule AshDataTable.Live.TableComponent do
   # (`node_modules_path`): `../node_modules/js/` is `assets/js/` of the
   # package, a path dependency's and a Hex package's alike, and the host
   # sets up nothing for it.
-  def render(assigns) do
+  # The items of a table's stream, given to its grid whenever the table
+  # changes: the grid's comprehension over them is then rendered again, with
+  # nothing new in it but what the stream holds, as it was while every
+  # table was a component of its own (`Phoenix.LiveViewTest` keeps the rows
+  # of a stream where they are only then).
+  defp rows(streams, entry), do: streams[entry.stream]
+
+  attr :entry, :any, required: true
+  attr :options, :any, required: true
+  attr :caller, :any, required: true
+  attr :time_zone, :any, required: true
+  attr :rows, :any, required: true
+  attr :myself, :any, required: true
+  attr :uploads, :any, required: true
+  attr :router, :any, required: true
+
+  defp body(assigns) do
     ~H"""
-    <div id={@table.entry.id} class="ash-data-table" data-read={not is_nil(@table.entry.page)}>
-      <Parts.Heading.heading
-        heading={@table.options.heading}
-        id={@table.entry.id}
-        label={@table.entry.label}
-        model={@table.entry.model}
-        myself={@myself}
-        nested?={@table.entry.nested?}
-        offered={@table.entry.offered}
-        page={@table.entry.page}
-        related={@table.entry.related}
-      />
-      <Parts.Related.related
-        :if={@table.entry.related}
-        id={@table.entry.id}
-        via={@table.entry.related.via}
-        title={@table.entry.related_title}
-        parent={
-          Routes.table(
-            @socket.router,
-            @table.entry.related.via.source,
-            @table.entry.related.via.source_table,
-            @table.entry.authorize_given
-          )
-        }
-        clear={Url.path(@table.options.url, @table.entry.id, %{})}
-        create={@table.entry.page && @table.entry.model.create}
-        actions={if @table.entry.page, do: @table.entry.offered, else: []}
-        target={@myself}
-      />
-      <Parts.Arguments.argument_line
-        id={@table.entry.id}
-        lines={@table.entry.lines}
-        model={@table.entry.model}
-        myself={@myself}
-        nested?={@table.entry.nested?}
-        refused={@table.entry.refused}
-        state={@table.entry.state}
-      />
-      <Parts.Filter.filter_form
-        id={@table.entry.id}
-        myself={@myself}
-      />
-      <Parts.Selection.selection_line
-        bulk={@table.entry.bulk}
-        choose={@table.entry.choose}
-        id={@table.entry.id}
-        model={@table.entry.model}
-        myself={@myself}
-        nested?={@table.entry.nested?}
-        notice?={@table.entry.notice?}
-        page={@table.entry.page}
-        related={@table.entry.related}
-        row_count={@table.entry.row_count}
-        running={@table.entry.running}
-        selecting={@table.entry.selecting}
-        state={@table.entry.state}
-      />
-      <Parts.Messages.status
-        announcement={@table.entry.announcement}
-        announcements={@table.entry.announcements}
-        id={@table.entry.id}
-        result={@table.entry.result}
-      />
-      <Parts.Grid.grid
-        acting?={@table.entry.acting?}
-        busy?={@table.entry.busy?}
-        choose={@table.entry.choose}
-        component={__MODULE__}
-        creates={@table.entry.creates}
-        editing?={@table.entry.editing?}
-        expandable?={@table.entry.expandable?}
-        full_view={@table.entry.full_view}
-        id={@table.entry.id}
-        label={@table.entry.label}
-        label_column={@table.entry.label_column}
-        labelledby={@table.entry.labelledby}
-        lead={@table.entry.lead}
-        model={@table.entry.model}
-        myself={@myself}
-        nested?={@table.entry.nested?}
-        nested_reader={Nesting.nested_reader(assigns)}
-        page={@table.entry.page}
-        pending={@table.entry.pending}
-        rejected={@table.entry.rejected}
-        row_count={@table.entry.row_count}
-        rows={@streams[@table.entry.stream]}
-        running={@table.entry.running}
-        selecting={@table.entry.selecting}
-        state={@table.entry.state}
-        summarised?={@table.entry.summarised?}
-        summary={@table.entry.summary}
-        summing?={@table.entry.summing?}
-        time_zone={@table.caller.time_zone}
-      />
-      <Parts.Messages.whole id={@table.entry.id} />
-      <Parts.Messages.dialog
-        bulk={@table.entry.bulk}
-        id={@table.entry.id}
-        model={@table.entry.model}
-      />
-      <Parts.Panel.panel
-        :if={@table.entry.panel}
-        id={@table.entry.id}
-        panel={Present.panel(@table.entry.panel, Files.files_said(assigns))}
-        files={Files.panel_files(assigns)}
-        target={@myself}
-      />
-      <%!-- After the panel, and so on top of it when both are open: a picker
+    <Parts.Heading.heading
+      heading={@options.heading}
+      id={@entry.id}
+      label={@entry.label}
+      model={@entry.model}
+      myself={@myself}
+      nested?={@entry.nested?}
+      offered={@entry.offered}
+      page={@entry.page}
+      related={@entry.related}
+    />
+    <Parts.Related.related
+      :if={@entry.related}
+      id={@entry.id}
+      via={@entry.related.via}
+      title={@entry.related_title}
+      parent={
+        Routes.table(
+          @router,
+          @entry.related.via.source,
+          @entry.related.via.source_table,
+          @entry.authorize_given
+        )
+      }
+      clear={Url.path(@options.url, @entry.id, %{})}
+      create={@entry.page && @entry.model.create}
+      actions={if @entry.page, do: @entry.offered, else: []}
+      target={@myself}
+    />
+    <Parts.Arguments.argument_line
+      id={@entry.id}
+      lines={@entry.lines}
+      model={@entry.model}
+      myself={@myself}
+      nested?={@entry.nested?}
+      refused={@entry.refused}
+      state={@entry.state}
+    />
+    <Parts.Filter.filter_form
+      id={@entry.id}
+      myself={@myself}
+    />
+    <Parts.Selection.selection_line
+      bulk={@entry.bulk}
+      choose={@entry.choose}
+      id={@entry.id}
+      model={@entry.model}
+      myself={@myself}
+      nested?={@entry.nested?}
+      notice?={@entry.notice?}
+      page={@entry.page}
+      related={@entry.related}
+      row_count={@entry.row_count}
+      running={@entry.running}
+      selecting={@entry.selecting}
+      state={@entry.state}
+    />
+    <Parts.Messages.status
+      announcement={@entry.announcement}
+      announcements={@entry.announcements}
+      id={@entry.id}
+      result={@entry.result}
+    />
+    <Parts.Grid.grid
+      acting?={@entry.acting?}
+      busy?={@entry.busy?}
+      choose={@entry.choose}
+      creates={@entry.creates}
+      editing?={@entry.editing?}
+      expandable?={@entry.expandable?}
+      full_view={@entry.full_view}
+      id={@entry.id}
+      label={@entry.label}
+      label_column={@entry.label_column}
+      labelledby={@entry.labelledby}
+      lead={@entry.lead}
+      model={@entry.model}
+      myself={@myself}
+      nested?={@entry.nested?}
+      page={@entry.page}
+      pending={@entry.pending}
+      rejected={@entry.rejected}
+      row_count={@entry.row_count}
+      rows={@rows}
+      running={@entry.running}
+      selecting={@entry.selecting}
+      state={@entry.state}
+      summarised?={@entry.summarised?}
+      summary={@entry.summary}
+      summing?={@entry.summing?}
+      time_zone={@time_zone}
+    />
+    <Parts.Messages.whole id={@entry.id} />
+    <Parts.Messages.dialog
+      bulk={@entry.bulk}
+      id={@entry.id}
+      model={@entry.model}
+    />
+    <Parts.Panel.panel
+      :if={@entry.panel}
+      id={@entry.id}
+      panel={Present.panel(@entry.panel, Files.files_said(@entry, @uploads))}
+      files={Files.panel_files(@entry, @uploads)}
+      target={@myself}
+    />
+    <%!-- After the panel, and so on top of it when both are open: a picker
       that a field of the panel has opened. --%>
-      <Parts.Picker.picker
-        :if={@table.entry.picker}
-        id={@table.entry.id}
-        picker={Present.picker(@table.entry.picker)}
-        reader={Nesting.picker_reader(assigns)}
-        target={@myself}
-        component={__MODULE__}
-      />
-      <Parts.Messages.messages
-        error={@table.entry.error}
-        fill={@table.entry.fill}
-        id={@table.entry.id}
-        loading?={@table.entry.loading?}
-        nested?={@table.entry.nested?}
-        row_count={@table.entry.row_count}
-      />
-      <Parts.Pagination.pagination
-        :if={
-          not @table.entry.nested? and Parts.Pagination.pages?(@table.entry.page, @table.entry.model)
-        }
-        id={@table.entry.id}
-        nested?={false}
-        page={@table.entry.page}
-        model={@table.entry.model}
-        state={@table.entry.state}
-        row_count={@table.entry.row_count}
-        label={@table.entry.label}
-        target={@myself}
-      />
-      <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">
-        // In the package: assets/js/pagination.js
-        import {Pagination} from "../node_modules/js/index.js"
-        export default Pagination
-      </script>
-      <script :type={Phoenix.LiveView.ColocatedHook} name=".Panel">
-        // In the package: assets/js/panel.js
-        import {Panel} from "../node_modules/js/index.js"
-        export default Panel
-      </script>
-      <script :type={Phoenix.LiveView.ColocatedHook} name=".Picker">
-        // In the package: assets/js/picker.js
-        import {Picker} from "../node_modules/js/index.js"
-        export default Picker
-      </script>
-      <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
-        // In the package: assets/js/grid/
-        import {Grid} from "../node_modules/js/index.js"
-        export default Grid
-      </script>
-    </div>
+    <Parts.Picker.picker
+      :if={@entry.picker}
+      id={@entry.id}
+      picker={Present.picker(@entry.picker)}
+      reader={Nesting.picker_reader(%{table: %{caller: @caller, options: @options, entry: @entry}})}
+      target={@myself}
+      component={__MODULE__}
+    />
+    <Parts.Messages.messages
+      error={@entry.error}
+      fill={@entry.fill}
+      id={@entry.id}
+      loading?={@entry.loading?}
+      nested?={@entry.nested?}
+      row_count={@entry.row_count}
+    />
+    <Parts.Pagination.pagination
+      :if={not @entry.nested? and Parts.Pagination.pages?(@entry.page, @entry.model)}
+      id={@entry.id}
+      nested?={false}
+      page={@entry.page}
+      model={@entry.model}
+      state={@entry.state}
+      row_count={@entry.row_count}
+      label={@entry.label}
+      target={@myself}
+    />
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">
+      // In the package: assets/js/pagination.js
+      import {Pagination} from "../node_modules/js/index.js"
+      export default Pagination
+    </script>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Panel">
+      // In the package: assets/js/panel.js
+      import {Panel} from "../node_modules/js/index.js"
+      export default Panel
+    </script>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Picker">
+      // In the package: assets/js/picker.js
+      import {Picker} from "../node_modules/js/index.js"
+      export default Picker
+    </script>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
+      // In the package: assets/js/grid/
+      import {Grid} from "../node_modules/js/index.js"
+      export default Grid
+    </script>
     """
   end
 end

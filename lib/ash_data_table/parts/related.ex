@@ -3,9 +3,6 @@ defmodule AshDataTable.Parts.Related do
   # Relationship lines under an expanded row, the nested tables in them,
   # what a table limited to related records says above its grid, and the
   # link to the full view.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
   use Phoenix.Component
 
   alias AshDataTable.Parts
@@ -26,8 +23,7 @@ defmodule AshDataTable.Parts.Related do
   attr :model, :map, required: true
   attr :colspan, :integer, required: true
   attr :creates, :map, required: true
-  attr :reader, :map, required: true
-  attr :component, :atom, required: true
+  attr :myself, :any, required: true
 
   def lines(assigns) do
     assigns =
@@ -75,7 +71,7 @@ defmodule AshDataTable.Parts.Related do
               data-create
               class="btn btn-xs ms-2 hidden h-5 align-top"
               phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "create")}
-              phx-target={"##{@row_id}-t-#{relationship.name}"}
+              phx-target={@myself}
             >
               {@creates[relationship.name].create}
             </button>
@@ -93,7 +89,7 @@ defmodule AshDataTable.Parts.Related do
               class="btn btn-xs ms-2 hidden h-5 align-top"
               phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "table_act")}
               phx-value-action={action.name}
-              phx-target={"##{@row_id}-t-#{relationship.name}"}
+              phx-target={@myself}
             >
               {action.label}
             </button>
@@ -116,36 +112,10 @@ defmodule AshDataTable.Parts.Related do
           data-expander-cell={"#{@row_id}-e"}
           class="p-0"
         >
-          <%!-- A nested table is as wide as what is seen of the table around
-          it, and stays there while that table scrolls sideways under it: it
-          scrolls sideways in its own area (its grid), under its own rows. The
-          outer element takes no width, so the columns around stay as they are,
-          and holds its place at the left edge of the scroll area around it; the
-          inner one is as wide as that area, which its hook says
-          (`--ash-data-table-view`, see "scrolling sideways" in the hook). --%>
-          <div class="sticky left-0 w-0" data-pin>
-            <div class="w-[var(--ash-data-table-view)]">
-              <.live_component
-                module={@component}
-                id={"#{@row_id}-t-#{relationship.name}"}
-                resource={relationship.destination}
-                table={relationship.table}
-                via={relationship}
-                parent_key={@row.pk}
-                label={relationship.label}
-                labelledby={
-                  Enum.join(
-                    ["#{@row_id}-l-#{relationship.name}-b"] ++
-                      if(@first, do: ["#{@row_id}-c-#{@first.name}"], else: []),
-                    " "
-                  )
-                }
-                url={nil}
-                mounted?={false}
-                {@reader}
-              />
-            </div>
-          </div>
+          <%!-- The nested table is drawn by the table on the page, and the
+          browser puts it here (a portal, see `render/1` of the table
+          component), as wide as what is seen of the table around it: it
+          scrolls sideways in its own area (its grid), under its own rows. --%>
         </td>
       </tr>
     <% end %>

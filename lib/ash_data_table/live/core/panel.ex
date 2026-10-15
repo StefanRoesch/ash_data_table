@@ -669,7 +669,9 @@ defmodule AshDataTable.Live.Core.Panel do
             stream_insert(
               socket,
               socket.assigns.table.entry.stream,
-              Reading.detail(id, key, nil, nil), at: 0),
+              Reading.detail(id, key, nil, nil),
+              at: 0
+            ),
           else: socket
       end)
       |> stream_insert(

@@ -7,6 +7,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Url
+  alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
   alias AshDataTable.Related
@@ -267,5 +268,98 @@ defmodule AshDataTable.Live.Core.Nesting do
       lineage: assigns.table.entry.path,
       live?: passed_on(assigns.table.entry.live_given)
     }
+  end
+
+  # ---- the tables under the rows (stage 5) ----------------------------
+  #
+  # What is rendered decides which tables stay (target F11). A table renders
+  # the nested table of each open line of each of its rows that is still on
+  # its page. Starting at the table on the page, every such table that is
+  # missing is opened, and one whose table around it tells it something
+  # else is told again, parents first; every table that is no longer
+  # reached is closed, with all under it, in the same render as the cell
+  # its portal went into.
+  def reconcile(socket) do
+    {socket, reached} = walk(socket, [socket.assigns.table.entry.id], MapSet.new())
+
+    socket.assigns.table.entries
+    |> Map.keys()
+    |> Enum.reject(&MapSet.member?(reached, &1))
+    |> Enum.reduce(socket, &Registry.close(&2, &1))
+  end
+
+  defp walk(socket, [], reached), do: {socket, reached}
+
+  defp walk(socket, [id | rest], reached) do
+    {socket, children} =
+      Enum.reduce(children(socket, id), {socket, []}, fn {child, given, target},
+                                                         {socket, children} ->
+        socket =
+          case socket.assigns.table.entries do
+            %{^child => %{given: ^given}} ->
+              socket
+
+            %{^child => _told_otherwise} ->
+              tell(socket, child, given)
+
+            _missing ->
+              socket |> Registry.add(child, target) |> tell(child, given)
+          end
+
+        {socket, [child | children]}
+      end)
+
+    walk(socket, rest ++ Enum.reverse(children), Enum.into(children, reached))
+  end
+
+  defp tell(socket, id, given) do
+    Registry.within(socket, id, fn socket ->
+      {:ok, socket} = Core.told(given, socket)
+      Core.put(socket, given: given)
+    end)
+  end
+
+  # The nested tables the table `id` renders: by id, with what each is told
+  # and the cell it goes into. Only a line of a row that is on the page,
+  # and of a relationship the person is offered.
+  def children(socket, id) do
+    table = socket.assigns.table
+    entry = if table.entry.id == id, do: table.entry, else: Map.fetch!(table.entries, id)
+
+    case entry do
+      %{expandable?: true, model: model, rows: rows, open: open} when open != %{} ->
+        reader = nested_reader(%{table: %{table | entry: entry}})
+        first = List.first(model.columns)
+
+        for {key, lines} <- open,
+            %{pk: pk} <- [rows[key]],
+            name <- lines,
+            %Relationship{} = relationship <- [Enum.find(model.relationships, &(&1.name == name))] do
+          row_id = "#{id}-row-#{key}"
+
+          given =
+            Map.merge(reader, %{
+              id: "#{row_id}-t-#{name}",
+              resource: relationship.destination,
+              table: relationship.table,
+              via: relationship,
+              parent_key: pk,
+              label: relationship.label,
+              labelledby:
+                Enum.join(
+                  ["#{row_id}-l-#{name}-b"] ++
+                    if(first, do: ["#{row_id}-c-#{first.name}"], else: []),
+                  " "
+                ),
+              url: nil,
+              mounted?: false
+            })
+
+          {"#{row_id}-t-#{name}", given, "#{row_id}-n-#{name}-c"}
+        end
+
+      _nothing_open ->
+        []
+    end
   end
 end

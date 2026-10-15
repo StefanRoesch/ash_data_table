@@ -29,7 +29,7 @@ defmodule DemoWeb.TablePage do
   def filter(view, id, field, entry) do
     entry = Map.new(entry, fn {key, value} -> {Atom.to_string(key), value} end)
 
-    view |> form("##{id}-filters", %{"filter" => %{field => entry}}) |> render_change()
+    send_form(view, "[id='#{id}-filters']", :change, %{"filter" => %{field => entry}})
     render_async(view, 10_000)
   end
 
@@ -41,9 +41,9 @@ defmodule DemoWeb.TablePage do
       page_size(view, "task", 50)
   """
   def page_size(view, id, size) do
-    view
-    |> element("[id='#{id}-page-size-form']")
-    |> render_change(%{"size" => to_string(size)})
+    send_form(view, "[id='#{id}-page-size-form']", :change, %{"size" => to_string(size)},
+      check: false
+    )
 
     render_async(view, 10_000)
   end
@@ -81,7 +81,7 @@ defmodule DemoWeb.TablePage do
   def argue(view, id, arguments) do
     arguments = Map.new(arguments, fn {key, value} -> {Atom.to_string(key), value} end)
 
-    view |> form("##{id}-arguments", %{"arguments" => arguments}) |> render_change()
+    send_form(view, "[id='#{id}-arguments']", :change, %{"arguments" => arguments})
     render_async(view, 10_000)
   end
 
@@ -885,7 +885,7 @@ defmodule DemoWeb.TablePage do
       type_in_panel(view, reason: "Back from leave")
   """
   def type_in_panel(view, id \\ "task", values) do
-    view |> form("[id='#{id}-panel-form']", %{"panel" => Map.new(values)}) |> render_change()
+    send_form(view, "[id='#{id}-panel-form']", :change, %{"panel" => Map.new(values)})
   end
 
   @doc """
@@ -893,7 +893,7 @@ defmodule DemoWeb.TablePage do
   its fields hold and `values` typed into them. Returns the page.
   """
   def run_panel(view, id \\ "task", values) do
-    view |> form("[id='#{id}-panel-form']", %{"panel" => Map.new(values)}) |> render_submit()
+    send_form(view, "[id='#{id}-panel-form']", :submit, %{"panel" => Map.new(values)})
   end
 
   @doc """
@@ -901,7 +901,7 @@ defmodule DemoWeb.TablePage do
   does not: for what a person could only send by hand. Returns the page.
   """
   def send_panel(view, id \\ "task", params) do
-    view |> element("[id='#{id}-panel-form']") |> render_submit(params)
+    send_form(view, "[id='#{id}-panel-form']", :submit, params, check: false)
   end
 
   @doc "Closes the open action panel as Cancel and Escape do. Returns the page."
@@ -1129,9 +1129,16 @@ defmodule DemoWeb.TablePage do
 
   # The one place that sends a table an event, as its hooks do. Every helper
   # that sends one goes through here, and so does `forge/5`: how an event
-  # reaches its table (today the element's `phx-target`, and its name
-  # `ash_data_table:ID:event`) changes here only. A name read from the
-  # markup (`click/2`) is named with its table already.
+  # reaches its table (its name `ash_data_table:ID:event`, and the
+  # component the table is drawn by) changes here only. A name read from
+  # the markup (`click/2`) is named with its table already.
+  #
+  # It is sent from the element of the hook that sends it where
+  # `Phoenix.LiveViewTest` sees that element. A nested table is drawn by
+  # the component of the table on the page and moved into its row by a
+  # portal, where `element/2` does not look: its event goes to that
+  # component (the element's `phx-target`), which finds the table by the
+  # event's name.
   defp send_event(view, id, event, payload, on \\ nil) do
     plain = event |> String.split(":") |> List.last()
 
@@ -1140,10 +1147,138 @@ defmodule DemoWeb.TablePage do
         do: event,
         else: "ash_data_table:#{id}:#{event}"
 
-    view
-    |> element("[id='#{id}-#{on || hook_of(plain)}']")
-    |> render_hook(named, payload)
+    selector = "[id='#{id}-#{on || hook_of(plain)}']"
+    html = Phoenix.LiveViewTest.render(view)
+
+    case visible(html, selector) do
+      :seen ->
+        view |> element(selector) |> render_hook(named, payload)
+
+      {:portal, cid} ->
+        view |> Phoenix.LiveViewTest.with_target(cid) |> render_hook(named, payload)
+
+      :none ->
+        # as `element/2` says of an element that is not there
+        view |> element(selector) |> render_hook(named, payload)
+    end
   end
+
+  # Whether LiveViewTest sees the element `selector` finds, or only a
+  # person does, in a portal's content: then the component it is for.
+  defp visible(html, selector) do
+    cond do
+      html |> LazyHTML.from_fragment() |> LazyHTML.query(selector) |> Enum.any?() ->
+        :seen
+
+      cid = html |> document() |> LazyHTML.query(selector) |> component_of() ->
+        {:portal, cid}
+
+      true ->
+        :none
+    end
+  end
+
+  defp component_of(found) do
+    case found |> Enum.take(1) |> Enum.flat_map(&LazyHTML.attribute(&1, "phx-target")) do
+      [cid] -> String.to_integer(cid)
+      [] -> nil
+    end
+  end
+
+  # The table an event's name is for: `ash_data_table:ID:event`, split at
+  # the first and the last `:`.
+  defp table_named(event) do
+    case String.split(event, ":") do
+      ["ash_data_table" | [_, _ | _] = rest] -> rest |> Enum.drop(-1) |> Enum.join(":")
+      _unnamed -> raise ArgumentError, "#{inspect(event)} names no table"
+    end
+  end
+
+  # Sends a form of the page as a browser does: what its named controls
+  # hold (checked boxes, selected options), with `values` merged in, as the
+  # event of its `phx-change` or `phx-submit`. Where LiveViewTest sees the
+  # form, through `form/3` (`check: true`, which raises for a name the form
+  # lacks) or `element/2`. A form in a portal's content is read from the
+  # page as a person sees it, and a name it lacks raises in the same way.
+  defp send_form(view, selector, kind, values, opts \\ [check: true]) do
+    html = Phoenix.LiveViewTest.render(view)
+
+    case {visible(html, selector), opts[:check]} do
+      {{:portal, _cid}, check?} ->
+        page = document(html)
+
+        form =
+          case page |> LazyHTML.query(selector) |> LazyHTML.to_tree() do
+            [{"form", _attributes, _children} = form] ->
+              form
+
+            found ->
+              raise ArgumentError,
+                    "expected one form for #{inspect(selector)}, found #{length(found)}"
+          end
+
+        if check?, do: check_names(form, page, selector, values)
+
+        params = deep_merge(Phoenix.LiveViewTest.DOM.collect_form_values(form, page), values)
+        {"form", attributes, _children} = form
+        event = attribute_of(attributes, "phx-#{kind}")
+        send_event(view, table_named(event), event, params)
+
+      {_seen_or_none, true} ->
+        form = form(view, selector, values)
+        if kind == :change, do: render_change(form), else: render_submit(form)
+
+      {_seen_or_none, _unchecked} ->
+        element = element(view, selector)
+
+        if kind == :change,
+          do: render_change(element, values),
+          else: render_submit(element, values)
+    end
+  end
+
+  # Each name `values` gives must be a control of the form, as `form/3`
+  # wants it.
+  defp check_names(form, page, selector, values) do
+    names =
+      form
+      |> Phoenix.LiveViewTest.DOM.all_value_inputs(page)
+      |> Enum.filter(&Phoenix.LiveViewTest.TreeDOM.attribute(&1, "name"))
+      |> Enum.reject(&Phoenix.LiveViewTest.TreeDOM.attribute(&1, "disabled"))
+      |> MapSet.new(&Phoenix.LiveViewTest.TreeDOM.attribute(&1, "name"))
+
+    for name <- names_of(values, ""), not MapSet.member?(names, name) do
+      raise ArgumentError,
+            "could not find non-disabled input, select or textarea with name " <>
+              "#{inspect(name)} in #{inspect(selector)}"
+    end
+
+    :ok
+  end
+
+  defp names_of(%{} = values, prefix) do
+    Enum.flat_map(values, fn {key, value} ->
+      name = if prefix == "", do: to_string(key), else: "#{prefix}[#{key}]"
+      names_of(value, name)
+    end)
+  end
+
+  defp names_of(values, prefix) when is_list(values), do: [prefix <> "[]"]
+  defp names_of(_value, name), do: [name]
+
+  defp deep_merge(%{} = into, %{} = values) do
+    Enum.reduce(values, into, fn {key, value}, into ->
+      Map.update(into, to_string(key), stringify(value), &deep_merge(&1, value))
+    end)
+  end
+
+  defp deep_merge(_into, value), do: stringify(value)
+
+  defp stringify(%{} = values), do: Map.new(values, fn {k, v} -> {to_string(k), stringify(v)} end)
+  defp stringify(values) when is_list(values), do: Enum.map(values, &stringify/1)
+  defp stringify(nil), do: ""
+  defp stringify(value) when is_binary(value), do: value
+  defp stringify(value), do: to_string(value)
 
   # The element of the hook that sends an event in a browser.
   defp hook_of(event)
@@ -1231,32 +1366,15 @@ defmodule DemoWeb.TablePage do
         event -> [%{"event" => event}]
       end
 
+    # the table is the one the event's name says: every table of a page is
+    # drawn by the component of the table on the page
     Enum.reduce(pushes, nil, fn push, _html ->
-      target = push["target"] || attribute_of(attributes, "phx-target")
+      if is_nil(push["target"] || attribute_of(attributes, "phx-target")),
+        do: raise(ArgumentError, "#{inspect(selector)} is no table's: it has no phx-target")
+
       payload = Map.merge(values, push["value"] || %{})
-      send_event(view, table_of(page, target, selector), push["event"], payload)
+      send_event(view, table_named(push["event"]), push["event"], payload)
     end)
-  end
-
-  # The table an element's `phx-target` names: the component's id, which is
-  # the `phx-target` of that table's grid too, or a selector of the table's
-  # root element, whose id is the table's.
-  defp table_of(_page, nil, selector),
-    do: raise(ArgumentError, "#{inspect(selector)} is no table's: it has no phx-target")
-
-  defp table_of(page, target, selector) when is_integer(target),
-    do: table_of(page, Integer.to_string(target), selector)
-
-  defp table_of(page, target, selector) do
-    found =
-      if target =~ ~r/\A\d+\z/,
-        do: page |> LazyHTML.query("[data-ash-data-table][phx-target='#{target}']"),
-        else: LazyHTML.query(page, target)
-
-    case Enum.flat_map(found, &LazyHTML.attribute(&1, "id")) do
-      [id | _] -> String.replace_suffix(id, "-grid", "")
-      [] -> raise ArgumentError, "no table found for the phx-target of #{inspect(selector)}"
-    end
   end
 
   defp attribute_of(attributes, name), do: :proplists.get_value(name, attributes, nil)
@@ -1290,6 +1408,13 @@ defmodule DemoWeb.TablePage do
   # does the same, up to five rounds).
   defp query(html, selector), do: html |> document() |> LazyHTML.query(selector)
 
+  @doc """
+  The page as a person sees it, as a `LazyHTML`: the content of each portal
+  where the browser puts it (see `query/2`). For a test that reads the
+  markup of a nested table itself.
+  """
+  def seen(html), do: document(html)
+
   defp document(html) do
     if String.contains?(html, "data-phx-portal") do
       html
@@ -1312,8 +1437,8 @@ defmodule DemoWeb.TablePage do
 
       {tree, moved} ->
         moved
-        |> Enum.reduce(tree, fn {target, element}, tree ->
-          put_into(tree, target_id(tree, target), element)
+        |> Enum.reduce(tree, fn {target, content}, tree ->
+          put_into(tree, target_id(tree, target), content)
         end)
         |> teleport(round + 1)
     end
@@ -1325,11 +1450,20 @@ defmodule DemoWeb.TablePage do
     Enum.map_reduce(nodes, [], &take_portal/2)
   end
 
+  # The browser keeps the portal's wrapper (`_lv_portal_wrap_ID`), which
+  # takes no part in the layout (`display: contents`): the page is read
+  # without it, as the markup snapshots are.
   defp take_portal({"template", attributes, children} = node, moved) do
     with target when is_binary(target) <- attribute_of(attributes, "data-phx-portal"),
-         {_tag, _attributes, _children} = element <-
+         {_tag, wrapper, inner} = element <-
            Enum.find(children, &(is_tuple(&1) and tuple_size(&1) == 3)) do
-      {{"template", attributes, []}, moved ++ [{target, element}]}
+      content =
+        case attribute_of(wrapper, "id") do
+          "_lv_portal_wrap_" <> _ -> inner
+          _other -> [element]
+        end
+
+      {{"template", attributes, []}, moved ++ [{target, content}]}
     else
       _ -> {node, moved}
     end
@@ -1355,8 +1489,8 @@ defmodule DemoWeb.TablePage do
     end
   end
 
-  # Appends `element` to the first element whose id is `id`.
-  defp put_into(nodes, id, element) do
+  # Appends `content` to the first element whose id is `id`.
+  defp put_into(nodes, id, content) do
     {nodes, _done?} =
       Enum.map_reduce(nodes, false, fn
         node, true ->
@@ -1364,9 +1498,9 @@ defmodule DemoWeb.TablePage do
 
         {tag, attributes, children}, false ->
           if attribute_of(attributes, "id") == id do
-            {{tag, attributes, children ++ [element]}, true}
+            {{tag, attributes, children ++ content}, true}
           else
-            {children, done?} = put_into_children(children, id, element)
+            {children, done?} = put_into_children(children, id, content)
             {{tag, attributes, children}, done?}
           end
 
@@ -1377,8 +1511,8 @@ defmodule DemoWeb.TablePage do
     nodes
   end
 
-  defp put_into_children(children, id, element) do
-    put = put_into(children, id, element)
+  defp put_into_children(children, id, content) do
+    put = put_into(children, id, content)
     {put, put != children}
   end
 end

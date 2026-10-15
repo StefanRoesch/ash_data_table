@@ -276,17 +276,9 @@ defmodule DemoWeb.Tables.LabelImportTest do
       assert %{heading: "Import", fields: [%{name: "file", control: "file"}]} =
                panel(html, nested)
 
-      file =
-        file_input(view, "[id='#{nested}-panel-form']", "#{nested}-file-file", [
-          %{name: "labels.csv", content: "idea\n", type: "text/csv"}
-        ])
-
-      render_upload(file, "labels.csv")
-      html = send_panel(view, nested, %{})
-
-      assert panel(html, nested) == nil
-      assert result(html, nested) == "Import: 1"
-      assert stored() == [{"bug", "#aa0000"}, {"idea", "#64748b"}]
+      # the upload of the panel, which a file input inside a portal is, is
+      # used in the browser test "in a nested table" of `files.spec.ts`
+      # (group K of stage 5)
     end
   end
 end

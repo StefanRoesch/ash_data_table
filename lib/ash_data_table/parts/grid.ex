@@ -630,7 +630,6 @@ defmodule AshDataTable.Parts.Grid do
   attr :acting?, :any, required: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
-  attr :component, :any, required: true
   attr :creates, :any, required: true
   attr :editing?, :any, required: true
   attr :expandable?, :any, required: true
@@ -643,7 +642,6 @@ defmodule AshDataTable.Parts.Grid do
   attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
-  attr :nested_reader, :any, required: true
   attr :page, :any, required: true
   attr :pending, :any, required: true
   attr :rejected, :any, required: true
@@ -754,8 +752,8 @@ defmodule AshDataTable.Parts.Grid do
               "[&>tbody>tr>td[data-line]>div>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>div>button[aria-expanded]]:before:me-2",
               # the create button on a line, and the buttons of the nested table's
               # table actions, once the nested table under it has read
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>[data-read])>td[data-line]>div>button[data-create]]:inline-flex",
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>[data-read])>td[data-line]>div>button[data-table-action]]:inline-flex"
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>div>[data-read])>td[data-line]>div>button[data-create]]:inline-flex",
+              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>div>[data-read])>td[data-line]>div>button[data-table-action]]:inline-flex"
             ]
           }
           phx-update="stream"
@@ -896,8 +894,7 @@ defmodule AshDataTable.Parts.Grid do
               model={@model}
               colspan={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
               creates={@creates}
-              reader={@nested_reader}
-              component={@component}
+              myself={@myself}
             /><tr
               :if={!detail?(row)}
               id={"#{dom_id}-r"}
