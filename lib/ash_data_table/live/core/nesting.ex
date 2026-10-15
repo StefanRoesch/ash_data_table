@@ -10,6 +10,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
+  alias AshDataTable.Present
   alias AshDataTable.Related
   alias AshDataTable.Text
 
@@ -270,15 +271,16 @@ defmodule AshDataTable.Live.Core.Nesting do
     }
   end
 
-  # ---- the tables under the rows (stage 5) ----------------------------
+  # ---- the tables a table shows (stage 5) -----------------------------
   #
   # What is rendered decides which tables stay (target F11). A table renders
   # the nested table of each open line of each of its rows that is still on
-  # its page. Starting at the table on the page, every such table that is
-  # missing is opened, and one whose table around it tells it something
-  # else is told again, parents first; every table that is no longer
-  # reached is closed, with all under it, in the same render as the cell
-  # its portal went into.
+  # its page, and the table of its picker while that is open. Starting at
+  # the table on the page, every such table that is missing is opened, and
+  # one whose table around it tells it something else is told again,
+  # parents first; every table that is no longer reached is closed, with
+  # all under it, in the same render as the cell its portal went into or
+  # the picker it was in.
   def reconcile(socket) do
     {socket, reached} = walk(socket, [socket.assigns.table.entry.id], MapSet.new())
 
@@ -319,13 +321,45 @@ defmodule AshDataTable.Live.Core.Nesting do
     end)
   end
 
-  # The nested tables the table `id` renders: by id, with what each is told
-  # and the cell it goes into. Only a line of a row that is on the page,
-  # and of a relationship the person is offered.
+  # The tables the table `id` renders: by id, with what each is told and
+  # the cell its portal goes into (nil for the table of a picker, which is
+  # drawn where its dialog is). A nested table only for a line of a row that
+  # is on the page, and of a relationship the person is offered.
   def children(socket, id) do
     table = socket.assigns.table
     entry = if table.entry.id == id, do: table.entry, else: Map.fetch!(table.entries, id)
+    nested(table, entry) ++ chooser(table, entry)
+  end
 
+  # The table of an open picker: the destination's, told that it is one to
+  # choose from (`choose`), how many rows are selected at a time, and what
+  # is chosen now.
+  defp chooser(_table, %{picker: nil}), do: []
+
+  defp chooser(table, %{id: id, picker: picker} = entry) do
+    picker = Present.picker(picker)
+
+    given =
+      Map.merge(picker_reader(%{table: %{table | entry: entry}}), %{
+        id: "#{id}-pick-#{picker.name}",
+        resource: picker.destination,
+        table: :default,
+        select: if(picker.several?, do: :multi, else: :single),
+        choose: %{
+          read_action: picker.choose_action,
+          current: {picker.destination_attribute, picker.current},
+          chosen: picker.chosen
+        },
+        label: Text.label(picker.label),
+        heading: false,
+        url: nil,
+        mounted?: false
+      })
+
+    [{given.id, given, nil}]
+  end
+
+  defp nested(table, %{id: id} = entry) do
     case entry do
       %{expandable?: true, model: model, rows: rows, open: open} when open != %{} ->
         reader = nested_reader(%{table: %{table | entry: entry}})

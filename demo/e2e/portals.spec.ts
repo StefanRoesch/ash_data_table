@@ -291,3 +291,61 @@ test.describe("a nested table leaves with what takes its row or line away", () =
     expect(await portals(page)).toEqual({ templates: 2, loose: 0 })
   })
 })
+
+// A picker's table is an entry of the table it is opened from too, drawn in
+// the picker's dialog, which needs no portal. It closes with the picker.
+test.describe("the table of a picker leaves with its picker", () => {
+  test.use({ writes: true })
+
+  /** Opens the picker of a reference cell from the keyboard, and waits for its table. */
+  async function openPicker(tasks: Table, key: string, column: string): Promise<Table> {
+    await tasks.cell(key, column).focus()
+    await tasks.press("Enter")
+    await expect(tasks.picker).toBeVisible()
+    const table = tasks.pickerTable(column)
+    await table.ready()
+    return table
+  }
+
+  test("by Cancel", async ({ tasks }) => {
+    await tasks.open()
+    const people = await openPicker(tasks, FIRST, "assignee")
+    await tasks.pickerCancel.click()
+    await expect(tasks.picker).toHaveCount(0)
+    await expect(people.root).toHaveCount(0)
+    await expect(tasks.cell(FIRST, "assignee")).toBeFocused()
+  })
+
+  test("by a choice", async ({ tasks }) => {
+    await tasks.open()
+    const people = await openPicker(tasks, FIRST, "assignee")
+    // someone other than the one the cell points at
+    let choice: string | null = null
+    for (const key of await people.rowKeys()) {
+      if (!(await people.radio(key).isChecked())) {
+        choice = key
+        break
+      }
+    }
+    await people.radio(choice!).click()
+    await tasks.saves(tasks.cell(FIRST, "assignee"), () => tasks.pickerChoose.click())
+    await expect(tasks.picker).toHaveCount(0)
+    await expect(people.root).toHaveCount(0)
+  })
+
+  test("by a new read of the table it is opened from, and in a nested table as well", async ({ page }) => {
+    const projects = new Table(page, "project", "/projects")
+    await projects.open()
+    const tasks = await projects.openLine(MOBILE_APP, "tasks")
+    const [key] = await tasks.rowKeys()
+    const people = await openPicker(tasks, key, "assignee")
+    await expect(tasks.picker).toBeVisible()
+
+    // the nested table reads again (as a sort does): its rows are other
+    // rows, and the picker goes with them
+    await tasks.reads(() => tasks.forge("sort", { column: "title" }))
+    await expect(tasks.picker).toHaveCount(0)
+    await expect(people.root).toHaveCount(0)
+    expect(await portals(page)).toEqual({ templates: 1, loose: 0 })
+  })
+})

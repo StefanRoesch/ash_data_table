@@ -267,9 +267,9 @@ defmodule AshDataTable.Live.TableComponent do
   # ## Choosing a related record
   #
   # A reference cell is edited in the picker: a second panel, `ID-picker`,
-  # which holds the table of the destination resource (this same component
-  # once more, under the id `ID-pick-NAME`, told `select: :single` and
-  # `choose`) and three buttons, `ID-picker-cancel`, `ID-picker-none` and
+  # which holds the table of the destination resource (an entry of this
+  # component, drawn in the dialog, under the id `ID-pick-NAME`, told
+  # `select: :single` and `choose`) and three buttons, `ID-picker-cancel`, `ID-picker-none` and
   # `ID-picker-choose`. The hook asks for it with one `pick` event, with the
   # row and the column; a field of the action panel that holds such a key
   # asks with its button (`pick_input`). The person selects one row there,
@@ -378,8 +378,23 @@ defmodule AshDataTable.Live.TableComponent do
   # expanded. Expanded, the detail holds one line per relationship
   # (`ID-row-KEY-l-NAME`, with its cell `…-c` and its button `…-b`) and, under
   # an open line, a row (`ID-row-KEY-n-NAME`) whose one cell (`…-c`) spans the
-  # table and holds the nested table: this same component once more, under
-  # the id `ID-row-KEY-t-NAME`, which prefixes every id in it.
+  # table and holds the nested table, under the id `ID-row-KEY-t-NAME`, which
+  # prefixes every id in it.
+  #
+  # Every table the component shows is an entry of its one
+  # `AshDataTable.Table` (`AshDataTable.Live.Registry`), with a stream of its
+  # own: the table on the page, its nested tables at every depth, the tables
+  # of open pickers. A nested table is drawn after the table on the page, at
+  # the top of the template, and the browser moves it into its cell
+  # (`<.portal>`, whose wrapper `_lv_portal_wrap_…` takes no part in the
+  # layout). Its events name it (`ash_data_table:ID:event`) and reach this
+  # component, which finds it by that id. What its row renders decides
+  # whether it stays: after every update, event and answer the open lines
+  # of the rows on the page are compared with the tables shown, and a table
+  # no longer reached is closed with everything under it, its listener,
+  # tasks, uploads and stream, in the render that takes its cell away
+  # (`AshDataTable.Live.Core.Nesting.reconcile/1`). When who is asking
+  # changes, what is open under the rows closes at once.
   #
   # The detail is an item of its own so that opening and closing never needs
   # the record again, which the server does not keep: a toggle puts the
@@ -416,10 +431,10 @@ defmodule AshDataTable.Live.TableComponent do
   #
   # Nothing a person is working on changes under them. A row is left as it
   # is while the action panel or the picker is open for it, or a panel or a
-  # picker is open in a table under it, at whatever depth: every table notes
-  # in the process of the page whether it has one open (`@tables`), and
-  # tells the tables around it that hold a row back when it has none any
-  # more (`live: :released`). A cell that is being edited is left alone by
+  # picker is open in a table under it, at whatever depth: the tables shown
+  # say which (`path`), and the rows held back are looked at again after
+  # every update, event and answer, in the render that closes what held
+  # them. A cell that is being edited is left alone by
   # the hook, as by every patch of its row (`beforeUpdate`): it keeps what
   # was typed, and shows what the server sent once the editor is gone
   # without a save. The server is not told which cell is edited, here as
@@ -432,9 +447,8 @@ defmodule AshDataTable.Live.TableComponent do
   # save into a record that is gone, and the row then stays.
   #
   # The tables a table renders, nested in a row or in a picker, listen for
-  # themselves. Each is told which tables it is in (`lineage`), and the
-  # table that renders it forgets it and stops its listener when it renders
-  # it no longer (`close/1`).
+  # themselves, each with a listener of its own, whose batches name it
+  # (`{:heard, id, batch}`); closing a table stops its listener.
   #
   # ## Scrolling sideways
   #
@@ -525,7 +539,6 @@ defmodule AshDataTable.Live.TableComponent do
 
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
-  alias AshDataTable.Live.Core.Nesting
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
   alias AshDataTable.Parts
@@ -580,15 +593,16 @@ defmodule AshDataTable.Live.TableComponent do
       <.body
         entry={@table.entry}
         options={@table.options}
-        caller={@table.caller}
         time_zone={@table.caller.time_zone}
         rows={rows(@streams, @table.entry)}
+        chooser={chooser(@table, @table.entry)}
+        chooser_rows={rows(@streams, chooser(@table, @table.entry))}
         myself={@myself}
         uploads={assigns[:uploads]}
         router={@socket.router}
       />
       <.portal
-        :for={entry <- Registry.portals(@table)}
+        :for={{entry, rows} <- portals(@table, @streams)}
         :key={entry.id}
         id={"#{entry.id}-portal"}
         target={"[id='#{entry.target}']"}
@@ -605,9 +619,10 @@ defmodule AshDataTable.Live.TableComponent do
               <.body
                 entry={entry}
                 options={%{@table.options | url: nil, heading: false, mounted?: false}}
-                caller={@table.caller}
                 time_zone={@table.caller.time_zone}
-                rows={rows(@streams, entry)}
+                rows={rows}
+                chooser={chooser(@table, entry)}
+                chooser_rows={rows(@streams, chooser(@table, entry))}
                 myself={@myself}
                 uploads={assigns[:uploads]}
                 router={@socket.router}
@@ -621,6 +636,29 @@ defmodule AshDataTable.Live.TableComponent do
     """
   end
 
+  # The items of a table's stream, given to its grid whenever the table
+  # changes: the grid's comprehension over them is then rendered again, with
+  # nothing new in it but what the stream holds, as it was while every
+  # table was a component of its own (`Phoenix.LiveViewTest` keeps the rows
+  # of a stream where they are only then).
+  # The nested tables, parents first, each with the items of its stream:
+  # a portal is rendered again only when its table or its stream changed.
+  defp portals(table, streams),
+    do: for(entry <- Registry.portals(table), do: {entry, streams[entry.stream]})
+
+  defp rows(_streams, nil), do: nil
+
+  defp rows(streams, entry), do: streams[entry.stream]
+
+  # The table of the entry's open picker, which is drawn in its dialog.
+  defp chooser(_table, %{picker: nil}), do: nil
+
+  defp chooser(table, %{id: id, picker: picker}),
+    do: Map.get(table.entries, "#{id}-pick-#{picker.name}")
+
+  # The markup of one table, inside its root element: the table on the
+  # page's, a nested table's in its portal, a picker's table in its dialog.
+  #
   # The four hooks at the end are JS files in the package, under
   # `assets/js/` (`assets/js/index.js`). LiveView writes a colocated hook
   # into `_build/ENV/phoenix-colocated/ash_data_table/`, beside a link named
@@ -628,16 +666,10 @@ defmodule AshDataTable.Live.TableComponent do
   # (`node_modules_path`): `../node_modules/js/` is `assets/js/` of the
   # package, a path dependency's and a Hex package's alike, and the host
   # sets up nothing for it.
-  # The items of a table's stream, given to its grid whenever the table
-  # changes: the grid's comprehension over them is then rendered again, with
-  # nothing new in it but what the stream holds, as it was while every
-  # table was a component of its own (`Phoenix.LiveViewTest` keeps the rows
-  # of a stream where they are only then).
-  defp rows(streams, entry), do: streams[entry.stream]
-
   attr :entry, :any, required: true
   attr :options, :any, required: true
-  attr :caller, :any, required: true
+  attr :chooser, :any, required: true
+  attr :chooser_rows, :any, required: true
   attr :time_zone, :any, required: true
   attr :rows, :any, required: true
   attr :myself, :any, required: true
@@ -757,10 +789,28 @@ defmodule AshDataTable.Live.TableComponent do
       :if={@entry.picker}
       id={@entry.id}
       picker={Present.picker(@entry.picker)}
-      reader={Nesting.picker_reader(%{table: %{caller: @caller, options: @options, entry: @entry}})}
       target={@myself}
-      component={__MODULE__}
-    />
+    >
+      <div
+        :if={@chooser && !@chooser.gone?}
+        id={@chooser.id}
+        class="ash-data-table"
+        data-read={not is_nil(@chooser.page)}
+      >
+        <.body
+          entry={@chooser}
+          options={%{@options | url: nil, heading: false, mounted?: false}}
+          chooser={nil}
+          chooser_rows={nil}
+          time_zone={@time_zone}
+          rows={@chooser_rows}
+          myself={@myself}
+          uploads={@uploads}
+          router={@router}
+        />
+      </div>
+      <div :if={@chooser && @chooser.gone?} id={@chooser.id} hidden></div>
+    </Parts.Picker.picker>
     <Parts.Messages.messages
       error={@entry.error}
       fill={@entry.fill}

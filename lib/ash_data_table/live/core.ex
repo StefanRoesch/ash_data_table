@@ -7,15 +7,13 @@ defmodule AshDataTable.Live.Core do
   # `handle_async/3`, each ending in `tidy/1`. Besides: the fields of the
   # table (`put/2`), who is asking (`reader/1`), what a write is given
   # (`operation/3`), the live region (`say/2`), the resource's wording as
-  # the person reads it (`in_words/1`), and the tables of the page in the
-  # process dictionary (`@tables`), until stage 5 makes them a registry.
+  # the person reads it (`in_words/1`). Every table the component shows is
+  # an entry of its `AshDataTable.Table` (`AshDataTable.Live.Registry`).
 
-  import Phoenix.LiveView
   import Phoenix.Component, only: [assign: 2]
 
   alias AshDataTable.Caller
   alias AshDataTable.Intent
-  alias AshDataTable.Listener
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Nesting
@@ -31,15 +29,6 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.State
   alias AshDataTable.Table
   alias AshDataTable.Text
-
-  # Where the tables of a page are noted, by their ids: for each, where it
-  # is (the ids from the table on the page down to its own), its listener
-  # while it follows live updates, whether a panel or a picker is open in
-  # it, and whether it holds rows back for something that is open. In the
-  # process of the page, which every table of it runs in, and not in a
-  # table: a table that told the one around it by an update would have that
-  # one rendered again every time. It goes with the process.
-  @tables {__MODULE__, :tables}
 
   def mount(socket) do
     # Everything the table holds, in one value: what it was told, who is
@@ -76,11 +65,6 @@ defmodule AshDataTable.Live.Core do
       {:ok, socket}
     end
   end
-
-  # Something that was open under one of this table's rows is open no
-  # longer, and the table holds a row back for it: it looks again
-  # (`tidy/1`).
-  def update(%{live: :released}, socket), do: {:ok, socket |> tidy() |> Updates.redetail()}
 
   def update(assigns, socket) do
     # what the table on the page was told of `authorize?`, nil for nothing
@@ -531,69 +515,17 @@ defmodule AshDataTable.Live.Core do
   #   * the tables that are rendered are opened, and those that are not are
   #     closed (`Nesting.reconcile/1`), with their listeners and tasks;
   #   * what was announced is looked at, and the rows held back for what was
-  #     open under them are looked at again (`follow/1`), parents first; it
-  #     may take rows away, and so tables under them, which are closed;
+  #     open under them are looked at again (`follow/1`), parents first: a
+  #     row whose panel or picker closed, here or in a table under it, is
+  #     let go in the same render. It may take rows away, and so tables
+  #     under them, which are closed;
   #   * the summaries that are due are asked for.
-  #
-  # The table of a picker is still a component of its own until stage 5
-  # step 3: the tables are noted in the process dictionary (`@tables`) for
-  # it, and a picker's table that closes what was open in it tells the
-  # tables around it that hold a row back for it.
   defp tidy(socket) do
-    %{table: %{entry: %{id: id, path: path}}, myself: myself} = socket.assigns
-    lineage = Enum.drop(path, -1)
-
-    before = tables()
-    was_open? = match?(%{open?: true}, before[id])
-
-    socket =
-      socket
-      |> Nesting.reconcile()
-      |> each(&close/1)
-      |> each(&Updates.follow/1)
-      |> Nesting.reconcile()
-      |> each(&close/1)
-      |> each(&Reading.summarise/1)
-
-    %{entry: top, entries: entries} = socket.assigns.table
-    shown = [top | Map.values(entries)]
-
-    # the tables of this component in `@tables`: none that it closed
-    noted =
-      tables()
-      |> Map.reject(fn {other, %{cid: cid}} ->
-        cid == myself and not Enum.any?(shown, &(&1.id == other))
-      end)
-      |> Map.merge(
-        Map.new(shown, fn entry ->
-          {entry.id,
-           %{
-             path: entry.path,
-             cid: myself,
-             listener: entry.live && entry.live.pid,
-             open?: not is_nil(entry.panel) or not is_nil(entry.picker),
-             held?: entry.held != []
-           }}
-        end)
-      )
-
-    Process.put(@tables, noted)
-
-    open? = not is_nil(top.panel) or not is_nil(top.picker)
-
-    # something under this table that was open is gone with its table
-    closed_under? =
-      Enum.any?(before, fn {other, %{open?: was}} ->
-        was and other != id and not is_map_key(tables(), other)
-      end)
-
-    if (was_open? and not open?) or closed_under? do
-      for around <- lineage, %{held?: true, cid: cid} <- [tables()[around]], cid != myself do
-        send_update(cid, live: :released)
-      end
-    end
-
     socket
+    |> Nesting.reconcile()
+    |> each(&Updates.follow/1)
+    |> Nesting.reconcile()
+    |> each(&Reading.summarise/1)
   end
 
   # Runs `fun` on every table shown, parents first.
@@ -606,36 +538,6 @@ defmodule AshDataTable.Live.Core do
         do: Registry.within(socket, id, fun),
         else: socket
     end)
-  end
-
-  def tables, do: Process.get(@tables, %{})
-
-  # Forgets the tables of pickers under this one that it no longer renders,
-  # and stops their listeners: the table of a picker that was closed, and
-  # every table inside it. The server is not told when a component is taken
-  # out of the page, and these would listen on until the page is left.
-  defp close(socket) do
-    %{id: id} = socket.assigns.table.entry
-    rendered = rendered(socket.assigns.table)
-    myself = socket.assigns.myself
-
-    for {other, %{path: path, listener: listener, cid: cid}} <- tables(),
-        other != id,
-        cid != myself,
-        [^id, child | _] <- [Enum.drop_while(path, &(&1 != id))],
-        child not in rendered do
-      if listener, do: Listener.stop(listener)
-      Process.put(@tables, Map.delete(tables(), other))
-    end
-
-    socket
-  end
-
-  # The ids of the tables this table renders now: the table of its picker,
-  # and the nested tables of its open lines (`Nesting.reconcile/1`).
-  defp rendered(%{entry: %{id: id, picker: picker}, entries: entries}) do
-    nested = for {other, %{path: path}} <- entries, Enum.at(path, -2) == id, do: other
-    nested ++ if(picker, do: ["#{id}-pick-#{picker.name}"], else: [])
   end
 
   # Puts a text into the live region, to be read out.

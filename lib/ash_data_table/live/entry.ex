@@ -6,7 +6,9 @@ defmodule AshDataTable.Live.Entry do
   # (`AshDataTable.Live.Registry`).
   #
   # The fields were the assigns of the live component, set in its `mount/1`
-  # and derived in its `update/2`; the comments are theirs.
+  # and derived in its `update/2`; the comments are theirs. A nested table
+  # and a picker's table are told theirs by the table they are in
+  # (`AshDataTable.Live.Core.Nesting.reconcile/1`).
 
   alias AshDataTable.State
 

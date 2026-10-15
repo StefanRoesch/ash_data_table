@@ -132,8 +132,7 @@ defmodule AshDataTable.Live.Core.Updates do
   # The rows a person is working on, by the key in their id: the row the
   # action panel or the picker of this table is open for, and every row
   # under which a panel or a picker is open, in a table at whatever depth
-  # below it (by `path`). A picker's table that is a component of its own
-  # is found in `@tables`.
+  # below it (by `path`, in the registry).
   defp working(%{entry: %{id: id, open: open, panel: panel, picker: picker}, entries: entries}) do
     of_panel =
       case panel do
@@ -155,7 +154,7 @@ defmodule AshDataTable.Live.Core.Updates do
              %{path: entry.path, open?: not is_nil(entry.panel) or not is_nil(entry.picker)}}
 
     under =
-      for {other, %{open?: true, path: path}} <- Map.merge(Core.tables(), shown),
+      for {other, %{open?: true, path: path}} <- shown,
           other != id,
           [^id, child | _] <- [Enum.drop_while(path, &(&1 != id))],
           {key, lines} <- open,

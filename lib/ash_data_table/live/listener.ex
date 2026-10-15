@@ -1,15 +1,17 @@
 defmodule AshDataTable.Listener do
   @moduledoc false
   # The process through which one table hears of changes
-  # (`AshDataTable.Resource.Notifier`). A table is a LiveComponent, which lives in the
-  # process of its LiveView and cannot receive a message of its own: this
-  # process subscribes for it, gathers what is announced for a moment, and
-  # hands each batch to the component with `Phoenix.LiveView.send_update/3`.
-  # Nothing reaches the mailbox of the LiveView's own code.
+  # (`AshDataTable.Resource.Notifier`): one per table that follows them, the
+  # table on the page, each nested table and the table of a picker alike.
+  # The tables live in a LiveComponent, in the process of its LiveView, and
+  # cannot receive a message of their own: this process subscribes for one
+  # table, gathers what is announced for a moment, and hands each batch to
+  # the component with `Phoenix.LiveView.send_update/3`, naming its table
+  # (`relay`). Nothing reaches the mailbox of the LiveView's own code.
   #
   # It ends with the LiveView, which it watches, and when its table tells it
-  # to (`stop/1`): the table that renders another table, nested in a row or
-  # in a picker, stops that one's listener when it renders it no longer.
+  # to (`stop/1`): a table that closes stops its listener
+  # (`AshDataTable.Live.Registry.close/2`).
   # It is no `start_async` of the component, though LiveView would end that
   # with the component by itself: an async task that never finishes makes
   # `Phoenix.LiveViewTest.render_async/2` wait for ever, for the host's

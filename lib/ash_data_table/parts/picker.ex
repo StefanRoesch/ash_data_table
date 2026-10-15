@@ -1,9 +1,6 @@
 defmodule AshDataTable.Parts.Picker do
   @moduledoc false
   # The picker dialog around the table a record is chosen from.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
   use Phoenix.Component
 
   import AshDataTable.Parts.Common, only: [said: 1]
@@ -21,12 +18,12 @@ defmodule AshDataTable.Parts.Picker do
   #
   # The table is as wide as its columns need, so the dialog is wider than
   # the panel, and the table scrolls sideways in it as it does on a page.
+  # It is the slot: the table component draws it.
   attr :id, :string, required: true
   # what `AshDataTable.Present.picker/1` gives of the open picker
   attr :picker, Present.Picker, required: true
-  attr :reader, :map, required: true
-  attr :component, :atom, required: true
   attr :target, :any, required: true
+  slot :inner_block, required: true
 
   def picker(assigns) do
     ~H"""
@@ -50,25 +47,7 @@ defmodule AshDataTable.Parts.Picker do
       >
         {said(@picker.error)}
       </p>
-      <.live_component
-        module={@component}
-        id={"#{@id}-pick-#{@picker.name}"}
-        resource={@picker.destination}
-        table={:default}
-        select={if @picker.several?, do: :multi, else: :single}
-        choose={
-          %{
-            read_action: @picker.choose_action,
-            current: {@picker.destination_attribute, @picker.current},
-            chosen: @picker.chosen
-          }
-        }
-        label={Text.label(@picker.label)}
-        heading={false}
-        url={nil}
-        mounted?={false}
-        {@reader}
-      />
+      {render_slot(@inner_block)}
       <div class="mt-6 flex justify-end gap-2">
         <button type="button" id={"#{@id}-picker-cancel"} class="btn" data-cancel>
           {Text.t(:cancel)}
