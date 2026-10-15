@@ -9,8 +9,8 @@ defmodule AshDataTable.FilterValuesTest do
   use ExUnit.Case, async: false
 
   alias AshDataTable.Model
-  alias AshDataTable.Model.Operator
   alias AshDataTable.Query
+  alias AshDataTable.Resource.Operator
   alias AshDataTable.State
   alias AshDataTable.Test.Arguing.Guarded
   alias AshDataTable.Test.Arguing.Price

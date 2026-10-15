@@ -20,7 +20,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
-  alias AshDataTable.Notifier
+  alias AshDataTable.Resource.Notifier
   alias Demo.Generator
   alias Demo.Tracker.Comment
   alias Demo.Tracker.Project

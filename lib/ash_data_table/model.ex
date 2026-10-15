@@ -1001,19 +1001,6 @@ defmodule AshDataTable.Model do
     label ++ Enum.filter(columns, &(&1.kind == :attribute and not &1.sensitive?))
   end
 
-  @doc false
-  # A facade for the duration of the refactor: which columns a person can
-  # hide is the drawing's (`AshDataTable.Parts.Grid.hideable/1`, stage 1),
-  # and the tests still ask the model (`test/model_test.exs`). A copy of the
-  # part's body, so that the data layer does not depend on the drawing for
-  # the tests' sake. It goes when the tests may ask the part.
-  def hideable(%__MODULE__{columns: columns} = model) do
-    case label_column(model) do
-      nil -> columns
-      label -> List.delete(columns, label)
-    end
-  end
-
   # Whether a column, or an input of the panel, is a map cell or an array of
   # them, edited as groups of fields, or a union, edited as its kind and that
   # kind's value: the fields the server renders from what the panel holds.

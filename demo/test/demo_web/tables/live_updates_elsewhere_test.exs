@@ -15,7 +15,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
-  alias AshDataTable.Notifier
+  alias AshDataTable.Resource.Notifier
   alias Demo.Support.Live.{Bulletin, Pin, Reply, Stamp}
 
   @notice "There are new or changed records."

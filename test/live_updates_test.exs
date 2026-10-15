@@ -12,9 +12,9 @@ defmodule AshDataTable.LiveUpdatesTest do
 
   alias AshDataTable.Listener
   alias AshDataTable.Model
-  alias AshDataTable.Notifier
   alias AshDataTable.Resource.Info
   alias AshDataTable.Resource.Listening
+  alias AshDataTable.Resource.Notifier
 
   defmodule OwnNotifier do
     @moduledoc false
