@@ -2,6 +2,8 @@
 
 
 > **Decided by the owner, 2026-10-15:** all ten recommendations (D1–D10) accepted; D3 yes — the root tests that assert a returned text change their expected value to the message term, as a new agreed test group of stage 3b.
+>
+> **Also decided, 2026-10-15, after the drift check of 3a:** greenfield: no facade, delegate or code kept for a test's sake; when code moves, its callers move, tests included (their call target only). So `Format.input` does not delegate to `Typed` (D4): its callers call `Typed.of/3`. `Present` reads the `AshPhoenix.Form` itself, without `Phoenix.HTML` (drift finding 2, option a); an embedded value with a sensitive primary key is read-only (finding 5, option a).
 
 Status: **for the owner to decide.** Nothing of it is built. Code references are of `d8e8c6e` (the end of stage 2). Names follow [target.md](target.md); words follow `CONTEXT.md`. The decisions are in section 7.
 
@@ -63,7 +65,7 @@ What stays the same: no new ability for a person or a developer. Every event, pa
 ### 2.2 Where the rules fold in
 
 - `Sensitive.scrub/2` runs first in `Present.row/…`. The scrubs the core does today stay as a second guard (`put_failed`, `table_component.ex:1893`): the entry keeps a scrubbed record for "discard".
-- After `Present`, a part needs no `Resource.Exposing`, `Resource.Embedding` or `Sensitive` any more: `state` and `editable?` say it. That removes three of the four "part 3 → part 1" findings of the dependency test (`parts/grid.ex:548, 572`, `parts/panel.ex:136, 230`).
+- After `Present`, a part needs no `Resource.Exposing`, `Resource.Embedding` or `Sensitive` any more: `state` and `editable?` say it. The mask a part draws for a `:masked` cell is `Present.mask/0` (3b; it was `Sensitive.mask/0`). A part still reads `sensitive?` of a column or an input of the model, to choose a hidden control: that is the declaration, not a value, and stays. That removes three of the four "part 3 → part 1" findings of the dependency test (`parts/grid.ex:548, 572`, `parts/panel.ex:136, 230`).
 - New root tests for `Present` (new tests are allowed): every function, given the records of the sensitive test resources, returns no sensitive value anywhere in its output. This is a safety check, so it gets a mutation check (build rules: "what is sent to the browser"): drop the scrub, and the test must fail.
 
 ### 2.3 What changes for the parts and the tests
@@ -91,11 +93,11 @@ What stays the same: no new ability for a person or a developer. Every event, pa
 | `clear`, `reveal`, `edit`, `pick`, `discard` | `{:clear, row, column}` and so on |
 | `act` | `{:act, row, action}` |
 | `table_act`, `table_run` | `{:table_act, action}`, `{:table_run, action}` |
-| `bulk`, `bulk_run` | `{:bulk, action, selection}`, `{:bulk_run, action, selection}`; `selection` is `:all` or `{:rows, [key]}`, each key a claim |
+| `bulk`, `bulk_run` | `{:bulk, action, selection}`, `{:bulk_run, action, selection}`; `selection` is `:all`, `{:rows, [key]}`, or `{:all, [key]}` for an event that names both (every record once the table has read, else the rows), each key a claim |
 | `panel_validate`, `panel_submit` | `{:panel_validate, typed}`, `{:panel_submit, typed}` |
 | `panel_add`, `panel_remove` | `{:panel_add, path}`, `{:panel_remove, path}` |
 | `panel_unpick`, `panel_clear`, `pick_input` | `{:panel_unpick, input, key}`, `{:panel_clear, input}`, `{:pick_input, input}` |
-| `picked` | `{:picked, %{row: key \| nil, rows: [key] \| nil, confirmed?: boolean, arguments: map}}` |
+| `picked` | `{:picked, %{row: key \| nil, rows: [key] \| nil, confirmed?: boolean, arguments: text}}`; `arguments` is the picker's argument line as the form sends it, raw query text, which the live layer decodes |
 
 `:malformed` gets the answer today's catch-all clause gives for that event (`%{ok: false}`, `%{open: false}`, `%{}` or no reply; `table_component.ex:2054-2832`). That table of answers lives in the live layer, not in `Intent`. The rule for identical behaviour: `Intent` refuses no payload that today's clauses accept. In 3a the `handle_event/3` clauses call `Intent.parse/2` first and keep their bodies.
 
@@ -171,13 +173,24 @@ The dependency test fails from the end of 3c, and the rule says 2a makes no word
 - `Errors`: where an error belongs stays in 2a; it returns terms. Its wording is `Text.say/1`.
 - `Act`, `Edit`, `Bulk`, `Query`: their messages become terms.
 - `Act`'s "what a generic action returned, as a person is told it" (`act.ex:256-292`, `Format.format`) moves to the drawing side: `Act` returns the value.
-- **V9** (`model/argument.ex:79, 85` → `Format.input/3`): `Format.input/3` turns a value into the text a control holds. That text is locale-free: it is never a translation. `State` compares with it (`state.ex:295, 318, 366, 388, 519`), and so do `Act` and `Edit` (`act.ex:888-913`, `edit.ex:370`). D4: it moves into a new 2a module, `AshDataTable.Typed` (`of/3`). `Format.input/2,3` delegates to it, so the root tests of `Format` do not change. The copy leaves out the label translation that `members/1` does (`format.ex:282-284`), which `input` never uses.
+- **V9** (`model/argument.ex:79, 85` → `Format.input/3`): `Format.input/3` turns a value into the text a control holds. That text is locale-free: it is never a translation. `State` compares with it (`state.ex:295, 318, 366, 388, 519`), and so do `Act` and `Edit` (`act.ex:888-913`, `edit.ex:370`). D4: it moves into a new 2a module, `AshDataTable.Typed` (`of/3`). Its callers call it, the root tests among them (call target only; the owner's greenfield rule replaces "`Format.input` delegates"). `Present.field_value/4` is one of them. The copy leaves out the label translation that `members/1` does (`format.ex:282-284`), which `input` never uses.
 
 ### 3.6 The arguments of `Act`, `Edit`, `Pick`, `Bulk`, `Record` (F7)
 
 Their arguments do not change: `Operation` calls them as the handlers do today, with the same keyword `opts`. Groups B and C of `test-coupling.md` (about 190 root tests that call them) keep their calls.
 
 What does change is what some of them return: a term where a text was. About 20 root tests assert such a text, for example `model_test.exs:2889, 2946, 2965, 2973`, `sensitive_test.exs:366, 430, 437`, `unions_test.exs:494-538`, `managing_test.exs:554, 574, 576`, and the `Errors` tests at `model_test.exs:1266-1324`. In those tests the expected value changes from the text to the term (`"This record is no longer available."` becomes `{:text, :record_gone, []}`); the call does not. That is a new group of tests the owner has to agree to (D3). The exact list goes into the commit of 3b. The wording stays tested where a person reads it, in the demo suite.
+
+### 3.7 As built (3b, 2026-10-15)
+
+What the build added to the shapes above, each because the code needed it:
+
+- **Terms.** A fourth form, `{:join, separator, messages}`: several messages said as one, as the table joined texts before (`"; "` between the errors of a form, `" "` between the messages of one field). `Errors.joined/1` gives one message as itself. `Text.say/1` also takes a text that is words already: a model's label, which the live layer translates once (`in_words/1`); a binding of a message is often one. The type of what 2a returns is `AshDataTable.Errors.message/0`, so that no file of 2a names `Text`.
+- **Where the words are made.** The entry, `Present` and the parts hold terms; the parts say them with `Parts.Common.said/1`, the replies with `Text.say/1`. Two texts are still made in the live layer as the message is built, both in the LiveView's process: what a generic action returned (`Format.said/3`, which formats a value), and the name of a created record at the start of a sentence (`created_name/1`, a label capitalised). Both are bindings of a term.
+- **`Operation.Input`** has, besides the fields of 3.1: `picking` (what a picker's read is told besides who asks: `authorize_given`), `read?` (a table that could not read offers no table action and no "all that match"), and `offered` (the table actions and the actions on a selection offered now; none on a selection while a run is on its way). `panel` is the open panel as the live layer keeps it. A reference cell's choice is the intent `{:refer, row, column, named, confirmed?, arguments}`, made by the live layer of `picked` and the picker it opened.
+- **Results.** `bulk/1` and `submit/1` of a selection give `{:start, run, files}`: `files` are the copies the run holds, which the live layer removes when it is done. `Operation.Failure` has `chosen` (the record chosen for a reference cell, whose label the failed cell shows) and `given` (what a create in a nested table was given of its row, read again). `reveal/1` also answers `:refused`.
+- **Files.** `with_files` runs the action inside `consume_uploaded_entry/3`. A file is spent once a write got past its checks and its veto; a write refused before closes its panel without taking the file, which the next panel gives up.
+- **`Operation.link/2`** is public: the create panel asks it as it opens, as before.
 
 ## 4. 3c: `Live.Core`
 
@@ -218,7 +231,7 @@ Every event from the browser is named `ash_data_table:TABLE_ID:event`; `TABLE_ID
 | --- | --- | --- |
 | 2a → `text.ex` (5), 2a → `format.ex` (3), 2a lines naming `Text`/`Format` (9) | 3b | message terms; `Typed` (3.5) |
 | `parts/grid.ex`, `parts/panel.ex` → `Exposing`, `Embedding` (3) | 3a | `Present` flags |
-| `parts/filter.ex` → `Resource.Operator` (`:36`, `takes/1`) | 3c | through `Model.Operator`, the 2a facade that exists (D8) |
+| `parts/filter.ex` → `Resource.Operator` (`:36`, `takes/1`) | 3c | through 2a (D8). `Model.Operator` was a facade and went in 3b (greenfield): 3c gives the part what `takes/1` says another way, for example in the column's operators of the model |
 | `format.ex` → `Embedding`, `Exposing`, `Words` (3) | 3c | through 2a: `Model.Field` for a type's fields and kinds, `Sensitive` for "empty", `Model` for the name in words (D8) |
 | `live/table_component.ex` → `parts/*` (11), → `not_found_error.ex` | 3c | the component counts as part 4 (4.1) |
 
@@ -357,7 +370,7 @@ Done when: snapshots byte for byte; no test changed; the report has lost the gri
 
 **3b**
 1. The term types and `Text.say/1`, with tests.
-2. `Typed`; `Format.input` delegates (V9).
+2. `Typed`; the callers of `Format.input` call `Typed.of/3` (V9).
 3. `Errors`, `Act`, `Edit`, `Bulk`, `Query` return terms; the entry and `Present` hold terms; the parts and replies call `say/1`; `in_locale/1` removed.
 4. `Operation` with `Input` and `Outcome`; the handlers call it for save, clear, refer, reveal, run, submit, bulk.
 
