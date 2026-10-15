@@ -19,6 +19,7 @@ defmodule AshDataTable.Format do
 
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
+  alias AshDataTable.Present
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
@@ -45,7 +46,7 @@ defmodule AshDataTable.Format do
   def format(_column, %Ash.ForbiddenField{}, _zone), do: ""
   def format(_column, %Ash.NotLoaded{}, _zone), do: ""
   # what a table keeps in place of a sensitive value: never the value
-  def format(_column, %Sensitive.Masked{}, _zone), do: Sensitive.mask()
+  def format(_column, %Sensitive.Masked{}, _zone), do: Present.mask()
 
   def format(%{cell_type: :text}, value, _zone), do: to_string(value)
 
@@ -250,7 +251,7 @@ defmodule AshDataTable.Format do
     cond do
       is_struct(held, Ash.ForbiddenField) -> format(inner, held, zone)
       Exposing.empty?(held) -> ""
-      true -> Sensitive.mask()
+      true -> Present.mask()
     end
   end
 

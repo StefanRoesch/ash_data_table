@@ -21,8 +21,8 @@ defmodule AshDataTable.ArchitectureTest do
     * no cycle holds files of two parts, and no cycle has a compile edge
       but those Spark requires (an extension and its entities, verifiers and
       transformers; an info module and its extension) (5.4, V10);
-    * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.PubSub`,
-      Gettext or a module of the words, which xref cannot see, also not
+    * no file of 2a names LiveView, `Phoenix.Component`, `Phoenix.HTML`,
+      `Phoenix.PubSub`, Gettext or a module of the words, which xref cannot see, also not
       inside a multi-alias (`alias AshDataTable.{Format, Text}`). A router
       is allowed, for `AshDataTable.Routes` (F15);
     * only `Query`, `Record`, `Pick` and `Bulk` read from Ash (S1, Q11).
@@ -255,6 +255,7 @@ defmodule AshDataTable.ArchitectureTest do
   @forbidden_in_data [
     "Phoenix.LiveView",
     "Phoenix.Component",
+    "Phoenix.HTML",
     "Phoenix.PubSub",
     "Gettext",
     "AshDataTable.Text",

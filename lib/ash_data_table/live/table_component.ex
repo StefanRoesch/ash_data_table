@@ -4074,6 +4074,10 @@ defmodule AshDataTable.Live.TableComponent do
     end
   end
 
+  # What is said at each file field of the panel, by name (`said_of/4`).
+  defp files_said(assigns),
+    do: Map.new(panel_files(assigns), fn {name, %{errors: errors}} -> {name, errors} end)
+
   # What is read out of a field when the panel stays open: for a file, what
   # is shown at its field; for the rest, what the action said.
   defp said_of(panel, %{editor: :file} = input, id, uploads) do
@@ -4576,7 +4580,7 @@ defmodule AshDataTable.Live.TableComponent do
       <Parts.Panel.panel
         :if={@table.entry.panel}
         id={@table.entry.id}
-        panel={Present.panel(@table.entry.panel, panel_files(assigns))}
+        panel={Present.panel(@table.entry.panel, files_said(assigns))}
         files={panel_files(assigns)}
         target={@myself}
       />

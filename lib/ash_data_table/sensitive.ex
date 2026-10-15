@@ -31,10 +31,6 @@ defmodule AshDataTable.Sensitive do
     @type t :: %__MODULE__{}
   end
 
-  @doc "What a cell shows in place of a sensitive value: the same for every value."
-  @spec mask() :: String.t()
-  def mask, do: "••••••"
-
   @doc """
   A record as a table keeps it for a row: with every sensitive value in it
   replaced by a `Masked`. That is every attribute, calculation and aggregate

@@ -12,7 +12,7 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
-  alias AshDataTable.Sensitive
+  alias AshDataTable.Present
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
@@ -557,7 +557,7 @@ defmodule AshDataTable.Parts.Grid do
     {:safe,
      [
        ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
-       Sensitive.mask(),
+       Present.mask(),
        ~s(</span><span data-masked class="sr-only">),
        escape(Text.t(:hidden_value)),
        ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),

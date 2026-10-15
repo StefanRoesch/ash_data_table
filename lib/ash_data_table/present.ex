@@ -164,6 +164,13 @@ defmodule AshDataTable.Present do
   end
 
   @doc """
+  What is drawn in place of a sensitive value that is there: the same for
+  every value. A `:masked` cell holds no value; this is what the part draws.
+  """
+  @spec mask() :: String.t()
+  def mask, do: "••••••"
+
+  @doc """
   A row of the page, for the stream. `record` is the record as it was read
   or returned; it is scrubbed here, and nothing of it but its cells' values
   is kept. `attributes`: `id` (the table's), `key`, `rowindex`, `names`,
@@ -236,22 +243,22 @@ defmodule AshDataTable.Present do
   defp editable?(column, _value, _record), do: column.editable?
 
   @doc """
-  The open action panel. `files` is what the live layer says of the file
-  fields, by name (`errors`, and the upload, which is not looked at here).
+  The open action panel. `upload_errors` is what the live layer says of the
+  file fields, by name: the texts shown at each.
   """
   @spec panel(map, map) :: Panel.t()
-  def panel(panel, files \\ %{}) do
-    form = Phoenix.HTML.FormData.to_form(panel.form, [])
+  def panel(panel, upload_errors \\ %{}) do
+    form = panel.form
 
     %Panel{
       title: panel.title,
       kind: panel.kind,
       question: Map.get(panel, :question) || panel.action.confirm,
       submit: panel.submit,
-      method: form.options[:method],
+      method: form.method,
       destructive?: panel.action.type == :destroy,
       errors: panel.errors[nil],
-      fields: Enum.map(panel.inputs, &field(panel, form, &1, files)),
+      fields: Enum.map(panel.inputs, &field(panel, form, &1, upload_errors)),
       inside: %{
         errors: panel.errors,
         touched: panel.touched,
@@ -261,15 +268,15 @@ defmodule AshDataTable.Present do
     }
   end
 
-  defp field(panel, form, input, files) do
+  defp field(panel, form, input, upload_errors) do
     %Field{
       name: input.name,
       path: [Atom.to_string(input.name)],
-      form_name: Phoenix.HTML.Form.input_name(form, input.name),
+      form_name: form_name(form, input.name),
       input: input,
       value: panel_value(panel, form, input),
-      errors: field_errors(panel, input, files),
-      places: field_places(panel, input, files),
+      errors: field_errors(panel, input, upload_errors),
+      places: field_places(panel, input, upload_errors),
       chosen: panel.chosen[input.name],
       clear:
         cond do
@@ -279,6 +286,11 @@ defmodule AshDataTable.Present do
         end
     }
   end
+
+  # The name of a field's control, as a form names it: under the form's
+  # name (`panel[title]`).
+  defp form_name(%{name: nil}, name), do: Atom.to_string(name)
+  defp form_name(%{name: form}, name), do: "#{form}[#{name}]"
 
   # What a field of the panel holds, as its control holds it: a field made
   # of groups as its form sends it; the field of an argument that is given
@@ -315,7 +327,7 @@ defmodule AshDataTable.Present do
       true ->
         field_value(
           input,
-          Phoenix.HTML.Form.input_value(form, input.name),
+          AshPhoenix.Form.value(form, input.name),
           panel.kind == :create or input.kind == :argument,
           panel
         )
@@ -325,22 +337,18 @@ defmodule AshDataTable.Present do
   # The errors of a field that are shown: all of them once the person has
   # used "Run", and until then those of the fields they have been in.
   # of a file: what the action said of the file it was given
-  # (`files`, with what LiveView says of the file before it)
-  defp field_errors(_panel, %{editor: :file} = input, files) do
-    case Map.get(files, input.name) do
-      %{errors: errors} -> errors
-      nil -> []
-    end
-  end
+  # (`upload_errors`, with what LiveView says of the file before it)
+  defp field_errors(_panel, %{editor: :file} = input, upload_errors),
+    do: Map.get(upload_errors, input.name, [])
 
   # of a union: once they have been at its choice, or in its value
-  defp field_errors(panel, %{editor: :union} = input, _files) do
+  defp field_errors(panel, %{editor: :union} = input, _upload_errors) do
     if panel.submitted? or in_union?(panel.touched, [Atom.to_string(input.name)]),
       do: Map.get(panel.errors, input.name, []),
       else: []
   end
 
-  defp field_errors(panel, input, _files) do
+  defp field_errors(panel, input, _upload_errors) do
     if panel.submitted? or Atom.to_string(input.name) in panel.used,
       do: Map.get(panel.errors, input.name, []),
       else: []
@@ -365,8 +373,8 @@ defmodule AshDataTable.Present do
 
   # The values of an array field that the errors shown at it are about, by
   # their places.
-  defp field_places(panel, input, files) do
-    if field_errors(panel, input, files) == [],
+  defp field_places(panel, input, upload_errors) do
+    if field_errors(panel, input, upload_errors) == [],
       do: [],
       else: panel |> Map.get(:places, %{}) |> Map.get(input.name, [])
   end

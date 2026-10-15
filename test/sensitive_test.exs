@@ -203,7 +203,7 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "is shown as the mask wherever a table formats it, the same for every value" do
-      assert Sensitive.mask() == "••••••"
+      assert AshDataTable.Present.mask() == "••••••"
       assert Format.format(column(:token), %Masked{}) == "••••••"
       assert Format.format(column(:pin), %Masked{}) == "••••••"
     end
