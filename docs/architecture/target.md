@@ -875,6 +875,12 @@ not stray from the target:
 - [ ] `State` is wrapped, not replaced.
 - [ ] `Parts.*` read `@table` / the entry, not loose assigns. Measure the `/tasks` diff before and after (R §6 stage 3).
 
+Notes from the drift check of stage 2 (2026-10-15):
+- Functions join `Caller` in stage 6 (none exist before). Parts get single fields of the entry, never `@table` (it holds the caller and actor).
+- `Caller.reader_opts/1` builds the `opts`; `Query.reader_opts/1` stays as the data layer's filter of them.
+- Stage 5: `authorize?` is resolved per table from its resource's domain, so once one `Table` holds nested entries from other domains, the resolved value lives in the entry and `Caller` keeps only what it was told. The same for today's per-table options (`label`, `labelledby`, `lineage`, `select`, `live_given`, `authorize_given`); `lineage` is the entry's path.
+- Stage 4: `options.page_assigns` (a copy of the host's assigns) stays an option of the tag's live component only; with `attach`, the live layer gives the current assigns (a copy would contain the `Table` itself).
+
 ### Stage 3a: drawing data and intents
 
 - [ ] `AshDataTable.Present`: rows, cells, the panel's fields, picker rows and labels, failed edits; values, not texts (RQ6); no sensitive value on any path (F1). `panel_value/3` moves into it. `Sensitive.scrub/2` inside.

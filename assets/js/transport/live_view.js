@@ -13,8 +13,6 @@
 // are the table's own (S6), and a second transport, for another UI
 // technology, will say what of this is to be a seam.
 
-const never = new Promise(() => {})
-
 // The transport of one LiveView hook.
 export function liveView(hook) {
   const heard = new Map()
@@ -23,7 +21,9 @@ export function liveView(hook) {
     push(event, payload) {
       return hook.pushEventTo(hook.el, event, payload).then(results => {
         const result = results && results[0]
-        return result && result.status === "fulfilled" ? result.value.reply : never
+        // a Promise of its own each time: one shared Promise would keep every
+        // reply handler waiting on it, and what they hold, alive for good
+        return result && result.status === "fulfilled" ? result.value.reply : new Promise(() => {})
       })
     },
 
