@@ -946,6 +946,7 @@ In the order of Q19.
 - [ ] The presentation hints of `Model.Column` documented as such (F3).
 - [ ] `AshDataTable.KitCase` and `AshDataTable.Test.Resource`; `KitCase` asserts that no rendered state of any part holds a sensitive value of the test resource (F1).
 - [ ] Development-mode marker check in the hook.
+- [ ] **Presentation of what opens is changeable (owner, 2026-10-15):** not only the look of the action panel, the picker and the confirm dialog, but whether they open as a modal (as today: native dialog, page blocked, focus trapped, Escape closes) or inline (in the page, no trapping; focus moves in and back out). Declared by the kit, overridable per table. The hooks follow the declared presentation; what the panel shows, the checks and "nothing changes under you while it is open" do not depend on it. `KitCase` checks keyboard and screen-reader behaviour for both. To be shaped in the design note of stage 7.
 
 ### After stage 7: final conformance review
 - [ ] Adversarial review of the whole result against this document, then a judge; findings that hold go to the owner.
