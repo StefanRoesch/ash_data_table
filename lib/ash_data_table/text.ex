@@ -163,26 +163,12 @@ defmodule AshDataTable.Text do
   @plurals [:results, :records, :bulk_question, :bulk_confirm, :bulk_on]
 
   @typedoc """
-  A message, as the table's code passes it on until it is said:
-
-    * `{:text, key, bindings}` - a text of the table's own (`t/2`); for a
-      plural key (`n/3`) the bindings hold `count`;
-    * `{:ash, message, vars}` - a message of an action, with its variables
-      (`error/1`);
-    * `{:label, text}` - the resource's wording (`label/1`);
-    * `{:join, separator, messages}` - several said as one, with the
-      separator between them;
-    * a text that is words already: a label of the model, which the live
-      layer translates once as it builds the model for a person.
-
-  A binding may itself be a message.
+  A message, as the table's code passes it on until it is said: one of the
+  data layer's (`t:AshDataTable.Errors.message/0`), or a text that is words
+  already: a label of the model, which the live layer translates once as
+  it builds the model for a person.
   """
-  @type message ::
-          {:text, key | plural, keyword}
-          | {:ash, String.t(), keyword | map}
-          | {:label, String.t()}
-          | {:join, String.t(), [message]}
-          | String.t()
+  @type message :: AshDataTable.Errors.message() | String.t()
 
   @doc "What a message says, in the locale of the process that asks."
   @spec say(message) :: String.t()
@@ -195,7 +181,43 @@ defmodule AshDataTable.Text do
   def say({:ash, message, vars}), do: error({message, vars})
   def say({:label, text}), do: label(text)
   def say({:join, separator, messages}), do: Enum.map_join(messages, separator, &say/1)
+
+  def say({:once, separator, messages}),
+    do: messages |> Enum.map(&say/1) |> Enum.uniq() |> Enum.join(separator)
+
   def say(text) when is_binary(text), do: text
+
+  @doc """
+  Messages each once by what they say: one whose words another before it
+  says already is left out, as a text that is shown twice would be.
+  """
+  @spec once([message]) :: [message]
+  def once(messages), do: Enum.uniq_by(messages, &say/1)
+
+  @doc """
+  Messages with how many times each came up (what a run on a selection
+  counts), each once by what it says: the counts of those that say the
+  same are added up, in the place of the first.
+  """
+  @spec counted([{message, pos_integer}]) :: [{message, pos_integer}]
+  def counted(counts) do
+    counts
+    |> Enum.reduce([], fn {message, count}, counted ->
+      words = say(message)
+
+      case Enum.find_index(counted, fn {known, _count, _message} -> known == words end) do
+        nil ->
+          [{words, count, message} | counted]
+
+        at ->
+          List.update_at(counted, at, fn {known, before, first} ->
+            {known, before + count, first}
+          end)
+      end
+    end)
+    |> Enum.reverse()
+    |> Enum.map(fn {_words, count, message} -> {message, count} end)
+  end
 
   defp said(bindings) do
     for {name, value} <- bindings, do: {name, if(message?(value), do: say(value), else: value)}
@@ -205,8 +227,9 @@ defmodule AshDataTable.Text do
   defp message?({:ash, message, _vars}) when is_binary(message), do: true
   defp message?({:label, text}) when is_binary(text), do: true
 
-  defp message?({:join, separator, messages}) when is_binary(separator) and is_list(messages),
-    do: true
+  defp message?({joined, separator, messages})
+       when joined in [:join, :once] and is_binary(separator) and is_list(messages),
+       do: true
 
   defp message?(_value), do: false
 
@@ -261,12 +284,9 @@ defmodule AshDataTable.Text do
   def label(""), do: ""
   def label(text) when is_binary(text), do: Gettext.dgettext(backend(), @domain, text)
 
-  @doc """
-  A message of an action, with its variables: through the host's error
-  translator when one is configured, else with the variables filled in.
-  """
-  @spec error({String.t(), keyword | map}) :: String.t()
-  def error({message, vars}) when is_binary(message) do
+  # A message of an action, with its variables: through the host's error
+  # translator when one is configured, else with the variables filled in.
+  defp error({message, vars}) when is_binary(message) do
     vars = vars(vars)
 
     case Application.get_env(:ash_data_table, :translate_error) do

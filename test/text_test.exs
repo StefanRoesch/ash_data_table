@@ -60,7 +60,7 @@ defmodule AshDataTable.TextTest do
     end
   end
 
-  describe "AshDataTable.Errors.uniq/1" do
+  describe "once/1" do
     test "keeps each message once by what it says, as the texts were kept once" do
       a =
         {:ash, "atom must be one of %{atom_list}, got: %{value}", [atom_list: "a, b", value: "c"]}
@@ -74,10 +74,72 @@ defmodule AshDataTable.TextTest do
         {:ash, "atom must be one of %{atom_list}, got: %{value}", [atom_list: "a, b", value: "d"]}
 
       assert Text.say(a) == Text.say(b)
-      assert AshDataTable.Errors.uniq([a, b, other]) == [a, other]
+      assert Text.once([a, b, other]) == [a, other]
 
       field = &{:text, :error_on_field, field: "Sizes", message: &1}
-      assert AshDataTable.Errors.uniq([field.(a), field.(b)]) == [field.(a)]
+      assert Text.once([field.(a), field.(b)]) == [field.(a)]
     end
+
+    test "keeps one of two messages that say the same words in other terms" do
+      # a literal message, and one whose placeholder says the same
+      assert Text.once([{:ash, "is invalid", []}, {:ash, "is %{x}", [x: "invalid"]}]) ==
+               [{:ash, "is invalid", []}]
+
+      # a count the message does not name
+      assert Text.once([{:ash, "is invalid", []}, {:ash, "is invalid", [count: 2]}]) ==
+               [{:ash, "is invalid", []}]
+
+      # a text of the table's own, and an action's message that reads the same
+      gone = {:text, :record_gone, []}
+      assert Text.once([gone, {:ash, "This record is no longer available.", []}]) == [gone]
+
+      # the resource's wording, and the same words as a label of the model
+      at = &{:text, :error_on_field, field: &1, message: {:ash, "is invalid", []}}
+      assert Text.once([at.({:label, "A"}), at.("A")]) == [at.({:label, "A"})]
+    end
+
+    test "says each text once where several are said as one" do
+      once = {:once, "; ", [{:ash, "is invalid", []}, {:ash, "is %{x}", [x: "invalid"]}, "B"]}
+      assert Text.say(once) == "is invalid; B"
+
+      assert Text.say({:text, :not_saved, column: "Title", message: once}) ==
+               "Title was not saved: is invalid; B"
+    end
+  end
+
+  describe "counted/1" do
+    test "adds up the counts of messages that say the same, in the place of the first" do
+      a = {:ash, "is invalid", []}
+      b = {:ash, "is %{x}", [x: "invalid"]}
+      c = {:text, :record_gone, []}
+
+      assert Text.counted([{a, 1}, {c, 2}, {b, 3}]) == [{a, 4}, {c, 2}]
+    end
+  end
+end
+
+defmodule AshDataTable.TextTranslatorTest do
+  @moduledoc """
+  `AshDataTable.Text.once/1` with the host's error translator, which may
+  say two messages in the same words.
+  """
+  use ExUnit.Case, async: false
+
+  alias AshDataTable.Text
+
+  def translate_error({_message, _vars}), do: "nicht gültig"
+
+  setup do
+    Application.put_env(:ash_data_table, :translate_error, {__MODULE__, :translate_error})
+    on_exit(fn -> Application.delete_env(:ash_data_table, :translate_error) end)
+  end
+
+  test "keeps one of two messages the translator says in the same words" do
+    invalid = {:ash, "is invalid", []}
+    refused = {:ash, "is refused", []}
+
+    assert Text.once([invalid, refused]) == [invalid]
+    assert Text.say({:once, "; ", [invalid, refused]}) == "nicht gültig"
+    assert Text.counted([{invalid, 1}, {refused, 1}]) == [{invalid, 2}]
   end
 end

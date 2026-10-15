@@ -883,7 +883,8 @@ defmodule AshDataTable.Act do
   says of a record that an argument hands to a relationship, without a text
   of its own, is under that argument: that the record is not available.
   See `AshDataTable.Errors` for what is shown of an error; `refusal` is what a
-  refusal reads as.
+  refusal reads as. Each term once at a field: the live layer says each
+  text once.
   """
   @spec errors(form, Model.t(), [Model.Input.t()], Errors.message()) ::
           %{optional(atom | nil | [atom | non_neg_integer]) => [Errors.message()]}
@@ -920,7 +921,7 @@ defmodule AshDataTable.Act do
         &elem(&1, 1)
       )
 
-    Map.new(grouped, fn {field, messages} -> {field, Errors.uniq(messages)} end)
+    Map.new(grouped, fn {field, messages} -> {field, Enum.uniq(messages)} end)
   end
 
   # What Ash says of a record an argument hands to a relationship, where it

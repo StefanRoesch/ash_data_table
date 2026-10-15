@@ -1568,6 +1568,8 @@ defmodule AshDataTable.Live.TableComponent do
   def handle_async(:bulk, {:ok, outcome}, socket) do
     %{id: id, model: model, running: action} = socket.assigns.table.entry
     not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
+    # what says the same words is one failure, as it is said in this process
+    outcome = %{outcome | failures: Text.counted(outcome.failures)}
 
     summary =
       if not_done == 0,
@@ -2006,7 +2008,7 @@ defmodule AshDataTable.Live.TableComponent do
         {:text, :read_failed, []}
 
       messages ->
-        {:join, "; ", messages}
+        {:once, "; ", messages}
     end
   end
 
@@ -3507,11 +3509,14 @@ defmodule AshDataTable.Live.TableComponent do
     # place of what the action makes of the text it was given for it
     gaps = Act.gaps(panel.inputs, panel.typed, panel.time_zone)
 
+    # each text once at a field, as it is said in this process
+    errors =
+      Map.new(Act.errors(panel.form, model, panel.inputs, refusal), fn {field, messages} ->
+        {field, Text.once(messages)}
+      end)
+
     panel
-    |> Map.put(
-      :errors,
-      own(Map.merge(Act.errors(panel.form, model, panel.inputs, refusal), gaps), panel)
-    )
+    |> Map.put(:errors, own(Map.merge(errors, gaps), panel))
     |> Map.put(:places, Act.places(panel.form, panel.inputs))
   end
 

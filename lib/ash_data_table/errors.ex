@@ -25,57 +25,24 @@ defmodule AshDataTable.Errors do
   What the data layer says to a person, as a term: a text of the table's own
   by key with its bindings (a plural one has `count` among them), an
   action's message with its variables, the resource's wording, or several
-  messages said as one, with a separator between them. A binding may
-  itself be a message.
+  messages said as one, with a separator between them: `:join` says each,
+  `:once` says each text once, as a list of the action's messages is said
+  (`joined/1`). A binding may itself be a message.
   """
   @type message ::
           {:text, atom, keyword}
           | {:ash, String.t(), keyword | map}
           | {:label, String.t()}
           | {:join, String.t(), [message]}
-
-  @doc "Several messages said as one, each after the one before: one is itself."
-  @spec joined([message, ...]) :: message
-  def joined([message]), do: message
-  def joined(messages), do: {:join, "; ", messages}
+          | {:once, String.t(), [message]}
 
   @doc """
-  Messages each once: one that says what another says is left out, as a
-  text that is shown twice would be. Two say the same where they are of the
-  same kind and key, or the same action message, with the same values in
-  its placeholders: a variable the message does not name (Ash adds `index`
-  and `field`) changes nothing, and a name is said as its text (`:medium`
-  as `"medium"`).
+  Several messages of an action said as one, each after the one before and
+  each text once: one is itself.
   """
-  @spec uniq([message]) :: [message]
-  def uniq(messages), do: Enum.uniq_by(messages, &said/1)
-
-  @doc "Whether two messages say the same (`uniq/1`)."
-  @spec same?(message, message) :: boolean
-  def same?(message, other), do: said(message) == said(other)
-
-  defp said({:ash, message, vars}) do
-    named = for [_, name] <- Regex.scan(~r/%\{(\w+)\}/, message), into: MapSet.new(), do: name
-
-    vars =
-      for {name, value} <- List.wrap(if(is_map(vars), do: Map.to_list(vars), else: vars)),
-          (is_atom(name) or is_binary(name)) and
-            (to_string(name) in named or to_string(name) == "count"),
-          do: {to_string(name), said_value(value)}
-
-    {:ash, message, Enum.sort(vars)}
-  end
-
-  defp said({:text, key, bindings}),
-    do: {:text, key, Enum.sort(for {name, value} <- bindings, do: {name, said(value)})}
-
-  defp said({:join, separator, messages}), do: {:join, separator, Enum.map(messages, &said/1)}
-  defp said({:label, _text} = label), do: label
-  defp said(value), do: said_value(value)
-
-  defp said_value(value) when is_binary(value) or is_number(value), do: value
-  defp said_value(value) when is_atom(value), do: to_string(value)
-  defp said_value(value), do: inspect(value)
+  @spec joined([message, ...]) :: message
+  def joined([message]), do: message
+  def joined(messages), do: {:once, "; ", messages}
 
   @doc "An action's message with its variables, as a message."
   @spec ash({String.t(), keyword | map}) :: message
@@ -165,7 +132,8 @@ defmodule AshDataTable.Errors do
   def about_field?(_error), do: false
 
   @doc """
-  What the errors of a form say to a person, each message once: those about
+  What the errors of a form say to a person, each term once (two that say
+  the same words are said once where they are said): those about
   a field as they are shown on a cell of the column `cell` (nil when they
   are not shown on a cell), then those about none. `refusal` is what a
   refusal reads as: Ash's own text for one is "forbidden", or the breakdown
@@ -182,7 +150,7 @@ defmodule AshDataTable.Errors do
           text = nested_text(model, path, field, error),
           do: text
 
-    uniq(at_fields ++ nested ++ without_fields(form, refusal))
+    Enum.uniq(at_fields ++ nested ++ without_fields(form, refusal))
   end
 
   @doc """
@@ -310,14 +278,14 @@ defmodule AshDataTable.Errors do
 
   @doc """
   What a failed read says to a person: the messages of the errors the read
-  action returned on purpose, each one once. Empty when there is none, which
+  action returned on purpose, each term once. Empty when there is none, which
   is when the table says no more than that the records could not be loaded.
   """
   @spec of_read(term, Model.t()) :: [message]
   def of_read(error, %Model{} = model) do
     case Ash.Error.to_error_class(error) do
       %Ash.Error.Invalid{errors: errors} ->
-        errors |> Enum.flat_map(&texts(&1, model)) |> uniq()
+        errors |> Enum.flat_map(&texts(&1, model)) |> Enum.uniq()
 
       _other ->
         []
@@ -327,7 +295,7 @@ defmodule AshDataTable.Errors do
   @doc """
   What an action that did not run on a record says to a person, where it
   was not run through a form: the messages of the errors it returned on
-  purpose, each one once, a refusal among them as `refusal`. Empty when
+  purpose, each term once, a refusal among them as `refusal`. Empty when
   there is none that a person should read.
   """
   @spec of_action(term, Model.t(), message) :: [message]
@@ -337,7 +305,7 @@ defmodule AshDataTable.Errors do
         [refusal]
 
       %Ash.Error.Invalid{errors: errors} ->
-        errors |> Enum.flat_map(&texts(&1, model)) |> uniq()
+        errors |> Enum.flat_map(&texts(&1, model)) |> Enum.uniq()
 
       _other ->
         []

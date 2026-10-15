@@ -88,7 +88,8 @@ defmodule AshDataTable.Bulk do
     * `failed` - the primary keys of the records it did not run on, as far
       as they were named or read;
     * `failures` - why not: each message with the number of records it is
-      about, in the order they came up. A record that is gone, or not this
+      about, in the order they came up. Two terms that say the same words
+      are added up where they are said, in the LiveView's process. A record that is gone, or not this
       person's to read, is among them as one that is no longer available.
   """
   @type outcome :: %{
@@ -277,11 +278,10 @@ defmodule AshDataTable.Bulk do
   # the failures, latest first, with one more of `message`
   defp count(failures, _message, count) when count <= 0, do: failures
 
-  # one that says what a failure counted already is that failure (`Errors.same?/2`)
   defp count(failures, message, count) do
-    case Enum.find_index(failures, fn {known, _count} -> Errors.same?(known, message) end) do
+    case List.keyfind(failures, message, 0) do
       nil -> [{message, count} | failures]
-      at -> List.update_at(failures, at, fn {known, before} -> {known, before + count} end)
+      {_message, known} -> List.keyreplace(failures, message, 0, {message, known + count})
     end
   end
 
