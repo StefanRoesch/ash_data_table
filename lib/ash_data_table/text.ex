@@ -19,6 +19,10 @@ defmodule AshDataTable.Text do
   #
   # Both settings are read when a text is needed, as the layout is, so that a
   # host changes them without compiling this library again.
+  #
+  # The data layer makes no words: it says what it has to say as a message
+  # (`t:message/0`), and the drawing and the live layer's replies turn it into
+  # text with `say/1`, in the LiveView's process, whose locale it is.
 
   # For the `*_noop` macros alone: they mark the messages for
   # `mix gettext.extract`. Nothing is looked up in this backend directly.
@@ -155,6 +159,56 @@ defmodule AshDataTable.Text do
           | :summary_max
 
   @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
+
+  @plurals [:results, :records, :bulk_question, :bulk_confirm, :bulk_on]
+
+  @typedoc """
+  A message, as the table's code passes it on until it is said:
+
+    * `{:text, key, bindings}` - a text of the table's own (`t/2`); for a
+      plural key (`n/3`) the bindings hold `count`;
+    * `{:ash, message, vars}` - a message of an action, with its variables
+      (`error/1`);
+    * `{:label, text}` - the resource's wording (`label/1`);
+    * `{:join, separator, messages}` - several said as one, with the
+      separator between them;
+    * a text that is words already: a label of the model, which the live
+      layer translates once as it builds the model for a person.
+
+  A binding may itself be a message.
+  """
+  @type message ::
+          {:text, key | plural, keyword}
+          | {:ash, String.t(), keyword | map}
+          | {:label, String.t()}
+          | {:join, String.t(), [message]}
+          | String.t()
+
+  @doc "What a message says, in the locale of the process that asks."
+  @spec say(message) :: String.t()
+  def say({:text, key, bindings}) when key in @plurals do
+    {count, bindings} = Keyword.pop!(bindings, :count)
+    n(key, count, said(bindings))
+  end
+
+  def say({:text, key, bindings}), do: t(key, said(bindings))
+  def say({:ash, message, vars}), do: error({message, vars})
+  def say({:label, text}), do: label(text)
+  def say({:join, separator, messages}), do: Enum.map_join(messages, separator, &say/1)
+  def say(text) when is_binary(text), do: text
+
+  defp said(bindings) do
+    for {name, value} <- bindings, do: {name, if(message?(value), do: say(value), else: value)}
+  end
+
+  defp message?({:text, key, bindings}) when is_atom(key) and is_list(bindings), do: true
+  defp message?({:ash, message, _vars}) when is_binary(message), do: true
+  defp message?({:label, text}) when is_binary(text), do: true
+
+  defp message?({:join, separator, messages}) when is_binary(separator) and is_list(messages),
+    do: true
+
+  defp message?(_value), do: false
 
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
