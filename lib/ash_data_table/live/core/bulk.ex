@@ -1,0 +1,183 @@
+defmodule AshDataTable.Live.Core.Bulk do
+  @moduledoc false
+  # Actions on the selected rows (stage 3c): the question, the panel, and
+  # the run beside the process, with its outcome.
+
+  require Logger
+
+  import Phoenix.LiveView
+
+  alias AshDataTable.Act
+  alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Core.Files
+  alias AshDataTable.Live.Core.Panel
+  alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Model
+  alias AshDataTable.Operation
+  alias AshDataTable.Text
+
+  # What became of an action that ran on the selected rows: said above the
+  # grid and read out, and the hook is told on which rows it did not run,
+  # by their keys and by what it names them by: those stay selected. The
+  # table is read again, as the page may hold any of the records.
+  def handle_async(:bulk, {:ok, outcome}, socket) do
+    %{id: id, model: model, running: action} = socket.assigns.table.entry
+    not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
+    # what says the same words is one failure, as it is said in this process
+    outcome = %{outcome | failures: Text.counted(outcome.failures)}
+
+    summary =
+      if not_done == 0,
+        do: {:text, :bulk_done, action: action.label, done: outcome.done},
+        else: {:text, :bulk_not_done, action: action.label, done: outcome.done, failed: not_done}
+
+    failures =
+      for {message, count} <- outcome.failures,
+          do: {:text, :bulk_failure, message: message, count: count}
+
+    failed =
+      for key <- outcome.failed, row_key = Reading.row_key(model, key, 0) do
+        [row_key, Reading.names(model, key, row_key)]
+      end
+
+    {:noreply,
+     socket
+     |> Files.drop_copies()
+     |> Core.put(running: nil, result: %{summary: summary, failures: failures})
+     |> Core.say({:join, " ", [summary | failures]})
+     |> push_event("ash_data_table:bulk", %{table: id, failed: failed})
+     |> Reading.reread()}
+  end
+
+  # The run itself went down. What it had done by then is not known: the
+  # rows stay selected, and the table is read again.
+  def handle_async(:bulk, {:exit, reason}, socket) do
+    %{id: id, model: model, running: action} = socket.assigns.table.entry
+
+    Logger.error(
+      "ash_data_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
+        "failed: #{inspect(reason)}"
+    )
+
+    summary =
+      {:text, :action_not_done, action: action.label, message: {:text, :action_failed, []}}
+
+    {:noreply,
+     socket
+     |> Files.drop_copies()
+     |> Core.put(running: nil, result: %{summary: summary, failures: []})
+     |> Core.say(summary)
+     |> push_event("ash_data_table:bulk", %{table: id})
+     |> Reading.reread()}
+  end
+
+  # Sent by the hook when a person uses a button of the line above the grid,
+  # with what they have selected: `rows`, each as the hook names it (its
+  # primary key), or `all` for every record the filters match. Nothing runs
+  # yet: an action with inputs opens its panel, and for any other the answer
+  # is the question to ask first, which says how many records it is about.
+  #
+  # The action has to be one this table offers this person for a selection.
+  # The rows are not looked up among those of the page, as a selection
+  # outlives its page: they are claims, and the run reads each as the
+  # person before anything is done to it (`AshDataTable.Bulk`).
+  def on({:bulk, name, selection}, socket) do
+    with {:ok, action, selection} <-
+           Operation.bulk_action(
+             Core.operation(socket, {:bulk, name, selection}),
+             name,
+             selection
+           ) do
+      question = question(action, selected(selection, socket.assigns.table.entry))
+
+      if action.panel?,
+        do: {:reply, %{panel: true}, open_bulk(socket, action, selection, question)},
+        else: {:reply, %{ask: Text.say(question)}, socket}
+    else
+      :error -> {:reply, %{ok: false}, socket}
+    end
+  end
+
+  # Sent by the hook once the person has answered that question with
+  # Confirm, for an action without a panel: the action runs on what is
+  # selected. Whether it has a panel is the table's to say, not the event's.
+  def on({:bulk_run, name, selection} = intent, socket) do
+    input = Core.operation(socket, intent)
+
+    with {:ok, action, _selection} <- Operation.bulk_action(input, name, selection),
+         {:start, run, files} <- Operation.bulk(input) do
+      {:noreply, start_bulk(socket, action, run, files)}
+    else
+      {:halted, message} -> {:noreply, Core.say(socket, message)}
+      _other -> {:noreply, socket}
+    end
+  end
+
+  # Sent by the hook when the person changes the selection while the table
+  # still says what the last run came to: that is said no longer.
+  def on(:bulk_seen, socket), do: {:noreply, Core.put(socket, result: nil)}
+
+  # How many records a selection is: the rows that were named, or what the
+  # last read counted, nil where the read action does not count.
+  defp selected(:all, %{page: page}), do: page.total
+
+  defp selected({:rows, rows}, _assigns), do: length(Enum.uniq(rows))
+
+  # What is asked before an action runs on the selected rows: always
+  # something, with the number of records. An action with a question of
+  # its own asks that, and the number follows it.
+  defp question(%Model.Action{confirm: nil, label: label}, nil),
+    do: {:text, :bulk_question_all, action: label}
+
+  defp question(%Model.Action{confirm: nil, label: label}, count),
+    do: {:text, :bulk_question, count: count, action: label}
+
+  defp question(%Model.Action{confirm: question}, nil),
+    do: {:text, :bulk_confirm_all, question: question}
+
+  defp question(%Model.Action{confirm: question}, count),
+    do: {:text, :bulk_confirm, count: count, question: question}
+
+  # The panel of an action that is to run on the selected rows. Its fields
+  # start empty, but for an argument's default: there is no one record to
+  # take a value from. What they hold is given to the action on every
+  # record. The selection is kept with the panel, as a row's key is with
+  # the panel of a row.
+  defp open_bulk(socket, action, selection, question) do
+    %{id: id, model: model} = socket.assigns.table.entry
+
+    title =
+      case selected(selection, socket.assigns.table.entry) do
+        nil -> {:text, :bulk_on_all, action: action.label}
+        count -> {:text, :bulk_on, count: count, action: action.label}
+      end
+
+    panel =
+      Panel.panel(socket.assigns, fn _input -> nil end, %{
+        kind: :bulk,
+        action: action,
+        key: nil,
+        selection: selection,
+        question: question,
+        form: Act.open_bulk(model, action, "#{id}-panel", Core.reader(socket.assigns)),
+        inputs: Model.bulk_inputs(action),
+        title: title,
+        submit: {:text, :run, []}
+      })
+
+    Files.opened(socket, panel)
+  end
+
+  # Runs an action on the selected rows, beside the process: a run takes as
+  # long as its records are many, and the page stays in use meanwhile. The
+  # grid is marked busy until `handle_async/3` has the outcome. `files` are
+  # the copies of the panel's files the run holds, removed when it is done.
+  def start_bulk(socket, action, run, files) do
+    socket
+    |> Core.put(running: action, result: nil, panel: nil)
+    |> Core.put(running_files: for({_name, %{path: path}} <- files, do: path))
+    # The run says why a record was not done as message terms: their words
+    # are made when the outcome is drawn, in this process, whose locale it is.
+    |> start_async(:bulk, run)
+  end
+end
