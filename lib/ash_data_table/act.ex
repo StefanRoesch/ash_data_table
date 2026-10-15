@@ -64,18 +64,16 @@ defmodule AshDataTable.Act do
   # row as that argument, by the table: the record is read first, as the
   # person, as for any row action, and the key is the one the table holds,
   # never one the browser sent. What such an action returns is no row: the
-  # table says it (`said/2`) and reads again.
+  # table says it (`AshDataTable.Format.said/3`) and reads again.
 
   require Logger
 
   alias AshDataTable.Errors
-  alias AshDataTable.Format
   alias AshDataTable.Model
   alias AshDataTable.Model.Action
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
-  alias AshDataTable.Text
   alias AshDataTable.Typed
 
   @typedoc "A form of `AshPhoenix.Form`."
@@ -98,7 +96,7 @@ defmodule AshDataTable.Act do
           | {:done, term}
           | :destroyed
           | :gone
-          | {:error, Ash.Resource.record() | nil, String.t()}
+          | {:error, Ash.Resource.record() | nil, Errors.message()}
 
   @doc """
   Runs a row action straight away, without inputs, on the record with the
@@ -121,7 +119,7 @@ defmodule AshDataTable.Act do
           end
       end
     else
-      :error -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -131,7 +129,7 @@ defmodule AshDataTable.Act do
     with {:ok, record} <- Record.fetch(model, key, opts) do
       case submit(model, form(record, action, "action", opts), %{}, opts) do
         {:error, form} ->
-          message = Enum.join(messages(form, model), "; ")
+          message = Errors.joined(messages(form, model))
 
           case Record.load(model, record, opts) do
             {:ok, record} -> {:error, record, message}
@@ -142,7 +140,7 @@ defmodule AshDataTable.Act do
           ran
       end
     else
-      :error -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -199,12 +197,13 @@ defmodule AshDataTable.Act do
   Returns `{:done, value}` with what the action returned (nil when it
   returns nothing), or `{:error, message}` with what it said.
   """
-  @spec run_generic(Model.t(), Action.t(), map, keyword) :: {:done, term} | {:error, String.t()}
+  @spec run_generic(Model.t(), Action.t(), map, keyword) ::
+          {:done, term} | {:error, Errors.message()}
   def run_generic(%Model{} = model, %Action{type: :action} = action, given, opts)
       when is_map(given) do
     case submit_generic(model, action, %{}, given, "action", opts) do
       {:done, value} -> {:done, value}
-      {:error, %AshPhoenix.Form{} = form} -> {:error, Enum.join(messages(form, model), "; ")}
+      {:error, %AshPhoenix.Form{} = form} -> {:error, Errors.joined(messages(form, model))}
       {:error, nil, message} -> {:error, message}
     end
   end
@@ -225,7 +224,7 @@ defmodule AshDataTable.Act do
           {:done, term}
           | {:error, form}
           | {:unchosen, [Model.Input.t()]}
-          | {:error, nil, String.t()}
+          | {:error, nil, Errors.message()}
   def submit_generic(%Model{} = model, %Action{type: :action} = action, params, given, id, opts) do
     # an argument whose records are chosen (`reference` in the block) holds
     # keys, and a key from the browser is a claim, as for any other action
@@ -251,46 +250,8 @@ defmodule AshDataTable.Act do
           Exception.message(error)
       )
 
-      {:error, nil, Text.t(:action_failed)}
+      {:error, nil, {:text, :action_failed, []}}
   end
-
-  @doc """
-  What a generic action returned, as a person is told it: a value that can
-  be said in a word or a line. That is text, a number, yes or no, a date, a
-  datetime, and a name (an atom: a value of an enum by its label). Nil for
-  everything else, and for nothing: the table then says no more than that
-  the action is done.
-
-  The value is looked at, not the type the action declares: Ash does not
-  cast what a generic action returns.
-  """
-  @spec said(Action.t(), term) :: String.t() | nil
-  def said(action, value), do: said(action, value, AshDataTable.Zone.utc())
-
-  @spec said(Action.t(), term, AshDataTable.Zone.t()) :: String.t() | nil
-  def said(%Action{} = action, value, zone) do
-    text =
-      case value do
-        nil -> nil
-        value when is_boolean(value) -> Format.format(%{cell_type: :boolean}, value, zone)
-        value when is_binary(value) -> if String.valid?(value), do: value
-        value when is_number(value) -> Format.format(%{cell_type: :number}, value, zone)
-        %Decimal{} -> Format.format(%{cell_type: :number}, value, zone)
-        %Date{} -> Format.format(%{cell_type: :date}, value, zone)
-        # an instant as the clocks of the page's zone show it
-        %DateTime{} -> Format.format(%{cell_type: :datetime}, value, zone)
-        %NaiveDateTime{} -> Format.format(%{cell_type: :datetime}, value, zone)
-        value when is_atom(value) -> by_name(action.returns, value, zone)
-        _records_and_everything_else -> nil
-      end
-
-    if is_binary(text) and String.trim(text) != "", do: text
-  end
-
-  defp by_name(%{cell_type: :enum} = returns, value, zone),
-    do: Format.format(returns, value, zone)
-
-  defp by_name(_returns, value, zone), do: Format.format(%{cell_type: :other}, value, zone)
 
   @doc """
   The inputs of a row action that a person can ask to be emptied on this
@@ -405,13 +366,13 @@ defmodule AshDataTable.Act do
           | :gone
           | {:error, form}
           | {:unchosen, [Model.Input.t()]}
-          | {:error, nil, String.t()}
+          | {:error, nil, Errors.message()}
   def submit_row(%Model{} = model, %Action{type: :action} = action, key, params, id, opts) do
     given = Map.merge(files(opts), given(action, key))
 
     case Record.fetch(model, key, Query.reader_opts(opts)) do
       {:ok, _record} -> submit_generic(model, action, params, given, id, opts)
-      :error -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -442,7 +403,7 @@ defmodule AshDataTable.Act do
         end
 
       :error ->
-        {:error, nil, Text.t(:record_gone)}
+        {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -657,7 +618,7 @@ defmodule AshDataTable.Act do
   the message that says so.
   """
   @spec gaps([Model.Input.t()], map, AshDataTable.Zone.t()) :: %{
-          optional(atom | [atom | non_neg_integer]) => [String.t()]
+          optional(atom | [atom | non_neg_integer]) => [Errors.message()]
         }
   def gaps(inputs, params, zone) when is_map(params) do
     for input <- inputs,
@@ -673,7 +634,7 @@ defmodule AshDataTable.Act do
           way -> [input.name | way]
         end
 
-      {place, [Text.t(:no_such_time, zone: zone)]}
+      {place, [{:text, :no_such_time, zone: zone}]}
     end
   end
 
@@ -924,9 +885,9 @@ defmodule AshDataTable.Act do
   See `AshDataTable.Errors` for what is shown of an error; `refusal` is what a
   refusal reads as.
   """
-  @spec errors(form, Model.t(), [Model.Input.t()], String.t()) ::
-          %{optional(atom | nil | [atom | non_neg_integer]) => [String.t()]}
-  def errors(form, %Model{} = model, inputs, refusal \\ Text.t(:action_not_allowed)) do
+  @spec errors(form, Model.t(), [Model.Input.t()], Errors.message()) ::
+          %{optional(atom | nil | [atom | non_neg_integer]) => [Errors.message()]}
+  def errors(form, %Model{} = model, inputs, refusal \\ {:text, :action_not_allowed, []}) do
     at_fields =
       for {field, error} <- Errors.at_fields(form) do
         case Enum.find(inputs, &(&1.name == field)) do
@@ -944,7 +905,7 @@ defmodule AshDataTable.Act do
       for {path, field, error} <- Errors.nested(form),
           placed =
             (case place(inputs, path, field, error) do
-               {:field, place} -> {place, Text.error(error)}
+               {:field, place} -> {place, Errors.ash(error)}
                # at the group, which says which of its fields is meant
                {:group, place} -> {single(place), named(field, error)}
                nil -> {nil, Errors.nested_text(model, path, field, error)}
@@ -985,8 +946,8 @@ defmodule AshDataTable.Act do
           ] do
       text =
         case error do
-          %Ash.Error.Query.NotFound{} -> Text.t(:record_gone)
-          _nothing_to_say -> Text.t(:action_failed)
+          %Ash.Error.Query.NotFound{} -> {:text, :record_gone, []}
+          _nothing_to_say -> {:text, :action_failed, []}
         end
 
       {input.name, text}
@@ -1070,10 +1031,8 @@ defmodule AshDataTable.Act do
   # The message of an error about a field the panel has no place for, after
   # the field's name in words.
   defp named(field, error) do
-    Text.t(:error_on_field,
-      field: Text.label(AshDataTable.Resource.Words.humanize(field)),
-      message: Text.error(error)
-    )
+    {:text, :error_on_field,
+     field: {:label, AshDataTable.Resource.Words.humanize(field)}, message: Errors.ash(error)}
   end
 
   defp step(index, {place, %{cell_type: {:array, :map}} = at})
@@ -1110,10 +1069,10 @@ defmodule AshDataTable.Act do
   end
 
   @doc "Everything a form's errors say, as the messages of an action that failed."
-  @spec messages(form, Model.t()) :: [String.t()]
+  @spec messages(form, Model.t()) :: [Errors.message()]
   def messages(form, %Model{} = model) do
-    case Errors.of_form(form, model, nil, Text.t(:action_not_allowed)) do
-      [] -> [Text.t(:action_failed)]
+    case Errors.of_form(form, model, nil, {:text, :action_not_allowed, []}) do
+      [] -> [{:text, :action_failed, []}]
       messages -> messages
     end
   end

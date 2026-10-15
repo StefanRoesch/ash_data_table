@@ -1267,40 +1267,53 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "at the field, by the way to it: the input, and the fields on the way", %{errors: errors} do
-      assert errors[[:place, :street]] == ["is refused"]
-      assert errors[[:settings, :limits, :low]] == ["is refused"]
+      assert errors[[:place, :street]] == [{:ash, "is refused", []}]
+      assert errors[[:settings, :limits, :low]] == [{:ash, "is refused", []}]
     end
 
     test "at a field of one value of an array, by the value's place, wherever Ash says it", %{
       errors: errors
     } do
       # in the error's path, as for an array of embedded resources
-      assert errors[[:places, 0, :street]] == ["is refused"]
-      assert errors[[:contact, :places, 2, :street]] == ["is refused"]
+      assert errors[[:places, 0, :street]] == [{:ash, "is refused", []}]
+      assert errors[[:contact, :places, 2, :street]] == [{:ash, "is refused", []}]
       # among its variables, as for an array of maps
-      assert errors[[:entries, 1, :label]] == ["is refused"]
+      assert errors[[:entries, 1, :label]] == [{:ash, "is refused", [index: 1]}]
     end
 
     test "at a value inside the value, when the error is about that value as a whole", %{
       errors: errors
     } do
-      assert errors[[:settings, :limits]] == ["is refused"]
+      assert errors[[:settings, :limits]] == [{:ash, "is refused", []}]
     end
 
     test "at the one field of that name in a value inside it, where Ash names the value around it",
          %{errors: errors} do
-      assert errors[[:contact, :place, :street]] == ["is refused"]
+      assert errors[[:contact, :place, :street]] == [{:ash, "is refused", []}]
     end
 
     test "at the group, after the field's name, where the group has no such field or does not say which value is meant",
          %{errors: errors} do
-      assert errors[:place] == ["Bogus: is refused"]
-      assert errors[:entries] == ["Label: is refused"]
+      assert errors[:place] == [
+               {:text, :error_on_field,
+                field: {:label, "Bogus"}, message: {:ash, "is refused", []}}
+             ]
+
+      assert errors[:entries] == [
+               {:text, :error_on_field,
+                field: {:label, "Label"}, message: {:ash, "is refused", []}}
+             ]
     end
 
     test "above the fields, with the way to it, for a value the panel has no input for and the table a column",
          %{errors: errors} do
-      assert errors[nil] == ["Parts 1: Name: is refused"]
+      assert errors[nil] == [
+               {:text, :error_on_field,
+                field: {:text, :value_position, column: "Parts", position: 1},
+                message:
+                  {:text, :error_on_field,
+                   field: {:label, "Name"}, message: {:ash, "is refused", []}}}
+             ]
     end
 
     test "nowhere for a path that leads to no column: it is not this table's to name", %{
@@ -1308,7 +1321,10 @@ defmodule AshDataTable.ModelTest do
       form: form,
       model: model
     } do
-      refute Enum.any?(List.flatten(Map.values(errors)), &(&1 =~ "Elsewhere"))
+      refute Enum.any?(
+               List.flatten(Map.values(errors)),
+               &(AshDataTable.Text.say(&1) =~ "Elsewhere")
+             )
 
       assert Enum.count(AshDataTable.Errors.nested(form)) == 11
 
@@ -1322,11 +1338,32 @@ defmodule AshDataTable.ModelTest do
     } do
       said = AshDataTable.Errors.of_form(form, model, nil, "refused")
 
-      assert "Place: Street: is refused" in said
-      assert "Contact: Places 3: Street: is refused" in said
-      assert "Settings: Limits: Low: is refused" in said
-      refute Enum.any?(said, &(&1 =~ "Elsewhere"))
-      refute "Name: is refused" in said
+      assert {:text, :error_on_field,
+              field: "Place",
+              message:
+                {:text, :error_on_field,
+                 field: {:label, "Street"}, message: {:ash, "is refused", []}}} in said
+
+      assert {:text, :error_on_field,
+              field: "Contact",
+              message:
+                {:text, :error_on_field,
+                 field: {:text, :value_position, column: {:label, "Places"}, position: 3},
+                 message:
+                   {:text, :error_on_field,
+                    field: {:label, "Street"}, message: {:ash, "is refused", []}}}} in said
+
+      assert {:text, :error_on_field,
+              field: "Settings",
+              message:
+                {:text, :error_on_field,
+                 field: {:label, "Limits"},
+                 message:
+                   {:text, :error_on_field,
+                    field: {:label, "Low"}, message: {:ash, "is refused", []}}}} in said
+
+      refute Enum.any?(said, &(AshDataTable.Text.say(&1) =~ "Elsewhere"))
+      refute "Name: is refused" in Enum.map(said, &AshDataTable.Text.say/1)
     end
   end
 
@@ -2835,17 +2872,17 @@ defmodule AshDataTable.ModelTest do
 
     test "says what the action said when it did not run", %{model: model} do
       assert Act.run_generic(model, table_action(model, :greet), %{"to" => "x"}, @opts) ==
-               {:error, "length must be greater than or equal to 2"}
+               {:error, {:ash, "length must be greater than or equal to %{min}", [min: 2]}}
 
       assert Act.run_generic(model, table_action(model, :refuse), %{"amount" => "3"}, @opts) ==
-               {:error, "is more than there is"}
+               {:error, {:ash, "is more than there is", []}}
 
       assert Act.run_generic(model, table_action(model, :decline), %{}, @opts) ==
-               {:error, "not today"}
+               {:error, {:ash, "not today", []}}
 
       # a refusal reads as one, not as Ash's breakdown of the policies
       assert Act.run_generic(model, table_action(model, :audit), %{}, @opts) ==
-               {:error, "You are not allowed to do this."}
+               {:error, {:text, :action_not_allowed, []}}
 
       assert Act.run_generic(model, table_action(model, :audit), %{}, actor: %{role: :admin}) ==
                {:done, 1}
@@ -2857,12 +2894,14 @@ defmodule AshDataTable.ModelTest do
       assert {:error, %AshPhoenix.Form{} = form} =
                Act.submit_generic(model, refuse, %{"amount" => "3"}, %{}, "panel", @opts)
 
-      assert Act.errors(form, model, refuse.inputs) == %{amount: ["is more than there is"]}
+      assert Act.errors(form, model, refuse.inputs) == %{
+               amount: [{:ash, "is more than there is", []}]
+             }
 
       assert {:error, %AshPhoenix.Form{} = form} =
                Act.submit_generic(model, refuse, %{"amount" => ""}, %{}, "panel", @opts)
 
-      assert Act.errors(form, model, refuse.inputs) == %{amount: ["is required"]}
+      assert Act.errors(form, model, refuse.inputs) == %{amount: [{:ash, "is required", []}]}
     end
 
     test "a failure underneath is logged, and reads as one a person can do nothing about",
@@ -2870,7 +2909,7 @@ defmodule AshDataTable.ModelTest do
       log =
         ExUnit.CaptureLog.capture_log(fn ->
           assert Act.run_generic(model, table_action(model, :explode), %{}, @opts) ==
-                   {:error, "This could not be done."}
+                   {:error, {:text, :action_failed, []}}
         end)
 
       assert log =~ "the action `explode` of AshDataTable.Test.TableActing failed"
@@ -2890,7 +2929,7 @@ defmodule AshDataTable.ModelTest do
 
     test "a row action on a record that is gone runs nothing", %{model: model} do
       assert Act.run(model, table_action(model, :copy), %{id: Ash.UUID.generate()}, @opts) ==
-               {:error, nil, "This record is no longer available."}
+               {:error, nil, {:text, :record_gone, []}}
 
       assert titles() == []
     end
@@ -2899,7 +2938,7 @@ defmodule AshDataTable.ModelTest do
          %{model: model} do
       two = record("Two", true)
 
-      assert {:error, %TableActing{title: "Two"}, "is finished"} =
+      assert {:error, %TableActing{title: "Two"}, {:ash, "is finished", []}} =
                Act.run(model, table_action(model, :stamp), %{id: two.id}, @opts)
     end
 
@@ -2907,7 +2946,7 @@ defmodule AshDataTable.ModelTest do
       one = record("One")
       guard = table_action(model, :guard)
 
-      assert {:error, %TableActing{}, "You are not allowed to do this."} =
+      assert {:error, %TableActing{}, {:text, :action_not_allowed, []}} =
                Act.run(model, guard, %{id: one.id}, actor: %{keys: []})
 
       assert Act.run(model, guard, %{id: one.id}, actor: %{keys: [one.id]}) == {:done, "guarded"}
@@ -2938,7 +2977,7 @@ defmodule AshDataTable.ModelTest do
                Act.submit_row(model, rename, %{id: one.id}, %{"title" => "ab"}, "panel", @opts)
 
       assert Act.errors(form, model, rename.inputs) ==
-               %{title: ["length must be greater than or equal to 3"]}
+               %{title: [{:ash, "length must be greater than or equal to %{min}", [min: 3]}]}
 
       assert Act.submit_row(
                model,
@@ -2947,7 +2986,7 @@ defmodule AshDataTable.ModelTest do
                %{"title" => "Nobody"},
                "panel",
                @opts
-             ) == {:error, nil, "This record is no longer available."}
+             ) == {:error, nil, {:text, :record_gone, []}}
     end
 
     test "on the selected rows, runs once per record a person may read, with the inputs given once",
@@ -2966,7 +3005,7 @@ defmodule AshDataTable.ModelTest do
                  opts
                )
 
-      assert failures == [{"This record is no longer available.", 2}]
+      assert failures == [{{:text, :record_gone, []}, 2}]
       assert titles() == ["Copy of One", "Copy of Two", "One", "Two"]
 
       # every record that matches, and what the action says of the ones it refuses
@@ -2974,7 +3013,11 @@ defmodule AshDataTable.ModelTest do
                Bulk.run(model, table_action(model, :rename), :all, %{"title" => "Same"}, opts)
 
       assert failed == two.id
-      assert message =~ "cannot change once it is finished"
+
+      assert message ==
+               {:text, :error_on_field,
+                field: "Title", message: {:ash, "cannot change once it is finished", []}}
+
       assert titles() == ["Same", "Same", "Same", "Two"]
     end
 
@@ -2998,36 +3041,40 @@ defmodule AshDataTable.ModelTest do
     @plain %Action{name: :any, type: :action, label: "Any"}
 
     test "is the value where it can be said in a word or a line" do
-      assert Act.said(@plain, "Hello World") == "Hello World"
-      assert Act.said(@plain, 12) == "12"
-      assert Act.said(@plain, 1.5) == "1.5"
-      assert Act.said(@plain, Decimal.new("12.50")) == "12.50"
-      assert Act.said(@plain, true) == "Yes"
-      assert Act.said(@plain, false) == "No"
-      assert Act.said(@plain, ~D[2026-10-10]) == "2026-10-10"
-      assert Act.said(@plain, ~U[2026-10-10 08:30:00Z]) == "2026-10-10T08:30:00"
-      assert Act.said(@plain, ~N[2026-10-10 08:30:00]) == "2026-10-10T08:30:00"
-      assert Act.said(@plain, :cheerful) == "cheerful"
+      assert AshDataTable.Format.said(@plain, "Hello World") == "Hello World"
+      assert AshDataTable.Format.said(@plain, 12) == "12"
+      assert AshDataTable.Format.said(@plain, 1.5) == "1.5"
+      assert AshDataTable.Format.said(@plain, Decimal.new("12.50")) == "12.50"
+      assert AshDataTable.Format.said(@plain, true) == "Yes"
+      assert AshDataTable.Format.said(@plain, false) == "No"
+      assert AshDataTable.Format.said(@plain, ~D[2026-10-10]) == "2026-10-10"
+      assert AshDataTable.Format.said(@plain, ~U[2026-10-10 08:30:00Z]) == "2026-10-10T08:30:00"
+      assert AshDataTable.Format.said(@plain, ~N[2026-10-10 08:30:00]) == "2026-10-10T08:30:00"
+      assert AshDataTable.Format.said(@plain, :cheerful) == "cheerful"
     end
 
     test "is the label of a value of an enum the action says it returns" do
       level = table_action(Model.build(AshDataTable.Test.TableActing), :level)
 
-      assert Act.said(level, :in_progress) == "Being worked on"
+      assert AshDataTable.Format.said(level, :in_progress) == "Being worked on"
       # a value the enum does not have is said as it is
-      assert Act.said(level, :unheard_of) == "unheard_of"
+      assert AshDataTable.Format.said(level, :unheard_of) == "unheard_of"
     end
 
     test "is nothing for no value, for an empty one, and for everything else" do
-      assert Act.said(@plain, nil) == nil
-      assert Act.said(@plain, "") == nil
-      assert Act.said(@plain, "  ") == nil
-      assert Act.said(@plain, <<255>>) == nil
-      assert Act.said(@plain, [1, 2]) == nil
-      assert Act.said(@plain, %{a: 1}) == nil
-      assert Act.said(@plain, {:ok, 1}) == nil
-      assert Act.said(@plain, %AshDataTable.Test.TableActing{title: "A record"}) == nil
-      assert Act.said(@plain, [%AshDataTable.Test.TableActing{title: "A record"}]) == nil
+      assert AshDataTable.Format.said(@plain, nil) == nil
+      assert AshDataTable.Format.said(@plain, "") == nil
+      assert AshDataTable.Format.said(@plain, "  ") == nil
+      assert AshDataTable.Format.said(@plain, <<255>>) == nil
+      assert AshDataTable.Format.said(@plain, [1, 2]) == nil
+      assert AshDataTable.Format.said(@plain, %{a: 1}) == nil
+      assert AshDataTable.Format.said(@plain, {:ok, 1}) == nil
+
+      assert AshDataTable.Format.said(@plain, %AshDataTable.Test.TableActing{title: "A record"}) ==
+               nil
+
+      assert AshDataTable.Format.said(@plain, [%AshDataTable.Test.TableActing{title: "A record"}]) ==
+               nil
     end
   end
 
@@ -4422,10 +4469,10 @@ defmodule AshDataTable.ModelTest do
                )
 
       assert refused == %{
-               {nil, :at_least} => ["must be greater than or equal to 0"],
-               {nil, :on} => ["is invalid"],
-               {nil, :kind} => ["is invalid"],
-               {:amount_fn, :rate} => ["is invalid"]
+               {nil, :at_least} => [{:ash, "must be greater than or equal to %{min}", [min: 0]}],
+               {nil, :on} => [{:ash, "is invalid", []}],
+               {nil, :kind} => [{:ash, "is invalid", []}],
+               {:amount_fn, :rate} => [{:ash, "is invalid", []}]
              }
     end
 
@@ -4436,11 +4483,16 @@ defmodule AshDataTable.ModelTest do
                  authorize?: false
                )
 
-      assert refused == %{{:amount_asked, :rate} => ["must be greater than or equal to 1"]}
+      assert refused == %{
+               {:amount_asked, :rate} => [
+                 {:ash, "must be greater than or equal to %{min}",
+                  [message: "must be greater than or equal to %{min}", min: 1]}
+               ]
+             }
     end
 
     test "an asked argument that cannot be empty is refused when it is emptied" do
-      assert %{refused: %{{:amount_asked, :rate} => ["is required"]}} =
+      assert %{refused: %{{:amount_asked, :rate} => [{:ash, "is required", []}]}} =
                Query.arguments(
                  asked(%{{nil, :at_least} => "0", {:amount_asked, :rate} => ""}),
                  authorize?: false

@@ -484,11 +484,11 @@ defmodule AshDataTable.UnionsTest do
       input = Model.input(model(), column(:value))
 
       assert Act.errors(form, model(), [input]) == %{
-               value: ["must be greater than or equal to 0"]
+               value: [{:ash, "must be greater than or equal to %{min}", [min: 0]}]
              }
 
       assert {:error, form} = put(:value, key, chosen("amount", "abc"))
-      assert Act.errors(form, model(), [input]) == %{value: ["is invalid"]}
+      assert Act.errors(form, model(), [input]) == %{value: [{:ash, "is invalid", []}]}
     end
 
     test "what it says of a field of the kind's value is under the way to that field", %{key: key} do
@@ -496,13 +496,20 @@ defmodule AshDataTable.UnionsTest do
 
       sent = chosen("place", %{"_present" => "", "street" => "", "city" => "Kiel"})
       assert {:error, form} = put(:value, key, sent)
-      assert Act.errors(form, model(), [input]) == %{[:value, :street] => ["is required"]}
+
+      assert Act.errors(form, model(), [input]) == %{
+               [:value, :street] => [{:ash, "is required", []}]
+             }
 
       sent = chosen("place", %{"_present" => "", "street" => "Quay 1", "city" => "K"})
       assert {:error, form} = put(:value, key, sent)
 
       assert Act.errors(form, model(), [input]) ==
-               %{[:value, :city] => ["length must be greater than or equal to 2"]}
+               %{
+                 [:value, :city] => [
+                   {:ash, "length must be greater than or equal to %{min}", [min: 2]}
+                 ]
+               }
     end
 
     test "inside an embedded resource, and in one of an array of them", %{key: key} do
@@ -526,13 +533,17 @@ defmodule AshDataTable.UnionsTest do
       assert {:error, form} = put(:holder, key, %{sent | "either" => chosen("number", "-5")})
 
       assert Act.errors(form, model(), [holder]) ==
-               %{[:holder, :either] => ["must be greater than or equal to 0"]}
+               %{
+                 [:holder, :either] => [
+                   {:ash, "must be greater than or equal to %{min}", [min: 0]}
+                 ]
+               }
 
       place = chosen("place", %{"_present" => "", "street" => "", "city" => "Kiel"})
       assert {:error, form} = put(:holder, key, %{sent | "either" => place})
 
       assert Act.errors(form, model(), [holder]) == %{
-               [:holder, :either, :street] => ["is required"]
+               [:holder, :either, :street] => [{:ash, "is required", []}]
              }
 
       holders = Model.input(model(), column(:holders))
@@ -540,7 +551,7 @@ defmodule AshDataTable.UnionsTest do
       assert {:error, form} = put(:holders, key, sent)
 
       assert Act.errors(form, model(), [holders]) ==
-               %{[:holders, 1, :either, :street] => ["is required"]}
+               %{[:holders, 1, :either, :street] => [{:ash, "is required", []}]}
     end
   end
 
@@ -561,24 +572,32 @@ defmodule AshDataTable.UnionsTest do
     end
 
     test "about the union: at its field", %{errors: errors} do
-      assert errors[:value] == ["is refused", "Bogus: is refused"]
-      assert errors[[:holder, :either]] == ["is refused"]
+      assert errors[:value] == [
+               {:ash, "is refused", []},
+               {:text, :error_on_field,
+                field: {:label, "Bogus"}, message: {:ash, "is refused", []}}
+             ]
+
+      assert errors[[:holder, :either]] == [{:ash, "is refused", []}]
     end
 
     test "about a field of the value of a kind: at that field, whichever kind has it", %{
       errors: errors
     } do
-      assert errors[[:value, :street]] == ["is refused"]
-      assert errors[[:holder, :either, :street]] == ["is refused"]
-      assert errors[[:holders, 1, :either, :street]] == ["is refused"]
+      assert errors[[:value, :street]] == [{:ash, "is refused", []}]
+      assert errors[[:holder, :either, :street]] == [{:ash, "is refused", []}]
+      assert errors[[:holders, 1, :either, :street]] == [{:ash, "is refused", []}]
       # of two unions with a kind of the same fields: the one Ash names
-      assert errors[[:holder, :other, :city]] == ["is refused"]
+      assert errors[[:holder, :other, :city]] == [{:ash, "is refused", []}]
       refute is_map_key(errors, [:holder, :other, :street])
     end
 
     test "about a field that two values in the value have, where Ash names the value around them: at the group, after the field's name",
          %{errors: errors} do
-      assert errors[:holder] == ["Street: is refused"]
+      assert errors[:holder] == [
+               {:text, :error_on_field,
+                field: {:label, "Street"}, message: {:ash, "is refused", []}}
+             ]
     end
 
     test "where an action is not run from a panel, each is said with the way to its field", %{
@@ -586,9 +605,22 @@ defmodule AshDataTable.UnionsTest do
     } do
       said = AshDataTable.Errors.of_form(form, model(), nil, "refused")
 
-      assert "Value: is refused" in said
-      assert "Value: Street: is refused" in said
-      assert "Holder: Either: Street: is refused" in said
+      assert {:text, :error_on_field, field: "Value", message: {:ash, "is refused", []}} in said
+
+      assert {:text, :error_on_field,
+              field: "Value",
+              message:
+                {:text, :error_on_field,
+                 field: {:label, "Street"}, message: {:ash, "is refused", []}}} in said
+
+      assert {:text, :error_on_field,
+              field: "Holder",
+              message:
+                {:text, :error_on_field,
+                 field: {:label, "Either"},
+                 message:
+                   {:text, :error_on_field,
+                    field: {:label, "Street"}, message: {:ash, "is refused", []}}}} in said
     end
   end
 

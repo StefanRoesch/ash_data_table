@@ -13,7 +13,7 @@ defmodule AshDataTable.Model.Action do
   #     it in itself, so it is no input.
   #   * `returns` is set on a generic action that returns an enum value:
   #     the cell type and the values with their labels, by which the value
-  #     it returned is said (`AshDataTable.Act.said/2`).
+  #     it returned is said (`AshDataTable.Format.said/3`).
   #   * `label` is what its button says.
   #   * `confirm` is the question asked before the action runs, or `nil` when
   #     none is.

@@ -8,8 +8,8 @@ defmodule AshDataTable.Present do
   # changeset.
   #
   # Values, not texts: a part makes the text of a value (`AshDataTable.Format`)
-  # and of a message. The texts the core makes today (a title, a message)
-  # are passed on as they are, until they become message terms (stage 3b).
+  # and of a message. The messages the core holds (a title, an error, a
+  # failed edit's message) are message terms, passed on as they are.
   #
   # Nothing sensitive is in what this gives (F1). A row's record goes
   # through `AshDataTable.Sensitive.scrub/2` first, and a sensitive cell is

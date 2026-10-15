@@ -19,7 +19,6 @@ defmodule AshDataTable.Edit do
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
-  alias AshDataTable.Text
   alias AshDataTable.Typed
   alias AshDataTable.Zone
 
@@ -37,8 +36,8 @@ defmodule AshDataTable.Edit do
   """
   @type result ::
           {:ok, Ash.Resource.record()}
-          | {:error, Ash.Resource.record(), String.t(), [non_neg_integer]}
-          | {:error, nil, String.t()}
+          | {:error, Ash.Resource.record(), Errors.message(), [non_neg_integer]}
+          | {:error, nil, Errors.message()}
 
   @doc """
   Saves `typed`, what a cell's editor holds, as the value of `column` on the
@@ -54,7 +53,7 @@ defmodule AshDataTable.Edit do
 
     case Record.fetch(model, key, opts) do
       {:ok, record} -> save_record(model, column, record, typed, opts)
-      :error -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -93,7 +92,7 @@ defmodule AshDataTable.Edit do
       {:ok, record} ->
         case Map.get(record, column.name) do
           %Ash.ForbiddenField{} ->
-            failed(model, record, Text.t(:edit_not_allowed), opts)
+            failed(model, record, {:text, :edit_not_allowed, []}, opts)
 
           value ->
             if AshDataTable.Resource.Exposing.empty?(value),
@@ -102,7 +101,7 @@ defmodule AshDataTable.Edit do
         end
 
       :error ->
-        {:error, nil, Text.t(:record_gone)}
+        {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -126,8 +125,8 @@ defmodule AshDataTable.Edit do
           {:ok, Ash.Resource.record()}
           | :changed
           | :unavailable
-          | {:error, Ash.Resource.record(), String.t(), Ash.Resource.record() | nil}
-          | {:error, nil, String.t()}
+          | {:error, Ash.Resource.record(), Errors.message(), Ash.Resource.record() | nil}
+          | {:error, nil, Errors.message()}
 
   @doc """
   Saves the choice of a related record as the value of the reference
@@ -170,7 +169,7 @@ defmodule AshDataTable.Edit do
       cond do
         # a key this person may not see on this record is not theirs to change
         match?(%Ash.ForbiddenField{}, held) ->
-          not_referred(model, record, Text.t(:edit_not_allowed), chosen, opts)
+          not_referred(model, record, {:text, :edit_not_allowed, []}, chosen, opts)
 
         # the record the row already has calls nothing
         (is_nil(chosen) and is_nil(held)) or
@@ -184,7 +183,7 @@ defmodule AshDataTable.Edit do
           submit_key(model, column, record, chosen, value, opts)
       end
     else
-      :error -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, {:text, :record_gone, []}}
       :unavailable -> :unavailable
     end
   end
@@ -223,7 +222,7 @@ defmodule AshDataTable.Edit do
       {:ok, saved} ->
         case Record.load(model, saved, opts) do
           {:ok, saved} -> {:ok, saved}
-          :error -> {:error, nil, Text.t(:record_gone)}
+          :error -> {:error, nil, {:text, :record_gone, []}}
         end
 
       {:error, form} ->
@@ -271,7 +270,7 @@ defmodule AshDataTable.Edit do
   @spec put(Model.t(), Column.t(), Model.Input.t(), map, map, String.t(), keyword) ::
           {:ok, Ash.Resource.record()}
           | {:error, AshPhoenix.Form.t()}
-          | {:error, nil, String.t()}
+          | {:error, nil, Errors.message()}
   def put(%Model{} = model, %Column{editable?: true} = column, input, key, params, id, opts)
       when is_map(key) and is_map(params) do
     opts = Query.reader_opts(opts)
@@ -283,7 +282,7 @@ defmodule AshDataTable.Edit do
 
         cond do
           AshDataTable.Resource.Embedding.hidden?(value) ->
-            {:error, nil, Text.t(:edit_not_allowed)}
+            {:error, nil, {:text, :edit_not_allowed, []}}
 
           # A value that is the one the cell already holds calls nothing.
           Act.unchanged?(input, params[name], value, model.time_zone) ->
@@ -297,7 +296,7 @@ defmodule AshDataTable.Edit do
               {:ok, saved} ->
                 case Record.load(model, saved, opts) do
                   {:ok, saved} -> {:ok, saved}
-                  :error -> {:error, nil, Text.t(:record_gone)}
+                  :error -> {:error, nil, {:text, :record_gone, []}}
                 end
 
               {:error, form} ->
@@ -306,7 +305,7 @@ defmodule AshDataTable.Edit do
         end
 
       :error ->
-        {:error, nil, Text.t(:record_gone)}
+        {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -337,7 +336,7 @@ defmodule AshDataTable.Edit do
       # change either. The action would not stop them: field policies are
       # about reading.
       %Ash.ForbiddenField{} ->
-        failed(model, record, Text.t(:edit_not_allowed), opts)
+        failed(model, record, {:text, :edit_not_allowed, []}, opts)
 
       # A value that is the one the cell already holds calls nothing. The
       # editor of a sensitive cell starts empty, whatever the cell holds: an
@@ -354,7 +353,7 @@ defmodule AshDataTable.Edit do
             failed(
               model,
               record,
-              Text.t(:no_such_time, zone: model.time_zone),
+              {:text, :no_such_time, zone: model.time_zone},
               opts,
               for([place | _rest] <- gaps, is_integer(place), do: place)
             )
@@ -372,7 +371,7 @@ defmodule AshDataTable.Edit do
   defp unchanged(model, record, opts) do
     case Record.load(model, record, opts) do
       {:ok, record} -> {:ok, record}
-      :error -> {:error, nil, Text.t(:record_gone)}
+      :error -> {:error, nil, {:text, :record_gone, []}}
     end
   end
 
@@ -398,7 +397,7 @@ defmodule AshDataTable.Edit do
         case Record.load(model, saved, opts) do
           {:ok, saved} -> {:ok, saved}
           # saved, and no longer this person's to read
-          :error -> {:error, nil, Text.t(:record_gone)}
+          :error -> {:error, nil, {:text, :record_gone, []}}
         end
 
       {:error, form} ->
@@ -421,9 +420,9 @@ defmodule AshDataTable.Edit do
         %Column{name: name} -> name
       end
 
-    case Errors.of_form(form, model, field, Text.t(:edit_not_allowed)) do
-      [] -> Text.t(:save_failed)
-      messages -> Enum.join(messages, "; ")
+    case Errors.of_form(form, model, field, {:text, :edit_not_allowed, []}) do
+      [] -> {:text, :save_failed, []}
+      messages -> Errors.joined(messages)
     end
   end
 end

@@ -6,6 +6,8 @@ defmodule AshDataTable.Parts.Picker do
   # component's assigns.
   use Phoenix.Component
 
+  import AshDataTable.Parts.Common, only: [said: 1]
+
   alias AshDataTable.Present
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
@@ -33,12 +35,12 @@ defmodule AshDataTable.Parts.Picker do
       phx-hook="AshDataTable.Live.TableComponent.Picker"
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
-      data-question={@picker.question}
+      data-question={said(@picker.question)}
       data-several={@picker.several?}
       aria-labelledby={"#{@id}-picker-title"}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-3xl overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
     >
-      <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{@picker.title}</h2>
+      <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{said(@picker.title)}</h2>
       <%!-- the row that was chosen names no record this person may read --%>
       <p
         :if={@picker.error}
@@ -46,7 +48,7 @@ defmodule AshDataTable.Parts.Picker do
         role="alert"
         class="mb-4 text-sm font-medium"
       >
-        {@picker.error}
+        {said(@picker.error)}
       </p>
       <.live_component
         module={@component}

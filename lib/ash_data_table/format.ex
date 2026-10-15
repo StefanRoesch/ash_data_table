@@ -137,6 +137,44 @@ defmodule AshDataTable.Format do
   def format(%{cell_type: _}, value, zone), do: other(value, zone)
 
   @doc """
+  What a generic action returned, as a person is told it: a value that can
+  be said in a word or a line. That is text, a number, yes or no, a date, a
+  datetime, and a name (an atom: a value of an enum by its label). Nil for
+  everything else, and for nothing: the table then says no more than that
+  the action is done.
+
+  The value is looked at, not the type the action declares: Ash does not
+  cast what a generic action returns.
+  """
+  @spec said(Model.Action.t(), term) :: String.t() | nil
+  def said(action, value), do: said(action, value, @utc)
+
+  @spec said(Model.Action.t(), term, Zone.t()) :: String.t() | nil
+  def said(%Model.Action{} = action, value, zone) do
+    text =
+      case value do
+        nil -> nil
+        value when is_boolean(value) -> format(%{cell_type: :boolean}, value, zone)
+        value when is_binary(value) -> if String.valid?(value), do: value
+        value when is_number(value) -> format(%{cell_type: :number}, value, zone)
+        %Decimal{} -> format(%{cell_type: :number}, value, zone)
+        %Date{} -> format(%{cell_type: :date}, value, zone)
+        # an instant as the clocks of the page's zone show it
+        %DateTime{} -> format(%{cell_type: :datetime}, value, zone)
+        %NaiveDateTime{} -> format(%{cell_type: :datetime}, value, zone)
+        value when is_atom(value) -> by_name(action.returns, value, zone)
+        _records_and_everything_else -> nil
+      end
+
+    if is_binary(text) and String.trim(text) != "", do: text
+  end
+
+  defp by_name(%{cell_type: :enum} = returns, value, zone),
+    do: format(returns, value, zone)
+
+  defp by_name(_returns, value, zone), do: format(%{cell_type: :other}, value, zone)
+
+  @doc """
   The text shown for the summary of `column`, of the kind its `summary`
   says: a sum, a minimum and a maximum as a cell of the column shows a
   value, a count as a whole number, and an average as a number with two

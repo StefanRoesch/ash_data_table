@@ -67,7 +67,6 @@ defmodule AshDataTable.Bulk do
   alias AshDataTable.Model.Action
   alias AshDataTable.Query
   alias AshDataTable.State
-  alias AshDataTable.Text
 
   require Logger
 
@@ -95,7 +94,7 @@ defmodule AshDataTable.Bulk do
   @type outcome :: %{
           done: non_neg_integer,
           failed: [map],
-          failures: [{String.t(), pos_integer}]
+          failures: [{Errors.message(), pos_integer}]
         }
 
   @doc """
@@ -137,7 +136,7 @@ defmodule AshDataTable.Bulk do
     %{
       done: outcome.done,
       failed: failed,
-      failures: outcome.failures |> count(Text.t(:record_gone), gone) |> Enum.reverse()
+      failures: outcome.failures |> count({:text, :record_gone, []}, gone) |> Enum.reverse()
     }
   end
 
@@ -198,7 +197,7 @@ defmodule AshDataTable.Bulk do
       given = Map.merge(input, Act.given(action, Map.take(record, model.primary_key)))
 
       ran =
-        rescued(model, {:error, Text.t(:action_failed)}, fn ->
+        rescued(model, {:error, {:text, :action_failed, []}}, fn ->
           Act.run_generic(model, action, given, reader)
         end)
 
@@ -263,15 +262,15 @@ defmodule AshDataTable.Bulk do
   # when the action is run from the row. An error that is not of the
   # action's making is for whoever runs the application, in the log.
   defp message(error, model, action) do
-    case Errors.of_action(error, model, Text.t(:action_not_allowed)) do
+    case Errors.of_action(error, model, {:text, :action_not_allowed, []}) do
       [] ->
         if not match?(%Ash.Error.Invalid{}, Ash.Error.to_error_class(error)),
           do: log(model, action, error)
 
-        Text.t(:action_failed)
+        {:text, :action_failed, []}
 
       messages ->
-        Enum.join(messages, "; ")
+        Errors.joined(messages)
     end
   end
 

@@ -8,6 +8,8 @@ defmodule AshDataTable.Parts.Messages do
   # component's assigns.
   use Phoenix.Component
 
+  import AshDataTable.Parts.Common, only: [said: 1]
+
   alias AshDataTable.Parts
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
@@ -64,13 +66,13 @@ defmodule AshDataTable.Parts.Messages do
     <%!-- Read out after each filter change, and when a save fails. A live region
     is only read when its content changes, so every other announcement ends in a
     no-break space. --%>
-    <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{@announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
+    <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{said(@announcement)}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
     <%!-- What the last action on the selected rows came to: on how many records
     it ran, on how many it did not, and why not. It is read out through the live
     region above, and stays until the selection changes. In the text colour. --%>
     <p :if={@result} phx-no-format id={"#{@id}-result"} class="mb-2 text-sm">
-        <span data-summary>{@result.summary}</span>
-        <span :for={failure <- @result.failures} data-failure>{failure}</span>
+        <span data-summary>{said(@result.summary)}</span>
+        <span :for={failure <- @result.failures} data-failure>{said(failure)}</span>
       </p>
     """
   end
@@ -172,7 +174,7 @@ defmodule AshDataTable.Parts.Messages do
       role="alert"
       class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm font-medium"]}
     >
-        {@error}
+        {said(@error)}
       </p>
     <%!-- a nested table whose first read is on its way --%>
     <p :if={@loading?} phx-no-format id={"#{@id}-loading"} class="py-4 text-center text-sm opacity-70">
@@ -187,7 +189,7 @@ defmodule AshDataTable.Parts.Messages do
       id={"#{@id}-fill"}
       class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
     >
-        {@fill}
+        {said(@fill)}
       </p>
     <p
       :if={is_nil(@error) and is_nil(@fill) and @row_count == 0 and not @loading?}

@@ -357,13 +357,13 @@ defmodule AshDataTable.SensitiveTest do
       assert {:error, record, message, []} =
                Edit.save(model(), column(:token), key, "UPPER-SECRET", actor: @admin)
 
-      assert message == "must be lower case"
-      refute message =~ "UPPER-SECRET"
+      assert message == {:ash, "must be lower case", []}
+      refute AshDataTable.Text.say(message) =~ "UPPER-SECRET"
       assert record.token == "tok-123"
     end
 
     test "is refused where the field is hidden from the person on the record", %{key: key} do
-      assert {:error, _record, "You are not allowed to change this.", []} =
+      assert {:error, _record, {:text, :edit_not_allowed, []}, []} =
                Edit.save(model(), column(:pin), key, "1", actor: @member)
 
       assert stored(key).pin == 4711
@@ -419,7 +419,7 @@ defmodule AshDataTable.SensitiveTest do
     test "says what the action says where it refuses", %{} do
       pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: 1})
 
-      assert {:error, record, "stays on a pinned vault", []} =
+      assert {:error, record, {:ash, "stays on a pinned vault", [keys: "pin", exactly: 1]}, []} =
                Edit.clear(model(), column(:pin), %{id: pinned.id}, actor: @admin)
 
       assert record.pin == 1
@@ -427,14 +427,14 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "is refused where the field is hidden from the person on the record", %{key: key} do
-      assert {:error, _record, "You are not allowed to change this.", []} =
+      assert {:error, _record, {:text, :edit_not_allowed, []}, []} =
                Edit.clear(model(), column(:pin), key, actor: @member)
 
       assert stored(key).pin == 4711
     end
 
     test "is the record's that is gone, and no column's that cannot be emptied", %{key: key} do
-      assert {:error, nil, "This record is no longer available."} =
+      assert {:error, nil, {:text, :record_gone, []}} =
                Edit.clear(model(), column(:token), %{id: Ash.UUID.generate()}, actor: @admin)
 
       assert_raise MatchError, fn ->
@@ -547,7 +547,10 @@ defmodule AshDataTable.SensitiveTest do
       assert {:error, form} =
                run(reissue, %{id: pinned.id}, %{"token" => "t2"}, cleared: [:pin])
 
-      assert Act.errors(form, model(), reissue.inputs) == %{pin: ["stays on a pinned vault"]}
+      assert Act.errors(form, model(), reissue.inputs) == %{
+               pin: [{:ash, "stays on a pinned vault", [keys: "pin", exactly: 1]}]
+             }
+
       assert stored(%{id: pinned.id}).pin == 1
     end
   end

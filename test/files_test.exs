@@ -121,7 +121,9 @@ defmodule AshDataTable.FilesTest do
                  authorize?: false
                )
 
-      assert Act.errors(form, model(), action(:attach).inputs)[:file] == ["is required"]
+      assert Act.errors(form, model(), action(:attach).inputs)[:file] == [
+               {:ash, "is required", []}
+             ]
     end
 
     test "to an action on a record, as what Ash takes for a file from a web request", %{key: key} do

@@ -5,6 +5,8 @@ defmodule AshDataTable.Parts.Common do
   # no other part, so that the parts do not call each other in a circle
   # (stage 1 drift check F8). A seed of `AshDataTable.Attrs` (stage 7).
 
+  alias AshDataTable.Text
+
   # The rows above the data rows: the header and the filter row.
   @header_rows 2
 
@@ -24,13 +26,20 @@ defmodule AshDataTable.Parts.Common do
   def summary_rowindex(%{total: total}) when is_integer(total), do: total + @header_rows + 1
   def summary_rowindex(_page), do: nil
 
+  @doc """
+  What a message says (`AshDataTable.Text.say/1`): a part makes the words of
+  the messages it is given as it draws them. Nil for no message.
+  """
+  def said(nil), do: nil
+  def said(message), do: Text.say(message)
+
   def failure_message(id, message) do
     {:safe,
      [
        "<span",
        if(id, do: [~s( id="), escape(id), ~s(")], else: []),
        ~s| popover="manual" class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow">|,
-       escape(message),
+       escape(Text.say(message)),
        "</span>"
      ]}
   end

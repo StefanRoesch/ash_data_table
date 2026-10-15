@@ -1524,7 +1524,7 @@ defmodule AshDataTable.Live.TableComponent do
     %{model: model, state: state, parent_key: parent} = socket.assigns.table.entry
 
     if Query.any?(model, state, parent, keys, read_opts(socket.assigns)),
-      do: socket |> put(notice?: true) |> say(Text.t(:changed_records)),
+      do: socket |> put(notice?: true) |> say({:text, :changed_records, []}),
       else: socket
   end
 
@@ -1571,12 +1571,12 @@ defmodule AshDataTable.Live.TableComponent do
 
     summary =
       if not_done == 0,
-        do: Text.t(:bulk_done, action: action.label, done: outcome.done),
-        else: Text.t(:bulk_not_done, action: action.label, done: outcome.done, failed: not_done)
+        do: {:text, :bulk_done, action: action.label, done: outcome.done},
+        else: {:text, :bulk_not_done, action: action.label, done: outcome.done, failed: not_done}
 
     failures =
       for {message, count} <- outcome.failures,
-          do: Text.t(:bulk_failure, message: message, count: count)
+          do: {:text, :bulk_failure, message: message, count: count}
 
     failed =
       for key <- outcome.failed, row_key = row_key(model, key, 0) do
@@ -1587,7 +1587,7 @@ defmodule AshDataTable.Live.TableComponent do
      socket
      |> drop_copies()
      |> put(running: nil, result: %{summary: summary, failures: failures})
-     |> say(Enum.join([summary | failures], " "))
+     |> say({:join, " ", [summary | failures]})
      |> push_event("ash_data_table:bulk", %{table: id, failed: failed})
      |> reread()}
   end
@@ -1602,7 +1602,8 @@ defmodule AshDataTable.Live.TableComponent do
         "failed: #{inspect(reason)}"
     )
 
-    summary = Text.t(:action_not_done, action: action.label, message: Text.t(:action_failed))
+    summary =
+      {:text, :action_not_done, action: action.label, message: {:text, :action_failed, []}}
 
     {:noreply,
      socket
@@ -1633,7 +1634,7 @@ defmodule AshDataTable.Live.TableComponent do
          Model.Access.forbidden_actions(model.resource, [model.read_action], reader) != [] do
       show(socket, {:error, Ash.Error.Forbidden.exception([])}, first_or_later)
     else
-      text = Text.t(:fill_in, argument: Enum.map_join(missing, ", ", & &1.label))
+      text = {:text, :fill_in, argument: Enum.map_join(missing, ", ", & &1.label)}
 
       socket
       |> put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
@@ -1709,7 +1710,7 @@ defmodule AshDataTable.Live.TableComponent do
   # read: nothing is known about its related records, which is not the same
   # as there being none.
   defp show(socket, {:error, :parent_gone}, _read),
-    do: show_message(socket, Text.t(:record_gone))
+    do: show_message(socket, {:text, :record_gone, []})
 
   # A nested table whose destination this person may not read, in either of
   # the two ways Ash says so. Its line has told them that there is a table,
@@ -1719,8 +1720,8 @@ defmodule AshDataTable.Live.TableComponent do
   defp show(%{assigns: %{table: %{entry: %{nested?: true}}}} = socket, {:error, refusal}, _read)
        when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
     case socket.assigns.table.entry.model.on_forbidden do
-      :message -> show_message(socket, Text.t(:not_allowed))
-      :not_found -> show_message(socket, Text.t(:records_not_available))
+      :message -> show_message(socket, {:text, :not_allowed, []})
+      :not_found -> show_message(socket, {:text, :records_not_available, []})
     end
   end
 
@@ -1733,8 +1734,8 @@ defmodule AshDataTable.Live.TableComponent do
          _read
        ) do
     case socket.assigns.table.entry.model.on_forbidden do
-      :message -> show_message(socket, Text.t(:not_allowed))
-      :not_found -> show_message(socket, Text.t(:records_not_available))
+      :message -> show_message(socket, {:text, :not_allowed, []})
+      :not_found -> show_message(socket, {:text, :records_not_available, []})
     end
   end
 
@@ -1978,8 +1979,8 @@ defmodule AshDataTable.Live.TableComponent do
   defp announce(%{assigns: %{table: %{entry: %{announce?: true}}}} = socket, page) do
     text =
       case page.total do
-        nil -> Text.t(:results_updated)
-        total -> Text.n(:results, total)
+        nil -> {:text, :results_updated, []}
+        total -> {:text, :results, count: total}
       end
 
     socket |> put(announce?: false) |> say(text)
@@ -1992,7 +1993,7 @@ defmodule AshDataTable.Live.TableComponent do
     put(socket, announcement: text, announcements: socket.assigns.table.entry.announcements + 1)
   end
 
-  defp error_text(%Ash.Error.Forbidden{}, _model), do: Text.t(:not_allowed)
+  defp error_text(%Ash.Error.Forbidden{}, _model), do: {:text, :not_allowed, []}
 
   # What the read action returned on purpose is shown as it is: an argument
   # or a filter it does not accept, a validation of its own. Anything else is
@@ -2002,10 +2003,10 @@ defmodule AshDataTable.Live.TableComponent do
     case Errors.of_read(error, model) do
       [] ->
         log_failed_read(error, model)
-        Text.t(:read_failed)
+        {:text, :read_failed, []}
 
       messages ->
-        Enum.join(messages, "; ")
+        {:join, "; ", messages}
     end
   end
 
@@ -2294,7 +2295,7 @@ defmodule AshDataTable.Live.TableComponent do
             form: Act.open_generic(model, action, "#{id}-panel", reader(socket.assigns)),
             inputs: action.inputs,
             title: action.label,
-            submit: Text.t(:run)
+            submit: {:text, :run, []}
           })
 
         {:noreply, opened(socket, panel)}
@@ -2341,7 +2342,7 @@ defmodule AshDataTable.Live.TableComponent do
 
       if action.panel?,
         do: {:reply, %{panel: true}, open_bulk(socket, action, selection, question)},
-        else: {:reply, %{ask: question}, socket}
+        else: {:reply, %{ask: Text.say(question)}, socket}
     else
       :error -> {:reply, %{ok: false}, socket}
     end
@@ -2444,7 +2445,7 @@ defmodule AshDataTable.Live.TableComponent do
           title =
             case title_of(model, record) do
               nil -> column.label
-              name -> Text.t(:action_on, action: column.label, record: name)
+              name -> {:text, :action_on, action: column.label, record: name}
             end
 
           panel =
@@ -2462,7 +2463,7 @@ defmodule AshDataTable.Live.TableComponent do
               form: form,
               inputs: [Model.input(model, column)],
               title: title,
-              submit: Text.t(:save)
+              submit: {:text, :save, []}
             })
 
           {:reply, %{ok: true}, put(socket, panel: panel)}
@@ -2472,10 +2473,10 @@ defmodule AshDataTable.Live.TableComponent do
           {:reply, %{ok: false}, socket}
 
         :error ->
-          message = Text.t(:record_gone)
+          message = {:text, :record_gone, []}
 
-          {:reply, %{ok: false, error: message},
-           say(socket, Text.t(:not_saved, column: column.label, message: message))}
+          {:reply, %{ok: false, error: Text.say(message)},
+           say(socket, {:text, :not_saved, column: column.label, message: message})}
       end
     else
       _ -> {:reply, %{ok: false}, socket}
@@ -2582,10 +2583,10 @@ defmodule AshDataTable.Live.TableComponent do
           end
 
         :error ->
-          message = Text.t(:record_gone)
+          message = {:text, :record_gone, []}
 
-          {:reply, %{ok: false, error: message},
-           say(socket, Text.t(:not_saved, column: column.label, message: message))}
+          {:reply, %{ok: false, error: Text.say(message)},
+           say(socket, {:text, :not_saved, column: column.label, message: message})}
       end
     else
       _ -> {:reply, %{ok: false}, socket}
@@ -2710,7 +2711,7 @@ defmodule AshDataTable.Live.TableComponent do
             form: Act.open_create(model, action, "#{id}-panel", reader(socket.assigns)),
             inputs: action.inputs,
             title: action.label,
-            submit: Text.t(:create),
+            submit: {:text, :create, []},
             given: given
           })
 
@@ -2719,7 +2720,7 @@ defmodule AshDataTable.Live.TableComponent do
       # The row is gone, or no longer theirs: said to the live region, and
       # shown by the table itself, which reads again and finds the same.
       :error ->
-        {:noreply, socket |> say(Text.t(:record_gone)) |> reread()}
+        {:noreply, socket |> say({:text, :record_gone, []}) |> reread()}
     end
   end
 
@@ -2740,7 +2741,7 @@ defmodule AshDataTable.Live.TableComponent do
   # that shows the message of an action that failed: the message is given up.
   defp on({:dismiss, key}, socket) do
     case socket.assigns.table.entry.failed[key] do
-      %{record: record, action: message} when is_binary(message) ->
+      %{record: record, action: message} when not is_nil(message) ->
         {:noreply, socket |> put_action_failure(key, record, nil) |> put_row(key, record)}
 
       _none ->
@@ -2868,14 +2869,14 @@ defmodule AshDataTable.Live.TableComponent do
          socket
          |> put_failure(key, record, column.name, {typed, message, places})
          |> put_row(key, record)
-         |> say(Text.t(:not_saved, column: column.label, message: message))}
+         |> say({:text, :not_saved, column: column.label, message: message})}
 
       # The record is gone, or no longer this person's to read: there is
       # nothing to show the row from, so it stays as it is, and the hook
       # marks the cell with the message.
       {:error, nil, message} ->
-        {:reply, %{ok: false, error: message},
-         say(socket, Text.t(:not_saved, column: column.label, message: message))}
+        {:reply, %{ok: false, error: Text.say(message)},
+         say(socket, {:text, :not_saved, column: column.label, message: message})}
     end
   end
 
@@ -2915,13 +2916,13 @@ defmodule AshDataTable.Live.TableComponent do
            {referred(column, chosen, socket.assigns.table.caller.time_zone), message, []}
          )
          |> put_row(key, record)
-         |> say(Text.t(:not_saved, column: column.label, message: message))}
+         |> say({:text, :not_saved, column: column.label, message: message})}
 
       {:error, nil, message} ->
-        {:reply, %{ok: false, error: message},
+        {:reply, %{ok: false, error: Text.say(message)},
          socket
          |> put(picker: nil)
-         |> say(Text.t(:not_saved, column: column.label, message: message))}
+         |> say({:text, :not_saved, column: column.label, message: message})}
     end
   end
 
@@ -3120,7 +3121,7 @@ defmodule AshDataTable.Live.TableComponent do
   # through the picker's read action: nothing is chosen, and the picker
   # stays open and says so.
   defp unavailable(%{assigns: %{table: %{entry: %{picker: picker}}}} = socket) do
-    message = Text.t(:record_gone)
+    message = {:text, :record_gone, []}
 
     socket |> put(picker: %{picker | error: message}) |> say(message)
   end
@@ -3137,7 +3138,7 @@ defmodule AshDataTable.Live.TableComponent do
   # What the picker is headed by: the column, or the field, and what one
   # record of the table to choose from is called.
   defp picker_title(label, reference),
-    do: Text.t(:choose_for, column: label, name: Text.label(Model.name(reference.destination)))
+    do: {:text, :choose_for, column: label, name: {:label, Model.name(reference.destination)}}
 
   # What a record of a destination is called, as far as this person may see
   # it on it: for the field of the panel that holds its key. A value, with
@@ -3449,7 +3450,7 @@ defmodule AshDataTable.Live.TableComponent do
         title =
           case title_of(model, record) do
             nil -> action.label
-            name -> Text.t(:action_on, action: action.label, record: name)
+            name -> {:text, :action_on, action: action.label, record: name}
           end
 
         # A field of a row action starts with the record's value. A
@@ -3469,7 +3470,7 @@ defmodule AshDataTable.Live.TableComponent do
             form: form,
             inputs: inputs,
             title: title,
-            submit: Text.t(:run),
+            submit: {:text, :run, []},
             given: given,
             # an argument that is everything a relationship is to hold
             # starts with the records that are related now
@@ -3480,7 +3481,7 @@ defmodule AshDataTable.Live.TableComponent do
         {:reply, %{ok: true, panel: true}, opened(socket, panel)}
 
       :error ->
-        ran({:error, nil, Text.t(:record_gone)}, socket, key, action)
+        ran({:error, nil, {:text, :record_gone, []}}, socket, key, action)
     end
   end
 
@@ -3505,7 +3506,9 @@ defmodule AshDataTable.Live.TableComponent do
   defp errors(panel, model) do
     # a cell that is not this person's to change says so as a cell does
     refusal =
-      if panel.kind == :cell, do: Text.t(:edit_not_allowed), else: Text.t(:action_not_allowed)
+      if panel.kind == :cell,
+        do: {:text, :edit_not_allowed, []},
+        else: {:text, :action_not_allowed, []}
 
     # a wall time the page's zone does not have: said at its field, in
     # place of what the action makes of the text it was given for it
@@ -3558,16 +3561,16 @@ defmodule AshDataTable.Live.TableComponent do
   # something, with the number of records. An action with a question of
   # its own asks that, and the number follows it.
   defp question(%Model.Action{confirm: nil, label: label}, nil),
-    do: Text.t(:bulk_question_all, action: label)
+    do: {:text, :bulk_question_all, action: label}
 
   defp question(%Model.Action{confirm: nil, label: label}, count),
-    do: Text.n(:bulk_question, count, action: label)
+    do: {:text, :bulk_question, count: count, action: label}
 
   defp question(%Model.Action{confirm: question}, nil),
-    do: Text.t(:bulk_confirm_all, question: question)
+    do: {:text, :bulk_confirm_all, question: question}
 
   defp question(%Model.Action{confirm: question}, count),
-    do: Text.n(:bulk_confirm, count, question: question)
+    do: {:text, :bulk_confirm, count: count, question: question}
 
   # The panel of an action that is to run on the selected rows. Its fields
   # start empty, but for an argument's default: there is no one record to
@@ -3579,8 +3582,8 @@ defmodule AshDataTable.Live.TableComponent do
 
     title =
       case selected(selection, socket.assigns.table.entry) do
-        nil -> Text.t(:bulk_on_all, action: action.label)
-        count -> Text.n(:bulk_on, count, action: action.label)
+        nil -> {:text, :bulk_on_all, action: action.label}
+        count -> {:text, :bulk_on, count: count, action: action.label}
       end
 
     panel =
@@ -3593,7 +3596,7 @@ defmodule AshDataTable.Live.TableComponent do
         form: Act.open_bulk(model, action, "#{id}-panel", reader(socket.assigns)),
         inputs: Model.bulk_inputs(action),
         title: title,
-        submit: Text.t(:run)
+        submit: {:text, :run, []}
       })
 
     opened(socket, panel)
@@ -3616,25 +3619,9 @@ defmodule AshDataTable.Live.TableComponent do
 
     socket
     |> put(running: action, result: nil, panel: nil)
-    |> start_async(:bulk, in_locale(fn -> Bulk.run(model, action, selection, input, opts) end))
-  end
-
-  # A bulk run makes texts (why a record was not done), and so does the
-  # host's error translator; both read the locale from the process. The task
-  # `start_async` runs in is a process of its own, which inherits nothing of
-  # it: it is handed the locales of this one, Gettext's own and each
-  # backend's.
-  defp in_locale(fun) do
-    locales =
-      Enum.filter(Process.get(), fn {key, _locale} ->
-        key == Gettext or
-          (is_atom(key) and Code.ensure_loaded?(key) and function_exported?(key, :__gettext__, 1))
-      end)
-
-    fn ->
-      Enum.each(locales, fn {key, locale} -> Process.put(key, locale) end)
-      fun.()
-    end
+    # The run says why a record was not done as message terms: their words
+    # are made when the outcome is drawn, in this process, whose locale it is.
+    |> start_async(:bulk, fn -> Bulk.run(model, action, selection, input, opts) end)
   end
 
   # Runs the action of the panel of a selection. What the action makes of a
@@ -3790,12 +3777,12 @@ defmodule AshDataTable.Live.TableComponent do
              socket
              |> put(panel: nil)
              |> add_row(record)
-             |> say(Text.t(:created, name: created_name(model)))}
+             |> say({:text, :created, name: created_name(model)})}
 
           # created, and not this person's to read: there is no row to show
           :gone ->
             {:noreply,
-             socket |> put(panel: nil) |> say(Text.t(:created, name: created_name(model)))}
+             socket |> put(panel: nil) |> say({:text, :created, name: created_name(model)})}
 
           {:unchosen, inputs} ->
             {:noreply, failed_panel(socket, panel, unchosen(inputs))}
@@ -3805,7 +3792,7 @@ defmodule AshDataTable.Live.TableComponent do
         end
 
       :error ->
-        {:noreply, failed_panel(socket, panel, Text.t(:record_gone))}
+        {:noreply, failed_panel(socket, panel, {:text, :record_gone, []})}
     end
   end
 
@@ -3906,7 +3893,7 @@ defmodule AshDataTable.Live.TableComponent do
         {:noreply, socket |> put(panel: %{panel | refused_files: refused}) |> say_files(refused)}
 
       waiting? ->
-        {:noreply, say(socket, Text.t(:upload_failed))}
+        {:noreply, say(socket, {:text, :upload_failed, []})}
 
       true ->
         attach(socket, inputs, %{}, &run.(Map.put(panel, :files, &1)))
@@ -3983,12 +3970,11 @@ defmodule AshDataTable.Live.TableComponent do
   defp say_files(socket, []), do: socket
 
   defp say_files(socket, refused) do
-    text =
-      Enum.map_join(refused, "; ", fn {label, texts} ->
-        Text.t(:error_on_field, field: label, message: Enum.join(texts, " "))
-      end)
+    said =
+      for {label, texts} <- refused,
+          do: {:text, :error_on_field, field: label, message: {:join, " ", texts}}
 
-    say(socket, text)
+    say(socket, {:join, "; ", said})
   end
 
   # The name of the upload of a field: with the table's id before the
@@ -4031,9 +4017,9 @@ defmodule AshDataTable.Live.TableComponent do
 
     for reason <- Enum.uniq(reasons) do
       case reason do
-        :too_large -> Text.t(:upload_too_large, limit: size(upload.max_file_size))
-        :not_accepted -> Text.t(:upload_not_accepted)
-        _failure -> Text.t(:upload_failed)
+        :too_large -> {:text, :upload_too_large, limit: size(upload.max_file_size)}
+        :not_accepted -> {:text, :upload_not_accepted, []}
+        _failure -> {:text, :upload_failed, []}
       end
     end
   end
@@ -4090,9 +4076,11 @@ defmodule AshDataTable.Live.TableComponent do
   # What the panel says of the fields whose key names a record the person
   # could not have chosen: nothing ran.
   defp unchosen(inputs) do
-    Enum.map_join(inputs, " ", fn input ->
-      Text.t(:error_on_field, field: input.label, message: Text.t(:record_gone))
-    end)
+    {:join, " ",
+     for(
+       input <- inputs,
+       do: {:text, :error_on_field, field: input.label, message: {:text, :record_gone, []}}
+     )}
   end
 
   # What one record of the table is called, at the start of a sentence.
@@ -4213,7 +4201,7 @@ defmodule AshDataTable.Live.TableComponent do
     said =
       for input <- [nil | panel.inputs],
           text <- said_of(panel, input, socket.assigns.table.entry.id, socket.assigns[:uploads]) do
-        if input, do: Text.t(:error_on_field, field: input.label, message: text), else: text
+        if input, do: {:text, :error_on_field, field: input.label, message: text}, else: text
       end
 
     # what is said at a field inside a group, with the way to it
@@ -4221,14 +4209,14 @@ defmodule AshDataTable.Live.TableComponent do
       for {[name | _] = place, texts} <- panel.errors,
           input = Enum.find(panel.inputs, &(&1.name == name)),
           text <- texts,
-          do: Text.t(:error_on_field, field: field_called(input, tl(place)), message: text)
+          do: {:text, :error_on_field, field: field_called(input, tl(place)), message: text}
 
-    message = Enum.join(said ++ inside, "; ")
+    message = {:join, "; ", said ++ inside}
 
     said =
       case panel.kind do
-        :cell -> Text.t(:not_saved, column: panel.action.label, message: message)
-        _action -> Text.t(:action_not_done, action: panel.action.label, message: message)
+        :cell -> {:text, :not_saved, column: panel.action.label, message: message}
+        _action -> {:text, :action_not_done, action: panel.action.label, message: message}
       end
 
     socket |> put(panel: panel) |> say(said)
@@ -4238,7 +4226,7 @@ defmodule AshDataTable.Live.TableComponent do
   # on the way to it, with the place of a value of an array ("Milestones 2
   # Title").
   defp field_called(%{label: label} = field, [index | rest]) when is_integer(index) do
-    position = Text.t(:value_position, column: label, position: index + 1)
+    position = {:text, :value_position, column: label, position: index + 1}
     field_called(%{field | label: position, cell_type: :map}, rest)
   end
 
@@ -4249,7 +4237,7 @@ defmodule AshDataTable.Live.TableComponent do
 
     case Enum.find(fields, &(&1.name == name)) do
       nil -> label
-      field -> field_called(%{field | label: label <> " " <> field.label}, rest)
+      field -> field_called(%{field | label: {:join, " ", [label, field.label]}}, rest)
     end
   end
 
@@ -4262,7 +4250,7 @@ defmodule AshDataTable.Live.TableComponent do
      socket
      |> put_action_failure(key, record, nil)
      |> put_row(key, record)
-     |> say(Text.t(:action_done, action: action.label))}
+     |> say({:text, :action_done, action: action.label})}
   end
 
   # A generic action returns no row: the table says what it returned and
@@ -4274,7 +4262,7 @@ defmodule AshDataTable.Live.TableComponent do
   # see any more
   defp ran(removed, socket, key, action) when removed in [:destroyed, :gone] do
     {:reply, %{ok: true, removed: true},
-     socket |> remove_row(key) |> say(Text.t(:action_done, action: action.label))}
+     socket |> remove_row(key) |> say({:text, :action_done, action: action.label})}
   end
 
   defp ran({:error, %_{} = record, message}, socket, key, action) do
@@ -4282,15 +4270,15 @@ defmodule AshDataTable.Live.TableComponent do
      socket
      |> put_action_failure(key, record, message)
      |> put_row(key, record)
-     |> say(Text.t(:action_not_done, action: action.label, message: message))}
+     |> say({:text, :action_not_done, action: action.label, message: message})}
   end
 
   # The record is gone, or no longer this person's to read: there is nothing
   # to show the row from, so it stays as it is, and the hook marks the
   # actions cell with the message.
   defp ran({:error, nil, message}, socket, _key, action) do
-    {:reply, %{ok: false, error: message},
-     say(socket, Text.t(:action_not_done, action: action.label, message: message))}
+    {:reply, %{ok: false, error: Text.say(message)},
+     say(socket, {:text, :action_not_done, action: action.label, message: message})}
   end
 
   # A table action that runs straight away. What came of it is said above
@@ -4302,7 +4290,7 @@ defmodule AshDataTable.Live.TableComponent do
         done(socket, action, value)
 
       {:error, message} ->
-        text = Text.t(:action_not_done, action: action.label, message: message)
+        text = {:text, :action_not_done, action: action.label, message: message}
         socket |> put(result: %{summary: text, failures: []}) |> say(text)
     end
   end
@@ -4311,9 +4299,9 @@ defmodule AshDataTable.Live.TableComponent do
   # can be said in a word or a line, else that it is done, and reads again.
   defp done(socket, action, value) do
     text =
-      case Act.said(action, value, socket.assigns.table.caller.time_zone) do
-        nil -> Text.t(:action_done, action: action.label)
-        said -> Text.t(:action_result, action: action.label, result: said)
+      case Format.said(action, value, socket.assigns.table.caller.time_zone) do
+        nil -> {:text, :action_done, action: action.label}
+        said -> {:text, :action_result, action: action.label, result: said}
       end
 
     socket |> put(result: %{summary: text, failures: []}) |> say(text) |> reread()
@@ -4384,11 +4372,11 @@ defmodule AshDataTable.Live.TableComponent do
       for argument <- model.arguments,
           %{messages: messages} <- [refused[Model.Argument.key(argument)]],
           message <- messages,
-          do: Text.t(:error_on_field, field: argument.label, message: message)
+          do: {:text, :error_on_field, field: argument.label, message: message}
 
     socket
     |> put(model: model, missing: missing, refused: refused)
-    |> then(&if(said == [], do: &1, else: say(&1, Enum.join(said, "; "))))
+    |> then(&if(said == [], do: &1, else: say(&1, {:join, "; ", said})))
     |> refilter(next)
   end
 

@@ -47,7 +47,6 @@ defmodule AshDataTable.Query do
   alias AshDataTable.Resource.Summarising
   alias AshDataTable.Model.Pagination
   alias AshDataTable.State
-  alias AshDataTable.Text
   alias AshDataTable.Zone
 
   # how many records are read at a time where records are read to the end
@@ -624,7 +623,7 @@ defmodule AshDataTable.Query do
   """
   @spec arguments(Model.t(), [option]) :: %{
           missing: [Argument.t()],
-          refused: %{optional(Argument.key()) => [String.t()]}
+          refused: %{optional(Argument.key()) => [AshDataTable.Errors.message()]}
         }
   def arguments(%Model{arguments: []}, _opts), do: %{missing: [], refused: %{}}
 
@@ -702,13 +701,13 @@ defmodule AshDataTable.Query do
   # The message of an error about an argument, as the host translates the
   # messages of actions.
   defp said(%{message: message} = error) when is_binary(message),
-    do: Text.error({message, Map.get(error, :vars) || []})
+    do: {:ash, message, Map.get(error, :vars) || []}
 
   defp said(%Ash.Error.Unknown.UnknownError{error: message, value: vars})
        when is_binary(message),
-       do: Text.error({message, if(Keyword.keyword?(vars), do: vars, else: [])})
+       do: {:ash, message, if(Keyword.keyword?(vars), do: vars, else: [])}
 
-  defp said(_error), do: Text.t(:invalid_filter)
+  defp said(_error), do: {:text, :invalid_filter, []}
 
   # The sort a person chose goes in before the action's preparations run, so
   # that a sort of the action itself comes second, as a tie-breaker.

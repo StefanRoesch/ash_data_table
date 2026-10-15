@@ -13,27 +13,51 @@ defmodule AshDataTable.Errors do
   #     about a field whose column was left out for them, or which is no
   #     column of the table at all, is shown without the field's name.
   #
-  # The messages themselves go through `AshDataTable.Text.error/1`, where the host
-  # translates them; the words around them are the table's own.
+  # What is said is a message term (`t:message/0`), never words: an action's
+  # message with its variables (`{:ash, message, vars}`), which the host
+  # translates, inside the table's own words around it (`{:text, key,
+  # bindings}`) and the resource's names of fields (`{:label, name}`). The
+  # drawing side makes the words, in the LiveView's process.
 
   alias AshDataTable.Model
-  alias AshDataTable.Text
+
+  @typedoc """
+  What the data layer says to a person, as a term: a text of the table's own
+  by key with its bindings (a plural one has `count` among them), an
+  action's message with its variables, the resource's wording, or several
+  messages said as one, with a separator between them. A binding may
+  itself be a message.
+  """
+  @type message ::
+          {:text, atom, keyword}
+          | {:ash, String.t(), keyword | map}
+          | {:label, String.t()}
+          | {:join, String.t(), [message]}
+
+  @doc "Several messages said as one, each after the one before: one is itself."
+  @spec joined([message, ...]) :: message
+  def joined([message]), do: message
+  def joined(messages), do: {:join, "; ", messages}
+
+  @doc "An action's message with its variables, as a message."
+  @spec ash({String.t(), keyword | map}) :: message
+  def ash({message, vars}) when is_binary(message), do: {:ash, message, vars}
 
   @doc """
   The text of a message about `field`, as it is shown on a cell of the column
   `cell` (nil when it is not shown on a cell). `model` is the table as the
   person meets it.
   """
-  @spec at_field(Model.t(), atom | nil, term, {String.t(), keyword}) :: String.t()
+  @spec at_field(Model.t(), atom | nil, term, {String.t(), keyword}) :: message
   def at_field(%Model{} = model, cell, field, {_message, _vars} = error) do
-    message = Text.error(error)
+    message = ash(error)
 
     case Enum.find(model.columns, &(&1.name == field)) do
       # one value of an array is named with its column wherever it is shown
       %{name: name, label: label} = column ->
         if name == cell or place(column, error),
           do: at_value(column, error),
-          else: Text.t(:error_on_field, field: label, message: message)
+          else: {:text, :error_on_field, field: label, message: message}
 
       nil ->
         message
@@ -50,17 +74,15 @@ defmodule AshDataTable.Errors do
   choice, whose boxes have no places. An error about the array as a whole,
   or about any other field, is its message.
   """
-  @spec at_value(map, {String.t(), keyword | map}) :: String.t()
+  @spec at_value(map, {String.t(), keyword | map}) :: message
   def at_value(%{label: label} = field, {_message, _vars} = error) do
     case place(field, error) do
       nil ->
-        Text.error(error)
+        ash(error)
 
       place ->
-        Text.t(:error_on_field,
-          field: Text.t(:value_position, column: label, position: place + 1),
-          message: Text.error(error)
-        )
+        {:text, :error_on_field,
+         field: {:text, :value_position, column: label, position: place + 1}, message: ash(error)}
     end
   end
 
@@ -92,9 +114,9 @@ defmodule AshDataTable.Errors do
   The text of an error that is not about a field, or nil when it has none
   that a person should read.
   """
-  @spec without_field(term) :: String.t() | nil
+  @spec without_field(term) :: message | nil
   def without_field(%{class: :invalid, message: message} = error) when is_binary(message),
-    do: Text.error({message, Map.get(error, :vars) || []})
+    do: {:ash, message, Map.get(error, :vars) || []}
 
   def without_field(_error), do: nil
 
@@ -111,7 +133,7 @@ defmodule AshDataTable.Errors do
   refusal reads as: Ash's own text for one is "forbidden", or the breakdown
   of the policies, neither of which is for the person at the table.
   """
-  @spec of_form(AshPhoenix.Form.t(), Model.t(), atom | nil, String.t()) :: [String.t()]
+  @spec of_form(AshPhoenix.Form.t(), Model.t(), atom | nil, message) :: [message]
   def of_form(form, %Model{} = model, cell, refusal) do
     at_fields =
       for {field, {message, vars}} <- at_fields(form),
@@ -160,21 +182,21 @@ defmodule AshDataTable.Errors do
   column of this table is, and is not that column.
   """
   @spec nested_text(Model.t(), [atom | non_neg_integer], atom, {String.t(), keyword}) ::
-          String.t() | nil
+          message | nil
   def nested_text(%Model{} = model, [name | rest], field, {_message, _vars} = error) do
     with %{label: label, cell_type: cell_type} when cell_type in [:map, {:array, :map}, :union] <-
            Enum.find(model.columns, &(&1.name == name)) do
       labels =
         Enum.reduce(rest ++ [field], [label], fn
           index, [label | labels] when is_integer(index) ->
-            [Text.t(:value_position, column: label, position: index + 1) | labels]
+            [{:text, :value_position, column: label, position: index + 1} | labels]
 
           name, labels ->
-            [Text.label(AshDataTable.Resource.Words.humanize(name)) | labels]
+            [{:label, AshDataTable.Resource.Words.humanize(name)} | labels]
         end)
 
-      Enum.reduce(labels, Text.error(error), fn label, message ->
-        Text.t(:error_on_field, field: label, message: message)
+      Enum.reduce(labels, ash(error), fn label, message ->
+        {:text, :error_on_field, field: label, message: message}
       end)
     else
       _no_such_column -> nil
@@ -240,7 +262,7 @@ defmodule AshDataTable.Errors do
   defp index(_error), do: nil
 
   @doc "The texts of a form's errors that are about no field, a refusal among them as `refusal`."
-  @spec without_fields(AshPhoenix.Form.t(), String.t()) :: [String.t()]
+  @spec without_fields(AshPhoenix.Form.t(), message) :: [message]
   def without_fields(form, refusal) do
     for error <- AshPhoenix.Form.raw_errors(form),
         not about_field?(error),
@@ -253,7 +275,7 @@ defmodule AshDataTable.Errors do
   action returned on purpose, each one once. Empty when there is none, which
   is when the table says no more than that the records could not be loaded.
   """
-  @spec of_read(term, Model.t()) :: [String.t()]
+  @spec of_read(term, Model.t()) :: [message]
   def of_read(error, %Model{} = model) do
     case Ash.Error.to_error_class(error) do
       %Ash.Error.Invalid{errors: errors} ->
@@ -270,7 +292,7 @@ defmodule AshDataTable.Errors do
   purpose, each one once, a refusal among them as `refusal`. Empty when
   there is none that a person should read.
   """
-  @spec of_action(term, Model.t(), String.t()) :: [String.t()]
+  @spec of_action(term, Model.t(), message) :: [message]
   def of_action(error, %Model{} = model, refusal) do
     case Ash.Error.to_error_class(error) do
       %Ash.Error.Forbidden{} ->

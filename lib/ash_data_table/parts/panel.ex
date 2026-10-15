@@ -6,6 +6,8 @@ defmodule AshDataTable.Parts.Panel do
   # component's assigns.
   use Phoenix.Component
 
+  import AshDataTable.Parts.Common, only: [said: 1]
+
   alias AshDataTable.Act
   alias AshDataTable.Format
   alias AshDataTable.Model
@@ -38,7 +40,7 @@ defmodule AshDataTable.Parts.Panel do
       phx-hook="AshDataTable.Live.TableComponent.Panel"
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
-      data-question={@panel.question}
+      data-question={said(@panel.question)}
       data-ask={@panel.kind == :cell && "changed"}
       data-destructive={@panel.destructive?}
       aria-labelledby={"#{@id}-panel-title"}
@@ -54,7 +56,7 @@ defmodule AshDataTable.Parts.Panel do
         phx-target={@target}
         novalidate
       >
-        <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{@panel.title}</h2>
+        <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{said(@panel.title)}</h2>
         <%!-- what the action says that is about none of the fields --%>
         <div
           :if={@panel.errors}
@@ -62,7 +64,7 @@ defmodule AshDataTable.Parts.Panel do
           role="alert"
           class="mb-4 text-sm font-medium"
         >
-          <p :for={message <- @panel.errors}>{message}</p>
+          <p :for={message <- @panel.errors}>{said(message)}</p>
         </div>
         <.field
           :for={field <- @panel.fields}
@@ -87,7 +89,7 @@ defmodule AshDataTable.Parts.Panel do
             id={"#{@id}-panel-submit"}
             class={["btn", if(@panel.destructive?, do: "btn-error", else: "btn-primary")]}
           >
-            {@panel.submit}
+            {said(@panel.submit)}
           </button>
         </div>
       </form>
@@ -502,7 +504,7 @@ defmodule AshDataTable.Parts.Panel do
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != [] and not @group?} id={"#{@id}-error"} class="mt-1 text-sm">
-        <p :for={message <- @errors} data-error>{message}</p>
+        <p :for={message <- @errors} data-error>{said(message)}</p>
       </div>
     </div>
     """
@@ -560,7 +562,7 @@ defmodule AshDataTable.Parts.Panel do
         </button>
       </div>
       <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
-        <p :for={message <- @errors} data-error>{message}</p>
+        <p :for={message <- @errors} data-error>{said(message)}</p>
       </div>
       <div :if={is_map(@held)} class="ps-4">
         <.members
@@ -617,7 +619,7 @@ defmodule AshDataTable.Parts.Panel do
         <span data-label>{@field.label}</span>
       </span>
       <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
-        <p :for={message <- @errors} data-error>{message}</p>
+        <p :for={message <- @errors} data-error>{said(message)}</p>
       </div>
       <input type="hidden" name={"#{@name}[_present]"} value="" />
       <div
@@ -648,7 +650,7 @@ defmodule AshDataTable.Parts.Panel do
           id={"#{@id}-#{key}-error"}
           class="mb-1 text-sm"
         >
-          <p :for={message <- item_errors(@inside, index)} data-error>{message}</p>
+          <p :for={message <- item_errors(@inside, index)} data-error>{said(message)}</p>
         </div>
         <div class="ps-4">
           <.members
@@ -740,7 +742,7 @@ defmodule AshDataTable.Parts.Panel do
         <span :if={@field.required?} class="sr-only">{Text.t(:required)}</span>
       </span>
       <div :if={@own_errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
-        <p :for={message <- @own_errors} data-error>{message}</p>
+        <p :for={message <- @own_errors} data-error>{said(message)}</p>
       </div>
       <div class="ps-4">
         <input type="hidden" name={"#{@name}[_of]"} value={@kind} />

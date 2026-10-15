@@ -551,7 +551,7 @@ defmodule AshDataTable.ManagingTest do
 
       # under the argument, though Ash names the relationship
       assert Act.errors(form, model, drop.inputs) ==
-               %{drop: ["This record is no longer available."]}
+               %{drop: [{:text, :record_gone, []}]}
 
       # and nowhere for a panel that has no such field
       assert Act.errors(form, model, []) == %{}
@@ -571,9 +571,9 @@ defmodule AshDataTable.ManagingTest do
         Act.errors(form, model, stumble.inputs)
       end
 
-      assert errors.("tag") == %{tags: ["This record is no longer available."]}
+      assert errors.("tag") == %{tags: [{:text, :record_gone, []}]}
       # another error without a text: no more than that it failed
-      assert errors.("unknown_tag") == %{tags: ["This could not be done."]}
+      assert errors.("unknown_tag") == %{tags: [{:text, :action_failed, []}]}
       # under an attribute the action accepts, Ash says nothing a table shows
       assert errors.("title") == %{}
     end

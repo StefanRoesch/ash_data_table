@@ -6,6 +6,8 @@ defmodule AshDataTable.Parts.Arguments do
   # component's assigns.
   use Phoenix.Component
 
+  import AshDataTable.Parts.Common, only: [said: 1]
+
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -201,7 +203,7 @@ defmodule AshDataTable.Parts.Arguments do
       </div>
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-xs">
-        <p :for={message <- @errors} data-error>{message}</p>
+        <p :for={message <- @errors} data-error>{said(message)}</p>
       </div>
     </div>
     """

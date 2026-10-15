@@ -156,7 +156,9 @@ defmodule AshDataTable.ZonesTest do
 
     test "what a generic action returns is said in the zone" do
       action = %Model.Action{name: :when, label: "When", type: :action, returns: nil}
-      assert Act.said(action, ~U[2026-07-15 12:00:00Z], @berlin) == "2026-07-15T14:00:00"
+
+      assert AshDataTable.Format.said(action, ~U[2026-07-15 12:00:00Z], @berlin) ==
+               "2026-07-15T14:00:00"
     end
   end
 
@@ -280,7 +282,7 @@ defmodule AshDataTable.ZonesTest do
       ]
 
       assert Act.gaps(inputs, %{"due_at" => "2026-03-29T02:30"}, @berlin) ==
-               %{due_at: ["This time does not exist in Europe/Berlin."]}
+               %{due_at: [{:text, :no_such_time, zone: "Europe/Berlin"}]}
 
       assert Act.gaps(inputs, %{"due_at" => "2026-03-29T03:30"}, @berlin) == %{}
       assert Act.gaps(inputs, %{"due_at" => "2026-03-29T02:30"}, "Etc/UTC") == %{}
