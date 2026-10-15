@@ -14,6 +14,7 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Parts
   alias AshDataTable.Present
   alias AshDataTable.Text
+  alias AshDataTable.Typed
   alias Phoenix.LiveView.JS
 
   # The handle at the end of a column's header, with which a person makes
@@ -431,12 +432,12 @@ defmodule AshDataTable.Parts.Grid do
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
           {"data-value", held(typed)},
-          {"data-saved", held(Format.input(column, cell.value, zone))}
+          {"data-saved", held(Typed.of(column, cell.value, zone))}
         ] ++ if(places == [], do: [], else: [{"data-invalid", held(places)}])
 
       {true, nil} ->
         if own_value?(column),
-          do: [{"data-value", held(Format.input(column, cell.value, zone))}],
+          do: [{"data-value", held(Typed.of(column, cell.value, zone))}],
           else: []
     end
   end

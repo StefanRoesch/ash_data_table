@@ -3,7 +3,7 @@ defmodule AshDataTable.Format do
   # How a cell's value is shown: one clause of `format/2` per cell type.
   # Text, numbers, dates and datetimes are shown in the format of the matching
   # native HTML input, so what a cell shows is what its editor holds
-  # (`input/2`). An array is its values, each as its own cell type shows it.
+  # (`AshDataTable.Typed.of/3`). An array is its values, each as its own cell type shows it.
   # A map cell (an embedded resource, a map) is its fields on one line,
   # `field: value, field: value`, each value as its own cell type shows it.
   # A union is the value it holds, shown as its kind's type is shown.
@@ -168,81 +168,6 @@ defmodule AshDataTable.Format do
     do: Integer.to_string(value)
 
   def summary(column, value, zone), do: format(column, value, zone)
-
-  @doc """
-  The text the editor of a cell holds for `value`: what the cell shows, the
-  value itself for a choice, and `"true"` or `"false"` for a boolean. Nil is
-  empty.
-
-  The editor of an array holds a list: the text of each of its values. Nil
-  is the empty list there. A value that is text already is what a person
-  typed, and is held as it is.
-  """
-  @spec input(Column.t() | AshDataTable.Model.Input.t() | Model.Field.t(), term) ::
-          String.t() | [String.t()] | map | [map] | nil
-  # in UTC
-  def input(column, value), do: input(column, value, @utc)
-
-  @spec input(Column.t() | AshDataTable.Model.Input.t() | Model.Field.t(), term, Zone.t()) ::
-          String.t() | [String.t()] | map | [map] | nil
-  # The editor of a map cell holds its inputs by name, each as the editor of
-  # its type holds it, and with them the primary key of an embedded resource
-  # that is no input: Ash tells by it which value is which. Nil is no value.
-  def input(%{cell_type: :map, fields: [_ | _] = fields}, value, zone) when is_map(value) do
-    for %{name: name} = inner <- fields, inner.input? or inner.key?, into: %{} do
-      held = held(value, name)
-
-      {Atom.to_string(name),
-       if(inner.cell_type in [:map, :union],
-         do: input(inner, held, zone),
-         else: input(inner, held, zone) || ""
-       )}
-    end
-  end
-
-  def input(%{cell_type: :map}, _value, _zone), do: nil
-
-  # The editor of a union holds the kind and that kind's value, as the
-  # editor of its type holds it. Nil is no value, and so is a kind that
-  # holds nothing: Ash keeps the kind of a value that was taken away.
-  def input(%{cell_type: :union} = field, %Ash.Union{type: kind, value: value}, zone)
-      when not is_nil(value) do
-    case Enum.find(members(field) || [], &(&1.name == kind)) do
-      nil ->
-        nil
-
-      member ->
-        held = input(member, value, zone)
-
-        %{
-          "_union_type" => Atom.to_string(kind),
-          "_union_value" => if(member.cell_type == :map, do: held, else: held || "")
-        }
-    end
-  end
-
-  def input(%{cell_type: :union}, _value, _zone), do: nil
-
-  def input(%{cell_type: {:array, :map}} = column, values, zone) when is_list(values),
-    do: Enum.map(values, &input(%{column | cell_type: :map}, &1, zone))
-
-  def input(%{cell_type: {:array, item}} = column, values, zone) when is_list(values) do
-    Enum.map(values, fn
-      typed when is_binary(typed) -> typed
-      value -> input(%{column | cell_type: item}, value, zone)
-    end)
-  end
-
-  def input(%{cell_type: {:array, _item}}, _value, _zone), do: []
-
-  def input(%{cell_type: :boolean}, value, _zone) when is_boolean(value), do: to_string(value)
-
-  def input(%{cell_type: :enum}, value, _zone) when is_atom(value) and not is_nil(value),
-    do: Atom.to_string(value)
-
-  def input(%{cell_type: :enum}, value, _zone) when is_binary(value), do: value
-  def input(%{cell_type: cell_type}, _value, _zone) when cell_type in [:boolean, :enum], do: ""
-  def input(%{cell_type: _} = column, value, zone), do: format(column, value, zone)
 
   # A field of such a value that is declared `sensitive?` is a mask where it
   # holds something, the same for every value, and nothing where it does

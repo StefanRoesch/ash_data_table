@@ -19,11 +19,11 @@ defmodule AshDataTable.Present do
   # `reveal`, which goes past this module to the hook alone.
 
   alias AshDataTable.Act
-  alias AshDataTable.Format
   alias AshDataTable.Model
   alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
+  alias AshDataTable.Typed
 
   defmodule Row do
     @moduledoc false
@@ -393,8 +393,8 @@ defmodule AshDataTable.Present do
   @spec field_value(map, term, boolean, map) :: term
   def field_value(%{cell_type: {:array, _item}} = input, values, default?, panel) do
     cond do
-      is_list(values) -> Format.input(input, values, panel.time_zone)
-      default? and is_list(input.default) -> Format.input(input, input.default, panel.time_zone)
+      is_list(values) -> Typed.of(input, values, panel.time_zone)
+      default? and is_list(input.default) -> Typed.of(input, input.default, panel.time_zone)
       true -> []
     end
   end
@@ -402,12 +402,12 @@ defmodule AshDataTable.Present do
   def field_value(_input, typed, _default?, _panel) when is_binary(typed), do: typed
 
   def field_value(%{default: default} = input, nil, true, panel) when not is_nil(default),
-    do: Format.input(input, default, panel.time_zone)
+    do: Typed.of(input, default, panel.time_zone)
 
   def field_value(_input, nil, _default?, _panel), do: ""
 
   def field_value(input, value, _default?, panel),
-    do: Format.input(input, value, panel.time_zone)
+    do: Typed.of(input, value, panel.time_zone)
 
   @doc "The open picker."
   @spec picker(map) :: Picker.t()

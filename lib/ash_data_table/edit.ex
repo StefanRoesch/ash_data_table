@@ -14,13 +14,13 @@ defmodule AshDataTable.Edit do
 
   alias AshDataTable.Act
   alias AshDataTable.Errors
-  alias AshDataTable.Format
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
   alias AshDataTable.Pick
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Text
+  alias AshDataTable.Typed
   alias AshDataTable.Zone
 
   @typedoc """
@@ -367,7 +367,7 @@ defmodule AshDataTable.Edit do
   end
 
   defp unchanged?(%Column{sensitive?: true}, typed, _value, _zone), do: typed == ""
-  defp unchanged?(column, typed, value, zone), do: typed == Format.input(column, value, zone)
+  defp unchanged?(column, typed, value, zone), do: typed == Typed.of(column, value, zone)
 
   defp unchanged(model, record, opts) do
     case Record.load(model, record, opts) do

@@ -705,20 +705,24 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "its editor holds a list: each value as the editor of its type writes it" do
-      assert Format.input(sink(:strings), ["red", "green"]) == ["red", "green"]
-      assert Format.input(sink(:integers), [3, -1]) == ["3", "-1"]
-      assert Format.input(sink(:booleans), [true, false]) == ["true", "false"]
-      assert Format.input(sink(:dates), [~D[2026-03-09]]) == ["2026-03-09"]
+      assert AshDataTable.Typed.of(sink(:strings), ["red", "green"]) == ["red", "green"]
+      assert AshDataTable.Typed.of(sink(:integers), [3, -1]) == ["3", "-1"]
+      assert AshDataTable.Typed.of(sink(:booleans), [true, false]) == ["true", "false"]
+      assert AshDataTable.Typed.of(sink(:dates), [~D[2026-03-09]]) == ["2026-03-09"]
       # a choice is its value, not its label
-      assert Format.input(sink(:statuses), [:done, :in_progress]) == ["done", "in_progress"]
+      assert AshDataTable.Typed.of(sink(:statuses), [:done, :in_progress]) == [
+               "done",
+               "in_progress"
+             ]
+
       # nil and the empty array are the same to an editor: no values
-      assert Format.input(sink(:strings), nil) == []
-      assert Format.input(sink(:strings), []) == []
+      assert AshDataTable.Typed.of(sink(:strings), nil) == []
+      assert AshDataTable.Typed.of(sink(:strings), []) == []
     end
 
     test "what a person typed is held as it was typed" do
-      assert Format.input(sink(:integers), ["1", "x", ""]) == ["1", "x", ""]
-      assert Format.input(sink(:booleans), ["true"]) == ["true"]
+      assert AshDataTable.Typed.of(sink(:integers), ["1", "x", ""]) == ["1", "x", ""]
+      assert AshDataTable.Typed.of(sink(:booleans), ["true"]) == ["true"]
     end
   end
 
@@ -1053,7 +1057,7 @@ defmodule AshDataTable.ModelTest do
     test "its inputs by name, each as the editor of its type writes it; nil for no value" do
       place = %Place{street: "Quay 1", open?: true, kind: :main_depot, tags: ["a"], memo: "x"}
 
-      assert Format.input(mapped(:place), place) == %{
+      assert AshDataTable.Typed.of(mapped(:place), place) == %{
                "street" => "Quay 1",
                "city" => "",
                "open?" => "true",
@@ -1063,7 +1067,7 @@ defmodule AshDataTable.ModelTest do
                "token" => ""
              }
 
-      assert Format.input(mapped(:place), nil) == nil
+      assert AshDataTable.Typed.of(mapped(:place), nil) == nil
     end
 
     test "with the key of an embedded resource that is no input, and without what is only shown" do
@@ -1073,15 +1077,15 @@ defmodule AshDataTable.ModelTest do
         made_at: ~U[2026-01-01 00:00:00Z]
       }
 
-      assert Format.input(mapped(:parts), [part]) == [
+      assert AshDataTable.Typed.of(mapped(:parts), [part]) == [
                %{"id" => "11111111-2222-4333-8444-555555555555", "name" => "Crane"}
              ]
 
-      assert Format.input(mapped(:parts), nil) == []
+      assert AshDataTable.Typed.of(mapped(:parts), nil) == []
     end
 
     test "a value made of fields inside it the same way, nil where there is none" do
-      assert Format.input(mapped(:settings), %{title: "Main", limits: %{low: 1}}) == %{
+      assert AshDataTable.Typed.of(mapped(:settings), %{title: "Main", limits: %{low: 1}}) == %{
                "title" => "Main",
                "count" => "",
                "mode" => "",
@@ -1092,7 +1096,7 @@ defmodule AshDataTable.ModelTest do
 
     test "is sent by its field with a mark of its own, and taken back as it was held" do
       place = mapped(:place)
-      held = Format.input(place, %Place{street: "Quay 1", open?: true, tags: ["a", "b"]})
+      held = AshDataTable.Typed.of(place, %Place{street: "Quay 1", open?: true, tags: ["a", "b"]})
       sent = Act.sent(place, held)
 
       assert sent["_present"] == ""
@@ -1163,7 +1167,7 @@ defmodule AshDataTable.ModelTest do
     test "what it sent is unchanged when it is what the record holds, as its field would send that" do
       place = %Place{street: "Quay 1", open?: false, tags: ["a"]}
       column = mapped(:place)
-      sent = Act.sent(column, Format.input(column, place))
+      sent = Act.sent(column, AshDataTable.Typed.of(column, place))
 
       assert Act.unchanged?(column, sent, place)
       refute Act.unchanged?(column, %{sent | "city" => "Kiel"}, place)
@@ -1174,7 +1178,7 @@ defmodule AshDataTable.ModelTest do
 
       parts = mapped(:parts)
       list = [%Part{id: "a", name: "Crane"}, %Part{id: "b", name: "Winch"}]
-      sent = Act.sent(parts, Format.input(parts, list))
+      sent = Act.sent(parts, AshDataTable.Typed.of(parts, list))
       assert Act.unchanged?(parts, sent, list)
       refute Act.unchanged?(parts, Map.delete(sent, "1"), list)
       assert Act.unchanged?(parts, %{"_present" => ""}, [])

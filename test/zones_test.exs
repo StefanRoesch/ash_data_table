@@ -108,7 +108,9 @@ defmodule AshDataTable.ZonesTest do
 
       # the day can change with it
       assert Format.format(column, ~U[2026-01-15 23:30:00Z], @berlin) == "2026-01-16T00:30:00"
-      assert Format.input(column, ~U[2026-01-15 23:30:00Z], @berlin) == "2026-01-16T00:30:00"
+
+      assert AshDataTable.Typed.of(column, ~U[2026-01-15 23:30:00Z], @berlin) ==
+               "2026-01-16T00:30:00"
     end
 
     test "in UTC, and without a zone, is as it was before there were zones" do
@@ -132,7 +134,9 @@ defmodule AshDataTable.ZonesTest do
       assert Format.format(many, [~U[2026-07-15 12:00:00Z], ~U[2026-01-15 12:00:00Z]], @berlin) ==
                "2026-07-15T14:00:00, 2026-01-15T13:00:00"
 
-      assert Format.input(many, [~U[2026-07-15 12:00:00Z]], @berlin) == ["2026-07-15T14:00:00"]
+      assert AshDataTable.Typed.of(many, [~U[2026-07-15 12:00:00Z]], @berlin) == [
+               "2026-07-15T14:00:00"
+             ]
 
       map = %{
         name: :visit,
@@ -194,13 +198,15 @@ defmodule AshDataTable.ZonesTest do
             ~U[2026-10-25 02:00:00Z],
             ~U[2026-12-31 23:30:00Z]
           ] do
-        shown = Format.input(column, instant, @berlin)
+        shown = AshDataTable.Typed.of(column, instant, @berlin)
         assert {:ok, written} = Zone.instant(shown, @berlin)
         assert {:ok, ^instant, 0} = DateTime.from_iso8601(written), "#{instant}"
       end
 
       # 02:30 CET, the second 02:30 of that night, is typed as the first
-      assert Format.input(column, ~U[2026-10-25 01:30:00Z], @berlin) == "2026-10-25T02:30:00"
+      assert AshDataTable.Typed.of(column, ~U[2026-10-25 01:30:00Z], @berlin) ==
+               "2026-10-25T02:30:00"
+
       assert Zone.instant("2026-10-25T02:30:00", @berlin) == {:ok, "2026-10-25T00:30:00Z"}
     end
 

@@ -27,7 +27,7 @@ defmodule AshDataTable.Model.Argument do
   #   * `time_zone` is the zone of the page, which its input shows a
   #     datetime in (`AshDataTable.Model.zoned/2`).
 
-  alias AshDataTable.Format
+  alias AshDataTable.Typed
 
   @enforce_keys [:name, :label, :cell_type, :editor]
   defstruct [
@@ -76,13 +76,13 @@ defmodule AshDataTable.Model.Argument do
   """
   @spec rest(t) :: typed
   def rest(%__MODULE__{cell_type: {:array, _item}, default: default} = argument),
-    do: Format.input(argument, List.wrap(default), argument.time_zone)
+    do: Typed.of(argument, List.wrap(default), argument.time_zone)
 
   def rest(%__MODULE__{cell_type: :boolean, default: nil}), do: "false"
   def rest(%__MODULE__{default: nil}), do: ""
 
   def rest(%__MODULE__{default: default} = argument),
-    do: Format.input(argument, default, argument.time_zone) || ""
+    do: Typed.of(argument, default, argument.time_zone) || ""
 
   @doc """
   What Ash is given for the argument: what the person chose (`chosen`, by

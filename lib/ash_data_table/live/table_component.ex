@@ -538,12 +538,12 @@ defmodule AshDataTable.Live.TableComponent do
   alias AshDataTable.Related
   alias AshDataTable.Resource.Listening
   alias AshDataTable.Resource.Notifier
-  alias AshDataTable.Present
   alias AshDataTable.Routes
   alias AshDataTable.Sensitive
   alias AshDataTable.State
-  alias AshDataTable.Text
   alias AshDataTable.Table
+  alias AshDataTable.Text
+  alias AshDataTable.Typed
 
   # Where the tables of a page are noted, by their ids: for each, where it
   # is (the ids from the table on the page down to its own), its listener
@@ -3077,7 +3077,7 @@ defmodule AshDataTable.Live.TableComponent do
 
   # A key as a field of the panel writes it: an attribute's as the editor
   # of its type does, an argument's as a key is written.
-  defp key_text(%{kind: :attribute} = input, value, zone), do: Format.input(input, value, zone)
+  defp key_text(%{kind: :attribute} = input, value, zone), do: Typed.of(input, value, zone)
   defp key_text(_argument, value, _zone), do: to_string(Pick.written(value))
 
   # Puts keys into a field of the panel that is given by choosing: as if
@@ -3312,14 +3312,14 @@ defmodule AshDataTable.Live.TableComponent do
   # not there, unless a record is being created and cannot be without it:
   # then its fields are there to be filled in.
   defp started(%{editor: :groups} = input, value, _kind, zone),
-    do: Act.sent(input, Format.input(input, List.wrap(value), zone))
+    do: Act.sent(input, Typed.of(input, List.wrap(value), zone))
 
   # a union always sends its kind: none where it has no value
   defp started(%{editor: :union} = input, value, _kind, zone),
-    do: Act.sent(input, Format.input(input, value, zone))
+    do: Act.sent(input, Typed.of(input, value, zone))
 
   defp started(input, %{} = value, _kind, zone),
-    do: Act.sent(input, Format.input(input, value, zone))
+    do: Act.sent(input, Typed.of(input, value, zone))
 
   defp started(%{required?: true} = input, _none, :create, zone), do: Act.blank(input, zone)
   defp started(_input, _none, _kind, _zone), do: nil

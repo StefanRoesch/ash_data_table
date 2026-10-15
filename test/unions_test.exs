@@ -235,45 +235,50 @@ defmodule AshDataTable.UnionsTest do
     test "the kind and that kind's value, as the editor of its type writes it; nil for no value" do
       value = column(:value)
 
-      assert Format.input(value, %Ash.Union{type: :amount, value: 12}) ==
+      assert AshDataTable.Typed.of(value, %Ash.Union{type: :amount, value: 12}) ==
                %{"_union_type" => "amount", "_union_value" => "12"}
 
-      assert Format.input(value, %Ash.Union{type: :done, value: false}) ==
+      assert AshDataTable.Typed.of(value, %Ash.Union{type: :done, value: false}) ==
                %{"_union_type" => "done", "_union_value" => "false"}
 
-      assert Format.input(value, %Ash.Union{type: :shade, value: :dark}) ==
+      assert AshDataTable.Typed.of(value, %Ash.Union{type: :shade, value: :dark}) ==
                %{"_union_type" => "shade", "_union_value" => "dark"}
 
-      assert Format.input(value, %Ash.Union{type: :place, value: %Place{street: "Quay 1"}}) ==
+      assert AshDataTable.Typed.of(value, %Ash.Union{
+               type: :place,
+               value: %Place{street: "Quay 1"}
+             }) ==
                %{
                  "_union_type" => "place",
                  "_union_value" => %{"street" => "Quay 1", "city" => ""}
                }
 
-      assert Format.input(value, nil) == nil
+      assert AshDataTable.Typed.of(value, nil) == nil
     end
 
     test "a kind that holds nothing is no value: Ash keeps the kind of a value that was taken away" do
-      assert Format.input(column(:value), %Ash.Union{type: :amount, value: nil}) == nil
-      assert Format.input(column(:value), %Ash.Union{type: :gone, value: 1}) == nil
+      assert AshDataTable.Typed.of(column(:value), %Ash.Union{type: :amount, value: nil}) == nil
+      assert AshDataTable.Typed.of(column(:value), %Ash.Union{type: :gone, value: 1}) == nil
     end
 
     test "inside a value made of fields the same way" do
       holder = %Holder{label: "Box", either: %Ash.Union{type: :number, value: 5}}
 
-      assert Format.input(column(:holder), holder) == %{
+      assert AshDataTable.Typed.of(column(:holder), holder) == %{
                "label" => "Box",
                "either" => %{"_union_type" => "number", "_union_value" => "5"},
                "other" => nil
              }
 
-      assert Format.input(column(:holder), %Holder{label: "Box"}) ==
+      assert AshDataTable.Typed.of(column(:holder), %Holder{label: "Box"}) ==
                %{"label" => "Box", "either" => nil, "other" => nil}
     end
 
     test "is sent by its field with the kind its value is of, and taken back as it was held" do
       value = Model.input(model(), column(:value))
-      held = Format.input(value, %Ash.Union{type: :place, value: %Place{street: "Quay 1"}})
+
+      held =
+        AshDataTable.Typed.of(value, %Ash.Union{type: :place, value: %Place{street: "Quay 1"}})
 
       assert Act.sent(value, held) == %{
                "_union_type" => "place",
@@ -390,7 +395,7 @@ defmodule AshDataTable.UnionsTest do
 
     test "what was sent is what the cell holds when nothing was changed", %{value: value} do
       held = %Ash.Union{type: :amount, value: 12}
-      sent = Act.sent(value, Format.input(value, held))
+      sent = Act.sent(value, AshDataTable.Typed.of(value, held))
 
       assert Act.unchanged?(value, sent, held)
       refute Act.unchanged?(value, %{sent | "_union_value" => "13"}, held)
@@ -465,7 +470,7 @@ defmodule AshDataTable.UnionsTest do
       # Ash keeps the kind, with nothing in it: no value, as a table shows it
       assert record.value in [nil, %Ash.Union{type: :amount, value: nil}]
       assert Format.format(column(:value), record.value) == ""
-      assert Format.input(column(:value), record.value) == nil
+      assert AshDataTable.Typed.of(column(:value), record.value) == nil
     end
 
     test "what the record holds already calls nothing", %{key: key} do

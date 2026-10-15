@@ -9,7 +9,7 @@ defmodule AshDataTable.Model.Input do
   #     for an attribute that has one, else the humanised name.
   #   * `type` is the Ash type with its constraints; `cell_type` and `values`
   #     are what a column of that type has (see `AshDataTable.Model.Column`), and
-  #     what the field's value is written with (`AshDataTable.Format.input/2`).
+  #     what the field's value is written with (`AshDataTable.Typed.of/2`).
   #   * `editor` is the control of the field: that of a cell of its type
   #     (`:text`, `:number`, `:boolean`, `:date`, `:datetime`, `:enum`, and
   #     `:choices` or `:list` for an array, `:group` for a map cell and

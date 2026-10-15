@@ -249,7 +249,7 @@ defmodule AshDataTable.SensitiveTest do
                {:password, true, false}
              ]
 
-      assert Format.input(column(:shown), %Shown{user: "bob", password: "swordfish"}) ==
+      assert AshDataTable.Typed.of(column(:shown), %Shown{user: "bob", password: "swordfish"}) ==
                %{"user" => "bob"}
     end
   end

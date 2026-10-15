@@ -76,6 +76,7 @@ defmodule AshDataTable.Act do
   alias AshDataTable.Query
   alias AshDataTable.Record
   alias AshDataTable.Text
+  alias AshDataTable.Typed
 
   @typedoc "A form of `AshPhoenix.Form`."
   @type form :: AshPhoenix.Form.t()
@@ -830,7 +831,7 @@ defmodule AshDataTable.Act do
   @doc """
   What the field of a map cell sends for a value it holds: the opposite of
   `typed/3`. `held` is the value as its editor holds it
-  (`AshDataTable.Format.input/3`). It is what the field starts with.
+  (`AshDataTable.Typed.of/3`). It is what the field starts with.
   """
   @spec sent(map, term) :: term
   def sent(%{cell_type: :map, fields: [_ | _] = fields}, %{} = held) do
@@ -885,13 +886,13 @@ defmodule AshDataTable.Act do
       started =
         cond do
           not is_nil(field.default) ->
-            sent(field, Format.input(field, field.default, zone))
+            sent(field, Typed.of(field, field.default, zone))
 
           field.cell_type == :map and field.required? and is_list(field.fields) ->
             blank(field, zone)
 
           true ->
-            sent(field, Format.input(field, nil, zone))
+            sent(field, Typed.of(field, nil, zone))
         end
 
       {Atom.to_string(name), started}
@@ -910,7 +911,7 @@ defmodule AshDataTable.Act do
   def unchanged?(input, sent, value, zone),
     do:
       typed(input, sent, zone) ==
-        typed(input, sent(input, Format.input(input, value, zone)), zone)
+        typed(input, sent(input, Typed.of(input, value, zone)), zone)
 
   @doc """
   What a form's errors say to a person: by input, for the errors about one
