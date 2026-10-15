@@ -44,14 +44,18 @@ defmodule AshDataTable.Live.Core.Files do
       Enum.reduce(file_inputs(panel), socket, fn input, socket ->
         name = upload_name(socket.assigns.table.entry.id, input)
 
-        if is_map_key(socket.assigns[:uploads] || %{}, name) do
+        # allowed once, and again after a table of the same id closed and
+        # gave it up (`AshDataTable.Live.Registry.close/2`)
+        if match?(%{^name => %{allowed?: true}}, socket.assigns[:uploads] || %{}) do
           socket
         else
-          allow_upload(socket, name,
+          socket
+          |> allow_upload(name,
             accept: input.upload.accept,
             max_entries: 1,
             max_file_size: input.upload.max_file_size
           )
+          |> Core.put(uploads: Enum.uniq([name | socket.assigns.table.entry.uploads]))
         end
       end)
 
@@ -60,21 +64,18 @@ defmodule AshDataTable.Live.Core.Files do
 
   # Gives up the files of the panel's uploads: those a person chose and no
   # action was given. What an action was given is LiveView's to take away.
+  # Only this table's: the tables of a page share one socket, and a file
+  # chosen in another table's open panel is that panel's.
   defp drop_files(socket) do
-    spent = socket.assigns.table.entry.spent
+    %{spent: spent, uploads: names} = socket.assigns.table.entry
+    uploads = socket.assigns[:uploads] || %{}
 
-    Enum.reduce(socket.assigns[:uploads] || %{}, socket, fn
-      # every upload of this component is one of a panel's fields; what else
-      # the map holds is LiveView's own, under a key that is no name
-      {name, %{entries: entries}}, socket when is_binary(name) ->
-        Enum.reduce(entries, socket, fn entry, socket ->
-          if entry.cancelled? or entry.ref in spent,
-            do: socket,
-            else: cancel_upload(socket, name, entry.ref)
-        end)
-
-      _another, socket ->
-        socket
+    Enum.reduce(names, socket, fn name, socket ->
+      Enum.reduce(uploads[name].entries, socket, fn entry, socket ->
+        if entry.cancelled? or entry.ref in spent,
+          do: socket,
+          else: cancel_upload(socket, name, entry.ref)
+      end)
     end)
   end
 

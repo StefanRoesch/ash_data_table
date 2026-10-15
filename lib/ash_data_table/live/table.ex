@@ -1,18 +1,14 @@
 defmodule AshDataTable.Table do
   @moduledoc false
   # The one value a table is held in: what it was told (`options`), who is
-  # asking (`caller`, `AshDataTable.Caller`) and the table itself (`entry`,
-  # `AshDataTable.Live.Entry`). Until stage 5 of the refactor each live
-  # component holds one, with the entry of its own table; the tables of a
-  # page are noted in the process dictionary besides (`@tables` of the
-  # component).
+  # asking (`caller`, `AshDataTable.Caller`), the table itself (`entry`,
+  # `AshDataTable.Live.Entry`) and every table it shows besides (`entries`).
   #
-  # `options` are what the table was told about how it is placed on the
-  # page, which nothing it does changes:
+  # `options` are what the table on the page was told about how it is
+  # placed, which nothing it does changes:
   #
   #   * `url`: where its state lives, for a table whose state is in the URL;
   #     nil for one that keeps it.
-  #   * `label`: what its grid is called.
   #   * `heading`: how the table's name is shown on the line above it: a
   #     heading of that level, `true` for a name that is no heading, `false`
   #     for none.
@@ -20,40 +16,37 @@ defmodule AshDataTable.Table do
   #     read can turn into "not found".
   #   * `page_assigns`: the assigns of the page, which a default of an asked
   #     argument may be a function of.
-  #   * `select`: what the table was told of selecting rows (`:multi` or
-  #     `:single`), nil for nothing.
-  #   * `live_given`: what the table was told about live updates, nil where
-  #     it was told nothing.
-  #   * `authorize_given`: what it was told of `authorize?`, as it was given,
-  #     for the tables nested in it.
-  #   * `labelledby`: the ids of the elements that name a nested table's
-  #     grid, in place of `label`.
-  #   * `lineage`: the tables this one is rendered in, nested in a row or in
-  #     a picker: their ids, from the table on the page down to the one that
-  #     renders this one. A table stops the listeners of the tables under it
-  #     that it no longer renders (`close/1` of the component).
+  #
+  # A table nested in a row or in a picker is placed by the table it is in:
+  # it keeps no state in the URL, has no heading and is no page of its own
+  # (`AshDataTable.Live.Registry.within/3` shows it these options). What
+  # each table was told of itself (its label, how it selects, authorizes and
+  # follows live updates) is in its entry.
+  #
+  # `entries` are the other tables the table on the page shows, by id: its
+  # nested tables at every depth and the tables of open pickers
+  # (`AshDataTable.Live.Registry`). `pool` holds the names of the streams of
+  # the entries: those no open table uses, and the number of the next one.
 
   alias AshDataTable.Caller
   alias AshDataTable.Live.Entry
 
-  @options %{
-    url: nil,
-    label: nil,
-    heading: false,
-    mounted?: false,
-    page_assigns: %{},
-    select: nil,
-    live_given: nil,
-    authorize_given: nil,
-    labelledby: nil,
-    lineage: []
-  }
+  @options %{url: nil, heading: false, mounted?: false, page_assigns: %{}}
 
-  @caller [:scope, :actor, :tenant, :authorize?, :time_zone]
+  # `authorize?` is the entry's: resolved for each table from its own
+  # resource's domain. The caller keeps what the table on the page was told
+  # (`AshDataTable.Live.Core.update/2`).
+  @caller [:scope, :actor, :tenant, :time_zone]
 
-  @type t :: %__MODULE__{options: map, caller: Caller.t(), entry: Entry.t()}
+  @type t :: %__MODULE__{
+          options: map,
+          caller: Caller.t(),
+          entry: Entry.t(),
+          entries: %{String.t() => Entry.t()},
+          pool: %{free: [String.t()], next: non_neg_integer}
+        }
 
-  defstruct options: @options, caller: nil, entry: nil
+  defstruct options: @options, caller: nil, entry: nil, entries: %{}, pool: %{free: [], next: 0}
 
   @doc "A table that was told nothing yet."
   @spec new() :: t

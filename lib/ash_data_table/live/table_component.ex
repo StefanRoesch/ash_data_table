@@ -578,7 +578,7 @@ defmodule AshDataTable.Live.TableComponent do
       <Parts.Heading.heading
         heading={@table.options.heading}
         id={@table.entry.id}
-        label={@table.options.label}
+        label={@table.entry.label}
         model={@table.entry.model}
         myself={@myself}
         nested?={@table.entry.nested?}
@@ -596,7 +596,7 @@ defmodule AshDataTable.Live.TableComponent do
             @socket.router,
             @table.entry.related.via.source,
             @table.entry.related.via.source_table,
-            @table.options.authorize_given
+            @table.entry.authorize_given
           )
         }
         clear={Url.path(@table.options.url, @table.entry.id, %{})}
@@ -648,9 +648,9 @@ defmodule AshDataTable.Live.TableComponent do
         expandable?={@table.entry.expandable?}
         full_view={@table.entry.full_view}
         id={@table.entry.id}
-        label={@table.options.label}
+        label={@table.entry.label}
         label_column={@table.entry.label_column}
-        labelledby={@table.options.labelledby}
+        labelledby={@table.entry.labelledby}
         lead={@table.entry.lead}
         model={@table.entry.model}
         myself={@myself}
@@ -660,10 +660,10 @@ defmodule AshDataTable.Live.TableComponent do
         pending={@table.entry.pending}
         rejected={@table.entry.rejected}
         row_count={@table.entry.row_count}
+        rows={@streams[@table.entry.stream]}
         running={@table.entry.running}
         selecting={@table.entry.selecting}
         state={@table.entry.state}
-        streams={@streams}
         summarised?={@table.entry.summarised?}
         summary={@table.entry.summary}
         summing?={@table.entry.summing?}
@@ -710,7 +710,7 @@ defmodule AshDataTable.Live.TableComponent do
         model={@table.entry.model}
         state={@table.entry.state}
         row_count={@table.entry.row_count}
-        label={@table.options.label}
+        label={@table.entry.label}
         target={@myself}
       />
       <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">

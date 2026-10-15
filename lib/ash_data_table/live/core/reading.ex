@@ -13,6 +13,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Url
+  alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Model.Relationship
   alias AshDataTable.Pick
@@ -93,19 +94,25 @@ defmodule AshDataTable.Live.Core.Reading do
         socket |> Core.put(read: read) |> due(due) |> unfilled(first_or_later)
 
       socket.assigns.table.entry.read == :again ->
-        socket |> Core.put(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
+        socket
+        |> Core.put(read: read, busy?: true)
+        |> due(due)
+        |> start_async(Registry.async(socket, :read), fetch)
 
       socket.assigns.table.entry.nested? ->
         socket
         |> Core.put(read: read, busy?: true, loading?: is_nil(socket.assigns.table.entry.read))
         |> due(due)
-        |> start_async(:read, fetch)
+        |> start_async(Registry.async(socket, :read), fetch)
 
       is_nil(socket.assigns.table.entry.read) ->
         socket |> Core.put(read: read) |> due(due) |> show(fetch.(), :first)
 
       true ->
-        socket |> Core.put(read: read, busy?: true) |> due(due) |> start_async(:read, fetch)
+        socket
+        |> Core.put(read: read, busy?: true)
+        |> due(due)
+        |> start_async(Registry.async(socket, :read), fetch)
     end
   end
 
@@ -152,7 +159,9 @@ defmodule AshDataTable.Live.Core.Reading do
     else
       socket
       |> Core.put(summing?: true, summed: of)
-      |> start_async(:summary, fn -> Query.summaries(model, state, parent, opts) end)
+      |> start_async(Registry.async(socket, :summary), fn ->
+        Query.summaries(model, state, parent, opts)
+      end)
     end
   end
 
@@ -247,7 +256,7 @@ defmodule AshDataTable.Live.Core.Reading do
       |> Core.put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
       |> Core.put(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
       |> Core.put(fill: text, notice?: false, held: [], leaving: MapSet.new())
-      |> stream(:rows, [], reset: true)
+      |> stream(socket.assigns.table.entry.stream, [], reset: true)
       |> Core.say(text)
     end
   end
@@ -310,7 +319,7 @@ defmodule AshDataTable.Live.Core.Reading do
       open: %{}
     )
     |> announce(page)
-    |> stream(:rows, items, reset: true)
+    |> stream(socket.assigns.table.entry.stream, items, reset: true)
   end
 
   # The row a nested table belongs to is gone, or no longer this person's to
@@ -375,7 +384,7 @@ defmodule AshDataTable.Live.Core.Reading do
     # nothing is said of a record that was not read for this person
     |> Core.put(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
     |> Core.put(fill: nil, notice?: false, held: [], leaving: MapSet.new())
-    |> stream(:rows, [], reset: true)
+    |> stream(socket.assigns.table.entry.stream, [], reset: true)
   end
 
   # A table placed in a page of the host's cannot make that page disappear:
@@ -442,7 +451,7 @@ defmodule AshDataTable.Live.Core.Reading do
     socket
     |> due(:force)
     |> stream_insert(
-      :rows,
+      socket.assigns.table.entry.stream,
       Present.row(model, record, %{
         id: id,
         key: key,
@@ -462,7 +471,11 @@ defmodule AshDataTable.Live.Core.Reading do
   def put_detail(socket, key) do
     %{id: id, rows: rows, open: open} = socket.assigns.table.entry
 
-    stream_insert(socket, :rows, detail(id, key, rows[key].pk, open[key]))
+    stream_insert(
+      socket,
+      socket.assigns.table.entry.stream,
+      detail(id, key, rows[key].pk, open[key])
+    )
   end
 
   # Notes that the save of a cell has failed, or with `nil` that it no longer
@@ -518,8 +531,8 @@ defmodule AshDataTable.Live.Core.Reading do
       |> Core.put(open: Map.delete(socket.assigns.table.entry.open, key))
       |> Core.put(leaving: MapSet.delete(socket.assigns.table.entry.leaving, key))
       |> Core.put(page: %{page | total: page.total && max(page.total - 1, 0)})
-      |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}")
-      |> stream_delete_by_dom_id(:rows, "#{id}-row-#{key}-x")
+      |> stream_delete_by_dom_id(socket.assigns.table.entry.stream, "#{id}-row-#{key}")
+      |> stream_delete_by_dom_id(socket.assigns.table.entry.stream, "#{id}-row-#{key}-x")
       |> unselect(key)
       |> due(:force)
 

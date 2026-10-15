@@ -26,7 +26,7 @@ defmodule AshDataTable.Live.Core.Nesting do
           socket.endpoint,
           via,
           key,
-          socket.assigns.table.options.authorize_given
+          socket.assigns.table.entry.authorize_given
         )
     )
   end
@@ -55,7 +55,7 @@ defmodule AshDataTable.Live.Core.Nesting do
         # as the table around a nested one says for it: what this table was
         # told, else what the parent's own domain says
         parent_authorize? =
-          case socket.assigns.table.options.authorize_given do
+          case socket.assigns.table.entry.authorize_given do
             nil -> AshDataTable.Domain.Info.authorize?(via.source)
             authorize? -> authorize?
           end
@@ -94,7 +94,7 @@ defmodule AshDataTable.Live.Core.Nesting do
           socket
       ) do
     read = socket.assigns.table.entry.choose && socket.assigns.table.entry.choose.read_action
-    live = socket.assigns.table.options.live_given
+    live = socket.assigns.table.entry.live_given
 
     if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read, live: ^live}, built) and
          not reloading?(socket) do
@@ -233,11 +233,11 @@ defmodule AshDataTable.Live.Core.Nesting do
       scope: assigns.table.caller.scope,
       actor: assigns.table.caller.actor,
       tenant: assigns.table.caller.tenant,
-      authorize?: assigns.table.options.authorize_given,
+      authorize?: assigns.table.entry.authorize_given,
       page_assigns: assigns.table.options.page_assigns,
       time_zone: assigns.table.caller.time_zone,
-      lineage: assigns.table.options.lineage ++ [assigns.table.entry.id],
-      live?: passed_on(assigns.table.options.live_given)
+      lineage: assigns.table.entry.path,
+      live?: passed_on(assigns.table.entry.live_given)
     }
   end
 
@@ -257,15 +257,15 @@ defmodule AshDataTable.Live.Core.Nesting do
       scope: assigns.table.caller.scope,
       actor: assigns.table.caller.actor,
       tenant: assigns.table.caller.tenant,
-      authorize?: assigns.table.options.authorize_given,
-      parent_authorize?: assigns.table.caller.authorize?,
+      authorize?: assigns.table.entry.authorize_given,
+      parent_authorize?: assigns.table.entry.authorize?,
       parent_arguments: assigns.table.entry.model.read_arguments,
       page_assigns: assigns.table.options.page_assigns,
       time_zone: assigns.table.caller.time_zone,
       depth: assigns.table.entry.depth + 1,
       depth_limit: assigns.table.entry.depth_limit,
-      lineage: assigns.table.options.lineage ++ [assigns.table.entry.id],
-      live?: passed_on(assigns.table.options.live_given)
+      lineage: assigns.table.entry.path,
+      live?: passed_on(assigns.table.entry.live_given)
     }
   end
 end

@@ -1,9 +1,9 @@
 defmodule AshDataTable.Live.Entry do
   @moduledoc false
-  # One table: what it is, what it holds and what it shows. Until stage 5
-  # of the refactor each live component holds the entry of its own table,
-  # in its `AshDataTable.Table`; then the entries of the nested tables and
-  # pickers join it there.
+  # One table: what it is, what it holds and what it shows. The table on
+  # the page is the `entry` of its `AshDataTable.Table`; the tables nested
+  # in it and those of its pickers are its `entries`
+  # (`AshDataTable.Live.Registry`).
   #
   # The fields were the assigns of the live component, set in its `mount/1`
   # and derived in its `update/2`; the comments are theirs.
@@ -14,6 +14,33 @@ defmodule AshDataTable.Live.Entry do
     # The id of the table on the page, and the resource it shows.
     id: nil,
     resource: nil,
+    # Where the table is: the ids of the tables it is rendered in, from the
+    # table on the page down, and its own last. What lies under what is
+    # decided by it, never by the ids themselves.
+    path: [],
+    # What the table was told of itself: what its grid is called (`label`,
+    # or the ids of the elements that name a nested table's grid,
+    # `labelledby`), what it was told of selecting rows (`:multi` or
+    # `:single`, nil for nothing), and of live updates (`live_given`, nil
+    # where it was told nothing).
+    label: nil,
+    labelledby: nil,
+    select: nil,
+    live_given: nil,
+    # Whether Ash authorizes its calls: what it was told (`authorize_given`,
+    # kept as it was given, for the tables nested in it), else what its own
+    # resource's domain says (`authorize?`).
+    authorize?: true,
+    authorize_given: nil,
+    # The name of its stream, and the names of the uploads it allowed:
+    # LiveView keeps both on the socket, and both go when the table does.
+    stream: nil,
+    uploads: [],
+    # For a table shown in another's row: the id of the cell its portal
+    # puts it into, and what the table it is in told it last (it is told
+    # again only when that changes).
+    target: nil,
+    given: nil,
     # The sort, filters, arguments and page (`AshDataTable.State`): an empty
     # one in `new/0`, not here, so that this module does not need `State`
     # to compile.

@@ -648,10 +648,11 @@ defmodule AshDataTable.Parts.Grid do
   attr :pending, :any, required: true
   attr :rejected, :any, required: true
   attr :row_count, :any, required: true
+  # the items of the table's stream
+  attr :rows, :any, required: true
   attr :running, :any, required: true
   attr :selecting, :any, required: true
   attr :state, :any, required: true
-  attr :streams, :any, required: true
   attr :summarised?, :any, required: true
   attr :summary, :any, required: true
   attr :summing?, :any, required: true
@@ -880,7 +881,7 @@ defmodule AshDataTable.Parts.Grid do
           stream is a row or, after its row, the row's detail (see "Nested tables"
           at the top). --%>
           <tbody
-            :for={{dom_id, row} <- @streams.rows}
+            :for={{dom_id, row} <- @rows}
             id={dom_id}
             hidden={detail?(row) && is_nil(row.lines)}
             data-detail={detail?(row)}

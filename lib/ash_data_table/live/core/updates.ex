@@ -36,7 +36,7 @@ defmodule AshDataTable.Live.Core.Updates do
   end
 
   defp listener(socket, topic) do
-    %{table: %{entry: %{resource: resource}}, myself: myself} = socket.assigns
+    %{table: %{entry: %{id: id, resource: resource}}, myself: myself} = socket.assigns
     view = self()
 
     pub_sub =
@@ -49,7 +49,7 @@ defmodule AshDataTable.Live.Core.Updates do
                 "cannot follow the changes of #{inspect(resource)}: " <> Listening.message(reason)
       end
 
-    relay = fn batch -> Phoenix.LiveView.send_update(view, myself, live: {:heard, batch}) end
+    relay = fn batch -> Phoenix.LiveView.send_update(view, myself, live: {:heard, id, batch}) end
 
     case Listener.start(pub_sub, topic, relay) do
       {:ok, pid} ->

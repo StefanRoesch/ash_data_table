@@ -24,6 +24,7 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Updates
   alias AshDataTable.Live.Core.Url
+  alias AshDataTable.Live.Registry
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Query
@@ -41,22 +42,58 @@ defmodule AshDataTable.Live.Core do
   @tables {__MODULE__, :tables}
 
   def mount(socket) do
-    {:ok,
-     socket
-     |> stream_configure(:rows, dom_id: & &1.dom_id)
-     # a nested table is rendered before its first read has come back
-     |> stream(:rows, [])
-     # Everything the table holds, in one value: what it was told, who is
-     # asking, and the table itself (`AshDataTable.Table`; every field is
-     # explained where it is defined).
-     |> assign(table: Table.new())}
+    # Everything the table holds, in one value: what it was told, who is
+    # asking, and the table itself (`AshDataTable.Table`; every field is
+    # explained where it is defined).
+    socket = assign(socket, table: Table.new())
+
+    # its stream: a nested table is rendered before its first read has
+    # come back
+    {stream, socket} = Registry.take_stream(socket)
+    {:ok, put(socket, stream: stream)}
   end
 
-  def update(assigns, socket) do
-    {:ok, socket} = told(assigns, socket)
-    socket = tidy(socket)
+  # What a listener hands over (`AshDataTable.Listener`): a batch of what was
+  # announced, each the action's type and the record's primary key, for the
+  # table whose listener it is. It is looked at once this update is done
+  # (`tidy/1`). A batch for a table that is no longer shown is dropped.
+  #
+  # The table that heard is rendered again with the details of its
+  # expanded rows: see `redetail/1`.
+  def update(%{live: {:heard, id, batch}}, socket) do
+    if Registry.known?(socket, id) do
+      socket =
+        socket
+        |> Registry.within(id, &put(&1, waiting: &1.assigns.table.entry.waiting ++ batch))
+        |> tidy()
 
-    {:ok, if(is_map_key(assigns, :live), do: Updates.redetail(socket), else: socket)}
+      {:ok,
+       if(Registry.known?(socket, id),
+         do: Registry.within(socket, id, &Updates.redetail/1),
+         else: socket
+       )}
+    else
+      {:ok, socket}
+    end
+  end
+
+  # Something that was open under one of this table's rows is open no
+  # longer, and the table holds a row back for it: it looks again
+  # (`tidy/1`).
+  def update(%{live: :released}, socket), do: {:ok, socket |> tidy() |> Updates.redetail()}
+
+  def update(assigns, socket) do
+    # what the table on the page was told of `authorize?`, nil for nothing
+    socket =
+      assign(socket,
+        table: %{
+          socket.assigns.table
+          | caller: %{socket.assigns.table.caller | authorize?: assigns[:authorize?]}
+        }
+      )
+
+    {:ok, socket} = told(assigns, socket)
+    {:ok, tidy(socket)}
   end
 
   # Every event is parsed first (`AshDataTable.Intent`): what it asks for,
@@ -64,11 +101,11 @@ defmodule AshDataTable.Live.Core do
   # payload has another shape, and one that is not named for this table,
   # gets the answer the table gives such an event (`malformed/2`).
   def handle_event(event, params, socket) do
-    {own?, plain} = addressed(event, socket.assigns.table.entry.id)
+    {id, plain} = addressed(event)
 
     result =
-      case own? && Intent.parse(plain, params) do
-        {:ok, intent} -> topic(intent).on(intent, socket)
+      case id && Registry.known?(socket, id) && Intent.parse(plain, params) do
+        {:ok, intent} -> Registry.within(socket, id, &topic(intent).on(intent, &1))
         _another_table_or_malformed -> malformed(plain, socket)
       end
 
@@ -80,16 +117,17 @@ defmodule AshDataTable.Live.Core do
   end
 
   # The browser names an event with the table it is for (target.md Q4):
-  # `ash_data_table:ID:event`, split at the first and the last `:`. Whether
-  # it is this table's, and the event's own name.
-  defp addressed(event, id) do
+  # `ash_data_table:ID:event`, split at the first and the last `:`. The
+  # table's id, a claim that is looked up among the tables shown (nil for
+  # an event without it), and the event's own name.
+  defp addressed(event) do
     case String.split(event, ":") do
       ["ash_data_table" | [_, _ | _] = rest] ->
         {ids, [plain]} = Enum.split(rest, -1)
-        {Enum.join(ids, ":") == id, plain}
+        {Enum.join(ids, ":"), plain}
 
       _unaddressed ->
-        {false, event}
+        {nil, event}
     end
   end
 
@@ -117,34 +155,31 @@ defmodule AshDataTable.Live.Core do
   defp topic(event) when event in [:bulk, :bulk_run, :bulk_seen], do: Bulk
   defp topic(event) when event in [:left, :read_again], do: Updates
 
-  def handle_async(name, result, socket) do
-    {:noreply, socket} =
-      case name do
-        :bulk -> Bulk.handle_async(name, result, socket)
-        _read_or_summary -> Reading.handle_async(name, result, socket)
-      end
+  # An answer for a table that is no longer shown is dropped: its tasks
+  # were cancelled as it closed.
+  def handle_async({:ash_data_table, id, kind}, result, socket) do
+    if Registry.known?(socket, id) do
+      {:noreply, socket} =
+        Registry.within(socket, id, fn socket ->
+          {:noreply, socket} =
+            case kind do
+              :bulk -> Bulk.handle_async(kind, result, socket)
+              _read_or_summary -> Reading.handle_async(kind, result, socket)
+            end
 
-    socket = tidy(socket)
+          # the answer to the summaries renders the table again without any
+          # of its rows, as what a listener hands over does: see `redetail/1`
+          {:noreply, if(kind == :summary, do: Updates.redetail(socket), else: socket)}
+        end)
 
-    # the answer to the summaries renders the table again without any of
-    # its rows, as what a listener hands over does: see `redetail/1`
-    {:noreply, if(name == :summary, do: Updates.redetail(socket), else: socket)}
+      {:noreply, tidy(socket)}
+    else
+      {:noreply, socket}
+    end
   end
 
   # Puts fields of the table where each lives (`AshDataTable.Table.put/2`).
   def put(socket, fields), do: assign(socket, table: Table.put(socket.assigns.table, fields))
-
-  # What a listener hands over (`AshDataTable.Listener`): a batch of what was
-  # announced, each the action's type and the record's primary key. It is
-  # looked at once this update is done (`tidy/1`).
-  defp told(%{live: {:heard, batch}}, socket) do
-    {:ok, put(socket, waiting: socket.assigns.table.entry.waiting ++ batch)}
-  end
-
-  # Something that was open under one of this table's rows is open no
-  # longer, and the table holds a row back for it: it looks again
-  # (`tidy/1`).
-  defp told(%{live: :released}, socket), do: {:ok, socket}
 
   defp told(assigns, socket) do
     socket =
@@ -154,9 +189,12 @@ defmodule AshDataTable.Live.Core do
           assigns,
           [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
-            [:select, :choose, :page_assigns, :parent_arguments, :lineage]
+            [:select, :choose, :page_assigns, :parent_arguments]
         )
       )
+
+    # where it is: under the tables it was told it is rendered in
+    socket = put(socket, path: Map.get(assigns, :lineage, []) ++ [socket.assigns.table.entry.id])
 
     # what the table was told about live updates: nil where it was told nothing
     socket = put(socket, live_given: assigns[:live?])
@@ -220,7 +258,7 @@ defmodule AshDataTable.Live.Core do
     depth_limit = socket.assigns.table.entry.depth_limit || model.max_depth
 
     expandable? = expandable?(model, socket.assigns.table.entry.depth, depth_limit)
-    selecting = selecting(socket.assigns.table.options.select, model)
+    selecting = selecting(socket.assigns.table.entry.select, model)
 
     {:ok,
      socket
@@ -443,7 +481,9 @@ defmodule AshDataTable.Live.Core do
   # (`origin`): what it changes itself is not announced to it, as it shows
   # what its action returned (`AshDataTable.Query.reader_opts/1`).
   def reader(assigns) do
-    reader = Caller.reader_opts(assigns.table.caller)
+    # with what the table resolved of `authorize?` for itself
+    reader =
+      Caller.reader_opts(%{assigns.table.caller | authorize?: assigns.table.entry.authorize?})
 
     case assigns.table.entry.live do
       %{pid: pid} -> [origin: pid] ++ reader
@@ -463,12 +503,11 @@ defmodule AshDataTable.Live.Core do
   #     to look again.
   defp tidy(socket) do
     %{
-      table: %{
-        options: %{lineage: lineage},
-        entry: %{id: id, live: live, panel: panel, picker: picker}
-      },
+      table: %{entry: %{id: id, path: path, live: live, panel: panel, picker: picker}},
       myself: myself
     } = socket.assigns
+
+    lineage = Enum.drop(path, -1)
 
     before = tables()
     was_open? = match?(%{open?: true}, before[id])
@@ -478,7 +517,7 @@ defmodule AshDataTable.Live.Core do
     open? = not is_nil(panel) or not is_nil(picker)
 
     entry = %{
-      path: lineage ++ [id],
+      path: path,
       cid: myself,
       listener: live && live.pid,
       open?: open?,

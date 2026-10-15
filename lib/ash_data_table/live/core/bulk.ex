@@ -178,6 +178,6 @@ defmodule AshDataTable.Live.Core.Bulk do
     |> Core.put(running_files: for({_name, %{path: path}} <- files, do: path))
     # The run says why a record was not done as message terms: their words
     # are made when the outcome is drawn, in this process, whose locale it is.
-    |> start_async(:bulk, run)
+    |> start_async(AshDataTable.Live.Registry.async(socket, :bulk), run)
   end
 end

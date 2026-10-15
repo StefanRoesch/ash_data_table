@@ -665,11 +665,15 @@ defmodule AshDataTable.Live.Core.Panel do
       # the detail first: each goes to the top, so the row ends up above it
       |> then(fn socket ->
         if socket.assigns.table.entry.expandable?,
-          do: stream_insert(socket, :rows, Reading.detail(id, key, nil, nil), at: 0),
+          do:
+            stream_insert(
+              socket,
+              socket.assigns.table.entry.stream,
+              Reading.detail(id, key, nil, nil), at: 0),
           else: socket
       end)
       |> stream_insert(
-        :rows,
+        socket.assigns.table.entry.stream,
         Present.row(model, record, %{
           id: id,
           key: key,

@@ -427,7 +427,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # picker's table is told too (`AshDataTable.Pick.reader/2`).
   def chooser(assigns), do: picking(assigns) ++ Core.reader(assigns)
 
-  def picking(assigns), do: [authorize_given: assigns.table.options.authorize_given]
+  def picking(assigns), do: [authorize_given: assigns.table.entry.authorize_given]
 
   # What the read action of a picker is given, from what the picker's hook
   # says its argument line holds: the line's form, as a form sends it. It
