@@ -79,4 +79,31 @@ defmodule AshDataTable.Model.Field do
   def from(%{} = field) do
     struct!(__MODULE__, %{field | fields: from(field.fields), members: from(field.members)})
   end
+
+  @doc """
+  The fields and the kinds of a value of `type`, as fields of the model
+  (`AshDataTable.Resource.Embedding`): nil for a type that has neither.
+  """
+  @spec of(Ash.Type.t(), keyword) :: %{fields: [t] | nil, members: [t] | nil} | nil
+  def of(type, constraints) do
+    case AshDataTable.Resource.Embedding.of(type, constraints) do
+      %{fields: fields, members: members} -> %{fields: from(fields), members: from(members)}
+      nil -> nil
+    end
+  end
+
+  @doc """
+  What a map that declares no fields holds: by key, in the order of their
+  names, what each key is called (its name in words) and what it holds.
+  Never the fields of a struct: what a table shows of one is said by its
+  type.
+  """
+  @spec undeclared(map) :: [{String.t(), term}]
+  def undeclared(%_{}), do: []
+
+  def undeclared(value) when is_map(value) do
+    value
+    |> Enum.sort_by(fn {key, _held} -> to_string(key) end)
+    |> Enum.map(fn {key, held} -> {AshDataTable.Resource.Words.humanize(key), held} end)
+  end
 end

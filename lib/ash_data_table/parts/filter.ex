@@ -7,7 +7,6 @@ defmodule AshDataTable.Parts.Filter do
   use Phoenix.Component
 
   alias AshDataTable.Parts
-  alias AshDataTable.Resource.Operator
   alias AshDataTable.State
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
@@ -26,14 +25,14 @@ defmodule AshDataTable.Parts.Filter do
   # They are out of the tab order: the grid is one tab stop, and the hook
   # moves focus into a filter cell.
   #
-  # What the value is given with follows from the operator
-  # (`Operator.takes/1`): one control for one value; for a range two inputs,
+  # What the value is given with follows from the operator, as the column
+  # says (`takes`): one control for one value; for a range two inputs,
   # one above the other, so that the column needs no more room than for one;
   # for several values a button that opens the list of the column's values,
   # a box for each (`choices/1`).
   def filter(assigns) do
     {operator, value} = assigns.filter || {nil, nil}
-    takes = if(operator, do: Operator.takes(operator), else: :one)
+    takes = if(operator, do: Map.fetch!(assigns.column.takes, operator), else: :one)
 
     assigns =
       assign(assigns,

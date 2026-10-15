@@ -20,8 +20,6 @@ defmodule AshDataTable.Format do
   alias AshDataTable.Model
   alias AshDataTable.Model.Column
   alias AshDataTable.Present
-  alias AshDataTable.Resource.Embedding
-  alias AshDataTable.Resource.Exposing
   alias AshDataTable.Sensitive
   alias AshDataTable.Text
   alias AshDataTable.Zone
@@ -82,8 +80,10 @@ defmodule AshDataTable.Format do
     parts =
       case fields(field, value) do
         nil ->
-          for {key, held} <- undeclared(value), text = other(held, zone), text != "" do
-            {Text.label(AshDataTable.Resource.Words.humanize(key)), text}
+          for {label, held} <- Model.Field.undeclared(value),
+              text = other(held, zone),
+              text != "" do
+            {Text.label(label), text}
           end
 
         fields ->
@@ -211,10 +211,10 @@ defmodule AshDataTable.Format do
   # holds something, the same for every value, and nothing where it does
   # not: the line says that there is a value, never which.
   defp shown(%{sensitive?: true} = inner, held, zone) do
-    cond do
-      is_struct(held, Ash.ForbiddenField) -> format(inner, held, zone)
-      Exposing.empty?(held) -> ""
-      true -> Present.mask()
+    case Sensitive.masked(held) do
+      %Ash.ForbiddenField{} -> format(inner, held, zone)
+      %Sensitive.Masked{} -> Present.mask()
+      _nothing -> ""
     end
   end
 
@@ -227,9 +227,9 @@ defmodule AshDataTable.Format do
   defp fields(%{fields: [_ | _] = fields}, _value), do: fields
 
   defp fields(%{type: {type, constraints}}, _value) when not is_nil(type) do
-    case Embedding.of(type, constraints) do
+    case Model.Field.of(type, constraints) do
       %{fields: [_ | _] = fields} ->
-        Enum.map(Model.Field.from(fields), &%{&1 | label: Text.label(&1.label)})
+        Enum.map(fields, &%{&1 | label: Text.label(&1.label)})
 
       _none ->
         nil
@@ -243,9 +243,9 @@ defmodule AshDataTable.Format do
   defp members(%{members: [_ | _] = members}), do: members
 
   defp members(%{type: {type, constraints}}) when not is_nil(type) do
-    case Embedding.of(type, constraints) do
+    case Model.Field.of(type, constraints) do
       %{members: [_ | _] = members} ->
-        Enum.map(Model.Field.from(members), &%{&1 | label: Text.label(&1.label)})
+        Enum.map(members, &%{&1 | label: Text.label(&1.label)})
 
       _none ->
         nil
@@ -262,11 +262,6 @@ defmodule AshDataTable.Format do
       :error -> Map.get(value, Atom.to_string(name))
     end
   end
-
-  # What a map that declares no fields holds, by key. Never the fields of a
-  # struct: what a table shows of one is said by its type.
-  defp undeclared(%_{}), do: []
-  defp undeclared(value), do: Enum.sort_by(value, fn {key, _held} -> to_string(key) end)
 
   # Read-only text for everything without a cell type of its own.
   defp other(nil, _zone), do: ""

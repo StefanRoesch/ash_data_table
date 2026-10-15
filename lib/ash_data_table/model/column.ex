@@ -55,6 +55,10 @@ defmodule AshDataTable.Model.Column do
   #     It is empty for a column without a filter: one the resource does not
   #     allow to be filtered, one of cell type `:other`, an array, a map
   #     cell, a union, or one the block switched off. See `AshDataTable.Resource.Operator`.
+  #   * `takes` says, by each of `operators`, what a person gives it: `:none`,
+  #     `:one` value, `:many` of the column's values, or the two ends of a
+  #     `:range` (`AshDataTable.Resource.Operator.takes/1`). The controls of the
+  #     column's filter follow from it.
   #   * `editable?` says whether a person can edit the cells of this column in
   #     principle: the column is an attribute, the attribute is writable, an
   #     update action accepts it and its cell type has an editor; or it is a
@@ -139,7 +143,8 @@ defmodule AshDataTable.Model.Column do
     sensitive?: false,
     max_lines: 1,
     fixed: %{},
-    arguments: %{}
+    arguments: %{},
+    takes: %{}
   ]
 
   @type t :: %__MODULE__{
@@ -156,6 +161,7 @@ defmodule AshDataTable.Model.Column do
           members: [AshDataTable.Model.Field.t()] | nil,
           sortable?: boolean,
           operators: [AshDataTable.Resource.Operator.t()],
+          takes: %{optional(AshDataTable.Resource.Operator.t()) => :none | :one | :many | :range},
           editable?: boolean,
           required?: boolean,
           update_action: atom | nil,

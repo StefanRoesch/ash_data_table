@@ -281,7 +281,6 @@ defmodule AshDataTable.Model do
   alias AshDataTable.Resource.Arguing
   alias AshDataTable.Resource.CellType
   alias AshDataTable.Resource.Editing
-  alias AshDataTable.Resource.Embedding
   alias AshDataTable.Resource.Exposing
   alias AshDataTable.Resource.Info, as: TableInfo
   alias AshDataTable.Resource.Listening
@@ -1830,6 +1829,13 @@ defmodule AshDataTable.Model do
     component = component!(resource, table, field, declared, label, not is_nil(update_action))
     fixed = Map.new((declared && declared.arguments) || [])
 
+    # the block can switch filtering off
+    operators =
+      if(match?(%{filterable?: false}, declared),
+        do: [],
+        else: Operator.available(resource, field)
+      )
+
     %Column{
       # a sensitive field is masked, and neither sorted nor filtered by:
       # `Reading.sortable?/3` and `Operator.available/2` say so
@@ -1857,12 +1863,8 @@ defmodule AshDataTable.Model do
       sortable?:
         Reading.sortable?(resource, field.name, pagination.strategy) and
           not match?(%{sortable?: false}, declared),
-      # and filtering likewise
-      operators:
-        if(match?(%{filterable?: false}, declared),
-          do: [],
-          else: Operator.available(resource, field)
-        )
+      operators: operators,
+      takes: Map.new(operators, &{&1, Operator.takes(&1)})
     }
   end
 
@@ -1928,8 +1930,8 @@ defmodule AshDataTable.Model do
   # The fields of a map cell, and of an array of them; nil for a map that
   # declares none, and for every other cell type.
   defp fields(cell_type, type, constraints) when cell_type in [:map, {:array, :map}] do
-    case Embedding.of(type, constraints) do
-      %{fields: fields} -> Field.from(fields)
+    case Field.of(type, constraints) do
+      %{fields: fields} -> fields
       nil -> nil
     end
   end
@@ -1939,8 +1941,8 @@ defmodule AshDataTable.Model do
   # The kinds of a union, and of an array of them; nil for every other cell
   # type.
   defp members(cell_type, type, constraints) when cell_type in [:union, {:array, :union}] do
-    case Embedding.of(type, constraints) do
-      %{members: members} -> Field.from(members)
+    case Field.of(type, constraints) do
+      %{members: members} -> members
       nil -> nil
     end
   end

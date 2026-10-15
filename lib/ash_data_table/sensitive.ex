@@ -121,9 +121,15 @@ defmodule AshDataTable.Sensitive do
   # only what can hold a record or an embedded value is looked into
   defp scrubbed?(value), do: is_list(value) or is_struct(value)
 
-  defp masked(%Ash.ForbiddenField{} = hidden), do: hidden
-  defp masked(%Ash.NotLoaded{} = not_loaded), do: not_loaded
-  defp masked(value), do: if(Exposing.empty?(value), do: value, else: %Masked{})
+  @doc """
+  A sensitive value as it is kept to be drawn: a `Masked` where it holds
+  something; as it is where it holds nothing (`empty?/1`), and where Ash
+  hid it from the person or did not load it.
+  """
+  @spec masked(term) :: term
+  def masked(%Ash.ForbiddenField{} = hidden), do: hidden
+  def masked(%Ash.NotLoaded{} = not_loaded), do: not_loaded
+  def masked(value), do: if(Exposing.empty?(value), do: value, else: %Masked{})
 
   defp sensitive_names(resource) do
     for field <-
