@@ -52,7 +52,7 @@ defmodule AshDataTable.ArchitectureTest do
   @words ~w(text.ex format.ex gettext.ex)
   # the files of the wiring, by name (4): the live component of the tag
   # hands the socket to the live core, and `AshDataTable.attached/1` draws
-  @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex)
+  @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex live/drawing.ex)
   # the files that may read from Ash (S1)
   @readers ~w(query.ex record.ex pick.ex bulk.ex)
 
@@ -94,7 +94,7 @@ defmodule AshDataTable.ArchitectureTest do
       path in @words ->
         "3w"
 
-      String.starts_with?(path, "test") ->
+      String.starts_with?(path, "test") or path == "kit_case.ex" ->
         "T"
 
       path in ~w(resource/info.ex domain/info.ex) ->
@@ -112,7 +112,7 @@ defmodule AshDataTable.ArchitectureTest do
       path == "component.ex" or String.starts_with?(path, "component/") ->
         "3c"
 
-      path == "attrs.ex" or String.starts_with?(path, ~w(parts/ kit/ components/)) ->
+      path in ~w(attrs.ex kit.ex) or String.starts_with?(path, ~w(parts/ kit/ components/)) ->
         "3"
 
       String.starts_with?(path, "live/") ->

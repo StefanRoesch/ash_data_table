@@ -2,11 +2,14 @@ defmodule AshDataTable.Parts.Related do
   @moduledoc false
   # Relationship lines under an expanded row, the nested tables in them,
   # what a table limited to related records says above its grid, and the
-  # link to the full view.
+  # link to the full view: the parts `detail`, `line`, `related` and
+  # `full_view` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Parts
+  alias AshDataTable.Parts.Common
   alias AshDataTable.Text
 
   # What is under an expanded row: one line per relationship the person is
@@ -19,103 +22,126 @@ defmodule AshDataTable.Parts.Related do
   # it belongs to ("Comments" and "Write the report"): both are on the page,
   # so the name follows the row when it is edited, and the server keeps
   # nothing for it.
+  #
+  # The detail draws a line per relationship (the kit's `line/1`).
   attr :id, :string, required: true
   attr :row, :map, required: true
   attr :model, :map, required: true
   attr :colspan, :integer, required: true
   attr :creates, :map, required: true
   attr :myself, :any, required: true
+  attr :kit, :atom, required: true
 
-  def lines(assigns) do
-    assigns =
-      assign(assigns,
-        row_id: "#{assigns.id}-row-#{assigns.row.key}",
-        first: List.first(assigns.model.columns)
-      )
-
+  def detail(assigns) do
     ~H"""
-    <%= for relationship <- @model.relationships do %>
-      <tr id={"#{@row_id}-l-#{relationship.name}"} role="row">
-        <td
-          id={"#{@row_id}-l-#{relationship.name}-c"}
-          role="gridcell"
-          colspan={@colspan}
-          aria-colindex="1"
-          tabindex="-1"
-          {Attrs.line(relationship)}
-          class="px-0 py-1"
-        >
-          <%!-- What the line holds stays at the left edge of the table's
-          scroll area while the table scrolls sideways under it, as the nested
-          table under it does: the padding of the cell is this element's, so
-          that it stands in the same place stuck and not. --%>
-          <div class="sticky left-0 w-fit px-4">
-            <button
-              type="button"
-              id={"#{@row_id}-l-#{relationship.name}-b"}
-              tabindex="-1"
-              aria-expanded={to_string(relationship.name in @row.lines)}
-              class="font-medium"
-            >
-              {relationship.label}
-            </button>
-            <%!-- The create button of the nested table, on the line that names
-            it: after the label, since the line is as wide as the table around it
-            and its far end is usually out of sight. It is shown once the nested
-            table has read (the rule is with the table's classes), and as high as
-            the line's text, so the line is as high with it as without. --%>
-            <button
-              :if={relationship.name in @row.lines and @creates[relationship.name][:create]}
-              type="button"
-              id={"#{@row_id}-l-#{relationship.name}-create"}
-              tabindex="-1"
-              data-create
-              phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "create")}
-              phx-target={@myself}
-              class="btn btn-xs ms-2 hidden h-5 align-top"
-            >
-              {@creates[relationship.name].create}
-            </button>
-            <%!-- The table actions of the nested table, after it and looking as
-            it does: shown with it, and used on the nested table. --%>
-            <button
-              :for={
-                action <-
-                  (relationship.name in @row.lines && @creates[relationship.name][:actions]) || []
-              }
-              type="button"
-              id={"#{@row_id}-l-#{relationship.name}-do-#{action.name}"}
-              tabindex="-1"
-              {Attrs.line_action(action)}
-              phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "table_act")}
-              phx-value-action={action.name}
-              phx-target={@myself}
-              class="btn btn-xs ms-2 hidden h-5 align-top"
-            >
-              {action.label}
-            </button>
-          </div>
-        </td>
-      </tr>
-      <tr :if={relationship.name in @row.lines} id={"#{@row_id}-n-#{relationship.name}"} role="row">
-        <td
-          id={"#{@row_id}-n-#{relationship.name}-c"}
-          role="gridcell"
-          colspan={@colspan}
-          aria-colindex="1"
-          tabindex="-1"
-          data-nested
-          data-line-cell={"#{@row_id}-l-#{relationship.name}-c"}
-          data-expander-cell={"#{@row_id}-e"}
-          class="p-0"
-        >
-          <%!-- The nested table is drawn by the table on the page, and the
-          browser puts it here (a portal, see `render/1` of the table
-          component), as wide as what is seen of the table around it: it
-          scrolls sideways in its own area (its grid), under its own rows. --%>
-        </td>
-      </tr>
-    <% end %>
+    <Kit.part
+      :for={relationship <- @model.relationships}
+      part={:line}
+      kit={@kit}
+      id={"#{@id}-row-#{@row.key}"}
+      relationship={relationship}
+      open?={relationship.name in @row.lines}
+      colspan={@colspan}
+      create={@creates[relationship.name][:create]}
+      actions={@creates[relationship.name][:actions] || []}
+      table={"#{@id}-row-#{@row.key}-t-#{relationship.name}"}
+      myself={@myself}
+    />
+    """
+  end
+
+  # One relationship's line under an expanded row, and under it, while it
+  # is open, the row whose one cell the nested table is moved into. `id` is
+  # the row's (`ID-row-KEY`), `table` the nested table's, whose events the
+  # line's buttons send.
+  attr :id, :string, required: true
+  attr :relationship, :map, required: true
+  attr :open?, :boolean, required: true
+  attr :colspan, :integer, required: true
+  attr :create, :any, required: true
+  attr :actions, :list, required: true
+  attr :table, :string, required: true
+  attr :myself, :any, required: true
+
+  def line(assigns) do
+    ~H"""
+    <tr id={"#{@id}-l-#{@relationship.name}"} role="row">
+      <td
+        id={"#{@id}-l-#{@relationship.name}-c"}
+        role="gridcell"
+        colspan={@colspan}
+        aria-colindex="1"
+        tabindex="-1"
+        {Attrs.line(@relationship)}
+        class="px-0 py-1"
+      >
+        <%!-- What the line holds stays at the left edge of the table's
+        scroll area while the table scrolls sideways under it, as the nested
+        table under it does: the padding of the cell is this element's, so
+        that it stands in the same place stuck and not. --%>
+        <div class="sticky left-0 w-fit px-4">
+          <button
+            type="button"
+            id={"#{@id}-l-#{@relationship.name}-b"}
+            tabindex="-1"
+            aria-expanded={to_string(@open?)}
+            class="font-medium"
+          >
+            {@relationship.label}
+          </button>
+          <%!-- The create button of the nested table, on the line that names
+          it: after the label, since the line is as wide as the table around it
+          and its far end is usually out of sight. It is shown once the nested
+          table has read (the rule is with the table's classes), and as high as
+          the line's text, so the line is as high with it as without. --%>
+          <button
+            :if={@open? and @create}
+            type="button"
+            id={"#{@id}-l-#{@relationship.name}-create"}
+            tabindex="-1"
+            data-create
+            phx-click={Common.event(@table, "create")}
+            phx-target={@myself}
+            class="btn btn-xs ms-2 hidden h-5 align-top"
+          >
+            {@create}
+          </button>
+          <%!-- The table actions of the nested table, after it and looking as
+          it does: shown with it, and used on the nested table. --%>
+          <button
+            :for={action <- (@open? && @actions) || []}
+            type="button"
+            id={"#{@id}-l-#{@relationship.name}-do-#{action.name}"}
+            tabindex="-1"
+            {Attrs.line_action(action)}
+            phx-click={Common.event(@table, "table_act")}
+            phx-value-action={action.name}
+            phx-target={@myself}
+            class="btn btn-xs ms-2 hidden h-5 align-top"
+          >
+            {action.label}
+          </button>
+        </div>
+      </td>
+    </tr>
+    <tr :if={@open?} id={"#{@id}-n-#{@relationship.name}"} role="row">
+      <td
+        id={"#{@id}-n-#{@relationship.name}-c"}
+        role="gridcell"
+        colspan={@colspan}
+        aria-colindex="1"
+        tabindex="-1"
+        data-nested
+        data-line-cell={"#{@id}-l-#{@relationship.name}-c"}
+        data-expander-cell={"#{@id}-e"}
+        class="p-0"
+      >
+        <%!-- The nested table is drawn by the table on the page, and the
+        browser puts it here (a portal, see `AshDataTable.Live.Drawing`), as
+        wide as what is seen of the table around it: it scrolls sideways in
+        its own area (its grid), under its own rows. --%>
+      </td>
+    </tr>
     """
   end
 
@@ -134,6 +160,7 @@ defmodule AshDataTable.Parts.Related do
   attr :create, :map, default: nil
   attr :actions, :list, default: []
   attr :target, :any, default: nil
+  attr :kit, :atom, required: true
 
   def related(assigns) do
     # in the host's words, as the line of the relationship is
@@ -153,7 +180,7 @@ defmodule AshDataTable.Parts.Related do
       )
 
     ~H"""
-    <div id={"#{@id}-related"} class="mb-2 flex flex-wrap items-center justify-between gap-2">
+    <div id={"#{@id}-related"} class={@kit.class(:related, %{})}>
       <h2 id={"#{@id}-related-heading"} class="font-semibold" phx-no-format><%= if @titled? do %>{hd(@parts)}<.link
             :if={@parent}
             id={"#{@id}-related-parent"}
@@ -175,23 +202,19 @@ defmodule AshDataTable.Parts.Related do
   # the destination's table, and the nested table has been read.
   def full_view?(page, full_view), do: not is_nil(page) and not is_nil(full_view)
 
+  # The link to the full view is the last row of a nested table's grid,
+  # for the same reason as its pages: reached with the arrow keys and
+  # followed with Enter.
   attr :acting?, :any, required: true
   attr :full_view, :any, required: true
   attr :id, :any, required: true
   attr :label, :any, required: true
   attr :lead, :any, required: true
   attr :model, :any, required: true
-  attr :nested?, :any, required: true
-  attr :page, :any, required: true
 
   def full_view(assigns) do
     ~H"""
-    <%!-- The link to the full view is the last row of a nested table's grid,
-    for the same reason: reached with the arrow keys and followed with Enter. --%>
-    <tr
-      :if={@nested? and full_view?(@page, @full_view)}
-      {Attrs.row("#{@id}-view-row")}
-    >
+    <tr {Attrs.row("#{@id}-view-row")}>
       <td {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}>
         <.link
           id={"#{@id}-full-view"}

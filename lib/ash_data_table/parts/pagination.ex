@@ -1,9 +1,7 @@
 defmodule AshDataTable.Parts.Pagination do
   @moduledoc false
-  # The pages of a table and "Rows per page".
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The pages of a table and "Rows per page": the part `pagination` of
+  # `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
@@ -37,20 +35,21 @@ defmodule AshDataTable.Parts.Pagination do
   attr :row_count, :integer, required: true
   attr :label, :string, required: true
   attr :target, :any, required: true
+  attr :kit, :atom, required: true
 
   def pagination(assigns) do
     ~H"""
     <nav
       :if={not @nested?}
       {Attrs.pagination(@id, @label, false)}
-      class="mt-4 flex flex-wrap items-center justify-between gap-4"
+      class={@kit.class(:pagination, %{nested?: false})}
     >
       <.pages {assigns} />
     </nav>
     <div
       :if={@nested?}
       {Attrs.pagination(@id, @label, true)}
-      class="sticky left-4 flex w-fit flex-wrap items-center justify-start gap-4"
+      class={@kit.class(:pagination, %{nested?: true})}
     >
       <.pages {assigns} />
     </div>

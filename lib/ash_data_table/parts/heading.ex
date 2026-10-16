@@ -1,9 +1,7 @@
 defmodule AshDataTable.Parts.Heading do
   @moduledoc false
   # The line of the table's name: the name, create and the table actions.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The part `heading` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
@@ -44,6 +42,7 @@ defmodule AshDataTable.Parts.Heading do
 
   attr :heading, :any, required: true
   attr :id, :any, required: true
+  attr :kit, :atom, required: true
   attr :label, :any, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
@@ -64,7 +63,7 @@ defmodule AshDataTable.Parts.Heading do
           (@heading || (@page && (@model.create || @offered != []) && is_nil(@related)))
       }
       id={"#{@id}-header"}
-      class="mb-4 flex min-h-8 items-center justify-between gap-2"
+      class={@kit.class(:heading, %{})}
     >
       <.dynamic_tag
         :if={@heading}

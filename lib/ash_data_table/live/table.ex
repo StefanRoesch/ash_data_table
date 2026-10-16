@@ -35,6 +35,8 @@ defmodule AshDataTable.Table do
   #   * `controlled`: what the host draws itself, of `:confirm` (the
   #     questions before an action) and `:panel` (the action panels), with
   #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Requests`).
+  #   * `kit`: the module the table is drawn with (`AshDataTable.Kit`),
+  #     which the wiring names; every table it shows is drawn with it.
   #
   # A table nested in a row or in a picker is placed by the table it is in:
   # it keeps no state in the URL, has no heading and is no page of its own
@@ -58,7 +60,8 @@ defmodule AshDataTable.Table do
     page_assigns: %{},
     target: nil,
     router: nil,
-    controlled: []
+    controlled: [],
+    kit: nil
   }
 
   # `authorize?` is the entry's: as each table was told it

@@ -1,12 +1,12 @@
 defmodule AshDataTable.Parts.Selection do
   @moduledoc false
-  # The line above the grid: what is selected and what can be done with it.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The line above the grid: what is selected and what can be done with it,
+  # the notice of changes, "Clear filters" and "Columns" (the kit's
+  # `columns/1`). The part `selection_line` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Model
   alias AshDataTable.Parts
   alias AshDataTable.Text
@@ -89,6 +89,7 @@ defmodule AshDataTable.Parts.Selection do
   attr :bulk, :any, required: true
   attr :choose, :any, required: true
   attr :id, :any, required: true
+  attr :kit, :atom, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
@@ -105,10 +106,7 @@ defmodule AshDataTable.Parts.Selection do
     it at one end, "Clear filters" and "Columns" at the other. As high as a
     button, so that the table does not move when one of them appears; a nested
     table keeps no room free for it. --%>
-    <div class={[
-      "flex flex-wrap items-center gap-2",
-      if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-between")
-    ]}>
+    <div class={@kit.class(:selection_line, %{nested?: @nested?})}>
       <.selection
         :if={@selecting == :multi}
         id={@id}
@@ -138,8 +136,10 @@ defmodule AshDataTable.Parts.Selection do
       >
         {Text.t(:clear_filters)}
       </button>
-      <Parts.Grid.columns
+      <Kit.part
         :if={length(@model.columns) > 1 and Parts.Grid.hideable(@model) != []}
+        part={:columns}
+        kit={@kit}
         id={@id}
         columns={Parts.Grid.hideable(@model)}
         keeps_one?={Model.keeps_one?(@model)}

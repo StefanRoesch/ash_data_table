@@ -1,14 +1,13 @@
 defmodule AshDataTable.Parts.Arguments do
   @moduledoc false
   # The argument line: what the read action and the calculations are given.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The parts `argument_line` and `argument` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   import AshDataTable.Parts.Common, only: [said: 1]
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -33,8 +32,9 @@ defmodule AshDataTable.Parts.Arguments do
   attr :errors, :list, required: true
   attr :target, :any, required: true
   attr :table, :string, required: true
+  attr :kit, :atom, required: true
 
-  defp argument(assigns) do
+  def argument(assigns) do
     assigns =
       assign(assigns,
         described: assigns.errors != [] && "#{assigns.id}-error",
@@ -114,11 +114,15 @@ defmodule AshDataTable.Parts.Arguments do
           aria-describedby={@described}
           class={["input input-sm w-40", Parts.Editors.control_edge()]}
         />
-        <Parts.Editors.count
+        <Kit.part
           :if={@counted && @argument.editor == :text}
+          part={:count}
+          kit={@kit}
           id={"#{@id}-count"}
           counted={@counted}
           value={@value}
+          floats?={false}
+          class={nil}
         />
         <%!-- An array has several controls, and its label is for none of them
         alone: they are a group, which the label names. --%>
@@ -171,11 +175,15 @@ defmodule AshDataTable.Parts.Arguments do
               aria-describedby={@counted && "#{@id}-#{at}-count"}
               class={["input input-sm w-40", Parts.Editors.control_edge()]}
             />
-            <Parts.Editors.count
+            <Kit.part
               :if={@counted}
+              part={:count}
+              kit={@kit}
               id={"#{@id}-#{at}-count"}
               counted={@counted}
               value={value}
+              floats?={false}
+              class={nil}
             />
             <button
               type="button"
@@ -217,6 +225,7 @@ defmodule AshDataTable.Parts.Arguments do
   defp argument_type(editor), do: Parts.Editors.input_type(editor)
 
   attr :id, :any, required: true
+  attr :kit, :atom, required: true
   attr :lines, :any, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
@@ -239,13 +248,12 @@ defmodule AshDataTable.Parts.Arguments do
     <form
       :if={@model.arguments != []}
       {Attrs.arguments(@id, @myself)}
-      class={[
-        "flex flex-wrap items-start gap-x-4 gap-y-2",
-        if(@nested?, do: "px-4 py-2", else: "mb-2")
-      ]}
+      class={@kit.class(:argument_line, %{nested?: @nested?})}
     >
-      <.argument
+      <Kit.part
         :for={argument <- @model.arguments}
+        part={:argument}
+        kit={@kit}
         id={"#{@id}-arg-#{Model.Argument.argument_id(argument)}"}
         named={Model.Argument.argument_id(argument)}
         name={argument_name(argument)}

@@ -1,14 +1,15 @@
 defmodule AshDataTable.Parts.Panel do
   @moduledoc false
   # The action panel and its fields: groups, unions and chosen records.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The parts `panel`, `field` and `control` of `AshDataTable.Kit.Default`;
+  # what a part draws inside it, it draws through the kit
+  # (`Parts.Common.part/1`).
   use Phoenix.Component
 
   import AshDataTable.Parts.Common, only: [said: 1]
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Act
   alias AshDataTable.Format
   alias AshDataTable.Model
@@ -28,8 +29,9 @@ defmodule AshDataTable.Parts.Panel do
   attr :id, :string, required: true
   attr :panel, Present.Panel, required: true
   # the file fields, by name: the upload LiveView keeps for each
-  attr :files, :map, default: %{}
+  attr :files, :map, required: true
   attr :target, :any, required: true
+  attr :kit, :atom, required: true
 
   def panel(assigns) do
     ~H"""
@@ -37,7 +39,7 @@ defmodule AshDataTable.Parts.Panel do
     for the reason given at the other dialog. --%>
     <dialog
       {Attrs.panel(@id, @panel, said(@panel.question), @target)}
-      class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
+      class={@kit.class(:panel, %{destructive?: @panel.destructive?})}
     >
       <%!-- `novalidate`, for the reason given at the argument line: the
       limits on a field describe, and the action judges. --%>
@@ -59,8 +61,10 @@ defmodule AshDataTable.Parts.Panel do
         >
           <p :for={message <- @panel.errors}>{said(message)}</p>
         </div>
-        <.field
+        <Kit.part
           :for={field <- @panel.fields}
+          part={:field}
+          kit={@kit}
           id={"#{@id}-panel-f-#{field.name}"}
           input={field.input}
           name={field.form_name}
@@ -107,14 +111,15 @@ defmodule AshDataTable.Parts.Panel do
   attr :name, :string, required: true
   attr :value, :any, required: true
   attr :errors, :list, required: true
-  attr :places, :list, default: []
-  attr :chosen, :any, default: nil
-  attr :clear, :atom, default: nil
-  attr :upload, :any, default: nil
+  attr :places, :list, required: true
+  attr :chosen, :any, required: true
+  attr :clear, :atom, required: true
+  attr :upload, :any, required: true
   attr :inside, :map, required: true
-  attr :target, :any, default: nil
+  attr :target, :any, required: true
+  attr :kit, :atom, required: true
 
-  defp field(assigns) do
+  def field(assigns) do
     value = assigns.value
 
     # typed hidden: a password input in place of the control of its type
@@ -328,10 +333,12 @@ defmodule AshDataTable.Parts.Panel do
         to an earlier change. Which of them the action refuses is said on the
         group around them (`data-invalid`: their places, counted from 0, as
         JSON), and the hook marks their controls. --%>
-        <Parts.Editors.list
+        <Kit.part
           :if={@input.editor == :list}
+          part={:list}
+          kit={@kit}
           id={"#{@id}-values"}
-          phx-update="ignore"
+          rest={%{"phx-update" => "ignore"}}
           label={@input.label}
           item={elem(@input.cell_type, 1)}
           limits={@limits}
@@ -352,6 +359,7 @@ defmodule AshDataTable.Parts.Panel do
         errors={@errors}
         inside={@inside}
         target={@target}
+        kit={@kit}
       />
       <.groups
         :if={@input.editor == :groups}
@@ -362,6 +370,7 @@ defmodule AshDataTable.Parts.Panel do
         errors={@errors}
         inside={@inside}
         target={@target}
+        kit={@kit}
       />
       <%!-- a union: the choice of its kind, and under it that kind's value --%>
       <.union
@@ -373,6 +382,7 @@ defmodule AshDataTable.Parts.Panel do
         errors={@errors}
         inside={@inside}
         target={@target}
+        kit={@kit}
       />
       <%!-- An argument that takes a file: LiveView's own file input, which
       shows the name of the file that was chosen, as a browser does. Its id
@@ -407,17 +417,21 @@ defmodule AshDataTable.Parts.Panel do
       starts empty whatever the record holds, and left empty it gives the
       action nothing (`AshDataTable.Act`). What it holds here is what was typed
       into it, which a patch has to bring back as it does for any field. --%>
-      <input
-        :if={@secret? and @clear != :asked}
-        type="password"
-        autocomplete="off"
+      <Kit.part
+        :if={
+          (@secret? and @clear != :asked) or
+            (not @secret? and @input.editor in [:text, :enum, :number, :date, :datetime, :plain])
+        }
+        part={:control}
+        kit={@kit}
         id={@id}
+        input={@input}
         name={@name}
         value={@value}
-        aria-required={@input.required? && "true"}
-        aria-invalid={@errors != [] && "true"}
-        aria-describedby={@described}
-        class={["input w-full", Parts.Editors.control_edge()]}
+        secret?={@secret?}
+        invalid?={@errors != []}
+        described={@described}
+        limits={@limits}
       />
       <%!-- A sensitive field that is left empty changes nothing, so it cannot
       say "no value". Where the record has a value and the action takes none,
@@ -445,62 +459,109 @@ defmodule AshDataTable.Parts.Panel do
       >
         {if @clear == :asked, do: Text.t(:keep), else: Text.t(:clear)}
       </button>
-      <textarea
-        :if={@input.editor == :text and not @secret?}
-        id={@id}
-        name={@name}
-        rows="3"
-        aria-required={@input.required? && "true"}
-        aria-invalid={@errors != [] && "true"}
-        aria-describedby={@described}
-        class={["textarea w-full", Parts.Editors.control_edge()]}
-      >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       <%!-- how long the text is, and the most it can be: under its control,
       at the end, where the eye is when the text gets long --%>
-      <Parts.Editors.count
+      <Kit.part
         :if={@counted && @input.editor == :text}
+        part={:count}
+        kit={@kit}
         id={"#{@id}-count"}
         counted={@counted}
         value={@value}
+        floats?={false}
         class="justify-self-end"
-      />
-      <select
-        :if={@input.editor == :enum}
-        id={@id}
-        name={@name}
-        aria-required={@input.required? && "true"}
-        aria-invalid={@errors != [] && "true"}
-        aria-describedby={@described}
-        class={["select w-full", Parts.Editors.control_edge()]}
-      >
-        <option :if={not @input.required? or @value == ""} value=""></option>
-        <option
-          :for={{choice, label} <- @input.values}
-          value={choice}
-          selected={to_string(choice) == @value}
-        >
-          {label}
-        </option>
-      </select>
-      <input
-        :if={@input.editor in [:number, :date, :datetime, :plain] and not @secret?}
-        type={field_type(@input.editor)}
-        step={@limits.step || Parts.Editors.input_step(@input.editor)}
-        min={@limits.min}
-        max={@limits.max}
-        id={@id}
-        name={@name}
-        value={@value}
-        aria-required={@input.required? && "true"}
-        aria-invalid={@errors != [] && "true"}
-        aria-describedby={@described}
-        class={["input w-full", Parts.Editors.control_edge()]}
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != [] and not @group?} id={"#{@id}-error"} class="mt-1 text-sm">
         <p :for={message <- @errors} data-error>{said(message)}</p>
       </div>
     </div>
+    """
+  end
+
+  # The control of a field that is typed or chosen from a list: typed
+  # hidden for a sensitive input, which is text or a number (it starts
+  # empty whatever the record holds, and left empty it gives the action
+  # nothing, `AshDataTable.Act`: what it holds here is what was typed into
+  # it, which a patch has to bring back as it does for any field); a text
+  # in a textarea, a choice in a menu, anything else in an input of its
+  # type. `limits` are what the constraints of a number say of its control.
+  attr :id, :string, required: true
+  attr :input, :map, required: true
+  attr :name, :string, required: true
+  attr :value, :any, required: true
+  attr :secret?, :boolean, required: true
+  attr :invalid?, :boolean, required: true
+  attr :described, :any, required: true
+  attr :limits, :map, required: true
+
+  def control(%{secret?: true} = assigns) do
+    ~H"""
+    <input
+      type="password"
+      autocomplete="off"
+      id={@id}
+      name={@name}
+      value={@value}
+      aria-required={@input.required? && "true"}
+      aria-invalid={@invalid? && "true"}
+      aria-describedby={@described}
+      class={["input w-full", Parts.Editors.control_edge()]}
+    />
+    """
+  end
+
+  def control(%{input: %{editor: :text}} = assigns) do
+    ~H"""
+    <textarea
+      id={@id}
+      name={@name}
+      rows="3"
+      aria-required={@input.required? && "true"}
+      aria-invalid={@invalid? && "true"}
+      aria-describedby={@described}
+      class={["textarea w-full", Parts.Editors.control_edge()]}
+    >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
+    """
+  end
+
+  def control(%{input: %{editor: :enum}} = assigns) do
+    ~H"""
+    <select
+      id={@id}
+      name={@name}
+      aria-required={@input.required? && "true"}
+      aria-invalid={@invalid? && "true"}
+      aria-describedby={@described}
+      class={["select w-full", Parts.Editors.control_edge()]}
+    >
+      <option :if={not @input.required? or @value == ""} value=""></option>
+      <option
+        :for={{choice, label} <- @input.values}
+        value={choice}
+        selected={to_string(choice) == @value}
+      >
+        {label}
+      </option>
+    </select>
+    """
+  end
+
+  def control(assigns) do
+    ~H"""
+    <input
+      type={field_type(@input.editor)}
+      step={@limits.step || Parts.Editors.input_step(@input.editor)}
+      min={@limits.min}
+      max={@limits.max}
+      id={@id}
+      name={@name}
+      value={@value}
+      aria-required={@input.required? && "true"}
+      aria-invalid={@invalid? && "true"}
+      aria-describedby={@described}
+      class={["input w-full", Parts.Editors.control_edge()]}
+    />
     """
   end
 
@@ -528,6 +589,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :errors, :list, required: true
   attr :inside, :map, required: true
   attr :target, :any, default: nil
+  attr :kit, :atom, required: true
 
   defp group(assigns) do
     ~H"""
@@ -566,6 +628,7 @@ defmodule AshDataTable.Parts.Panel do
           held={@held}
           inside={@inside}
           target={@target}
+          kit={@kit}
         />
       </div>
       <button
@@ -597,6 +660,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :errors, :list, required: true
   attr :inside, :map, required: true
   attr :target, :any, default: nil
+  attr :kit, :atom, required: true
 
   defp groups(assigns) do
     assigns = assign(assigns, items: Enum.with_index(Act.items(assigns.held)))
@@ -654,6 +718,7 @@ defmodule AshDataTable.Parts.Panel do
             held={item}
             inside={%{@inside | place: @inside.place ++ [index], path: @inside.path ++ [key]}}
             target={@target}
+            kit={@kit}
           />
         </div>
       </div>
@@ -695,6 +760,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :errors, :list, required: true
   attr :inside, :map, required: true
   attr :target, :any, default: nil
+  attr :kit, :atom, required: true
 
   defp union(assigns) do
     {member, held} =
@@ -760,13 +826,19 @@ defmodule AshDataTable.Parts.Panel do
             </option>
           </select>
         </div>
-        <.field
+        <Kit.part
           :if={@single?}
+          part={:field}
+          kit={@kit}
           id={"#{@id}-value"}
           input={@member}
           name={"#{@name}[_union_value]"}
           value={member_value(@member, @value)}
           errors={@value_errors}
+          places={[]}
+          chosen={nil}
+          clear={nil}
+          upload={nil}
           inside={@within}
           target={@target}
         />
@@ -778,6 +850,7 @@ defmodule AshDataTable.Parts.Panel do
           held={@value}
           inside={@within}
           target={@target}
+          kit={@kit}
         />
       </div>
     </div>
@@ -797,6 +870,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :held, :map, required: true
   attr :inside, :map, required: true
   attr :target, :any, default: nil
+  attr :kit, :atom, required: true
 
   defp members(assigns) do
     ~H"""
@@ -808,8 +882,14 @@ defmodule AshDataTable.Parts.Panel do
       name={"#{@name}[#{name}]"}
       value={@held[Atom.to_string(name)]}
     />
-    <.field
+    <Kit.part
       :for={%{input?: true} = inner <- @field.fields}
+      part={:field}
+      kit={@kit}
+      places={[]}
+      chosen={nil}
+      clear={nil}
+      upload={nil}
       id={"#{@id}-f-#{inner.name}"}
       input={inner}
       name={"#{@name}[#{inner.name}]"}

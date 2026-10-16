@@ -1,12 +1,11 @@
 defmodule AshDataTable.Parts.Editors do
   @moduledoc false
-  # The built-in editors: the counter of a text and the editor of a list.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The built-in editors: the counter of a text and the editor of a list,
+  # the parts `count` and `list` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Model.Limits
   alias AshDataTable.Text
 
@@ -33,11 +32,11 @@ defmodule AshDataTable.Parts.Editors do
   # Beside a control it stands in the page as text. In the editor of a cell
   # it floats (`floats?`): a popover, as the message of a failed cell is,
   # with that message's edge and ground, which the hook shows and places.
-  attr :id, :string, default: nil
+  attr :id, :string, required: true
   attr :counted, :map, required: true
-  attr :value, :any, default: ""
-  attr :floats?, :boolean, default: false
-  attr :class, :string, default: nil
+  attr :value, :any, required: true
+  attr :floats?, :boolean, required: true
+  attr :class, :string, required: true
 
   def count(assigns) do
     length = Limits.count(assigns.value, assigns.counted)
@@ -85,16 +84,18 @@ defmodule AshDataTable.Parts.Editors do
   #
   # What a control is called says its place ("Tags 2"), which changes as
   # values are added and taken away: the hook numbers them, from the two
-  # texts given here with `{n}` where the number goes.
+  # texts given here with `{n}` where the number goes. `rest` are further
+  # attributes of the list's element.
   attr :label, :string, required: true
   attr :item, :atom, required: true
   attr :limits, :map, required: true
-  attr :counted, :any, default: nil
+  attr :counted, :any, required: true
   attr :place, :atom, required: true
-  attr :values, :list, default: []
-  attr :name, :string, default: nil
-  attr :id, :string, default: nil
-  attr :rest, :global
+  attr :values, :list, required: true
+  attr :name, :string, required: true
+  attr :id, :string, required: true
+  attr :rest, :map, required: true
+  attr :kit, :atom, required: true
 
   def list(assigns) do
     ~H"""
@@ -109,6 +110,7 @@ defmodule AshDataTable.Parts.Editors do
       {@rest}
     >
       <template><.list_item
+        kit={@kit}
         label={@label}
         item={@item}
         limits={@limits}
@@ -121,6 +123,7 @@ defmodule AshDataTable.Parts.Editors do
       /></template>
       <.list_item
         :for={{value, position} <- Enum.with_index(@values, 1)}
+        kit={@kit}
         label={@label}
         item={@item}
         limits={@limits}
@@ -190,7 +193,16 @@ defmodule AshDataTable.Parts.Editors do
           control_edge()
         ]}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
-      <.count :if={@item == :text && @counted} id={@count_id} counted={@counted} value={@value} />
+      <Kit.part
+        :if={@item == :text && @counted}
+        part={:count}
+        kit={@kit}
+        id={@count_id}
+        counted={@counted}
+        value={@value}
+        floats?={false}
+        class={nil}
+      />
       <input
         :if={@item in [:number, :date, :datetime]}
         type={input_type(@item)}

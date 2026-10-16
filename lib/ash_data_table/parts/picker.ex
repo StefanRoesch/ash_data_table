@@ -1,6 +1,7 @@
 defmodule AshDataTable.Parts.Picker do
   @moduledoc false
-  # The picker dialog around the table a record is chosen from.
+  # The picker dialog around the table a record is chosen from: the part
+  # `picker` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   import AshDataTable.Parts.Common, only: [said: 1]
@@ -23,13 +24,14 @@ defmodule AshDataTable.Parts.Picker do
   # what `AshDataTable.Present.picker/1` gives of the open picker
   attr :picker, Present.Picker, required: true
   attr :target, :any, required: true
+  attr :kit, :atom, required: true
   slot :inner_block, required: true
 
   def picker(assigns) do
     ~H"""
     <dialog
       {Attrs.picker(@id, said(@picker.question), @picker.several?, @target)}
-      class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-3xl overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
+      class={@kit.class(:picker, %{})}
     >
       <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{said(@picker.title)}</h2>
       <%!-- the row that was chosen names no record this person may read --%>

@@ -1,11 +1,9 @@
 defmodule AshDataTable.Parts.Messages do
   @moduledoc false
-  # What the table says: the live region, the notice of changes, the
-  # result of a run, the question dialog, the failure of a cell, the whole
-  # text of a cell, and the error, loading, fill and empty messages.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # What the table says: the live region and the result of a run (the
+  # part `status`), the notice of changes, the question dialog (`confirm`),
+  # the whole text of a cell (`whole_text`), and the error, loading, fill
+  # and empty messages (`message`), of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   import AshDataTable.Parts.Common, only: [said: 1]
@@ -55,13 +53,14 @@ defmodule AshDataTable.Parts.Messages do
   attr :announcements, :any, required: true
   attr :id, :any, required: true
   attr :result, :any, required: true
+  attr :kit, :atom, required: true
 
   def status(assigns) do
     ~H"""
     <%!-- Read out after each filter change, and when a save fails. A live region
     is only read when its content changes, so every other announcement ends in a
     no-break space. --%>
-    <p {Attrs.status(@id)} class="sr-only" phx-no-format>{said(@announcement)}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
+    <p {Attrs.status(@id)} class={@kit.class(:status, %{})} phx-no-format>{said(@announcement)}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
     <%!-- What the last action on the selected rows came to: on how many records
     it ran, on how many it did not, and why not. It is read out through the live
     region above, and stays until the selection changes. In the text colour. --%>
@@ -72,20 +71,8 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  attr :acting?, :any, required: true
-  attr :editing?, :any, required: true
   attr :id, :any, required: true
-
-  def failure(assigns) do
-    ~H"""
-    <%!-- The message of a cell whose save failed, for the one case in which
-    the hook has to mark the cell itself: the record is gone, so there is
-    no row to send. --%>
-    <template :if={@editing? or @acting?} phx-no-format id={"#{@id}-failure"}>{Parts.Common.failure_message(nil, "")}</template>
-    """
-  end
-
-  attr :id, :any, required: true
+  attr :kit, :atom, required: true
 
   def whole(assigns) do
     ~H"""
@@ -99,8 +86,7 @@ defmodule AshDataTable.Parts.Messages do
     <div
       phx-no-format
       {Attrs.whole(@id)}
-      class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow"
-      phx-no-format
+      class={@kit.class(:whole_text, %{})}
     ></div>
     """
   end
@@ -108,6 +94,7 @@ defmodule AshDataTable.Parts.Messages do
   attr :bulk, :any, required: true
   attr :id, :any, required: true
   attr :model, :any, required: true
+  attr :kit, :atom, required: true
 
   def dialog(assigns) do
     ~H"""
@@ -119,10 +106,7 @@ defmodule AshDataTable.Parts.Messages do
       <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
         a dialog that is not visible yet when it opens cannot take the focus. Its
         edge is its shadow, which forced colours take away: there it has a border. --%>
-      <dialog
-        {Attrs.confirm(@id)}
-        class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
-      >
+      <dialog {Attrs.confirm(@id)} class={@kit.class(:confirm, %{})}>
         <form method="dialog">
           <p id={"#{@id}-dialog-question"}></p>
           <div class="mt-6 flex justify-end gap-2">
@@ -137,45 +121,39 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  attr :error, :any, required: true
-  attr :fill, :any, required: true
-  attr :id, :any, required: true
-  attr :loading?, :any, required: true
-  attr :nested?, :any, required: true
-  attr :row_count, :any, required: true
+  # What is said in place of the rows: the error of a read (`role=alert`),
+  # a nested table whose first read is on its way (`:loading`), an argument
+  # the read action requires that is empty (`:fill`: no read is run, and it
+  # is neither an error nor "No records"; it is read out through the live
+  # region), and "No records" (`:empty`). In the text colour: the error
+  # colour is too faint for small text.
+  attr :id, :string, required: true
+  attr :kind, :atom, required: true
+  attr :text, :string, required: true
+  attr :nested?, :boolean, required: true
+  attr :kit, :atom, required: true
 
-  def messages(assigns) do
+  def message(assigns) do
     ~H"""
-    <%!-- in the text colour: the error colour is too faint for small text --%>
     <p
-      :if={@error}
-      id={"#{@id}-error"}
-      role="alert"
-      class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm font-medium"]}
+      id={"#{@id}-#{@kind}"}
+      role={@kind == :error && "alert"}
+      class={@kit.class(:message, %{kind: @kind, nested?: @nested?})}
     >
-      {said(@error)}
-    </p>
-    <%!-- a nested table whose first read is on its way --%>
-    <p :if={@loading?} id={"#{@id}-loading"} class="py-4 text-center text-sm opacity-70">
-      {Text.t(:loading)}
-    </p>
-    <%!-- In place of the rows while an argument that the read action requires
-    is empty: no read is run, and this is neither an error nor "No records".
-    It is read out through the live region above. --%>
-    <p
-      :if={@fill}
-      id={"#{@id}-fill"}
-      class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
-    >
-      {said(@fill)}
-    </p>
-    <p
-      :if={is_nil(@error) and is_nil(@fill) and @row_count == 0 and not @loading?}
-      id={"#{@id}-empty"}
-      class={[if(@nested?, do: "py-4", else: "py-8"), "text-center text-sm opacity-70"]}
-    >
-      {Text.t(:no_records)}
+      {@text}
     </p>
     """
+  end
+
+  # The messages the table shows now, each with what it says.
+  def messages(error, fill, loading?, row_count) do
+    [
+      error && {:error, said(error)},
+      loading? && {:loading, Text.t(:loading)},
+      fill && {:fill, said(fill)},
+      (is_nil(error) and is_nil(fill) and row_count == 0 and not loading?) &&
+        {:empty, Text.t(:no_records)}
+    ]
+    |> Enum.filter(& &1)
   end
 end

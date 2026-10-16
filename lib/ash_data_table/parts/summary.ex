@@ -1,14 +1,15 @@
 defmodule AshDataTable.Parts.Summary do
   @moduledoc false
-  # The footer row of the summaries.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # The footer of the grid: the row of the summaries, and in a nested table
+  # the row of its pages and the row of its link to the full view. The
+  # parts `footer` and `summary_cell` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Format
   alias AshDataTable.Parts
+  alias AshDataTable.Parts.Common
   alias AshDataTable.Text
 
   # The summary of a column in the footer row: what it is ("Sum") and the
@@ -41,9 +42,123 @@ defmodule AshDataTable.Parts.Summary do
   defp summary_text(:min), do: :summary_min
   defp summary_text(:max), do: :summary_max
 
+  # The cell of a column in the footer row: what varies of it is
+  # `AshDataTable.Attrs.summary/2`'s; its id, place, role and `tabindex` are
+  # written here, as the row is sent again while its summaries are on their
+  # way and once more when they are there (D3 b).
+  attr :id, :string, required: true
+  attr :column, :map, required: true
+  attr :colindex, :integer, required: true
+  attr :summary, :any, required: true
+  attr :summing?, :boolean, required: true
+  attr :time_zone, :string, required: true
+
+  def summary_cell(assigns) do
+    ~H"""
+    <td
+      id={@id}
+      role="gridcell"
+      aria-colindex={@colindex}
+      tabindex="-1"
+      {Attrs.summary(@column, @summing?)}
+      class="whitespace-nowrap"
+      phx-no-format
+    ><.summary :if={@column.summary} column={@column} summary={@summary} time_zone={@time_zone} /></td>
+    """
+  end
+
+  # The footer of the grid. In the text of the table: the range reads as it
+  # does under a table on a page, not as a footer's heading. What the two
+  # rows of a nested table hold stays at the left edge of the table's
+  # scroll area, as what a line holds does.
+  #
+  # The pages of a nested table are a last row of its grid: reached with
+  # the arrow keys and entered with Enter, as a filter is, and no tab stop in
+  # the middle of the grid around it. The element stays where it is once it
+  # is there, as every child of a stream's container with an id does.
+  attr :acting?, :any, required: true
+  attr :expandable?, :any, required: true
+  attr :full_view, :any, required: true
+  attr :id, :any, required: true
+  attr :kit, :atom, required: true
+  attr :label, :any, required: true
+  attr :lead, :any, required: true
+  attr :model, :any, required: true
+  attr :myself, :any, required: true
+  attr :nested?, :any, required: true
+  attr :page, :any, required: true
+  attr :row_count, :any, required: true
+  attr :selecting, :any, required: true
+  attr :state, :any, required: true
+  attr :summarised?, :any, required: true
+  attr :summary, :any, required: true
+  attr :summing?, :any, required: true
+  attr :time_zone, :any, required: true
+
+  def footer(assigns) do
+    ~H"""
+    <tfoot
+      id={"#{@id}-foot"}
+      class="font-normal text-base-content"
+      hidden={
+        not (@summarised? and not is_nil(@page)) and
+          not (@nested? and
+                 (Parts.Pagination.pages?(@page, @model) or
+                    Parts.Related.full_view?(@page, @full_view)))
+      }
+    >
+      <.summaries
+        acting?={@acting?}
+        expandable?={@expandable?}
+        id={@id}
+        kit={@kit}
+        lead={@lead}
+        model={@model}
+        page={@page}
+        selecting={@selecting}
+        summarised?={@summarised?}
+        summary={@summary}
+        summing?={@summing?}
+        time_zone={@time_zone}
+      />
+      <tr
+        :if={@nested? and Parts.Pagination.pages?(@page, @model)}
+        {Attrs.row("#{@id}-foot-row")}
+      >
+        <td {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}>
+          <Kit.part
+            part={:pagination}
+            kit={@kit}
+            id={@id}
+            nested?={true}
+            page={@page}
+            model={@model}
+            state={@state}
+            row_count={@row_count}
+            label={@label}
+            target={@myself}
+          />
+        </td>
+      </tr>
+      <Kit.part
+        :if={@nested? and Parts.Related.full_view?(@page, @full_view)}
+        part={:full_view}
+        kit={@kit}
+        acting?={@acting?}
+        full_view={@full_view}
+        id={@id}
+        label={@label}
+        lead={@lead}
+        model={@model}
+      />
+    </tfoot>
+    """
+  end
+
   attr :acting?, :any, required: true
   attr :expandable?, :any, required: true
   attr :id, :any, required: true
+  attr :kit, :atom, required: true
   attr :lead, :any, required: true
   attr :model, :any, required: true
   attr :page, :any, required: true
@@ -53,7 +168,7 @@ defmodule AshDataTable.Parts.Summary do
   attr :summing?, :any, required: true
   attr :time_zone, :any, required: true
 
-  def summaries(assigns) do
+  defp summaries(assigns) do
     ~H"""
     <%!-- The summaries: one more row of the grid after the last record,
     with a cell under every column, so that each number stands under its
@@ -80,16 +195,17 @@ defmodule AshDataTable.Parts.Summary do
         tabindex="-1"
       >
       </td>
-      <td
+      <Kit.part
         :for={{column, index} <- Enum.with_index(@model.columns)}
+        part={:summary_cell}
+        kit={@kit}
         id={"#{@id}-summary-#{column.name}"}
-        role="gridcell"
-        aria-colindex={Parts.Common.colindex(index, @lead)}
-        tabindex="-1"
-        {Attrs.summary(column, @summing?)}
-        class="whitespace-nowrap"
-        phx-no-format
-      ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} time_zone={@time_zone} /></td>
+        column={column}
+        colindex={Common.colindex(index, @lead)}
+        summary={@summary && @summary[column.name]}
+        summing?={@summing?}
+        time_zone={@time_zone}
+      />
       <td
         :if={@acting?}
         id={"#{@id}-summaries-actions"}

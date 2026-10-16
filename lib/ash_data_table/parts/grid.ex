@@ -1,18 +1,22 @@
 defmodule AshDataTable.Parts.Grid do
   @moduledoc false
   # The grid: the header row, the filter row, the rows and their cells,
-  # the footer, the editors the hook copies into a cell, and the "Columns" list.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # the editors the hook copies into a cell, and the "Columns" list. The
+  # parts `grid`, `header_cell`, `filter_cell`, `row`, `cell`,
+  # `actions_cell`, `resizer`, `editor` and `columns` of
+  # `AshDataTable.Kit.Default`; what a part draws inside it, it draws
+  # through the kit (`Parts.Common.part/1`), so that a kit that replaces
+  # one part keeps the others.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Kit
   alias AshDataTable.Edit
   alias AshDataTable.Format
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
+  alias AshDataTable.Parts.Common
   alias AshDataTable.Present
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
@@ -32,7 +36,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :id, :string, required: true
   attr :column, :map, required: true
 
-  defp resizer(assigns) do
+  def resizer(assigns) do
     ~H"""
     <span
       id={@id}
@@ -84,7 +88,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :columns, :list, required: true
   attr :keeps_one?, :boolean, required: true
   attr :state, :map, required: true
-  attr :class, :any, default: nil
+  attr :class, :any, required: true
 
   def columns(assigns) do
     ~H"""
@@ -167,24 +171,13 @@ defmodule AshDataTable.Parts.Grid do
   # `id` is the id of the editor's `<template>`. What is in a template is
   # not in the page, and one copy of it at most is: an id that starts with
   # it is the id of one element.
+  #
+  # A column whose component edits has the component's editor instead
+  # (`grid/1`); the kit's `editor/1` draws the others.
   attr :id, :string, required: true
   attr :column, :map, required: true
   attr :allow_nil?, :boolean, required: true
-
-  # A column whose component edits: the editor is the component's.
-  defp editor(%{column: %{editor: :component}} = assigns) do
-    ~H"""
-    <Parts.Common.dynamic_component
-      module={@column.component.module}
-      function={:editor}
-      value=""
-      label={@column.label}
-      column={@column.component.column}
-      place={:grid}
-      control={Attrs.component_control(@column)}
-    />
-    """
-  end
+  attr :kit, :atom, required: true
 
   # A sensitive column, which is text or a number: a password input, so that
   # what is typed is not shown. The hook opens it empty.
@@ -194,7 +187,7 @@ defmodule AshDataTable.Parts.Grid do
   # beside the input does: "Clear", named with the column. The two are the
   # editor then, and the input is its control. The hook takes the button
   # out for a cell that holds nothing.
-  defp editor(%{column: %{sensitive?: true}} = assigns) do
+  def editor(%{column: %{sensitive?: true}} = assigns) do
     assigns = assign(assigns, clearable?: Edit.clearable?(assigns.column))
 
     ~H"""
@@ -235,7 +228,7 @@ defmodule AshDataTable.Parts.Grid do
   # which the hook shows under the cell at its end while the editor is
   # open, as it shows the message of a failed cell: neither the row nor the
   # column moves. The two are the editor; the textarea is its control.
-  defp editor(%{column: %{editor: :text}} = assigns) do
+  def editor(%{column: %{editor: :text}} = assigns) do
     assigns = assign(assigns, counted: Limits.counted(assigns.column))
 
     ~H"""
@@ -252,12 +245,20 @@ defmodule AshDataTable.Parts.Grid do
         {Attrs.counted_control(@id, @column)}
         class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none"
       ></textarea>
-      <Parts.Editors.count id={"#{@id}-count"} counted={@counted} value="" floats?={true} />
+      <Kit.part
+        part={:count}
+        kit={@kit}
+        id={"#{@id}-count"}
+        counted={@counted}
+        value=""
+        floats?={true}
+        class={nil}
+      />
     </div>
     """
   end
 
-  defp editor(%{column: %{editor: :boolean}} = assigns) do
+  def editor(%{column: %{editor: :boolean}} = assigns) do
     ~H"""
     <input
       type="checkbox"
@@ -268,7 +269,7 @@ defmodule AshDataTable.Parts.Grid do
     """
   end
 
-  defp editor(%{column: %{editor: :enum}} = assigns) do
+  def editor(%{column: %{editor: :enum}} = assigns) do
     ~H"""
     <select
       aria-label={@column.label}
@@ -284,7 +285,7 @@ defmodule AshDataTable.Parts.Grid do
   # An array of enum values is edited as multiple choice: one box per value
   # of the enum, in declared order. The boxes are a group, which the column
   # names; each is named by the label of its value.
-  defp editor(%{column: %{editor: :choices}} = assigns) do
+  def editor(%{column: %{editor: :choices}} = assigns) do
     ~H"""
     <div role="group" aria-label={@column.label} class="flex flex-col items-start gap-1 py-0.5">
       <label :for={{choice, label} <- @column.values} class="flex items-center gap-2">
@@ -300,19 +301,22 @@ defmodule AshDataTable.Parts.Grid do
   end
 
   # Any other array is edited value by value.
-  defp editor(%{column: %{editor: :list, cell_type: {:array, item}}} = assigns) do
+  def editor(%{column: %{editor: :list, cell_type: {:array, item}}} = assigns) do
     assigns = assign(assigns, item: item)
 
     ~H"""
-    <Parts.Editors.list
+    <Kit.part
+      part={:list}
+      kit={@kit}
       id={"#{@id}-list"}
-      role="group"
-      aria-label={@column.label}
+      rest={%{"role" => "group", "aria-label" => @column.label}}
       label={@column.label}
       item={@item}
       limits={Limits.of(@column)}
       counted={@item == :text && Limits.counted(@column)}
       place={:grid}
+      values={[]}
+      name={nil}
     />
     """
   end
@@ -320,7 +324,7 @@ defmodule AshDataTable.Parts.Grid do
   # The control of a number says what the attribute's constraints say of it
   # (`AshDataTable.Model.Limits`). Nothing in the browser checks it against them:
   # the hook sends what the control holds, and Ash says what is wrong with it.
-  defp editor(assigns) do
+  def editor(assigns) do
     assigns = assign(assigns, limits: Limits.of(assigns.column))
 
     ~H"""
@@ -345,44 +349,265 @@ defmodule AshDataTable.Parts.Grid do
   defp sort_mark({name, :desc}, %{name: name}), do: " ▼"
   defp sort_mark(_sort, _column), do: ""
 
-  defp action_failure(_id, %{action_failure: nil}), do: []
+  # The header of a column: its label, the mark of the sort, the handle
+  # that resizes it (the kit's `resizer/1`). `attrs` is what varies
+  # (`AshDataTable.Attrs.column_header/5`); its id, place, role, name and
+  # `tabindex` are written here, as of every element drawn once per column
+  # (the design note of stage 7, D3 b).
+  attr :id, :string, required: true
+  attr :column, :map, required: true
+  attr :colindex, :integer, required: true
+  attr :attrs, :map, required: true
+  attr :sort, :any, required: true
+  attr :resizer, :string, required: true
+  attr :kit, :atom, required: true
 
-  defp action_failure(id, %{action_failure: message}),
-    do: Parts.Common.failure_message("#{id}-error", message)
+  def header_cell(assigns) do
+    ~H"""
+    <th
+      id={@id}
+      role="columnheader"
+      scope="col"
+      aria-colindex={@colindex}
+      aria-label={@column.label}
+      tabindex="-1"
+      {@attrs}
+      class={[
+        "relative whitespace-nowrap",
+        @column.sortable? && "cursor-pointer select-none"
+      ]}
+      phx-no-format
+    >{@column.label}<span :if={@column.sortable?} aria-hidden="true">{sort_mark(@sort, @column)}</span><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} /></th>
+    """
+  end
 
-  # A cell whose save failed shows what was typed, as the cell would show it
-  # had it been saved, and holds the action's message. The message is a
-  # popover the hook opens while the cell has focus or the pointer, so that
-  # the row keeps its height; it is in the text colour on the page's
-  # background, as the error colour is too faint for small text.
-  defp cell_content(id, column, row, zone) do
-    cell = row.cells[column.name]
+  # The cell of a column in the filter row, with the column's filter (the
+  # kit's `filter/1`) where the column has one (`data-filter`).
+  attr :id, :string, required: true
+  attr :column, :map, required: true
+  attr :colindex, :integer, required: true
+  attr :table, :string, required: true
+  attr :form, :string, required: true
+  attr :filter, :any, required: true
+  attr :rejected?, :boolean, required: true
+  attr :applied?, :boolean, required: true
+  attr :target, :any, required: true
+  attr :kit, :atom, required: true
 
-    case cell.failure do
-      # a sensitive cell shows what it shows at rest, never what was typed
-      %{message: message} when column.sensitive? ->
-        {:safe, shown} = column |> shown(cell, zone) |> Phoenix.HTML.html_escape()
-        {:safe, message} = Parts.Common.failure_message("#{id}-error", message)
-        {:safe, [shown, message]}
+  def filter_cell(assigns) do
+    ~H"""
+    <td
+      id={@id}
+      role="gridcell"
+      aria-colindex={@colindex}
+      tabindex="-1"
+      data-filter={@column.operators != []}
+    >
+      <Kit.part
+        :if={@column.operators != []}
+        part={:filter}
+        kit={@kit}
+        id={@id}
+        table={@table}
+        form={@form}
+        column={@column}
+        filter={@filter}
+        rejected?={@rejected?}
+        applied?={@applied?}
+        target={@target}
+      />
+    </td>
+    """
+  end
 
-      %{typed: typed, message: message} ->
-        {:safe, shown} = typed |> typed(column, zone) |> paragraph(column, false)
-        {:safe, message} = Parts.Common.failure_message("#{id}-error", message)
-        {:safe, [shown, message]}
+  # The row of a record: the box that selects it, its expander, a cell per
+  # column and the actions cell (the kit's `actions_cell/1`). Written without whitespace on purpose: every byte of a
+  # row is sent again whenever the row is, and a cell's text must not be
+  # padded. The constant attributes of the row and its cells are written
+  # here; what varies is `AshDataTable.Attrs.cell/5`'s (D3 b). What a cell
+  # holds is the column's component's, else the kit's `cell/1`'s
+  # (`component?/2`).
+  attr :dom_id, :string, required: true
+  attr :row, :any, required: true
+  attr :id, :string, required: true
+  attr :columns, :list, required: true
+  attr :actions, :list, required: true
+  attr :lead, :integer, required: true
+  attr :selecting, :any, required: true
+  attr :expandable?, :boolean, required: true
+  attr :acting?, :boolean, required: true
+  attr :editing?, :boolean, required: true
+  attr :open, :any, required: true
+  attr :asks?, :boolean, required: true
+  attr :time_zone, :string, required: true
+  attr :kit, :atom, required: true
 
-      nil ->
-        column |> shown(cell, zone) |> paragraph(column, cell.state == :forbidden)
-    end
+  def row(assigns) do
+    ~H"""
+    <tr
+      id={"#{@dom_id}-r"}
+      role="row"
+      aria-rowindex={@row.rowindex}
+      phx-no-format
+    ><td
+      :if={@selecting}
+      id={"#{@dom_id}-s"}
+      role="gridcell"
+      aria-colindex="1"
+      tabindex="-1"
+      data-selector
+    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={Text.t(:select_row)} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={Text.t(:select_row)} class="radio radio-xs border-base-content/50" /></td><td
+      :if={@expandable?}
+      id={"#{@dom_id}-e"}
+      role="gridcell"
+      aria-colindex={@lead}
+      tabindex="-1"
+      data-expander
+    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={Text.t(:related_records)}></button></td><td
+      :for={{column, colindex, cell} <- cells(@columns, @lead, @row)}
+      id={"#{@dom_id}-c-#{column.name}"}
+      role="gridcell"
+      aria-colindex={colindex}
+      tabindex="-1"
+      {Attrs.cell("#{@dom_id}-c-#{column.name}", column, @editing?, @row, @time_zone)}
+    ><Common.dynamic_component
+      :if={component?(column, cell)}
+      module={column.component.module}
+      function={:cell}
+      value={cell.value}
+      text={Format.format(column, cell.value, @time_zone)}
+      column={column.component.column}
+    /><Kit.part
+      :if={!component?(column, cell)}
+      part={:cell}
+      kit={@kit}
+      id={"#{@dom_id}-c-#{column.name}"}
+      column={column}
+      state={cell.state}
+      value={cell.value}
+      text={cell.state == :value && Format.format(column, cell.value, @time_zone)}
+      failure={cell.failure}
+      time_zone={@time_zone}
+    /></td><Kit.part
+      :if={@acting?}
+      part={:actions_cell}
+      kit={@kit}
+      id={"#{@dom_id}-a"}
+      colindex={length(@columns) + @lead + 1}
+      row={@row}
+      actions={@actions}
+      open={@open}
+      asks?={@asks?}
+    /></tr>
+    """
+  end
+
+  # The cells of a record's row: each column, where it stands, and what
+  # `AshDataTable.Present.Row` says of the cell.
+  defp cells(columns, lead, row) do
+    for {column, index} <- Enum.with_index(columns),
+        do: {column, Common.colindex(index, lead), row.cells[column.name]}
+  end
+
+  # What a cell of a record holds (the design note of stage 7, D10): the
+  # column's component draws a value that is there and that the person may
+  # see; anything else is the kit's `cell/1`'s, which is never given a value
+  # the person may not see, nor the value of a sensitive cell
+  # (`AshDataTable.Present.Cell`).
+  defp component?(%{component: %{cell?: true}}, %{state: :value, failure: nil}), do: true
+  defp component?(_column, _cell), do: false
+
+  # What a cell of a record shows (`AshDataTable.Kit.Default.cell/1`):
+  # its value, as the column's type shows it, nothing where it is empty,
+  # the mask of a sensitive value, "Not available" for the eye of nobody
+  # where the person may not see it. A cell whose save failed shows what
+  # was typed, as the cell would show it had it been saved, and holds the
+  # action's message (the kit's `failure/1`); a sensitive one what it shows
+  # at rest, never what was typed.
+  attr :id, :string, required: true
+  attr :column, :map, required: true
+  attr :state, :atom, required: true
+  attr :value, :any, required: true
+  attr :text, :any, required: true
+  attr :failure, :any, required: true
+  attr :time_zone, :string, required: true
+  attr :kit, :atom, required: true
+
+  def cell(%{failure: nil} = assigns) do
+    ~H"""
+    {shown(@column, @state, @value, @text, @time_zone)}
+    """
+  end
+
+  def cell(%{column: %{sensitive?: true}} = assigns) do
+    ~H"""
+    {shown(@column, @state, nil, nil, @time_zone)}<Kit.part
+      part={:failure}
+      kit={@kit}
+      id={"#{@id}-error"}
+      message={@failure.message}
+    />
+    """
+  end
+
+  def cell(assigns) do
+    ~H"""
+    {@failure.typed |> typed(@column, @time_zone) |> paragraph(@column)}<Kit.part
+      part={:failure}
+      kit={@kit}
+      id={"#{@id}-error"}
+      message={@failure.message}
+    />
+    """
+  end
+
+  # The cell of a record's actions: "Open" where the page offers it, a
+  # button per row action, and the message of an action that failed (the
+  # kit's `failure/1`). `id` is the cell's; what varies of it is
+  # `AshDataTable.Attrs.actions/2`'s, of a button `Attrs.action/2`'s (D3 b).
+  attr :id, :string, required: true
+  attr :colindex, :integer, required: true
+  attr :row, :any, required: true
+  attr :actions, :list, required: true
+  attr :open, :any, required: true
+  attr :asks?, :boolean, required: true
+  attr :kit, :atom, required: true
+
+  def actions_cell(assigns) do
+    ~H"""
+    <td
+      id={@id}
+      role="gridcell"
+      aria-colindex={@colindex}
+      tabindex="-1"
+      data-actions
+      {Attrs.actions(@id, @row)}
+      phx-no-format
+    ><button
+      :if={@open}
+      type="button"
+      id={"#{@id}-open"}
+      tabindex="-1"
+      data-open
+      class="btn btn-xs -my-1 me-1"
+    >{@open}</button><button
+      :for={action <- @actions}
+      type="button"
+      id={"#{@id}-#{action.name}"}
+      tabindex="-1"
+      data-action={action.name}
+      {Attrs.action(action, @asks?)}
+      class="btn btn-xs -my-1 me-1"
+    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={@row.action_failure} /></td>
+    """
   end
 
   # The text of a cell whose column says `max_lines` is a paragraph: that is
   # what wraps and is cut off after the last line. An empty cell holds
-  # nothing, as everywhere, and the cell of a field the person may not see
-  # holds what it holds in every column.
-  defp paragraph(shown, %{max_lines: 1}, _forbidden?), do: Phoenix.HTML.html_escape(shown)
-  defp paragraph(shown, _column, true), do: Phoenix.HTML.html_escape(shown)
+  # nothing, as everywhere.
+  defp paragraph(shown, %{max_lines: 1}), do: shown
 
-  defp paragraph(shown, _column, false) do
+  defp paragraph(shown, _column) do
     {:safe, shown} = Phoenix.HTML.html_escape(shown)
 
     if IO.iodata_length(shown) == 0,
@@ -391,8 +616,8 @@ defmodule AshDataTable.Parts.Grid do
   end
 
   # What was typed into an editor, as its cell shows it.
-  defp typed("true", %{editor: :boolean} = column, zone), do: cell(column, true, zone)
-  defp typed("false", %{editor: :boolean} = column, zone), do: cell(column, false, zone)
+  defp typed("true", %{editor: :boolean} = column, zone), do: value(column, true, nil, zone)
+  defp typed("false", %{editor: :boolean} = column, zone), do: value(column, false, nil, zone)
 
   defp typed(typed, %{editor: :enum, values: values}, _zone) do
     Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
@@ -416,13 +641,13 @@ defmodule AshDataTable.Parts.Grid do
   # What a cell shows, by what it holds (`AshDataTable.Present.Cell`).
   #
   # A field the actor may not see on this row looks empty and is announced.
-  defp shown(_column, %{state: :forbidden}, _zone) do
+  defp shown(_column, :forbidden, _value, _text, _zone) do
     {:safe, [~s(<span class="sr-only" data-unseen>), escape(Text.t(:not_available)), "</span>"]}
   end
 
   # A record that has no value has an empty cell, whatever its column: what
   # "empty" looks like is the table's to say, in one way for all columns.
-  defp shown(_column, %{state: :empty}, _zone), do: ""
+  defp shown(_column, :empty, _value, _text, _zone), do: ""
 
   # A sensitive value is not shown: the cell holds a mask, the same for
   # every value and for the eye only, what a screen reader says in its
@@ -433,7 +658,7 @@ defmodule AshDataTable.Parts.Grid do
   #
   # What is rendered is the same whatever the value is; the value itself is
   # not in what a row is rendered from (`AshDataTable.Present`).
-  defp shown(column, %{state: :masked}, _zone) do
+  defp shown(column, :masked, _value, _text, _zone) do
     {:safe,
      [
        ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
@@ -457,74 +682,54 @@ defmodule AshDataTable.Parts.Grid do
      ]}
   end
 
-  defp shown(column, %{state: :value, value: value}, zone), do: cell(column, value, zone)
+  defp shown(column, :value, value, text, zone),
+    do: column |> value(value, text, zone) |> paragraph(column)
 
-  # The kind of a union is no sensitive field: what it holds is shown as a
-  # cell of its own type shows it.
-  defp cell(_column, %Ash.ForbiddenField{}, zone), do: shown(nil, %{state: :forbidden}, zone)
-  defp cell(_column, nil, _zone), do: ""
-  defp cell(_column, %Ash.NotLoaded{}, _zone), do: ""
+  # A value as a cell of its column shows it. The kind of a union is no
+  # sensitive field: what it holds is shown as a cell of its own type
+  # shows it.
+  defp value(_column, %Ash.ForbiddenField{}, _text, zone),
+    do: shown(nil, :forbidden, nil, nil, zone)
 
-  # A column whose component shows: the cell's content is the component's,
-  # which is given the value and what the table itself would show for it.
-  # Only for a value: a value that is hidden from the person never reaches
-  # a component, and neither does the lack of one.
-  defp cell(%{component: %{cell?: true} = component} = column, value, zone) do
-    assigns = %{
-      module: component.module,
-      value: value,
-      text: Format.format(column, value, zone),
-      column: component.column
-    }
-
-    ~H"""
-    <Parts.Common.dynamic_component
-      module={@module}
-      function={:cell}
-      value={@value}
-      text={@text}
-      column={@column}
-    />
-    """
-  end
+  defp value(_column, nil, _text, _zone), do: ""
+  defp value(_column, %Ash.NotLoaded{}, _text, _zone), do: ""
 
   # A union shows the value it holds, as a cell of its kind's type shows
   # it: a yes or no among its kinds is the check indicator a boolean has.
-  defp cell(
+  defp value(
          %{cell_type: :union, members: [_ | _] = members} = column,
          %Ash.Union{} = union,
+         text,
          zone
        ) do
     case Enum.find(members, &(&1.name == union.type)) do
-      nil -> Format.format(column, union, zone)
-      kind -> cell(kind, union.value, zone)
+      nil -> text || Format.format(column, union, zone)
+      kind -> value(kind, union.value, nil, zone)
     end
   end
 
-  # A boolean is a check indicator with its accessible text beside it;
-  # everything else is plain text.
-  defp cell(%{cell_type: :boolean} = column, value, zone) when is_boolean(value) do
-    mark = if value, do: "✓", else: "–"
+  # A boolean is a check indicator with its accessible text beside it.
+  defp value(%{cell_type: :boolean} = column, value, text, zone) when is_boolean(value) do
+    assigns = %{
+      mark: if(value, do: "✓", else: "–"),
+      text: text || Format.format(column, value, zone)
+    }
 
-    {:safe,
-     [
-       ~s(<span aria-hidden="true">),
-       mark,
-       ~s(</span><span class="sr-only" data-unseen>),
-       escape(Format.format(column, value, zone)),
-       "</span>"
-     ]}
+    ~H"""
+    <span aria-hidden="true">{@mark}</span><span class="sr-only" data-unseen>{@text}</span>
+    """
   end
 
-  defp cell(column, value, zone), do: Format.format(column, value, zone)
+  # everything else is plain text
+  defp value(column, value, text, zone), do: text || Format.format(column, value, zone)
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
   attr :acting?, :any, required: true
-  attr :open, :string, default: nil
+  attr :open, :string, required: true
   # whether the hook asks the question of a row action; in controlled mode
   # the host does (`AshDataTable.Live.Core.Requests`)
-  attr :asks?, :boolean, default: true
+  attr :asks?, :boolean, required: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
   attr :creates, :any, required: true
@@ -532,6 +737,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :expandable?, :any, required: true
   attr :full_view, :any, required: true
   attr :id, :any, required: true
+  attr :kit, :atom, required: true
   attr :label, :any, required: true
   attr :label_column, :any, required: true
   attr :labelledby, :any, required: true
@@ -555,6 +761,9 @@ defmodule AshDataTable.Parts.Grid do
 
   def grid(assigns) do
     ~H"""
+    <%!-- The form of the filter row. A form cannot sit inside a table around
+    its cells, so the controls name it instead. --%>
+    <form {Attrs.filters(@id, @myself)}></form>
     <%!-- The grid is the table's own scroll area: every table scrolls
     sideways in its own, a nested table as the table on the page (see
     "scrolling sideways" in the hook). A nested table that is scrolled to
@@ -564,7 +773,7 @@ defmodule AshDataTable.Parts.Grid do
     <div {Attrs.sender(@id)}></div>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose)}
-      class={["overflow-x-auto outline-none", @nested? && "overscroll-x-contain"]}
+      class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <table
         {Attrs.table(@id, @label, @labelledby, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
@@ -598,21 +807,25 @@ defmodule AshDataTable.Parts.Grid do
             >
               <span class="sr-only">{Text.t(:related_records)}</span>
             </th>
-            <th
+            <Kit.part
               :for={{column, index} <- Enum.with_index(@model.columns)}
+              part={:header_cell}
+              kit={@kit}
               id={"#{@id}-head-#{column.name}"}
-              role="columnheader"
-              scope="col"
-              aria-colindex={Parts.Common.colindex(index, @lead)}
-              aria-label={column.label}
-              tabindex="-1"
-              {Attrs.column_header(@id, column, @state.sort, @model.sticky_label? and column == @label_column, @myself)}
-              class={[
-                "relative whitespace-nowrap",
-                column.sortable? && "cursor-pointer select-none"
-              ]}
-              phx-no-format
-            >{column.label}<span :if={column.sortable?} aria-hidden="true">{sort_mark(@state.sort, column)}</span><.resizer id={"#{@id}-resize-#{column.name}"} column={column} /></th>
+              column={column}
+              colindex={Common.colindex(index, @lead)}
+              attrs={
+                Attrs.column_header(
+                  @id,
+                  column,
+                  @state.sort,
+                  @model.sticky_label? and column == @label_column,
+                  @myself
+                )
+              }
+              sort={@state.sort}
+              resizer={"#{@id}-resize-#{column.name}"}
+            />
             <th
               :if={@acting?}
               {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
@@ -624,26 +837,20 @@ defmodule AshDataTable.Parts.Grid do
           <tr {Attrs.row("#{@id}-filter-row", "2")}>
             <td :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")}></td>
             <td :if={@expandable?} {Attrs.gridcell("#{@id}-expander-filter", @lead)}></td>
-            <td
+            <Kit.part
               :for={{column, index} <- Enum.with_index(@model.columns)}
+              part={:filter_cell}
+              kit={@kit}
               id={"#{@id}-filter-#{column.name}"}
-              role="gridcell"
-              aria-colindex={Parts.Common.colindex(index, @lead)}
-              tabindex="-1"
-              data-filter={column.operators != []}
-            >
-              <Parts.Filter.filter
-                :if={column.operators != []}
-                id={"#{@id}-filter-#{column.name}"}
-                table={@id}
-                form={"#{@id}-filters"}
-                column={column}
-                filter={Parts.Filter.shown_filter(@rejected, @pending, @state, column.name)}
-                rejected?={is_map_key(@rejected, column.name)}
-                applied?={is_map_key(@state.filters, column.name)}
-                target={@myself}
-              />
-            </td>
+              column={column}
+              colindex={Common.colindex(index, @lead)}
+              table={@id}
+              form={"#{@id}-filters"}
+              filter={Parts.Filter.shown_filter(@rejected, @pending, @state, column.name)}
+              rejected?={is_map_key(@rejected, column.name)}
+              applied?={is_map_key(@state.filters, column.name)}
+              target={@myself}
+            />
             <td
               :if={@acting?}
               {Attrs.gridcell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
@@ -652,138 +859,72 @@ defmodule AshDataTable.Parts.Grid do
           </tr>
         </thead>
         <%!-- Written without whitespace on purpose: every byte of a row is sent again
-          whenever the row is, and a cell's text must not be padded. An item of the
-          stream is a row or, after its row, the row's detail (see "Nested tables"
-          at the top). --%>
+          whenever the row is. An item of the stream is a row or, after its row, the
+          row's detail (the kit's `row/1` and `detail/1`). --%>
         <tbody
           :for={{dom_id, row} <- @rows}
           id={dom_id}
           role="rowgroup"
           {Attrs.rowgroup(row, @selecting)}
           phx-no-format
-        ><Parts.Related.lines
+        ><Kit.part
               :if={Attrs.detail?(row) && row.lines}
+              part={:detail}
+              kit={@kit}
               id={@id}
               row={row}
               model={@model}
-              colspan={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
+              colspan={length(@model.columns) + @lead + Common.trail(@acting?)}
               creates={@creates}
               myself={@myself}
-            /><tr
+            /><Kit.part
               :if={!Attrs.detail?(row)}
-              id={"#{dom_id}-r"}
-              role="row"
-              aria-rowindex={row.rowindex}
-            ><td
-              :if={@selecting}
-              id={"#{dom_id}-s"}
-              role="gridcell"
-              aria-colindex="1"
-              tabindex="-1"
-              data-selector
-            ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={Text.t(:select_row)} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={Text.t(:select_row)} class="radio radio-xs border-base-content/50" /></td><td
-              :if={@expandable?}
-              id={"#{dom_id}-e"}
-              role="gridcell"
-              aria-colindex={@lead}
-              tabindex="-1"
-              data-expander
-            ><button type="button" tabindex="-1" aria-expanded={to_string(row.open?)} aria-label={Text.t(:related_records)}></button></td><td
-              :for={{column, index} <- Enum.with_index(@model.columns)}
-              id={"#{dom_id}-c-#{column.name}"}
-              role="gridcell"
-              aria-colindex={Parts.Common.colindex(index, @lead)}
-              tabindex="-1"
-              {Attrs.cell("#{dom_id}-c-#{column.name}", column, @editing?, row, @time_zone)}
-            >{cell_content("#{dom_id}-c-#{column.name}", column, row, @time_zone)}</td><td
-              :if={@acting?}
-              id={"#{dom_id}-a"}
-              role="gridcell"
-              aria-colindex={length(@model.columns) + @lead + 1}
-              tabindex="-1"
-              data-actions
-              {Attrs.actions("#{dom_id}-a", row)}
-            ><button
-              :if={@open}
-              type="button"
-              id={"#{dom_id}-a-open"}
-              tabindex="-1"
-              data-open
-              class="btn btn-xs -my-1 me-1"
-            >{@open}</button><button
-              :for={action <- @model.actions}
-              type="button"
-              id={"#{dom_id}-a-#{action.name}"}
-              tabindex="-1"
-              data-action={action.name}
-              {Attrs.action(action, @asks?)}
-              class="btn btn-xs -my-1 me-1"
-            >{action.label}</button>{action_failure("#{dom_id}-a", row)}</td></tr></tbody>
-        <%!-- The pages of a nested table are a last row of its grid: reached with
-          the arrow keys and entered with Enter, as a filter is, and no tab stop in the
-          middle of the grid around it. The element stays where it is once it is there,
-          as every child of a stream's container with an id does. --%>
-        <%!-- In the text of the table: the range reads as it does under a table
-          on a page, not as a footer's heading. What the two rows hold stays at
-          the left edge of the table's scroll area, as what a line holds does. --%>
-        <tfoot
+              part={:row}
+              kit={@kit}
+              dom_id={dom_id}
+              row={row}
+              id={@id}
+              columns={@model.columns}
+              actions={@model.actions}
+              lead={@lead}
+              selecting={@selecting}
+              expandable?={@expandable?}
+              acting?={@acting?}
+              editing?={@editing?}
+              open={@open}
+              asks?={@asks?}
+              time_zone={@time_zone}
+            /></tbody>
+        <Kit.part
           :if={@nested? or @summarised?}
-          id={"#{@id}-foot"}
-          class="font-normal text-base-content"
-          hidden={
-            not (@summarised? and not is_nil(@page)) and
-              not (@nested? and
-                     (Parts.Pagination.pages?(@page, @model) or
-                        Parts.Related.full_view?(@page, @full_view)))
-          }
-        >
-          <Parts.Summary.summaries
-            acting?={@acting?}
-            expandable?={@expandable?}
-            id={@id}
-            lead={@lead}
-            model={@model}
-            page={@page}
-            selecting={@selecting}
-            summarised?={@summarised?}
-            summary={@summary}
-            summing?={@summing?}
-            time_zone={@time_zone}
-          />
-          <tr
-            :if={@nested? and Parts.Pagination.pages?(@page, @model)}
-            {Attrs.row("#{@id}-foot-row")}
-          >
-            <td {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}>
-              <Parts.Pagination.pagination
-                id={@id}
-                nested?={true}
-                page={@page}
-                model={@model}
-                state={@state}
-                row_count={@row_count}
-                label={@label}
-                target={@myself}
-              />
-            </td>
-          </tr>
-          <Parts.Related.full_view
-            acting?={@acting?}
-            full_view={@full_view}
-            id={@id}
-            label={@label}
-            lead={@lead}
-            model={@model}
-            nested?={@nested?}
-            page={@page}
-          />
-        </tfoot>
+          part={:footer}
+          kit={@kit}
+          acting?={@acting?}
+          expandable?={@expandable?}
+          full_view={@full_view}
+          id={@id}
+          label={@label}
+          lead={@lead}
+          model={@model}
+          myself={@myself}
+          nested?={@nested?}
+          page={@page}
+          row_count={@row_count}
+          selecting={@selecting}
+          state={@state}
+          summarised?={@summarised?}
+          summary={@summary}
+          summing?={@summing?}
+          time_zone={@time_zone}
+        />
       </table>
       <%!-- One editor per editable column. The hook opens a copy of it in the
         cell being edited; which cell that is, the server never knows. A
         reference column has an empty one: its cells are edited in the picker,
         which the hook asks for. So has the column of a map cell, which is
-        edited in the side panel. --%>
+        edited in the side panel. A column whose component edits has the
+        component's editor (the design note of stage 7, D10); every other the
+        kit's. --%>
       <template
         :for={column <- @model.columns}
         :if={column.editable?}
@@ -792,18 +933,29 @@ defmodule AshDataTable.Parts.Grid do
         data-commit={column.editor == :component && column.component.commit}
         data-confirm={column.confirm}
       >
-        <.editor
-          :if={column.editor not in [:reference, :group, :groups, :union]}
+        <Common.dynamic_component
+          :if={column.editor == :component}
+          module={column.component.module}
+          function={:editor}
+          value=""
+          label={column.label}
+          column={column.component.column}
+          place={:grid}
+          control={Attrs.component_control(column)}
+        />
+        <Kit.part
+          :if={column.editor not in [:component, :reference, :group, :groups, :union]}
+          part={:editor}
+          kit={@kit}
           id={"#{@id}-editor-#{column.name}"}
           column={column}
           allow_nil?={allow_nil?(@model.resource, column)}
         />
       </template>
-      <Parts.Messages.failure
-        acting?={@acting?}
-        editing?={@editing?}
-        id={@id}
-      />
+      <%!-- The message of a cell whose save failed, for the one case in which
+      the hook has to mark the cell itself: the record is gone, so there is
+      no row to send. --%>
+      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message="" /></template>
     </div>
     <%!-- The scrollbar of the grid once more, for when the grid's own is
     below the window: the hook shows it at the bottom edge of the window, as
