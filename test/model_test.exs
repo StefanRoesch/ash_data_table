@@ -1654,6 +1654,7 @@ defmodule AshDataTable.ModelTest do
 
     for resource <- [
           AshDataTable.Test.Filtering,
+          AshDataTable.Test.Filtering.SimpleEquality,
           AshDataTable.Test.KitchenSink,
           AshDataTable.Test.Issue
         ] do

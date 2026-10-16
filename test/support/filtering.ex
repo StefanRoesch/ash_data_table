@@ -138,12 +138,7 @@ defmodule AshDataTable.Test.Filtering do
 end
 
 defmodule AshDataTable.Test.Filtering.SimpleEquality do
-  @moduledoc """
-  A field that can only be filtered by equality. It is a resource of its own
-  because `Ash.Info.Manifest.generate/1` (ash 3.34.4) raises on a field
-  declared `filterable?: :simple_equality`, and the model tests compare
-  `AshDataTable.Test.Filtering` with the manifest.
-  """
+  @moduledoc "Fields that can only be filtered by equality."
   use Ash.Resource,
     domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
