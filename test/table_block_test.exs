@@ -8590,10 +8590,14 @@ defmodule AshDataTable.TableBlockTest do
       assert Enum.map(errors, & &1.message) == expected
 
       # what the block accepts, LiveView accepts
-      assert %Phoenix.LiveView.UploadConfig{} =
-               Phoenix.LiveView.UploadConfig.build("file", "ref",
-                 accept: ~w(.csv text/plain image/* audio/* video/*)
-               )
+      assert %{"file" => %Phoenix.LiveView.UploadConfig{}} =
+               AshDataTable.Test.LiveHost.run(fn socket ->
+                 socket
+                 |> Phoenix.LiveView.allow_upload("file",
+                   accept: ~w(.csv text/plain image/* audio/* video/*)
+                 )
+                 |> then(& &1.assigns.uploads)
+               end)
     end
 
     test "`accept []` is an error: it would take no file at all" do

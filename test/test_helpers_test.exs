@@ -2,7 +2,8 @@ defmodule AshDataTable.TestTest do
   # `AshDataTable.Test` reads a page as the browser shows it and sends what
   # a browser sends, where `Phoenix.LiveViewTest` does not look: inside a
   # `<.portal>`. A small LiveView with a component that draws a form into a
-  # portal, as the table component draws a nested table.
+  # portal, marked with the id of the element it goes into, as the table
+  # draws a nested table.
   use ExUnit.Case, async: true
 
   import Phoenix.LiveViewTest
@@ -25,7 +26,11 @@ defmodule AshDataTable.TestTest do
         <pre id="got">{Jason.encode!(Enum.map(@got, &Tuple.to_list/1))}</pre>
         <div id="t-row-1-n-comments-c"></div>
         <.portal id="t-row-1-t-comments-portal" target="[id='t-row-1-n-comments-c']">
-          <div id="t-row-1-t-comments-grid" phx-target={@myself}>
+          <div
+            id="t-row-1-t-comments-grid"
+            phx-target={@myself}
+            data-ash-data-table-portal="t-row-1-n-comments-c"
+          >
             <form
               id="t-row-1-t-comments-filter"
               phx-change="ash_data_table:t-row-1-t-comments:filter"
@@ -86,11 +91,9 @@ defmodule AshDataTable.TestTest do
     |> Enum.map(&List.to_tuple/1)
   end
 
-  test "page/1 puts a portal's content into its target, once and without the wrapper",
+  test "page/1 puts a portal's content into the element it names, once",
        %{view: view} do
-    html = render(view)
-    assert html =~ "data-phx-portal"
-    page = AshDataTable.Test.page(html)
+    page = view |> render() |> AshDataTable.Test.page()
 
     assert [_grid] = Enum.to_list(LazyHTML.query(page, "[id='t-row-1-t-comments-grid']"))
 
@@ -101,8 +104,6 @@ defmodule AshDataTable.TestTest do
                  "[id='t-row-1-n-comments-c'] > [id='t-row-1-t-comments-grid']"
                )
              )
-
-    assert Enum.empty?(LazyHTML.query(page, "[id^='_lv_portal_wrap_']"))
   end
 
   test "send_form/5 sends a form in a portal as the browser does: checked boxes, the selected option, a control outside it that names it, the given values merged in",

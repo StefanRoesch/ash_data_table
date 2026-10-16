@@ -13,6 +13,8 @@ defmodule AshDataTable.ZonesTest do
   """
   use ExUnit.Case, async: false
 
+  import Phoenix.LiveViewTest, only: [render_component: 2]
+
   alias AshDataTable.Act
   alias AshDataTable.Format
   alias AshDataTable.Model
@@ -67,7 +69,6 @@ defmodule AshDataTable.ZonesTest do
 
     test "a placed table refuses a name that is no zone when it is rendered" do
       assigns = %{
-        __changed__: nil,
         id: nil,
         resource: Filtering,
         table: nil,
@@ -83,7 +84,11 @@ defmodule AshDataTable.ZonesTest do
         time_zone: "Mars/Olympus"
       }
 
-      error = assert_raise ArgumentError, fn -> AshDataTable.table(assigns) end
+      error =
+        assert_raise ArgumentError, fn ->
+          render_component(&AshDataTable.table/1, assigns)
+        end
+
       assert error.message =~ "The `time_zone` of <AshDataTable.table> is \"Mars/Olympus\""
     end
 

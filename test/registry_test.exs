@@ -6,9 +6,10 @@ defmodule AshDataTable.RegistryTest do
   of their ids; the entry the live core works on (`within/3`); the stream
   names of the pool; the order of the portals.
 
-  On a socket of its own, with entries made by hand: what a table renders
-  is decided by its `open` lines and its `rows`, and an entry that its
-  table around it told what it tells it now is not told again.
+  On the socket of a LiveView (`AshDataTable.Test.LiveHost`), in its process, with
+  entries made by hand: what a table renders is decided by its `open`
+  lines and its `rows`, and an entry that its table around it told what it
+  tells it now is not told again.
   """
   use ExUnit.Case, async: true
 
@@ -17,7 +18,8 @@ defmodule AshDataTable.RegistryTest do
   alias AshDataTable.Live.Registry
   alias AshDataTable.Model.Relationship
   alias AshDataTable.Table
-  alias Phoenix.LiveView.Socket
+
+  defp run(fun), do: AshDataTable.Test.LiveHost.run(fun)
 
   defp relationship(name),
     do:
@@ -32,18 +34,12 @@ defmodule AshDataTable.RegistryTest do
       )
 
   # the table on the page, "t", with one row ("1"), and nothing open yet
-  defp socket do
-    # a socket as LiveView makes a component's: with its lifecycle, for streams
-    socket = %Socket{
-      assigns: %{__changed__: %{}, myself: 1},
-      private: %{
-        lifecycle: %Phoenix.LiveView.Lifecycle{},
-        live_temp: %{},
-        ash_data_table: %{current: :table}
-      }
-    }
+  defp socket(socket) do
+    socket =
+      socket
+      |> Phoenix.LiveView.put_private(:ash_data_table, %{current: :table})
+      |> Phoenix.Component.assign(table: Table.new())
 
-    socket = Phoenix.Component.assign(socket, table: Table.new())
     {stream, socket} = Registry.take_stream(socket)
 
     top = %{
@@ -84,34 +80,42 @@ defmodule AshDataTable.RegistryTest do
   defp ids(socket), do: socket.assigns.table.entries |> Map.keys() |> Enum.sort()
 
   test "a table renders the nested table of each open line of a row on its page, into that line's cell" do
-    socket = socket() |> open(%{"1" => [:comments], "2" => [], "3" => [:comments]})
+    run(fn live ->
+      socket = socket(live) |> open(%{"1" => [:comments], "2" => [], "3" => [:comments]})
 
-    assert [{"t-row-1-t-comments", given, "t-row-1-n-comments-c"}] = Nesting.children(socket, "t")
-    assert %{id: "t-row-1-t-comments", parent_key: %{id: 1}, url: nil, mounted?: false} = given
-    assert given.path == ["t"]
+      assert [{"t-row-1-t-comments", given, "t-row-1-n-comments-c"}] =
+               Nesting.children(socket, "t")
+
+      assert %{id: "t-row-1-t-comments", parent_key: %{id: 1}, url: nil, mounted?: false} = given
+      assert given.path == ["t"]
+    end)
   end
 
   test "closing is by place: the sibling whose name the closed one's id begins is left open" do
-    socket = socket() |> open(%{"1" => [:comments, :comments_archive]}) |> opened()
-    assert ids(socket) == ["t-row-1-t-comments", "t-row-1-t-comments_archive"]
-    %{"t-row-1-t-comments" => %{stream: closed}} = socket.assigns.table.entries
+    run(fn live ->
+      socket = socket(live) |> open(%{"1" => [:comments, :comments_archive]}) |> opened()
+      assert ids(socket) == ["t-row-1-t-comments", "t-row-1-t-comments_archive"]
+      %{"t-row-1-t-comments" => %{stream: closed}} = socket.assigns.table.entries
 
-    socket = socket |> open(%{"1" => [:comments_archive]}) |> Nesting.reconcile()
+      socket = socket |> open(%{"1" => [:comments_archive]}) |> Nesting.reconcile()
 
-    assert ids(socket) == ["t-row-1-t-comments_archive"]
-    assert_targets(socket)
-    # its stream is the pool's again
-    assert closed in socket.assigns.table.pool.free
+      assert ids(socket) == ["t-row-1-t-comments_archive"]
+      assert_targets(socket)
+      # its stream is the pool's again
+      assert closed in socket.assigns.table.pool.free
+    end)
   end
 
   test "a row that is no longer on the page takes the tables under it away" do
-    socket = socket() |> open(%{"1" => [:comments], "2" => [:comments]}) |> opened()
-    top = %{socket.assigns.table.entry | rows: Map.delete(socket.assigns.table.entry.rows, "2")}
-    socket = Phoenix.Component.assign(socket, table: %{socket.assigns.table | entry: top})
+    run(fn live ->
+      socket = socket(live) |> open(%{"1" => [:comments], "2" => [:comments]}) |> opened()
+      top = %{socket.assigns.table.entry | rows: Map.delete(socket.assigns.table.entry.rows, "2")}
+      socket = Phoenix.Component.assign(socket, table: %{socket.assigns.table | entry: top})
 
-    socket = Nesting.reconcile(socket)
-    assert ids(socket) == ["t-row-1-t-comments"]
-    assert_targets(socket)
+      socket = Nesting.reconcile(socket)
+      assert ids(socket) == ["t-row-1-t-comments"]
+      assert_targets(socket)
+    end)
   end
 
   # Every open table's cell is the cell of an open line of a row its table
@@ -130,35 +134,41 @@ defmodule AshDataTable.RegistryTest do
   end
 
   test "a stream name closed and opened in one callback is used again, by one table at a time" do
-    socket = socket() |> open(%{"1" => [:comments]}) |> opened()
-    %{"t-row-1-t-comments" => %{stream: name}} = socket.assigns.table.entries
+    run(fn live ->
+      socket = socket(live) |> open(%{"1" => [:comments]}) |> opened()
+      %{"t-row-1-t-comments" => %{stream: name}} = socket.assigns.table.entries
 
-    # closed and the other opened, before anything is rendered
-    socket =
-      socket
-      |> open(%{})
-      |> Nesting.reconcile()
-      |> open(%{"2" => [:comments]})
-      |> opened()
+      # closed and the other opened, before anything is rendered
+      socket =
+        socket
+        |> open(%{})
+        |> Nesting.reconcile()
+        |> open(%{"2" => [:comments]})
+        |> opened()
 
-    assert %{"t-row-2-t-comments" => %{stream: ^name}} = socket.assigns.table.entries
-    streams = [socket.assigns.table.entry | Map.values(socket.assigns.table.entries)]
-    assert streams |> Enum.map(& &1.stream) |> Enum.uniq() |> length() == length(streams)
+      assert %{"t-row-2-t-comments" => %{stream: ^name}} = socket.assigns.table.entries
+      streams = [socket.assigns.table.entry | Map.values(socket.assigns.table.entries)]
+      assert streams |> Enum.map(& &1.stream) |> Enum.uniq() |> length() == length(streams)
+    end)
   end
 
   test "within/3 shows the entry to the core as the table, and puts the table on the page back" do
-    socket = socket() |> open(%{"1" => [:comments]}) |> opened()
+    run(fn live ->
+      socket = socket(live) |> open(%{"1" => [:comments]}) |> opened()
 
-    {:reply, :seen, socket} =
-      Registry.within(socket, "t-row-1-t-comments", fn socket ->
-        # the entry, placed by the table it is in, with the top among the others
-        assert %{entry: %{id: "t-row-1-t-comments"}, entries: %{"t" => _}} = socket.assigns.table
-        assert %{url: nil, heading: false, mounted?: false} = socket.assigns.table.options
-        {:reply, :seen, socket}
-      end)
+      {:reply, :seen, socket} =
+        Registry.within(socket, "t-row-1-t-comments", fn socket ->
+          # the entry, placed by the table it is in, with the top among the others
+          assert %{entry: %{id: "t-row-1-t-comments"}, entries: %{"t" => _}} =
+                   socket.assigns.table
 
-    assert %{entry: %{id: "t"}, entries: entries} = socket.assigns.table
-    assert Map.keys(entries) == ["t-row-1-t-comments"]
+          assert %{url: nil, heading: false, mounted?: false} = socket.assigns.table.options
+          {:reply, :seen, socket}
+        end)
+
+      assert %{entry: %{id: "t"}, entries: entries} = socket.assigns.table
+      assert Map.keys(entries) == ["t-row-1-t-comments"]
+    end)
   end
 
   test "the portals come parents first: LiveView moves them in the order of the page" do

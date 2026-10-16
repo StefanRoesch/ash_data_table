@@ -34,10 +34,6 @@ defmodule AshDataTable.ArchitectureTest do
   What it cannot see (5.5): coupling through data, not through a call.
   Known today, and allowed by the target until the stage named:
 
-    * the table component gives the parts itself, as
-      `component={__MODULE__}` (`Parts.Grid`, `Parts.Picker`): part 3
-      renders the live component, for a nested table and for a picker
-      (until stages 4 and 5; design note 4.3);
     * the parts name the hooks by the names the colocated hooks of
       `AshDataTable` have, as strings
       (`phx-hook="AshDataTable.Grid"`; target 4.5, Q15);
