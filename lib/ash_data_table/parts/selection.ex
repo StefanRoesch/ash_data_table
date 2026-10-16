@@ -16,14 +16,12 @@ defmodule AshDataTable.Parts.Selection do
   # that clears the selection, and a button per action that runs on the
   # selected rows.
   #
-  # Which rows are selected is known to the hook alone, so what depends on
-  # it is the hook's to put in: the text of the count, which is a live
-  # region and is read out when it changes, and whether the controls and
-  # the button for "all that match" are shown. The server renders them
+  # Which rows are selected the server holds, and the hook paints: what
+  # depends on it is the hook's to put in: the text of the count, which is a
+  # live region and is read out when it changes, and whether the controls
+  # and the button for "all that match" are shown. The server renders them
   # hidden and leaves both alone afterwards. What it says for the hook:
   #
-  #   * `data-scope` stands for the filters, and for what the table is
-  #     limited to: a selection is given up when it changes;
   #   * `data-more` is there when the filters match more records than the
   #     page shows, which is when "all that match" is offered;
   #   * `data-selected` and `data-all` are the two texts of the count, the
@@ -35,7 +33,6 @@ defmodule AshDataTable.Parts.Selection do
   attr :id, :string, required: true
   attr :page, :any, required: true
   attr :row_count, :integer, required: true
-  attr :scope, :any, required: true
   attr :choose?, :boolean, default: false
   attr :bulk, :list, required: true
   attr :running?, :boolean, required: true
@@ -56,11 +53,7 @@ defmodule AshDataTable.Parts.Selection do
       end
 
     assigns =
-      assign(assigns,
-        total: total,
-        more?: more?,
-        scope: if(assigns.choose?, do: :choose, else: assigns.scope)
-      )
+      assign(assigns, total: total, more?: more?)
 
     ~H"""
     <div
@@ -68,7 +61,6 @@ defmodule AshDataTable.Parts.Selection do
       role="group"
       aria-label={Text.t(:selected_rows)}
       data-selection
-      data-scope={:erlang.phash2(@scope)}
       data-more={@more?}
       data-selected={Text.t(:selected, count: "{n}")}
       data-all={
@@ -134,7 +126,6 @@ defmodule AshDataTable.Parts.Selection do
   attr :nested?, :any, required: true
   attr :notice?, :any, required: true
   attr :page, :any, required: true
-  attr :related, :any, required: true
   attr :row_count, :any, required: true
   attr :running, :any, required: true
   attr :selecting, :any, required: true
@@ -158,7 +149,6 @@ defmodule AshDataTable.Parts.Selection do
           id={@id}
           page={@page}
           row_count={@row_count}
-          scope={{@state.filters, @state.arguments, @related && @related.param}}
           choose?={not is_nil(@choose)}
           bulk={@bulk}
           running?={not is_nil(@running)}

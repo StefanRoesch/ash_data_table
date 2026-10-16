@@ -22,12 +22,12 @@ defmodule AshDataTable.Intent do
   @type key :: String.t()
 
   @typedoc """
-  What is selected for an action on a selection: every record the filters
-  match (`:all`), the rows named (`{:rows, rows}`), or, where the event
-  says both, every record when the table has read and else the rows
-  (`{:all, rows}`). Each row as the hook names it, its primary key: a claim.
+  What a person has selected, as the hook says it on every change: every
+  record the filters match (`:all`), or the rows named (`{:rows, rows}`,
+  none for nothing selected). Each row as the hook names it, its primary
+  key: a claim.
   """
-  @type selection :: :all | {:rows, [term, ...]} | {:all, [term, ...]}
+  @type selection :: :all | {:rows, [term]}
 
   @type t ::
           {:sort, String.t()}
@@ -51,8 +51,9 @@ defmodule AshDataTable.Intent do
           | :create
           | {:table_act, String.t()}
           | {:table_run, String.t()}
-          | {:bulk, String.t(), selection}
-          | {:bulk_run, String.t(), selection}
+          | {:select, selection}
+          | {:bulk, String.t()}
+          | {:bulk_run, String.t()}
           | :bulk_seen
           | {:panel_validate, map}
           | {:panel_submit, map}
@@ -146,14 +147,13 @@ defmodule AshDataTable.Intent do
   def parse("table_run", %{"action" => action}) when is_binary(action),
     do: {:ok, {:table_run, action}}
 
-  # Selection
-  def parse(event, %{"action" => action} = params)
-      when event in ["bulk", "bulk_run"] and is_binary(action) do
-    case selection(params) do
-      nil -> :malformed
-      selection -> {:ok, {tag(event), action, selection}}
-    end
-  end
+  # Selection: what is selected, on every change, and an action on it
+  def parse("select", %{"all" => true}), do: {:ok, {:select, :all}}
+  def parse("select", %{"rows" => rows}) when is_list(rows), do: {:ok, {:select, {:rows, rows}}}
+
+  def parse(event, %{"action" => action})
+      when event in ["bulk", "bulk_run"] and is_binary(action),
+      do: {:ok, {tag(event), action}}
 
   def parse("bulk_seen", _params), do: {:ok, :bulk_seen}
 
@@ -222,10 +222,4 @@ defmodule AshDataTable.Intent do
   # A payload that is no map at all (a forged push) sent no form either,
   # as the table took it before.
   defp form(_params, _name), do: %{}
-
-  # "All that match", or rows: at least one.
-  defp selection(%{"all" => true, "rows" => [_ | _] = rows}), do: {:all, rows}
-  defp selection(%{"all" => true}), do: :all
-  defp selection(%{"rows" => [_ | _] = rows}), do: {:rows, rows}
-  defp selection(_params), do: nil
 end

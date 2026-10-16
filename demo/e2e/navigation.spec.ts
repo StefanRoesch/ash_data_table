@@ -191,7 +191,7 @@ test("Space on a cell selects its row, and does nothing else", async ({ page, ta
   await expect(cell).toHaveText(text!)
   await expect(tasks.openEditors).toHaveCount(0)
   expect(await page.evaluate(() => window.scrollY), "the page does not scroll").toBe(0)
-  expect(await frames.all()).toEqual([])
+  expect(await frames.besides("select")).toEqual([])
 })
 
 test.describe(() => {

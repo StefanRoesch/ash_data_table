@@ -60,6 +60,8 @@ defmodule AshDataTable.Operation do
     #   * `panel` the open action panel as the live layer keeps it (its
     #     form, inputs, what the table gives its action, the fields asked to
     #     be emptied, the records chosen), nil for none;
+    #   * `selection` what is selected (`:all`, or `{:rows, rows}`, the rows
+    #     as the hook names them: claims), for an action on a selection;
     #   * `read?` whether the table has read: a table that could not read
     #     offers no table action and no "all that match"; `offered` the
     #     table actions and the actions on a selection this person is
@@ -83,6 +85,7 @@ defmodule AshDataTable.Operation do
       picking: [],
       rows: %{},
       panel: nil,
+      selection: nil,
       read?: false,
       offered: %{table: [], bulk: []},
       with_files: &__MODULE__.without_files/1,
@@ -422,9 +425,8 @@ defmodule AshDataTable.Operation do
   as a run takes as long as its records are many.
   """
   @spec bulk(Input.t()) :: {:start, (-> Bulk.outcome()), map} | {:halted, term} | :refused
-  def bulk(%Input{intent: {:bulk_run, name, selection}} = input) do
-    with {:ok, %Model.Action{panel?: false} = action, selection} <-
-           bulk_action(input, name, selection),
+  def bulk(%Input{intent: {:bulk_run, name}} = input) do
+    with {:ok, %Model.Action{panel?: false} = action, selection} <- bulk_action(input, name),
          :cont <- asked(input, :bulk, action, selection: selected(selection)) do
       start(input, action, selection, %{}, %{})
     else
@@ -604,25 +606,22 @@ defmodule AshDataTable.Operation do
   def table_action(_input, _name), do: nil
 
   @doc """
-  The action on a selection and the selection a claim names: the action
-  among those offered now for a selection (none while a run is on its way),
-  and the selection as far as it is one. "All that match" is of a table
-  that has read; rows are at least one (`AshDataTable.Intent`). An event
-  that says both is of every record where the table has read, and else of
-  the rows.
+  The action on a selection a claim names, and what is selected: the
+  action among those offered now for a selection (none while a run is on
+  its way), and the selection as far as it is one. "All that match" is of a
+  table that has read; rows are at least one.
   """
-  @spec bulk_action(Input.t(), term, AshDataTable.Intent.selection()) ::
-          {:ok, Model.Action.t(), Bulk.selection()} | :error
-  def bulk_action(%Input{} = input, name, selection) do
+  @spec bulk_action(Input.t(), term) :: {:ok, Model.Action.t(), Bulk.selection()} | :error
+  def bulk_action(%Input{} = input, name) do
     with %Model.Action{} = action <- action(input.offered.bulk, name),
-         selection when not is_nil(selection) <- selection(selection, input.read?) do
+         selection when not is_nil(selection) <- selection(input.selection, input.read?) do
       {:ok, action, selection}
     else
       _ -> :error
     end
   end
 
-  defp selection(all, true) when all == :all or elem(all, 0) == :all, do: :all
-  defp selection({_rows_or_all, rows}, _read?), do: {:rows, rows}
-  defp selection(:all, false), do: nil
+  defp selection(:all, true), do: :all
+  defp selection({:rows, [_ | _] = rows}, _read?), do: {:rows, rows}
+  defp selection(_nothing, _read?), do: nil
 end

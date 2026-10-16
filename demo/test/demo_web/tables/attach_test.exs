@@ -281,7 +281,9 @@ defmodule DemoWeb.Tables.AttachTest do
       someone = %Demo.Tracker.User{id: Ash.UUID.generate(), role: :admin}
       {:ok, view, _html} = live(user(conn, someone), "/support/switched/crates")
 
-      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      select(view, "crate", [first.id])
+
+      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
       switch(view, %{current_user: %{someone | role: :member}})
 
       html = ran(view)
@@ -295,14 +297,15 @@ defmodule DemoWeb.Tables.AttachTest do
       other = %Demo.Tracker.User{id: Ash.UUID.generate(), role: :admin}
       {:ok, view, _html} = live(user(conn, someone), "/support/switched/crates")
 
-      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      select(view, "crate", [first.id])
+
+      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
       switch(view, %{current_user: other})
 
       html = ran(view)
       assert bulk_result(html, "crate") == nil
       refute html =~ "Weigh: 1 done."
-      assert_push_event view, "ash_data_table:bulk", %{table: "crate"} = told
-      refute is_map_key(told, :failed)
+      refute_push_event view, "ash_data_table:select", %{table: "crate"}
 
       # it ran all the same
       assert column(html, "crate", "title") == ["Crate 1", "Crate 2"]
@@ -311,7 +314,8 @@ defmodule DemoWeb.Tables.AttachTest do
     test "a patch to another route of the table attaches it anew, and an answer for the one before is dropped",
          %{conn: conn, crates: [first | _]} do
       {:ok, view, _html} = live(conn, "/support/switched/crates")
-      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      select(view, "crate", [first.id])
+      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
 
       # the run is cancelled as its table is detached; its answer, that it
       # was, comes all the same, to a table of the same id

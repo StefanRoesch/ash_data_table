@@ -200,16 +200,22 @@ defmodule AshDataTable.OperationTest do
          %{model: model, record: record} do
       gone = Ash.UUID.generate()
       offered = %{table: [], bulk: Model.bulk_actions(model)}
-      intent = {:bulk_run, "copy", {:rows, [record.id, gone]}}
+      selection = {:rows, [record.id, gone]}
 
-      assert {:start, run, %{}} = Operation.bulk(input(model, intent, %{}, offered: offered))
+      assert {:start, run, %{}} =
+               Operation.bulk(
+                 input(model, {:bulk_run, "copy"}, %{}, offered: offered, selection: selection)
+               )
+
       assert titles() == ["One"]
 
       assert %{done: 1, failed: [%{id: ^gone}]} = run.()
       assert titles() == ["Copy of One", "One"]
 
       # an action that is not offered on a selection
-      refused = input(model, {:bulk_run, "count", {:rows, [record.id]}}, %{}, offered: offered)
+      refused =
+        input(model, {:bulk_run, "count"}, %{}, offered: offered, selection: {:rows, [record.id]})
+
       assert Operation.bulk(refused) == :refused
     end
   end

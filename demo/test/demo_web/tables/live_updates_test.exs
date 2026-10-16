@@ -310,12 +310,14 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       assert notice(html) == ""
     end
 
-    test "is no longer selected when it goes", %{world: world, member: member, theirs: theirs} do
+    test "is no longer selected when it goes",
+         %{world: world, member: member, mine: mine, theirs: theirs} do
+      select(member, "task", [theirs.id, mine.id])
       Ash.destroy!(theirs, as(world.admin))
       heard(member)
 
-      assert_push_event(member, "ash_data_table:unselect", %{table: "task", row: row})
-      assert row == theirs.id
+      assert_push_event(member, "ash_data_table:select", %{table: "task", rows: rows})
+      assert rows == [[mine.id, nil]]
     end
 
     test "is updated in one go when many change at once",

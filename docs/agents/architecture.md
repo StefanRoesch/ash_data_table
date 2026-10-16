@@ -87,7 +87,7 @@ The state of a table (2b):
 
 - `AshDataTable.Table` (`live/table.ex`): the one value a table is held in, under the attach name (the tag's component and the page use `table`); public, opaque (moduledoc only; read-only fields come in stage 6): `options` (what the table on the page was told about how it is placed: `url`, `heading`, `mounted?`, `page_assigns` (a map, or `:socket` for an attached table: `Live.Core.page_assigns/1` gives the host's assigns), `target` (the tag's `@myself`, nil when attached: the parts' `phx-target`, and how a listener relays), `router`), `caller`, `entry` (the table on the page), `entries` (every other table it shows, by id: nested tables at every depth and the tables of open pickers) and `pool` (stream names, `ID:rows`, `ID:rows_1`, … after the id of the table on the page). `new/0`; `put/2` puts fields where each lives and raises on a name none has.
 - `AshDataTable.Live.Registry` (`live/registry.ex`): the tables of one `Table`. `within/3` checks an entry out into `table.entry` for the live core and puts the table on the page back (outside it, `table.entry` is always the top's; a table other than the top is shown the options of a placed table: no URL, heading or page of its own); `known?/2`; `async/2` (the task keys `{:ash_data_table, id, {:read | :summary | :bulk, token}}`, the token the entry's own) and `current?/2` (an answer of a closed entry, cancelled, is dropped, also when an entry of the same id opened since); `take_stream/1` and `give_back/2` (the pool: `"ID:rows"`, `"ID:rows_1"`, …, each configured once); `add/3`, `close/2`, `close_all/1` (`detach/2`: every entry and the top's own) (listener, tasks, copies of a run's files, uploads cancelled and disallowed (one whose file is on its way stays allowed until a table of the same id takes it again: LiveView refuses to give it up), stream emptied and back in the pool, entry gone); `portals/1` (the nested entries, parents first).
-- `AshDataTable.Live.Entry` (`live/entry.ex`): one table: everything else it holds, each field with its comment (see "The state of a table" below). `selected` is empty until stage 6. `new/0`.
+- `AshDataTable.Live.Entry` (`live/entry.ex`): one table: everything else it holds, each field with its comment (see "The state of a table" below). `new/0`.
 
 Live updates:
 
@@ -102,7 +102,7 @@ Writes:
 - `AshDataTable.Edit` (`edit.ex`): save one cell. `save/5`, `refer/5` (reference cell), `clear/4`, `open/5` and `put/7` (map cell in the panel).
 - `AshDataTable.Act` (`act.ex`): row actions, table actions and create, through `AshPhoenix.Form`. `open/5`, `validate/4`, `submit_row/6`, `run/4`; `open_create/4`, `submit_create/6`; `open_generic/4`, `run_generic/4`, `submit_generic/6`; `open_bulk/4`; `from_page/2` (the page arguments of an action, merged over its params; raises for one the page does not give).
 - `AshDataTable.Bulk` (`bulk.ex`): a row action on a selection. `run/5`; its outcome has `done`, `succeeded` and `failed` (keys) and `failures`, and from `Operation` the `event`.
-- `AshDataTable.Event` (`event.ex`, public types): the events a table tells the page (`names/0`: `:read`, `:read_failed`, `:row_saved`, `:row_created`, `:row_destroyed`, `:action_ran`, `:bulk_ran`, `:row_expanded`, `:row_collapsed`) and their details, records scrubbed (`Sensitive.scrub/2`), `arguments/3` without sensitive ones and files by name. `Live.Core.Notify.told/2` adds `table`, `resource` and a nested table's `path`, filters by `notify`, leaves out a picker's tables, and sends `{:ash_data_table, top_id, {event, details}}` to `self()`: from `Core.Cells`, `Core.Panel`, `Core.Bulk.handle_async`, `Core.Reading.show` and `Core.Nesting` (`toggle`).
+- `AshDataTable.Event` (`event.ex`, public types): the events a table tells the page (`names/0`: `:read`, `:read_failed`, `:row_saved`, `:row_created`, `:row_destroyed`, `:action_ran`, `:bulk_ran`, `:selection_changed`, `:row_expanded`, `:row_collapsed`) and their details, records scrubbed (`Sensitive.scrub/2`), `arguments/3` without sensitive ones and files by name. `Live.Core.Notify.told/2` adds `table`, `resource` and a nested table's `path`, filters by `notify`, leaves out a picker's tables, and sends `{:ash_data_table, top_id, {event, details}}` to `self()`: from `Core.Cells`, `Core.Panel`, `Core.Bulk.handle_async`, `Core.Reading.show` and `Core.Nesting` (`toggle`) and `Core.Selection`.
 - What these say is a message term (`AshDataTable.Errors.message/0`), never words: see "Texts and values".
 - Files have no module of their own in 2a: the limits are in `Resource.Uploading` and the upload handling is `AshDataTable.Live.Core.Files`.
 
@@ -179,6 +179,7 @@ grep -n '^  def\|^  defp' lib/ash_data_table/live/core.ex lib/ash_data_table/liv
 | `Core.Picker` | `on/2` of `pick`, `pick_input`, `picked`, `picker_cancel`, `panel_unpick`; the fields of the panel given by choosing (`choose_input`, `choose_inputs`, `entry`, `hold`), `picked_with` |
 | `Core.Panel` | `on/2` of `act`, `table_act`, `table_run`, `create` and the panel's events; `panel/3`, `open_act`, `errors`, `submit`/`submitted`, after a create or a run (`add_row`, `failed_panel`, `ran`, `run_table`, `done`) |
 | `Core.Bulk` | `on/2` of `bulk`, `bulk_run`, `bulk_seen`; `open_bulk`, `start_bulk`; `handle_async/3` of `:bulk` (the outcome of a run, said in this process) |
+| `Core.Selection` | what is selected (stage 6): `on/2` of `select`; `put/3` (and tells the hook with `ash_data_table:select` where the server decided it, and the host `:selection_changed`), `scoped/1` (in `tidy/1`: a selection under other filters, arguments or `of` ends), `gone/2` (a row that went), `named/2` |
 | `Core.Files` | the uploads of the panel: `opened`, `filed`, `attach` (`with_files` of `Operation.Input`), `spend`, the copies of a run, what is said of a file (`upload_errors_of`, `said_of`, `panel_files`) |
 
 ### Events
@@ -191,14 +192,14 @@ Every event is named with the table it is for: `ash_data_table:ID:event` (target
 - Cells: `save`, `clear`, `discard`, `dismiss`, `reveal` (sensitive), `edit` (map cell, opens the panel).
 - Row actions and create: `act`, `create`.
 - Table actions: `table_act`, `table_run`.
-- Selection: `bulk`, `bulk_run`, `bulk_seen`.
+- Selection: `select` (every change of what is selected), `bulk`, `bulk_run` (the action only: the selection is the entry's), `bulk_seen`.
 - Action panel: `panel_validate`, `panel_submit`, `panel_add`, `panel_remove`, `panel_unpick`, `panel_clear`, `panel_cancel`.
 - Picker: `pick` (from a cell), `pick_input` (from the panel), `picked`, `picker_cancel`.
 - Live updates: `read_again` (the button beside the notice), `left` (the hook's answer to `ash_data_table:leaving`: no cell of that row is being edited, it can go). No event says which cell is edited: the hook alone knows, and it leaves that cell alone when a live update puts its row back.
 
 A new event is a clause of `Intent.parse/2`, an `on/2` clause in the module of its topic, its tag in `Live.Core.topic/1`, and its name in `malformed/2`. The id in an event's name is looked up among the tables of the `Table` (`Registry.known?/2`; for an attached table first among the tables of the socket, `Live.Hooks`) and the intent runs within that entry (`Registry.within/3`); an unknown id gets `malformed/2`'s answer. `tidy/1` runs over every table shown: it reconciles (`Nesting.reconcile/1`), follows what was announced and the held rows of every table, parents first, reconciles again, and asks for the summaries that are due.
 
-Each event's payload and answer are listed in "Events" in the markup contract in `lib/ash_data_table.ex`. The server tells the hooks with `push_event`, whose names carry no table id: `ash_data_table:focus`, `ash_data_table:ask`, `ash_data_table:bulk`, `ash_data_table:unselect`, `ash_data_table:leaving` (a row whose record a live update found gone), each with `table: id`. The hooks tell each other with DOM events on the grid: `ash_data_table:selection`, `ash_data_table:choose`.
+Each event's payload and answer are listed in "Events" in the markup contract in `lib/ash_data_table.ex`. The server tells the hooks with `push_event`, whose names carry no table id: `ash_data_table:focus`, `ash_data_table:ask`, `ash_data_table:select` (what is selected, where the server decided it), `ash_data_table:leaving` (a row whose record a live update found gone), each with `table: id`. The hooks tell each other with DOM events on the grid: `ash_data_table:selection`, `ash_data_table:choose`.
 
 ### The state of a table
 
@@ -214,7 +215,7 @@ The table is one assign (`AshDataTable.Table`): `table` in the tag's component a
 - `missing`, `fill`, `refused`, `lines`: the argument line.
 - `rejected`, `pending`: what the filter row shows beside the filters of the state: a value that was typed and is none, and the operators that were chosen without a value yet (`shown_filter/4`).
 - `panel`, `picker`: the open action panel and picker, or nil.
-- `selecting`, `bulk`, `lead`, `running`, `result`: selection and its actions. Which rows are selected is known to the hook only; `selected` is there for their keys and stays empty until stage 6.
+- `selecting`, `selected`, `all?`, `selected_under`, `bulk`, `lead`, `running`, `result`: selection and its actions. `selected` are the rows as the hook names them (primary keys, claims) or `all?`, held on the server (`Core.Selection`); `selected_under` what they were selected under. `Operation.Input.selection` is made of them.
 - `spent`, `running_files`: uploads.
 - `summarised?`, `summary`, `summing?`, `summed`, `summary_due`: footer summaries. `summary` holds by column `{:ok, value}` or `:unavailable`; `summary_due` (`:changed` after a read, `:force` after a write or a live batch) is answered in `tidy/1` by `summarise/1`.
 
@@ -250,7 +251,7 @@ They are JS files of the package, in `assets/js/`. `AshDataTable` keeps four col
 | `hiding.js` | hiding columns | the "Columns" list; the server never hears of it |
 | `scrolling.js` | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-data-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
 | `choices.js` | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
-| `selecting.js` | selecting | which rows are selected, `selected()`, `bulk` |
+| `selecting.js` | selecting | painting what is selected, telling the server every change (`select`), `selected()`, `bulk` |
 | `actions.js` | row actions | `act`, the question of an action, refocus |
 | `editing.js` | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
 | `arrays.js` | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |

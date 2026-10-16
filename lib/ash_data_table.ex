@@ -688,9 +688,11 @@ defmodule AshDataTable do
   #     `{ok: true, panel: true}`, `{ok: false}` or `{ok: false, error}`;
   #   * `pick` and `edit` `{row, column}`: `{ok: true}`, `{ok: false}` or
   #     `{ok: false, error}`;
-  #   * `bulk` `{action, rows}` or `{action, all: true}`: `{panel: true}`,
-  #     `{ask}` (the question to ask first) or `{ok: false}`; `bulk_run`,
-  #     the same, once the person has confirmed: no answer;
+  #   * `select` `{rows}` or `{all: true}`, on every change of what is
+  #     selected: no answer;
+  #   * `bulk` `{action}`, on what is selected: `{panel: true}`, `{ask}`
+  #     (the question to ask first) or `{ok: false}`; `bulk_run`, the
+  #     same, once the person has confirmed: no answer;
   #   * `bulk_seen` `{}`, `table_run` `{action}`: no answer.
   #
   # From the panel's hook, on `ID-panel`: `panel_add` and `panel_remove`
@@ -718,10 +720,10 @@ defmodule AshDataTable do
   # the id of the table it is for (every hook of the page hears it, and
   # only that table's acts): `ash_data_table:focus` `{table, cell}` (the id to
   # focus), `ash_data_table:ask` `{table, action, question}` (answered with
-  # `table_run`), `ash_data_table:bulk` `{table, failed}` or `{table}` (the rows
-  # an action on the selection did not run on, which stay selected),
-  # `ash_data_table:unselect` `{table, row}`, `ash_data_table:leaving` `{table, row}`
-  # (answered with `left`). A grid's hook tells whoever listens with DOM
+  # `table_run`), `ash_data_table:select` `{table, all, rows}` (what is
+  # selected, where the server decided it: each row `[key, named]`, as the
+  # hook keeps it), `ash_data_table:leaving` `{table, row}` (answered with
+  # `left`). A grid's hook tells whoever listens with DOM
   # events on its grid, `ash_data_table:selection` and, where it is told to
   # choose, `ash_data_table:choose`, each with what `selected()` gives:
   # `{table, mode, all, rows}`.
@@ -760,10 +762,13 @@ defmodule AshDataTable do
   # (`select`: `:multi` or `:single`), which is how a table is shown for a
   # person to choose from, with nothing to run.
   #
-  # Which rows are selected is the hook's alone: the server renders the
-  # boxes and never hears of a selection until a person does something
-  # with it. The hook says of each row whether it is selected
-  # (`aria-selected`, and the box), tells whoever listens
+  # Which rows are selected the server holds (`AshDataTable.Live.Core.Selection`),
+  # and the hook paints: it is told every change a person makes (`select`),
+  # and decides when a selection ends (the filters, the arguments or what
+  # the table is limited to changed) or narrows (a row went, a run left
+  # the rows it did not run on), which it tells the hook
+  # (`ash_data_table:select`). The hook says of each row whether it is
+  # selected (`aria-selected`, and the box), tells whoever listens
   # (`ash_data_table:selection` on `ID-grid`, with what `selected()` of the hook
   # gives), and names a row to the server by its primary key: the key in the
   # row's id, or what the row says in `data-key`.
@@ -773,8 +778,8 @@ defmodule AshDataTable do
   # `ID-selection-controls`, `ID-select-all`, `ID-clear-selection` and a
   # button per action on the selected rows (`ID-bulk-ACTION`). Such an
   # action is run by `AshDataTable.Bulk`, beside the process; what it came to
-  # is in `ID-result`, and the hook is told the rows it did not run on
-  # (`ash_data_table:bulk`), which stay selected.
+  # is in `ID-result`, and the rows it did not run on stay selected
+  # (`ash_data_table:select`).
   #
   # ## Table actions
   #
@@ -1232,7 +1237,6 @@ defmodule AshDataTable do
       nested?={@entry.nested?}
       notice?={@entry.notice?}
       page={@entry.page}
-      related={@entry.related}
       row_count={@entry.row_count}
       running={@entry.running}
       selecting={@entry.selecting}

@@ -159,7 +159,7 @@ test.describe("selecting with the pointer", () => {
     await expect(tasks.selectedCount).toHaveText("")
     await expect(tasks.clearSelection).toBeHidden()
 
-    expect(await frames.all(), "selecting sends nothing").toEqual([])
+    expect(await frames.besides("select"), "selecting sends nothing but what is selected").toEqual([])
   })
 
   test("a click beside the box, in its cell, does the same", async ({ tasks }) => {
@@ -193,7 +193,7 @@ test.describe("selecting with the pointer", () => {
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.selectedCount).toHaveText("")
 
-    expect(await frames.all(), "selecting sends nothing").toEqual([])
+    expect(await frames.besides("select"), "selecting sends nothing but what is selected").toEqual([])
   })
 
   test("Shift and a click selects the rows from the one that was selected last to this one, and no text", async ({
@@ -253,7 +253,7 @@ test.describe("selecting from the keyboard", () => {
     expect(await tasks.selectedKeys()).toEqual([FIRST])
 
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
-    expect(await frames.all(), "selecting and moving send nothing").toEqual([])
+    expect(await frames.besides("select"), "selecting and moving send nothing but what is selected").toEqual([])
   })
 
   test("Space on a boolean cell selects the row and leaves the value alone: Enter toggles it", async ({
@@ -340,7 +340,7 @@ test.describe("selecting from the keyboard", () => {
     await tasks.press("ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "Shift+ArrowDown")
     expect(await tasks.selectedKeys()).toEqual([...keys.slice(0, 3), keys[5], keys[6]])
 
-    expect(await frames.all(), "none of it is sent").toEqual([])
+    expect(await frames.besides("select"), "none of it is sent but what is selected").toEqual([])
   })
 
   test("Shift with an arrow key passes over what is open under a row", async ({ tasks }) => {
@@ -696,6 +696,29 @@ test.describe("an action on the selected rows", () => {
     expect(await frames.count("bulk_run")).toBe(1)
   })
 
+  test("runs on what the server holds as selected: rows of two pages, each told it as it was selected", async ({
+    tasks,
+    frames,
+  }) => {
+    await frames.clear()
+    await tasks.box(FIRST).click()
+    await tasks.reads(() => tasks.next.click())
+    const [onSecondPage] = await tasks.rowKeys()
+    await tasks.box(onSecondPage).click()
+    // the server is told every change, and the action names nothing else
+    expect(await frames.count("select")).toBe(2)
+
+    await tasks.bulk("archive").click()
+    await expect(tasks.question.locator("p")).toHaveText("Run “Archive” on 2 records?")
+    await confirmed(tasks)
+    await expect(tasks.result).toHaveText("Archive: 2 done.")
+    await expect(tasks.cell(onSecondPage, "status")).toHaveText("Archived")
+    await tasks.reads(() => tasks.previous.click())
+    await expect(tasks.cell(FIRST, "status")).toHaveText("Archived")
+    // and it told the hook that nothing stays selected
+    await expect(tasks.selectedCount).toHaveText("")
+  })
+
   test("what it came to stays through a sort, and goes when something else is selected", async ({ tasks }) => {
     await tasks.box(FIRST).click()
     await tasks.bulk("archive").click()
@@ -907,7 +930,7 @@ test.describe("a nested table", () => {
     expect(await comments.selectedKeys()).toEqual([])
     expect(await tasks.selectedKeys()).toEqual([SECOND])
     await expect(tasks.selectedCount).toHaveText("1 selected")
-    expect(await frames.all()).toEqual([])
+    expect(await frames.besides("select")).toEqual([])
   })
 
   test("Space selects in the grid that has the focus, and its buttons are reached from the keyboard", async ({

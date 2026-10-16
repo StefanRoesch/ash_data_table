@@ -70,14 +70,19 @@ export default {
   // is where a selection changes: the rows and the line follow, and
   // whoever listens is told. `seen` says that the person did it,
   // which is when the outcome of the last action on a selection has
-  // been read and can go.
-  select(keys, all, seen = true) {
+  // been read and can go. The server holds what is selected, and is
+  // told every change (`select`), but the one it made itself and
+  // tells the hook (`told`, `ash_data_table:select`).
+  select(keys, all, seen = true, told = false) {
     const selection = this.selection
     selection.keys = keys
     selection.all = all
     if (!all && keys.size === 0) selection.anchor = null
     this.paint()
     this.el.dispatchEvent(new CustomEvent("ash_data_table:selection", {bubbles: true, detail: this.selected()}))
+    if (!told) {
+      this.transport.push("select", all ? {all: true} : {rows: Array.from(keys).map(([key, named]) => named || key)})
+    }
     if (seen && this.part("result")) this.transport.push("bulk_seen", {})
   },
 
@@ -170,13 +175,6 @@ export default {
     if (!mode) return
     const selection = this.selection
     const line = this.line()
-    // made under other filters: given up
-    const scope = line ? line.dataset.scope : null
-    if (selection.scope !== null && scope !== selection.scope && (selection.all || selection.keys.size > 0)) {
-      selection.scope = scope
-      return this.select(new Map(), false, false)
-    }
-    selection.scope = scope
     const rows = this.records()
     // A table to choose several records from starts with the rows
     // selected of the records that are chosen now, as the server
@@ -268,16 +266,17 @@ export default {
   },
 
   // Uses the button of an action on the selected rows. The server
-  // is told the action and what is selected, and nothing runs: it
-  // opens the action's panel, or answers with the question to ask
-  // first, which says how many records it is about. Confirm then
-  // runs the action; what became of it comes back as a patch, and
-  // as the rows on which it did not run (`ash_data_table:bulk`).
+  // is told the action, and runs it on what it holds as selected,
+  // and nothing runs yet: it opens the action's panel, or answers
+  // with the question to ask first, which says how many records it
+  // is about. Confirm then runs the action; what became of it comes
+  // back as a patch, and as the rows on which it did not run, which
+  // stay selected (`ash_data_table:select`).
   bulk(button) {
     if (button.getAttribute("aria-disabled") === "true" || this.asking) return
     const {all, rows} = this.selected()
     if (!all && rows.length === 0) return
-    const payload = all ? {action: button.dataset.bulk, all: true} : {action: button.dataset.bulk, rows}
+    const payload = {action: button.dataset.bulk}
     // one question at a time
     this.asking = true
     this.transport.push("bulk", payload).then(reply => {

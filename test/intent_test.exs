@@ -87,18 +87,23 @@ defmodule AshDataTable.IntentTest do
     assert parse("table_act", %{"action" => "import"}) == {:ok, {:table_act, "import"}}
     assert parse("table_run", %{"action" => "import"}) == {:ok, {:table_run, "import"}}
 
-    assert parse("bulk", %{"action" => "close", "all" => true}) == {:ok, {:bulk, "close", :all}}
+    # what is selected, on every change: the server holds it (stage 6)
+    assert parse("select", %{"all" => true}) == {:ok, {:select, :all}}
 
-    assert parse("bulk_run", %{"action" => "close", "rows" => ["1", ["2", "3"]]}) ==
-             {:ok, {:bulk_run, "close", {:rows, ["1", ["2", "3"]]}}}
+    assert parse("select", %{"rows" => ["1", ["2", "3"]]}) ==
+             {:ok, {:select, {:rows, ["1", ["2", "3"]]}}}
 
-    # both: every record where the table has read, else the rows
-    assert parse("bulk", %{"action" => "close", "all" => true, "rows" => ["1"]}) ==
-             {:ok, {:bulk, "close", {:all, ["1"]}}}
+    assert parse("select", %{"rows" => []}) == {:ok, {:select, {:rows, []}}}
+    assert parse("select", %{"all" => "true"}) == :malformed
+    assert parse("select", %{"rows" => "1"}) == :malformed
 
-    assert parse("bulk", %{"action" => "close", "rows" => []}) == :malformed
-    assert parse("bulk", %{"action" => "close", "all" => "true"}) == :malformed
-    assert parse("bulk", %{"action" => 1, "all" => true}) == :malformed
+    # an action on it names the action only
+    assert parse("bulk", %{"action" => "close"}) == {:ok, {:bulk, "close"}}
+
+    assert parse("bulk_run", %{"action" => "close", "rows" => ["1"]}) ==
+             {:ok, {:bulk_run, "close"}}
+
+    assert parse("bulk", %{"action" => 1}) == :malformed
     assert parse("bulk_seen", %{}) == {:ok, :bulk_seen}
   end
 

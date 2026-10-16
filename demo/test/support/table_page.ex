@@ -484,9 +484,9 @@ defmodule DemoWeb.TablePage do
 
   @doc """
   Uses a button of the line above the grid as the table's hook does, with
-  what a person has selected: the rows as the hook names them (the key of a
-  row; for a key of several attributes the list of its values), or `:all`
-  for every record the filters match. Nothing runs yet. Returns the page,
+  what a person has selected (`select/3`): the rows as the hook names them
+  (the key of a row; for a key of several attributes the list of its
+  values), or `:all` for every record the filters match. Nothing runs yet. Returns the page,
   with the action's panel in it when it has one; the question the hook asks
   otherwise is the event's reply:
 
@@ -494,7 +494,8 @@ defmodule DemoWeb.TablePage do
       assert_reply view, %{ask: "Run “Archive” on 2 records?"}
   """
   def bulk(view, id \\ "task", action, selection) do
-    send_event(view, id, "bulk", Map.put(selected(selection), "action", action))
+    select(view, id, selection)
+    send_event(view, id, "bulk", %{"action" => action})
   end
 
   @doc """
@@ -503,9 +504,19 @@ defmodule DemoWeb.TablePage do
   Returns the page once the action has run and the table has read again.
   """
   def run_bulk(view, id \\ "task", action, selection) do
-    send_event(view, id, "bulk_run", Map.put(selected(selection), "action", action))
+    select(view, id, selection)
+    send_event(view, id, "bulk_run", %{"action" => action})
 
     ran(view)
+  end
+
+  @doc """
+  Selects rows as the table's hook does on every change of what a person
+  has selected: one `select` event with the rows as the hook names them,
+  or `:all` for every record the filters match. Returns the page.
+  """
+  def select(view, id \\ "task", selection) do
+    send_event(view, id, "select", selected(selection))
   end
 
   @doc """

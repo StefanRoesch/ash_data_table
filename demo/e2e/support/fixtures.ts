@@ -38,6 +38,18 @@ export class Frames {
     return [...this.sent]
   }
 
+  /**
+   * Everything sent since the last `clear` but the events of these names:
+   * what is selected is sent on every change (`select`), and nothing else is.
+   */
+  async besides(...events: string[]): Promise<string[]> {
+    await this.flush()
+    return this.sent.filter((text) => {
+      const [, , , kind, payload] = JSON.parse(text)
+      return !(kind === "event" && events.includes(payload.event))
+    })
+  }
+
   /** How many events of this name the page pushed: "save", "sort", "filter", "page", "discard". */
   async count(event: string): Promise<number> {
     await this.flush()

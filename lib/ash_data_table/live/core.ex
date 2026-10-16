@@ -23,6 +23,7 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Updates
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -135,6 +136,7 @@ defmodule AshDataTable.Live.Core do
        do: Panel
 
   defp topic(event) when event in [:bulk, :bulk_run, :bulk_seen], do: Bulk
+  defp topic(:select), do: Selection
   defp topic(event) when event in [:left, :read_again], do: Updates
 
   # An answer for a table that is no longer shown is dropped: its tasks
@@ -539,12 +541,14 @@ defmodule AshDataTable.Live.Core do
   #     row whose panel or picker closed, here or in a table under it, is
   #     let go in the same render. It may take rows away, and so tables
   #     under them, which are closed;
+  #   * a selection made under other filters is given up (`Selection.scoped/1`);
   #   * the summaries that are due are asked for.
   defp tidy(socket) do
     socket
     |> Nesting.reconcile()
     |> each(&Updates.follow/1)
     |> Nesting.reconcile()
+    |> each(&Selection.scoped/1)
     |> each(&Reading.summarise/1)
   end
 
@@ -670,7 +674,7 @@ defmodule AshDataTable.Live.Core do
   defp malformed(event, socket)
        when event in ~w(sort filter clear_filter clear_filters arguments argument_add
                         argument_remove page page_size toggle table_act table_run bulk_run
-                        bulk_seen panel_validate panel_submit panel_cancel pick_input
+                        bulk_seen select panel_validate panel_submit panel_cancel pick_input
                         picker_cancel create discard dismiss left read_again),
        do: {:noreply, socket}
 
@@ -707,6 +711,7 @@ defmodule AshDataTable.Live.Core do
         picking: Picker.picking(table),
         rows: entry.rows,
         panel: entry.panel,
+        selection: if(entry.all?, do: :all, else: {:rows, entry.selected}),
         read?: match?(%Query.Page{}, entry.page),
         offered: %{table: entry.offered, bulk: if(entry.running, do: [], else: entry.bulk)}
       },

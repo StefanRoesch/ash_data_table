@@ -184,7 +184,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
                failures: ["This record is no longer available. (2)"]
              }
 
-      assert_push_event view, "ash_data_table:bulk", %{table: "task_label", failed: failed}
+      assert_push_event view, "ash_data_table:select", %{table: "task_label", rows: failed}
       assert failed == [["#{task.id}-#{gone}", [task.id, gone]]]
     end
   end
@@ -232,7 +232,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
       assert length(bodies()) == 30
       refute "Comment 03" in bodies()
-      assert_push_event view, "ash_data_table:bulk", %{table: "comment", failed: failed}
+      assert_push_event view, "ash_data_table:select", %{table: "comment", rows: failed}
       assert length(failed) == 30
     end
   end
@@ -285,7 +285,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       assert bulk_result(html, comments) == %{summary: "Destroy: 1 done.", failures: []}
       assert bulk_result(html, "task") == nil
       assert bodies() == ["On the filing", "On the report 2", "On the report 3"]
-      assert_push_event view, "ash_data_table:bulk", %{table: ^comments, failed: []}
+      assert_push_event view, "ash_data_table:select", %{table: ^comments, rows: []}
       # the row is still expanded, with what is left under it
       assert column(html, comments, "body") == ["On the report 3", "On the report 2"]
     end
@@ -354,16 +354,17 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
         conn |> log_in(world.admin) |> live("/comments?comment[of][task][comments]=#{task.id}")
 
       assert text(html, "#comment-related-heading") == "Write the report: Comments"
-      [scope] = attribute(html, "#comment-selection", "data-scope")
 
       html = run_bulk(view, "comment", "destroy", :all)
 
       assert bulk_result(html, "comment") == %{summary: "Destroy: 3 done.", failures: []}
       assert bodies() == ["On the filing"]
 
-      # without the limit it is another table to select in
-      {:ok, _view, html} = conn |> log_in(world.admin) |> live("/comments")
-      assert attribute(html, "#comment-selection", "data-scope") != [scope]
+      # without the limit it is another table to select in: what was
+      # selected is given up
+      select(view, "comment", :all)
+      render_patch(view, "/comments")
+      assert_push_event view, "ash_data_table:select", %{table: "comment", all: false, rows: []}
     end
   end
 
@@ -495,8 +496,8 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
     test "the grid is busy, the buttons of the line say that they are not to be used, and the page answers",
          %{view: view, crates: [first, _second]} do
-      html =
-        forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      select(view, "crate", [first.id])
+      html = forge(view, "crate", "bulk_run", %{"action" => "weigh"})
 
       assert attribute(html, "#crate-table", "aria-busy") == ["true"]
       assert attribute(html, "#crate-bulk-seal", "aria-disabled") == ["true"]
@@ -531,8 +532,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       refute html =~ "toppled"
 
       # the hook is told nothing of the rows: what was selected stays so
-      assert_push_event view, "ash_data_table:bulk", %{table: "crate"} = told
-      refute is_map_key(told, :failed)
+      refute_push_event view, "ash_data_table:select", %{table: "crate"}
 
       assert attribute(html, "#crate-table", "aria-busy") == []
       html = run_bulk(view, "crate", "seal", [second.id])
@@ -541,12 +541,14 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
     test "no other runs on that table: one is neither asked for nor run",
          %{view: view, crates: [first, second]} do
-      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      select(view, "crate", [first.id])
+      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
 
       bulk(view, "crate", "seal", [second.id])
       assert_reply view, %{ok: false}
 
-      forge(view, "crate", "bulk_run", %{"action" => "seal", "rows" => [second.id]})
+      select(view, "crate", [second.id])
+      forge(view, "crate", "bulk_run", %{"action" => "seal"})
 
       html = ran(view)
 
@@ -800,7 +802,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
                failures: ["the books are closed (3)"]
              }
 
-      assert_push_event view, "ash_data_table:bulk", %{failed: failed}
+      assert_push_event view, "ash_data_table:select", %{rows: failed}
       assert Enum.sort(failed) == Enum.sort(Enum.map(ids, &[&1, nil]))
     end
 

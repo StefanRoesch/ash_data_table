@@ -14,6 +14,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
+  alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
   alias AshDataTable.Model
@@ -537,7 +538,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # again.
   def remove_row(socket, key) do
     %{id: id, rows: rows, page: page} = Core.table(socket).entry
-    %{rowindex: removed} = rows[key]
+    %{rowindex: removed, pk: pk} = rows[key]
 
     rows =
       rows
@@ -555,7 +556,7 @@ defmodule AshDataTable.Live.Core.Reading do
       |> Core.put(page: %{page | total: page.total && max(page.total - 1, 0)})
       |> stream_delete_by_dom_id(Core.table(socket).entry.stream, "#{id}-row-#{key}")
       |> stream_delete_by_dom_id(Core.table(socket).entry.stream, "#{id}-row-#{key}-x")
-      |> unselect(key)
+      |> Selection.gone(pk)
       |> due(:force)
 
     if rows == %{}, do: reread(socket), else: socket
@@ -563,15 +564,6 @@ defmodule AshDataTable.Live.Core.Reading do
 
   # A row that is gone is selected no longer: the hook, which alone knows
   # what is selected, is told.
-  defp unselect(socket, _key) when is_nil(Current.entry(socket, :selecting)), do: socket
-
-  defp unselect(socket, key),
-    do:
-      push_event(socket, "ash_data_table:unselect", %{
-        table: Core.table(socket).entry.id,
-        row: key
-      })
-
   # Reads the page again as it is asked for now, beside the process.
   def reread(socket), do: socket |> Core.put(read: :again) |> read()
 

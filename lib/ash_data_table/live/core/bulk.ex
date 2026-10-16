@@ -14,6 +14,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Text
@@ -44,7 +45,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   end
 
   defp ran({:ok, outcome}, socket) do
-    %{id: id, model: model, running: %{action: action}} = Core.table(socket).entry
+    %{model: model, running: %{action: action}} = Core.table(socket).entry
     not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
     # what says the same words is one failure, as it is said in this process
     outcome = %{outcome | failures: Text.counted(outcome.failures)}
@@ -58,24 +59,20 @@ defmodule AshDataTable.Live.Core.Bulk do
       for {message, count} <- outcome.failures,
           do: {:text, :bulk_failure, message: message, count: count}
 
-    failed =
-      for key <- outcome.failed, row_key = Reading.row_key(model, key, 0) do
-        [row_key, Reading.names(model, key, row_key)]
-      end
-
     {:noreply,
      socket
      |> Files.drop_copies()
      |> Core.put(running: nil, result: %{summary: summary, failures: failures})
      |> Core.say({:join, " ", [summary | failures]})
-     |> push_event("ash_data_table:bulk", %{table: id, failed: failed})
+     # the rows it did not run on stay selected, and no others
+     |> Selection.put({:rows, Enum.map(outcome.failed, &Selection.named(model, &1))}, true)
      |> Reading.reread()}
   end
 
   # The run itself went down. What it had done by then is not known: the
   # rows stay selected, and the table is read again.
   defp ran({:exit, reason}, socket) do
-    %{id: id, running: %{action: action}} = Core.table(socket).entry
+    %{running: %{action: action}} = Core.table(socket).entry
     went_down(socket, reason)
 
     summary =
@@ -86,7 +83,6 @@ defmodule AshDataTable.Live.Core.Bulk do
      |> Files.drop_copies()
      |> Core.put(running: nil, result: %{summary: summary, failures: []})
      |> Core.say(summary)
-     |> push_event("ash_data_table:bulk", %{table: id})
      |> Reading.reread()}
   end
 
@@ -99,7 +95,6 @@ defmodule AshDataTable.Live.Core.Bulk do
     socket
     |> Files.drop_copies()
     |> Core.put(running: nil, result: nil)
-    |> push_event("ash_data_table:bulk", %{table: Core.table(socket).entry.id})
     |> Reading.reread()
   end
 
@@ -113,22 +108,19 @@ defmodule AshDataTable.Live.Core.Bulk do
   end
 
   # Sent by the hook when a person uses a button of the line above the grid,
-  # with what they have selected: `rows`, each as the hook names it (its
-  # primary key), or `all` for every record the filters match. Nothing runs
-  # yet: an action with inputs opens its panel, and for any other the answer
-  # is the question to ask first, which says how many records it is about.
+  # on what they have selected (`AshDataTable.Live.Core.Selection`): `rows`,
+  # each as the hook names it (its primary key), or every record the filters
+  # match. Nothing runs yet: an action with inputs opens its panel, and for
+  # any other the answer is the question to ask first, which says how many
+  # records it is about.
   #
   # The action has to be one this table offers this person for a selection.
   # The rows are not looked up among those of the page, as a selection
   # outlives its page: they are claims, and the run reads each as the
   # person before anything is done to it (`AshDataTable.Bulk`).
-  def on({:bulk, name, selection}, socket) do
+  def on({:bulk, name} = intent, socket) do
     with {:ok, action, selection} <-
-           Operation.bulk_action(
-             Core.operation(socket, {:bulk, name, selection}),
-             name,
-             selection
-           ) do
+           Operation.bulk_action(Core.operation(socket, intent), name) do
       question = question(action, selected(selection, Core.table(socket).entry))
 
       if action.panel?,
@@ -142,10 +134,10 @@ defmodule AshDataTable.Live.Core.Bulk do
   # Sent by the hook once the person has answered that question with
   # Confirm, for an action without a panel: the action runs on what is
   # selected. Whether it has a panel is the table's to say, not the event's.
-  def on({:bulk_run, name, selection} = intent, socket) do
+  def on({:bulk_run, name} = intent, socket) do
     input = Core.operation(socket, intent)
 
-    with {:ok, action, _selection} <- Operation.bulk_action(input, name, selection),
+    with {:ok, action, _selection} <- Operation.bulk_action(input, name),
          {:start, run, files} <- Operation.bulk(input) do
       {:noreply, start_bulk(socket, action, run, files)}
     else

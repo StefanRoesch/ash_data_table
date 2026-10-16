@@ -30,6 +30,7 @@ defmodule AshDataTable.Event do
   | `:row_destroyed` | a destroy action on a row | `action`, `key`, `arguments` |
   | `:action_ran` | an update or a generic action on a row, a table action | `action`, `key` (nil for a table action), `arguments`, `record` or `result` |
   | `:bulk_ran` | an action on a selection is done | `action`, `arguments`, `all?`, `succeeded` and `failed` (keys) |
+  | `:selection_changed` | what is selected changed: by the person, or as the table ends or narrows it | `selected` (keys, as the browser named them: claims, not read again), `all?` (every record that matches) |
   | `:row_expanded`, `:row_collapsed` | a relationship's line under a row opened or closed | `key`, `relationship` |
 
   A key is a primary key as a map (`%{id: "…"}`). A record is the one the
@@ -56,6 +57,7 @@ defmodule AshDataTable.Event do
           | :row_destroyed
           | :action_ran
           | :bulk_ran
+          | :selection_changed
           | :row_expanded
           | :row_collapsed
 
@@ -73,6 +75,7 @@ defmodule AshDataTable.Event do
     :row_destroyed,
     :action_ran,
     :bulk_ran,
+    :selection_changed,
     :row_expanded,
     :row_collapsed
   ]
@@ -162,6 +165,10 @@ defmodule AshDataTable.Event do
        failed: outcome.failed
      }}
   end
+
+  @doc false
+  @spec selection([map], boolean) :: t
+  def selection(keys, all?), do: {:selection_changed, %{selected: keys, all?: all?}}
 
   @doc false
   @spec line(:row_expanded | :row_collapsed, map, atom) :: t

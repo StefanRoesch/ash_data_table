@@ -24,16 +24,18 @@
 // it holds is a list: the values as typed. A cell says a list as
 // JSON, as it says everything in text (`data-value`).
 //
-// Which rows are selected is known here alone, too (`data-select`
-// on this element says whether rows can be selected: "multi" or
-// "single"). The server renders a box in the first cell of every
-// row and knows nothing of its state: after every patch the rows
-// are marked again (`aria-selected`, and the box), so selecting
-// sends nothing and brings no row back. A row is remembered by the
-// key in its id, with what the server is told of it when an action
-// runs on the selection: its primary key, which is that key, or
-// what the row says in `data-key`. A selection outlives its page
-// and the sort, and is given up when the filters change. The line
+// Which rows are selected the server holds, and this hook paints
+// (`data-select` on this element says whether rows can be selected:
+// "multi" or "single"). The server renders a box in the first cell
+// of every row and nothing of its state: after every patch the rows
+// are marked again (`aria-selected`, and the box), so that no row
+// is sent again for it. Every change a person makes is sent
+// (`select`); where the server decides what is selected, it says so
+// (`ash_data_table:select`). A row is remembered by the key in its
+// id, with what the server is told of it: its primary key, which is
+// that key, or what the row says in `data-key`. A selection
+// outlives its page and the sort, and the server gives it up when
+// the filters change. The line
 // above the grid (`ID-selection`) is rendered by the server and
 // filled in here. Others learn of a selection from `selected()`
 // and from the event `ash_data_table:selection`, which this element
@@ -159,9 +161,8 @@ const core = {
     // `all` says that every record the filters match is selected,
     // on whatever page. `anchor` is the row a range starts from,
     // and `range` the range that Shift and the arrow keys are
-    // drawing, with what was selected before it. `scope` is what
-    // the selection was made under.
-    this.selection = {keys: new Map(), all: false, anchor: null, range: null, scope: null}
+    // drawing, with what was selected before it.
+    this.selection = {keys: new Map(), all: false, anchor: null, range: null}
     // the line above the grid is outside this element: its buttons
     // are heard at the table's own element
     this.root = document.getElementById(this.id)
@@ -204,11 +205,13 @@ const core = {
       this.counted = new MutationObserver(() => this.recountIn(line))
       this.counted.observe(line, {subtree: true, childList: true, characterData: true})
     }
-    // the server says on which rows an action on the selection did
-    // not run: those stay selected, and no others
-    this.transport.on("ash_data_table:bulk", ({table, failed}) => {
+    // the server says what is selected where it decided it: a
+    // selection made under other filters is given up, a row that went
+    // is selected no longer, and after an action on the selection the
+    // rows it did not run on stay selected, and no others
+    this.transport.on("ash_data_table:select", ({table, all, rows}) => {
       if (table !== this.id) return
-      if (failed) this.select(new Map(failed), false, false)
+      this.select(new Map(rows), all, false, true)
     })
     // The server says that a row is to go: its record is gone, or
     // no longer this person's to read (a live update). A row with
@@ -219,13 +222,6 @@ const core = {
       const ed = this.editing
       if (ed && ed.cell.isConnected && this.rowKey(ed.cell) === row) this.leaving.add(row)
       else this.transport.push("left", {row})
-    })
-    // and when a row is gone, which is then selected no longer
-    this.transport.on("ash_data_table:unselect", ({table, row}) => {
-      if (table !== this.id || !this.selection.keys.has(row)) return
-      const keys = new Map(this.selection.keys)
-      keys.delete(row)
-      this.select(keys, this.selection.all)
     })
     // the server says where focus goes after something it did: to
     // the first cell of a row that was created

@@ -154,12 +154,16 @@ defmodule AshDataTable.Live.Entry do
     # Whether rows can be selected, and how. `selecting` is what the table
     # does: what it was told (`select` of `AshDataTable.Table`), else
     # `:multi` while it has an action that runs on several rows (`bulk`),
-    # else nil. Which rows are selected is the hook's alone until stage 6
-    # of the refactor; `selected` is to hold their keys then, as claims, and
-    # is empty until then. `lead` is the number of columns before the first
-    # data column.
+    # else nil. Which rows are selected (`AshDataTable.Live.Core.Selection`):
+    # `selected`, each as the hook names it, its primary key, a claim; or
+    # every record that matches (`all?`). `selected_under` is what they were
+    # selected under: the filters, the arguments and what the table is
+    # limited to.
+    # `lead` is the number of columns before the first data column.
     selecting: nil,
-    selected: MapSet.new(),
+    selected: [],
+    all?: false,
+    selected_under: nil,
     bulk: [],
     lead: 0,
     # The action that is running on the selected rows, while it does, with

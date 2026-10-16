@@ -321,12 +321,9 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
     end
 
     test "a selection is given up with the arguments it was made under", %{view: view} do
-      html = render(view)
-      [before] = attribute(html, "#stock-selection", "data-scope")
-
-      html = argue(view, "stock", a: %{"at_least" => "6"})
-      assert [scope] = attribute(html, "#stock-selection", "data-scope")
-      assert scope != before
+      select(view, "stock", :all)
+      argue(view, "stock", a: %{"at_least" => "6"})
+      assert_push_event view, "ash_data_table:select", %{table: "stock", all: false, rows: []}
     end
 
     test "nothing from the outside reaches an argument that is not on the line", %{conn: conn} do

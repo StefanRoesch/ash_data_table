@@ -321,8 +321,9 @@ defmodule AshDataTable.PageValuesTest do
   end
 
   describe "the veto" do
-    defp input(model, intent, rows, veto) do
+    defp input(model, intent, rows, veto, selection \\ nil) do
       %Input{
+        selection: selection,
         intent: intent,
         model: model,
         state: %State{},
@@ -395,10 +396,12 @@ defmodule AshDataTable.PageValuesTest do
       note: note,
       other: other
     } do
-      intent = {:bulk_run, "assign", {:rows, [note.id, other.id]}}
+      selection = {:rows, [note.id, other.id]}
 
       assert {:start, run, %{}} =
-               Operation.bulk(input(model, intent, rows([note, other]), veto(:cont)))
+               Operation.bulk(
+                 input(model, {:bulk_run, "assign"}, rows([note, other]), veto(:cont), selection)
+               )
 
       assert_received {:asked, %Request{from: :bulk, selection: selection}}
       assert selection == [note.id, other.id]
@@ -411,10 +414,16 @@ defmodule AshDataTable.PageValuesTest do
     end
 
     test "a halted run on a selection starts nothing", %{model: model, note: note} do
-      intent = {:bulk_run, "assign", {:rows, [note.id]}}
+      input =
+        input(
+          model,
+          {:bulk_run, "assign"},
+          rows([note]),
+          veto({:halt, "No."}),
+          {:rows, [note.id]}
+        )
 
-      assert Operation.bulk(input(model, intent, rows([note]), veto({:halt, "No."}))) ==
-               {:halted, "No."}
+      assert Operation.bulk(input) == {:halted, "No."}
 
       assert reads(Note) == []
       assert writes() == []
