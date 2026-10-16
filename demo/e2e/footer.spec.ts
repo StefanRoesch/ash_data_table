@@ -24,7 +24,7 @@ async function across(locator: Locator): Promise<{ x: number; width: number }> {
 /** The summaries are there: none is on its way. */
 async function summed(table: Table): Promise<void> {
   await expect(table.summaries).toBeVisible()
-  await expect(table.summaries.locator("td[aria-busy]")).toHaveCount(0)
+  await expect(table.summaries.locator("[role=gridcell][aria-busy]")).toHaveCount(0)
 }
 
 test.describe("the footer row", () => {
@@ -33,7 +33,7 @@ test.describe("the footer row", () => {
     await summed(tasks)
 
     // in the table's footer, the last row of the grid
-    await expect(tasks.grid.locator(":scope > tfoot > tr")).toHaveCount(1)
+    await expect(tasks.grid.locator(":scope > [id$='-foot'] > [role=row]")).toHaveCount(1)
     await expect(tasks.summaries).toHaveRole("row")
     const count = await tasks.grid.getAttribute("aria-rowcount")
     expect(count, "the records, the two header rows and this row").toBe(String(SEED.tasks.acme + 3))
@@ -180,7 +180,7 @@ test.describe("a nested table", () => {
 
     // the footer of a nested table: the summaries, then its pages and its link
     const footer = await nested.grid
-      .locator(":scope > tfoot > tr")
+      .locator(":scope > [id$='-foot'] > [role=row]")
       .evaluateAll((rows) => rows.map((row) => row.id.split("-").at(-1)))
     expect(footer[0]).toBe("summaries")
     expect(footer.length).toBeGreaterThan(1)

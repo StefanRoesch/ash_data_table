@@ -180,7 +180,7 @@ defmodule DemoWeb.Tables.MapTableTest do
 
     test "is plain text: nothing but the text is in the cell", %{html: html, site: site} do
       for field <- ~w(place contact parts places settings entries notes) do
-        [{"td", _attributes, children}] =
+        [{_cell, _attributes, children}] =
           html
           |> LazyHTML.from_fragment()
           |> LazyHTML.query(cell("site", site.id, field))
@@ -218,7 +218,7 @@ defmodule DemoWeb.Tables.MapTableTest do
       {:ok, _view, html} = open(conn, @admin)
 
       for field <- ~w(place parts places settings entries notes mixed) do
-        [{"td", _attributes, children}] =
+        [{_cell, _attributes, children}] =
           html
           |> LazyHTML.from_fragment()
           |> LazyHTML.query(cell("site", site.id, field))

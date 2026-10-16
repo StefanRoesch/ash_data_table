@@ -136,7 +136,7 @@ defmodule DemoWeb.Tables.FullViewTest do
 
       assert column(html, "project", "name") == [project.name]
       assert heading(html, "project") == "Write the report: Project"
-      assert attribute(html, "#project-head-row th[aria-sort]", "id") == []
+      assert attribute(html, "#project-head-row [role=columnheader][aria-sort]", "id") == []
       assert attribute(html, "#project-filter-row :is(input, select)", "id") == []
       assert attribute(html, "#project-pagination", "id") == []
     end

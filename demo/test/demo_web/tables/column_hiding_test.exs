@@ -26,7 +26,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
 
   defp columns(html, id) do
     html
-    |> attribute("[id='#{id}-table'] > thead th[id^='#{id}-head-']", "id")
+    |> attribute("[id='#{id}-head'] [role=columnheader][id^='#{id}-head-']", "id")
     |> Enum.map(&String.replace_prefix(&1, "#{id}-head-", ""))
   end
 

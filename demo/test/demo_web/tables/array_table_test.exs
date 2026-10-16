@@ -92,7 +92,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       {:ok, _view, html} = open(conn, @admin)
 
       for field <- ~w(words numbers switches stages) do
-        assert [{"td", _attributes, [text]}] =
+        assert [{_cell, _attributes, [text]}] =
                  html
                  |> LazyHTML.from_fragment()
                  |> LazyHTML.query(cell("roster", roster.id, field))
@@ -107,7 +107,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       {:ok, _view, html} = open(conn, @admin)
 
       for field <- ~w(words numbers stages switches) do
-        assert [{"td", _attributes, []}] =
+        assert [{_cell, _attributes, []}] =
                  html
                  |> LazyHTML.from_fragment()
                  |> LazyHTML.query(cell("roster", roster.id, field))
@@ -280,7 +280,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     test "a column whose component has an editor of its own is edited with the table's all the same",
          %{html: html, roster: roster} do
       # the component shows the cell: it is given the list, and the text the table would show
-      assert {"td", _, [{"span", probe, ["700, 900"]}]} =
+      assert {_cell, _, [{"span", probe, ["700, 900"]}]} =
                tree(html, cell("roster", roster.id, "marks"))
 
       assert {"data-value", "[700, 900]"} in probe

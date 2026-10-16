@@ -125,8 +125,8 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
 
         assert count == if(unquote(actor) == :viewer, do: 20, else: 24)
         assert attribute(html, "#task-table", "aria-colcount") == ["#{count}"]
-        assert attribute(html, "#task-head-row th", "aria-colindex") == numbers
-        assert attribute(html, "#task-filter-row td", "aria-colindex") == numbers
+        assert attribute(html, "#task-head-row [role=columnheader]", "aria-colindex") == numbers
+        assert attribute(html, "#task-filter-row [role=gridcell]", "aria-colindex") == numbers
 
         assert attribute(html, "#task-head-description", "aria-colindex") ==
                  ["#{15 + acting}"]
@@ -144,7 +144,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       # the expanders, and the 19 columns that are left
       assert attribute(html, "#task-table", "aria-colcount") == ["20"]
 
-      assert attribute(html, "#task-head-row th", "aria-colindex") ==
+      assert attribute(html, "#task-head-row [role=columnheader]", "aria-colindex") ==
                Enum.map(1..20, &Integer.to_string/1)
 
       refute html =~ "estimate_hours"
@@ -168,7 +168,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
       # the box, the expander, the eighteen columns of a member, the actions
-      assert attribute(html, "#task-table tbody td", "aria-colindex") ==
+      assert attribute(html, "#task-table [role=rowgroup] [role=gridcell]", "aria-colindex") ==
                Enum.map(1..24, &Integer.to_string/1)
     end
   end
@@ -293,7 +293,11 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "the placeholder is text for screen readers only", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/tasks")
 
-      assert attribute(html, "#task-table td[id$='-c-estimate_hours'] > span", "class") ==
+      assert attribute(
+               html,
+               "#task-table [role=gridcell][id$='-c-estimate_hours'] > span",
+               "class"
+             ) ==
                ["sr-only", "sr-only", "sr-only"]
     end
 
@@ -367,7 +371,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "is offered no editing at all: no cell is marked, and there is no editor",
          %{html: html} do
       assert titles(html) == ["Write the report"]
-      assert attribute(html, "#task-table td", "aria-readonly") == []
+      assert attribute(html, "#task-table [role=gridcell]", "aria-readonly") == []
       assert editors(html, "task") == []
       assert attribute(html, "#task template", "id") == []
       assert attribute(html, "#task dialog", "id") == []

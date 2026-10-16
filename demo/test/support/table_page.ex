@@ -234,7 +234,7 @@ defmodule DemoWeb.TablePage do
   @doc "What the lines under a row say, top to bottom; none while the row is not expanded."
   def lines(html, id \\ "task", key) do
     html
-    |> query("[id='#{id}-row-#{key}-x'] > tr > td[data-line] > div > button[aria-expanded]")
+    |> query("[id='#{id}-row-#{key}-x'] > [role=row] > [data-line] > div > button[aria-expanded]")
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
@@ -360,21 +360,23 @@ defmodule DemoWeb.TablePage do
     prefix = "#{id}-row-"
 
     html
-    |> attribute("[id='#{id}-table'] > tbody[data-current]", "id")
+    |> attribute("[id='#{id}-table'] > [role=rowgroup][data-current]", "id")
     |> Enum.map(&String.replace_prefix(&1, prefix, ""))
   end
 
   @doc "The header labels of the table's columns, left to right, without the sort marks."
   def headers(html, id) do
     html
-    |> query("[id='#{id}-table'] > thead th[id^='#{id}-head-']")
+    |> query("[id='#{id}-head'] [role=columnheader][id^='#{id}-head-']")
     |> Enum.map(fn th -> th |> LazyHTML.text() |> String.replace(~r/ [▲▼]\z/u, "") end)
   end
 
   @doc "The texts of one column's cells, top to bottom: those of the table itself, not of a table nested in it."
   def column(html, id, field) do
     html
-    |> query("[id='#{id}-table'] > tbody > tr > td[id$='-c-#{field}']")
+    |> query(
+      "[id='#{id}-table'] > [role=rowgroup] > [role=row] > [role=gridcell][id$='-c-#{field}']"
+    )
     |> Enum.map(&LazyHTML.text/1)
   end
 

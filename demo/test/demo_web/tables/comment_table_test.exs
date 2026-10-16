@@ -60,7 +60,7 @@ defmodule DemoWeb.Tables.CommentTableTest do
   test "numbers the rows of every page from the top of that page", %{conn: conn} do
     {:ok, view, html} = live(conn, "/comments")
 
-    assert attribute(html, "#comment-table tbody tr", "aria-rowindex") ==
+    assert attribute(html, "#comment-table [role=rowgroup] [role=row]", "aria-rowindex") ==
              Enum.map(3..22, &"#{&1}")
 
     view |> element("#comment-next") |> render_click()
@@ -68,7 +68,7 @@ defmodule DemoWeb.Tables.CommentTableTest do
     html = render_async(view)
 
     # which rows of the 45 these are is not known under keyset pagination
-    assert attribute(html, "#comment-table tbody tr", "aria-rowindex") ==
+    assert attribute(html, "#comment-table [role=rowgroup] [role=row]", "aria-rowindex") ==
              Enum.map(3..22, &"#{&1}")
 
     assert text(html, "#comment-range") == "45 records"

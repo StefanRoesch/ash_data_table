@@ -117,7 +117,7 @@ for (const mounted of MOUNTED) {
     await expect(table.rows).toHaveCount(mounted.rows)
     await expect(table.expanders).toHaveCount(mounted.rows)
     await expect(table.boxes).toHaveCount(mounted.rows)
-    await expect(table.rows.locator("td")).toHaveCount(mounted.rows * (mounted.headers.length + 3))
+    await expect(table.rows.locator("[role=gridcell]")).toHaveCount(mounted.rows * (mounted.headers.length + 3))
 
     await expect(table.pagination).toHaveCount(mounted.pagination === "none" ? 0 : 1)
     if (mounted.pagination !== "none") {
@@ -267,7 +267,7 @@ test("/tasks shows labels for choices and one line per row, whatever the text", 
 
   // long descriptions are cut off, not wrapped
   const heights = await tasks.grid
-    .locator("tbody tr")
+    .locator("[role=rowgroup] [role=row]")
     .evaluateAll((rows) => rows.map((row) => Math.round(row.getBoundingClientRect().height)))
   // (the first row is a border higher than the others)
   expect(Math.max(...heights) - Math.min(...heights), `row heights ${heights}`).toBeLessThan(3)

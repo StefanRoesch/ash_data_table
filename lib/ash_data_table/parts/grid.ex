@@ -388,7 +388,10 @@ defmodule AshDataTable.Parts.Grid do
 
   defp paragraph(shown, _column, false) do
     {:safe, shown} = Phoenix.HTML.html_escape(shown)
-    if IO.iodata_length(shown) == 0, do: {:safe, shown}, else: {:safe, [~s(<p data-paragraph>), shown, "</p>"]}
+
+    if IO.iodata_length(shown) == 0,
+      do: {:safe, shown},
+      else: {:safe, [~s(<p data-paragraph>), shown, "</p>"]}
   end
 
   # What was typed into an editor, as its cell shows it.
@@ -418,7 +421,7 @@ defmodule AshDataTable.Parts.Grid do
   #
   # A field the actor may not see on this row looks empty and is announced.
   defp shown(_column, %{state: :forbidden}, _zone) do
-    {:safe, [~s(<span class="sr-only">), escape(Text.t(:not_available)), "</span>"]}
+    {:safe, [~s(<span class="sr-only" data-unseen>), escape(Text.t(:not_available)), "</span>"]}
   end
 
   # A record that has no value has an empty cell, whatever its column: what
@@ -511,7 +514,7 @@ defmodule AshDataTable.Parts.Grid do
      [
        ~s(<span aria-hidden="true">),
        mark,
-       ~s(</span><span class="sr-only">),
+       ~s(</span><span class="sr-only" data-unseen>),
        escape(Format.format(column, value, zone)),
        "</span>"
      ]}
@@ -880,6 +883,15 @@ defmodule AshDataTable.Parts.Grid do
         <div class="h-px"></div>
       </div>
     """
+  end
+
+  # The look of the root of the table on the page, once per page: what the
+  # hooks draw with is given here in the theme's colours. The hooks take
+  # `--ash-data-table-ground` and `--ash-data-table-line` where a host sets
+  # them, else these (the ground behind the cells that stay in view, the
+  # edge beside them).
+  def root do
+    "ash-data-table [--ash-data-table-default-ground:var(--color-base-100)] [--ash-data-table-default-line:var(--color-base-content)]"
   end
 
   # The columns a person can hide, in the table's order: every column but the

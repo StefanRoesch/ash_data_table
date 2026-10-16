@@ -413,8 +413,8 @@ test.describe("editing", () => {
   test("the question before a save is asked by the table the cell is in", async ({ page }) => {
     // only the tasks have a column that asks; each table has a row action
     // that does (actions.spec.ts), and so a dialog of its own
-    await expect(page.locator("dialog")).toHaveCount(2)
-    expect(await page.locator("dialog").evaluateAll((dialogs) => dialogs.map((dialog) => dialog.id))).toEqual([
+    await expect(page.locator("[role=dialog]")).toHaveCount(2)
+    expect(await page.locator("[role=dialog]").evaluateAll((dialogs) => dialogs.map((dialog) => dialog.id))).toEqual([
       "dashboard-projects-dialog",
       "dashboard-tasks-dialog",
     ])

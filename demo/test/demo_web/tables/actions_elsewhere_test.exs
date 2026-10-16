@@ -365,7 +365,7 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
       assert {other.id, blue.id} in links()
       assert text(html, cell("task_label", key, "note")) == "By hand"
 
-      assert attribute(html, "#task_label-table > tbody:first-of-type", "id") == [
+      assert attribute(html, "#task_label-table > [role=rowgroup]:first-of-type", "id") == [
                "task_label-row-#{key}"
              ]
 

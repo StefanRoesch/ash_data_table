@@ -218,12 +218,14 @@ defmodule DemoWeb.Tables.TaskTableTest do
 
       assert attribute(html, "#task-head-row", "aria-rowindex") == ["1"]
       assert attribute(html, "#task-filter-row", "aria-rowindex") == ["2"]
-      assert attribute(html, "#task-table tbody tr", "aria-rowindex") == Enum.map(3..27, &"#{&1}")
+
+      assert attribute(html, "#task-table [role=rowgroup] [role=row]", "aria-rowindex") ==
+               Enum.map(3..27, &"#{&1}")
 
       view |> element("#task-next") |> render_click()
       html = render_async(view)
 
-      assert attribute(html, "#task-table tbody tr", "aria-rowindex") ==
+      assert attribute(html, "#task-table [role=rowgroup] [role=row]", "aria-rowindex") ==
                Enum.map(28..52, &"#{&1}")
     end
 
@@ -474,7 +476,11 @@ defmodule DemoWeb.Tables.TaskTableTest do
          %{conn: conn, world: world} do
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
-      assert attribute(html, "#task-table td[id$='-c-estimate_hours'] > span", "class") ==
+      assert attribute(
+               html,
+               "#task-table [role=gridcell][id$='-c-estimate_hours'] > span",
+               "class"
+             ) ==
                ["sr-only"]
     end
   end

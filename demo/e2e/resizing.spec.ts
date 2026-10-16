@@ -149,7 +149,7 @@ test.describe("with the pointer", () => {
     tasks,
   }) => {
     const heights = async () => {
-      const rows = [tasks.grid.locator(":scope > thead > tr").first(), tasks.rowLine(FIRST), tasks.rowLine(SECOND)]
+      const rows = [tasks.grid.locator(":scope > #task-head > [role=row]").first(), tasks.rowLine(FIRST), tasks.rowLine(SECOND)]
       return Promise.all(rows.map(async (row) => (await row.boundingBox())!.height))
     }
     const before = await heights()
@@ -224,7 +224,7 @@ test.describe("how the table is laid out", () => {
     await expect(tasks.headerCells.first().locator("[data-resize]")).toHaveCount(0)
     await expect(tasks.headerCells.nth(1).locator("[data-resize]")).toHaveCount(0)
     await expect(tasks.actionsHeader.locator("[data-resize]")).toHaveCount(0)
-    await expect(tasks.grid.locator(":scope > thead [data-resize]")).toHaveCount((await tasks.columns()).length)
+    await expect(tasks.grid.locator(":scope > #task-head [data-resize]")).toHaveCount((await tasks.columns()).length)
   })
 })
 

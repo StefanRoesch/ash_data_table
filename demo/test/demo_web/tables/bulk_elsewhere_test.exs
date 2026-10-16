@@ -842,13 +842,13 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       assert attribute(html, "#pick-grid", "data-select") == ["single"]
       assert attribute(html, "#pick-table", "aria-multiselectable") == ["false"]
 
-      assert attribute(html, "#pick-table td[data-selector] > input", "type") ==
+      assert attribute(html, "#pick-table [role=gridcell][data-selector] > input", "type") ==
                ["radio", "radio"]
 
-      assert attribute(html, "#pick-table td[data-selector] > input", "name") ==
+      assert attribute(html, "#pick-table [role=gridcell][data-selector] > input", "name") ==
                ["pick-select", "pick-select"]
 
-      assert attribute(html, "#pick-table td[data-selector] > input", "aria-label") ==
+      assert attribute(html, "#pick-table [role=gridcell][data-selector] > input", "aria-label") ==
                ["Select row", "Select row"]
 
       # told to let rows be selected, and not that it is one to choose from
@@ -883,7 +883,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "is not, where it is told nothing and has no action to run on several rows",
          %{html: html} do
       assert attribute(html, "#plain-grid", "data-select") == []
-      assert attribute(html, "#plain-table td[data-selector]", "id") == []
+      assert attribute(html, "#plain-table [role=gridcell][data-selector]", "id") == []
       assert selection(html, "plain") == nil
       assert attribute(html, "#plain-table", "aria-colcount") == ["1"]
     end
@@ -891,7 +891,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "nor where its records have no primary key, whatever it is told", %{html: html} do
       assert column(html, "tally", "title") == ["A tally"]
       assert attribute(html, "#tally-grid", "data-select") == []
-      assert attribute(html, "#tally-table td[data-selector]", "id") == []
+      assert attribute(html, "#tally-table [role=gridcell][data-selector]", "id") == []
       assert selection(html, "tally") == nil
     end
   end

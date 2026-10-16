@@ -57,7 +57,7 @@ defmodule DemoWeb.Tables.ProjectTableTest do
 
     {:ok, _view, html} = conn |> log_in(world.admin) |> live("/projects")
 
-    assert attribute(html, "#project-table tbody:not([data-detail])", "id") ==
+    assert attribute(html, "#project-table [role=rowgroup]:not([data-detail])", "id") ==
              Enum.map(ids, &"project-row-#{&1}")
 
     assert column(html, "project", "id") == ids

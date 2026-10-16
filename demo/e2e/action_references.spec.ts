@@ -202,7 +202,7 @@ test.describe("\"Assign open tasks\" at /projects: a generic action in every row
 
     await expect(projects.panel).toHaveCount(0)
     await expect(projects.result).toContainText("Assign open tasks: 2 done.")
-    await expect(page.locator("dialog[open]")).toHaveCount(0)
+    await expect(page.locator("[role=dialog][open]")).toHaveCount(0)
   })
 })
 

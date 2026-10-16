@@ -175,12 +175,12 @@ export class Table {
 
   /** The headers of the table's columns: not the one of the expanders. */
   get headers(): Locator {
-    return this.grid.locator(`:scope > thead th[id^="${this.id}-head-"]`)
+    return this.grid.locator(`:scope > [id="${this.id}-head"] [role=columnheader][id^="${this.id}-head-"]`)
   }
 
   /** Every cell of the header row, the one above the expanders among them. */
   get headerCells(): Locator {
-    return this.grid.locator(":scope > thead > tr:first-child > th")
+    return this.grid.locator(`:scope > [id="${this.id}-head"] > [id="${this.id}-head-row"] > [role=columnheader]`)
   }
 
   /** The names of the columns, in order. */
@@ -298,7 +298,7 @@ export class Table {
 
   /** The `<tbody>` of each row: not the one under it, which holds what the row expands into. */
   get rows(): Locator {
-    return this.grid.locator(":scope > tbody:not([data-detail])")
+    return this.grid.locator(":scope > [role=rowgroup]:not([data-detail])")
   }
 
   /** The keys of the rows of the page, in order: what follows `ID-row-` in a row's id. */
@@ -332,7 +332,7 @@ export class Table {
 
   /** The cells of a column, down the page. */
   columnCells(column: string): Locator {
-    return this.grid.locator(`:scope > tbody > tr > td[id$="-c-${column}"]`)
+    return this.grid.locator(`:scope > [role=rowgroup] > [role=row] > [role=gridcell][id$="-c-${column}"]`)
   }
 
   /** The cells of a row, left to right, the expander among them. */
@@ -466,7 +466,7 @@ export class Table {
   /** Every editor open in the grid: one at most. The box that selects a row is no editor. */
   get openEditors(): Locator {
     return this.grid.locator(
-      ":scope > tbody > tr > td:not([colspan], [data-selector]) :is(textarea, input, select)",
+      ":scope > [role=rowgroup] > [role=row] > [role=gridcell]:not([colspan], [data-selector]) :is(textarea, input, select)",
     )
   }
 
@@ -584,7 +584,7 @@ export class Table {
 
   /** The boxes of the rows of the page, top to bottom. */
   get boxes(): Locator {
-    return this.grid.locator(":scope > tbody > tr > td[data-selector] > input[type=checkbox]")
+    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-selector] > input[type=checkbox]")
   }
 
   /** The cell of the header above the boxes. */
@@ -650,7 +650,7 @@ export class Table {
 
   /** The radio buttons of the rows of the page, top to bottom. */
   get radios(): Locator {
-    return this.grid.locator(":scope > tbody > tr > td[data-selector] > input[type=radio]")
+    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-selector] > input[type=radio]")
   }
 
   // ---- the picker ---------------------------------------------------------
@@ -808,12 +808,12 @@ export class Table {
 
   /** Every expander of the table. */
   get expanders(): Locator {
-    return this.grid.locator(":scope > tbody > tr > td[data-expander]")
+    return this.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-expander]")
   }
 
   /** The lines under an expanded row, one per relationship: their cells. */
   lines(key: string): Locator {
-    return this.byId(`${this.id}-row-${key}-x`).locator(":scope > tr > td[data-line]")
+    return this.byId(`${this.id}-row-${key}-x`).locator(":scope > [role=row] > [data-line]")
   }
 
   /** The cell of one line under a row. */

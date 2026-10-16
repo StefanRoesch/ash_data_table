@@ -84,7 +84,7 @@ test.describe("the actions column", () => {
     await expect(tasks.actionsCell(FIRST)).toHaveRole("gridcell")
     await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-colindex", "25")
     await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
-    await expect(tasks.grid.locator(":scope > tbody > tr > td[data-actions] > button")).toHaveCount(125)
+    await expect(tasks.grid.locator(":scope > [role=rowgroup] > [role=row] > [role=gridcell][data-actions] > button")).toHaveCount(125)
 
     // the buttons are no tab stops: the grid is one, as it was
     for (const button of await tasks.actions(FIRST).all()) {
@@ -372,8 +372,7 @@ test.describe("an action that asks first", () => {
     await expect(tasks.question).toHaveRole("dialog")
     await expect(tasks.question).toHaveAccessibleName(QUESTION)
     await expect(cancel, "focus is on the safe answer").toBeFocused()
-    await expect(confirm).toHaveClass(/\bbtn-error\b/)
-    await expect(confirm).not.toHaveClass(/\bbtn-primary\b/)
+    await expect(confirm).toHaveAttribute("data-destructive")
     expect(await pushed.all()).toEqual([])
 
     // Tab stays in the dialog
@@ -415,7 +414,7 @@ test.describe("an action that asks first", () => {
     tasks,
   }) => {
     await tasks.action(SECOND, "destroy").click()
-    await expect(confirm).toHaveClass(/\bbtn-error\b/)
+    await expect(confirm).toHaveAttribute("data-destructive")
     await cancel.click()
     await answered(tasks)
 
@@ -424,8 +423,7 @@ test.describe("an action that asks first", () => {
     await status.dblclick()
     await tasks.editor(status).selectOption({ label: "In review" })
     await expect(tasks.question).toHaveAccessibleName("Change the state of this task?")
-    await expect(confirm).toHaveClass(/\bbtn-primary\b/)
-    await expect(confirm).not.toHaveClass(/\bbtn-error\b/)
+    await expect(confirm).not.toHaveAttribute("data-destructive")
   })
 
   test("Confirm takes the row out of the page, counts it out, and puts focus on the same cell of the row after it", async ({
@@ -935,7 +933,7 @@ test.describe("the action panel", () => {
     await expect(tasks.question).toBeVisible()
     await expect(tasks.question).toHaveAccessibleName("Report this progress?")
     await expect(cancel).toBeFocused()
-    await expect(confirm).toHaveClass(/\bbtn-primary\b/)
+    await expect(confirm).not.toHaveAttribute("data-destructive")
     expect(await pushed.count("panel_submit"), "nothing is sent before the answer").toBe(0)
 
     // on top of the panel, which is still there behind it
@@ -986,7 +984,7 @@ test.describe("the action panel", () => {
 
     const answer = tasks.ask("Sure?", true)
     await expect(tasks.question).toBeVisible()
-    await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveClass(/\bbtn-error\b/)
+    await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveAttribute("data-destructive")
     await tasks.press("Escape")
 
     expect(await answer).toBe(false)

@@ -82,18 +82,24 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       assert attribute(html, "#task-grid", "data-select") == ["multi"]
       assert attribute(html, "#task-grid", "data-lead") == ["2"]
 
-      assert attribute(html, "#task-head-row > th:first-child", "id") == ["task-select-head"]
+      assert attribute(html, "#task-head-row > [role=columnheader]:first-child", "id") == [
+               "task-select-head"
+             ]
+
       assert attribute(html, "#task-select-head", "role") == ["columnheader"]
       assert attribute(html, "#task-select-head", "aria-colindex") == ["1"]
 
       assert attribute(html, "#task-select-head > input[type=checkbox]", "aria-label") ==
                ["Select all rows of this page"]
 
-      assert attribute(html, "#task-filter-row > td:first-child", "id") == ["task-select-filter"]
+      assert attribute(html, "#task-filter-row > [role=gridcell]:first-child", "id") == [
+               "task-select-filter"
+             ]
+
       assert text(html, "#task-select-filter") == ""
       assert attribute(html, "#task-select-filter", "aria-colindex") == ["1"]
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > td:first-child", "id") ==
+      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]:first-child", "id") ==
                ["task-row-#{task.id}-s"]
 
       assert attribute(html, "[id='task-row-#{task.id}-s']", "role") == ["gridcell"]

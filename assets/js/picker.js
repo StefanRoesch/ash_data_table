@@ -68,8 +68,8 @@ export default {
     const button = this.el.querySelector(TAKE)
     if (!button || this.several) return
     const none = this.rows.length === 0
+    // its look follows
     button.setAttribute("aria-disabled", String(none))
-    button.classList.toggle("btn-disabled", none)
   },
 
   chooseSelected() {

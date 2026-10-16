@@ -60,16 +60,17 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # a viewer has nothing to select a row for
       {:ok, _view, html} = conn |> log_in(world.viewer) |> live("/tasks")
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > td:first-child", "id") ==
+      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]:first-child", "id") ==
                ["task-row-#{task.id}-e"]
 
-      assert text(html, "#task-head-row > th:first-child") == "Related records"
+      assert text(html, "#task-head-row > [role=columnheader]:first-child") == "Related records"
       assert attribute(html, "#task-expander-head", "aria-colindex") == ["1"]
       assert attribute(html, "#task-head-title", "aria-colindex") == ["2"]
 
       {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > td", "id") |> Enum.take(3) ==
+      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]", "id")
+             |> Enum.take(3) ==
                ["task-row-#{task.id}-s", "task-row-#{task.id}-e", "task-row-#{task.id}-c-title"]
 
       assert attribute(html, "[id='task-row-#{task.id}-e'] > button", "aria-expanded") == [
@@ -83,7 +84,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # a column of its own: counted, with a header that names it
       assert text(html, "#task-expander-head") == "Related records"
 
-      assert attribute(html, "#task-head-row > th", "id") |> Enum.take(3) ==
+      assert attribute(html, "#task-head-row > [role=columnheader]", "id") |> Enum.take(3) ==
                ["task-select-head", "task-expander-head", "task-head-title"]
 
       assert attribute(html, "#task-expander-head", "aria-colindex") == ["2"]
@@ -104,7 +105,11 @@ defmodule DemoWeb.Tables.NestedTableTest do
       {:ok, _view, html} = live(conn, "/specimens")
 
       assert attribute(html, "#specimen-table [data-expander]", "id") == []
-      assert attribute(html, "#specimen-head-row > th:first-child", "id") == ["specimen-head-id"]
+
+      assert attribute(html, "#specimen-head-row > [role=columnheader]:first-child", "id") == [
+               "specimen-head-id"
+             ]
+
       assert attribute(html, "#specimen-head-id", "aria-colindex") == ["1"]
 
       assert attribute(html, "#specimen-table", "aria-colcount") ==
@@ -146,7 +151,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # every line is closed: no nested table yet
       assert attribute(
                html,
-               "[id='task-row-#{task.id}-x'] td[data-line] > div > button",
+               "[id='task-row-#{task.id}-x'] [role=gridcell][data-line] > div > button",
                "aria-expanded"
              )
              |> Enum.uniq() == ["false"]
@@ -330,8 +335,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       id = nested(task.id, "latest_comment")
 
       assert headers(html, id) == ["ID", "Body", "Inserted at", "Task ID", "Author ID"]
-      assert attribute(html, "[id='#{id}-head-row'] th[aria-sort]", "id") == []
-      assert attribute(html, "[id='#{id}-head-row'] th[phx-click]", "id") == []
+      assert attribute(html, "[id='#{id}-head-row'] [role=columnheader][aria-sort]", "id") == []
+      assert attribute(html, "[id='#{id}-head-row'] [role=columnheader][phx-click]", "id") == []
       assert attribute(html, "[id='#{id}-filter-row'] :is(input, select)", "id") == []
       assert attribute(html, "[id='#{id}-pagination']", "id") == []
       # what the comments' table edits is edited here, as on its own page
@@ -517,7 +522,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       # the controls are in the grid, and no tab stops
       assert attribute(
                html,
-               "[id='#{id}-table'] > tfoot [id='#{id}-pager'] [id='#{id}-pagination']",
+               "[id='#{id}-foot'] [id='#{id}-pager'] [id='#{id}-pagination']",
                "role"
              ) == ["group"]
 
@@ -803,7 +808,9 @@ defmodule DemoWeb.Tables.NestedTableTest do
       for relationship <- ~w(comments labels project) do
         {_view, html, id} = open_line(conn, task, relationship)
         assert editors(html, id) == [], relationship
-        assert attribute(html, "[id='#{id}-table'] td", "aria-readonly") == [], relationship
+
+        assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "aria-readonly") == [],
+               relationship
       end
     end
   end
@@ -1020,7 +1027,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       # under a comment likewise: its task, not its author
       {:ok, view, _html} = conn |> log_in(world.viewer) |> live("/comments")
-      [key] = attribute(render(view), "#comment-table > tbody:not([data-detail])", "id")
+      [key] = attribute(render(view), "#comment-table > [role=rowgroup]:not([data-detail])", "id")
       key = String.replace_prefix(key, "comment-row-", "")
       assert lines(expand(view, "comment", key), "comment", key) == ["Task"]
     end
@@ -1057,7 +1064,9 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert attribute(html, "[id='#{id}-table'] [aria-readonly]", "id") == []
 
       # and a save that is sent all the same changes nothing
-      [first | _] = attribute(html, "[id='#{id}-table'] > tbody:not([data-detail])", "id")
+      [first | _] =
+        attribute(html, "[id='#{id}-table'] > [role=rowgroup]:not([data-detail])", "id")
+
       key = String.replace_prefix(first, "#{id}-row-", "")
       save(view, id, key, "title", "Changed by a viewer")
       assert_reply view, %{ok: false}
@@ -1167,7 +1176,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       html = expand(view, Ecto.UUID.generate())
       assert_reply view, %{open: false}
-      assert attribute(html, "#task-table td[data-line]", "id") == []
+      assert attribute(html, "#task-table [role=gridcell][data-line]", "id") == []
 
       # nor without a row at all
       forge(view, "task", "expand", %{})

@@ -75,10 +75,10 @@ defmodule DemoWeb.Tables.LongTextTableTest do
 
     test "hold their text in one paragraph, as it is: the line breaks kept, the markup escaped",
          %{html: html, essay: essay} do
-      assert inner(html, essay.id, "body") == [{"p", [], [@body]}]
-      assert inner(html, essay.id, "tags") == [{"p", [], ["long, text"]}]
-      assert inner(html, essay.id, "facts") == [{"p", [], ["Words: 12"]}]
-      assert inner(html, essay.id, "draft") == [{"p", [], [@draft]}]
+      assert inner(html, essay.id, "body") == [{"p", [{"data-paragraph", ""}], [@body]}]
+      assert inner(html, essay.id, "tags") == [{"p", [{"data-paragraph", ""}], ["long, text"]}]
+      assert inner(html, essay.id, "facts") == [{"p", [{"data-paragraph", ""}], ["Words: 12"]}]
+      assert inner(html, essay.id, "draft") == [{"p", [{"data-paragraph", ""}], [@draft]}]
       # a column of one line holds its text and nothing around it
       assert inner(html, essay.id, "title") == ["On tables"]
     end
@@ -99,12 +99,12 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       assert %{shown: "Too loud!\nReally.", message: "must not shout"} =
                failure(html, "essay", essay.id, "body")
 
-      assert [{"p", [], ["Too loud!\nReally."]}, {"span", _attributes, ["must not shout"]}] =
+      assert [{"p", [{"data-paragraph", ""}], ["Too loud!\nReally."]}, {"span", _attributes, ["must not shout"]}] =
                inner(html, essay.id, "body")
 
       # and a save that goes through shows the new text the same way
       html = save(view, "essay", essay.id, "body", "Quiet.\nNow.")
-      assert inner(html, essay.id, "body") == [{"p", [], ["Quiet.\nNow."]}]
+      assert inner(html, essay.id, "body") == [{"p", [{"data-paragraph", ""}], ["Quiet.\nNow."]}]
     end
   end
 
@@ -126,7 +126,7 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       assert attribute(html, cell("essay", essay.id, "token") <> " [data-mask]", "aria-hidden") ==
                ["true"]
 
-      assert attribute(html, "#essay-table td[title]", "title") == []
+      assert attribute(html, "#essay-table [role=gridcell][title]", "title") == []
     end
 
     test "a field the person may not see on a row is not in the page, in a column of several lines either",
@@ -136,12 +136,12 @@ defmodule DemoWeb.Tables.LongTextTableTest do
 
       refute html =~ "closed-" <> @draft
       # the cell says so to a screen reader, as in every column, and holds no paragraph
-      assert [{"span", [{"class", "sr-only"}], [_not_available]}] =
+      assert [{"span", [{"class", "sr-only"}, {"data-unseen", ""}], [_not_available]}] =
                inner(html, closed.id, "draft")
 
       assert shown_lines(html, closed.id, "draft") == ["2"]
       # the draft of another essay is theirs to read
-      assert inner(html, essay.id, "draft") == [{"p", [], [@draft]}]
+      assert inner(html, essay.id, "draft") == [{"p", [{"data-paragraph", ""}], [@draft]}]
       assert [{"div", _attributes, []}] = html |> query("#essay-whole") |> LazyHTML.to_tree()
     end
   end

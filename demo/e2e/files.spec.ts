@@ -105,7 +105,7 @@ test.describe("Run", () => {
     expect(await pushed.count("panel_submit")).toBe(1)
 
     const zebra = labels.rows.filter({ hasText: "zebra" })
-    await expect(zebra.locator('td[id$="-c-colour"]')).toHaveText("#00aa00")
+    await expect(zebra.locator('[role=gridcell][id$="-c-colour"]')).toHaveText("#00aa00")
   })
 
   test("a bar under the input says how far the file has come while it is sent", async ({ page }) => {

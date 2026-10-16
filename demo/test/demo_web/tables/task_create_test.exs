@@ -177,7 +177,10 @@ defmodule DemoWeb.Tables.TaskCreateTest do
       [new | _] = stored(world)
 
       assert titles(html) == ["Brand new", "Older", "Oldest"]
-      assert attribute(html, "#task-table > tbody:first-of-type", "id") == ["task-row-#{new.id}"]
+
+      assert attribute(html, "#task-table > [role=rowgroup]:first-of-type", "id") == [
+               "task-row-#{new.id}"
+             ]
 
       # with everything its columns show, and its actions
       assert text(html, cell(new.id, "status")) == "To do"

@@ -52,10 +52,10 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       task = task(world, [])
       {:ok, _view, html} = live(conn, "/tasks")
 
-      assert {"td", _, [{"span", badge, ["In progress"]}]} = tree(html, cell(task.id, "status"))
+      assert {_cell, _, [{"span", badge, ["In progress"]}]} = tree(html, cell(task.id, "status"))
       assert "badge" in String.split(:proplists.get_value("class", badge))
 
-      assert {"td", _, [{"span", _badge, ["High"]}]} = tree(html, cell(task.id, "priority"))
+      assert {_cell, _, [{"span", _badge, ["High"]}]} = tree(html, cell(task.id, "priority"))
     end
   end
 
@@ -67,7 +67,7 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       task = task(world, [])
       {:ok, _view, html} = live(conn, "/tasks")
 
-      assert {"td", _, [{"span", _, [{"progress", bar, []}, "40"]}]} =
+      assert {_cell, _, [{"span", _, [{"progress", bar, []}, "40"]}]} =
                tree(html, cell(task.id, "progress"))
 
       bar = Map.new(bar)
@@ -118,7 +118,7 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       # `set_progress` starts a task that is still to do: the column's own action ran
       assert %{progress: 65, status: :in_progress} = stored(task)
 
-      assert {"td", _, [{"span", _, [{"progress", bar, []}, "65"]}]} =
+      assert {_cell, _, [{"span", _, [{"progress", bar, []}, "65"]}]} =
                tree(html, cell(task.id, "progress"))
 
       assert {"value", "65"} in bar
@@ -134,8 +134,8 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       open = task(world, title: "Not estimated", estimate_hours: nil)
       {:ok, _view, html} = live(conn, "/tasks")
 
-      assert {"td", _, ["12.5 h"]} = tree(html, cell(task.id, "estimate_hours"))
-      assert {"td", _, []} = tree(html, cell(open.id, "estimate_hours"))
+      assert {_cell, _, ["12.5 h"]} = tree(html, cell(task.id, "estimate_hours"))
+      assert {_cell, _, []} = tree(html, cell(open.id, "estimate_hours"))
       # the editor takes the number, not what the cell shows
       assert attribute(html, cell(task.id, "estimate_hours"), "data-value") == ["12.5"]
     end
@@ -158,7 +158,7 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       html = save(view, task.id, "estimate_hours", "8")
 
       assert Decimal.equal?(stored(task).estimate_hours, 8)
-      assert {"td", _, ["8 h"]} = tree(html, cell(task.id, "estimate_hours"))
+      assert {_cell, _, ["8 h"]} = tree(html, cell(task.id, "estimate_hours"))
     end
 
     test "is not asked to show an estimate that is hidden from the person", %{
@@ -170,9 +170,10 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       other = task(world, title: "Other")
       {:ok, _view, html} = conn |> log_in(world.member) |> live("/tasks")
 
-      assert {"td", _, ["12.5 h"]} = tree(html, cell(own.id, "estimate_hours"))
+      assert {_cell, _, ["12.5 h"]} = tree(html, cell(own.id, "estimate_hours"))
 
-      assert {"td", _, [{"span", [{"class", "sr-only"}], ["Not available"]}]} =
+      assert {_cell, _,
+              [{"span", [{"class", "sr-only"}, {"data-unseen", ""}], ["Not available"]}]} =
                tree(html, cell(other.id, "estimate_hours"))
     end
   end
@@ -189,8 +190,8 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
     end
 
     defp assert_components(looks) do
-      assert {"td", _, [{"span", _badge, ["In progress"]}]} = looks.status
-      assert {"td", _, [{"span", _, [{"progress", _bar, []}, "40"]}]} = looks.progress
+      assert {_cell, _, [{"span", _badge, ["In progress"]}]} = looks.status
+      assert {_cell, _, [{"span", _, [{"progress", _bar, []}, "40"]}]} = looks.progress
       assert looks.estimate == "12.5 h"
       assert looks.slider == %{control: "range", choices: nil, confirm: nil}
     end
@@ -211,7 +212,7 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
       html = save(view, id, task.id, "progress", "55")
       assert stored(task).progress == 55
 
-      assert {"td", _, [{"span", _, [{"progress", _bar, []}, "55"]}]} =
+      assert {_cell, _, [{"span", _, [{"progress", _bar, []}, "55"]}]} =
                tree(html, cell(id, task.id, "progress"))
     end
 
@@ -232,8 +233,8 @@ defmodule DemoWeb.Tables.TaskComponentsTest do
          %{conn: conn, task: task} do
       {:ok, _view, html} = conn |> in_locale("de") |> live("/tasks")
 
-      assert {"td", _, [{"span", _badge, ["In Arbeit"]}]} = tree(html, cell(task.id, "status"))
-      assert {"td", _, [{"span", _badge, ["Hoch"]}]} = tree(html, cell(task.id, "priority"))
+      assert {_cell, _, [{"span", _badge, ["In Arbeit"]}]} = tree(html, cell(task.id, "status"))
+      assert {_cell, _, [{"span", _badge, ["Hoch"]}]} = tree(html, cell(task.id, "priority"))
 
       assert {_template, {"span", _, [{"input", range, []}, _number]}} =
                template(html, "progress")

@@ -200,7 +200,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
     test "two levels down, under a task's project", %{conn: conn, world: world, project: project} do
       {:ok, view, html} = conn |> log_in(world.member) |> live("/tasks")
-      [row | _] = attribute(html, "#task-table > tbody:not([data-detail])", "id")
+      [row | _] = attribute(html, "#task-table > [role=rowgroup]:not([data-detail])", "id")
       key = String.replace_prefix(row, "task-row-", "")
 
       expand(view, key)
@@ -271,7 +271,13 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
       refute "External ref" in headers(html, "tasks")
       assert text(html, "#tasks-range") == "1–25 of 60"
       assert attribute(html, "#tasks-clear-filters", "id") == []
-      assert attribute(html, "#tasks-table th[aria-sort]:not([aria-sort=none])", "id") == []
+
+      assert attribute(
+               html,
+               "#tasks-table [role=columnheader][aria-sort]:not([aria-sort=none])",
+               "id"
+             ) == []
+
       refute html =~ "EXT"
       # and nothing is open under the projects any more
       assert attribute(html, "[id='#{id}']", "id") == []
@@ -315,7 +321,13 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
           |> live("/tasks?" <> URI.encode_query(%{"task[sort]" => unquote(sort)}))
 
         assert column(html, "task", "title") == @unsorted
-        assert attribute(html, "#task-table th[aria-sort]:not([aria-sort=none])", "id") == []
+
+        assert attribute(
+                 html,
+                 "#task-table [role=columnheader][aria-sort]:not([aria-sort=none])",
+                 "id"
+               ) == []
+
         assert text(html, "#task-error") == nil
       end
     end
@@ -343,7 +355,13 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
         html = send_sort(view, "task", column)
 
         assert column(html, "task", "title") == @unsorted
-        assert attribute(html, "#task-table th[aria-sort]:not([aria-sort=none])", "id") == []
+
+        assert attribute(
+                 html,
+                 "#task-table [role=columnheader][aria-sort]:not([aria-sort=none])",
+                 "id"
+               ) == []
+
         assert text(html, "#task-error") == nil
       end
 
@@ -371,7 +389,11 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
         assert column(html, id, "title") == @unsorted
 
-        assert attribute(html, "[id='#{id}-table'] th[aria-sort]:not([aria-sort=none])", "id") ==
+        assert attribute(
+                 html,
+                 "[id='#{id}-table'] [role=columnheader][aria-sort]:not([aria-sort=none])",
+                 "id"
+               ) ==
                  []
 
         assert text(html, "[id='#{id}-error']") == nil
@@ -384,7 +406,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
     test "in an event to a nested table of one record, which has no sort at all",
          %{conn: conn, world: world} do
       {:ok, view, html} = conn |> log_in(world.admin) |> live("/tasks")
-      [row | _] = attribute(html, "#task-table > tbody:not([data-detail])", "id")
+      [row | _] = attribute(html, "#task-table > [role=rowgroup]:not([data-detail])", "id")
       key = String.replace_prefix(row, "task-row-", "")
       expand(view, key)
       toggle(view, key, "project")
@@ -392,7 +414,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
       for column <- ["name", "tasks.title", "inserted_at"] do
         html = send_sort(view, id, column)
-        assert attribute(html, "[id='#{id}-table'] th[aria-sort]", "id") == []
+        assert attribute(html, "[id='#{id}-table'] [role=columnheader][aria-sort]", "id") == []
         assert length(column(html, id, "name")) == 1
       end
 

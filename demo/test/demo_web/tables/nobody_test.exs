@@ -25,14 +25,14 @@ defmodule DemoWeb.Tables.NobodyTest do
     test "#{path} shows no records", %{conn: conn} do
       {:ok, view, html} = live(conn, unquote(path))
 
-      assert attribute(html, "##{unquote(id)}-table tbody", "id") == []
+      assert attribute(html, "##{unquote(id)}-table [role=rowgroup]", "id") == []
       assert text(html, "##{unquote(id)}-empty") == "No records"
       assert text(html, "##{unquote(id)}-error") == nil
       # and offers no editing
       assert editors(html, unquote(id)) == []
-      assert attribute(html, "##{unquote(id)}-table td", "aria-readonly") == []
+      assert attribute(html, "##{unquote(id)}-table [role=gridcell]", "aria-readonly") == []
       # the page is alive: it can be sorted
-      [header | _] = attribute(html, "##{unquote(id)}-table th[data-sort]", "id")
+      [header | _] = attribute(html, "##{unquote(id)}-table [role=columnheader][data-sort]", "id")
       click(view, "##{header}")
       assert text(render_async(view), "##{unquote(id)}-empty") == "No records"
     end

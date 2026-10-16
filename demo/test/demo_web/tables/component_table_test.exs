@@ -67,7 +67,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       gauge = gauge()
       {:ok, _view, html} = open(conn, @admin)
 
-      assert {"td", attributes, [{"span", probe, ["4"]}]} =
+      assert {_cell, attributes, [{"span", probe, ["4"]}]} =
                tree(html, cell("gauge", gauge.id, "level"))
 
       assert {"id", "gauge-row-#{gauge.id}-c-level"} in attributes
@@ -85,11 +85,12 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       {:ok, _view, html} = open(conn, @member)
 
       # the member's own gauge: the component, with the value
-      assert {"td", _, [{"span", probe, ["100"]}]} = tree(html, cell("gauge", own.id, "amount"))
+      assert {_cell, _, [{"span", probe, ["100"]}]} = tree(html, cell("gauge", own.id, "amount"))
       assert {"data-probe", "amount"} in probe
 
       # another's: what a hidden cell of any column is, and nothing of the component
-      assert {"td", attributes, [{"span", [{"class", "sr-only"}], ["Not available"]}]} =
+      assert {_cell, attributes,
+              [{"span", [{"class", "sr-only"}, {"data-unseen", ""}], ["Not available"]}]} =
                tree(html, cell("gauge", other.id, "amount"))
 
       assert {"aria-readonly", "true"} in attributes
@@ -100,8 +101,8 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       gauge = gauge(%{level: nil, state: nil})
       {:ok, _view, html} = open(conn, @admin)
 
-      assert {"td", _attributes, []} = tree(html, cell("gauge", gauge.id, "level"))
-      assert {"td", _attributes, []} = tree(html, cell("gauge", gauge.id, "state"))
+      assert {_cell, _attributes, []} = tree(html, cell("gauge", gauge.id, "level"))
+      assert {_cell, _attributes, []} = tree(html, cell("gauge", gauge.id, "state"))
     end
 
     test "the component is given the value, the text the table would show, and the column: nothing else",
@@ -109,12 +110,16 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       gauge = gauge()
       {:ok, _view, html} = open(conn, @admin)
 
-      assert {"td", _, [{"span", probe, ["Busy"]}]} = tree(html, cell("gauge", gauge.id, "state"))
+      assert {_cell, _, [{"span", probe, ["Busy"]}]} =
+               tree(html, cell("gauge", gauge.id, "state"))
+
       assert {"data-given", "column text value"} in probe
       # the value as the record holds it, and the label of that choice as text
       assert {"data-value", ":busy"} in probe
 
-      assert {"td", _, [{"span", probe, ["100"]}]} = tree(html, cell("gauge", gauge.id, "amount"))
+      assert {_cell, _, [{"span", probe, ["100"]}]} =
+               tree(html, cell("gauge", gauge.id, "amount"))
+
       assert {"data-value", "100"} in probe
     end
 
@@ -133,7 +138,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       gauge = gauge()
       {:ok, _view, html} = open(conn, @viewer)
 
-      assert {"td", attributes, [{"span", probe, ["4"]}]} =
+      assert {_cell, attributes, [{"span", probe, ["4"]}]} =
                tree(html, cell("gauge", gauge.id, "level"))
 
       assert {"data-probe", "level"} in probe
@@ -209,7 +214,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       html = save(view, "gauge", gauge.id, "level", "7")
 
       assert %{level: 7, trace: "set_level"} = stored(gauge)
-      assert {"td", _, [{"span", probe, ["7"]}]} = tree(html, cell("gauge", gauge.id, "level"))
+      assert {_cell, _, [{"span", probe, ["7"]}]} = tree(html, cell("gauge", gauge.id, "level"))
       assert {"data-value", "7"} in probe
       assert failure(html, "gauge", gauge.id, "level") == nil
     end
@@ -260,7 +265,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
 
       # given up, the cell is the component's again, with the record's value
       html = discard(view, "gauge", gauge.id, "level")
-      assert {"td", _, [{"span", _probe, ["4"]}]} = tree(html, cell("gauge", gauge.id, "level"))
+      assert {_cell, _, [{"span", _probe, ["4"]}]} = tree(html, cell("gauge", gauge.id, "level"))
     end
 
     test "is refused for a person who can never edit the column", %{conn: conn} do
@@ -270,7 +275,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       html = save(view, "gauge", gauge.id, "level", "7")
 
       assert stored(gauge).level == 4
-      assert {"td", _, [{"span", _probe, ["4"]}]} = tree(html, cell("gauge", gauge.id, "level"))
+      assert {_cell, _, [{"span", _probe, ["4"]}]} = tree(html, cell("gauge", gauge.id, "level"))
     end
 
     test "is refused for a column the table lets nobody edit, though its component edits and an action would accept the value",
@@ -279,7 +284,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       {:ok, view, html} = open(conn, @admin)
 
       # the component shows, and the column has no editor
-      assert {"td", attributes, [{"span", _probe, ["max"]}]} =
+      assert {_cell, attributes, [{"span", _probe, ["max"]}]} =
                tree(html, cell("gauge", gauge.id, "owner"))
 
       assert {"aria-readonly", "true"} in attributes
@@ -302,7 +307,8 @@ defmodule DemoWeb.Tables.ComponentTableTest do
                "Amount was not saved: You are not allowed to change this."
 
       # the cell is as hidden as it was
-      assert {"td", _, [{"span", [{"class", "sr-only"}], ["Not available"]}]} =
+      assert {_cell, _,
+              [{"span", [{"class", "sr-only"}, {"data-unseen", ""}], ["Not available"]}]} =
                tree(html, cell("gauge", gauge.id, "amount"))
     end
   end
@@ -363,7 +369,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
 
       assert panel(html, "gauge") == nil
       assert %{level: 9, volume: 3, trace: "tune", name: "Boiler"} = stored(gauge)
-      assert {"td", _, [{"span", _probe, ["9"]}]} = tree(html, cell("gauge", gauge.id, "level"))
+      assert {_cell, _, [{"span", _probe, ["9"]}]} = tree(html, cell("gauge", gauge.id, "level"))
     end
 
     test "shows what the action says about the field under the component, and says so on its control",
@@ -430,7 +436,7 @@ defmodule DemoWeb.Tables.ComponentTableTest do
       gauge = gauge(%{state: :done})
       {:ok, _view, html} = open_in_german(conn, @admin)
 
-      assert {"td", _, [{"span", probe, ["Erledigt"]}]} =
+      assert {_cell, _, [{"span", probe, ["Erledigt"]}]} =
                tree(html, cell("gauge", gauge.id, "state"))
 
       probe = Map.new(probe)

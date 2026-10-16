@@ -8,6 +8,7 @@ defmodule AshDataTable.MarkersTest do
   use ExUnit.Case, async: true
 
   @markers Path.expand("../assets/js/markers.js", __DIR__)
+  @hooks Path.expand("../assets/js", __DIR__)
 
   test "markers.js and Attrs name the same markers" do
     named =
@@ -16,5 +17,20 @@ defmodule AshDataTable.MarkersTest do
       |> List.flatten()
 
     assert Enum.sort(named) == Enum.sort(AshDataTable.Attrs.markers())
+  end
+
+  # The done-check of the design note of stage 7, section 9: the hooks find
+  # nothing by a tag of the table's structure, walk none of its structure,
+  # and toggle no class nor read a variable of daisyUI.
+  test "no hook finds the table's structure by a tag, nor knows daisyUI" do
+    found =
+      for file <- Path.wildcard(Path.join(@hooks, "**/*.js")),
+          {line, number} <- file |> File.read!() |> String.split("\n") |> Enum.with_index(1),
+          not String.starts_with?(String.trim_leading(line), "//"),
+          line =~
+            ~r/closest\("(td|th|tbody|tr|table)|\.cells\b|cellIndex|rowIndex|tBodies|tHead|classList|--color-|btn|sr-only/,
+          do: "#{Path.relative_to(file, @hooks)}:#{number}: #{String.trim(line)}"
+
+    assert found == []
   end
 end

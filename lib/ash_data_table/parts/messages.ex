@@ -142,7 +142,9 @@ defmodule AshDataTable.Parts.Messages do
             <p id={"#{@id}-dialog-question"}></p>
             <div class="mt-6 flex justify-end gap-2">
               <button value="cancel" class="btn">{Text.t(:cancel)}</button>
-              <button value="confirm" class="btn btn-primary">{Text.t(:confirm)}</button>
+              <button value="confirm" class="btn btn-primary data-destructive:btn-error">
+                {Text.t(:confirm)}
+              </button>
             </div>
           </form>
         </dialog>

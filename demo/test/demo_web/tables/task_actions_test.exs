@@ -66,16 +66,22 @@ defmodule DemoWeb.Tables.TaskActionsTest do
       assert text(html, "#task-actions-head") == "Actions"
       assert attribute(html, "#task-actions-head", "role") == ["columnheader"]
       assert attribute(html, "#task-actions-head", "aria-colindex") == ["25"]
-      assert attribute(html, "#task-head-row > th:last-child", "id") == ["task-actions-head"]
+
+      assert attribute(html, "#task-head-row > [role=columnheader]:last-child", "id") == [
+               "task-actions-head"
+             ]
 
       assert text(html, "#task-actions-filter") == ""
       assert attribute(html, "#task-actions-filter", "aria-colindex") == ["25"]
-      assert attribute(html, "#task-filter-row > td:last-child", "id") == ["task-actions-filter"]
+
+      assert attribute(html, "#task-filter-row > [role=gridcell]:last-child", "id") == [
+               "task-actions-filter"
+             ]
 
       assert attribute(html, actions_cell(task.id), "role") == ["gridcell"]
       assert attribute(html, actions_cell(task.id), "aria-colindex") == ["25"]
 
-      assert attribute(html, "[id='task-row-#{task.id}-r'] > td:last-child", "id") ==
+      assert attribute(html, "[id='task-row-#{task.id}-r'] > [role=gridcell]:last-child", "id") ==
                ["task-row-#{task.id}-a"]
 
       # the columns before it are where they were

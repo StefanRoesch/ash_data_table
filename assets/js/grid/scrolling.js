@@ -102,10 +102,10 @@ export default {
     let css = `#${CSS.escape(this.el.id)}{--ash-data-table-view:${view}px}`
     if (pins.length > 0) {
       for (const [th, left] of pins) {
-        css += `${cells(th)}{position:sticky;left:${left}px;z-index:1;background-color:var(--ash-data-table-ground,var(--color-base-100,Canvas))}`
+        css += `${cells(th)}{position:sticky;left:${left}px;z-index:1;background-color:var(--ash-data-table-ground,var(--ash-data-table-default-ground,Canvas))}`
       }
       const last = cells(pins[pins.length - 1][0])
-      const line = "color-mix(in oklab,var(--color-base-content,CanvasText) 20%,transparent)"
+      const line = "color-mix(in oklab,var(--ash-data-table-line,var(--ash-data-table-default-line,CanvasText)) 20%,transparent)"
       if (this.scrolled) {
         css += `${last}{box-shadow:inset -1px 0 0 0 ${line}}`
         // A cell that stays is not seen through while it is

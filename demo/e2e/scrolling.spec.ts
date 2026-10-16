@@ -58,7 +58,7 @@ async function pointAt(page: Page, table: Table, down: number): Promise<void> {
 
 /** The cell that has the focus. */
 function focused(page: Page): Locator {
-  return page.locator("td:focus, th:focus")
+  return page.locator("[role=gridcell]:focus, [role=columnheader]:focus")
 }
 
 test.describe("every table scrolls sideways in an area of its own", () => {
@@ -538,9 +538,9 @@ for (const theme of ["light", "dark"] as const) {
 
       // with focus on a cell that stays, and on one beside it
       await tasks.cell(FIRST, "title").focus()
-      await expectNoAxeViolations(page, "#task-table > tbody:first-of-type")
+      await expectNoAxeViolations(page, "#task-table > [role=rowgroup]:first-of-type")
       await page.keyboard.press("ArrowRight")
-      await expectNoAxeViolations(page, "#task-table > tbody:first-of-type")
+      await expectNoAxeViolations(page, "#task-table > [role=rowgroup]:first-of-type")
     })
   })
 }

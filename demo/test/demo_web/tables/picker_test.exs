@@ -123,7 +123,7 @@ defmodule DemoWeb.Tables.PickerTest do
       assert attribute(html, "##{@projects}-grid", "data-choose") == [""]
       assert attribute(html, "##{@projects}-table", "aria-multiselectable") == ["false"]
 
-      assert attribute(html, "##{@projects}-table td[data-selector] > input", "type") ==
+      assert attribute(html, "##{@projects}-table [role=gridcell][data-selector] > input", "type") ==
                ["radio", "radio"]
 
       assert editors(html, @projects) == []
@@ -131,7 +131,7 @@ defmodule DemoWeb.Tables.PickerTest do
       assert attribute(html, "##{@projects}-create", "id") == []
       assert attribute(html, "##{@projects}-actions-head", "id") == []
       assert attribute(html, "##{@projects}-expander-head", "id") == []
-      assert attribute(html, "##{@projects}-table td[data-expander]", "id") == []
+      assert attribute(html, "##{@projects}-table [role=gridcell][data-expander]", "id") == []
       assert selection(html, @projects) == nil
       assert attribute(html, "##{@projects}-dialog", "id") == []
     end

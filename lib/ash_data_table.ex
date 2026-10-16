@@ -818,7 +818,7 @@ defmodule AshDataTable do
 
   def attached(assigns) do
     ~H"""
-    <div {Attrs.root(@table.entry.id, @table.entry.page)} class="ash-data-table">
+    <div {Attrs.root(@table.entry.id, @table.entry.page)} class={Parts.Grid.root()}>
       <.drawn table={@table} streams={@streams} uploads={@uploads} />
     </div>
     """

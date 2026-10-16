@@ -84,10 +84,14 @@ defmodule DemoWeb.Tables.SpecimenTableTest do
     assert shown(html, "a_boolean") == "✓Yes"
     assert shown(html, "opt_boolean") == "–No"
 
-    assert attribute(html, "#specimen-table td[id$='-c-a_boolean'] [aria-hidden=true]", "class") ==
+    assert attribute(
+             html,
+             "#specimen-table [role=gridcell][id$='-c-a_boolean'] [aria-hidden=true]",
+             "class"
+           ) ==
              []
 
-    assert text(html, "#specimen-table td[id$='-c-a_boolean'] .sr-only") == "Yes"
+    assert text(html, "#specimen-table [role=gridcell][id$='-c-a_boolean'] .sr-only") == "Yes"
   end
 
   test "dates and datetimes are shown in the format of the native inputs", %{html: html} do

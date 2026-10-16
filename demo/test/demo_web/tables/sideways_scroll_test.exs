@@ -38,15 +38,17 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
        %{conn: conn} do
     {:ok, _view, html} = live(conn, "/tasks")
 
-    assert attribute(html, "#task-head-row > th[data-label]", "id") == ["task-head-title"]
+    assert attribute(html, "#task-head-row > [role=columnheader][data-label]", "id") == [
+             "task-head-title"
+           ]
   end
 
   test "a table that does not say it marks none", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/labels")
-    assert attribute(html, "#label-table th[data-label]", "id") == []
+    assert attribute(html, "#label-table [role=columnheader][data-label]", "id") == []
 
     {:ok, _view, html} = live(conn, "/comments")
-    assert attribute(html, "#comment-table th[data-label]", "id") == []
+    assert attribute(html, "#comment-table [role=columnheader][data-label]", "id") == []
   end
 
   test "a nested table is in an element that stays at the left edge, has a scroll area of its own, and says for itself whether its label column stays",
@@ -68,7 +70,7 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
     assert "overscroll-x-contain" in String.split(class)
     assert attribute(html, "[id='#{comments}-scrollbar']", "aria-hidden") == ["true"]
     # the comments say nothing of their label
-    assert attribute(html, "[id='#{comments}-table'] th[data-label]", "id") == []
+    assert attribute(html, "[id='#{comments}-table'] [role=columnheader][data-label]", "id") == []
 
     # what a line holds stays at the left edge as well
     assert [line] = attribute(html, "[id='task-row-#{task.id}-l-comments-c'] > div", "class")
@@ -80,7 +82,7 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
     html = toggle(view, "project", task.project_id, "tasks")
     tasks = nested("project", task.project_id, "tasks")
 
-    assert attribute(html, "[id='#{tasks}-table'] th[data-label]", "id") == [
+    assert attribute(html, "[id='#{tasks}-table'] [role=columnheader][data-label]", "id") == [
              "#{tasks}-head-title"
            ]
   end

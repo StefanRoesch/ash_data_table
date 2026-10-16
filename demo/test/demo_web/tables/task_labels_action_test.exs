@@ -245,7 +245,10 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
       assert attribute(html, "##{@labels}-table", "aria-multiselectable") == ["true"]
       assert attribute(html, "##{@labels}-grid", "data-select") == ["multi"]
       assert attribute(html, "##{@labels}-grid", "data-choose") == [""]
-      assert length(attribute(html, "##{@labels}-table tbody input[type=checkbox]", "type")) == 3
+
+      assert length(
+               attribute(html, "##{@labels}-table [role=rowgroup] input[type=checkbox]", "type")
+             ) == 3
 
       assert attribute(html, "##{@labels}-select-head input", "aria-label") ==
                ["Select all rows of this page"]

@@ -277,7 +277,7 @@ test.describe("the viewer, who may change nothing", () => {
 
     await expect(tasks.grid.locator("[aria-readonly]")).toHaveCount(0)
     await expect(tasks.root.locator("template")).toHaveCount(0)
-    await expect(tasks.root.locator("dialog")).toHaveCount(0)
+    await expect(tasks.root.locator("[role=dialog]")).toHaveCount(0)
     await expect(tasks.grid.locator("[data-value]")).toHaveCount(0)
   })
 

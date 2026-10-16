@@ -11,10 +11,10 @@ export default {
     const dialog = document.getElementById(`${this.id}-dialog`)
     if (!dialog || !dialog.showModal) return Promise.resolve(true)
     document.getElementById(`${this.id}-dialog-question`).textContent = question
-    // the answer that deletes says so by its colour
+    // the answer that deletes says so (`data-destructive`), which
+    // its look follows
     const confirm = dialog.querySelector("button[value='confirm']")
-    confirm.classList.toggle("btn-error", !!destructive)
-    confirm.classList.toggle("btn-primary", !destructive)
+    confirm.toggleAttribute("data-destructive", !!destructive)
     dialog.returnValue = ""
     return new Promise(resolve => {
       dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), {once: true})

@@ -140,10 +140,10 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
       html = toggle(view, task.id, "comments")
       id = nested(task.id, "comments")
 
-      assert attribute(html, "[id='#{id}-table'] > tfoot > tr:last-child", "id") ==
+      assert attribute(html, "[id='#{id}-foot'] > [role=row]:last-child", "id") ==
                ["#{id}-view-row"]
 
-      assert attribute(html, "[id='#{id}-view-row'] > td", "id") == ["#{id}-view"]
+      assert attribute(html, "[id='#{id}-view-row'] > [role=gridcell]", "id") == ["#{id}-view"]
       assert attribute(html, "[id='#{id}-view']", "role") == ["gridcell"]
       assert attribute(html, "[id='#{id}-view']", "tabindex") == ["-1"]
       # as wide as the grid: the comments' boxes and expanders, their five

@@ -119,10 +119,10 @@ defmodule DemoWeb.Tables.TaskFilterTest do
     end
 
     test "is the second row of the grid, with a cell under every header", %{html: html} do
-      assert attribute(html, "#task-table thead tr", "aria-rowindex") == ["1", "2"]
+      assert attribute(html, "#task-head [role=row]", "aria-rowindex") == ["1", "2"]
 
-      assert attribute(html, "#task-filter-row td", "aria-colindex") ==
-               attribute(html, "#task-head-row th", "aria-colindex")
+      assert attribute(html, "#task-filter-row [role=gridcell]", "aria-colindex") ==
+               attribute(html, "#task-head-row [role=columnheader]", "aria-colindex")
     end
 
     test "names every control for people who cannot see where it is", %{html: html} do

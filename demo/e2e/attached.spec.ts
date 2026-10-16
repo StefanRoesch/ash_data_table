@@ -34,7 +34,7 @@ async function portals(page: Page): Promise<{ portals: number; loose: number }> 
     return {
       portals: marked.length,
       loose: marked.filter(
-        (marker) => marker.closest("td[data-nested]")?.id !== marker.dataset.ashDataTablePortal,
+        (marker) => marker.closest("[role=gridcell][data-nested]")?.id !== marker.dataset.ashDataTablePortal,
       ).length,
     }
   })

@@ -42,12 +42,12 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
 
     fields =
       html
-      |> attribute("#task-table > thead th[id^='task-head-']", "id")
+      |> attribute("#task-head [role=columnheader][id^='task-head-']", "id")
       |> Enum.map(&String.replace_prefix(&1, "task-head-", ""))
 
     assert length(fields) > 5
 
-    assert attribute(html, "#task-table > thead th > [data-resize]", "id") ==
+    assert attribute(html, "#task-head [role=columnheader] > [data-resize]", "id") ==
              Enum.map(fields, &"task-resize-#{&1}")
   end
 
@@ -59,8 +59,8 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
       assert attribute(html, "##{id} [data-resize]", "id") == []
     end
 
-    assert attribute(html, "#task-table > thead > tr + tr [data-resize]", "id") == []
-    assert attribute(html, "#task-table > tbody [data-resize]", "id") == []
+    assert attribute(html, "#task-filter-row [data-resize]", "id") == []
+    assert attribute(html, "#task-table > [role=rowgroup] [data-resize]", "id") == []
   end
 
   test "a header is called by its column alone, not by its handle as well", %{conn: conn} do

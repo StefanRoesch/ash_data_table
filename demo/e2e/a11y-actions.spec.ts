@@ -33,7 +33,7 @@ test.describe("row actions and the action panel", () => {
       await tasks.open()
       await tasks.action(FIRST, "destroy").click()
       await expect(tasks.question).toBeVisible()
-      await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveClass(/\bbtn-error\b/)
+      await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveAttribute("data-destructive")
       await expectNoAxeViolations(page)
     })
 

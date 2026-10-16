@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, ROW, SECRET, SELECTOR, PARAGRAPH} from "../markers.js"
+import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, ROW, SECRET, SELECTOR, PARAGRAPH, UNSEEN} from "../markers.js"
 import {is, WHOLE_FOCUS, WHOLE_POINTER, WHOLE_LEAVE} from "./shared.js"
 
 export default {
@@ -52,7 +52,7 @@ export default {
     let text = ""
     for (const child of node.childNodes) {
       if (child.nodeType === 3) text += child.nodeValue
-      else if (child.nodeType === 1 && !child.matches("[popover],[hidden],.sr-only,button,input,select,textarea,template")) text += this.seenIn(child)
+      else if (child.nodeType === 1 && !child.matches(`[popover],[hidden],${UNSEEN},button,input,select,textarea,template`)) text += this.seenIn(child)
     }
     return text
   },

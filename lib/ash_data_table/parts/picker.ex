@@ -62,7 +62,7 @@ defmodule AshDataTable.Parts.Picker do
         <button
           type="button"
           {Attrs.take(@id, @picker.several?)}
-          class={["btn btn-primary", not @picker.several? && "btn-disabled"]}
+          class="btn btn-primary aria-disabled:btn-disabled"
         >
           {Text.t(:choose)}
         </button>

@@ -476,7 +476,7 @@ defmodule AshDataTable.Attrs do
     %{
       "id" => "#{id}-picker-choose",
       "aria-disabled" => to_string(not several?),
-      "phx-mounted" => JS.ignore_attributes(["aria-disabled", "class"]),
+      "phx-mounted" => JS.ignore_attributes(["aria-disabled"]),
       "data-take" => true
     }
   end

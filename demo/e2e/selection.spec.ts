@@ -85,7 +85,7 @@ test.describe("the boxes", () => {
     expect(await tasks.selectedKeys()).toEqual([])
 
     // the rows of the header say nothing of it: they cannot be selected
-    await expect(tasks.grid.locator(":scope > thead > tr[aria-selected]")).toHaveCount(0)
+    await expect(tasks.grid.locator(":scope > #task-head > [role=row][aria-selected]")).toHaveCount(0)
 
     // nothing is selected: the line holds no text and shows no button
     await expect(tasks.selectionLine).toHaveRole("group")
@@ -131,7 +131,7 @@ test.describe("the boxes", () => {
         await expect(tasks.grid.locator("[data-selector]")).toHaveCount(0)
         await expect(tasks.selectionLine).toHaveCount(0)
         await expect(tasks.grid).not.toHaveAttribute("aria-multiselectable")
-        await expect(tasks.grid.locator("tr[aria-selected]")).toHaveCount(0)
+        await expect(tasks.grid.locator("[role=row][aria-selected]")).toHaveCount(0)
       })
     })
   }
@@ -650,7 +650,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.bulk("archive").click()
     await expect(tasks.question).toBeVisible()
     await expect(tasks.question.locator("p")).toHaveText("Run “Archive” on 3 records?")
-    await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveClass(/btn-primary/)
+    await expect(tasks.question.getByRole("button", { name: "Confirm" })).not.toHaveAttribute("data-destructive")
     // focus is on Cancel, the safe answer
     await expect(tasks.question.getByRole("button", { name: "Cancel" })).toBeFocused()
 
@@ -742,7 +742,7 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.question.locator("p")).toHaveText(
       "Delete this task? This cannot be undone. 2 records are selected.",
     )
-    await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveClass(/btn-error/)
+    await expect(tasks.question.getByRole("button", { name: "Confirm" })).toHaveAttribute("data-destructive")
     await confirmed(tasks)
 
     await expect(tasks.result).toHaveText("Destroy: 2 done.")

@@ -46,7 +46,7 @@ export async function expectNoAxeViolations(page: Page, within?: string): Promis
       .locator(target[0])
       .evaluateAll(
         (found) =>
-          found.length === 1 && found[0].matches("td[data-nested] [data-ash-data-table]"),
+          found.length === 1 && found[0].matches("[role=gridcell][data-nested] [data-ash-data-table]"),
       ))
 
   const violations = []

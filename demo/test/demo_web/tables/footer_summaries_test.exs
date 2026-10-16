@@ -118,8 +118,8 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
          %{conn: conn, world: world} do
       {_view, html} = open_table(conn, world.admin)
 
-      assert attribute(html, "#task-table > tfoot", "id") == ["task-foot"]
-      assert attribute(html, "#task-foot > tr", "id") == ["task-summaries"]
+      assert attribute(html, "#task-foot", "id") == ["task-foot"]
+      assert attribute(html, "#task-foot > [role=row]", "id") == ["task-summaries"]
       assert attribute(html, "#task-summaries", "role") == ["row"]
 
       # three tasks, the two header rows, and this row: the last of all
@@ -127,18 +127,18 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       assert attribute(html, "#task-summaries", "aria-rowindex") == ["6"]
 
       # a cell for every column of the grid, each a gridcell in its column's place
-      assert attribute(html, "#task-summaries > td", "aria-colindex") ==
-               attribute(html, "#task-head-row > th", "aria-colindex")
+      assert attribute(html, "#task-summaries > *", "aria-colindex") ==
+               attribute(html, "#task-head-row > *", "aria-colindex")
 
-      assert html |> attribute("#task-summaries > td", "role") |> Enum.uniq() == ["gridcell"]
-      assert html |> attribute("#task-summaries > td", "tabindex") |> Enum.uniq() == ["-1"]
+      assert html |> attribute("#task-summaries > *", "role") |> Enum.uniq() == ["gridcell"]
+      assert html |> attribute("#task-summaries > *", "tabindex") |> Enum.uniq() == ["-1"]
 
       for field <- ~w(progress estimate_hours due_on completed_at) do
         assert attribute(html, "#task-summary-#{field}", "aria-colindex") ==
                  attribute(html, "#task-head-#{field}", "aria-colindex")
       end
 
-      assert attribute(html, "#task-summaries > td[data-summary]", "id") == [
+      assert attribute(html, "#task-summaries > [role=gridcell][data-summary]", "id") == [
                "task-summary-progress",
                "task-summary-estimate_hours",
                "task-summary-due_on",
@@ -200,7 +200,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       {_view, html} = open_table(conn, world.admin, "/labels")
 
       assert attribute(html, "#label-table", "role") == ["grid"]
-      assert attribute(html, "#label-table > tfoot", "id") == []
+      assert attribute(html, "#label-foot", "id") == []
       assert attribute(html, "[data-summaries]", "id") == []
     end
   end
@@ -486,7 +486,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       {view, html} = open_table(conn, world.admin, "/projects")
       # the table of the projects declares no summary
-      assert attribute(html, "#project-table > tfoot", "id") == []
+      assert attribute(html, "#project-foot", "id") == []
 
       expand(view, "project", project.id)
       toggle(view, "project", project.id, "tasks")
@@ -494,7 +494,11 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
       id = nested("project", project.id, "tasks")
 
       assert length(column(html, id, "title")) == 3
-      assert attribute(html, "[id='#{id}-foot'] > tr:first-child", "id") == ["#{id}-summaries"]
+
+      assert attribute(html, "[id='#{id}-foot'] > [role=row]:first-child", "id") == [
+               "#{id}-summaries"
+             ]
+
       assert footer(html, id, "progress") == {"Average", "60"}
       assert footer(html, id, "estimate_hours") == {"Sum", "20.0"}
       assert footer(html, id, "due_on") == {"Max", "2026-05-01"}
@@ -533,7 +537,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       # "New comment": its task is chosen from the table of the tasks
       {view, html} = open_table(conn, world.admin, "/comments")
-      assert attribute(html, "#comment-table > tfoot", "id") == []
+      assert attribute(html, "#comment-foot", "id") == []
 
       open_create(view, "comment")
       pick_input(view, "comment", "task_id")
