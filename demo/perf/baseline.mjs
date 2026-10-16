@@ -215,6 +215,19 @@ try {
     return run
   })
 
+  // ---- opening the panel: the click on a row's "Reassign" to the open
+  // action panel with its fields (stage 7)
+  const opened =
+    `(() => { const panel = document.getElementById("task-panel");` +
+    ` return !!panel && panel.open && panel.querySelector("form") !== null })()`
+  results.open_panel = await measured("open the panel", REPS, async (i) => {
+    const run = await until(tasks, opened, click(`[id="task-row-${key(i)}-a-reassign"]`))
+    // closed again, not measured
+    await page.keyboard.press("Escape")
+    await page.locator('[id="task-panel"]').waitFor({ state: "detached" })
+    return run
+  })
+
   // ---- a cell save in a nested table, and one in the top table while a
   // nested table is open (stage 5: every table of a page is in one
   // component). The comments of the first task that has any.
