@@ -25,7 +25,7 @@ Answer "as recommended", or per number.
 | D13 | "Open" | `open: "Open"` at attach, on the tag, on the router line: a button in the actions cell of each row of the table on the page. It sends `:row_opened` with the key, whether or not `notify` lists it |
 | D14 | Controlled mode | With `attach` only: `controlled: [:confirm, :panel]`. The table holds the request, the host draws it and answers with commands; every answer goes through `Operation`. v1: the questions before an action, and the panels of row, table, create and selection actions with plain fields. Not in v1: the picker, a map cell's panel, panels with files, groups or chosen records (attach raises) |
 | D15 | Order of work | Page values and veto; events; selection; commands; "open"; controlled mode; the router line last |
-| D16 | Browser runs and the ten-runs rule | Ten runs in a row for the specs of selection, the picker, bulk, live updates and the new ones; the whole suite once |
+| D16 | Browser runs and the ten-runs rule | Ten runs in a row for the specs of selection, the picker, bulk, live updates and the new ones; the whole suite once. **Dropped by the owner on 2026-10-16: tests run exactly once; no repeat runs** (section 13) |
 | D17 | Fallback | Per step. Selection: two fixes, then the server keeps a copy the hook sends and the hook still decides. Controlled mode: moved to stage 7 |
 | D18 | Performance | `baseline.mjs` at the start and the end, plus "select a row" and "a cell save with `notify` and page values on" |
 | D19 | Internals of dependencies the code uses today (owner's rule, 2026-10-16) | Section 11: the one stage 6 builds on (`__changed__` in `page_assigns/1`) goes in step 1; the four others (three more `__changed__`, the portal's markup in tests) in a step 0b of their own, before step 1 |
@@ -270,7 +270,7 @@ What opens today: the action panel (row action, table action, create, a selectio
 
 **Recommendation: a.**
 
-**D16. Browser runs and the ten-runs rule.**
+**D16. Browser runs and the ten-runs rule.** *Dropped by the owner on 2026-10-16: tests run exactly once; no repeat runs. A fault that depends on timing is fixed with a test that waits for what it depends on.*
 
 | Option | For | Against |
 | --- | --- | --- |
@@ -453,3 +453,24 @@ Commits on `main` after `stage6-start`: `310ef07` (step 0: status, target.md), `
 | Cell save, notified (`/perf/notified`, end only) | 83.2 | 7,312 | 4, 7 |
 
 Times within 20 %, reads and statements the same. A save on a page told every event, with a context function and a veto, costs what a save on `/tasks` does.
+
+## 13. Drift fixes
+
+The drift check of stage 6 found twelve things; fixed on `main` on 2026-10-16, each suite file that a fix touched run once (the ten-runs gate of D16 was dropped by the owner that day: tests run exactly once).
+
+| # | What | Commit |
+| --- | --- | --- |
+| 1 | A nested table and a picker's table are drawn with `controlled: []`: their row actions keep `data-question`, and the hook asks before it sends `act` | `5fd419c` |
+| 2 | A request holds what it was made for (`for`: a panel's kind, action and row; a question's run). Another panel is a new request with a new `ref` and `:requested`, the old `ref` does nothing; a map cell's panel ends a panel's request and is the table's to draw; `ask/4` ends a panel held, and `follow/1` never overwrites a question | `819e642` |
+| 3 | No `view.proxy` in the tests of live updates: they name the rows they expect to go and wait for each with `assert_push_event` | `c199f08` |
+| 5 | The tests of a table's own changes trace the listeners (`AshDataTable.Listener.of/1`) from before the change to after the flush and count what they sent the page, in place of a timer race and LiveView's `diff` messages | `9f865bc` |
+| 6 | `:action_ran`'s `result` is scrubbed (`Sensitive.scrub/1`) | `510a4f1` |
+| 8 | The page's functions are called once per callback for each table that asks (`Live.Core.callback/1`, `values/1`) | `5728790` |
+| 9 | attach's refusals are tried on a mounted page's socket; `attach_test` waits for the page's messages as they arrive (`:erlang.trace/3`, `:receive`) | `d50d4e3` |
+| 4 | No internals of LiveView: the grid finds a nested table by `data-ash-data-table-portal` (fifteen snapshots change in that class only, `09c` also by the root layout's `data-loading`); the browser specs count portals by that marker; the fixture `pushed` (`Sent`) reads `DemoWeb.E2E.Recorder`, which hears LiveView's telemetry of `handle_event`, in place of the WebSocket's frames, and waits for an answer of the server in place of 20 ms; `a11y.ts` waits for the demo's `data-loading`; live navigation is shown in the browser in place of `data-phx-link`; the perf probe uses `Phoenix.LiveView.Debug` | `2a96c54` |
+| 7 | The fourteen checks that allow `select` also check that the last `select` carries the rows the hook shows selected (`pushed.expectSelected`) | `e1f487c` |
+| 10 | `attach/4` documents controlled mode and what v1 leaves out; `AshDataTable.Sensitive.Masked` is documented | `743d1a3` |
+| 11 | `docs/agents/architecture.md` | `d562b03` |
+| 12 | This section, and D16 marked as dropped | this commit |
+
+Left for the owner: `DemoWeb.TablePage.wire/2` (and the browser's `Received` in `sensitive.spec.ts`) search everything LiveView sends for a secret, by text; `files.spec.ts` holds an upload back by its binary frames (`routeWebSocket`).
