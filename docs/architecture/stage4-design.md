@@ -388,7 +388,7 @@ For the drift check and your yes; target.md is not changed by this note.
 
 ## 11. As built
 
-Commits on `main` after `stage4-start`: `fced57a` (step 0), `a012cef` (step 1), `52a10ba` (step 2), `ea3af50` (step 3), `8f53d8f` (step 4), `6431433` (step 5), `4d68ff7` (step 6), `d1d4fac` (step 7), and this section.
+Commits on `main` after `stage4-start`: `fced57a` (step 0), `a012cef` (step 1), `52a10ba` (step 2), `ea3af50` (step 3), `8f53d8f` (step 4), `6431433` (step 5), `4d68ff7` (step 6), `d1d4fac` (step 7), `d0a57ef` (the layout fix the measurement found), `4ccdc21` (perf script and this section).
 
 **The shape.** As sections 1–2, with these details:
 
