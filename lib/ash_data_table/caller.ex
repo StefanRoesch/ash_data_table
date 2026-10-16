@@ -30,6 +30,31 @@ defmodule AshDataTable.Caller do
   end
 
   @doc """
+  Which person is asking, to tell whether two callers are the same person:
+  the actor (the scope's, where the caller has a scope and no actor), as
+  its resource and primary key where it is a record of a resource, else as
+  it is. Nil where nobody is asking. A person whose role or scope changed
+  is the same person.
+  """
+  @spec who(t) :: term
+  def who(%__MODULE__{actor: nil, scope: scope}) when not is_nil(scope) do
+    case Ash.Scope.ToOpts.get_actor(scope) do
+      {:ok, actor} -> person(actor)
+      :error -> nil
+    end
+  end
+
+  def who(%__MODULE__{actor: actor}), do: person(actor)
+
+  defp person(%resource{} = record) do
+    if Ash.Resource.Info.resource?(resource),
+      do: {resource, Map.take(record, Ash.Resource.Info.primary_key(resource))},
+      else: record
+  end
+
+  defp person(actor), do: actor
+
+  @doc """
   Who is asking, as the options the functions of the data layer take:
   `actor`, `scope` and `tenant`. Whether Ash authorizes is each table's
   (`authorize?` of its entry), which `AshDataTable.Live.Core.reader/1` adds.

@@ -10,6 +10,8 @@ defmodule AshDataTable.Live.Core do
   # the person reads it (`in_words/1`). Every table the component shows is
   # an entry of its `AshDataTable.Table` (`AshDataTable.Live.Registry`).
 
+  require Logger
+
   import Phoenix.Component, only: [assign: 2, assign: 3]
   import Phoenix.LiveView, only: [put_private: 3]
 
@@ -136,9 +138,11 @@ defmodule AshDataTable.Live.Core do
   defp topic(event) when event in [:left, :read_again], do: Updates
 
   # An answer for a table that is no longer shown is dropped: its tasks
-  # were cancelled as it closed.
-  def handle_async({:ash_data_table, id, kind}, result, socket) do
-    if Registry.known?(socket, id) do
+  # were cancelled as it closed, and the answer of a cancelled task comes
+  # all the same, maybe to a table of the same id opened since
+  # (`Registry.current?/2`).
+  def handle_async({:ash_data_table, id, {kind, _token}} = key, result, socket) do
+    if Registry.current?(socket, key) do
       {:noreply, socket} =
         Registry.within(socket, id, fn socket ->
           case kind do
@@ -554,12 +558,13 @@ defmodule AshDataTable.Live.Core do
 
   # What a default of an asked argument is given (D9): the assigns the tag
   # was given, or for a table attached to a LiveView its assigns as they are
-  # now, without LiveView's own and without any table.
+  # now, as LiveView gives them, without the documented assigns of LiveView
+  # (`flash`, `live_action`, `streams`, `uploads`) and without any table.
   def page_assigns(socket) do
     case table(socket).options.page_assigns do
       :socket ->
         socket.assigns
-        |> Map.drop([:__changed__, :flash, :live_action, :streams, :uploads])
+        |> Map.drop([:flash, :live_action, :streams, :uploads])
         |> Map.reject(fn {_name, value} -> is_struct(value, Table) end)
 
       assigns ->
@@ -574,7 +579,7 @@ defmodule AshDataTable.Live.Core do
 
   # What an event of a shape the table never sends is answered with: what
   # the hook that sends it takes as "nothing came of it". An event the table
-  # does not know has no answer: it is no event of the table's.
+  # does not know has no answer.
   defp malformed(event, socket)
        when event in ~w(save clear reveal act bulk edit pick picked),
        do: {:reply, %{ok: false}, socket}
@@ -591,6 +596,13 @@ defmodule AshDataTable.Live.Core do
                         bulk_seen panel_validate panel_submit panel_cancel pick_input
                         picker_cancel create discard dismiss left read_again),
        do: {:noreply, socket}
+
+  # A name the table has no event of: nothing is done, and nothing is
+  # answered. Only a browser that was changed sends one.
+  defp malformed(event, socket) do
+    Logger.debug("ash_data_table: an event no table has was ignored: #{inspect(event)}")
+    {:noreply, socket}
+  end
 
   # What a write is given (`AshDataTable.Operation.Input`): the intent, and
   # the table as it is now. The veto and the page values are the defaults

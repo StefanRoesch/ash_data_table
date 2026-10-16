@@ -8,6 +8,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   import Phoenix.LiveView
 
   alias AshDataTable.Act
+  alias AshDataTable.Caller
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Panel
@@ -20,8 +21,22 @@ defmodule AshDataTable.Live.Core.Bulk do
   # grid and read out, and the hook is told on which rows it did not run,
   # by their keys and by what it names them by: those stay selected. The
   # table is read again, as the page may hold any of the records.
-  def handle_async(:bulk, {:ok, outcome}, socket) do
-    %{id: id, model: model, running: action} = Core.table(socket).entry
+  #
+  # A run goes on to its end when who is asking changes meanwhile: it was
+  # started as the person who could, and stopping it would leave it half
+  # done. What it came to is said to that person only, whose role or scope
+  # may have changed (`AshDataTable.Caller.who/1`): another is told nothing
+  # of it, and the table reads again as them.
+  def handle_async(:bulk, result, socket) do
+    %{caller: caller, entry: %{running: %{by: by}}} = Core.table(socket)
+
+    if Caller.who(caller) == by,
+      do: ran(result, socket),
+      else: {:noreply, ended(socket, result)}
+  end
+
+  defp ran({:ok, outcome}, socket) do
+    %{id: id, model: model, running: %{action: action}} = Core.table(socket).entry
     not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
     # what says the same words is one failure, as it is said in this process
     outcome = %{outcome | failures: Text.counted(outcome.failures)}
@@ -51,13 +66,9 @@ defmodule AshDataTable.Live.Core.Bulk do
 
   # The run itself went down. What it had done by then is not known: the
   # rows stay selected, and the table is read again.
-  def handle_async(:bulk, {:exit, reason}, socket) do
-    %{id: id, model: model, running: action} = Core.table(socket).entry
-
-    Logger.error(
-      "ash_data_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
-        "failed: #{inspect(reason)}"
-    )
+  defp ran({:exit, reason}, socket) do
+    %{id: id, running: %{action: action}} = Core.table(socket).entry
+    went_down(socket, reason)
 
     summary =
       {:text, :action_not_done, action: action.label, message: {:text, :action_failed, []}}
@@ -69,6 +80,28 @@ defmodule AshDataTable.Live.Core.Bulk do
      |> Core.say(summary)
      |> push_event("ash_data_table:bulk", %{table: id})
      |> Reading.reread()}
+  end
+
+  # A run that ended for a person who did not start it: the table is no
+  # longer busy, the hook is told that it is over, and the rows are read
+  # again as the person asking now.
+  defp ended(socket, result) do
+    with {:exit, reason} <- result, do: went_down(socket, reason)
+
+    socket
+    |> Files.drop_copies()
+    |> Core.put(running: nil, result: nil)
+    |> push_event("ash_data_table:bulk", %{table: Core.table(socket).entry.id})
+    |> Reading.reread()
+  end
+
+  defp went_down(socket, reason) do
+    %{model: model, running: %{action: action}} = Core.table(socket).entry
+
+    Logger.error(
+      "ash_data_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
+        "failed: #{inspect(reason)}"
+    )
   end
 
   # Sent by the hook when a person uses a button of the line above the grid,
@@ -174,7 +207,12 @@ defmodule AshDataTable.Live.Core.Bulk do
   # the copies of the panel's files the run holds, removed when it is done.
   def start_bulk(socket, action, run, files) do
     socket
-    |> Core.put(running: action, result: nil, panel: nil)
+    # who started it: what it comes to is said to that person only
+    |> Core.put(
+      running: %{action: action, by: Caller.who(Core.table(socket).caller)},
+      result: nil,
+      panel: nil
+    )
     |> Core.put(running_files: for({_name, %{path: path}} <- files, do: path))
     # The run says why a record was not done as message terms: their words
     # are made when the outcome is drawn, in this process, whose locale it is.

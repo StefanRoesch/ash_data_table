@@ -15,6 +15,11 @@ defmodule AshDataTable.Live.Entry do
   defstruct [
     # The id of the table on the page, and the resource it shows.
     id: nil,
+    # What this entry's async tasks are named with besides the id
+    # (`AshDataTable.Live.Registry.async/2`): a new one for every entry, so
+    # that a task of a table that closed (its answer comes all the same,
+    # cancelled) never reaches a table of the same id opened after it.
+    token: nil,
     resource: nil,
     # Where the table is: the ids of the tables it is rendered in, from the
     # table on the page down, and its own last. What lies under what is
@@ -157,8 +162,9 @@ defmodule AshDataTable.Live.Entry do
     selected: MapSet.new(),
     bulk: [],
     lead: 0,
-    # The action that is running on the selected rows, while it does, and
-    # what the last one came to, until the person selects something else.
+    # The action that is running on the selected rows, while it does, with
+    # who started it (`%{action: action, by: AshDataTable.Caller.who/1}`),
+    # and what the last one came to, until the person selects something else.
     running: nil,
     result: nil,
     # Live updates (see "Live updates" at the top of the component). `live`
@@ -193,5 +199,5 @@ defmodule AshDataTable.Live.Entry do
 
   @doc "The entry of a table that has read nothing yet."
   @spec new() :: t
-  def new, do: %__MODULE__{state: %State{}}
+  def new, do: %__MODULE__{state: %State{}, token: make_ref()}
 end

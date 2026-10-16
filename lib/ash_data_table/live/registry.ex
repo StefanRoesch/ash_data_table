@@ -71,8 +71,31 @@ defmodule AshDataTable.Live.Registry do
   def known?(socket, id),
     do: Core.table(socket).entry.id == id or is_map_key(Core.table(socket).entries, id)
 
-  @doc "The key of an async task of the current entry: `:read`, `:summary` or `:bulk`."
-  def async(socket, kind), do: {:ash_data_table, Core.table(socket).entry.id, kind}
+  @doc """
+  The key of an async task of the current entry, of the kind `:read`,
+  `:summary` or `:bulk`: its id, and the kind with the entry's token, so
+  that an answer is known as this entry's (`current?/2`).
+  """
+  def async(socket, kind) do
+    %{id: id, token: token} = Core.table(socket).entry
+    {:ash_data_table, id, {kind, token}}
+  end
+
+  @doc """
+  Whether an async key is of a table that is shown now: its id known and
+  its token that table's. A task of a table that closed answers all the
+  same, `{:exit, {:shutdown, :cancel}}` (`Phoenix.LiveView.cancel_async/3`),
+  maybe after a table of the same id has opened.
+  """
+  def current?(socket, {:ash_data_table, id, {_kind, token}}) do
+    case Core.table(socket) do
+      %{entry: %{id: ^id, token: ^token}} -> true
+      %{entries: %{^id => %{token: ^token}}} -> true
+      _gone -> false
+    end
+  end
+
+  def current?(_socket, _key), do: false
 
   # ---- streams ----------------------------------------------------------
 
