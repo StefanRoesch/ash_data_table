@@ -13,6 +13,7 @@ import { expect, test } from "./support/fixtures"
 const cell = (page: Page, key: string, column: string) => page.locator(`[id="kit-row-${key}-c-${column}"]`)
 const row = (page: Page, key: string) => page.locator(`[id="kit-row-${key}-r"]`)
 const holder = (page: Page) => page.locator('[id="kit-row-a-n-parts-c"]')
+const line = (page: Page) => page.locator('[id="kit-row-a-l-parts-c"]')
 const part = (page: Page, key: string) => page.locator(`[id="kit-row-a-t-parts-row-${key}-c-title"]`)
 
 /** The cells that are a tab stop: one for the grid and the grid in it. */
@@ -43,16 +44,17 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await page.keyboard.press("ArrowLeft")
     await expect(page.locator('[id="kit-row-a-s"]')).toBeFocused()
     await page.keyboard.press("ArrowRight")
-    // down: the cell the nested table is in, then the next record, in the
-    // column the person was in
+    // down: the line under the record, the cell the nested table is in,
+    // then the next record, in the column the person was in
+    await page.keyboard.press("ArrowDown")
+    await expect(line(page)).toBeFocused()
     await page.keyboard.press("ArrowDown")
     await expect(holder(page)).toBeFocused()
     await page.keyboard.press("ArrowDown")
     await expect(cell(page, "b", "name")).toBeFocused()
-    // up from the first record: the filter row, then the header
-    await page.keyboard.press("ArrowUp")
-    await page.keyboard.press("ArrowUp")
-    await page.keyboard.press("ArrowUp")
+    // up over what is under the first record (the nested table's cell, the
+    // line), then the filter row, then the header
+    for (let i = 0; i < 4; i++) await page.keyboard.press("ArrowUp")
     await expect(page.locator('[id="kit-filter-name"]')).toBeFocused()
     await page.keyboard.press("ArrowUp")
     await expect(page.locator('[id="kit-head-name"]')).toBeFocused()
@@ -128,6 +130,38 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await expect
       .poll(async () => Math.round((await head.boundingBox())!.width))
       .toBe(Math.round((await cell(page, "b", "name").boundingBox())!.width))
+  })
+
+  test("a cell that cuts its text off after its lines shows the whole text while it has the focus", async ({ page }) => {
+    const note = cell(page, "a", "note")
+    const whole = page.locator('[id="kit-whole"]')
+    expect(await note.evaluate((node) => {
+      const paragraph = node.querySelector(":scope > [data-paragraph]")!
+      return paragraph.scrollHeight > paragraph.clientHeight
+    })).toBe(true)
+    await note.focus()
+    await expect(whole).toBeVisible()
+    await expect(whole).toHaveText(/where it is kept$/)
+    await page.keyboard.press("Escape")
+    await expect(whole).toBeHidden()
+    await expect(note).toBeFocused()
+  })
+
+  test("Enter on a line closes the nested table under it, and opens it again", async ({ page, pushed }) => {
+    const button = line(page).locator("button")
+    await line(page).focus()
+    await expect(button).toHaveAttribute("aria-expanded", "true")
+    await page.keyboard.press("Enter")
+    await expect(holder(page)).toHaveCount(0)
+    await expect(button).toHaveAttribute("aria-expanded", "false")
+    await expect(line(page)).toBeFocused()
+    await page.keyboard.press("Enter")
+    await expect(part(page, "p1")).toBeAttached()
+    await expect(button).toHaveAttribute("aria-expanded", "true")
+    expect((await pushed.all()).filter((sent) => sent.event === "toggle").map((sent) => sent.params)).toEqual([
+      { row: "a", relationship: "parts" },
+      { row: "a", relationship: "parts" },
+    ])
   })
 
   test("a hidden column is not shown, and the arrow keys pass over it", async ({ page }) => {

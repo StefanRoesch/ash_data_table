@@ -9,6 +9,11 @@ defmodule DemoWeb.E2E.MarkersLive do
   a save is kept and drawn, a selection is heard. If the hook relied on a
   tag, it would fail here.
 
+  The note of the first record shows two lines of its text (`data-lines`,
+  its paragraph `data-paragraph`) and has the whole text in the popover
+  `kit-whole`; under the first record is the line of its parts, which
+  opens and closes the nested table (`toggle`).
+
   The header of each grid is a row group too, as a kit may draw it: the
   hook must not take it for a record.
 
@@ -22,7 +27,14 @@ defmodule DemoWeb.E2E.MarkersLive do
 
   @columns [name: "Name", size: "Size", note: "Note"]
   @rows [
-    {"a", %{name: "Anchor", size: "12", note: "first"}},
+    {"a",
+     %{
+       name: "Anchor",
+       size: "12",
+       note:
+         "first, and a note long enough to be cut off after the two lines its column shows: " <>
+           "it goes on about the anchor, its chain, its weight and where it is kept"
+     }},
     {"b", %{name: "Bolt", size: "3", note: "second"}},
     {"c", %{name: "Cog", size: "40", note: "third"}}
   ]
@@ -37,7 +49,8 @@ defmodule DemoWeb.E2E.MarkersLive do
        rows: @rows,
        parts: @parts,
        missing: params["missing"],
-       asks: params["asks"] == "1"
+       asks: params["asks"] == "1",
+       open: true
      )}
   end
 
@@ -57,6 +70,14 @@ defmodule DemoWeb.E2E.MarkersLive do
     {:reply, %{ok: true}, assign(socket, rows: rows)}
   end
 
+  # the line of the parts under the first record: opened and closed
+  def handle_event(
+        "ash_data_table:kit:toggle",
+        %{"row" => "a", "relationship" => "parts"},
+        socket
+      ),
+      do: {:noreply, assign(socket, open: not socket.assigns.open)}
+
   def handle_event("ash_data_table:" <> _event, _payload, socket), do: {:noreply, socket}
 
   @impl true
@@ -73,6 +94,7 @@ defmodule DemoWeb.E2E.MarkersLive do
         :where(#kit-head, #kit-row-a-t-parts-head) { display: table-header-group }
         :where(#kit [role=row]) { display: table-row }
         :where(#kit [role=gridcell], #kit [role=columnheader]) { display: table-cell; padding: 2px 8px; border: 1px solid; position: relative }
+        :where(#kit [data-lines] > [data-paragraph]) { margin: 0; max-width: 16rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden }
         :where(#kit [data-resize]) { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize }
         :where(#kit-grid) { overflow-x: auto }
       </style>
@@ -203,10 +225,12 @@ defmodule DemoWeb.E2E.MarkersLive do
                     }
                     aria-readonly={name != :name && "true"}
                     data-value={name == :name && values[name]}
+                    data-lines={name == :note && "2"}
                     tabindex="-1"
-                  >
+                  ><p :if={name == :note} data-paragraph>{values[name]}</p>
+                  <%= if name != :note do %>
                     {values[name]}
-                  </span>
+                  <% end %></span>
                 </div>
               </div>
               <div
@@ -216,7 +240,21 @@ defmodule DemoWeb.E2E.MarkersLive do
                 data-detail
                 data-row={key}
               >
-                <div id={"kit-row-#{key}-n-parts"} role="row">
+                <div id={"kit-row-#{key}-l-parts"} role="row">
+                  <span
+                    id={"kit-row-#{key}-l-parts-c"}
+                    role="gridcell"
+                    colspan="4"
+                    aria-colindex="1"
+                    tabindex="-1"
+                    data-line="parts"
+                  >
+                    <button type="button" tabindex="-1" aria-expanded={to_string(@open)}>
+                      Parts
+                    </button>
+                  </span>
+                </div>
+                <div :if={@open} id={"kit-row-#{key}-n-parts"} role="row">
                   <span
                     id={"kit-row-#{key}-n-parts-c"}
                     role="gridcell"
@@ -298,6 +336,14 @@ defmodule DemoWeb.E2E.MarkersLive do
           >
             <textarea rows="1" aria-label="Name"></textarea>
           </template>
+        </div>
+        <div
+          id="kit-whole"
+          popover="manual"
+          phx-update="ignore"
+          aria-hidden="true"
+          data-whole
+        >
         </div>
         <dialog
           :if={@missing != "dialog"}
