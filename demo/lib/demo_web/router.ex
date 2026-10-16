@@ -225,6 +225,15 @@ defmodule DemoWeb.Router do
           layout: false,
           authorize?: false
 
+        # a table drawn with a kit of its own (stage 7b): on the router line,
+        # and placed by the tag (`kit_tables.ex`)
+        ash_data_table "/kit/memos", Demo.Support.Plain.Memo,
+          layout: false,
+          id: "kitmemo",
+          kit: DemoWeb.DivKit
+
+        live "/kit/tag", DemoWeb.Support.KitTagLive
+
         live "/unchecked", DemoWeb.Support.UncheckedLive
         live "/asked", DemoWeb.Support.AskedLive
         live "/embedded", DemoWeb.Support.EmbeddedLive
@@ -285,8 +294,9 @@ defmodule DemoWeb.Router do
   # it is open; one whose tables nested in each other take files; one
   # whose tables are attached to it; one that offers "Open"; one that
   # draws a panel of its table itself; a grid of `div`s that carries the
-  # table's markers and the grid's hook (stage 7a); and one whose saves wait
-  # until the test lets them go.
+  # table's markers and the grid's hook (stage 7a); one whose saves wait
+  # until the test lets them go; and a table drawn with the demo's kit of
+  # `div`s (stage 7b).
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -322,6 +332,7 @@ defmodule DemoWeb.Router do
         live "/controlled", ControlledLive
         live "/markers", MarkersLive
         live "/held", HeldLive
+        live "/kit", KitLive
       end
     end
   end

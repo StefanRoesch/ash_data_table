@@ -12,7 +12,10 @@ defmodule AshDataTable.ArchitectureTest do
 
   Checked as well:
 
-    * every file that is compile-connected is of the declaration (5.3);
+    * every file that is compile-connected is of the declaration (5.3), or
+      the test resource the library ships for `AshDataTable.KitCase`
+      (`test/resource.ex`, T), which uses the extension as a host's
+      resource does, and which nothing compiles against;
     * a verifier or transformer reads, of the declaration, only the modules
       that are pure functions over the DSL and Ash's info modules: the topic
       modules, the info modules, `Resource.Table`, the entities, `CellType`,
@@ -161,6 +164,7 @@ defmodule AshDataTable.ArchitectureTest do
           file <- [from | Map.keys(sinks)],
           String.starts_with?(file, "lib/"),
           from(part(file) || "?") not in ~w(1 1v),
+          file != @lib <> "/test/resource.ex",
           uniq: true,
           do: file
 

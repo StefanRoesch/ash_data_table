@@ -87,6 +87,7 @@ defmodule AshDataTable.Parts.Summary do
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
   attr :page, :any, required: true
+  attr :pages?, :boolean, required: true
   attr :row_count, :any, required: true
   attr :selecting, :any, required: true
   attr :state, :any, required: true
@@ -102,9 +103,7 @@ defmodule AshDataTable.Parts.Summary do
       class="font-normal text-base-content"
       hidden={
         not (@summarised? and not is_nil(@page)) and
-          not (@nested? and
-                 (Parts.Pagination.pages?(@page, @model) or
-                    Parts.Related.full_view?(@page, @full_view)))
+          not (@nested? and (@pages? or Parts.Related.full_view?(@page, @full_view)))
       }
     >
       <.summaries
@@ -122,7 +121,7 @@ defmodule AshDataTable.Parts.Summary do
         time_zone={@time_zone}
       />
       <tr
-        :if={@nested? and Parts.Pagination.pages?(@page, @model)}
+        :if={@nested? and @pages?}
         {Attrs.row("#{@id}-foot-row")}
       >
         <td {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}>

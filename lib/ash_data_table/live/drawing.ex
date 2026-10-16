@@ -15,6 +15,7 @@ defmodule AshDataTable.Live.Drawing do
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
+  alias AshDataTable.Parts
   alias AshDataTable.Present
   alias AshDataTable.Routes
 
@@ -216,6 +217,7 @@ defmodule AshDataTable.Live.Drawing do
         editing?={@entry.editing?}
         expandable?={@entry.expandable?}
         full_view={@entry.full_view}
+        filters={filters(@entry)}
         id={@entry.id}
         label={@entry.label}
         label_column={@entry.label_column}
@@ -225,8 +227,7 @@ defmodule AshDataTable.Live.Drawing do
         myself={@myself}
         nested?={@entry.nested?}
         page={@entry.page}
-        pending={@entry.pending}
-        rejected={@entry.rejected}
+        pages?={Parts.Pagination.pages?(@entry.page, @entry.model)}
         row_count={@entry.row_count}
         rows={@rows}
         running={@entry.running}
@@ -255,7 +256,7 @@ defmodule AshDataTable.Live.Drawing do
         nested?={@entry.nested?}
       />
       <Kit.part
-        :if={not @entry.nested? and AshDataTable.Parts.Pagination.pages?(@entry.page, @entry.model)}
+        :if={not @entry.nested? and Parts.Pagination.pages?(@entry.page, @entry.model)}
         part={:pagination}
         kit={@options.kit}
         id={@entry.id}
@@ -320,11 +321,20 @@ defmodule AshDataTable.Live.Drawing do
 
   # The messages in place of the rows, each as its kind and its text.
   defp messages(entry),
-    do:
-      AshDataTable.Parts.Messages.messages(
-        entry.error,
-        entry.fill,
-        entry.loading?,
-        entry.row_count
-      )
+    do: Parts.Messages.messages(entry.error, entry.fill, entry.loading?, entry.row_count)
+
+  # What the filter of each column shows: what was typed and rejected, else
+  # what the filter row was last sent, else the filter that applies
+  # (`AshDataTable.Parts.Filter.shown_filter/4`).
+  defp filters(entry) do
+    for column <- entry.model.columns, into: %{} do
+      {column.name,
+       %{
+         filter:
+           Parts.Filter.shown_filter(entry.rejected, entry.pending, entry.state, column.name),
+         rejected?: is_map_key(entry.rejected, column.name),
+         applied?: is_map_key(entry.state.filters, column.name)
+       }}
+    end
+  end
 end

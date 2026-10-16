@@ -1,5 +1,25 @@
 defmodule AshDataTable.Attrs do
-  @moduledoc false
+  @moduledoc """
+  The attribute bundles of a table's elements: the contract between the
+  markup a kit draws (`AshDataTable.Kit`) and the table's hooks in the
+  browser, which find the elements by these attributes alone.
+
+  Each function returns the attributes of one element besides its look:
+  its id, its ARIA role and states, the `data-*` markers, `phx-*` and
+  `phx-hook`. A part spreads the bundle on whatever element it draws:
+
+      <div {AshDataTable.Attrs.grid(@id, @myself, @lead, @selecting, @choose)} class="my-grid">
+
+  and is called with the values a part is given, as `AshDataTable.Kit.Default`'s
+  parts call them. Where a part is drawn per row, cell or column, the bundle
+  holds what varies, and the part writes the attributes that are the same
+  on every one itself (`AshDataTable.Kit` lists them); `AshDataTable.KitCase`
+  checks both.
+
+  `markers/0` names every marker; the hooks name the same list
+  (`assets/js/markers.js`).
+  """
+
   # The attribute bundles (target.md S5): one function per element of the
   # table, returning every attribute the element carries besides its look,
   # its id, its ARIA role and states, the `data-*` markers the hooks find it
@@ -13,7 +33,7 @@ defmodule AshDataTable.Attrs do
   # two lists. A marker added here and not read there, or read there and
   # not written here, is a bug (target.md 6).
   #
-  # Internal: what the bundles hold is the contract of a kit's parts, which
+  # What the bundles hold is the contract of a kit's parts, which
   # `AshDataTable.Kit`'s moduledoc documents part by part. Below, the markup
   # contract feature by feature: what the hooks, the live core and the
   # tests rely on (stage 7b moved it here from `lib/ash_data_table.ex`).
@@ -656,6 +676,7 @@ defmodule AshDataTable.Attrs do
 
   # How many columns the grid has: those before the data columns, the data
   # columns and the actions.
+  @doc "How many columns the grid has."
   def colcount(model, lead, acting?), do: length(model.columns) + lead + Common.trail(acting?)
 
   # A row of the grid that is no record's: the header row, the filter row,
@@ -721,6 +742,7 @@ defmodule AshDataTable.Attrs do
     }
   end
 
+  @doc false
   def aria_sort({name, :asc}, %{name: name}), do: "ascending"
   def aria_sort({name, :desc}, %{name: name}), do: "descending"
   def aria_sort(_sort, _column), do: "none"
@@ -730,6 +752,7 @@ defmodule AshDataTable.Attrs do
   # is there because a separator says where it stands between two ends.
   # The handle at the end of a column's header, with which a person makes
   # the column wider or narrower, says so (`aria-valuemin`, `aria-valuemax`).
+  @doc false
   def least_width, do: 48
   def most_width, do: 1000
 
@@ -760,6 +783,7 @@ defmodule AshDataTable.Attrs do
 
   # Nil, not false, where it is not: an attribute that is nil is left out,
   # as one that is false.
+  @doc "Whether an item of the stream is a record's detail, not its row."
   def detail?(%{detail?: true}), do: true
   def detail?(_row), do: nil
 
@@ -844,6 +868,7 @@ defmodule AshDataTable.Attrs do
 
   # What an editor holds, as a cell says it: the text, and for an array the
   # texts of its values, as JSON.
+  @doc false
   def held(texts) when is_list(texts), do: Phoenix.json_library().encode!(texts)
   def held(text), do: text
 
@@ -928,6 +953,7 @@ defmodule AshDataTable.Attrs do
   # The kind of an editable column's editor, on the template the hook
   # copies into the cell being edited (`data-editor`): `secret` for a
   # sensitive column.
+  @doc "The kind of a column's editor, its template's `data-editor`."
   def editor_kind(column), do: if(column.sensitive?, do: :secret, else: column.editor)
 
   # The control of a column component's editor: what the table gives it.

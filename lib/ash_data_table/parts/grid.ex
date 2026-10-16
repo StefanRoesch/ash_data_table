@@ -340,11 +340,6 @@ defmodule AshDataTable.Parts.Grid do
     """
   end
 
-  # A choice that can be empty offers the empty choice.
-  defp allow_nil?(resource, column) do
-    Ash.Resource.Info.attribute(resource, column.name).allow_nil?
-  end
-
   defp sort_mark({name, :asc}, %{name: name}), do: " ▲"
   defp sort_mark({name, :desc}, %{name: name}), do: " ▼"
   defp sort_mark(_sort, _column), do: ""
@@ -511,12 +506,10 @@ defmodule AshDataTable.Parts.Grid do
 
   # What a cell of a record holds (the design note of stage 7, D10): the
   # column's component draws a value that is there and that the person may
-  # see; anything else is the kit's `cell/1`'s, which is never given a value
-  # the person may not see, nor the value of a sensitive cell
-  # (`AshDataTable.Present.Cell`).
-  defp component?(%{component: %{cell?: true}}, %{state: :value, failure: nil}), do: true
-  defp component?(_column, _cell), do: false
-
+  # see; anything else is the kit's `cell/1`'s (`AshDataTable.Kit.cell/1`
+  # for a kit's own row; written out here, as a component of its own would
+  # send one more level of every cell of every row).
+  defdelegate component?(column, cell), to: Kit
   # What a cell of a record shows (`AshDataTable.Kit.Default.cell/1`):
   # its value, as the column's type shows it, nothing where it is empty,
   # the mask of a sensitive value, "Not available" for the eye of nobody
@@ -735,6 +728,8 @@ defmodule AshDataTable.Parts.Grid do
   attr :creates, :any, required: true
   attr :editing?, :any, required: true
   attr :expandable?, :any, required: true
+  # what each column's filter shows: `filter`, `rejected?`, `applied?`
+  attr :filters, :map, required: true
   attr :full_view, :any, required: true
   attr :id, :any, required: true
   attr :kit, :atom, required: true
@@ -746,8 +741,8 @@ defmodule AshDataTable.Parts.Grid do
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
   attr :page, :any, required: true
-  attr :pending, :any, required: true
-  attr :rejected, :any, required: true
+  # whether there are pages to go through
+  attr :pages?, :boolean, required: true
   attr :row_count, :any, required: true
   # the items of the table's stream
   attr :rows, :any, required: true
@@ -846,9 +841,9 @@ defmodule AshDataTable.Parts.Grid do
               colindex={Common.colindex(index, @lead)}
               table={@id}
               form={"#{@id}-filters"}
-              filter={Parts.Filter.shown_filter(@rejected, @pending, @state, column.name)}
-              rejected?={is_map_key(@rejected, column.name)}
-              applied?={is_map_key(@state.filters, column.name)}
+              filter={@filters[column.name].filter}
+              rejected?={@filters[column.name].rejected?}
+              applied?={@filters[column.name].applied?}
               target={@myself}
             />
             <td
@@ -909,6 +904,7 @@ defmodule AshDataTable.Parts.Grid do
           myself={@myself}
           nested?={@nested?}
           page={@page}
+          pages?={@pages?}
           row_count={@row_count}
           selecting={@selecting}
           state={@state}
@@ -933,23 +929,11 @@ defmodule AshDataTable.Parts.Grid do
         data-commit={column.editor == :component && column.component.commit}
         data-confirm={column.confirm}
       >
-        <Common.dynamic_component
-          :if={column.editor == :component}
-          module={column.component.module}
-          function={:editor}
-          value=""
-          label={column.label}
-          column={column.component.column}
-          place={:grid}
-          control={Attrs.component_control(column)}
-        />
-        <Kit.part
-          :if={column.editor not in [:component, :reference, :group, :groups, :union]}
-          part={:editor}
+        <Kit.editor
           kit={@kit}
           id={"#{@id}-editor-#{column.name}"}
           column={column}
-          allow_nil?={allow_nil?(@model.resource, column)}
+          resource={@model.resource}
         />
       </template>
       <%!-- The message of a cell whose save failed, for the one case in which

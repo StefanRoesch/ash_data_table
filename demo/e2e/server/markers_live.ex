@@ -21,7 +21,9 @@ defmodule DemoWeb.E2E.MarkersLive do
   for the development check of the hook (D13). `?asks=1` has the column
   "Name" ask before a save, in the question dialog (`kit-dialog`), which
   `?missing=dialog` leaves out: then nothing is saved. Compiled and routed in the
-  e2e environment only; stage 7b replaces it with a kit of the demo's.
+  e2e environment only. A whole table drawn with the demo's kit of `div`s
+  is `/e2e/kit` (`DemoWeb.E2E.KitLive`, stage 7b); this page stays for what
+  a kit can leave out, which the development check names.
   """
   use DemoWeb, :live_view
 

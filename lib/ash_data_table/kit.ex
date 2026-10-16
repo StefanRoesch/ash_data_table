@@ -58,12 +58,17 @@ defmodule AshDataTable.Kit do
   element has one (`grid`, `rowgroup`, `row`, `gridcell`, `columnheader`,
   `dialog`, `region`), else a `data-*` attribute, and by the ids that
   begin with the table's id. So a part may draw any elements, as long as
-  they carry the markers. Most of them come in *bundles*: maps of
-  attributes a part spreads on its element (`<div {@attrs}>`). Where a part
-  is drawn once per row, cell or column, the attributes that are the same
-  on every one are written by the part itself (they would be sent again
-  with every row), and the bundle holds what varies; the list below names
-  them. `AshDataTable.KitCase` checks a kit for all of it.
+  they carry the markers. Most of them come in *bundles*, the functions of
+  `AshDataTable.Attrs`: maps of attributes a part spreads on its element
+  (`<div {AshDataTable.Attrs.grid(…)}>`), made of the values it is given.
+  Where a part is drawn once per row, cell or column, the attributes that
+  are the same on every one are written by the part itself (they would be
+  sent again with every row), and the bundle holds what varies; the list
+  below names them. What a cell holds and a column's editor are drawn with
+  `cell/1` and `editor/1`, which call the column's component before the
+  kit. `AshDataTable.KitCase` checks a kit for all of it, and
+  `AshDataTable.Kit.Default`'s parts (`lib/ash_data_table/parts/`) show how
+  each is drawn.
 
   Drawn once per table:
 
@@ -143,6 +148,8 @@ defmodule AshDataTable.Kit do
   number goes up, and a kit of the old number fails to compile with a
   message that names what changed.
   """
+
+  use Phoenix.Component
 
   @contract 1
 
@@ -254,6 +261,86 @@ defmodule AshDataTable.Kit do
 
     apply(assigns.kit, part, [assigns])
   end
+
+  @doc """
+  What a cell of a record holds, for a kit's own `row/1`: the column's
+  component draws a value that is there and that the person may see,
+  anything else is drawn by the kit's `cell/1`, which is never given a
+  value the person may not see, nor the value of a sensitive cell.
+
+      <AshDataTable.Kit.cell kit={@kit} id={cell_id} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} />
+  """
+  attr :kit, :atom, required: true
+  attr :id, :string, required: true
+  attr :column, :map, required: true
+  attr :cell, :map, required: true
+  attr :time_zone, :string, required: true
+
+  def cell(assigns) do
+    ~H"""
+    <AshDataTable.Parts.Common.dynamic_component
+      :if={component?(@column, @cell)}
+      module={@column.component.module}
+      function={:cell}
+      value={@cell.value}
+      text={AshDataTable.Format.format(@column, @cell.value, @time_zone)}
+      column={@column.component.column}
+    /><.part
+      :if={!component?(@column, @cell)}
+      part={:cell}
+      kit={@kit}
+      id={@id}
+      column={@column}
+      state={@cell.state}
+      value={@cell.value}
+      text={@cell.state == :value && AshDataTable.Format.format(@column, @cell.value, @time_zone)}
+      failure={@cell.failure}
+      time_zone={@time_zone}
+    />
+    """
+  end
+
+  @doc """
+  The editor of an editable column, in its template, for a kit's own
+  `grid/1`: the column's component's where it edits, else the kit's
+  `editor/1`; none for a column edited in the picker or the panel.
+
+      <template :for={column <- @model.columns} :if={column.editable?} …>
+        <AshDataTable.Kit.editor kit={@kit} id={"\#{@id}-editor-\#{column.name}"} column={column} resource={@model.resource} />
+      </template>
+  """
+  attr :kit, :atom, required: true
+  attr :id, :string, required: true
+  attr :column, :map, required: true
+  attr :resource, :atom, required: true
+
+  def editor(assigns) do
+    ~H"""
+    <AshDataTable.Parts.Common.dynamic_component
+      :if={@column.editor == :component}
+      module={@column.component.module}
+      function={:editor}
+      value=""
+      label={@column.label}
+      column={@column.component.column}
+      place={:grid}
+      control={AshDataTable.Attrs.component_control(@column)}
+    /><.part
+      :if={@column.editor not in [:component, :reference, :group, :groups, :union]}
+      part={:editor}
+      kit={@kit}
+      id={@id}
+      column={@column}
+      allow_nil?={Ash.Resource.Info.attribute(@resource, @column.name).allow_nil?}
+    />
+    """
+  end
+
+  # Whether the column's component draws a cell (the design note of stage
+  # 7, D10): a value that is there and that the person may see.
+  @doc false
+  def component?(%{component: %{cell?: true}}, %{state: :value, failure: nil}), do: true
+  def component?(_column, _cell), do: false
 
   @doc """
   Whether `module` is a kit: it says it implements this behaviour. Raises
