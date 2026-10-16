@@ -469,6 +469,113 @@ defmodule AshDataTable do
   def detach(socket, name) when is_atom(name), do: AshDataTable.Live.Hooks.detach(socket, name)
 
   @doc """
+  Reads the table under the assign `name` again, as it is, with its
+  summaries: for a page whose values (`context` and the others) or whose
+  records changed in a way the table cannot know of. What is open in it
+  closes, as on any read.
+
+  The commands (`refresh/2`, `put_state/3`, `clear_selection/2`,
+  `selected_records/2`) are for a table attached with `attach/4`, and on
+  the router page for its table, `:table`, in an `on_mount` hook; a name
+  no table is attached under raises. None writes.
+  """
+  @spec refresh(Phoenix.LiveView.Socket.t(), atom) :: Phoenix.LiveView.Socket.t()
+  def refresh(socket, name) when is_atom(name),
+    do: command(socket, name, "AshDataTable.refresh/2", &AshDataTable.Live.Core.Reading.reread/1)
+
+  @doc """
+  Gives the table under `name` the state `params` say, as its URL
+  parameters hold it under its id: `%{"sort" => "-title", "f" => %{...},
+  "a" => %{...}, "page" => "2", "per" => "50"}`. What the table does not
+  allow is dropped, as from a URL. With `url: true` the URL is patched, and
+  the table reads it from there; else it reads at once.
+  """
+  @spec put_state(Phoenix.LiveView.Socket.t(), atom, map) :: Phoenix.LiveView.Socket.t()
+  def put_state(socket, name, params) when is_atom(name) and is_map(params),
+    do: command(socket, name, "AshDataTable.put_state/3", &Url.put_state(&1, params))
+
+  @doc "Takes every row out of the selection of the table under `name`."
+  @spec clear_selection(Phoenix.LiveView.Socket.t(), atom) :: Phoenix.LiveView.Socket.t()
+  def clear_selection(socket, name) when is_atom(name),
+    do:
+      command(
+        socket,
+        name,
+        "AshDataTable.clear_selection/2",
+        &AshDataTable.Live.Core.Selection.put(&1, {:rows, []}, true)
+      )
+
+  @doc """
+  The records selected in the table under `name`: the selected rows, or
+  with "all that match" every record the filters match, each read again as
+  the person through the table's read action, as a page is read, and with
+  every `sensitive?` value masked (`%AshDataTable.Sensitive.Masked{}`). A
+  key that names nothing the person may read is not among them. The
+  selection itself is what the browser said, a claim, until read here.
+  `{:error, message}` where the read fails.
+  """
+  @spec selected_records(Phoenix.LiveView.Socket.t(), atom) ::
+          {:ok, [Ash.Resource.record()]} | {:error, String.t()}
+  def selected_records(socket, name) when is_atom(name) do
+    {:reply, result, _socket} =
+      AshDataTable.Live.Hooks.command(
+        socket,
+        name,
+        "AshDataTable.selected_records/2",
+        fn socket ->
+          {:reply, AshDataTable.Live.Core.Selection.records(socket), socket}
+        end
+      )
+
+    result
+  end
+
+  @doc """
+  What a host may read of an `AshDataTable.Table`, as the assign holds it:
+
+    * `id` - the table's id;
+    * `state` - its sort, filters, arguments and page as its URL
+      parameters (see `put_state/3`);
+    * `count` - the rows shown, `total` - how many there are in all (nil
+      where the action does not count);
+    * `loading?` - whether it is reading;
+    * `error` - what it says in place of its rows, or nil;
+    * `selected` - the keys selected (primary keys as maps, claims), and
+      `all?` - whether every record that matches is.
+
+  Nil for nil (a table detached).
+  """
+  @spec status(AshDataTable.Table.t() | nil) :: map | nil
+  def status(nil), do: nil
+
+  def status(%AshDataTable.Table{entry: entry}) do
+    %{
+      id: entry.id,
+      state: AshDataTable.State.to_params(entry.state, entry.model),
+      count: entry.row_count,
+      total: entry.page && entry.page.total,
+      loading?: entry.busy? or entry.loading?,
+      error: entry.error && AshDataTable.Text.say(entry.error),
+      selected:
+        for(
+          row <- entry.selected,
+          key = AshDataTable.Record.key(entry.resource, row),
+          do: key
+        ),
+      all?: entry.all?
+    }
+  end
+
+  defp command(socket, name, where, fun),
+    do:
+      AshDataTable.Live.Hooks.command(
+        socket,
+        name,
+        where,
+        &AshDataTable.Live.Core.command(&1, fun)
+      )
+
+  @doc """
   Draws a table that `attach/4` put on the socket, with its streams and
   uploads:
 

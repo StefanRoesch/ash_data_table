@@ -152,6 +152,25 @@ defmodule AshDataTable.Live.Hooks do
     end
   end
 
+  @doc """
+  Runs `fun` with the table under `name` as the one the callback works on,
+  for a command of the host's (`AshDataTable.refresh/2` and the others),
+  and returns what it returns. `where` names the command for the error of
+  a name no table is attached under.
+  """
+  def command(socket, name, where, fun) do
+    case {Map.fetch(private(socket).tables, name), socket.assigns[name]} do
+      {{:ok, _attached}, %Table{}} ->
+        within(socket, name, fun)
+
+      _not_attached ->
+        raise ArgumentError,
+              "#{where}: no table is attached under the assign #{inspect(name)}. Commands " <>
+                "are for a table attached with `AshDataTable.attach/4`, and the router " <>
+                "page's (`:table`); a table placed with the tag takes none."
+    end
+  end
+
   defp inside?(id, top),
     do: String.starts_with?(id, top <> "-row-") or String.starts_with?(id, top <> "-pick-")
 

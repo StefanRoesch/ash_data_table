@@ -76,6 +76,14 @@ defmodule AshDataTable.Live.Core.Url do
   # argument stays as it was, and its input keeps what was typed, marked,
   # with Ash's message, which is read out. What is left is a change like
   # one of the filters.
+  # A state the host put (`AshDataTable.put_state/3`): as the URL's
+  # parameters are read, with what the model does not allow dropped, and
+  # then as the person's own choice of arguments is taken.
+  def put_state(socket, params) do
+    %{model: model} = Core.table(socket).entry
+    reargue(socket, model |> State.from_params(params) |> State.fit(model))
+  end
+
   defp reargue(socket, chosen) do
     %{model: model, state: state} = Core.table(socket).entry
     reader = Core.reader(socket)
@@ -132,8 +140,8 @@ defmodule AshDataTable.Live.Core.Url do
   # A change of the filters is announced once its rows have been read.
   def refilter(socket, state) when Current.entry(socket, :state) == state, do: socket
 
-  # The hook gives the selection up with the filters it was made under, and
-  # with it goes what the last run on a selection came to.
+  # With the filters goes what the last run on a selection came to (the
+  # selection itself is given up by `Selection.scoped/1`).
   def refilter(socket, state),
     do: socket |> Core.put(announce?: true, result: nil) |> go(state)
 

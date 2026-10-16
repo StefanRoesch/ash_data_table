@@ -4,7 +4,8 @@ defmodule DemoWeb.Support.AttachedLive do
   (`AshDataTable.attach/4`): the bulletins, whose state is in the URL, and
   the scans, whose actions take files. Beside them the host has a stream of
   its own named `"rows"`, and an event, a message, an async result and a
-  `handle_params/3` of its own, each of which it notes in `heard`.
+  `handle_params/3` of its own, each of which it notes in `heard`, and a
+  command a test gives it (`{:run, fun}`).
 
   The session says how: `"url"` false keeps the bulletins' state in their
   table, `"uploads"` false draws the scans without the page's uploads. Its
@@ -75,7 +76,11 @@ defmodule DemoWeb.Support.AttachedLive do
   def handle_event("inside", _params, socket),
     do: {:noreply, AshDataTable.attach(socket, :inside, Bulletin, id: "bulletin-row-1")}
 
+  # a command a test gives, in this process: `fun` takes the socket and
+  # returns it
   @impl true
+  def handle_info({:run, fun}, socket), do: {:noreply, fun.(socket)}
+
   def handle_info(message, socket), do: {:noreply, heard(socket, {:info, message})}
 
   @impl true

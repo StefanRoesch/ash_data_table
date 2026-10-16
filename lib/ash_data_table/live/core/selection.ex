@@ -25,7 +25,11 @@ defmodule AshDataTable.Live.Core.Selection do
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Errors
+  alias AshDataTable.Query
   alias AshDataTable.Record
+  alias AshDataTable.Sensitive
+  alias AshDataTable.Text
 
   # Sent by the hook on every change of what a person has selected: every
   # record that matches (`all`), or the rows, by their primary keys.
@@ -90,6 +94,46 @@ defmodule AshDataTable.Live.Core.Selection do
     case Enum.reject(selected, &(key(model, &1) == pk)) do
       ^selected -> socket
       rows -> put(socket, {:rows, rows}, true)
+    end
+  end
+
+  @doc """
+  The records that are selected, read again as the person through the
+  table's read action with its arguments and what the page gives
+  (`AshDataTable.selected_records/2`): those of the keys held, or with
+  `all?` everything that matches, read in batches; scrubbed of sensitive
+  values. `{:error, message}` where the read fails.
+  """
+  def records(socket) do
+    %{model: model, selected: rows, all?: all?, state: state, parent_key: parent} =
+      Core.table(socket).entry
+
+    opts = Reading.read_opts(socket)
+
+    keys =
+      if all?,
+        do: :all,
+        else: rows |> Enum.map(&key(model, &1)) |> Enum.reject(&is_nil/1) |> Enum.uniq()
+
+    read =
+      case {model.via, keys} do
+        {nil, :all} -> {:ok, Query.records(model, Query.matching(model, state, opts), opts)}
+        {nil, keys} -> {:ok, Query.records(model, keys, opts)}
+        {_via, keys} -> Query.related_records(model, state, parent, keys, opts)
+      end
+
+    case read do
+      {:ok, records} -> {:ok, Enum.map(records, &Sensitive.scrub(&1, model.columns))}
+      {:error, error} -> {:error, failed(error, model)}
+    end
+  rescue
+    error -> {:error, failed(error, Core.table(socket).entry.model)}
+  end
+
+  defp failed(error, model) do
+    case Errors.of_read(error, model) do
+      [] -> Text.say({:text, :read_failed, []})
+      messages -> Text.say(Errors.joined(messages))
     end
   end
 

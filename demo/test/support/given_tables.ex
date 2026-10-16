@@ -187,7 +187,8 @@ defmodule DemoWeb.Support.GivenLive do
   where the session says `"fail"`, and a veto that tells the test what it was asked, with which
   assigns, and answers as the assign `answer` says (the session's
   `"answer"`, else `:cont`). `"context"` in the session replaces the
-  context function. Everything the page hears it hands to the test.
+  context function. Everything the page hears it hands to the test, but
+  `{:run, fun}`: a command of the test's, run here.
 
   Mounted with `Phoenix.LiveViewTest.live_isolated/3`.
   """
@@ -222,7 +223,15 @@ defmodule DemoWeb.Support.GivenLive do
     {:ok, socket}
   end
 
+  # a command the test gives, in this process: `{:run, fun}`, `fun` taking
+  # the socket and returning the socket and what to tell the test
   @impl true
+  def handle_info({:run, fun}, socket) do
+    {socket, told} = fun.(socket)
+    send(socket.assigns.test, {:ran, told})
+    {:noreply, socket}
+  end
+
   def handle_info(message, socket) do
     send(socket.assigns.test, {:heard, message})
     {:noreply, socket}
@@ -248,6 +257,12 @@ defmodule DemoWeb.Support.GivenTagLive do
     do: {:ok, assign(socket, test: Map.fetch!(session, "test"), answer: :cont)}
 
   @impl true
+  def handle_info({:run, fun}, socket) do
+    {socket, told} = fun.(socket)
+    send(socket.assigns.test, {:ran, told})
+    {:noreply, socket}
+  end
+
   def handle_info(message, socket) do
     send(socket.assigns.test, {:heard, message})
     {:noreply, socket}

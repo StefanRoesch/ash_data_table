@@ -68,6 +68,10 @@ defmodule AshDataTable.Live.Core do
     end
   end
 
+  # What the host asks of the table on the page (`AshDataTable.refresh/2`
+  # and the other commands), and all that follows from it.
+  def command(socket, fun), do: socket |> fun.() |> tidy()
+
   # What the table on the page is told, by the tag's attributes or by
   # `AshDataTable.attach/4`, and all that follows from it.
   def tell(socket, given) do
