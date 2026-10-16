@@ -943,7 +943,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
   end
 
   describe "a table whose resource has a private primary read action reads through its own" do
-    test "the page, and what is loaded onto its records", %{conn: conn} do
+    test "the page, and what is loaded onto its records in a second step", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/support/dossiers")
 
       assert column(html, "dossier", "name") == ["Open dossier"]
@@ -952,9 +952,12 @@ defmodule DemoWeb.Tables.PrivateActionTest do
 
       # nothing private was run, or so much as asked about
       assert Ran.actions() == [
-               # the page, with the count
+               # the count, loaded onto the page in a step of its own
+               {Dossier, :open, :load},
                {Dossier, :open, :read},
-               # the notes' public read action
+               # the notes it counts, read with that load
+               {Note, :read, :load},
+               # and asked about, for the line "Notes"
                {Note, :read, :read}
              ]
     end

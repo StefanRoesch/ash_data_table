@@ -264,6 +264,16 @@ at all.
 Nothing is fetched before a line is opened. Expanding a row sends one event
 and reads nothing.
 
+**What the columns show besides attributes is read in further steps.** A
+nested table's records are read bare. Its calculations, its aggregates and
+its reference cells are then loaded onto those records, as the person
+(`Ash.load/3`). A table of its own reads its calculations with the page and
+its aggregates in a step after it. The reason is a defect in the SQL layer
+(tracked as #35): a statement that selects an aggregate beside a field that a
+field policy hides on some records is wrapped in a subquery, which a page of
+related records always is, and the statement around it returns the rows in
+no particular order. The steps go when it is fixed.
+
 ## What a person may not see
 
 | The resource says | Under an expanded row |
@@ -519,7 +529,7 @@ those of the library as it is now):
 | `/tasks` → Labels (many-to-many, in full) | 2 | 16 ms |
 | `/tasks` → Project (belongs-to) | 2 | 14 ms |
 | `/tasks` → Newest comment (has-one of many) | 2 | 13 ms |
-| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 5: the parent with the count, the page with the calculation and the aggregate, one per reference cell | 38 ms, measured before the reference cells were columns |
+| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 6: the parent with the count, the page, the calculation and the aggregate, one per reference cell | 38 ms, measured before the reference cells were columns |
 
 About 17 KiB of the page's process for each open nested table: 0.93 MB with
 fifty open. Opening one more does not get much slower as they add up.

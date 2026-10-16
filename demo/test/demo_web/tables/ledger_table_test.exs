@@ -16,8 +16,9 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       calculation, shows nothing of a person the reader may not read
       (fixed in ash_sql 0.8.2).
     * #35: a statement with an aggregate beside a field that a field policy
-      hides on some records is read, also where it is wrapped in a subquery
-      (fixed in ash_sql 0.8.2).
+      hides on some records is wrapped in a subquery; in ash_sql 0.8.2 the
+      statement around it no longer fails, but returns the rows in no
+      particular order. The table reads aggregates in a step of their own.
     * #34: Ash cannot sort by an aggregate that a field policy hides on some
       records. The table does not offer that sort.
   """
@@ -161,6 +162,26 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert text(html, cell(id, abroad.id, "assignee_role")) == "member"
       refute html =~ world.outsider.name
     end
+
+    test "nor when the page is sorted or filtered by the aggregate", %{conn: conn, world: world} do
+      {view, _html} = jobs(conn, world.member)
+
+      view |> element("#job-head-assignee_name") |> render_click()
+      html = render_async(view)
+
+      assert text(html, "#job-error") == nil
+      assert attribute(html, "#job-head-assignee_name", "aria-sort") == ["ascending"]
+      # the person the member may not read sorts as nobody, with the job of nobody
+      names = Enum.sort([world.member.name, world.admin.name])
+      assert column(html, "job", "assignee_name") == names ++ ["", ""]
+      assert Enum.sort(Enum.take(titles(html), -2)) == ["C abroad", "D free"]
+      refute html =~ world.outsider.name
+
+      # the name of the person the member may not read matches nothing
+      html = filter(view, "job", "assignee_name", v: world.outsider.name)
+      assert text(html, "#job-error") == nil
+      assert titles(html) == []
+    end
   end
 
   describe "a `first` aggregate over one related record, beside a reference cell of the same relationship" do
@@ -198,23 +219,6 @@ defmodule DemoWeb.Tables.LedgerTableTest do
 
       assert column(html, "errand", "title") == []
       refute html =~ world.outsider.name
-    end
-
-    test "nor when the page is sorted or filtered by the aggregate", %{conn: conn, world: world} do
-      {view, _html} = jobs(conn, world.member)
-
-      view |> element("#job-head-assignee_name") |> render_click()
-      html = render_async(view)
-
-      assert text(html, "#job-error") == nil
-      assert attribute(html, "#job-head-assignee_name", "aria-sort") == ["ascending"]
-      assert Enum.sort(titles(html)) == ["A own", "B other", "C abroad", "D free"]
-      refute html =~ world.outsider.name
-
-      # the name of the person the member may not read matches nothing
-      html = filter(view, "job", "assignee_name", v: world.outsider.name)
-      assert text(html, "#job-error") == nil
-      assert titles(html) == []
     end
   end
 

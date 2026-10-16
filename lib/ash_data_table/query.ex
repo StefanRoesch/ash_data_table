@@ -18,6 +18,22 @@ defmodule AshDataTable.Query do
   # comes back into the same `Page`. They differ in the last step alone: the
   # one reads its query, the other reads the parent record by its key with
   # the query as the load of the relationship.
+  #
+  # ## In steps
+  #
+  # The aggregates the columns show are not read in the statement that reads
+  # the records (internal ticket #35). A statement that selects an aggregate
+  # beside a calculation which Ash adds itself (for a field that a field
+  # policy hides on some records) is wrapped in a subquery. Up to ash_sql
+  # 0.8.1 it failed there; in 0.8.2 it is read, but the statement around the
+  # subquery, which joins the aggregates, has no `ORDER BY`: the rows of a
+  # page come back in whatever order the database joins them. A page of
+  # related records always is such a subquery, a list of them through a join
+  # resource or of one of many is, and a page of a table of its own can be.
+  # So aggregates are loaded onto the records afterwards (`Ash.load/3`, as
+  # the person), which keeps the order of the records, and a list or page of
+  # related records is read bare, with everything loaded afterwards. Sorting
+  # and filtering by a column stay in the statement.
 
   alias AshDataTable.Errors
   alias AshDataTable.Model
@@ -84,7 +100,17 @@ defmodule AshDataTable.Query do
              query(model, state, Model.loads(model), read_opts),
              [page: page_opts(model, state)] ++ read_opts
            ),
-         do: {:ok, page(result, model, state)}
+         # internal ticket #35: see "In steps" above; through the table's
+         # read action, which Ash would not take by itself
+         {:ok, result} <-
+           loaded(
+             result,
+             Model.aggregates(model),
+             model,
+             [action: model.read_action] ++ read_opts
+           ) do
+      {:ok, page(result, model, state)}
+    end
   end
 
   @doc """
@@ -125,13 +151,13 @@ defmodule AshDataTable.Query do
       when is_map(key) do
     read_opts = reader_opts(opts)
 
+    # Related records are read bare, and everything the table's columns show
+    # besides attributes is loaded onto them afterwards (internal ticket
+    # #35: see "In steps" above).
     related =
       case page_opts(model, state) do
-        false ->
-          query(model, state, Model.loads(model), read_opts)
-
-        page_opts ->
-          model |> query(state, Model.loads(model), read_opts) |> Ash.Query.page(page_opts)
+        false -> query(model, state, [], read_opts)
+        page_opts -> model |> query(state, [], read_opts) |> Ash.Query.page(page_opts)
       end
 
     parent_opts =
@@ -149,7 +175,8 @@ defmodule AshDataTable.Query do
              Keyword.get(opts, :parent_arguments, %{}),
              [load: [{via.name, related}]] ++ parent_opts
            ),
-         {:ok, result} <- related(Map.get(parent, via.name)) do
+         {:ok, result} <- related(Map.get(parent, via.name)),
+         {:ok, result} <- load(result, model, [action: model.read_action] ++ read_opts) do
       {:ok, %{page(result, model, state) | parent: parent}}
     else
       {:ok, nil} -> {:error, :parent_gone}
@@ -479,14 +506,15 @@ defmodule AshDataTable.Query do
   defp related(records) when is_list(records), do: {:ok, records}
 
   @doc """
-  Puts onto a record everything the table's columns show besides
-  attributes, as `opts` say who is asking: the calculations, the aggregates
-  and the related records' labels.
+  Puts onto records everything the table's columns show besides attributes,
+  as `opts` say who is asking: the calculations, the aggregates and the
+  related records' labels. Takes what a read gave: a page, a list, or one
+  record.
 
-  `opts` may name the read action to load through, with `:action`. A record
-  that the table has read is loaded onto through the table's read action:
+  `opts` may name the read action to load through, with `:action`. Records
+  that the table has read are loaded onto through the table's read action:
   the policies and field policies that say what the person may have of
-  what is loaded are then those of the action that read the record. Without
+  what is loaded are then those of the action that read the records. Without
   `:action` Ash loads through the primary read action, as it does itself
   for what a create, an update or a destroy action returns: the way a row
   is shown again after one (`AshDataTable.Record`).
@@ -495,14 +523,24 @@ defmodule AshDataTable.Query do
   arguments that action was read with. The primary read action is given
   none, as Ash gives it none after an action.
   """
-  @spec load(Ash.Resource.record(), Model.t(), keyword) ::
-          {:ok, Ash.Resource.record()} | {:error, Ash.Error.t()}
-  def load(record, %Model{} = model, opts) do
-    case Model.loads(model) do
-      [] -> {:ok, record}
-      loads -> Ash.load(record, through(loads, model, opts), opts)
-    end
+  @spec load(result, Model.t(), keyword) :: {:ok, result} | {:error, Ash.Error.t()}
+        when result: Ash.Page.page() | [Ash.Resource.record()] | Ash.Resource.record()
+  def load(result, %Model{} = model, opts),
+    do: loaded(result, Model.loads(model) ++ Model.aggregates(model), model, opts)
+
+  # `loads` put onto the records in one statement, as the person.
+  defp loaded(result, [], _model, _read_opts), do: {:ok, result}
+  defp loaded([], _loads, _model, _read_opts), do: {:ok, []}
+  defp loaded(%{results: []} = page, _loads, _model, _read_opts), do: {:ok, page}
+
+  defp loaded(%struct{results: records} = page, loads, model, read_opts)
+       when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
+    with {:ok, records} <- Ash.load(records, through(loads, model, read_opts), read_opts),
+         do: {:ok, %{page | results: records}}
   end
+
+  defp loaded(records, loads, model, read_opts),
+    do: Ash.load(records, through(loads, model, read_opts), read_opts)
 
   # What Ash is asked to load. Through the table's read action, where that
   # takes arguments, it is a query of that action with them: Ash would

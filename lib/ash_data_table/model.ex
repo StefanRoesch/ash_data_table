@@ -862,9 +862,9 @@ defmodule AshDataTable.Model do
   @doc """
   What the table's columns show that is not on a record unless asked for,
   and that is read with the records: its calculations, by name and with the
-  arguments their columns give them, its aggregates, and for each
+  arguments their columns give them, and for each
   reference column the relationship with the query that reads the related
-  record's label.
+  record's label. The aggregates are read after them: see `aggregates/1`.
 
   The label is read as Ash loads the relationship, as the person asking: the
   destination's policies say whether there is a related record for them, and
@@ -896,10 +896,7 @@ defmodule AshDataTable.Model do
            )}
         ]
 
-      %{kind: :aggregate, name: name} ->
-        [name]
-
-      _attribute ->
+      _attribute_or_aggregate ->
         []
     end)
   end
@@ -913,6 +910,22 @@ defmodule AshDataTable.Model do
   @spec summarised(%__MODULE__{}) :: [Column.t()]
   def summarised(%__MODULE__{columns: columns}),
     do: Enum.reject(columns, &is_nil(&1.summary))
+
+  @doc """
+  The aggregates of the table's columns, which are put onto the records of
+  a page in a step of their own, after the page is read.
+
+  Internal ticket #35: a statement that selects an aggregate beside a
+  calculation Ash adds by itself, as it does for a field that a field policy
+  hides on some records, is wrapped in a subquery, which a page of a table
+  can be, and the statement around it returns the rows of the page in no
+  particular order (ash_sql 0.8.2). Loaded onto records that are already
+  read, by their keys, nothing is wrapped.
+  """
+  @spec aggregates(t) :: [atom]
+  def aggregates(%__MODULE__{columns: columns}) do
+    for %{kind: :aggregate, name: name} <- columns, do: name
+  end
 
   @doc """
   The columns a record of the table's resource can be called by, the best

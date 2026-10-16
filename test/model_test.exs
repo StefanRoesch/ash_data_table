@@ -8,7 +8,7 @@ defmodule AshDataTable.ModelTest do
 
   import Spark.Test, only: [dsl_warnings: 1]
 
-  # For "what a table reads with the records", below: a `first` aggregate
+  # For "what a table reads in steps", below: a `first` aggregate
   # over one related record beside a calculation that reaches through the
   # same relationship. Their columns show a field that a field policy
   # protects, which the compiler warns of.
@@ -2332,21 +2332,22 @@ defmodule AshDataTable.ModelTest do
     end
   end
 
-  describe "what a table reads with the records" do
+  describe "what a table reads in steps" do
     alias AshDataTable.Test.Exposing.Team
 
-    test "calculations, aggregates and reference columns, in the order of the columns" do
-      assert [:headcount, :guest_count, :loud_name] = Model.loads(Model.build(Team))
+    test "calculations and reference columns are read with the records" do
+      assert [:loud_name] = Model.loads(Model.build(Team))
 
-      assert [
-               {:boss, %Ash.Query{}},
-               :boss_name,
-               :deputy_name,
-               :report_count,
-               :boss_again,
-               :boss_initial,
-               :loud_title
-             ] = Model.loads(Model.build(AshDataTable.ModelTest.Staff))
+      assert [{:boss, %Ash.Query{}}, :boss_initial, :loud_title] =
+               Model.loads(Model.build(AshDataTable.ModelTest.Staff))
+    end
+
+    test "aggregates are read after them, in a step of their own" do
+      assert Model.aggregates(Model.build(Team)) == [:headcount, :guest_count]
+      assert Model.aggregates(Model.build(AshDataTable.Test.Guarded)) == []
+
+      assert Model.aggregates(Model.build(AshDataTable.ModelTest.Staff)) ==
+               [:boss_name, :deputy_name, :report_count, :boss_again]
     end
 
     test "a `first` aggregate is sorted and filtered by beside a calculation over the same relationship" do
@@ -2359,10 +2360,9 @@ defmodule AshDataTable.ModelTest do
     end
 
     test "nothing of a column the person cannot see is read" do
-      loads = Model.loads(Model.for_actor(Model.build(Team), actor: nil))
+      model = Model.for_actor(Model.build(Team), actor: nil)
 
-      assert :guest_count in loads
-      refute :headcount in loads
+      assert Model.aggregates(model) == [:guest_count]
     end
   end
 

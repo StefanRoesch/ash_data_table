@@ -622,7 +622,7 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
     test "what is loaded onto the page's records is loaded through it", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/support/stocks?stock[a][at_least]=0")
 
-      # an aggregate, read with the page
+      # an aggregate, read in a step of its own after the page
       assert column(html, "stock", "lot_count") == ["4", "0"]
     end
 

@@ -678,7 +678,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       %{world: world, path: of("/tasks", "task", "project", "tasks", project.id), conn: conn}
     end
 
-    test "is shown while no filter is set on a column the person sees on some records only",
+    test "is shown while no filter is set",
          %{conn: conn, world: world, path: path} do
       {:ok, view, html} = conn |> log_in(world.member) |> live(path)
       assert text(html, "#task-range") == "1–25 of 60"
@@ -687,7 +687,7 @@ defmodule DemoWeb.Tables.FullViewTest do
       assert text(html, "#task-range") == "1–25 of 30"
     end
 
-    test "is not shown or announced while one is, as in a nested table", %{
+    test "counts only the rows the person is shown while one is, as in a nested table", %{
       conn: conn,
       world: world,
       path: path
@@ -696,22 +696,19 @@ defmodule DemoWeb.Tables.FullViewTest do
 
       html = filter(view, "task", "estimate_hours", o: "at_least", v: "10")
 
-      # their 30 rows match; the 30 whose estimate they may not see do not,
-      # and nothing says how many of those there are
+      # their 30 rows match; the 30 whose estimate they may not see do not
       assert length(column(html, "task", "title")) == 25
-      assert text(html, "#task-range") == "1–25"
-      assert attribute(html, "#task-table", "aria-rowcount") == ["-1"]
-      assert text(html, "#task-status") == "Results updated"
+      assert text(html, "#task-range") == "1–25 of 30"
+      assert text(html, "#task-status") == "30 results"
       refute html =~ "of 60"
-      refute html =~ "of 30"
 
       # opened afresh with that filter in the URL
       {:ok, _view, html} =
         conn |> log_in(world.member) |> live(path <> "&task[f][estimate_hours][at_least]=10")
 
-      assert text(html, "#task-range") == "1–25"
+      assert text(html, "#task-range") == "1–25 of 30"
 
-      # the admin, who sees every estimate, is told
+      # the admin, who sees every estimate, is told of all of them
       {:ok, _view, html} =
         conn |> log_in(world.admin) |> live(path <> "&task[f][estimate_hours][at_least]=10")
 
