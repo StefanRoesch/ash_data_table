@@ -45,6 +45,14 @@ defmodule AshDataTable.Live.Hooks do
                   "is not mounted by the router (`live/3`): only a routed LiveView has a URL to " <>
                   "keep the table's state in. Leave `url` out to keep it in the table."
 
+        not function_exported?(socket.view, :handle_params, 3) ->
+          raise ArgumentError,
+                "AshDataTable.attach/4 was given `url: true` in #{inspect(socket.view)}, which " <>
+                  "defines no `handle_params/3`. The table patches the URL, and LiveView calls " <>
+                  "the LiveView's own `handle_params/3` on every patch: define one, even one " <>
+                  "that does nothing (`def handle_params(_params, _url, socket), do: " <>
+                  "{:noreply, socket}`)."
+
         socket.parent_pid != nil ->
           raise ArgumentError,
                 "AshDataTable.attach/4 was given `url: true` in #{inspect(socket.view)}, which " <>

@@ -228,7 +228,8 @@ defmodule DemoWeb.Router do
   # deletes a task behind the table's back, and makes the reads of the
   # comments fail; a page whose tables let their rows be selected with
   # nothing to run on them; one whose table is given another actor while
-  # it is open; and one whose tables nested in each other take files.
+  # it is open; one whose tables nested in each other take files; and one
+  # whose tables are attached to it.
   if Application.compile_env(:demo, :e2e_routes, false) do
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
@@ -244,6 +245,7 @@ defmodule DemoWeb.Router do
         live "/select", SelectLive
         live "/switch", SwitchLive
         live "/imports", ImportsLive
+        live "/attached", AttachedLive
       end
     end
   end
