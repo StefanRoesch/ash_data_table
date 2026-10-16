@@ -1,7 +1,9 @@
-// The action panel: a modal dialog that is open for as long as the
-// server renders it. Focus moves into it and stays there; Escape and
-// Cancel ask the server to take it away; when it is gone, focus goes
-// back to the control that opened it, and to the grid when that
+// The action panel: open for as long as the server renders it. A
+// modal dialog (`data-presentation="modal"`): focus moves into it and
+// stays there. Inline (`"inline"`), a part of the page: focus moves
+// into it as it opens, and Tab leaves it. Escape (inside it, inline)
+// and Cancel ask the server to take it away; when it is gone, focus
+// goes back to the control that opened it, and to the grid when that
 // control is gone too.
 
 // The control of a form that holds something the browser cannot read
@@ -17,6 +19,30 @@ const UNREADABLE = form =>
 
 import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
 
+// What takes the focus as a panel or a picker opens in the page, as
+// the browser finds it in a modal dialog: its first control.
+export const FOCUSABLE = ":is(input:not([type=hidden]),select,textarea,button,a[href],[tabindex]):not([tabindex='-1'],[hidden],[disabled])"
+
+// Opens what the server has put into the page, as it says
+// (`data-presentation`): a modal dialog over the page, or a part of
+// the page, which focus moves into. Escape inside it is Cancel, as
+// it is in a modal dialog, unless what has the focus took it.
+export function opened(el, cancel) {
+  if (el.dataset.presentation === "inline") {
+    el.addEventListener("keydown", e => {
+      if (e.key !== "Escape" || e.defaultPrevented) return
+      e.preventDefault()
+      cancel()
+    })
+    const first = Array.from(el.querySelectorAll(FOCUSABLE)).find(control => control.getClientRects().length > 0)
+    if (first) first.focus()
+  } else {
+    if (el.showModal) el.showModal()
+    // Escape: the dialog stays until the server has taken it away
+    el.addEventListener("cancel", e => { e.preventDefault(); cancel() })
+  }
+}
+
 export default {
   mounted() {
     const dialog = this.el
@@ -27,14 +53,11 @@ export default {
     this.opener = active && active !== document.body ? active : null
     this.openerId = this.opener && this.opener.id
     this.confirmed = false
-    if (dialog.showModal) dialog.showModal()
-    // The browser puts focus on the first control of the dialog.
-    // Where that is the button that takes a group away, it goes on
-    // to the group's first field: Enter there is not to remove what
-    // the person came to edit.
+    opened(dialog, () => this.cancel())
+    // Focus is on the first control of the panel. Where that is the
+    // button that takes a group away, it goes on to the group's first
+    // field: Enter there is not to remove what the person came to edit.
     if (document.activeElement && document.activeElement.matches(REMOVE_GROUP)) this.into(dialog.id)
-    // Escape: the dialog stays until the server has taken it away
-    dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
     dialog.addEventListener("click", e => { if (e.target.closest(CANCEL)) this.cancel() })
     // What the editor of a column's component shows of its control's
     // value besides the control (the number beside a slider) follows

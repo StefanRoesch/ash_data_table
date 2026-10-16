@@ -222,7 +222,7 @@ defmodule AshDataTable.Live.Core do
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
             [:select, :choose, :page_assigns, :parent_arguments] ++
             [:context, :private_arguments, :page_arguments, :before_action, :notify] ++
-            [:controlled, :kit]
+            [:controlled, :kit, :presentation]
         )
       )
 

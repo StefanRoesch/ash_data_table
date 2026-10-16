@@ -235,6 +235,13 @@ defmodule AshDataTable do
       "The module the table is drawn with (`AshDataTable.Kit`), and the tables it shows. " <>
         "Defaults to `config :ash_data_table, kit: …`, else `AshDataTable.Kit.Default`."
 
+  attr :presentation, :list,
+    default: [],
+    doc:
+      "Whether the action panel and the picker open over the page (`:modal`) or in it " <>
+        "(`:inline`): `[panel: :inline, picker: :inline]`, over what the kit says. See " <>
+        "\"Modal or inline\" in `attach/4`."
+
   # Rows to select with nothing to run on them, one at a time (`:single`) or
   # several (`:multi`): how the table is shown for a person to choose from.
   # Internal; the demo's pages for selection use it.
@@ -295,6 +302,7 @@ defmodule AshDataTable do
       notify={@notify}
       open={@open}
       kit={kit!(@kit, "<AshDataTable.table>")}
+      presentation={presentation!(@presentation, "<AshDataTable.table>")}
     />
     """
   end
@@ -318,7 +326,7 @@ defmodule AshDataTable do
 
   The options are the attributes of `table/1`: `id`, `table`, `scope`,
   `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading`,
-  `time_zone` and `kit`. Besides, `url: true` keeps sort, filters and page in the
+  `time_zone`, `kit` and `presentation`. Besides, `url: true` keeps sort, filters and page in the
   page's URL, under the table's id. That needs a LiveView mounted by the
   router and not inside another; it needs no `handle_params/3` of its own.
   Call `attach/4` in `mount/3`: the table then reads when LiveView first
@@ -369,6 +377,18 @@ defmodule AshDataTable do
   and writes of a callback, once in it for each table that asks. A new
   value of theirs reads nothing again by itself.
 
+  ## Modal or inline
+
+  The action panel and the picker open as the table's kit says
+  (`c:AshDataTable.Kit.presentation/1`): over the page, as a modal dialog
+  (`AshDataTable.Kit.Default`), or in it, under the table. `presentation:
+  [panel: :inline, picker: :inline]` says it for one table, and wins. Over
+  the page, the page is inert while it is open, and Escape is Cancel. In
+  the page, focus moves into it as it opens and back to what opened it as
+  it goes, Escape inside it is Cancel, and nothing else is inert: Tab
+  leaves it. What the panel shows and what the table checks are the same
+  either way. The question before an action is modal.
+
   ## What the page draws itself
 
   `controlled: [:confirm, :panel]` (either, or both) has the table hold
@@ -416,7 +436,7 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          [:notify, :open, :kit] ++
+          [:notify, :open, :kit, :presentation] ++
           @page ++ [heading: true, url: false, mounted?: false, controlled: []]
       )
 
@@ -464,7 +484,8 @@ defmodule AshDataTable do
       notify: opts[:notify],
       open: open!(opts[:open], "AshDataTable.attach/4"),
       controlled: controlled!(opts[:controlled], resource, table),
-      kit: kit!(opts[:kit], "AshDataTable.attach/4")
+      kit: kit!(opts[:kit], "AshDataTable.attach/4"),
+      presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
@@ -509,6 +530,25 @@ defmodule AshDataTable do
   end
 
   defp kit!(kit, where), do: AshDataTable.Kit.check!(kit, where)
+
+  # What opens in the page, or over it, as the table is told: the panel and
+  # the picker, each `:modal` or `:inline`.
+  defp presentation!(given, where) do
+    if not (is_list(given) and
+              Enum.all?(
+                given,
+                &match?(
+                  {thing, how} when thing in [:panel, :picker] and how in [:modal, :inline],
+                  &1
+                )
+              )) do
+      raise ArgumentError,
+            "the `presentation` of #{where} is a list of `panel:` and `picker:`, each `:modal` " <>
+              "or `:inline` (the question is modal in this version), got: #{inspect(given, limit: 5)}"
+    end
+
+    given
+  end
 
   defp open!(label, _where) when is_nil(label) or is_binary(label), do: label
 

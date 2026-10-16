@@ -363,14 +363,14 @@ defmodule AshDataTable.Live.Page do
   # `AshDataTable.attach/4` takes it: a `{module, function}` as a function.
   defp given(route) do
     for name <-
-          [:notify, :open, :kit, :context, :private_arguments, :page_arguments] ++
+          [:notify, :open, :kit, :presentation, :context, :private_arguments, :page_arguments] ++
             [:before_action],
         Map.has_key?(route, name) do
       case {name, route[name]} do
         {:before_action, {module, function}} ->
           {name, fn request, assigns -> apply(module, function, [request, assigns]) end}
 
-        {_name, {module, function}} when name not in [:notify, :open, :kit] ->
+        {_name, {module, function}} when name not in [:notify, :open, :kit, :presentation] ->
           {name, fn assigns, ref -> apply(module, function, [assigns, ref]) end}
 
         {_name, value} ->

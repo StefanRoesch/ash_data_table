@@ -31,15 +31,18 @@ defmodule AshDataTable.Parts.Panel do
   # the file fields, by name: the upload LiveView keeps for each
   attr :files, :map, required: true
   attr :target, :any, required: true
+  # `:modal`, a dialog over the page, or `:inline`, a part of it
+  attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
 
   def panel(assigns) do
     ~H"""
     <%!-- `open` is the hook's: a patch leaves it alone. Not daisyUI's `modal`,
     for the reason given at the other dialog. --%>
-    <dialog
-      {Attrs.panel(@id, @panel, said(@panel.question), @target)}
-      class={@kit.class(:panel, %{destructive?: @panel.destructive?})}
+    <.dynamic_tag
+      tag_name={if @presentation == :modal, do: "dialog", else: "section"}
+      {Attrs.panel(@id, @panel, said(@panel.question), @target, @presentation)}
+      class={@kit.class(:panel, %{destructive?: @panel.destructive?, presentation: @presentation})}
     >
       <%!-- `novalidate`, for the reason given at the argument line: the
       limits on a field describe, and the action judges. --%>
@@ -90,7 +93,7 @@ defmodule AshDataTable.Parts.Panel do
           </button>
         </div>
       </form>
-    </dialog>
+    </.dynamic_tag>
     """
   end
 

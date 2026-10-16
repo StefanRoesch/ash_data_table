@@ -1,6 +1,6 @@
-// The picker: a modal dialog that is open for as long as the server
-// renders it, as the action panel is, and on top of the panel when
-// a field of the panel opened it. Focus moves into its table, to
+// The picker: open for as long as the server renders it, as the
+// action panel is, modal or inline as it says, and a modal one on
+// top of the panel when a field of the panel opened it. Focus moves into its table, to
 // the row of the record that is chosen now when that is on the
 // page. The person selects a row there, which is the table's own
 // hook's to know and to say (`ash_data_table:selection`), and "Choose"
@@ -10,6 +10,7 @@
 // cell, or to the button of the panel, that opened it.
 import {cellsOf} from "./grid/shared.js"
 import {ARGUMENTS, CANCEL, GRID, GRIDCELL, HEADER, NONE, OF, TAKE} from "./markers.js"
+import {opened} from "./panel.js"
 
 export default {
   mounted() {
@@ -26,9 +27,7 @@ export default {
     this.rows = []
     this.several = dialog.dataset.several !== undefined
     this.busy = false
-    if (dialog.showModal) dialog.showModal()
-    // Escape: the dialog stays until the server has taken it away
-    dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
+    opened(dialog, () => this.cancel())
     dialog.addEventListener("click", e => {
       if (!e.target.closest) return
       if (e.target.closest(CANCEL)) this.cancel()

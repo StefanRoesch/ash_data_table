@@ -580,7 +580,7 @@ defmodule AshDataTable.Attrs do
     [data-remove] [data-own]
     [data-selection] [data-select-all] [data-bulk] [data-arguments]
     [data-field] [data-cancel] [data-add-group] [data-remove-group] [data-unpick] [data-clear-field]
-    [data-none] [data-take] [aria-current=page]
+    [data-none] [data-take] [aria-current=page] [role=region] [data-presentation]
   )
 
   @doc "Every marker the hooks find an element by, as `assets/js/markers.js` names them."
@@ -1098,13 +1098,20 @@ defmodule AshDataTable.Attrs do
     %{"id" => "#{id}-dialog", "role" => "dialog", "aria-labelledby" => "#{id}-dialog-question"}
   end
 
+  # What opens is modal (a `<dialog>`, `role=dialog`, which the hook opens
+  # with `showModal()`) or inline (`role=region`, a part of the page);
+  # `data-presentation` says which, and the hook follows it (the design
+  # note of stage 7, D11).
+  defp opened(:modal), do: %{"role" => "dialog", "data-presentation" => "modal"}
+  defp opened(:inline), do: %{"role" => "region", "data-presentation" => "inline"}
+
   # The action panel and its hook. `data-question` the question it asks
   # before a submit, `data-ask` that it asks it only when something changed
   # (a map cell's panel), `data-destructive` on an action that destroys.
-  def panel(id, panel, question, target) do
-    %{
+  def panel(id, panel, question, target, presentation) do
+    opened(presentation)
+    |> Map.merge(%{
       "id" => "#{id}-panel",
-      "role" => "dialog",
       "phx-hook" => "AshDataTable.Panel",
       "phx-mounted" => JS.ignore_attributes(["open"]),
       "phx-target" => target,
@@ -1113,15 +1120,15 @@ defmodule AshDataTable.Attrs do
       "data-ask" => panel.kind == :cell && "changed",
       "data-destructive" => panel.destructive?,
       "aria-labelledby" => "#{id}-panel-title"
-    }
+    })
   end
 
   # The picker and its hook. `data-several` where several records are
   # chosen.
-  def picker(id, question, several?, target) do
-    %{
+  def picker(id, question, several?, target, presentation) do
+    opened(presentation)
+    |> Map.merge(%{
       "id" => "#{id}-picker",
-      "role" => "dialog",
       "phx-hook" => "AshDataTable.Picker",
       "phx-mounted" => JS.ignore_attributes(["open"]),
       "phx-target" => target,
@@ -1129,7 +1136,7 @@ defmodule AshDataTable.Attrs do
       "data-question" => question,
       "data-several" => several?,
       "aria-labelledby" => "#{id}-picker-title"
-    }
+    })
   end
 
   # A field of the panel: `data-field` its way among the fields, joined

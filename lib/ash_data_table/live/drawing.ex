@@ -276,6 +276,7 @@ defmodule AshDataTable.Live.Drawing do
           panel={Present.panel(@entry.panel, Files.files_said(@entry, @uploads))}
           files={files!(@entry, @uploads)}
           target={@myself}
+          presentation={presentation(@options, :panel)}
         />
         <%!-- After the panel, and so on top of it when both are open: a picker
         that a field of the panel has opened. --%>
@@ -286,6 +287,7 @@ defmodule AshDataTable.Live.Drawing do
           id={@entry.id}
           picker={Present.picker(@entry.picker)}
           target={@myself}
+          presentation={presentation(@options, :picker)}
         >
           <div
             :if={@chooser && !@chooser.gone?}
@@ -310,6 +312,11 @@ defmodule AshDataTable.Live.Drawing do
     </Kit.part>
     """
   end
+
+  # Whether `thing` opens over the page or in it: as the table was told,
+  # else as its kit says (the design note of stage 7, D11).
+  defp presentation(options, thing),
+    do: Keyword.get(options.presentation, thing) || options.kit.presentation(thing)
 
   # The messages in place of the rows, each as its kind and its text.
   defp messages(entry),

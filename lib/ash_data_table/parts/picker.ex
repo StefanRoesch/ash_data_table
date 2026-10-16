@@ -24,14 +24,17 @@ defmodule AshDataTable.Parts.Picker do
   # what `AshDataTable.Present.picker/1` gives of the open picker
   attr :picker, Present.Picker, required: true
   attr :target, :any, required: true
+  # `:modal`, a dialog over the page, or `:inline`, a part of it
+  attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
   slot :inner_block, required: true
 
   def picker(assigns) do
     ~H"""
-    <dialog
-      {Attrs.picker(@id, said(@picker.question), @picker.several?, @target)}
-      class={@kit.class(:picker, %{})}
+    <.dynamic_tag
+      tag_name={if @presentation == :modal, do: "dialog", else: "section"}
+      {Attrs.picker(@id, said(@picker.question), @picker.several?, @target, @presentation)}
+      class={@kit.class(:picker, %{presentation: @presentation})}
     >
       <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{said(@picker.title)}</h2>
       <%!-- the row that was chosen names no record this person may read --%>
@@ -69,7 +72,7 @@ defmodule AshDataTable.Parts.Picker do
           {Text.t(:choose)}
         </button>
       </div>
-    </dialog>
+    </.dynamic_tag>
     """
   end
 end

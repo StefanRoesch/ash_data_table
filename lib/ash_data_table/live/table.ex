@@ -37,6 +37,8 @@ defmodule AshDataTable.Table do
   #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Requests`).
   #   * `kit`: the module the table is drawn with (`AshDataTable.Kit`),
   #     which the wiring names; every table it shows is drawn with it.
+  #   * `presentation`: what the table was told opens in the page or over
+  #     it (`panel: :inline`), over what its kit says.
   #
   # A table nested in a row or in a picker is placed by the table it is in:
   # it keeps no state in the URL, has no heading and is no page of its own
@@ -61,7 +63,8 @@ defmodule AshDataTable.Table do
     target: nil,
     router: nil,
     controlled: [],
-    kit: nil
+    kit: nil,
+    presentation: []
   }
 
   # `authorize?` is the entry's: as each table was told it

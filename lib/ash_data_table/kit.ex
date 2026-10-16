@@ -272,6 +272,15 @@ defmodule AshDataTable.Kit do
               "that says `use AshDataTable.Kit, contract: #{@contract}` (see AshDataTable.Kit)"
     end
 
+    for thing <- [:panel, :picker, :confirm],
+        presentation = module.presentation(thing),
+        presentation not in [:modal, :inline] or (thing == :confirm and presentation != :modal) do
+      raise ArgumentError,
+            "#{where} was given `kit: #{inspect(module)}`, whose `presentation(#{inspect(thing)})` " <>
+              "is #{inspect(presentation)}: it is `:modal` or `:inline`, and the question " <>
+              "(`:confirm`) is `:modal` in this version"
+    end
+
     module
   end
 

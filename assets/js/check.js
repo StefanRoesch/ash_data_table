@@ -7,7 +7,7 @@
 // of its own has to write. Nothing is checked otherwise.
 
 import {CELL, cellsOf} from "./grid/shared.js"
-import {BULK, CONFIRM, DIALOG, OF, QUESTION, SENDER, TABLE} from "./markers.js"
+import {BULK, CONFIRM, DIALOG, OF, OPENED, QUESTION, REGION, SENDER, TABLE} from "./markers.js"
 
 // What a hook's element lacks, as words, by the part it is.
 const lacks = {
@@ -34,10 +34,16 @@ const lacks = {
     }
     return missing
   },
-  // what opens over the page: the table it is of, and its role
+  // what opens: the table it is of, how it opens, and the role that
+  // goes with it (a modal one is a dialog the hook opens, an inline one a
+  // region of the page)
   dialog(hook) {
-    return [[`${OF}`, hook.el.matches(`[${OF}]`)], [DIALOG, hook.el.matches(DIALOG)]]
-      .filter(([, there]) => !there).map(([what]) => `${what} on its element`)
+    const inline = hook.el.dataset.presentation === "inline"
+    const role = inline ? REGION : DIALOG
+    const modal = inline || typeof hook.el.showModal === "function"
+    return [[`${OF}`, hook.el.matches(`[${OF}]`)], [OPENED, hook.el.matches(OPENED)], [role, hook.el.matches(role)],
+      ["a <dialog>, as it is modal", modal]]
+      .filter(([, there]) => !there).map(([what]) => what.startsWith("a <") ? what : `${what} on its element`)
   },
   sender(hook) {
     return hook.el.matches(`[${OF}]`) ? [] : [`${OF} on its element`]

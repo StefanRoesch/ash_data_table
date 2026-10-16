@@ -8,7 +8,8 @@ defmodule AshDataTable.Kit.Default do
   `super/1` (or `super/2` in `class/2`) draws what this kit draws.
 
   It opens the action panel, the picker and the question as modal dialogs
-  (`presentation/1`).
+  (`presentation/1`); a table can open its panel and its picker in the page
+  instead (`presentation: [panel: :inline]`, see `AshDataTable.attach/4`).
   """
   @behaviour AshDataTable.Kit
 
@@ -115,13 +116,22 @@ defmodule AshDataTable.Kit.Default do
     do:
       "m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
 
-  def class(:panel, _state),
+  # The action panel and the picker: modal at the right edge of the
+  # window; inline under the table, with an edge of its own.
+  def class(:panel, %{presentation: :modal}),
     do:
       "m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
 
-  def class(:picker, _state),
+  def class(:panel, %{presentation: :inline}),
+    do:
+      "mt-4 w-full max-w-md rounded-box border border-base-content/40 bg-base-100 p-6 text-base-content"
+
+  def class(:picker, %{presentation: :modal}),
     do:
       "m-0 ms-auto h-dvh max-h-dvh w-full max-w-3xl overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
+
+  def class(:picker, %{presentation: :inline}),
+    do: "mt-4 w-full rounded-box border border-base-content/40 bg-base-100 p-6 text-base-content"
 
   def class(:pagination, %{nested?: false}),
     do: "mt-4 flex flex-wrap items-center justify-between gap-4"

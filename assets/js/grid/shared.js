@@ -2,7 +2,7 @@
 // constants, helpers that need no hook, and what is the same for all
 // grids of a page (where the scrollbars at the bottom edge go, whether
 // focus is moving with Tab).
-import {CONTROL, DIALOG, GRID, GRIDCELL, HEADER, ROW, ROWGROUP, TABLE} from "../markers.js"
+import {CONTROL, DIALOG, GRID, GRIDCELL, HEADER, OPENED, ROW, ROWGROUP, TABLE} from "../markers.js"
 
 // a key that types a character
 export const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -22,10 +22,11 @@ export const UNREADABLE = form =>
 
 // What is around an element, nearest first, as far as it is of
 // the same tree of grids: the grid it is in, or the cell that
-// holds the nested table it is in. Nothing beyond a dialog: a
-// dialog is a place of its own.
+// holds the nested table it is in. Nothing beyond what opens, over
+// the page or in it: a dialog, an inline panel or picker is a place of
+// its own.
 export const AROUND = (node, what) => {
-  const found = node.parentElement && node.parentElement.closest(`${what},${DIALOG}`)
+  const found = node.parentElement && node.parentElement.closest(`${what},${DIALOG},${OPENED}`)
   return found && found.matches(what) ? found : null
 }
 
