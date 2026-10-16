@@ -59,6 +59,8 @@ defmodule AshDataTable.Test.Editing do
 
     update :update do
       primary? true
+      # `grid`, an array of arrays, cannot be updated atomically (ash 3.36.1)
+      require_atomic? false
 
       accept [
         :title,

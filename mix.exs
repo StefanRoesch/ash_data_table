@@ -134,7 +134,13 @@ defmodule AshDataTable.MixProject do
 
   defp deps do
     [
-      {:ash, "~> 3.34"},
+      # 3.36.1: the release that fixes the field visibility, manifest and
+      # relationship count defects the table worked around.
+      {:ash, "~> 3.36 and >= 3.36.1"},
+      # The table does not use it. A host on a SQL data layer must have 0.8.2
+      # or later: before it, a `first` aggregate could return values of hidden
+      # records, and a paged relationship load with an aggregate could raise.
+      {:ash_sql, ">= 0.8.2", optional: true},
       {:ash_phoenix, "~> 2.3"},
       {:spark, "~> 2.7"},
       {:phoenix, "~> 1.8"},
