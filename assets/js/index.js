@@ -26,8 +26,8 @@ export const Panel = hook(panel)
 export const Picker = hook(picker)
 
 export const hooks = {
-  "AshDataTable.Live.TableComponent.Grid": Grid,
-  "AshDataTable.Live.TableComponent.Pagination": Pagination,
-  "AshDataTable.Live.TableComponent.Panel": Panel,
-  "AshDataTable.Live.TableComponent.Picker": Picker
+  "AshDataTable.Grid": Grid,
+  "AshDataTable.Pagination": Pagination,
+  "AshDataTable.Panel": Panel,
+  "AshDataTable.Picker": Picker
 }

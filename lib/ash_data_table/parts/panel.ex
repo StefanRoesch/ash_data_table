@@ -37,7 +37,7 @@ defmodule AshDataTable.Parts.Panel do
     for the reason given at the other dialog. --%>
     <dialog
       id={"#{@id}-panel"}
-      phx-hook="AshDataTable.Live.TableComponent.Panel"
+      phx-hook="AshDataTable.Panel"
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
       data-question={said(@panel.question)}

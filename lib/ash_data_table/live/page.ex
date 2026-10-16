@@ -269,7 +269,7 @@ defmodule AshDataTable.Live.Page do
         <%!-- the page's heading is the first line of the table: its name, and
         its create button at the other end --%>
         <.live_component
-          module={AshDataTable.Live.TableComponent}
+          module={AshDataTable.Live.Embedded}
           id={@table.id}
           resource={@table.resource}
           table={@table.table}

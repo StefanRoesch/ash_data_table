@@ -27,9 +27,9 @@ defmodule AshDataTable.ArchitectureTest do
       is allowed, for `AshDataTable.Routes` (F15);
     * only `Query`, `Record`, `Pick` and `Bulk` read from Ash (S1, Q11).
 
-  The table component (`live/table_component.ex`) is wiring (4) from stage
-  3c of the refactor (design note 4.1): its callbacks hand the socket to
-  `AshDataTable.Live.Core` and its `render/1` composes the parts.
+  The live component of the tag (`live/embedded.ex`) is wiring (4): its
+  callbacks hand the socket to `AshDataTable.Live.Core`, and it draws the
+  table with `AshDataTable.attached/1`, which composes the parts.
 
   What it cannot see (5.5): coupling through data, not through a call.
   Known today, and allowed by the target until the stage named:
@@ -38,9 +38,9 @@ defmodule AshDataTable.ArchitectureTest do
       `component={__MODULE__}` (`Parts.Grid`, `Parts.Picker`): part 3
       renders the live component, for a nested table and for a picker
       (until stages 4 and 5; design note 4.3);
-    * the parts name the hooks by the names the table component's
-      colocated hooks have, as strings
-      (`phx-hook="AshDataTable.Live.TableComponent.Grid"`; target 4.5, Q15);
+    * the parts name the hooks by the names the colocated hooks of
+      `AshDataTable` have, as strings
+      (`phx-hook="AshDataTable.Grid"`; target 4.5, Q15);
     * the presentation hints of `Model.Column` (`component`, `max_lines`,
       `sticky_label?`, `editor`), which the core passes on (target 6, F3).
 
@@ -54,11 +54,9 @@ defmodule AshDataTable.ArchitectureTest do
 
   # the files of the words, by name (3w)
   @words ~w(text.ex format.ex gettext.ex)
-  # the files of the wiring, by name (4); the table component is wiring
-  # from stage 3c (design note 4.1): its callbacks hand the socket to the
-  # live core, and its `render/1` composes the parts (`Live.Embedded` in
-  # stage 4)
-  @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex live/table_component.ex)
+  # the files of the wiring, by name (4): the live component of the tag
+  # hands the socket to the live core, and `AshDataTable.attached/1` draws
+  @wiring ~w(router.ex not_found_error.ex live/page.ex live/embedded.ex)
   # the files that may read from Ash (S1)
   @readers ~w(query.ex record.ex pick.ex bulk.ex)
 

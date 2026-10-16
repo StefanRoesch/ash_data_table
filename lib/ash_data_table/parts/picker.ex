@@ -29,7 +29,7 @@ defmodule AshDataTable.Parts.Picker do
     ~H"""
     <dialog
       id={"#{@id}-picker"}
-      phx-hook="AshDataTable.Live.TableComponent.Picker"
+      phx-hook="AshDataTable.Picker"
       phx-mounted={JS.ignore_attributes(["open"])}
       phx-target={@target}
       data-question={said(@picker.question)}

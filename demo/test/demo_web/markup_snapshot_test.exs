@@ -11,7 +11,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
 
   Normalised before they are compared: the module part of `phx-hook` names,
   the table's id in the name of an event (`ash_data_table:ID:`),
-  the values of `phx-target`, every `data-phx-*` attribute, LiveView's own
+  `phx-target` (an attached table has none), every `data-phx-*` attribute, LiveView's own
   ids, CSRF tokens, record keys (each uuid becomes `uuid-N` by its first
   place in the page) and what the per-test ids put into an email.
   """
@@ -147,7 +147,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
         ~r/((?: phx-(?:click|change|submit)="|&quot;event&quot;:&quot;))ash_data_table:[^:"&]+:/,
         "\\1"
       )
-      |> String.replace(~r/ phx-target="[^"]*"/, ~s( phx-target="T"))
+      |> String.replace(~r/ phx-target="[^"]*"/, "")
       |> String.replace(~r/ data-phx-[a-z-]+(="[^"]*")?/, "")
       |> String.replace(~r/\bphx-[A-Za-z0-9_-]{16,}\b/, "phx-ID")
       |> String.replace(~r/(name="_csrf_token" value=")[^"]*"/, ~s(\\1CSRF"))

@@ -676,7 +676,7 @@ defmodule AshDataTable.Parts.Grid do
     <div
       phx-no-format
       id={"#{@id}-grid"}
-      phx-hook="AshDataTable.Live.TableComponent.Grid"
+      phx-hook="AshDataTable.Grid"
       phx-target={@myself}
       data-ash-data-table
       data-lead={@lead}

@@ -4,7 +4,7 @@ import { expect, type Locator, type Page, type Response } from "@playwright/test
  * One table of `ash_data_table` in a page: where its parts are and how to wait
  * for it. The parts are found by the stable ids the library gives them
  * (`ID-head-FIELD`, `ID-filter-FIELD`, `ID-row-KEY`, `ID-row-KEY-c-FIELD`;
- * see AshDataTable.Live.TableComponent), which is the one place of the suite
+ * see the markup contract in lib/ash_data_table.ex), which is the one place of the suite
  * that knows them.
  *
  * A nested table is a table like any other, under an id of its own

@@ -8,27 +8,27 @@
       Labels
     </h1>
 <div class="ms-auto flex flex-wrap items-center justify-end gap-2">
-<button class="btn btn-sm" id="label-create" phx-click="create" phx-target="T" type="button">
+<button class="btn btn-sm" id="label-create" phx-click="create" type="button">
   New label
 </button>
-<button class="btn btn-sm" data-table-action="count_unused" id="label-do-count_unused" phx-click="table_act" phx-target="T" phx-value-action="count_unused" type="button">
+<button class="btn btn-sm" data-table-action="count_unused" id="label-do-count_unused" phx-click="table_act" phx-value-action="count_unused" type="button">
   Count unused
 </button>
-<button class="btn btn-sm" data-table-action="recolour" id="label-do-recolour" phx-click="table_act" phx-target="T" phx-value-action="recolour" type="button">
+<button class="btn btn-sm" data-table-action="recolour" id="label-do-recolour" phx-click="table_act" phx-value-action="recolour" type="button">
   Recolour
 </button>
-<button class="btn btn-sm" data-table-action="remove_unused" id="label-do-remove_unused" phx-click="table_act" phx-target="T" phx-value-action="remove_unused" type="button">
+<button class="btn btn-sm" data-table-action="remove_unused" id="label-do-remove_unused" phx-click="table_act" phx-value-action="remove_unused" type="button">
   Remove unused
 </button>
-<button class="btn btn-sm" data-table-action="merge" id="label-do-merge" phx-click="table_act" phx-target="T" phx-value-action="merge" type="button">
+<button class="btn btn-sm" data-table-action="merge" id="label-do-merge" phx-click="table_act" phx-value-action="merge" type="button">
   Merge
 </button>
-<button class="btn btn-sm" data-table-action="import" id="label-do-import" phx-click="table_act" phx-target="T" phx-value-action="import" type="button">
+<button class="btn btn-sm" data-table-action="import" id="label-do-import" phx-click="table_act" phx-value-action="import" type="button">
   Import
 </button>
 </div>
 </div>
-<form id="label-filters" phx-change="filter" phx-submit="filter" phx-target="T">
+<form id="label-filters" phx-change="filter" phx-submit="filter">
 </form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 3 that match are selected" data-scope="31832193" data-selected="{n} selected" data-selection="" id="label-selection" role="group">
@@ -68,7 +68,7 @@
 <p class="mb-2 text-sm" id="label-result">
 <span data-summary="">Count unused: 3</span>
 </p>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" id="label-grid" phx-hook=".Grid" phx-target="T" tabindex="-1">
+<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" id="label-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="6" aria-label="Labels" aria-multiselectable="true" aria-rowcount="5" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" data-first-row="3" id="label-table" phx-update="stream" role="grid">
 <thead id="label-head">
 <tr aria-rowindex="1" id="label-head-row" role="row">
@@ -78,17 +78,17 @@
 <th aria-colindex="2" class="w-0" id="label-expander-head" role="columnheader" scope="col" tabindex="-1">
 <span class="sr-only">Related records</span>
 </th>
-<th aria-colindex="3" aria-label="ID" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-id" phx-click="sort" phx-target="T" phx-value-column="id" role="columnheader" scope="col" tabindex="-1">ID<span aria-hidden="true">
+<th aria-colindex="3" aria-label="ID" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-id" phx-click="sort" phx-value-column="id" role="columnheader" scope="col" tabindex="-1">ID<span aria-hidden="true">
 </span>
 <span aria-label="Resize ID" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="label-resize-id" role="separator" tabindex="-1">
 </span>
 </th>
-<th aria-colindex="4" aria-label="Name" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-name" phx-click="sort" phx-target="T" phx-value-column="name" role="columnheader" scope="col" tabindex="-1">Name<span aria-hidden="true">
+<th aria-colindex="4" aria-label="Name" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-name" phx-click="sort" phx-value-column="name" role="columnheader" scope="col" tabindex="-1">Name<span aria-hidden="true">
 </span>
 <span aria-label="Resize Name" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="label-resize-name" role="separator" tabindex="-1">
 </span>
 </th>
-<th aria-colindex="5" aria-label="Colour" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-colour" phx-click="sort" phx-target="T" phx-value-column="colour" role="columnheader" scope="col" tabindex="-1">Colour<span aria-hidden="true">
+<th aria-colindex="5" aria-label="Colour" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="label-head-colour" phx-click="sort" phx-value-column="colour" role="columnheader" scope="col" tabindex="-1">Colour<span aria-hidden="true">
 </span>
 <span aria-label="Resize Colour" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="label-resize-colour" role="separator" tabindex="-1">
 </span>

@@ -42,7 +42,7 @@ defmodule AshDataTable.Parts.Pagination do
     <nav
       :if={not @nested?}
       id={"#{@id}-pagination"}
-      phx-hook="AshDataTable.Live.TableComponent.Pagination"
+      phx-hook="AshDataTable.Pagination"
       aria-label={Text.t(:pagination, table: @label)}
       class="mt-4 flex flex-wrap items-center justify-between gap-4"
     >
@@ -51,7 +51,7 @@ defmodule AshDataTable.Parts.Pagination do
     <div
       :if={@nested?}
       id={"#{@id}-pagination"}
-      phx-hook="AshDataTable.Live.TableComponent.Pagination"
+      phx-hook="AshDataTable.Pagination"
       role="group"
       aria-label={Text.t(:pagination, table: @label)}
       class="sticky left-4 flex w-fit flex-wrap items-center justify-start gap-4"
