@@ -61,7 +61,8 @@ defmodule DemoWeb.Support.AttachedLive do
   end
 
   # what may not be attached: another resource under a name that is taken,
-  # an id that is taken, a name whose assign is the host's own
+  # an id that is taken, a name whose assign is the host's own, an id that
+  # a table the bulletins show may have
   def handle_event("swap", _params, socket),
     do: {:noreply, AshDataTable.attach(socket, :bulletins, Reply)}
 
@@ -70,6 +71,9 @@ defmodule DemoWeb.Support.AttachedLive do
 
   def handle_event("over", _params, socket),
     do: {:noreply, AshDataTable.attach(socket, :heard, Bulletin, id: "other")}
+
+  def handle_event("inside", _params, socket),
+    do: {:noreply, AshDataTable.attach(socket, :inside, Bulletin, id: "bulletin-row-1")}
 
   @impl true
   def handle_info(message, socket), do: {:noreply, heard(socket, {:info, message})}
@@ -96,5 +100,22 @@ defmodule DemoWeb.Support.AttachedLive do
       />
     </main>
     """
+  end
+end
+
+defmodule DemoWeb.Support.Switch do
+  @moduledoc """
+  An `on_mount` hook for the tests: on the message `{:switch, assigns}` it
+  assigns them to the socket and halts it, as a host's hook does that
+  hears that another person is logged in, or that their scope changed.
+  """
+  import Phoenix.LiveView
+
+  def on_mount(:default, _params, _session, socket) do
+    {:cont,
+     attach_hook(socket, :switch, :handle_info, fn
+       {:switch, assigns}, socket -> {:halt, Phoenix.Component.assign(socket, assigns)}
+       _other, socket -> {:cont, socket}
+     end)}
   end
 end

@@ -15,6 +15,7 @@ defmodule DemoWeb.Tables.AttachTest do
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage
 
+  alias Demo.Support.Bulk.Crate
   alias Demo.Support.Files.Scan
   alias Demo.Support.Live.{Bulletin, Reply}
 
@@ -133,6 +134,20 @@ defmodule DemoWeb.Tables.AttachTest do
 
     {:ok, view, _html} = live(conn, "/support/attached")
     assert raised(fn -> render_click(view, "over", %{}) end) =~ "under the assign :heard"
+
+    {:ok, view, _html} = live(conn, "/support/attached")
+    assert raised(fn -> render_click(view, "inside", %{}) end) =~ ~s(and the id "bulletin")
+  end
+
+  test "an event of a name no table has is ignored, for a table that is there or not",
+       %{conn: conn} do
+    {:ok, view, _html} = live(conn, "/support/attached")
+    render_hook(view, "ash_data_table:bulletin:nonsense", %{})
+    render_hook(view, "ash_data_table:gone:nonsense", %{"row" => "1"})
+
+    html = render(view)
+    assert titles(html) == ["Kept back", "Plain"]
+    assert heard(html) == "[]"
   end
 
   test "url: true in a LiveView that is not mounted by the router raises", %{conn: conn} do
@@ -191,5 +206,76 @@ defmodule DemoWeb.Tables.AttachTest do
     view |> element("#bulletin-head-title") |> render_click()
     assert titles(render_async(view)) == ["Plain", "Kept back"]
     assert text(render(view), "#url") == "http://www.example.com/support/attached"
+  end
+
+  describe "a router page whose `on_mount` hook assigns another person while it is open" do
+    setup do
+      on_exit(fn -> Demo.Support.Ets.stop(Crate) end)
+      %{crates: for(n <- 1..2, do: Ash.Seed.seed!(Crate, %{title: "Crate #{n}"}))}
+    end
+
+    defp switch(view, assigns), do: send(view.pid, {:switch, assigns})
+
+    defp user(conn, user),
+      do: Phoenix.ConnTest.init_test_session(conn, %{"assigns" => %{current_user: user}})
+
+    test "the table reads as them, and the layout is given them", %{conn: conn} do
+      {:ok, view, html} = live(conn, "/support/switched/bulletins")
+      assert titles(html) == ["Kept back", "Plain"]
+
+      switch(view, %{reader: %{role: :reader}})
+      # the page attaches its table again in a callback of its own, after
+      # the render the hook's change made
+      render(view)
+      assert titles(render_async(view)) == ["Plain"]
+      assert assigns(view).layout_assigns.reader == %{role: :reader}
+    end
+
+    test "a run on the selected rows goes on, and says what it came to when the person is the same",
+         %{conn: conn, crates: [first | _]} do
+      someone = %Demo.Tracker.User{id: Ash.UUID.generate(), role: :admin}
+      {:ok, view, _html} = live(user(conn, someone), "/support/switched/crates")
+
+      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      switch(view, %{current_user: %{someone | role: :member}})
+
+      html = ran(view)
+      assert bulk_result(html, "crate") == %{summary: "Weigh: 1 done.", failures: []}
+      assert announcement(html, "crate") == "Weigh: 1 done."
+    end
+
+    test "a run on the selected rows goes on, and says nothing of it to another person",
+         %{conn: conn, crates: [first | _]} do
+      someone = %Demo.Tracker.User{id: Ash.UUID.generate(), role: :admin}
+      other = %Demo.Tracker.User{id: Ash.UUID.generate(), role: :admin}
+      {:ok, view, _html} = live(user(conn, someone), "/support/switched/crates")
+
+      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+      switch(view, %{current_user: other})
+
+      html = ran(view)
+      assert bulk_result(html, "crate") == nil
+      refute html =~ "Weigh: 1 done."
+      assert_push_event view, "ash_data_table:bulk", %{table: "crate"} = told
+      refute is_map_key(told, :failed)
+
+      # it ran all the same
+      assert column(html, "crate", "title") == ["Crate 1", "Crate 2"]
+    end
+
+    test "a patch to another route of the table attaches it anew, and an answer for the one before is dropped",
+         %{conn: conn, crates: [first | _]} do
+      {:ok, view, _html} = live(conn, "/support/switched/crates")
+      forge(view, "crate", "bulk_run", %{"action" => "weigh", "rows" => [first.id]})
+
+      # the run is cancelled as its table is detached; its answer, that it
+      # was, comes all the same, to a table of the same id
+      render_patch(view, "/support/switched/crates/still")
+      html = ran(view)
+
+      assert Process.alive?(view.pid)
+      assert bulk_result(html, "crate") == nil
+      assert column(html, "crate", "title") == ["Crate 1", "Crate 2"]
+    end
   end
 end

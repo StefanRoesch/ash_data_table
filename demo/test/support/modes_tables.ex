@@ -7,7 +7,7 @@ defmodule DemoWeb.Support.ModesLive do
   does (under the `"prefix"` of its live session), and places that table
   with what the page gives it: the same id,
   label, heading 1, reader, time zone, state in the URL, and the same
-  layout around it.
+  layout around it, given its assigns as the page gives them.
   """
   use Phoenix.LiveView
 
@@ -15,7 +15,17 @@ defmodule DemoWeb.Support.ModesLive do
   def mount(%{"path" => path}, session, socket) do
     route = route!(socket, Map.get(session, "prefix", "") <> "/" <> Enum.join(path, "/"))
     label = AshDataTable.label(route.resource)
-    socket = assign(socket, route: route, page_title: label, url: nil)
+
+    # what the tag and the layout are given, made once: the assigns of the
+    # host's `on_mount` hooks, as LiveView gives them
+    socket =
+      assign(socket,
+        route: route,
+        page_title: label,
+        url: nil,
+        page_assigns: Map.drop(socket.assigns, [:flash, :live_action]),
+        layout_assigns: layout_assigns(route, socket.assigns)
+      )
 
     socket =
       case socket.assigns.live_action do
@@ -49,7 +59,7 @@ defmodule DemoWeb.Support.ModesLive do
   @impl true
   def render(assigns) do
     ~H"""
-    <.in_layout layout={layout(@route)} {layout_assigns(assigns)}>
+    <.in_layout layout={layout(@route)} flash={@flash} given={@layout_assigns}>
       <div id={"#{@route.id}-page"}>
         <AshDataTable.table
           :if={@live_action == :embedded}
@@ -62,7 +72,7 @@ defmodule DemoWeb.Support.ModesLive do
           authorize?={@route.authorize?}
           live?={@route.live?}
           time_zone={time_zone(@route.resource, assigns)}
-          assigns={page_assigns(assigns)}
+          assigns={@page_assigns}
           {Map.new(reader(@route.resource, assigns))}
         />
         <AshDataTable.attached
@@ -80,27 +90,31 @@ defmodule DemoWeb.Support.ModesLive do
   defp layout(%{layout: :default}), do: Application.get_env(:ash_data_table, :layout, false)
   defp layout(%{layout: layout}), do: layout
 
-  defp layout_assigns(assigns) do
-    resource = assigns.route.resource
+  defp layout_assigns(%{resource: resource}, assigns) do
     names = resource |> AshDataTable.Domain.Info.assign_names() |> Map.values()
     zone = AshDataTable.Domain.Info.time_zone_assign(resource)
 
     assigns
-    |> Map.take([:flash, :current_user, zone | names])
+    |> Map.take([:current_user, zone | names])
     |> Map.put(:current_scope, assigns[:current_scope])
   end
 
-  defp in_layout(%{layout: {module, function}} = assigns),
-    do: apply(module, function, [Map.delete(assigns, :layout)])
+  # as the page does: given as one attribute, put into the layout's
+  # assigns marked as changed only when they changed
+  defp in_layout(%{layout: {module, function}, given: given} = assigns) do
+    assigns =
+      if changed?(assigns, :given),
+        do: assign(assigns, given),
+        else: Map.merge(assigns, given)
+
+    apply(module, function, [Map.drop(assigns, [:layout, :given])])
+  end
 
   defp in_layout(assigns) do
     ~H"""
     {render_slot(@inner_block)}
     """
   end
-
-  defp page_assigns(assigns),
-    do: Map.drop(assigns, [:__changed__, :flash, :live_action, :streams, :route, :url, :table])
 
   defp time_zone(resource, assigns),
     do: assigns[AshDataTable.Domain.Info.time_zone_assign(resource)]

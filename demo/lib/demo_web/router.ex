@@ -18,10 +18,6 @@ defmodule DemoWeb.Router do
 
   # The tests that run three ways (`DemoWeb.ModeCase`): on a host of their
   # own, the table of the router line of a path placed by the tag, or
-  # attached to a LiveView (`test/support/modes_tables.ex`), and the
-  # dashboard with its tables attached.
-  # The tests that run three ways (`DemoWeb.ModeCase`): on a host of their
-  # own, the table of the router line of a path placed by the tag, or
   # attached to a LiveView (`test/support/modes_tables.ex`), with the
   # `on_mount` hooks of that line's live session; and the dashboard with
   # its tables attached.
@@ -252,6 +248,18 @@ defmodule DemoWeb.Router do
 
         ash_data_table "/framed/memos", Demo.Support.Plain.Memo,
           layout: {DemoWeb.Support.Layouts, :frame}
+      end
+
+      # Pages whose `on_mount` hook assigns another person while they are
+      # open (`DemoWeb.Support.Switch`): the bulletins, and the crates at
+      # two routes of one id, between which a patch attaches the table anew.
+      live_session :switched, on_mount: [DemoWeb.Support.Assigns, DemoWeb.Support.Switch] do
+        ash_data_table "/switched/bulletins", Demo.Support.Live.Bulletin, layout: false
+        ash_data_table "/switched/crates", Demo.Support.Bulk.Crate, layout: false
+
+        ash_data_table "/switched/crates/still", Demo.Support.Bulk.Crate,
+          layout: false,
+          live?: false
       end
     end
   end

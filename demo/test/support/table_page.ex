@@ -1257,14 +1257,11 @@ defmodule DemoWeb.TablePage do
     end)
   end
 
-  # Every reader goes through here: the page as a person sees it. A
-  # `<.portal>` renders its content in a `<template data-phx-portal=TARGET>`
-  # where it is, and the browser moves that content (its one element) to
-  # the end of the element TARGET finds; a query does not look into a
-  # template. So the content is put where the browser puts it first, and the
-  # template is left empty, as a query sees it in a browser. A portal in the
-  # content of another is moved once that one has been (LiveView's client
-  # does the same, up to five rounds).
+  # Every reader goes through here: the page as a person sees it. A nested
+  # table is drawn in a `<.portal>`, whose content a query does not look
+  # into, and the browser moves it into its cell. So what the table marks
+  # with the id of that cell (`data-ash-data-table-portal`) is put there
+  # first, parents first, as the browser does (`AshDataTable.Test.page/1`).
   defp query(html, selector), do: html |> document() |> LazyHTML.query(selector)
 
   @doc """

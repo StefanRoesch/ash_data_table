@@ -173,58 +173,48 @@ defmodule DemoWeb.MarkupSnapshotTest do
     |> Kernel.<>("\n")
   end
 
-  # The page as the browser makes it of `<.portal>`'s markup, a nested
-  # table's. LiveView renders a portal as
-  # `<template data-phx-portal=TARGET><div id="_lv_portal_wrap_ID">…</div></template>`
-  # where the portal stands, and its client moves the template's content to
-  # the end of the element TARGET finds. Here, in the order of the page (a
-  # parent's portal comes before its children's): the content goes to the
-  # end of its target, the emptied template is dropped, and the wrapper,
-  # which takes no part in the layout (`display: contents`), gives its
-  # place to what it holds.
-  defp portals(html) do
-    case :binary.match(html, "<template") |> template_at(html) do
+  # The page as the browser makes it of a nested table's portal. The
+  # table marks what goes into a cell with the cell's id
+  # (`data-ash-data-table-portal`); `<.portal>` renders it inside a
+  # `<template>` with the portal's id (`ID-portal`), and the browser moves
+  # it to the end of the cell. Here, in the order of the page (a parent's
+  # portal comes before its children's): the marked element goes to the
+  # end of its cell, and the template it was in, empty, is dropped.
+  defp portals(html),
+    do: html |> moved() |> String.replace(" data-moved-portal=", " data-ash-data-table-portal=")
+
+  # Each moved element's mark is set aside until all are (` data-moved-portal`).
+  defp moved(html) do
+    case Regex.run(~r/ data-ash-data-table-portal="([^"]+)"/, html, return: :index) do
       nil ->
         html
 
-      {start, stop, target, inner} ->
-        html = binary_part(html, 0, start) <> binary_part(html, stop, byte_size(html) - stop)
-        html |> put_into(target, inner) |> portals()
+      [{marker, _length}, {target_at, target_length}] ->
+        target = binary_part(html, target_at, target_length)
+        element_start = last_before(html, marker, "<")
+        element_stop = closing(html, open_end(html, element_start), "div", 1)
+
+        element =
+          html
+          |> binary_part(element_start, element_stop - element_start)
+          |> String.replace(" data-ash-data-table-portal=", " data-moved-portal=", global: false)
+
+        template_start = last_before(html, element_start, "<template")
+        template_stop = closing(html, open_end(html, template_start), "template", 1)
+
+        html =
+          binary_part(html, 0, template_start) <>
+            binary_part(html, template_stop, byte_size(html) - template_stop)
+
+        html |> put_into(target, element) |> moved()
     end
   end
 
-  # The first portal's template from `match` on: where it starts and ends,
-  # the id of its target, and the content of its wrapper.
-  defp template_at(:nomatch, _html), do: nil
+  defp last_before(html, at, text),
+    do: html |> binary_part(0, at) |> :binary.matches(text) |> List.last() |> elem(0)
 
-  defp template_at({at, _}, html) do
-    open_end =
-      at + (html |> binary_part(at, byte_size(html) - at) |> :binary.match(">") |> elem(0)) + 1
-
-    tag = binary_part(html, at, open_end - at)
-
-    case Regex.run(~r/data-phx-portal="\[id=(?:&#39;|')([^'&]+)(?:&#39;|')\]"/, tag) do
-      [_, target] ->
-        stop = closing(html, open_end, "template", 1)
-        content = binary_part(html, open_end, stop - open_end - byte_size("</template>"))
-
-        [_, inner] =
-          Regex.run(~r/\A\s*<div id="_lv_portal_wrap_[^"]*"[^>]*>(.*)<\/div>\s*\z/s, content)
-
-        {at, stop, target, String.trim(inner)}
-
-      nil ->
-        rest = open_end
-
-        html
-        |> binary_part(rest, byte_size(html) - rest)
-        |> :binary.match("<template")
-        |> case do
-          :nomatch -> nil
-          {next, length} -> template_at({rest + next, length}, html)
-        end
-    end
-  end
+  defp open_end(html, at),
+    do: at + (html |> binary_part(at, byte_size(html) - at) |> :binary.match(">") |> elem(0)) + 1
 
   # The end of the element whose start tag ends at `from`, by counting the
   # tags of its name.
