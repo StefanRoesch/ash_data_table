@@ -12,6 +12,8 @@ defmodule AshDataTable.Live.Core.Updates do
   alias AshDataTable.Resource.Listening
   alias AshDataTable.Resource.Notifier
 
+  require AshDataTable.Live.Current, as: Current
+
   # ---- live updates ----------------------------------------------------
   #
   # See "Live updates" at the top.
@@ -21,11 +23,11 @@ defmodule AshDataTable.Live.Core.Updates do
   # does, and listens anew when the topic is another. Only once the page is
   # connected: the request that renders it first has nothing to update.
   def listen(socket) do
-    %{resource: resource, model: model, live: live} = socket.assigns.table.entry
+    %{resource: resource, model: model, live: live} = Core.table(socket).entry
 
     topic =
       if connected?(socket) and model.live? and model.primary_key != [],
-        do: Notifier.topic(resource, tenant(socket.assigns.table.caller))
+        do: Notifier.topic(resource, tenant(Core.table(socket).caller))
 
     if (live && live.topic) == topic and (is_nil(live) or Process.alive?(live.pid)) do
       socket
@@ -36,7 +38,7 @@ defmodule AshDataTable.Live.Core.Updates do
   end
 
   defp listener(socket, topic) do
-    %{table: %{entry: %{id: id, resource: resource}}, myself: myself} = socket.assigns
+    %{entry: %{id: id, resource: resource}, options: %{target: target}} = Core.table(socket)
     view = self()
 
     pub_sub =
@@ -49,7 +51,7 @@ defmodule AshDataTable.Live.Core.Updates do
                 "cannot follow the changes of #{inspect(resource)}: " <> Listening.message(reason)
       end
 
-    relay = fn batch -> Phoenix.LiveView.send_update(view, myself, live: {:heard, id, batch}) end
+    relay = fn batch -> Phoenix.LiveView.send_update(view, target, live: {:heard, id, batch}) end
 
     case Listener.start(pub_sub, topic, relay) do
       {:ok, pid} ->
@@ -94,22 +96,24 @@ defmodule AshDataTable.Live.Core.Updates do
   # While a read is on its way, or an action on the selected rows, which
   # ends in one, it waits for that: the rows are then other rows. A table
   # that shows no rows has nothing to follow.
-  def follow(%{assigns: %{table: %{entry: %{waiting: [], held: []}}}} = socket), do: socket
-
-  def follow(%{assigns: %{table: %{entry: %{busy?: busy?, running: running}}}} = socket)
-      when busy? or not is_nil(running),
+  def follow(socket)
+      when Current.entry(socket, :waiting) == [] and Current.entry(socket, :held) == [],
       do: socket
 
-  def follow(%{assigns: %{table: %{entry: %{page: nil}}}} = socket),
+  def follow(socket)
+      when Current.entry(socket, :busy?) or not is_nil(Current.entry(socket, :running)),
+      do: socket
+
+  def follow(socket) when is_nil(Current.entry(socket, :page)),
     do: Core.put(socket, waiting: [], held: [])
 
   def follow(socket) do
-    %{model: model, rows: rows, waiting: waiting, held: held} = socket.assigns.table.entry
+    %{model: model, rows: rows, waiting: waiting, held: held} = Core.table(socket).entry
 
     {shown, others} =
       Enum.split_with(waiting, fn {_type, key} -> shown?(model, rows, key) end)
 
-    working = working(socket.assigns.table)
+    working = working(Core.table(socket))
 
     {held, free} =
       (held ++ Enum.map(shown, &elem(&1, 1)))
@@ -171,9 +175,9 @@ defmodule AshDataTable.Live.Core.Updates do
   defp refresh(socket, []), do: socket
 
   defp refresh(socket, keys) do
-    %{model: model, parent_key: parent} = socket.assigns.table.entry
+    %{model: model, parent_key: parent} = Core.table(socket).entry
 
-    case Query.rows(model, parent, keys, Reading.read_opts(socket.assigns)) do
+    case Query.rows(model, parent, keys, Reading.read_opts(socket)) do
       {:ok, records} ->
         found = Map.new(records, &{Reading.primary_key(model, &1), &1})
 
@@ -182,7 +186,7 @@ defmodule AshDataTable.Live.Core.Updates do
 
           cond do
             # the page is being read again: a row before this one was its last
-            not is_map_key(socket.assigns.table.entry.rows, row) -> socket
+            not is_map_key(Core.table(socket).entry.rows, row) -> socket
             record = found[key] -> socket |> stay(row) |> put_fresh(row, record)
             true -> leave(socket, row)
           end
@@ -202,7 +206,7 @@ defmodule AshDataTable.Live.Core.Updates do
   # the record is sent again meanwhile, and whatever the person does with
   # the row reads the record first, and finds it gone.
   defp leave(socket, row) do
-    %{id: id, leaving: leaving} = socket.assigns.table.entry
+    %{id: id, leaving: leaving} = Core.table(socket).entry
 
     socket
     |> Core.put(leaving: MapSet.put(leaving, row))
@@ -212,13 +216,13 @@ defmodule AshDataTable.Live.Core.Updates do
   # A row that was on its way out, and whose record is the person's to read
   # again.
   defp stay(socket, row),
-    do: Core.put(socket, leaving: MapSet.delete(socket.assigns.table.entry.leaving, row))
+    do: Core.put(socket, leaving: MapSet.delete(Core.table(socket).entry.leaving, row))
 
   # A row with its record as it was read again. What has failed in the row
   # is still shown, on the record as it is now.
   defp put_fresh(socket, key, record) do
     socket =
-      case socket.assigns.table.entry.failed[key] do
+      case Core.table(socket).entry.failed[key] do
         %{} = failures ->
           Reading.put_failed(socket, key, record, Map.take(failures, [:cells, :action]))
 
@@ -234,14 +238,14 @@ defmodule AshDataTable.Live.Core.Updates do
   # twice. A page that is being read again will show what there is.
   defp notice(socket, []), do: socket
 
-  defp notice(%{assigns: %{table: %{entry: %{notice?: true}}}} = socket, _keys), do: socket
+  defp notice(socket, _keys) when Current.entry(socket, :notice?), do: socket
 
-  defp notice(%{assigns: %{table: %{entry: %{busy?: true}}}} = socket, _keys), do: socket
+  defp notice(socket, _keys) when Current.entry(socket, :busy?), do: socket
 
   defp notice(socket, keys) do
-    %{model: model, state: state, parent_key: parent} = socket.assigns.table.entry
+    %{model: model, state: state, parent_key: parent} = Core.table(socket).entry
 
-    if Query.any?(model, state, parent, keys, Reading.read_opts(socket.assigns)),
+    if Query.any?(model, state, parent, keys, Reading.read_opts(socket)),
       do: socket |> Core.put(notice?: true) |> Core.say({:text, :changed_records, []}),
       else: socket
   end
@@ -251,14 +255,14 @@ defmodule AshDataTable.Live.Core.Updates do
   # its way out is taken away, and only while nothing is open in it or
   # under it: then it waits, and is asked about again when that is closed.
   def on({:left, row}, socket) do
-    %{leaving: leaving, rows: rows} = socket.assigns.table.entry
+    %{leaving: leaving, rows: rows} = Core.table(socket).entry
 
     cond do
       not MapSet.member?(leaving, row) or not is_map_key(rows, row) ->
         {:noreply, socket}
 
-      row in working(socket.assigns.table) ->
-        held = Enum.uniq([rows[row].pk | socket.assigns.table.entry.held])
+      row in working(Core.table(socket)) ->
+        held = Enum.uniq([rows[row].pk | Core.table(socket).entry.held])
         {:noreply, socket |> stay(row) |> Core.put(held: held)}
 
       true ->

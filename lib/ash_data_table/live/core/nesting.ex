@@ -19,35 +19,31 @@ defmodule AshDataTable.Live.Core.Nesting do
   # full view. A table with its state in the URL finds it there, and is then
   # read as a nested table is: through the parent, read again as the person.
   # Any other table is not limited.
-  def relate(%{assigns: %{table: %{entry: %{nested?: true, via: via, parent_key: key}}}} = socket) do
+  def relate(socket), do: relate(socket, Core.table(socket))
+
+  defp relate(socket, %{entry: %{nested?: true, via: via, parent_key: key}}) do
     # on a page that is mounted as this table was told to authorize
     Core.put(socket,
       full_view:
         Related.path(
-          socket.router,
+          Core.table(socket).options.router,
           socket.endpoint,
           via,
           key,
-          socket.assigns.table.entry.authorize_given
+          Core.table(socket).entry.authorize_given
         )
     )
   end
 
-  def relate(
-        %{
-          assigns: %{
-            table: %{options: %{url: url}, entry: %{id: id, resource: resource, table: table}}
-          }
-        } = socket
-      )
-      when is_binary(url) do
+  defp relate(socket, %{options: %{url: url}, entry: %{id: id, resource: resource, table: table}})
+       when is_binary(url) do
     params = url |> Url.query_params() |> Map.get(id)
 
     case Related.from_params(
            resource,
            table,
            params,
-           Core.reader(socket.assigns),
+           Core.reader(socket),
            socket.endpoint
          ) do
       nil ->
@@ -57,7 +53,7 @@ defmodule AshDataTable.Live.Core.Nesting do
         # as the table around a nested one says for it: what this table was
         # told, else what the parent's own domain says
         parent_authorize? =
-          case socket.assigns.table.entry.authorize_given do
+          case Core.table(socket).entry.authorize_given do
             nil -> AshDataTable.Domain.Info.authorize?(via.source)
             authorize? -> authorize?
           end
@@ -71,7 +67,7 @@ defmodule AshDataTable.Live.Core.Nesting do
     end
   end
 
-  def relate(socket), do: socket
+  defp relate(socket, _table), do: socket
 
   # The table's model as its resource and block say it, which is the same
   # whoever asks, and so is built once and kept for as long as the component
@@ -87,16 +83,10 @@ defmodule AshDataTable.Live.Core.Nesting do
   # be what the block says now.
   #
   # A table to choose from is built for the read action it is told.
-  def build(
-        %{
-          assigns: %{
-            table: %{entry: %{resource: resource, table: table, via: via, built: built}}
-          }
-        } =
-          socket
-      ) do
-    read = socket.assigns.table.entry.choose && socket.assigns.table.entry.choose.read_action
-    live = socket.assigns.table.entry.live_given
+  def build(socket) do
+    %{resource: resource, table: table, via: via, built: built} = Core.table(socket).entry
+    read = Core.table(socket).entry.choose && Core.table(socket).entry.choose.read_action
+    live = Core.table(socket).entry.live_given
 
     if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read, live: ^live}, built) and
          not reloading?(socket) do
@@ -125,7 +115,9 @@ defmodule AshDataTable.Live.Core.Nesting do
   # The model of the nested table of a relationship, as far as it is the
   # same for everybody: built when it is first asked for, and kept with the
   # table's own.
-  defp nested_model(%{assigns: %{table: %{entry: %{built: built}}}} = socket, relationship) do
+  defp nested_model(socket, relationship) do
+    %{built: built} = Core.table(socket).entry
+
     case built.nested do
       %{^relationship => model} ->
         {model, socket}
@@ -149,8 +141,15 @@ defmodule AshDataTable.Live.Core.Nesting do
   # Whether a nested table has a create action, and which table actions, is
   # its model's to say, and is the same for everybody. Whether this person
   # may run them is asked of Ash here, on every update.
-  def creates(%{assigns: %{table: %{entry: %{expandable?: true, model: model}}}} = socket) do
-    reader = nested_reader(socket.assigns)
+  def creates(socket) do
+    case Core.table(socket) do
+      %{entry: %{expandable?: true, model: model}} = table -> creates(socket, table, model)
+      _not_expandable -> Core.put(socket, creates: %{})
+    end
+  end
+
+  defp creates(socket, table, model) do
+    reader = nested_reader(table)
 
     {creates, socket} =
       Enum.reduce(model.relationships, {%{}, socket}, fn relationship, {creates, socket} ->
@@ -184,8 +183,6 @@ defmodule AshDataTable.Live.Core.Nesting do
     Core.put(socket, creates: creates)
   end
 
-  def creates(socket), do: Core.put(socket, creates: %{})
-
   # Sent by the hook when a person uses the expander of a row: the row by
   # the key in its DOM id. The row is expanded to its lines, or closed with
   # everything open under it. The answer says which, as the row itself is
@@ -195,7 +192,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # expanders: this is where the depth limit holds against an event that the
   # table never offered.
   def on({:expand, key}, socket) do
-    %{rows: rows, open: open, expandable?: expandable?} = socket.assigns.table.entry
+    %{rows: rows, open: open, expandable?: expandable?} = Core.table(socket).entry
 
     if expandable? and is_map_key(rows, key) do
       open = if is_map_key(open, key), do: Map.delete(open, key), else: Map.put(open, key, [])
@@ -214,7 +211,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # Only a line that is on the page can be used: of an expanded row of the
   # page, and for a relationship this person is offered.
   def on({:toggle, key, name}, socket) do
-    %{model: model, open: open, expandable?: expandable?} = socket.assigns.table.entry
+    %{model: model, open: open, expandable?: expandable?} = Core.table(socket).entry
 
     with true <- expandable?,
          lines when is_list(lines) <- open[key],
@@ -230,16 +227,16 @@ defmodule AshDataTable.Live.Core.Nesting do
   # What the table in a picker is given of the table it is opened from: who
   # is asking. It authorizes as a nested table does: as this table was told,
   # else as its own resource's domain says.
-  def picker_reader(assigns) do
+  def picker_reader(table) do
     %{
-      scope: assigns.table.caller.scope,
-      actor: assigns.table.caller.actor,
-      tenant: assigns.table.caller.tenant,
-      authorize?: assigns.table.entry.authorize_given,
-      page_assigns: assigns.table.options.page_assigns,
-      time_zone: assigns.table.caller.time_zone,
-      path: assigns.table.entry.path,
-      live?: passed_on(assigns.table.entry.live_given)
+      scope: table.caller.scope,
+      actor: table.caller.actor,
+      tenant: table.caller.tenant,
+      authorize?: table.entry.authorize_given,
+      page_assigns: table.options.page_assigns,
+      time_zone: table.caller.time_zone,
+      path: table.entry.path,
+      live?: passed_on(table.entry.live_given)
     }
   end
 
@@ -254,20 +251,20 @@ defmodule AshDataTable.Live.Core.Nesting do
   # is given, with which the row the nested table belongs to is read again.
   # `authorize?` is passed on only as this table was told it; untold, a
   # nested table authorizes as its own resource's domain says.
-  def nested_reader(assigns) do
+  def nested_reader(table) do
     %{
-      scope: assigns.table.caller.scope,
-      actor: assigns.table.caller.actor,
-      tenant: assigns.table.caller.tenant,
-      authorize?: assigns.table.entry.authorize_given,
-      parent_authorize?: assigns.table.entry.authorize?,
-      parent_arguments: assigns.table.entry.model.read_arguments,
-      page_assigns: assigns.table.options.page_assigns,
-      time_zone: assigns.table.caller.time_zone,
-      depth: assigns.table.entry.depth + 1,
-      depth_limit: assigns.table.entry.depth_limit,
-      path: assigns.table.entry.path,
-      live?: passed_on(assigns.table.entry.live_given)
+      scope: table.caller.scope,
+      actor: table.caller.actor,
+      tenant: table.caller.tenant,
+      authorize?: table.entry.authorize_given,
+      parent_authorize?: table.entry.authorize?,
+      parent_arguments: table.entry.model.read_arguments,
+      page_assigns: table.options.page_assigns,
+      time_zone: table.caller.time_zone,
+      depth: table.entry.depth + 1,
+      depth_limit: table.entry.depth_limit,
+      path: table.entry.path,
+      live?: passed_on(table.entry.live_given)
     }
   end
 
@@ -282,9 +279,9 @@ defmodule AshDataTable.Live.Core.Nesting do
   # all under it, in the same render as the cell its portal went into or
   # the picker it was in.
   def reconcile(socket) do
-    {socket, reached} = walk(socket, [socket.assigns.table.entry.id], MapSet.new())
+    {socket, reached} = walk(socket, [Core.table(socket).entry.id], MapSet.new())
 
-    socket.assigns.table.entries
+    Core.table(socket).entries
     |> Map.keys()
     |> Enum.reject(&MapSet.member?(reached, &1))
     |> Enum.reduce(socket, &Registry.close(&2, &1))
@@ -297,7 +294,7 @@ defmodule AshDataTable.Live.Core.Nesting do
       Enum.reduce(children(socket, id), {socket, []}, fn {child, given, target},
                                                          {socket, children} ->
         socket =
-          case socket.assigns.table.entries do
+          case Core.table(socket).entries do
             %{^child => %{given: ^given}} ->
               socket
 
@@ -326,7 +323,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # drawn where its dialog is). A nested table only for a line of a row that
   # is on the page, and of a relationship the person is offered.
   def children(socket, id) do
-    table = socket.assigns.table
+    table = Core.table(socket)
     entry = if table.entry.id == id, do: table.entry, else: Map.fetch!(table.entries, id)
     nested(table, entry) ++ chooser(table, entry)
   end
@@ -340,7 +337,7 @@ defmodule AshDataTable.Live.Core.Nesting do
     picker = Present.picker(picker)
 
     given =
-      Map.merge(picker_reader(%{table: %{table | entry: entry}}), %{
+      Map.merge(picker_reader(%{table | entry: entry}), %{
         id: "#{id}-pick-#{picker.name}",
         resource: picker.destination,
         table: :default,
@@ -362,7 +359,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   defp nested(table, %{id: id} = entry) do
     case entry do
       %{expandable?: true, model: model, rows: rows, open: open} when open != %{} ->
-        reader = nested_reader(%{table: %{table | entry: entry}})
+        reader = nested_reader(%{table | entry: entry})
         first = List.first(model.columns)
 
         for {key, lines} <- open,

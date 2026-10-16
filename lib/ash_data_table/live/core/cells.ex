@@ -29,7 +29,7 @@ defmodule AshDataTable.Live.Core.Cells do
           result,
           socket,
           key,
-          Operation.column(socket.assigns.table.entry.model, name),
+          Operation.column(Core.table(socket).entry.model, name),
           typed
         )
     end
@@ -47,7 +47,7 @@ defmodule AshDataTable.Live.Core.Cells do
         {:reply, %{ok: false}, socket}
 
       result ->
-        saved(result, socket, key, Operation.column(socket.assigns.table.entry.model, name), "")
+        saved(result, socket, key, Operation.column(Core.table(socket).entry.model, name), "")
     end
   end
 
@@ -61,7 +61,7 @@ defmodule AshDataTable.Live.Core.Cells do
   # A value Ash hides from them on this record is not given; whoever may
   # see the field may ask (`sensitive?` is no access rule).
   def on({:reveal, _key, name} = intent, socket) do
-    %{model: model} = socket.assigns.table.entry
+    %{model: model} = Core.table(socket).entry
 
     case Operation.reveal(Core.operation(socket, intent)) do
       {:ok, value} ->
@@ -81,12 +81,12 @@ defmodule AshDataTable.Live.Core.Cells do
   # value's fields; nothing is saved. The record is read first, as the
   # person.
   def on({:edit, key, name}, socket) do
-    %{id: id, model: model, rows: rows} = socket.assigns.table.entry
+    %{id: id, model: model, rows: rows} = Core.table(socket).entry
 
     with %{editable?: true} = column <- Operation.column(model, name),
          true <- Model.group?(column),
          %{} = row <- rows[key] do
-      case Edit.open(model, column, row.pk, "#{id}-panel", Core.reader(socket.assigns)) do
+      case Edit.open(model, column, row.pk, "#{id}-panel", Core.reader(socket)) do
         {:ok, record, form} ->
           title =
             case Reading.title_of(model, record) do
@@ -95,7 +95,7 @@ defmodule AshDataTable.Live.Core.Cells do
             end
 
           panel =
-            Panel.panel(socket.assigns, &Map.get(record, &1.name), %{
+            Panel.panel(Core.table(socket), &Map.get(record, &1.name), %{
               kind: :cell,
               # the column's update action, as the panel knows an action
               action: %Model.Action{
@@ -132,8 +132,8 @@ defmodule AshDataTable.Live.Core.Cells do
   # Sent by the hook when a person presses Escape on a cell whose save has
   # failed: the edit is given up, and the cell shows its record's value again.
   def on({:discard, key, name}, socket) do
-    with %{} = column <- Operation.column(socket.assigns.table.entry.model, name),
-         %{record: record, cells: %{}} <- socket.assigns.table.entry.failed[key] do
+    with %{} = column <- Operation.column(Core.table(socket).entry.model, name),
+         %{record: record, cells: %{}} <- Core.table(socket).entry.failed[key] do
       {:noreply,
        socket
        |> Reading.put_failure(key, record, column.name, nil)
@@ -146,7 +146,7 @@ defmodule AshDataTable.Live.Core.Cells do
   # Sent by the hook when a person presses Escape on a row's actions cell
   # that shows the message of an action that failed: the message is given up.
   def on({:dismiss, key}, socket) do
-    case socket.assigns.table.entry.failed[key] do
+    case Core.table(socket).entry.failed[key] do
       %{record: record, action: message} when not is_nil(message) ->
         {:noreply,
          socket |> Reading.put_action_failure(key, record, nil) |> Reading.put_row(key, record)}
@@ -217,7 +217,7 @@ defmodule AshDataTable.Live.Core.Cells do
            key,
            record,
            column.name,
-           {chosen_text(column, chosen, socket.assigns.table.caller.time_zone), message, []}
+           {chosen_text(column, chosen, Core.table(socket).caller.time_zone), message, []}
          )
          |> Reading.put_row(key, record)
          |> Core.say({:text, :not_saved, column: column.label, message: message})}

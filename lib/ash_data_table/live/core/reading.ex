@@ -22,6 +22,8 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Sensitive
   alias AshDataTable.State
 
+  require AshDataTable.Live.Current, as: Current
+
   # What the arguments of a state come to for this person: the model with
   # them (`AshDataTable.Model.supply/2`), the arguments the read action
   # requires that are empty, and what Ash refuses of what the person chose,
@@ -56,9 +58,9 @@ defmodule AshDataTable.Live.Core.Reading do
   # first rows are there it says that it is loading.
   def read(socket) do
     %{model: model, state: state, parent_key: key, parent_arguments: arguments} =
-      socket.assigns.table.entry
+      Core.table(socket).entry
 
-    opts = Core.reader(socket.assigns)
+    opts = Core.reader(socket)
     read = {model, state, opts, key, arguments}
 
     # The records related to one record are read through that record: those
@@ -68,7 +70,7 @@ defmodule AshDataTable.Live.Core.Reading do
         %Relationship{} ->
           opts =
             [
-              parent_authorize?: socket.assigns.table.entry.parent_authorize?,
+              parent_authorize?: Core.table(socket).entry.parent_authorize?,
               parent_arguments: arguments
             ] ++
               opts
@@ -82,30 +84,30 @@ defmodule AshDataTable.Live.Core.Reading do
     # with every read the summaries are asked for again (`summarise/1`): in
     # any case when the table reads again as it is, else when what they are
     # of has changed
-    due = if socket.assigns.table.entry.read == :again, do: :force, else: :changed
+    due = if Core.table(socket).entry.read == :again, do: :force, else: :changed
 
     cond do
-      read == socket.assigns.table.entry.read ->
+      read == Core.table(socket).entry.read ->
         socket
 
       # an argument the read action requires is empty: it is not run
-      socket.assigns.table.entry.missing != [] ->
-        first_or_later = if is_nil(socket.assigns.table.entry.read), do: :first, else: :later
+      Core.table(socket).entry.missing != [] ->
+        first_or_later = if is_nil(Core.table(socket).entry.read), do: :first, else: :later
         socket |> Core.put(read: read) |> due(due) |> unfilled(first_or_later)
 
-      socket.assigns.table.entry.read == :again ->
+      Core.table(socket).entry.read == :again ->
         socket
         |> Core.put(read: read, busy?: true)
         |> due(due)
         |> start_async(Registry.async(socket, :read), fetch)
 
-      socket.assigns.table.entry.nested? ->
+      Core.table(socket).entry.nested? ->
         socket
-        |> Core.put(read: read, busy?: true, loading?: is_nil(socket.assigns.table.entry.read))
+        |> Core.put(read: read, busy?: true, loading?: is_nil(Core.table(socket).entry.read))
         |> due(due)
         |> start_async(Registry.async(socket, :read), fetch)
 
-      is_nil(socket.assigns.table.entry.read) ->
+      is_nil(Core.table(socket).entry.read) ->
         socket |> Core.put(read: read) |> due(due) |> show(fetch.(), :first)
 
       true ->
@@ -124,7 +126,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # announced (`:force`) is not undone by a read that follows it.
   def due(socket, nil), do: socket
 
-  def due(%{assigns: %{table: %{entry: %{summary_due: :force}}}} = socket, _due), do: socket
+  def due(socket, _due) when Current.entry(socket, :summary_due) == :force, do: socket
 
   def due(socket, due) when due in [:changed, :force], do: Core.put(socket, summary_due: due)
 
@@ -136,25 +138,25 @@ defmodule AshDataTable.Live.Core.Reading do
   #
   # After a read (`:changed`) only when what they are of has changed: the
   # sort a person chose says nothing about which records match.
-  def summarise(%{assigns: %{table: %{entry: %{summary_due: nil}}}} = socket), do: socket
+  def summarise(socket) when is_nil(Current.entry(socket, :summary_due)), do: socket
 
-  def summarise(%{assigns: %{table: %{entry: %{summarised?: false}}}} = socket),
+  def summarise(socket) when not Current.entry(socket, :summarised?),
     do: Core.put(socket, summary_due: nil)
 
   # while an argument the read action requires is empty nothing is read,
   # and nothing summed
-  def summarise(%{assigns: %{table: %{entry: %{missing: [_ | _]}}}} = socket),
+  def summarise(socket) when Current.entry(socket, :missing) != [],
     do: Core.put(socket, summary_due: nil, summary: nil, summing?: false, summed: nil)
 
   def summarise(socket) do
     %{model: model, state: state, parent_key: parent, summary_due: due} =
-      socket.assigns.table.entry
+      Core.table(socket).entry
 
-    opts = read_opts(socket.assigns)
+    opts = read_opts(socket)
     of = {model, %{state | sort: nil}, opts, parent}
     socket = Core.put(socket, summary_due: nil)
 
-    if due == :changed and of == socket.assigns.table.entry.summed do
+    if due == :changed and of == Core.table(socket).entry.summed do
       socket
     else
       socket
@@ -169,7 +171,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # are as they are. What the table's read is refused for is said by the
   # read; anything else is logged.
   defp unsummed(socket, reason) do
-    %{model: model} = socket.assigns.table.entry
+    %{model: model} = Core.table(socket).entry
 
     if not expected?(reason) do
       Logger.error(
@@ -190,17 +192,19 @@ defmodule AshDataTable.Live.Core.Reading do
 
   # What a read of the table is given besides who is asking: for a nested
   # table, how the row it belongs to is read.
-  def read_opts(assigns) do
+  def read_opts(socket) do
+    %{entry: entry} = table = Core.table(socket)
+
     [
-      parent_authorize?: assigns.table.entry.parent_authorize?,
-      parent_arguments: assigns.table.entry.parent_arguments
-    ] ++ Core.reader(assigns)
+      parent_authorize?: entry.parent_authorize?,
+      parent_arguments: entry.parent_arguments
+    ] ++ Core.reader(table)
   end
 
   # A read that came back, or went down, while the table waits for an
   # argument its read action requires: it was of other arguments, and
   # nothing of it is shown (`unfilled/2`).
-  def handle_async(:read, _result, %{assigns: %{table: %{entry: %{missing: [_ | _]}}}} = socket),
+  def handle_async(:read, _result, socket) when Current.entry(socket, :missing) != [],
     do: {:noreply, socket}
 
   def handle_async(:read, {:ok, result}, socket) do
@@ -215,12 +219,8 @@ defmodule AshDataTable.Live.Core.Reading do
   # The summaries, or why there are none (see "Footer summaries" at the
   # top). An answer that comes while the table waits for an argument is of
   # other arguments, as a read is.
-  def handle_async(
-        :summary,
-        _result,
-        %{assigns: %{table: %{entry: %{missing: [_ | _]}}}} = socket
-      ),
-      do: {:noreply, socket}
+  def handle_async(:summary, _result, socket) when Current.entry(socket, :missing) != [],
+    do: {:noreply, socket}
 
   def handle_async(:summary, {:ok, {:ok, summary}}, socket),
     do: {:noreply, Core.put(socket, summary: summary, summing?: false)}
@@ -241,8 +241,8 @@ defmodule AshDataTable.Live.Core.Reading do
   # anything: Ash says so without a read (`Ash.can/3`), and they are
   # answered as they are when the read itself is refused.
   defp unfilled(socket, first_or_later) do
-    %{model: model, missing: missing} = socket.assigns.table.entry
-    reader = Core.reader(socket.assigns)
+    %{model: model, missing: missing} = Core.table(socket).entry
+    reader = Core.reader(socket)
 
     socket = Core.put(socket, busy?: false, loading?: false)
 
@@ -256,7 +256,7 @@ defmodule AshDataTable.Live.Core.Reading do
       |> Core.put(page: nil, row_count: 0, rows: %{}, failed: %{}, announce?: false, gone?: false)
       |> Core.put(error: nil, open: %{}, related_title: nil, panel: nil, picker: nil)
       |> Core.put(fill: text, notice?: false, held: [], leaving: MapSet.new())
-      |> stream(socket.assigns.table.entry.stream, [], reset: true)
+      |> stream(Core.table(socket).entry.stream, [], reset: true)
       |> Core.say(text)
     end
   end
@@ -264,7 +264,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # Shows what a read gave. `read` says which one it was: the `:first` of
   # this table, done while it is mounted, or a `:later` one.
   defp show(socket, {:ok, %Query.Page{} = page}, _read) do
-    %{id: id, model: model} = socket.assigns.table.entry
+    %{id: id, model: model} = Core.table(socket).entry
 
     rows =
       page.records
@@ -286,7 +286,7 @@ defmodule AshDataTable.Live.Core.Reading do
     # each row, and after it its detail when rows can be expanded: closed
     items =
       Enum.flat_map(rows, fn row ->
-        current? = current?(socket.assigns.table.entry.choose, model, row.record)
+        current? = current?(Core.table(socket).entry.choose, model, row.record)
 
         [
           Present.row(model, row.record, %{
@@ -297,7 +297,7 @@ defmodule AshDataTable.Live.Core.Reading do
             current?: current?
           })
         ] ++
-          if(socket.assigns.table.entry.expandable?,
+          if(Core.table(socket).entry.expandable?,
             do: [detail(id, row.key, nil, nil)],
             else: []
           )
@@ -305,7 +305,7 @@ defmodule AshDataTable.Live.Core.Reading do
 
     socket
     |> Core.put(page: %{page | records: [], parent: nil}, row_count: length(rows))
-    |> Core.put(error: nil, gone?: false, related_title: related_title(socket.assigns, page))
+    |> Core.put(error: nil, gone?: false, related_title: related_title(Core.table(socket), page))
     |> Core.put(fill: nil)
     # what was announced before this read is in it: there is nothing left
     # to read again for, and no row is waiting for its person
@@ -319,7 +319,7 @@ defmodule AshDataTable.Live.Core.Reading do
       open: %{}
     )
     |> announce(page)
-    |> stream(socket.assigns.table.entry.stream, items, reset: true)
+    |> stream(Core.table(socket).entry.stream, items, reset: true)
   end
 
   # The row a nested table belongs to is gone, or no longer this person's to
@@ -333,9 +333,10 @@ defmodule AshDataTable.Live.Core.Reading do
   # so it says something in every case: that they are not allowed when the
   # destination's table is declared with `on_forbidden :message`, and no more
   # than that the records are not available otherwise. Never "No records".
-  defp show(%{assigns: %{table: %{entry: %{nested?: true}}}} = socket, {:error, refusal}, _read)
-       when refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden) do
-    case socket.assigns.table.entry.model.on_forbidden do
+  defp show(socket, {:error, refusal}, _read)
+       when Current.entry(socket, :nested?) and
+              (refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden)) do
+    case Core.table(socket).entry.model.on_forbidden do
       :message -> show_message(socket, {:text, :not_allowed, []})
       :not_found -> show_message(socket, {:text, :records_not_available, []})
     end
@@ -344,12 +345,9 @@ defmodule AshDataTable.Live.Core.Reading do
   # A table to choose from whose read is refused: the picker has told the
   # person that there is a table, so it says something in every case, as a
   # nested table does.
-  defp show(
-         %{assigns: %{table: %{entry: %{choose: %{}}}}} = socket,
-         {:error, %Ash.Error.Forbidden{}},
-         _read
-       ) do
-    case socket.assigns.table.entry.model.on_forbidden do
+  defp show(socket, {:error, %Ash.Error.Forbidden{}}, _read)
+       when is_map(Current.entry(socket, :choose)) do
+    case Core.table(socket).entry.model.on_forbidden do
       :message -> show_message(socket, {:text, :not_allowed, []})
       :not_found -> show_message(socket, {:text, :records_not_available, []})
     end
@@ -366,7 +364,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # nothing of it is rendered, and a table that is a page of its own answers
   # as a page that does not exist.
   defp show(socket, {:error, %Ash.Error.Forbidden{} = error}, read) do
-    case socket.assigns.table.entry.model.on_forbidden do
+    case Core.table(socket).entry.model.on_forbidden do
       :message -> show_error(socket, error)
       :not_found -> socket |> show_error(error) |> Core.put(gone?: true) |> not_found(read)
     end
@@ -375,7 +373,7 @@ defmodule AshDataTable.Live.Core.Reading do
   defp show(socket, {:error, error}, _read), do: show_error(socket, error)
 
   defp show_error(socket, error),
-    do: show_message(socket, error_text(error, socket.assigns.table.entry.model))
+    do: show_message(socket, error_text(error, Core.table(socket).entry.model))
 
   # The message is an alert of its own, in place of the rows.
   defp show_message(socket, text) do
@@ -384,12 +382,12 @@ defmodule AshDataTable.Live.Core.Reading do
     # nothing is said of a record that was not read for this person
     |> Core.put(error: text, open: %{}, related_title: nil, panel: nil, picker: nil)
     |> Core.put(fill: nil, notice?: false, held: [], leaving: MapSet.new())
-    |> stream(socket.assigns.table.entry.stream, [], reset: true)
+    |> stream(Core.table(socket).entry.stream, [], reset: true)
   end
 
   # A table placed in a page of the host's cannot make that page disappear:
   # it renders nothing.
-  defp not_found(%{assigns: %{table: %{options: %{mounted?: false}}}} = socket, _read), do: socket
+  defp not_found(socket, _read) when not Current.option(socket, :mounted?), do: socket
 
   # While the page is mounted, the first read is the request's: the table
   # is `gone?`, and the component raises (`AshDataTable.NotFoundError`).
@@ -397,8 +395,8 @@ defmodule AshDataTable.Live.Core.Reading do
 
   # Later, the page is on screen. The browser is sent to ask for it afresh,
   # which raises the exception; nothing crashes for it.
-  defp not_found(%{assigns: %{table: %{options: %{url: url}}}} = socket, :later) do
-    uri = URI.parse(url)
+  defp not_found(socket, :later) do
+    uri = URI.parse(Core.table(socket).options.url)
     redirect(socket, to: %URI{path: uri.path || "/", query: uri.query} |> URI.to_string())
   end
 
@@ -442,16 +440,16 @@ defmodule AshDataTable.Live.Core.Reading do
   # edits of the row that have failed. Its detail is another item and stays
   # as it is: what is open under the row stays open.
   def put_row(socket, key, record) do
-    %{id: id, model: model, rows: rows, failed: failed, open: open} = socket.assigns.table.entry
+    %{id: id, model: model, rows: rows, failed: failed, open: open} = Core.table(socket).entry
     names = names(model, record, key)
     # in a table to choose from: whether this is the record chosen now
-    current? = current?(socket.assigns.table.entry.choose, model, record)
+    current? = current?(Core.table(socket).entry.choose, model, record)
 
     # a row is put back after something was done with its record
     socket
     |> due(:force)
     |> stream_insert(
-      socket.assigns.table.entry.stream,
+      Core.table(socket).entry.stream,
       Present.row(model, record, %{
         id: id,
         key: key,
@@ -469,11 +467,11 @@ defmodule AshDataTable.Live.Core.Reading do
   # reads nothing for it; one that is no longer rendered is gone, with its
   # state.
   def put_detail(socket, key) do
-    %{id: id, rows: rows, open: open} = socket.assigns.table.entry
+    %{id: id, rows: rows, open: open} = Core.table(socket).entry
 
     stream_insert(
       socket,
-      socket.assigns.table.entry.stream,
+      Core.table(socket).entry.stream,
       detail(id, key, rows[key].pk, open[key])
     )
   end
@@ -481,7 +479,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # Notes that the save of a cell has failed, or with `nil` that it no longer
   # has. The record is kept with the failures of its row, and only then.
   def put_failure(socket, key, record, name, failure) do
-    row = socket.assigns.table.entry.failed[key] || %{}
+    row = Core.table(socket).entry.failed[key] || %{}
     cells = Map.get(row, :cells, %{})
     cells = if failure, do: Map.put(cells, name, failure), else: Map.delete(cells, name)
 
@@ -491,20 +489,20 @@ defmodule AshDataTable.Live.Core.Reading do
   # Notes that a row action has failed, with the action's message, or with
   # `nil` that the row's actions cell has nothing to say any more.
   def put_action_failure(socket, key, record, message) do
-    row = socket.assigns.table.entry.failed[key] || %{}
+    row = Core.table(socket).entry.failed[key] || %{}
 
     put_failed(socket, key, record, %{cells: Map.get(row, :cells, %{}), action: message})
   end
 
   def put_failed(socket, key, _record, %{cells: cells, action: nil}) when cells == %{},
-    do: Core.put(socket, failed: Map.delete(socket.assigns.table.entry.failed, key))
+    do: Core.put(socket, failed: Map.delete(Core.table(socket).entry.failed, key))
 
   # the record is kept as a row holds it: without its sensitive values
   def put_failed(socket, key, record, failures) do
-    record = Sensitive.scrub(record, socket.assigns.table.entry.model.columns)
+    record = Sensitive.scrub(record, Core.table(socket).entry.model.columns)
 
     Core.put(socket,
-      failed: Map.put(socket.assigns.table.entry.failed, key, Map.put(failures, :record, record))
+      failed: Map.put(Core.table(socket).entry.failed, key, Map.put(failures, :record, record))
     )
   end
 
@@ -514,7 +512,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # record is gone for certain. A page that is left without rows is read
   # again.
   def remove_row(socket, key) do
-    %{id: id, rows: rows, page: page} = socket.assigns.table.entry
+    %{id: id, rows: rows, page: page} = Core.table(socket).entry
     %{rowindex: removed} = rows[key]
 
     rows =
@@ -527,12 +525,12 @@ defmodule AshDataTable.Live.Core.Reading do
     socket =
       socket
       |> Core.put(rows: rows, row_count: map_size(rows))
-      |> Core.put(failed: Map.delete(socket.assigns.table.entry.failed, key))
-      |> Core.put(open: Map.delete(socket.assigns.table.entry.open, key))
-      |> Core.put(leaving: MapSet.delete(socket.assigns.table.entry.leaving, key))
+      |> Core.put(failed: Map.delete(Core.table(socket).entry.failed, key))
+      |> Core.put(open: Map.delete(Core.table(socket).entry.open, key))
+      |> Core.put(leaving: MapSet.delete(Core.table(socket).entry.leaving, key))
       |> Core.put(page: %{page | total: page.total && max(page.total - 1, 0)})
-      |> stream_delete_by_dom_id(socket.assigns.table.entry.stream, "#{id}-row-#{key}")
-      |> stream_delete_by_dom_id(socket.assigns.table.entry.stream, "#{id}-row-#{key}-x")
+      |> stream_delete_by_dom_id(Core.table(socket).entry.stream, "#{id}-row-#{key}")
+      |> stream_delete_by_dom_id(Core.table(socket).entry.stream, "#{id}-row-#{key}-x")
       |> unselect(key)
       |> due(:force)
 
@@ -541,12 +539,12 @@ defmodule AshDataTable.Live.Core.Reading do
 
   # A row that is gone is selected no longer: the hook, which alone knows
   # what is selected, is told.
-  defp unselect(%{assigns: %{table: %{entry: %{selecting: nil}}}} = socket, _key), do: socket
+  defp unselect(socket, _key) when is_nil(Current.entry(socket, :selecting)), do: socket
 
   defp unselect(socket, key),
     do:
       push_event(socket, "ash_data_table:unselect", %{
-        table: socket.assigns.table.entry.id,
+        table: Core.table(socket).entry.id,
         row: key
       })
 
@@ -560,17 +558,17 @@ defmodule AshDataTable.Live.Core.Reading do
   # on this record. Taken from the record as it was read for them, and from
   # nothing else: a record that was not read has no name here.
   defp related_title(
-         %{table: %{entry: %{related: %{via: via}}}} = assigns,
+         %{entry: %{related: %{via: via}}} = table,
          %Query.Page{parent: %_{} = parent}
        ),
        do:
          via.source
          |> Model.build(table: via.source_table)
-         |> Model.zoned(assigns.table.caller.time_zone)
+         |> Model.zoned(table.caller.time_zone)
          |> Core.in_words()
          |> title_of(parent)
 
-  defp related_title(_assigns, _page), do: nil
+  defp related_title(_table, _page), do: nil
 
   # What a record is called: by the first of the columns its table names a
   # record by that holds something this person may see on it. Nil when none
@@ -595,7 +593,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # After a filter change, the result is put into the live region: the count
   # when the read action counts, under either pagination strategy, else
   # only that the rows have changed.
-  defp announce(%{assigns: %{table: %{entry: %{announce?: true}}}} = socket, page) do
+  defp announce(socket, page) when Current.entry(socket, :announce?) do
     text =
       case page.total do
         nil -> {:text, :results_updated, []}
@@ -654,14 +652,14 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   def on({:sort, name}, socket) do
-    %{state: state, model: model} = socket.assigns.table.entry
+    %{state: state, model: model} = Core.table(socket).entry
     {:noreply, Url.go(socket, State.cycle_sort(state, model, name))}
   end
 
   # Sent by the form of the filter row when a filter is left or a choice is
   # made, with every filter of the row.
   def on({:filter, form}, socket) do
-    %{state: state, model: model} = socket.assigns.table.entry
+    %{state: state, model: model} = Core.table(socket).entry
 
     {filtered, rejected} = State.filter(state, model, form)
     pending = %{controls: State.pending(model, form), among: [state.filters, filtered.filters]}
@@ -670,7 +668,7 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   def on({:clear_filter, name}, socket) do
-    %{state: state, pending: pending} = socket.assigns.table.entry
+    %{state: state, pending: pending} = Core.table(socket).entry
     cleared = State.clear_filter(state, name)
 
     # the other columns keep the controls they show
@@ -684,7 +682,7 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   def on(:clear_filters, socket) do
-    state = State.clear_filters(socket.assigns.table.entry.state)
+    state = State.clear_filters(Core.table(socket).entry.state)
 
     {:noreply,
      socket
@@ -693,7 +691,7 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   def on({:page, to}, socket) do
-    {:noreply, Url.go(socket, target(socket.assigns.table.entry, to))}
+    {:noreply, Url.go(socket, target(Core.table(socket).entry, to))}
   end
 
   # Sent by the "Rows per page" menu: the size as text. It is a claim: only
@@ -701,7 +699,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # anything else changes nothing. The table starts at its first page with
   # it, as after a new sort; the sort, the filters and the arguments stay.
   def on({:page_size, size}, socket) do
-    %{state: state, model: model} = socket.assigns.table.entry
+    %{state: state, model: model} = Core.table(socket).entry
     {:noreply, Url.go(socket, State.resize(state, model, size))}
   end
 

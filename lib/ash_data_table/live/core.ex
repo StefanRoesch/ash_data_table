@@ -10,7 +10,8 @@ defmodule AshDataTable.Live.Core do
   # the person reads it (`in_words/1`). Every table the component shows is
   # an entry of its `AshDataTable.Table` (`AshDataTable.Live.Registry`).
 
-  import Phoenix.Component, only: [assign: 2]
+  import Phoenix.Component, only: [assign: 2, assign: 3]
+  import Phoenix.LiveView, only: [put_private: 3]
 
   alias AshDataTable.Caller
   alias AshDataTable.Intent
@@ -33,8 +34,15 @@ defmodule AshDataTable.Live.Core do
   def mount(socket) do
     # Everything the table holds, in one value: what it was told, who is
     # asking, and the table itself (`AshDataTable.Table`; every field is
-    # explained where it is defined).
-    socket = assign(socket, table: Table.new())
+    # explained where it is defined), under the assign `table` of the
+    # component, which draws it with the target of its events and the
+    # router of its page.
+    socket =
+      socket
+      |> put_private(:ash_data_table, %{current: :table})
+      |> assign(table: Table.new())
+
+    socket = put(socket, target: socket.assigns.myself, router: socket.router)
 
     # its stream: a nested table is rendered before its first read has
     # come back
@@ -50,7 +58,7 @@ defmodule AshDataTable.Live.Core do
     if Registry.known?(socket, id) do
       {:ok,
        socket
-       |> Registry.within(id, &put(&1, waiting: &1.assigns.table.entry.waiting ++ batch))
+       |> Registry.within(id, &put(&1, waiting: table(&1).entry.waiting ++ batch))
        |> tidy()}
     else
       {:ok, socket}
@@ -58,15 +66,6 @@ defmodule AshDataTable.Live.Core do
   end
 
   def update(assigns, socket) do
-    # what the table on the page was told of `authorize?`, nil for nothing
-    socket =
-      assign(socket,
-        table: %{
-          socket.assigns.table
-          | caller: %{socket.assigns.table.caller | authorize?: assigns[:authorize?]}
-        }
-      )
-
     {:ok, socket} = told(assigns, socket)
     {:ok, tidy(socket)}
   end
@@ -148,8 +147,17 @@ defmodule AshDataTable.Live.Core do
     end
   end
 
-  # Puts fields of the table where each lives (`AshDataTable.Table.put/2`).
-  def put(socket, fields), do: assign(socket, table: Table.put(socket.assigns.table, fields))
+  # The table the current callback works on: the `AshDataTable.Table` under
+  # the assign whose name the socket's private data holds (`current`), as
+  # `AshDataTable.Live.Registry.within/3` holds the entry it works on.
+  def table(socket), do: Map.fetch!(socket.assigns, socket.private.ash_data_table.current)
+
+  # Puts the table back whole, or fields of it where each lives
+  # (`AshDataTable.Table.put/2`).
+  def put(socket, %Table{} = table),
+    do: assign(socket, socket.private.ash_data_table.current, table)
+
+  def put(socket, fields), do: put(socket, Table.put(table(socket), fields))
 
   # What a table is told: by the host for the table on the page
   # (`update/2`), by the table it is in for any other (`Nesting.reconcile/1`).
@@ -168,7 +176,7 @@ defmodule AshDataTable.Live.Core do
       )
 
     # where it is: under the tables it was told it is rendered in
-    socket = put(socket, path: Map.get(assigns, :path, []) ++ [socket.assigns.table.entry.id])
+    socket = put(socket, path: Map.get(assigns, :path, []) ++ [table(socket).entry.id])
 
     # what the table was told about live updates: nil where it was told nothing
     socket = put(socket, live_given: assigns[:live?])
@@ -189,17 +197,17 @@ defmodule AshDataTable.Live.Core do
         authorize_given: assigns[:authorize?],
         authorize?:
           case assigns[:authorize?] do
-            nil -> AshDataTable.Domain.Info.authorize?(socket.assigns.table.entry.resource)
+            nil -> AshDataTable.Domain.Info.authorize?(table(socket).entry.resource)
             authorize? -> authorize?
           end
       )
 
     # nil is the default table, as `:default` is
-    socket = put(socket, table: socket.assigns.table.entry.table || :default)
+    socket = put(socket, table: table(socket).entry.table || :default)
 
     socket =
       socket
-      |> put(nested?: socket.assigns.table.entry.depth > 0)
+      |> put(nested?: table(socket).entry.depth > 0)
       |> Nesting.relate()
       |> Nesting.build()
 
@@ -208,31 +216,31 @@ defmodule AshDataTable.Live.Core do
     # asked again on every update, which for a table with its state in the
     # URL is every sort, filter and page change; it costs no query.
     model =
-      socket.assigns.table.entry.built.model
-      |> Model.for_actor(reader(socket.assigns))
-      |> Model.zoned(socket.assigns.table.caller.time_zone)
+      table(socket).entry.built.model
+      |> Model.for_actor(reader(table(socket)))
+      |> Model.zoned(table(socket).caller.time_zone)
       |> in_words()
-      |> Model.defaults(socket.assigns.table.options.page_assigns)
+      |> Model.defaults(table(socket).options.page_assigns)
 
     # What the person chose for the arguments is given to Ash to look at,
     # here and before every read: the model then holds what the read action
     # and the calculations are given. What Ash refuses is not kept.
     {state, model, missing, refused} =
-      Reading.settle(model, current_state(socket.assigns.table, model), reader(socket.assigns))
+      Reading.settle(model, current_state(table(socket), model), reader(table(socket)))
 
     # what was refused before is shown for as long as nothing else has
     # taken its place
     refused =
-      socket.assigns.table.entry.refused
+      table(socket).entry.refused
       |> Map.filter(fn {key, %{held: held}} -> Map.get(state.arguments, key) == held end)
       |> Map.merge(refused)
 
     # How deep a person can expand is said by the table on the page, for
     # everything beneath it.
-    depth_limit = socket.assigns.table.entry.depth_limit || model.max_depth
+    depth_limit = table(socket).entry.depth_limit || model.max_depth
 
-    expandable? = expandable?(model, socket.assigns.table.entry.depth, depth_limit)
-    selecting = selecting(socket.assigns.table.entry.select, model)
+    expandable? = expandable?(model, table(socket).entry.depth, depth_limit)
+    selecting = selecting(table(socket).entry.select, model)
 
     {:ok,
      socket
@@ -240,13 +248,13 @@ defmodule AshDataTable.Live.Core do
      |> put(
        pending:
          awaited(
-           socket.assigns.table.entry.pending,
-           socket.assigns.table.entry.state.filters,
+           table(socket).entry.pending,
+           table(socket).entry.state.filters,
            state.filters
          )
      )
      |> put(missing: missing, refused: refused)
-     |> put(lines: lines(socket.assigns.table.entry.lines, model, state, refused))
+     |> put(lines: lines(table(socket).entry.lines, model, state, refused))
      # whether the rows have an actions cell: the last column of the grid
      |> put(acting?: model.actions != [])
      # whether the grid has a footer row: a column of this person's has a summary
@@ -454,12 +462,13 @@ defmodule AshDataTable.Live.Core do
   # A table that follows live updates also says which listener is its own
   # (`origin`): what it changes itself is not announced to it, as it shows
   # what its action returned (`AshDataTable.Query.reader_opts/1`).
-  def reader(assigns) do
-    # with what the table resolved of `authorize?` for itself
-    reader =
-      Caller.reader_opts(%{assigns.table.caller | authorize?: assigns.table.entry.authorize?})
+  def reader(%Phoenix.LiveView.Socket{} = socket), do: reader(table(socket))
 
-    case assigns.table.entry.live do
+  def reader(%Table{} = table) do
+    # with what the table resolved of `authorize?` for itself
+    reader = [authorize?: table.entry.authorize?] ++ Caller.reader_opts(table.caller)
+
+    case table.entry.live do
       %{pid: pid} -> [origin: pid] ++ reader
       _not_listening -> reader
     end
@@ -470,13 +479,14 @@ defmodule AshDataTable.Live.Core do
   # are put back closed and its picker goes, and the tables under them close
   # in this update (`tidy/1`), before they start a read for the new person
   # that their closing would cut off (target 6a). The table reads again.
-  defp asker(assigns, %{assigns: %{table: %{entry: %{read: nil}}}} = socket)
-       when is_map(assigns),
-       do: socket
-
   defp asker(assigns, socket) do
-    %{caller: caller, entry: entry} = socket.assigns.table
+    case table(socket) do
+      %{entry: %{read: nil}} -> socket
+      table -> asker(assigns, socket, table)
+    end
+  end
 
+  defp asker(assigns, socket, %{caller: caller, entry: entry}) do
     asking = fn assigns ->
       {Map.get(assigns, :scope, caller.scope), Map.get(assigns, :actor, caller.actor),
        Map.get(assigns, :tenant, caller.tenant),
@@ -516,11 +526,11 @@ defmodule AshDataTable.Live.Core do
 
   # Runs `fun` on every table shown, parents first.
   defp each(socket, fun) do
-    socket.assigns.table.entries
+    table(socket).entries
     |> Map.values()
     |> Enum.sort_by(&{length(&1.path), &1.id})
     |> Enum.reduce(fun.(socket), fn %{id: id}, socket ->
-      if is_map_key(socket.assigns.table.entries, id),
+      if is_map_key(table(socket).entries, id),
         do: Registry.within(socket, id, fun),
         else: socket
     end)
@@ -528,7 +538,7 @@ defmodule AshDataTable.Live.Core do
 
   # Puts a text into the live region, to be read out.
   def say(socket, text) do
-    put(socket, announcement: text, announcements: socket.assigns.table.entry.announcements + 1)
+    put(socket, announcement: text, announcements: table(socket).entry.announcements + 1)
   end
 
   # What an event of a shape the table never sends is answered with: what
@@ -555,8 +565,8 @@ defmodule AshDataTable.Live.Core do
   # the table as it is now. The veto and the page values are the defaults
   # until stage 6.
   def operation(socket, intent, more \\ []) do
-    %{assigns: assigns} = socket
-    entry = assigns.table.entry
+    table = table(socket)
+    entry = table.entry
 
     parent =
       if entry.parent_key,
@@ -572,8 +582,8 @@ defmodule AshDataTable.Live.Core do
         model: entry.model,
         state: entry.state,
         parent: parent,
-        opts: reader(assigns),
-        picking: Picker.picking(assigns),
+        opts: reader(table),
+        picking: Picker.picking(table),
         rows: entry.rows,
         panel: entry.panel,
         read?: match?(%Query.Page{}, entry.page),

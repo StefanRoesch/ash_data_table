@@ -597,9 +597,9 @@ defmodule AshDataTable.Live.TableComponent do
         rows={rows(@streams, @table.entry)}
         chooser={chooser(@table, @table.entry)}
         chooser_rows={rows(@streams, chooser(@table, @table.entry))}
-        myself={@myself}
+        myself={@table.options.target}
         uploads={assigns[:uploads]}
-        router={@socket.router}
+        router={@table.options.router}
       />
       <.portal
         :for={{entry, rows} <- portals(@table, @streams)}
@@ -623,9 +623,9 @@ defmodule AshDataTable.Live.TableComponent do
                 rows={rows}
                 chooser={chooser(@table, entry)}
                 chooser_rows={rows(@streams, chooser(@table, entry))}
-                myself={@myself}
+                myself={@table.options.target}
                 uploads={assigns[:uploads]}
-                router={@socket.router}
+                router={@table.options.router}
               />
             </div>
             <div :if={entry.gone?} id={entry.id} hidden></div>

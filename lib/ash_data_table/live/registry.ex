@@ -11,7 +11,8 @@ defmodule AshDataTable.Live.Registry do
   # and puts it back: outside it, `table.entry` is the table on the page.
 
   import Phoenix.LiveView
-  import Phoenix.Component, only: [assign: 2]
+
+  alias AshDataTable.Live.Core
 
   # ---- one entry at a time --------------------------------------------
 
@@ -24,11 +25,15 @@ defmodule AshDataTable.Live.Registry do
   it is shown the options of a table without a URL, a heading or a page of
   its own.
   """
-  def within(%{assigns: %{table: %{entry: %{id: id}}}} = socket, id, fun), do: fun.(socket)
-
   def within(socket, id, fun) do
-    %{entry: current, entries: %{^id => entry} = entries, options: options} =
-      table = socket.assigns.table
+    case Core.table(socket) do
+      %{entry: %{id: ^id}} -> fun.(socket)
+      table -> within(socket, table, id, fun)
+    end
+  end
+
+  defp within(socket, table, id, fun) do
+    %{entry: current, entries: %{^id => entry} = entries, options: options} = table
 
     checked_out = %{
       table
@@ -38,19 +43,17 @@ defmodule AshDataTable.Live.Registry do
     }
 
     back = fn socket ->
-      %{entry: entry, entries: entries} = table = socket.assigns.table
+      %{entry: entry, entries: entries} = table = Core.table(socket)
 
-      assign(socket,
-        table: %{
-          table
-          | entry: Map.fetch!(entries, current.id),
-            entries: entries |> Map.delete(current.id) |> Map.put(entry.id, entry),
-            options: options
-        }
-      )
+      Core.put(socket, %{
+        table
+        | entry: Map.fetch!(entries, current.id),
+          entries: entries |> Map.delete(current.id) |> Map.put(entry.id, entry),
+          options: options
+      })
     end
 
-    case fun.(assign(socket, table: checked_out)) do
+    case fun.(Core.put(socket, checked_out)) do
       {:noreply, socket} -> {:noreply, back.(socket)}
       {:reply, reply, socket} -> {:reply, reply, back.(socket)}
       socket -> back.(socket)
@@ -66,10 +69,10 @@ defmodule AshDataTable.Live.Registry do
 
   @doc "Whether the table `id` is one of these: the one on the page or another."
   def known?(socket, id),
-    do: socket.assigns.table.entry.id == id or is_map_key(socket.assigns.table.entries, id)
+    do: Core.table(socket).entry.id == id or is_map_key(Core.table(socket).entries, id)
 
   @doc "The key of an async task of the current entry: `:read`, `:summary` or `:bulk`."
-  def async(socket, kind), do: {:ash_data_table, socket.assigns.table.entry.id, kind}
+  def async(socket, kind), do: {:ash_data_table, Core.table(socket).entry.id, kind}
 
   # ---- streams ----------------------------------------------------------
 
@@ -79,7 +82,7 @@ defmodule AshDataTable.Live.Registry do
   socket holds as many streams as tables were ever open at once).
   """
   def take_stream(socket) do
-    %{pool: pool} = table = socket.assigns.table
+    %{pool: pool} = table = Core.table(socket)
 
     {name, socket, pool} =
       case pool do
@@ -91,16 +94,16 @@ defmodule AshDataTable.Live.Registry do
           {name, stream_configure(socket, name, dom_id: & &1.dom_id), %{pool | next: next + 1}}
       end
 
-    {name, socket |> assign(table: %{table | pool: pool}) |> stream(name, [], reset: true)}
+    {name, socket |> Core.put(%{table | pool: pool}) |> stream(name, [], reset: true)}
   end
 
   @doc "Gives a stream name back to the pool, emptied."
   def give_back(socket, name) do
-    %{pool: pool} = table = socket.assigns.table
+    %{pool: pool} = table = Core.table(socket)
 
     socket
     |> stream(name, [], reset: true)
-    |> assign(table: %{table | pool: %{pool | free: [name | pool.free]}})
+    |> Core.put(%{table | pool: %{pool | free: [name | pool.free]}})
   end
 
   # ---- opening and closing --------------------------------------------
@@ -112,10 +115,10 @@ defmodule AshDataTable.Live.Registry do
   """
   def add(socket, id, target) do
     {stream, socket} = take_stream(socket)
-    %{entries: entries} = table = socket.assigns.table
+    %{entries: entries} = table = Core.table(socket)
     entry = %{AshDataTable.Live.Entry.new() | id: id, target: target, stream: stream}
 
-    assign(socket, table: %{table | entries: Map.put(entries, id, entry)})
+    Core.put(socket, %{table | entries: Map.put(entries, id, entry)})
   end
 
   @doc """
@@ -130,7 +133,7 @@ defmodule AshDataTable.Live.Registry do
   def close(socket, id) do
     socket =
       within(socket, id, fn socket ->
-        %{live: live, uploads: uploads} = socket.assigns.table.entry
+        %{live: live, uploads: uploads} = Core.table(socket).entry
 
         if live, do: AshDataTable.Listener.stop(live.pid)
 
@@ -157,10 +160,10 @@ defmodule AshDataTable.Live.Registry do
         end)
       end)
 
-    %{entries: %{^id => %{stream: stream}} = entries} = table = socket.assigns.table
+    %{entries: %{^id => %{stream: stream}} = entries} = table = Core.table(socket)
 
     socket
-    |> assign(table: %{table | entries: Map.delete(entries, id)})
+    |> Core.put(%{table | entries: Map.delete(entries, id)})
     |> give_back(stream)
   end
 

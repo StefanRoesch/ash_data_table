@@ -18,19 +18,20 @@ defmodule AshDataTable.Live.Core.Picker do
   alias AshDataTable.Text
   alias AshDataTable.Typed
 
+  require AshDataTable.Live.Current, as: Current
+
   # Sent by the panel's hook when a person uses the button that takes one
   # of the chosen records out of a field that holds several: the field, and
   # the record's key as the field holds it. The panel is rendered again
   # without it, and the action is told as it is of anything typed. The
   # answer says where focus goes: to what stands where the record stood.
-  def on(
-        {:panel_unpick, name, key},
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      ) do
+  def on({:panel_unpick, name, key}, socket) when is_map(Current.entry(socket, :panel)) do
+    panel = Core.table(socket).entry.panel
+
     with %{editor: :references} = input <- reference_input(panel, name),
          at when is_integer(at) <- Enum.find_index(panel.refs[name], &(&1 == key)) do
       keys = List.delete_at(panel.refs[name], at)
-      field = "#{socket.assigns.table.entry.id}-panel-f-#{name}"
+      field = "#{Core.table(socket).entry.id}-panel-f-#{name}"
 
       focus =
         cond do
@@ -41,7 +42,7 @@ defmodule AshDataTable.Live.Core.Picker do
 
       {:reply, %{focus: focus},
        Core.put(socket,
-         panel: Panel.errors(hold(panel, input, keys), socket.assigns.table.entry.model)
+         panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model)
        )}
     else
       _ -> {:reply, %{}, socket}
@@ -55,12 +56,12 @@ defmodule AshDataTable.Live.Core.Picker do
   # is saved. The record is read first, as the person: the picker opens on
   # the record the cell points at now.
   def on({:pick, key, name}, socket) do
-    %{model: model, rows: rows} = socket.assigns.table.entry
+    %{model: model, rows: rows} = Core.table(socket).entry
 
     with %{editable?: true, kind: :reference, reference: reference} = column <-
            Operation.column(model, name),
          %{} = row <- rows[key] do
-      case Record.fetch(model, row.pk, Query.reader_opts(Core.reader(socket.assigns))) do
+      case Record.fetch(model, row.pk, Query.reader_opts(Core.reader(socket))) do
         {:ok, record} ->
           case Map.get(record, reference.source_attribute) do
             # not theirs to see on this record, and so not theirs to change
@@ -98,10 +99,9 @@ defmodule AshDataTable.Live.Core.Picker do
   # Sent by the button of a field of the action panel that holds the key of
   # a related record: the picker opens on top of the panel, on the record
   # the field holds now.
-  def on(
-        {:pick_input, name},
-        %{assigns: %{table: %{entry: %{panel: %{} = panel}}}} = socket
-      ) do
+  def on({:pick_input, name}, socket) when is_map(Current.entry(socket, :panel)) do
+    panel = Core.table(socket).entry.panel
+
     case reference_input(panel, name) do
       nil ->
         {:noreply, socket}
@@ -154,14 +154,13 @@ defmodule AshDataTable.Live.Core.Picker do
   #
   # The row is a claim. Which cell or field it is chosen for is the
   # server's to say, from what the picker was opened for.
-  def on(
-        {:picked, picked},
-        %{assigns: %{table: %{entry: %{picker: %{} = picker}}}} = socket
-      ) do
-    %{model: model, panel: panel} = socket.assigns.table.entry
+  def on({:picked, picked}, socket) when is_map(Current.entry(socket, :picker)) do
+    picker = Core.table(socket).entry.picker
+
+    %{model: model, panel: panel} = Core.table(socket).entry
     named = picked.row
     # what the picker's read action is given: what its argument line holds
-    arguments = picked_with(socket.assigns, picker.reference, picked.arguments)
+    arguments = picked_with(Core.table(socket), picker.reference, picked.arguments)
 
     case picker.for do
       {:cell, key, name} ->
@@ -205,9 +204,9 @@ defmodule AshDataTable.Live.Core.Picker do
              Pick.chosen(
                input.reference,
                named,
-               [arguments: arguments] ++ chooser(socket.assigns)
+               [arguments: arguments] ++ chooser(Core.table(socket))
              ),
-           {:ok, entry} <- entry(input, record, socket.assigns.table.caller.time_zone) do
+           {:ok, entry} <- entry(input, record, Core.table(socket).caller.time_zone) do
         entry
       else
         true -> {"", nil}
@@ -232,7 +231,7 @@ defmodule AshDataTable.Live.Core.Picker do
         {:reply, %{ok: true},
          Core.put(socket,
            picker: nil,
-           panel: Panel.errors(hold(panel, input, keys), socket.assigns.table.entry.model)
+           panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model)
          )}
     end
   end
@@ -262,13 +261,13 @@ defmodule AshDataTable.Live.Core.Picker do
       end)
 
     held = for key <- panel.refs[name], %{row: {_, _} = row} <- [known[key]], do: named(row)
-    opts = [arguments: arguments] ++ chooser(socket.assigns)
+    opts = [arguments: arguments] ++ chooser(Core.table(socket))
 
     added =
       Enum.reduce_while(Enum.uniq_by(rows, &named/1), [], fn row, added ->
         with false <- named(row) in held,
              {:ok, record} <- Pick.chosen(input.reference, row, opts),
-             {:ok, entry} <- entry(input, record, socket.assigns.table.caller.time_zone) do
+             {:ok, entry} <- entry(input, record, Core.table(socket).caller.time_zone) do
           {:cont, added ++ [entry]}
         else
           true -> {:cont, added}
@@ -301,7 +300,7 @@ defmodule AshDataTable.Live.Core.Picker do
         {:reply, %{ok: true},
          Core.put(socket,
            picker: nil,
-           panel: Panel.errors(hold(panel, input, keys), socket.assigns.table.entry.model)
+           panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model)
          )}
     end
   end
@@ -386,7 +385,8 @@ defmodule AshDataTable.Live.Core.Picker do
   # The row the browser named is none of a record this person may read
   # through the picker's read action: nothing is chosen, and the picker
   # stays open and says so.
-  def unavailable(%{assigns: %{table: %{entry: %{picker: picker}}}} = socket) do
+  def unavailable(socket) do
+    %{picker: picker} = Core.table(socket).entry
     message = {:text, :record_gone, []}
 
     socket |> Core.put(picker: %{picker | error: message}) |> Core.say(message)
@@ -425,23 +425,23 @@ defmodule AshDataTable.Live.Core.Picker do
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
   # picker's table is told too (`AshDataTable.Pick.reader/2`).
-  def chooser(assigns), do: picking(assigns) ++ Core.reader(assigns)
+  def chooser(table), do: picking(table) ++ Core.reader(table)
 
-  def picking(assigns), do: [authorize_given: assigns.table.entry.authorize_given]
+  def picking(table), do: [authorize_given: table.entry.authorize_given]
 
   # What the read action of a picker is given, from what the picker's hook
   # says its argument line holds: the line's form, as a form sends it. It
   # comes from the browser, and is taken as the form's event is: by the
   # arguments the picker's table has for this person, and as Ash takes it.
-  defp picked_with(assigns, reference, sent) when is_binary(sent) do
-    reader = Pick.reader(reference, chooser(assigns))
+  defp picked_with(table, reference, sent) when is_binary(sent) do
+    reader = Pick.reader(reference, chooser(table))
 
     model =
       reference.destination
       |> Model.build(choose: reference.choose_action)
       |> Model.for_actor(reader)
-      |> Model.zoned(assigns.table.caller.time_zone)
-      |> Model.defaults(assigns.table.options.page_assigns)
+      |> Model.zoned(table.caller.time_zone)
+      |> Model.defaults(table.options.page_assigns)
 
     form =
       case decoded(sent) do
@@ -455,7 +455,7 @@ defmodule AshDataTable.Live.Core.Picker do
     model.read_arguments
   end
 
-  defp picked_with(_assigns, _reference, _sent), do: %{}
+  defp picked_with(_table, _reference, _sent), do: %{}
 
   defp decoded(sent) do
     Plug.Conn.Query.decode(sent)

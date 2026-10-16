@@ -42,7 +42,7 @@ defmodule AshDataTable.Live.Core.Files do
 
     socket =
       Enum.reduce(file_inputs(panel), socket, fn input, socket ->
-        name = upload_name(socket.assigns.table.entry.id, input)
+        name = upload_name(Core.table(socket).entry.id, input)
 
         # allowed once, and again after a table of the same id closed and
         # gave it up (`AshDataTable.Live.Registry.close/2`); this table's
@@ -57,7 +57,7 @@ defmodule AshDataTable.Live.Core.Files do
                 max_file_size: input.upload.max_file_size
               )
 
-        Core.put(socket, uploads: Enum.uniq([name | socket.assigns.table.entry.uploads]))
+        Core.put(socket, uploads: Enum.uniq([name | Core.table(socket).entry.uploads]))
       end)
 
     Core.put(socket, panel: panel)
@@ -68,7 +68,7 @@ defmodule AshDataTable.Live.Core.Files do
   # Only this table's: the tables of a page share one socket, and a file
   # chosen in another table's open panel is that panel's.
   defp drop_files(socket) do
-    %{spent: spent, uploads: names} = socket.assigns.table.entry
+    %{spent: spent, uploads: names} = Core.table(socket).entry
     uploads = socket.assigns[:uploads] || %{}
 
     Enum.reduce(names, socket, fn name, socket ->
@@ -93,7 +93,7 @@ defmodule AshDataTable.Live.Core.Files do
       Enum.any?(inputs, fn input ->
         match?(
           %{done?: false},
-          entry(upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input))
+          entry(upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input))
         )
       end)
 
@@ -125,7 +125,7 @@ defmodule AshDataTable.Live.Core.Files do
   def attach(_socket, [], files, run), do: run.(files)
 
   def attach(socket, [input | rest], files, run) do
-    case entry(upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input)) do
+    case entry(upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input)) do
       %{done?: true} = entry ->
         consume_uploaded_entry(socket, entry, fn %{path: path} ->
           file = %Plug.Upload{
@@ -154,10 +154,10 @@ defmodule AshDataTable.Live.Core.Files do
     given =
       for input <- file_inputs(panel),
           %{done?: true, ref: ref} <-
-            [entry(upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input))],
+            [entry(upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input))],
           do: ref
 
-    Core.put(socket, spent: MapSet.union(socket.assigns.table.entry.spent, MapSet.new(given)))
+    Core.put(socket, spent: MapSet.union(Core.table(socket).entry.spent, MapSet.new(given)))
   end
 
   # Copies of the files for a run that outlasts the event: temporary files
@@ -171,7 +171,7 @@ defmodule AshDataTable.Live.Core.Files do
   end
 
   def drop_copies(socket) do
-    Enum.each(socket.assigns.table.entry.running_files, &File.rm/1)
+    Enum.each(Core.table(socket).entry.running_files, &File.rm/1)
     Core.put(socket, running_files: [])
   end
 
@@ -181,7 +181,7 @@ defmodule AshDataTable.Live.Core.Files do
     for input <- file_inputs(panel),
         texts =
           upload_errors_of(
-            upload_of(socket.assigns[:uploads], socket.assigns.table.entry.id, input)
+            upload_of(socket.assigns[:uploads], Core.table(socket).entry.id, input)
           ),
         texts != [],
         do: {input.label, texts}
@@ -189,7 +189,9 @@ defmodule AshDataTable.Live.Core.Files do
 
   # Read out when it changes: a file is refused as it is chosen, without
   # the panel's button having been used.
-  def say_refused_files(%{assigns: %{table: %{entry: %{panel: panel}}}} = socket) do
+  def say_refused_files(socket) do
+    %{panel: panel} = Core.table(socket).entry
+
     case refused_files(socket, panel) do
       refused when refused == panel.refused_files ->
         socket

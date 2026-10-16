@@ -11,10 +11,12 @@ defmodule AshDataTable.Live.Core.Url do
   alias AshDataTable.Related
   alias AshDataTable.State
 
+  require AshDataTable.Live.Current, as: Current
+
   # Sent by the form of the argument line when one of its controls changes
   # or is left, and on Enter, with everything the line holds.
   def on({:arguments, form}, socket) do
-    %{state: state, model: model} = socket.assigns.table.entry
+    %{state: state, model: model} = Core.table(socket).entry
 
     # the rows of the arguments that are given value by value, as they stand
     lines =
@@ -30,9 +32,9 @@ defmodule AshDataTable.Live.Core.Url do
   # is added for one more value. An empty row holds no value, so nothing is
   # read for it; focus goes into it.
   def on({:argument_add, named}, socket) do
-    %{id: id, lines: lines} = socket.assigns.table.entry
+    %{id: id, lines: lines} = Core.table(socket).entry
 
-    case listed(socket.assigns.table.entry, named) do
+    case listed(Core.table(socket).entry, named) do
       nil ->
         {:noreply, socket}
 
@@ -51,9 +53,9 @@ defmodule AshDataTable.Live.Core.Url do
   # goes to the row that stands in its place, else to the one before it,
   # else to the button that adds one.
   def on({:argument_remove, named, at}, socket) do
-    %{id: id, state: state, model: model, lines: lines} = socket.assigns.table.entry
+    %{id: id, state: state, model: model, lines: lines} = Core.table(socket).entry
 
-    with {key, rows} <- listed(socket.assigns.table.entry, named),
+    with {key, rows} <- listed(Core.table(socket).entry, named),
          true <- at < length(rows) do
       rows = List.delete_at(rows, at)
       focus = if rows == [], do: "add", else: min(at, length(rows) - 1)
@@ -75,8 +77,8 @@ defmodule AshDataTable.Live.Core.Url do
   # with Ash's message, which is read out. What is left is a change like
   # one of the filters.
   defp reargue(socket, chosen) do
-    %{model: model, state: state} = socket.assigns.table.entry
-    reader = Core.reader(socket.assigns)
+    %{model: model, state: state} = Core.table(socket).entry
+    reader = Core.reader(socket)
 
     {next, model, missing, refused} =
       case Reading.settle(model, chosen, reader) do
@@ -128,7 +130,7 @@ defmodule AshDataTable.Live.Core.Url do
   defp listed(_assigns, _named), do: nil
 
   # A change of the filters is announced once its rows have been read.
-  def refilter(%{assigns: %{table: %{entry: %{state: state}}}} = socket, state), do: socket
+  def refilter(socket, state) when Current.entry(socket, :state) == state, do: socket
 
   # The hook gives the selection up with the filters it was made under, and
   # with it goes what the last run on a selection came to.
@@ -137,20 +139,20 @@ defmodule AshDataTable.Live.Core.Url do
 
   # With the state in the URL the change is a patch, and the new state comes
   # back through `update/2`. Otherwise the component holds it.
-  def go(%{assigns: %{table: %{entry: %{state: state}}}} = socket, state), do: socket
+  def go(socket, state) when Current.entry(socket, :state) == state, do: socket
 
-  def go(%{assigns: %{table: %{options: %{url: url}, entry: %{id: id}}}} = socket, state)
-      when is_binary(url) do
+  def go(socket, state) when is_binary(Current.option(socket, :url)) do
+    %{options: %{url: url}, entry: %{id: id}} = Core.table(socket)
+
     # what the table is limited to stays, whatever else changes
     limit =
-      case socket.assigns.table.entry.related do
+      case Core.table(socket).entry.related do
         nil -> %{}
         %{param: param} -> %{Related.param() => param}
       end
 
     push_patch(socket,
-      to:
-        path(url, id, Map.merge(State.to_params(state, socket.assigns.table.entry.model), limit))
+      to: path(url, id, Map.merge(State.to_params(state, Core.table(socket).entry.model), limit))
     )
   end
 

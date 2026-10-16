@@ -16,6 +16,11 @@ defmodule AshDataTable.Table do
   #     read can turn into "not found".
   #   * `page_assigns`: the assigns of the page, which a default of an asked
   #     argument may be a function of.
+  #   * `target`: where the table's events go, the `phx-target` of its
+  #     parts: the component that draws it (`@myself`).
+  #   * `router`: the router of the page, which says where the host mounts a
+  #     table (the full view, the parent of a table limited to related
+  #     records).
   #
   # A table nested in a row or in a picker is placed by the table it is in:
   # it keeps no state in the URL, has no heading and is no page of its own
@@ -31,11 +36,18 @@ defmodule AshDataTable.Table do
   alias AshDataTable.Caller
   alias AshDataTable.Live.Entry
 
-  @options %{url: nil, heading: false, mounted?: false, page_assigns: %{}}
+  @options %{
+    url: nil,
+    heading: false,
+    mounted?: false,
+    page_assigns: %{},
+    target: nil,
+    router: nil
+  }
 
-  # `authorize?` is the entry's: resolved for each table from its own
-  # resource's domain. The caller keeps what the table on the page was told
-  # (`AshDataTable.Live.Core.update/2`).
+  # `authorize?` is the entry's: as each table was told it
+  # (`authorize_given`), and as it resolved it from its own resource's
+  # domain (`authorize?`).
   @caller [:scope, :actor, :tenant, :time_zone]
 
   @type t :: %__MODULE__{

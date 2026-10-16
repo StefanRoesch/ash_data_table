@@ -21,7 +21,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   # by their keys and by what it names them by: those stay selected. The
   # table is read again, as the page may hold any of the records.
   def handle_async(:bulk, {:ok, outcome}, socket) do
-    %{id: id, model: model, running: action} = socket.assigns.table.entry
+    %{id: id, model: model, running: action} = Core.table(socket).entry
     not_done = Enum.sum(for {_message, count} <- outcome.failures, do: count)
     # what says the same words is one failure, as it is said in this process
     outcome = %{outcome | failures: Text.counted(outcome.failures)}
@@ -52,7 +52,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   # The run itself went down. What it had done by then is not known: the
   # rows stay selected, and the table is read again.
   def handle_async(:bulk, {:exit, reason}, socket) do
-    %{id: id, model: model, running: action} = socket.assigns.table.entry
+    %{id: id, model: model, running: action} = Core.table(socket).entry
 
     Logger.error(
       "ash_data_table: running `#{action.name}` on the selected rows of #{inspect(model.resource)} " <>
@@ -88,7 +88,7 @@ defmodule AshDataTable.Live.Core.Bulk do
              name,
              selection
            ) do
-      question = question(action, selected(selection, socket.assigns.table.entry))
+      question = question(action, selected(selection, Core.table(socket).entry))
 
       if action.panel?,
         do: {:reply, %{panel: true}, open_bulk(socket, action, selection, question)},
@@ -144,22 +144,22 @@ defmodule AshDataTable.Live.Core.Bulk do
   # record. The selection is kept with the panel, as a row's key is with
   # the panel of a row.
   defp open_bulk(socket, action, selection, question) do
-    %{id: id, model: model} = socket.assigns.table.entry
+    %{id: id, model: model} = Core.table(socket).entry
 
     title =
-      case selected(selection, socket.assigns.table.entry) do
+      case selected(selection, Core.table(socket).entry) do
         nil -> {:text, :bulk_on_all, action: action.label}
         count -> {:text, :bulk_on, count: count, action: action.label}
       end
 
     panel =
-      Panel.panel(socket.assigns, fn _input -> nil end, %{
+      Panel.panel(Core.table(socket), fn _input -> nil end, %{
         kind: :bulk,
         action: action,
         key: nil,
         selection: selection,
         question: question,
-        form: Act.open_bulk(model, action, "#{id}-panel", Core.reader(socket.assigns)),
+        form: Act.open_bulk(model, action, "#{id}-panel", Core.reader(socket)),
         inputs: Model.bulk_inputs(action),
         title: title,
         submit: {:text, :run, []}

@@ -36,7 +36,11 @@ defmodule AshDataTable.RegistryTest do
     # a socket as LiveView makes a component's: with its lifecycle, for streams
     socket = %Socket{
       assigns: %{__changed__: %{}, myself: 1},
-      private: %{lifecycle: %Phoenix.LiveView.Lifecycle{}, live_temp: %{}}
+      private: %{
+        lifecycle: %Phoenix.LiveView.Lifecycle{},
+        live_temp: %{},
+        ash_data_table: %{current: :table}
+      }
     }
 
     socket = Phoenix.Component.assign(socket, table: Table.new())
