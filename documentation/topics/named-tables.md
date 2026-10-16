@@ -21,6 +21,8 @@ tables do
     column :name
     column :colour
   end
+
+  # ...
 end
 ```
 
