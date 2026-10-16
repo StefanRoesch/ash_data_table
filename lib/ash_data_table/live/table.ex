@@ -1,5 +1,15 @@
 defmodule AshDataTable.Table do
-  @moduledoc false
+  @moduledoc """
+  A table attached to a LiveView: what `AshDataTable.attach/4` puts under
+  the assign it is given. Pass it to `AshDataTable.attached/1`, which draws
+  it:
+
+      <AshDataTable.attached table={@tasks} streams={@streams} uploads={assigns[:uploads]} />
+
+  It is opaque: only the table changes it, and what it holds may change
+  from one version to the next.
+  """
+
   # The one value a table is held in: what it was told (`options`), who is
   # asking (`caller`, `AshDataTable.Caller`), the table itself (`entry`,
   # `AshDataTable.Live.Entry`) and every table it shows besides (`entries`).
@@ -51,6 +61,7 @@ defmodule AshDataTable.Table do
   # domain (`authorize?`).
   @caller [:scope, :actor, :tenant, :time_zone]
 
+  @typedoc "A table attached to a LiveView."
   @type t :: %__MODULE__{
           options: map,
           caller: Caller.t(),
@@ -65,14 +76,14 @@ defmodule AshDataTable.Table do
             entries: %{},
             pool: %{free: [], next: 0, prefix: nil}
 
-  @doc "A table that was told nothing yet."
+  @doc false
   @spec new() :: t
   def new, do: %__MODULE__{caller: Caller.new(), entry: Entry.new()}
 
-  @doc """
-  The table with the given fields put where each lives: an option, a value
-  of the caller, else a field of the entry. A name none of them has raises.
-  """
+  # The table with the given fields put where each lives: an option, a
+  # value of the caller, else a field of the entry. A name none of them has
+  # raises.
+  @doc false
   @spec put(t, keyword | map) :: t
   def put(%__MODULE__{} = table, fields) do
     Enum.reduce(fields, table, fn

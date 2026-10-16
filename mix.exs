@@ -95,6 +95,7 @@ defmodule AshDataTable.MixProject do
         Extensions: [AshDataTable.Resource, AshDataTable.Domain],
         "In the page": [
           AshDataTable,
+          AshDataTable.Table,
           AshDataTable.Router,
           AshDataTable.Live.Page,
           AshDataTable.NotFoundError

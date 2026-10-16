@@ -9,7 +9,9 @@ defmodule AshDataTable do
 
     * mounted as a page of its own, with one line in the router: see
       `AshDataTable.Router.ash_data_table/3`;
-    * placed in an existing LiveView with `table/1`.
+    * placed in an existing LiveView with `table/1`;
+    * attached to an existing LiveView with `attach/4`, and drawn with
+      `attached/1`.
 
   The table offers only what the resource offers. Sorting, filtering and
   pagination run on the server through the read action; page size and default
