@@ -491,8 +491,6 @@ test("from a line under a row, Up Arrow goes to the column a person was in, or t
 })
 
 test.describe("what is hidden outlives what the server sends", () => {
-  test.use({ writes: true })
-
   test("a sort, a filter, another page, a saved cell and an expanded row", async ({ page, tasks, pushed }) => {
     await tasks.open()
     const hidden = ["status", "priority", "due_on"]
@@ -844,8 +842,6 @@ test.describe("the widths of the columns", () => {
 })
 
 test.describe("what is open in a column when it is hidden", () => {
-  test.use({ writes: true })
-
   test("an editor is left as focus leaves it: what was typed is saved", async ({ page, tasks, pushed }) => {
     await tasks.open()
     const cell = tasks.cell(FIRST, "description")

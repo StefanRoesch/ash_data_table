@@ -72,8 +72,6 @@ test.describe("as the admin", () => {
   })
 
   test.describe("saving", () => {
-    test.use({ writes: true })
-
     test("a row keeps its reference cells when another of its cells is saved", async ({ tasks }) => {
       const project = await tasks.cell(FIRST, "project").textContent()
       const reporter = await tasks.cell(FIRST, "reporter").textContent()

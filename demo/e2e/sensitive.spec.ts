@@ -279,8 +279,6 @@ test.describe("showing a value", () => {
 })
 
 test.describe("editing a sensitive cell", () => {
-  test.use({ writes: true })
-
   test("Enter opens an editor that hides what is typed, and holds nothing; Escape gives it up", async ({
     page,
     pushed,
@@ -404,8 +402,6 @@ test.describe("editing a sensitive cell", () => {
 // asks for it, "Clear", where the cell holds a value and the column can be
 // empty. So has the field of a row action's panel.
 test.describe("emptying a sensitive cell", () => {
-  test.use({ writes: true })
-
   /** Opens the editor of a budget cell and returns its input and its button. */
   async function open(projects: Table, cell: Locator) {
     await cell.focus()
@@ -594,8 +590,6 @@ test.describe("emptying a sensitive cell", () => {
 })
 
 test.describe("emptying a sensitive field of the action panel", () => {
-  test.use({ writes: true })
-
   test("\"Set budget\" has \"Clear\" for a project with a budget, and none for one without", async ({ page }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -738,8 +732,6 @@ test("in German the cell and its button speak German", async ({ page }) => {
 // axe-core on every state this file brings a table into, in both themes.
 for (const theme of ["light", "dark"] as const) {
   test.describe(`axe, in the ${theme} theme`, () => {
-    test.use({ writes: true })
-
     test.beforeEach(async ({ page }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await projectsOf(page).open()

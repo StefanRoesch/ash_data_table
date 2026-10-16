@@ -342,8 +342,6 @@ test.describe("in German", () => {
     })
 
     test.describe("a record that is gone", () => {
-      test.use({ writes: true })
-
       test("says that it is no longer available", async ({ request, tasks }) => {
         const key = await tasks.rowKey(6)
         const title = tasks.cell(key, "title")

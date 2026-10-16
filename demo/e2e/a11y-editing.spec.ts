@@ -80,8 +80,6 @@ test.describe("editing states", () => {
   })
 
   test.describe("a cell the hook marked itself", () => {
-    test.use({ writes: true })
-
     test("the record is gone", async ({ page, request, tasks }) => {
       const title = tasks.cell(SECOND, "title")
       await deleteTask(request, SECOND)
@@ -100,8 +98,6 @@ test.describe("editing states", () => {
 // tables above are checked with them as they are; these are the states that
 // only a component has.
 test.describe("the components of a column", () => {
-  test.use({ writes: true })
-
   for (const theme of ["light", "dark"] as const) {
     test.describe(`in the ${theme} theme`, () => {
       test.beforeEach(async ({ page, tasks }) => {

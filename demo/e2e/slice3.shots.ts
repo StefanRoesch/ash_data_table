@@ -19,8 +19,6 @@ const SECOND = SEED.task.second
 
 mkdirSync(DIR, { recursive: true })
 
-test.use({ writes: true })
-
 async function shot(page: Page, name: string): Promise<void> {
   // the demo's progress bar belongs to no state of a table
   await expect(page.locator("body > canvas")).toBeHidden()

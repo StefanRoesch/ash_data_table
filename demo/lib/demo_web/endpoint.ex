@@ -11,9 +11,25 @@ defmodule DemoWeb.Endpoint do
     same_site: "Lax"
   ]
 
+  # The browser tests (config/e2e.exs): each test runs in a database
+  # transaction of its own, which it starts with `POST /sandbox` and ends
+  # with `DELETE /sandbox`. Its browser sends what the `POST` answered as its
+  # user agent; the plug allows every request with it into that transaction,
+  # and `DemoWeb.E2E.Sandbox` every LiveView, which reads it from the
+  # socket's `connect_info`. As `Phoenix.Ecto.SQL.Sandbox` describes it.
+  @sql_sandbox Application.compile_env(:demo, :sql_sandbox, false)
+
+  if @sql_sandbox do
+    plug Phoenix.Ecto.SQL.Sandbox, at: "/sandbox", repo: Demo.Repo, timeout: 300_000
+  end
+
+  @connect_info if @sql_sandbox,
+                  do: [:user_agent, session: @session_options],
+                  else: [session: @session_options]
+
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: [session: @session_options]],
-    longpoll: [connect_info: [session: @session_options]]
+    websocket: [connect_info: @connect_info],
+    longpoll: [connect_info: @connect_info]
 
   # Serve at "/" the static files from "priv/static" directory.
   #

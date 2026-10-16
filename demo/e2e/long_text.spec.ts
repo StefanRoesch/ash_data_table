@@ -365,8 +365,6 @@ test.describe("the whole text and editing (/comments)", () => {
 })
 
 test.describe("the whole text of a nested table, and of a row that changes", () => {
-  test.use({ writes: true })
-
   const TYPED =
     "Typed under its task, and long enough to be cut off in a table that shows three lines of it: " +
     "one sentence after the other, none of which says much, until the cell has more than it shows. ".repeat(4) +

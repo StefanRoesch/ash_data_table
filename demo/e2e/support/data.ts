@@ -1,27 +1,17 @@
 import { expect, type APIRequestContext } from "@playwright/test"
 
 // The data the tests run on: the demo's standard seed (Demo.Seeds), which
-// gives the same records with the same ids and values every time, in
-// whatever VM it runs: `mix run priv/repo/seeds.exs` when the server starts,
-// and `POST /e2e/seed` in the server afterwards. Only dates move, as they
-// are relative to today, so no test names a date of the seed.
-
-/**
- * Empties the worker's database and seeds it again (half a second). It runs once
- * before the tests (actors.setup.ts) and after every test that says
- * `test.use({ writes: true })` (support/fixtures.ts). The route exists in
- * the e2e environment only (demo/e2e/server).
- */
-export async function reseed(request: APIRequestContext): Promise<void> {
-  const response = await request.post("/e2e/seed")
-  expect(response.status(), "POST /e2e/seed: is the server running in MIX_ENV=e2e?").toBe(200)
-  expect(await response.json()).toMatchObject({ profile: "standard", tasks: SEED.tasks.total })
-}
+// gives the same records with the same ids and values every time: `npm test`
+// seeds the database every worker's own is a copy of, and `./server.sh` its
+// own. Only dates move, as they are relative to today, so no test names a
+// date of the seed. What a test changes, it changes in a database
+// transaction of its own, which is rolled back when it ends (the fixture
+// `sandbox`, support/server.ts): every test starts from the seed.
 
 /**
  * Runs `whileBroken` with the comments out of the database's reach, so that
  * every read of them fails as a database that is down would fail it, and
- * puts them back. Seeding puts them back as well.
+ * puts them back. The end of the test's transaction puts them back as well.
  */
 export async function withCommentsBroken(
   request: APIRequestContext,

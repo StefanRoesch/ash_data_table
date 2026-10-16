@@ -283,8 +283,6 @@ test.describe("two grids on one page", () => {
 })
 
 test.describe("editing", () => {
-  test.use({ writes: true })
-
   test.afterEach(async ({ page }) => {
     // the latency simulator remembers itself in the session storage
     await page.evaluate(() => (window as any).liveSocket?.disableLatencySim())

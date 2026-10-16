@@ -3,6 +3,13 @@ defmodule DemoWeb.Router do
 
   import AshDataTable.Router
 
+  # The browser tests' database transactions (`DemoWeb.E2E.Sandbox`, in the
+  # e2e environment only): the first hook of each live session they visit,
+  # so that the hooks after it read in the test's transaction.
+  @sandbox if Application.compile_env(:demo, :sql_sandbox, false),
+             do: [DemoWeb.E2E.Sandbox],
+             else: []
+
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -55,7 +62,7 @@ defmodule DemoWeb.Router do
 
     # The same actor and tenant on the socket. The table routes go in here.
     # The zone of the browser, for the datetimes of the tables (`DemoWeb.Zone`).
-    live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
+    live_session :default, on_mount: @sandbox ++ [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
       live "/", HomeLive
       # Two tables placed in a LiveView of the demo's own.
       live "/dashboard", DashboardLive
@@ -279,9 +286,7 @@ defmodule DemoWeb.Router do
   end
 
   # For the browser tests (`e2e/`), in the e2e environment only: what a
-  # test's page sent its LiveViews; seeds the database again, so that a
-  # test that edits starts from known data,
-  # deletes a task behind the table's back, and makes the reads of the
+  # test's page sent its LiveViews; deletes a task behind the table's back, and makes the reads of the
   # comments fail; a page whose tables let their rows be selected with
   # nothing to run on them; one whose table is given another actor while
   # it is open; one whose tables nested in each other take files; one
@@ -304,7 +309,6 @@ defmodule DemoWeb.Router do
     end
 
     scope "/e2e" do
-      post "/seed", DemoWeb.E2E.DataController, :seed
       delete "/tasks/:id", DemoWeb.E2E.DataController, :delete_task
       post "/comments/break", DemoWeb.E2E.DataController, :break_comments
       post "/comments/mend", DemoWeb.E2E.DataController, :mend_comments
@@ -313,7 +317,7 @@ defmodule DemoWeb.Router do
     scope "/e2e", DemoWeb.E2E do
       pipe_through :browser
 
-      live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
+      live_session :e2e, on_mount: @sandbox ++ [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
         live "/select", SelectLive
         live "/switch", SwitchLive
         live "/imports", ImportsLive

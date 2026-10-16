@@ -184,8 +184,6 @@ test.describe("the note", () => {
   })
 
   test.describe("saving", () => {
-    test.use({ writes: true })
-
     test("it is saved on the row that was edited, of three that share a task", async ({
       page,
       pushed,

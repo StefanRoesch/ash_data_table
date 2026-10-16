@@ -1,17 +1,10 @@
 import { mkdirSync } from "node:fs"
 import path from "node:path"
 import { ACTOR_KEYS, storageStateOf, switchActor } from "./support/actors"
-import { reseed } from "./support/data"
 import { test as setup } from "./support/server"
 
 // Runs before every spec file (the project `setup` in playwright.config.ts),
-// in a worker of its own. With `npm test` that worker's database is a new
-// copy of the seed and is seeded here once more; a server left running by
-// `./server.sh` (`npm run test:server`) holds whatever the last run left.
-
-setup("the database holds the standard seed", async ({ request }) => {
-  await reseed(request)
-})
+// in a worker of its own.
 
 // The demo has no login: who you are is a user id in the session cookie, put
 // there by the actor switcher. Each actor's cookie is made once, through the

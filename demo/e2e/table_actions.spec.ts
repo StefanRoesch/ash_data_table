@@ -17,12 +17,9 @@ import { Table } from "./support/table"
 // about, and "Import" takes a file, which files.spec.ts is about. Every row
 // has "Copy", a generic action that is given the row's key. In the seed
 // every label is on some task, so no label is unused until a test makes
-// one. These tests change the data: the database is seeded again after
-// each of them (`writes`).
+// one. These tests change the data.
 
 const QUESTION = "Delete every label that no task carries?"
-
-test.use({ writes: true })
 
 let labels: Table
 

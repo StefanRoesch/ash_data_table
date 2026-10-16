@@ -18,7 +18,7 @@ import { params } from "./support/url"
 
 const FIRST = SEED.task.first
 
-test.use({ timezoneId: "Europe/Berlin", writes: true })
+test.use({ timezoneId: "Europe/Berlin" })
 
 /** /tasks as the admin in a browser that is in UTC: what is stored, seen from there. */
 async function inUtc(browser: Browser, baseURL: string | undefined): Promise<Table> {
@@ -102,8 +102,6 @@ test("a filter on a datetime means the times there, and the URL keeps them as ty
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`in the ${theme} theme`, () => {
-    test.use({ writes: false })
-
     test("the page that says its zone, with a datetime editor open", async ({ page, tasks }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await tasks.open()

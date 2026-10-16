@@ -82,8 +82,6 @@ test.describe("row actions and the action panel", () => {
     })
 
     test.describe("a cell the hook marked itself", () => {
-      test.use({ writes: true })
-
       test("the record is gone", async ({ page, request, tasks }) => {
         await tasks.open()
         await deleteTask(request, SECOND)

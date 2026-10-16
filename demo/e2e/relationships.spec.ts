@@ -63,8 +63,6 @@ test.beforeEach(async ({ tasks }) => {
 })
 
 test.describe("the field of an argument that holds several related records", () => {
-  test.use({ writes: true })
-
   test("lists the task's labels in a group named by the argument, each with a button that takes it out, and a button that opens the picker", async ({
     tasks,
   }) => {
@@ -191,8 +189,6 @@ test.describe("the field of an argument that holds several related records", () 
 })
 
 test.describe("the picker for several records, from the keyboard", () => {
-  test.use({ writes: true })
-
   test("Enter on the field's button opens it; Space selects a row and takes it out; Enter on a row chooses nothing; \"Choose\" takes what is selected", async ({
     tasks,
     pushed,
@@ -319,8 +315,6 @@ test.describe("the picker for several records, from the keyboard", () => {
 })
 
 test.describe("on the selected rows", () => {
-  test.use({ writes: true })
-
   test("\"Set labels\" starts with an empty field, and gives every selected task the labels that are chosen", async ({
     tasks,
   }) => {
@@ -374,8 +368,6 @@ test.describe("as the member, on a task that is not theirs", () => {
 })
 
 test.describe("a reference cell that is edited through an argument: the assignee of /deadlines", () => {
-  test.use({ writes: true })
-
   const inDays = (days: number) => new Date(Date.now() + days * 86_400_000).toISOString().slice(0, 10)
 
   test("Enter opens the picker on the person the task is assigned to; a choice saves through the column's action", async ({
@@ -467,8 +459,6 @@ test.describe("in German", () => {
 // axe-core on every state this file brings a table into, in both themes.
 for (const theme of ["light", "dark"] as const) {
   test.describe(`axe, in the ${theme} theme`, () => {
-    test.use({ writes: true })
-
     test.beforeEach(async ({ page, tasks }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await tasks.open()

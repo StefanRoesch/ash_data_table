@@ -358,8 +358,6 @@ test.describe("with the keyboard", () => {
 })
 
 test.describe("the widths outlive what the server sends", () => {
-  test.use({ writes: true })
-
   test("a sort, a filter, another page, a saved cell and an expanded row", async ({ page, tasks }) => {
     await tasks.open()
     const columns = ["title", "status", "priority"]

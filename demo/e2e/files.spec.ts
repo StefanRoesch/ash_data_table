@@ -9,10 +9,7 @@ import { Table } from "./support/table"
 // label of each line of a CSV file. Its panel has a file input, which the
 // block limits to one CSV file of 100 kB at most. The file is sent when
 // "Run" is used, and the action reads it. As the admin, who may run it.
-// These tests change the data: the database is seeded again after each of
-// them (`writes`).
-
-test.use({ writes: true })
+// These tests change the data.
 
 let labels: Table
 

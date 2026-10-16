@@ -14,8 +14,6 @@ import { Table } from "./support/table"
 // is how a portal without its target, or an event the page does not know,
 // shows. As the admin; the tests change the data.
 
-test.use({ writes: true })
-
 const FIRST = SEED.task.first
 const PATH = "/e2e/attached"
 

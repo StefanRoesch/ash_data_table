@@ -161,8 +161,6 @@ test.describe("the portal of a nested table", () => {
 })
 
 test.describe("a row put again under an open nested table", () => {
-  test.use({ writes: true })
-
   test("keeps the tables three levels down, the focus in the deepest, and what is typed into a nested filter", async ({
     browser,
     page,
@@ -204,8 +202,6 @@ test.describe("a row put again under an open nested table", () => {
 })
 
 test.describe("a nested table leaves with what takes its row or line away", () => {
-  test.use({ writes: true })
-
   test("a live delete of its row", async ({ browser, page, tasks }) => {
     await tasks.open()
     const comments = await tasks.openLine(FIRST, "comments")
@@ -303,8 +299,6 @@ test.describe("a nested table leaves with what takes its row or line away", () =
 // A picker's table is an entry of the table it is opened from too, drawn in
 // the picker's dialog, which needs no portal. It closes with the picker.
 test.describe("the table of a picker leaves with its picker", () => {
-  test.use({ writes: true })
-
   /** Opens the picker of a reference cell from the keyboard, and waits for its table. */
   async function openPicker(tasks: Table, key: string, column: string): Promise<Table> {
     await tasks.cell(key, column).focus()

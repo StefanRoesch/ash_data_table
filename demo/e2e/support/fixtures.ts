@@ -1,6 +1,5 @@
 import { expect, type Page } from "@playwright/test"
 import { storageStateOf, type Actor } from "./actors"
-import { reseed } from "./data"
 import { test as base } from "./server"
 import { Table } from "./table"
 
@@ -137,16 +136,9 @@ export class NativeDialogs {
 type Options = {
   /** Who the test is: one of the demo's five actors. The admin unless a file or test says otherwise. */
   actor: Actor
-  /**
-   * Whether the test changes the data: `test.use({ writes: true })`. The
-   * database is seeded again after such a test, passed or failed, so that
-   * every test starts from the seed, in whatever order or selection.
-   */
-  writes: boolean
 }
 
 type Fixtures = {
-  seededAgain: void
   pushed: Sent
   consoleErrors: ConsoleErrors
   nativeDialogs: NativeDialogs
@@ -161,16 +153,6 @@ export const test = base.extend<Options & Fixtures>({
   storageState: async ({ actor }, use) => {
     await use(storageStateOf(actor))
   },
-
-  writes: [false, { option: true }],
-
-  seededAgain: [
-    async ({ writes, request }, use) => {
-      await use()
-      if (writes) await reseed(request)
-    },
-    { auto: true },
-  ],
 
   pushed: [
     async ({ page }, use) => {

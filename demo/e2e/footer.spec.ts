@@ -141,8 +141,6 @@ test.describe("the footer row", () => {
 })
 
 test.describe("after an inline edit", () => {
-  test.use({ writes: true })
-
   test("the number follows what was saved", async ({ tasks }) => {
     await tasks.open(ONE)
     await expect(tasks.rows).toHaveCount(1)

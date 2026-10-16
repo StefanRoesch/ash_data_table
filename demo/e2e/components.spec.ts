@@ -8,12 +8,10 @@ import { Table } from "./support/table"
 // together in the demo's `DemoWeb.Cells.Progress`), which saves when its
 // value changes; "State" and "Priority" are badges; "Estimate hours" has
 // the demo's own component, whose editor saves on Enter or on leaving.
-// These tests save: the database is seeded again after each of them.
+// These tests save.
 
 // still to do, with a progress of 5
 const SECOND = SEED.task.second
-
-test.use({ writes: true })
 
 test.beforeEach(async ({ tasks }) => {
   await tasks.open()

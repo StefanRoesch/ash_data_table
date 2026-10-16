@@ -18,7 +18,7 @@ const FIRST = SEED.task.first
 
 mkdirSync(DIR, { recursive: true })
 
-test.use({ writes: true, viewport: { width: 1500, height: 900 } })
+test.use({ viewport: { width: 1500, height: 900 } })
 
 async function shot(page: Page, name: string): Promise<void> {
   // the demo's progress bar belongs to no state of a table

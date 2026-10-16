@@ -387,9 +387,6 @@ test.describe("keyset pages: /comments", () => {
   })
 
   test.describe("a read that fails after Next was used", () => {
-    // seeding puts the comments back, should the test end before it has
-    test.use({ writes: true })
-
     test("the pagination goes away: focus goes to the grid", async ({ request }) => {
       await comments.next.focus()
 

@@ -6,8 +6,7 @@ import path from "node:path"
 import { test as base } from "@playwright/test"
 
 // The demo the tests run against. Every worker of Playwright has a server
-// and a database to itself, so that the files of the suite run side by side
-// while each test still starts from the seed:
+// and a database to itself, and runs one test at a time on them:
 //
 //   worker 0: http://127.0.0.1:4480, database demo_e2e_0
 //   worker 1: http://127.0.0.1:4481, database demo_e2e_1, and so on.
@@ -17,8 +16,23 @@ import { test as base } from "@playwright/test"
 // (`e2e/server/worker.exs`) copies that into its own database when it starts,
 // which is fast and gives every worker the same records with the same ids.
 //
-// With E2E_BASE_URL set, none of this happens: the tests run one at a time
-// against the server at that address, which is one started by `./server.sh`.
+// Every test runs in a database transaction of its own, which is rolled back
+// when it ends: the fixture `sandbox` below, Ecto's SQL sandbox through
+// `Phoenix.Ecto.SQL.Sandbox` (`DemoWeb.E2E.Sandbox`). So every test starts
+// from the seed, whatever ran before it on its worker, and nothing is seeded
+// again.
+//
+// Why a server per worker, and not one for all of them: a test's
+// transaction keeps what it wrote from the others, but not the rest. A
+// row a test changed is locked until its transaction ends, so a second
+// test that changes it waits that long; the live updates of one test's
+// writes would be announced to the pages of every other (PubSub is the
+// server's); and the memos of /e2e/controlled are in memory (ETS). With a
+// server and a database per worker, no two tests ever share any of that.
+//
+// With E2E_BASE_URL set, none of the servers are started: the tests run one
+// at a time against the server at that address, which is one started by
+// `./server.sh`, each in a transaction of its own as well.
 
 const DEMO = path.join(import.meta.dirname, "..", "..")
 
@@ -151,7 +165,9 @@ async function answers(url: string, child: ChildProcess, log: string): Promise<v
       throw new Error(`The server for ${url} ended as it started:\n${tail(log)}`)
     }
     try {
-      if ((await fetch(url, { signal: AbortSignal.timeout(5_000) })).ok) return
+      // a static file: the pages read the database, which a request outside
+      // every test's transaction may not
+      if ((await fetch(`${url}/robots.txt`, { signal: AbortSignal.timeout(5_000) })).ok) return
     } catch {
       // not listening yet
     }
@@ -232,6 +248,40 @@ function sleep(milliseconds: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, milliseconds))
 }
 
+/**
+ * Starts a database transaction on the server (`POST /sandbox`, the plug
+ * `Phoenix.Ecto.SQL.Sandbox`) and returns its metadata. A browser or a
+ * request that sends it as its user agent works in that transaction.
+ */
+export async function checkout(server: string): Promise<string> {
+  const response = await fetch(`${server}/sandbox`, { method: "POST" })
+  if (response.status !== 200) {
+    throw new Error(`POST ${server}/sandbox answered ${response.status}: is the server running in MIX_ENV=e2e?`)
+  }
+  return response.text()
+}
+
+/** Rolls the transaction of `sandbox` back (`DELETE /sandbox`). */
+export async function checkin(server: string, sandbox: string): Promise<void> {
+  // What it answers is not looked at: a test whose transaction is gone
+  // already (a task of its LiveView ended while it queried, as the pages
+  // closed) has nothing left to roll back.
+  await fetch(`${server}/sandbox`, { method: "DELETE", headers: { "user-agent": sandbox } })
+}
+
+type TestFixtures = {
+  /**
+   * The test's own database transaction: the metadata of its sandbox, which
+   * every browser context and request of the test sends as its user agent
+   * (`userAgent`). Playwright gives the options of a test to every context
+   * the test opens, `browser.newContext()` and the `request` fixture
+   * included, so a second person of a test works in the same transaction
+   * and sees what the first wrote. Rolled back when the test's contexts are
+   * closed.
+   */
+  sandbox: string
+}
+
 type WorkerFixtures = {
   /** The address of this worker's server. */
   server: string
@@ -239,9 +289,10 @@ type WorkerFixtures = {
 
 /**
  * Playwright's `test` with the worker's own server as the `baseURL` of its
- * pages and requests. `support/fixtures.ts` builds the tests' `test` on it.
+ * pages and requests, and each test in a database transaction of its own.
+ * `support/fixtures.ts` builds the tests' `test` on it.
  */
-export const test = base.extend<{}, WorkerFixtures>({
+export const test = base.extend<TestFixtures, WorkerFixtures>({
   server: [
     async ({}, use, workerInfo) => {
       if (EXTERNAL) {
@@ -258,5 +309,20 @@ export const test = base.extend<{}, WorkerFixtures>({
 
   baseURL: async ({ server }, use) => {
     await use(server)
+  },
+
+  sandbox: [
+    async ({ server }, use) => {
+      const sandbox = await checkout(server)
+      await use(sandbox)
+      await checkin(server, sandbox)
+    },
+    { auto: true },
+  ],
+
+  // what the browser sends: the metadata of the test's sandbox, in place of
+  // the user agent of the device (playwright.config.ts)
+  userAgent: async ({ sandbox }, use) => {
+    await use(sandbox)
   },
 })

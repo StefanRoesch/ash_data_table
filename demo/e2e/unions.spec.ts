@@ -7,8 +7,7 @@ import { Table } from "./support/table"
 // A union in a browser: "A union" at /specimens is a number, a text, a
 // shade or an address. Its cell shows the value it holds and nothing of the
 // kind; it is edited in the side panel, where the kind is chosen first and
-// that kind's fields follow. Anyone may edit a specimen. These tests save:
-// the database is seeded again after each of them (`writes`).
+// that kind's fields follow. Anyone may edit a specimen. These tests save.
 
 /** Specimens of the seed by what their union holds: the first rows of /specimens. */
 const NUMBER = { id: "2b63fed9-48ab-4270-aa82-3d81c7cbafae", shown: "969" }
@@ -18,8 +17,6 @@ const ADDRESS = {
 }
 const SHADE = { id: "cbde76d0-28c4-4bdb-84f2-0da2e8db7907", shown: "Light" }
 const TEXT = { id: "77e2dc17-630b-4dd3-afb7-2bd379af9ed5", shown: "chore" }
-
-test.use({ writes: true })
 
 function specimensOf(page: Page): Table {
   return new Table(page, "specimen", "/specimens")

@@ -8,8 +8,7 @@ import { Table } from "./support/table"
 // resource with an address inside it, and its "Milestones", an array of
 // embedded resources, at /projects; and a task's "Repeats", a map that
 // declares its fields, at /tasks. The cell shows the value on one line; it
-// is edited in the side panel, field by field. These tests save: the
-// database is seeded again after each of them (`writes`).
+// is edited in the side panel, field by field. These tests save.
 
 const PORTAL = MAPS.project.customerPortal
 const TOOLS = MAPS.project.internalTools
@@ -18,8 +17,6 @@ const WEEKLY = MAPS.task.weekly
 const ONCE = MAPS.task.once
 
 const TOO_SHORT = "length must be greater than or equal to 2"
-
-test.use({ writes: true })
 
 function projectsOf(page: Page): Table {
   return new Table(page, "project", "/projects")

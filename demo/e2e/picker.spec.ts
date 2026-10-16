@@ -368,8 +368,6 @@ test.describe("the grid in the picker", () => {
 })
 
 test.describe("choosing", () => {
-  test.use({ writes: true })
-
   test("Space selects and \"Choose\" saves: the cell shows the new record's label, and has the focus again", async ({
     tasks,
     pushed,
@@ -615,8 +613,6 @@ test.describe("choosing", () => {
 })
 
 test.describe("in a nested table", () => {
-  test.use({ writes: true })
-
   test("a reference cell of the tasks under a project has its own picker; focus goes into it and comes back to the cell", async ({
     page,
   }) => {
@@ -663,8 +659,6 @@ test.describe("in a nested table", () => {
 })
 
 test.describe("in the action panel", () => {
-  test.use({ writes: true })
-
   test("the field of a key says what the record is called, and its button opens the picker on top of the panel", async ({
     page,
     tasks,
@@ -865,8 +859,6 @@ test.describe("in German", () => {
 // axe-core on every state this file brings a table into, in both themes.
 for (const theme of ["light", "dark"] as const) {
   test.describe(`axe, in the ${theme} theme`, () => {
-    test.use({ writes: true })
-
     test.beforeEach(async ({ page, tasks }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await tasks.open()

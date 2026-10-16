@@ -15,8 +15,7 @@ import { Table } from "./support/table"
 // /tasks as the admin, who may run every action on every task, unless a
 // test says otherwise. Which rows are selected is known to the table's hook
 // alone: the server renders the boxes and learns of a selection when a
-// button of the line is used. The tests that run an action change the data
-// and say so (`writes`).
+// button of the line is used. The tests that run an action change the data.
 
 const FIRST = SEED.task.first
 const SECOND = SEED.task.second
@@ -457,8 +456,6 @@ test.describe("a selection", () => {
   })
 
   test.describe(() => {
-    test.use({ writes: true })
-
     test("lasts through a save of one of its rows, whose row comes back from the server", async ({
       page,
       tasks,
@@ -644,8 +641,6 @@ test.describe("the line above the grid", () => {
 })
 
 test.describe("an action on the selected rows", () => {
-  test.use({ writes: true })
-
   test("asks first, with the number of records; Cancel and Escape run nothing", async ({ page, tasks, pushed }) => {
     await tasks.box(FIRST).click()
     await tasks.box(SECOND).click()
@@ -961,8 +956,6 @@ test.describe("a nested table", () => {
   })
 
   test.describe(() => {
-    test.use({ writes: true })
-
     test("runs its action on its own rows, and stays open", async ({ tasks }) => {
       const comments = await tasks.openLine(FIRST, "comments")
       const keys = await comments.rowKeys()
@@ -983,8 +976,6 @@ test.describe("a nested table", () => {
 })
 
 test.describe("rows with a primary key of two attributes", () => {
-  test.use({ writes: true })
-
   test("are selected and run on like any others", async ({ page }) => {
     const labels = new Table(page, "task_label", "/task_labels")
     await labels.open()
@@ -1142,8 +1133,6 @@ test.describe("tables that are told to let their rows be selected, with nothing 
 })
 
 test.describe("in German", () => {
-  test.use({ writes: true })
-
   test("the boxes, the line, the question and the result", async ({ page, tasks }) => {
     await switchLocale(page, "de")
     await tasks.ready()
@@ -1172,8 +1161,6 @@ test.describe("in German", () => {
 // axe-core on every state this file brings a table into, in both themes.
 for (const theme of ["light", "dark"] as const) {
   test.describe(`axe, in the ${theme} theme`, () => {
-    test.use({ writes: true })
-
     test.beforeEach(async ({ page, tasks }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await tasks.open()

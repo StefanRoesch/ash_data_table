@@ -14,9 +14,7 @@ import { Table } from "./support/table"
 // second as the labels of a task are. /projects has "Assign open tasks" in
 // every row: a generic action that the table gives the row's key, and that
 // takes the key of a person besides. As the admin, who may run both. These
-// tests change the data: the database is seeded again after each of them.
-
-test.use({ writes: true })
+// tests change the data.
 
 const PORTAL = MAPS.project.customerPortal.id
 

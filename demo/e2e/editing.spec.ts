@@ -4,8 +4,7 @@ import { deleteTask, SEED } from "./support/data"
 import { Table } from "./support/table"
 
 // Spec sections 8 and 9: inline editing on /tasks as the admin, who may
-// change every task. These tests save: the database is seeded again after
-// each of them (`writes`).
+// change every task. These tests save.
 
 const FIRST = SEED.task.first
 // still to do, with a progress of 5
@@ -13,8 +12,6 @@ const SECOND = SEED.task.second
 const THIRD = SEED.task.third
 
 const TOO_SHORT = "length must be greater than or equal to 3"
-
-test.use({ writes: true })
 
 test.beforeEach(async ({ tasks }) => {
   await tasks.open()

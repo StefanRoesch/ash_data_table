@@ -304,8 +304,6 @@ for (const theme of ["light", "dark"] as const) {
     })
 
     test.describe("a cell whose save is on its way", () => {
-      test.use({ writes: true })
-
       test.afterEach(async ({ page }) => {
         // the simulator remembers itself in the session storage
         await page.evaluate(() => (window as any).liveSocket?.disableLatencySim())

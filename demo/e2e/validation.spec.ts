@@ -22,8 +22,6 @@ import { Table } from "./support/table"
 const FIRST = SEED.specimens.first
 const WEEKLY = MAPS.task.weekly
 
-test.use({ writes: true })
-
 /** What the browser itself makes of what a control holds. */
 async function validity(control: Locator): Promise<Record<string, boolean>> {
   return control.evaluate((element) => {

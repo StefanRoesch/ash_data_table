@@ -546,8 +546,6 @@ test.describe("filtering in a nested table", () => {
 })
 
 test.describe("editing in a nested table", () => {
-  test.use({ writes: true })
-
   test("a cell is edited and saved as on a page of its own, and the table around it is not read again", async ({
     page,
     pushed,

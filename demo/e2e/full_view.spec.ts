@@ -245,8 +245,6 @@ test.describe("the page a link leads to", () => {
   })
 
   test.describe("saving", () => {
-    test.use({ writes: true })
-
     test("a cell is saved under the limit, and the row keeps its reference cells", async ({ page }) => {
       const tasks = new Table(page, "task", "/tasks")
       await tasks.open(`/tasks?task[of][project][tasks]=${MOBILE_APP}`)

@@ -20,8 +20,6 @@ import { Table } from "./support/table"
 const FIRST = SEED.specimens.first
 const TASK = SEED.task.second
 
-test.use({ writes: true })
-
 /** The counter with that id. */
 function counter(page: Page, id: string): Locator {
   return page.locator(`[id="${id}"]`)

@@ -12,8 +12,7 @@ import { Table } from "./support/table"
 // /tasks as the admin, who may run every action on every task, unless a
 // test says otherwise. A row of it has four actions: "Archive" runs at one
 // click, "Reassign" and "Set progress" open the action panel, and "Destroy"
-// asks first. These tests change the data: the database is seeded again
-// after each of them (`writes`).
+// asks first. These tests change the data.
 
 const FIRST = SEED.task.first
 // still to do, with a progress of 5
@@ -23,8 +22,6 @@ const THIRD = SEED.task.third
 const QUESTION = "Delete this task? This cannot be undone."
 const REFUSED = "You are not allowed to do this."
 const GONE = "This record is no longer available."
-
-test.use({ writes: true })
 
 test.beforeEach(async ({ tasks }) => {
   await tasks.open()

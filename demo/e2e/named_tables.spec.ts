@@ -106,8 +106,6 @@ test.describe("a named table as a page of its own", () => {
 })
 
 test.describe("editing and acting in a named table", () => {
-  test.use({ writes: true })
-
   test("a cell of the board is saved through the board's own update action", async ({ page }) => {
     const table = board(page)
     await table.open()

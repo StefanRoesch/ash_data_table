@@ -53,8 +53,6 @@ const notice = (table: Table) => table.page.locator(`[id="${table.id}-notice"]`)
 const readAgain = (table: Table) => table.page.locator(`[id="${table.id}-read-again"]`)
 
 test.describe("two people on /tasks", () => {
-  test.use({ writes: true })
-
   test("a row the admin changes is updated on the member's page, without a reload", async ({
     browser,
     page,
@@ -279,8 +277,6 @@ test.describe("two people on /tasks", () => {
 })
 
 test.describe("two tables of the comments in one window (/named)", () => {
-  test.use({ writes: true })
-
   test("what is changed in the first shows in the second", async ({ page }) => {
     const first = new Table(page, "comment", "/named")
     const second = new Table(page, "comment_compact", "/named")

@@ -7,8 +7,7 @@ import { Table } from "./support/table"
 // The array columns of /tasks as the admin, who may change every task:
 // "Tags", an array of text with at most five values of two to twenty
 // characters, edited value by value; and "Checks", an array of enum values,
-// edited as multiple choice. These tests save: the database is seeded again
-// after each of them (`writes`).
+// edited as multiple choice. These tests save.
 
 // tags: api, customer, quick-win; checks: Reviewed, Released
 const FIRST = SEED.task.first
@@ -16,8 +15,6 @@ const FIRST = SEED.task.first
 const SECOND = SEED.task.second
 
 const TOO_SHORT = "length must be greater than or equal to 2"
-
-test.use({ writes: true })
 
 test.beforeEach(async ({ tasks }) => {
   await tasks.open()

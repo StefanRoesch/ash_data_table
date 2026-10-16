@@ -206,8 +206,6 @@ test.describe("the member, whose rights depend on the record", () => {
   })
 
   test.describe("saving", () => {
-    test.use({ writes: true })
-
     test.beforeEach(async ({ tasks }) => {
       await tasks.open()
     })
