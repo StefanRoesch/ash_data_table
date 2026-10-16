@@ -338,7 +338,7 @@ The `Live.Core.*` modules are private file splits (`@moduledoc false`, no promis
 | --- | --- | --- | --- |
 | `AshDataTable.Table` | The one value the host holds under one assign: options, `Caller`, the flat registry of entries, the stream-name pool. Opaque; documented read-only fields (`id`, `state` as params, `count`, `total`, `loading?`, `error`) | public, opaque struct (R §5.1, Q16) | New, stage 2: one value per live component, holding the entry of that table; the registry of all tables in stage 5 (F5). Today: the assigns of `mount/1` (`table_component.ex:553-677`) and the process dictionary `@tables` (`:550`) |
 | `AshDataTable.Live.Entry` | One table of the registry (top, nested, picker): model, state, rows index, failed, open rows, panel (with its `AshPhoenix.Form`), picker, selection mode, selected keys (claims, RQ1), live, summary, path, parent key | internal struct | New, stage 2, from today's assigns; the selected keys field in stage 2, used from stage 6 |
-| `AshDataTable.Live.Registry` | Add, find, close by id prefix; reconcile against what is rendered; stream names from a pool; async keys `{:ash_data_table, id, :read}`; upload names `id <> "-file-" <> arg` | internal | New, stage 5. Today: `tidy/1`, `tables/0`, `close/1`, `rendered/1` (`table_component.ex:1349-1437`), `upload_name/2` (`:3907`) |
+| `AshDataTable.Live.Registry` | Add, find, close by path (never by id prefix: closing `comments` must not close `comments_archive`); reconcile against what is rendered; stream names from a pool; async keys `{:ash_data_table, id, :read}`. Upload names stay in `Files.upload_name/2` | internal | New, stage 5. Today: `tidy/1`, `tables/0`, `close/1`, `rendered/1` (`table_component.ex:1349-1437`), `upload_name/2` (`:3907`) |
 | `AshDataTable.Live.Core` | Socket in, socket out, for a table under a given assign: `init`, `handle_event`, `handle_async`, `handle_info`, `handle_params`. Parses the event into an `Intent`, finds the entry, calls the page-value and veto functions with the current assigns, calls `Operation`, applies the outcome to stream and entry, makes the words, sends events | internal | New, stage 3c. Today `mount/1`, `update/2`, `handle_event/3`, `handle_async/3` of the component |
 | `Live.Core.Reading` | Read in place or async, show, put a row, remove a row, the fill and error messages, summaries beside the read | internal | `table_component.ex:1092-1281`, `1605-1691`, `1692-2113` |
 | `Live.Core.Cells` | Save, clear, reveal, refer, discard, dismiss | internal | `2905-3014` and their `handle_event` clauses |
@@ -346,7 +346,7 @@ The `Live.Core.*` modules are private file splits (`@moduledoc false`, no promis
 | `Live.Core.Picker` | Open, choose, cancel; inputs chosen in the panel | internal | `3015-3294` |
 | `Live.Core.Bulk` | Selection actions and the bulk async run; the veto is asked before `start_async` (F9) | internal | `3606-3714`, `handle_async(:bulk, …)` (`:1634-1691`). `in_locale/1` (`:3698`, the locale fix of `d1489d6`) stays until stage 3b makes the run return terms |
 | `Live.Core.Files` | Allow, consume around the action, cancel, drop | internal | `3907-4149` |
-| `Live.Core.Nesting` | Expand, toggle, open a nested entry, portal target, close by prefix | internal | `relate/1`, `build/1`, `nested_model/2`, `creates/1` (`801-953`), `expand`/`toggle` clauses, `close/1` |
+| `Live.Core.Nesting` | Expand, toggle, open a nested entry, portal target, close by path | internal | `relate/1`, `build/1`, `nested_model/2`, `creates/1` (`801-953`), `expand`/`toggle` clauses, `close/1` |
 | `Live.Core.Updates` | Live updates: listen, hold, release, refresh, leave, notice | internal | `1282-1604` |
 | `Live.Core.Url` | Patch the URL; `handle_params` hook | internal | `go/2`, `path/3`, `query_params/1` (`4473-4510`) |
 | `Live.Core.Notify` | Send events to the host, opt-in | internal | New, stage 6 |
@@ -368,7 +368,7 @@ where a part needs a declaration fact), LV. Must not depend on 2b, 4. Pure
 | `Parts.Pagination` | Pages, "Rows per page" | kit part `pagination` | `pagination` `10702`; `pages` `10726` |
 | `Parts.Panel` | The action panel, fields, groups, unions, chosen records; draws from `Present`'s field map, never from an `AshPhoenix.Form` (F1) | kit parts `panel`, `field`, `control` | `panel` `9308`; `field` `9587`; `group` `10008`; `groups` `10077`; `union` `10175`; `members` `10277` |
 | `Parts.Picker` | The picker dialog around a registry entry | kit part `picker` | `picker` `9405` (`picker_reader` stays in the live layer: it builds who is asking — Caller / `Live.Core.Nesting`; stage 1 drift check F6) |
-| `Parts.Related` | Relationship lines, the portal of each open nested table, the full-view link | kit part `line` | `lines` `8977` (stage 1 drift check F5); `related` `10472`; `4549`, `5051-5074` (`nested_reader` stays in the live layer, as `picker_reader`; F6) |
+| `Parts.Related` | Relationship lines, the empty target cell of each open nested table (the wiring draws the portals), the full-view link | kit part `line` | `lines` `8977` (stage 1 drift check F5); `related` `10472`; `4549`, `5051-5074` (`nested_reader` stays in the live layer, as `picker_reader`; F6) |
 | `Parts.Summary` | The footer summaries row | kit part `footer` | `summary` `10859`; `4982-5038` |
 | `Parts.Messages` | Status live region, notice of changes, fill, error, loading, confirm dialog, failure popover, whole-text popover | kit parts `message`, `confirm` | `4633-4651`, `4675-4685`, `5095-5099`, `5116-5153`, `5164-5193` |
 | `Parts.Editors` | Built-in editors: text counter, list editor | kit parts `cell`, `editor` | `count` `11427`; `list` `11488`; `list_item` `11538` |
@@ -624,7 +624,7 @@ and an annotation in each top-level module. Not needed for four parts.
 | `Model` and the topic modules of part 1 | The verifiers and the model use the same rules (`docs/agents/architecture.md`, "The rules of a declaration live in one module per topic"). Sharing them is the point: a declaration that compiles is one the model can build |
 | `Query`, `Record` and the table's read action | The re-read before a write must run the same action, with the same arguments and page values, as the page read (R §11.5: "the re-read … runs the same action with the same arguments as the page read") |
 | `Routes` and the router's metadata format | `Routes` matches the route metadata that `AshDataTable.Router` writes (today `routes.ex:46`, `Phoenix.Router.routes/1`) (F15) |
-| `Live.Registry`, streams, async keys, upload names | One id names all four. Cleanup by id prefix must remove them together, or a portal outlives its row (R §10.3 "the mistake"). Entries are reconciled after every event against the open rows in the page; anything else is closed in the same render, as `close/1` does today (`table_component.ex:1392-1437`) (F11) |
+| `Live.Registry`, streams, async keys, upload names | One entry owns all four: its id names the async keys and the upload names, its stream name comes from the pool. Closing by path must remove them together, or a portal outlives its row (R §10.3 "the mistake"). Entries are reconciled after every event against the open rows in the page; anything else is closed in the same render, as `close/1` does today (`table_component.ex:1392-1437`) (F11) |
 | `Live.Core.Files` and `Act`/`Edit` | LiveView consumes an upload around the action (`consume_uploaded_entry`); the action must run inside it (R §3.1). This keeps uploads in 2b; `Operation` gets a `with_files` function (F9) |
 | `Resource.Notifier` and `Listener` | The message shape and its tag `:ash_data_table_changed` are private between them; a host never matches on them (Q2) |
 
@@ -915,9 +915,9 @@ Notes from the drift check of stage 2 (2026-10-15):
 - [ ] Prove it on one nested table first (task → comments), browser and demo suites green; then the rest.
 - [ ] Fallback (D-events): nested live components inside the library, as today. Use it if a LiveView release breaks portals inside streams, or if the browser tests of the combination cannot be made stable (RQ3).
 - [ ] Nested tables and pickers as registry entries with their own streams, inside today's top-level component (`Live.Core.Nesting`, `Live.Registry`).
-- [ ] `AshDataTable.Live.Registry`: stream names, async keys `{:ash_data_table, id, …}`, upload names, by id.
-- [ ] `Parts.Related` renders portals at the top level, parents first; `Parts.Picker` at page level.
-- [ ] One `close(prefix)`: async cancel, uploads cancelled and disallowed, stream reset, entry removed, stream name back to the pool. The registry reconciles its entries against the open rows in the page after every event (F11).
+- [ ] `AshDataTable.Live.Registry`: stream names from a pool, async keys `{:ash_data_table, id, …}`; upload names stay in `Files`, by id.
+- [ ] The wiring renders one portal per nested table at the top level, parents first; `Parts.Related` renders only the empty target cell; the picker's table is drawn in place, in the slot of `Parts.Picker`.
+- [ ] One close by path: async cancel, uploads cancelled and disallowed, stream reset, entry removed, stream name back to the pool. The registry reconciles its entries against the open rows in the page after every event (F11).
 - [ ] Remove `@tables` (V14).
 - [ ] Remove the nested `live_component`.
 - [ ] `AshDataTable.Test`: read a nested table from its portal; send its events by name. `DemoWeb.TablePage` uses it.
