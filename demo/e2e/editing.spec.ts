@@ -336,9 +336,10 @@ test.describe("saving", () => {
     await tasks.press("Space", "x")
     await expect(billable).toHaveAttribute("data-value", "true")
     await expect(tasks.openEditors).toHaveCount(0)
-    // Space is the key of row selection on a cell, which is the hook's alone
+    // Space is the key of row selection on a cell: what is selected is
+    // sent, and nothing else
     expect(await tasks.selectedKeys()).toEqual([FIRST])
-    expect(await frames.all()).toEqual([])
+    expect(await frames.besides("select")).toEqual([])
 
     await tasks.saves(billable, () => tasks.press("Enter"))
     await expect(billable).toHaveAttribute("data-value", "false")
