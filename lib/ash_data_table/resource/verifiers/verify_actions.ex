@@ -138,7 +138,13 @@ defmodule AshDataTable.Resource.Verifiers.VerifyActions do
     with {:ok, kind, action} <- Acting.offered(dsl, declaration),
          {:ok, _action} <- bulk(dsl, kind, action, declaration),
          [input | _] <-
-           Acting.unusable(dsl, action, declaration.record_argument, declaration.references) do
+           Acting.unusable(
+             dsl,
+             action,
+             declaration.record_argument,
+             declaration.references,
+             Acting.page_names(declaration)
+           ) do
       {:error, no_field(dsl, kind, action, input)}
     end
   end

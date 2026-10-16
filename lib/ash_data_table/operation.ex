@@ -8,12 +8,14 @@ defmodule AshDataTable.Operation do
   #      action, a selection) is a claim, and is looked up in the model and
   #      among the rows of the page. A claim the model does not allow is
   #      refused, and nothing is said (`:refused`);
-  #   2. the veto: the page's `before_action` (stage 6), asked after the
-  #      checks. It can only halt (`{:halted, message}`);
+  #   2. the veto: the page's `before_action`, asked after the checks with
+  #      what they found (`AshDataTable.Request`). It can only halt
+  #      (`{:halted, message}`);
   #   3. the files of the panel, which LiveView holds while the action runs
   #      (`with_files`);
   #   4. the record read again, as the person, and the action run with what
-  #      the page gives it (`AshDataTable.Act`, `AshDataTable.Edit`,
+  #      the page gives it (`page_values`: its context, private arguments and
+  #      page arguments; `AshDataTable.Act`, `AshDataTable.Edit`,
   #      `AshDataTable.Bulk`, which read through `AshDataTable.Record`,
   #      `AshDataTable.Pick` and `AshDataTable.Query`).
   #
@@ -35,6 +37,7 @@ defmodule AshDataTable.Operation do
   alias AshDataTable.Model
   alias AshDataTable.Query
   alias AshDataTable.Record
+  alias AshDataTable.Request
 
   defmodule Input do
     @moduledoc false
@@ -63,10 +66,13 @@ defmodule AshDataTable.Operation do
     #   * `with_files` runs a function with the files of the panel's
     #     uploads, by argument name, while LiveView holds them; for a run on
     #     a selection, with copies the run outlasts the event with;
-    #   * `veto` the page's answer before a write (stage 6), and
-    #     `page_values` what the page gives every action (stage 6): `context`,
-    #     private arguments and page arguments. Until then nobody halts and
-    #     the page gives nothing.
+    #   * `veto` asks the page before a write: a function of the
+    #     `AshDataTable.Request`, which the live layer makes of the page's
+    #     `before_action`, and which answers `:cont` or `{:halt, message}`;
+    #     `page_values` what the page gives every call to Ash
+    #     (`AshDataTable.Query.page_values/0`): `context`, private arguments
+    #     and page arguments. The live layer gives both; the defaults, which
+    #     never halt and give nothing, are for a write without a page.
     defstruct [
       :intent,
       :model,
@@ -79,8 +85,8 @@ defmodule AshDataTable.Operation do
       read?: false,
       offered: %{table: [], bulk: []},
       with_files: &__MODULE__.without_files/1,
-      veto: &__MODULE__.cont/0,
-      page_values: &__MODULE__.nothing/0
+      veto: &__MODULE__.cont/1,
+      page_values: %{context: %{}, private_arguments: %{}, page_arguments: %{}}
     ]
 
     @type t :: %__MODULE__{}
@@ -89,10 +95,7 @@ defmodule AshDataTable.Operation do
     def without_files(run), do: run.(%{})
 
     @doc false
-    def cont, do: :cont
-
-    @doc false
-    def nothing, do: %{context: %{}, private_arguments: %{}, page_arguments: %{}}
+    def cont(_request), do: :cont
   end
 
   defmodule Outcome do
@@ -142,8 +145,8 @@ defmodule AshDataTable.Operation do
     with %{editable?: true} = column <- column(input.model, name),
          true <- Edit.typed?(column, typed),
          %{} = row <- input.rows[key],
-         :cont <- input.veto.() do
-      input.model |> Edit.save(column, row.pk, typed, input.opts) |> edited()
+         :cont <- asked(input, :cell, column, row) do
+      input.model |> Edit.save(column, row.pk, typed, opts(input)) |> edited()
     else
       halted -> halted(halted)
     end
@@ -155,8 +158,8 @@ defmodule AshDataTable.Operation do
     with %{editable?: true} = column <- column(input.model, name),
          true <- Edit.clearable?(column),
          %{} = row <- input.rows[key],
-         :cont <- input.veto.() do
-      input.model |> Edit.clear(column, row.pk, input.opts) |> edited()
+         :cont <- asked(input, :clear, column, row) do
+      input.model |> Edit.clear(column, row.pk, opts(input)) |> edited()
     else
       halted -> halted(halted)
     end
@@ -172,10 +175,10 @@ defmodule AshDataTable.Operation do
     with %{editable?: true, kind: :reference} = column <-
            Enum.find(input.model.columns, &(&1.name == name)),
          %{} = row <- input.rows[key],
-         :cont <- input.veto.() do
+         :cont <- asked(input, :reference, column, row) do
       opts =
         [ask?: not is_nil(column.confirm) and not confirmed?, arguments: arguments] ++
-          input.picking ++ input.opts
+          input.picking ++ opts(input)
 
       case Edit.refer(input.model, column, row.pk, named, opts) do
         :changed -> {:ask, column.confirm}
@@ -200,7 +203,7 @@ defmodule AshDataTable.Operation do
   def reveal(%Input{intent: {:reveal, key, name}, model: model} = input) do
     with %{sensitive?: true} = column <- column(model, name),
          %{} = row <- input.rows[key] do
-      opts = Query.reader_opts(input.opts)
+      opts = opts(input)
 
       with {:ok, record} <- Record.fetch(model, row.pk, opts),
            {:ok, record} <- with_column(model, column, record, opts) do
@@ -232,8 +235,8 @@ defmodule AshDataTable.Operation do
   def run(%Input{intent: {:act, key, name}} = input) do
     with %Model.Action{panel?: false} = action <- action(input.model.actions, name),
          %{} = row <- input.rows[key],
-         :cont <- input.veto.() do
-      input.model |> Act.run(action, row.pk, input.opts) |> ran()
+         :cont <- asked(input, :row, action, key: row.pk) do
+      input.model |> Act.run(action, row.pk, opts(input)) |> ran()
     else
       halted -> halted(halted)
     end
@@ -242,8 +245,8 @@ defmodule AshDataTable.Operation do
   def run(%Input{intent: {event, name}} = input) when event in [:table_act, :table_run] do
     with %Model.Action{panel?: false} = action <- table_action(input, name),
          true <- event == :table_run or is_nil(action.confirm),
-         :cont <- input.veto.() do
-      input.model |> Act.run_generic(action, %{}, input.opts) |> ran()
+         :cont <- asked(input, :table, action) do
+      input.model |> Act.run_generic(action, %{}, opts(input)) |> ran()
     else
       halted -> halted(halted)
     end
@@ -267,9 +270,9 @@ defmodule AshDataTable.Operation do
              &(&1.name == name and &1.editable? and Model.group?(&1))
            ),
          %{} = row <- input.rows[key],
-         :cont <- input.veto.() do
+         :cont <- asked(input, :map_cell, column, row) do
       input.with_files.(fn _files ->
-        case Edit.put(input.model, column, field, row.pk, params, panel.form.id, input.opts) do
+        case Edit.put(input.model, column, field, row.pk, params, panel.form.id, opts(input)) do
           {:ok, record} -> {:ok, %Outcome{record: record}}
           {:error, %AshPhoenix.Form{} = form} -> {:error, %Failure{form: form}}
           {:error, nil, message} -> failed(nil, message)
@@ -282,7 +285,7 @@ defmodule AshDataTable.Operation do
 
   defp submit(:row, %{key: key, action: action} = panel, params, input) do
     with %{} = row <- input.rows[key],
-         :cont <- input.veto.() do
+         :cont <- asked(input, :row, action, key: row.pk) do
       input.with_files.(fn files ->
         opts = [files: files, cleared: MapSet.to_list(panel.cleared)] ++ chooser(input)
 
@@ -297,7 +300,7 @@ defmodule AshDataTable.Operation do
 
   defp submit(:table, %{action: action} = panel, params, input) do
     with %Model.Action{} = action <- table_action(input, Atom.to_string(action.name)),
-         :cont <- input.veto.() do
+         :cont <- asked(input, :table, action) do
       input.with_files.(fn files ->
         input.model
         |> Act.submit_generic(action, params, files, panel.form.id, chooser(input))
@@ -312,7 +315,7 @@ defmodule AshDataTable.Operation do
   # to: by that row's own value, read again now, as the person. Nothing the
   # form sends can say otherwise.
   defp submit(:create, %{action: action} = panel, params, input) do
-    case input.veto.() do
+    case asked(input, :create, action) do
       :cont ->
         input.with_files.(fn files ->
           case link(input, action) do
@@ -341,7 +344,7 @@ defmodule AshDataTable.Operation do
   # is said at its field with the panel left open. Everything else an
   # action says depends on the record, and is said when it has run.
   defp submit(:bulk, %{action: action, selection: selection} = panel, params, input) do
-    case input.veto.() do
+    case asked(input, :bulk, action, selection: selected(selection)) do
       :cont ->
         input.with_files.(fn files ->
           form = Act.validate(panel.form, panel.inputs, params, files, panel.time_zone)
@@ -376,7 +379,7 @@ defmodule AshDataTable.Operation do
   def bulk(%Input{intent: {:bulk_run, name, selection}} = input) do
     with {:ok, %Model.Action{panel?: false} = action, selection} <-
            bulk_action(input, name, selection),
-         :cont <- input.veto.() do
+         :cont <- asked(input, :bulk, action, selection: selected(selection)) do
       start(input, action, selection, %{}, %{})
     else
       halted -> halted(halted)
@@ -395,7 +398,7 @@ defmodule AshDataTable.Operation do
         parent_key: parent.key,
         parent_authorize?: parent.authorize?,
         parent_arguments: parent.arguments
-      ] ++ input.opts
+      ] ++ opts(input)
 
     model = input.model
     {:start, fn -> Bulk.run(model, action, selection, given, opts) end, files}
@@ -417,9 +420,9 @@ defmodule AshDataTable.Operation do
     via = input.model.via
 
     opts =
-      input.opts
-      |> Query.reader_opts()
-      |> Keyword.update!(:authorize?, &(&1 or parent.authorize?))
+      input
+      |> opts()
+      |> Keyword.update(:authorize?, true, &(&1 or parent.authorize?))
 
     case Query.get(via.source, via.source_read_action, parent.key, parent.arguments, opts) do
       {:ok, %_{} = row} ->
@@ -438,7 +441,45 @@ defmodule AshDataTable.Operation do
   # Who reads what a picker reads, for the keys a panel holds: with what the
   # picker's read action was given when each was chosen.
   defp chooser(%Input{panel: panel} = input),
-    do: [picked_with: panel.picked_with] ++ input.picking ++ input.opts
+    do: [picked_with: panel.picked_with] ++ input.picking ++ opts(input)
+
+  # Who asks, with what the page gives every call to Ash.
+  defp opts(%Input{} = input), do: Keyword.put(input.opts, :page_values, input.page_values)
+
+  # Asks the veto, with what the checks found: the action, and the column,
+  # row or selection it is asked for.
+  defp asked(input, from, %Model.Column{} = column, row) do
+    veto(input, %Request{
+      resource: input.model.resource,
+      action: column.update_action,
+      type: :update,
+      from: from,
+      column: column.name,
+      key: row.pk
+    })
+  end
+
+  defp asked(input, from, %Model.Action{} = action, more) do
+    veto(
+      input,
+      struct!(
+        %Request{
+          resource: input.model.resource,
+          action: action.name,
+          type: action.type,
+          from: from
+        },
+        more
+      )
+    )
+  end
+
+  defp asked(input, from, %Model.Action{} = action), do: asked(input, from, action, [])
+
+  defp veto(input, %Request{} = request), do: input.veto.(request)
+
+  defp selected(:all), do: :all
+  defp selected({:rows, rows}), do: rows
 
   defp edited({:ok, record}), do: {:ok, %Outcome{record: record}}
 

@@ -61,7 +61,10 @@ defmodule AshDataTable.Live.Core.Reading do
       Core.table(socket).entry
 
     opts = Core.reader(socket)
-    read = {model, state, opts, key, arguments}
+
+    # what the page gives is in the read, and not in what decides whether to
+    # read again: `AshDataTable.refresh/2` is how a page reads with new values
+    read = {model, state, Keyword.delete(opts, :page_values), key, arguments}
 
     # The records related to one record are read through that record: those
     # of a nested table, and those a URL limits a table of its own to.
@@ -153,7 +156,7 @@ defmodule AshDataTable.Live.Core.Reading do
       Core.table(socket).entry
 
     opts = read_opts(socket)
-    of = {model, %{state | sort: nil}, opts, parent}
+    of = {model, %{state | sort: nil}, Keyword.delete(opts, :page_values), parent}
     socket = Core.put(socket, summary_due: nil)
 
     if due == :changed and of == Core.table(socket).entry.summed do
@@ -193,12 +196,12 @@ defmodule AshDataTable.Live.Core.Reading do
   # What a read of the table is given besides who is asking: for a nested
   # table, how the row it belongs to is read.
   def read_opts(socket) do
-    %{entry: entry} = table = Core.table(socket)
+    %{entry: entry} = Core.table(socket)
 
     [
       parent_authorize?: entry.parent_authorize?,
       parent_arguments: entry.parent_arguments
-    ] ++ Core.reader(table)
+    ] ++ Core.reader(socket)
   end
 
   # A read that came back, or went down, while the table waits for an

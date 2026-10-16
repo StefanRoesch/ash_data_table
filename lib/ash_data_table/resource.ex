@@ -744,6 +744,21 @@ defmodule AshDataTable.Resource do
     schema: AshDataTable.Resource.Reference.schema()
   }
 
+  @page_argument %Spark.Dsl.Entity{
+    name: :page_argument,
+    describe: """
+    A public argument of the action that the page fills: the value comes from the page's `page_arguments` (an option of `AshDataTable.attach/4` and an attribute of `<AshDataTable.table>`), and the action panel never asks for it. Nothing a person sends replaces it; a page that gives no value raises when the action opens or runs.
+
+    For row actions and table actions, also when they run on a selection, where every record is given the same value. The create action and the update action of a column are not `action`s: they take what the page gives through `private_arguments`, for an argument they declare `public?: false`.
+    """,
+    examples: ["page_argument :assignee_id"],
+    target: AshDataTable.Resource.PageArgument,
+    args: [:name],
+    # No `identifier`, for the reason given at `ask`: an argument named twice
+    # is said with the action (`AshDataTable.Resource.Acting`).
+    schema: AshDataTable.Resource.PageArgument.schema()
+  }
+
   @action %Spark.Dsl.Entity{
     name: :action,
     describe: """
@@ -758,6 +773,8 @@ defmodule AshDataTable.Resource do
     A generic action that takes the primary key of a record as an argument is a row action when `record_argument` names that argument: the table gives it the key of the row.
 
     An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
+
+    An argument that the page fills, and that nobody types, is a `page_argument`.
     """,
     examples: [
       "action :archive",
@@ -787,12 +804,17 @@ defmodule AshDataTable.Resource do
       action :hand_over do
         reference :to_id, MyApp.Accounts.User
       end
+      """,
+      """
+      action :assign do
+        page_argument :assignee_id
+      end
       """
     ],
     target: AshDataTable.Resource.Action,
     args: [:name],
     identifier: :name,
-    entities: [references: [@reference]],
+    entities: [references: [@reference], page_arguments: [@page_argument]],
     schema: AshDataTable.Resource.Action.schema()
   }
 

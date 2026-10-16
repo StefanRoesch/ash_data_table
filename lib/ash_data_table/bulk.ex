@@ -118,13 +118,15 @@ defmodule AshDataTable.Bulk do
   def run(%Model{} = model, %Action{bulk?: true, type: type} = action, selection, input, opts)
       when type in [:update, :destroy, :action] and is_map(input) do
     {keys, unnamed} = named(model, selection, opts)
-    reader = Query.reader_opts(opts)
+
+    # what the page gives the action itself goes to every record alike
+    input = Map.merge(input, Act.from_page(action, opts))
 
     outcome =
       model
       |> batches(keys, opts)
       |> Enum.reduce(%{done: 0, ran: MapSet.new(), failures: []}, fn records, outcome ->
-        act(model, action, records, input, reader, outcome)
+        act(model, action, records, input, opts, outcome)
       end)
 
     failed = Enum.reject(keys, &MapSet.member?(outcome.ran, written(model, &1)))
@@ -190,16 +192,16 @@ defmodule AshDataTable.Bulk do
   end
 
   # Runs the action on some records, and counts what became of them.
-  defp act(_model, _action, [], _input, _reader, outcome), do: outcome
+  defp act(_model, _action, [], _input, _opts, outcome), do: outcome
 
   # A generic action, once per record: see "A generic action" above.
-  defp act(model, %Action{type: :action} = action, records, input, reader, outcome) do
+  defp act(model, %Action{type: :action} = action, records, input, opts, outcome) do
     Enum.reduce(records, outcome, fn record, outcome ->
       given = Map.merge(input, Act.given(action, Map.take(record, model.primary_key)))
 
       ran =
         rescued(model, {:error, {:text, :action_failed, []}}, fn ->
-          Act.run_generic(model, action, given, reader)
+          Act.run_generic(model, action, given, opts)
         end)
 
       case ran do
@@ -216,7 +218,7 @@ defmodule AshDataTable.Bulk do
     end)
   end
 
-  defp act(model, action, records, input, reader, outcome) do
+  defp act(model, action, records, input, opts, outcome) do
     opts =
       [
         resource: model.resource,
@@ -227,7 +229,7 @@ defmodule AshDataTable.Bulk do
         stop_on_error?: false,
         return_records?: true,
         notify?: true
-      ] ++ reader
+      ] ++ Query.action_opts(opts, model.resource, action.name)
 
     result =
       rescued(model, %Ash.BulkResult{status: :error, records: [], errors: []}, fn ->
@@ -237,7 +239,8 @@ defmodule AshDataTable.Bulk do
         end
       end)
 
-    ran = for record <- result.records || [], do: written(model, record)
+    records = result.records || []
+    ran = for record <- records, do: written(model, record)
 
     # One error per record that was refused. A record that neither came
     # back nor has an error was changed or deleted by somebody else between

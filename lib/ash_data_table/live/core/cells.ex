@@ -95,7 +95,7 @@ defmodule AshDataTable.Live.Core.Cells do
             end
 
           panel =
-            Panel.panel(Core.table(socket), &Map.get(record, &1.name), %{
+            Panel.panel(socket, &Map.get(record, &1.name), %{
               kind: :cell,
               # the column's update action, as the panel knows an action
               action: %Model.Action{

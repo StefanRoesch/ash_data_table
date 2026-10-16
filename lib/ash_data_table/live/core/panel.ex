@@ -55,7 +55,7 @@ defmodule AshDataTable.Live.Core.Panel do
     case Operation.table_action(Core.operation(socket, {:table_act, name}), name) do
       %Model.Action{panel?: true} = action ->
         panel =
-          panel(Core.table(socket), & &1.default, %{
+          panel(socket, & &1.default, %{
             kind: :table,
             action: action,
             key: nil,
@@ -204,7 +204,7 @@ defmodule AshDataTable.Live.Core.Panel do
     case Operation.link(Core.operation(socket, :create), action) do
       {:ok, given} ->
         panel =
-          panel(Core.table(socket), & &1.default, %{
+          panel(socket, & &1.default, %{
             kind: :create,
             action: action,
             key: nil,
@@ -251,7 +251,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # the entry LiveView knew the file by that it was given, nil for none
   # (`file_errors/3`), and `refused_files` what was last read out of the
   # files LiveView does not take.
-  def panel(table, held, panel) do
+  def panel(socket, held, panel) do
+    table = Core.table(socket)
     related = Map.get(panel, :related, %{})
 
     started =
@@ -266,14 +267,14 @@ defmodule AshDataTable.Live.Core.Panel do
                   do: entry
 
             {:argument, :error} ->
-              for value <- List.wrap(input.default), do: known(table, input, value)
+              for value <- List.wrap(input.default), do: known(socket, input, value)
 
             {:attribute, _none} ->
               value = held.(input)
 
               if is_nil(value) or is_struct(value, Ash.ForbiddenField),
                 do: [],
-                else: [known(table, input, value)]
+                else: [known(socket, input, value)]
           end
 
         # one record where the field holds one: several that are related now
@@ -325,8 +326,10 @@ defmodule AshDataTable.Live.Core.Panel do
   # A record a field starts with, by the key the field holds for it: read as
   # the person, through the picker's read action, for what it is called.
   # One they may not read there is held all the same, and called nothing.
-  defp known(table, input, value) do
-    with {:ok, record} <- Pick.current(input.reference, value, Picker.chooser(table)),
+  defp known(socket, input, value) do
+    table = Core.table(socket)
+
+    with {:ok, record} <- Pick.current(input.reference, value, Picker.chooser(socket)),
          {:ok, entry} <- Picker.entry(input, record, table.caller.time_zone) do
       entry
     else
@@ -481,7 +484,7 @@ defmodule AshDataTable.Live.Core.Panel do
           end
 
         panel =
-          panel(Core.table(socket), held, %{
+          panel(socket, held, %{
             kind: :row,
             action: action,
             key: key,

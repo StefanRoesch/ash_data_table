@@ -60,7 +60,8 @@ defmodule AshDataTable.Table do
   # `authorize?` is the entry's: as each table was told it
   # (`authorize_given`), and as it resolved it from its own resource's
   # domain (`authorize?`).
-  @caller [:scope, :actor, :tenant, :time_zone]
+  @caller [:scope, :actor, :tenant, :time_zone] ++
+            [:context, :private_arguments, :page_arguments, :before_action]
 
   @typedoc "A table attached to a LiveView."
   @type t :: %__MODULE__{

@@ -580,7 +580,7 @@ also follows what others change:
     end
 
 The resource then announces every create, update and destroy
-(`AshDataTable.Notifier`) through the `Phoenix.PubSub` server its domain
+(`AshDataTable.Resource.Notifier`) through the `Phoenix.PubSub` server its domain
 names (`pub_sub MyApp.PubSub` in the domain's `table` block:
 `AshDataTable.Domain`), and every table of the resource listens: on a page,
 placed in a LiveView, nested in a row, and in a picker. An announcement
@@ -607,6 +607,7 @@ How the resource is presented to people as a table.
  * [relationship](#table-relationship)
  * [action](#table-action)
    * reference
+   * page_argument
  * [argument](#table-argument)
  * [upload](#table-upload)
 
@@ -871,9 +872,12 @@ A generic action that takes the primary key of a record as an argument is a row 
 
 An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
 
+An argument that the page fills, and that nobody types, is a `page_argument`.
+
 
 ### Nested DSLs
  * [reference](#table-action-reference)
+ * [page_argument](#table-action-page_argument)
 
 
 ### Examples
@@ -917,6 +921,13 @@ end
 ```
 action :hand_over do
   reference :to_id, MyApp.Accounts.User
+end
+
+```
+
+```
+action :assign do
+  page_argument :assignee_id
 end
 
 ```
@@ -979,6 +990,41 @@ reference :label_ids, MyApp.Tracker.Label
 ### Introspection
 
 Target: `AshDataTable.Resource.Reference`
+
+### table.action.page_argument
+```elixir
+page_argument name
+```
+
+
+A public argument of the action that the page fills: the value comes from the page's `page_arguments` (an option of `AshDataTable.attach/4` and an attribute of `<AshDataTable.table>`), and the action panel never asks for it. Nothing a person sends replaces it; a page that gives no value raises when the action opens or runs.
+
+For row actions and table actions, also when they run on a selection, where every record is given the same value. The create action and the update action of a column are not `action`s: they take what the page gives through `private_arguments`, for an argument they declare `public?: false`.
+
+
+
+
+### Examples
+```
+page_argument :assignee_id
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#table-action-page_argument-name){: #table-action-page_argument-name .spark-required} | `atom` |  | The argument: a public argument of the action, other than its `record_argument`. The page gives its value in `page_arguments`; nothing a person types replaces it. |
+
+
+
+
+
+
+### Introspection
+
+Target: `AshDataTable.Resource.PageArgument`
 
 
 
@@ -1091,6 +1137,7 @@ A resource has one default table, with or without a `table` block, and any numbe
    * relationship
    * action
      * reference
+     * page_argument
    * argument
    * upload
 
@@ -1136,6 +1183,7 @@ A `relationship` of another table names it to nest it (`table :compact`), the ro
  * [relationship](#tables-table-relationship)
  * [action](#tables-table-action)
    * reference
+   * page_argument
  * [argument](#tables-table-argument)
  * [upload](#tables-table-upload)
 
@@ -1394,9 +1442,12 @@ A generic action that takes the primary key of a record as an argument is a row 
 
 An argument that holds the key of a record of another resource is chosen in the picker when a `reference` says which resource that is.
 
+An argument that the page fills, and that nobody types, is a `page_argument`.
+
 
 ### Nested DSLs
  * [reference](#tables-table-action-reference)
+ * [page_argument](#tables-table-action-page_argument)
 
 
 ### Examples
@@ -1440,6 +1491,13 @@ end
 ```
 action :hand_over do
   reference :to_id, MyApp.Accounts.User
+end
+
+```
+
+```
+action :assign do
+  page_argument :assignee_id
 end
 
 ```
@@ -1502,6 +1560,41 @@ reference :label_ids, MyApp.Tracker.Label
 ### Introspection
 
 Target: `AshDataTable.Resource.Reference`
+
+### tables.table.action.page_argument
+```elixir
+page_argument name
+```
+
+
+A public argument of the action that the page fills: the value comes from the page's `page_arguments` (an option of `AshDataTable.attach/4` and an attribute of `<AshDataTable.table>`), and the action panel never asks for it. Nothing a person sends replaces it; a page that gives no value raises when the action opens or runs.
+
+For row actions and table actions, also when they run on a selection, where every record is given the same value. The create action and the update action of a column are not `action`s: they take what the page gives through `private_arguments`, for an argument they declare `public?: false`.
+
+
+
+
+### Examples
+```
+page_argument :assignee_id
+```
+
+
+
+### Arguments
+
+| Name | Type | Default | Docs |
+|------|------|---------|------|
+| [`name`](#tables-table-action-page_argument-name){: #tables-table-action-page_argument-name .spark-required} | `atom` |  | The argument: a public argument of the action, other than its `record_argument`. The page gives its value in `page_arguments`; nothing a person types replaces it. |
+
+
+
+
+
+
+### Introspection
+
+Target: `AshDataTable.Resource.PageArgument`
 
 
 

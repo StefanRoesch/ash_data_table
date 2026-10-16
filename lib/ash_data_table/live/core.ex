@@ -181,7 +181,8 @@ defmodule AshDataTable.Live.Core do
           assigns,
           [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
-            [:select, :choose, :page_assigns, :parent_arguments]
+            [:select, :choose, :page_assigns, :parent_arguments] ++
+            [:context, :private_arguments, :page_arguments, :before_action]
         )
       )
 
@@ -237,7 +238,7 @@ defmodule AshDataTable.Live.Core do
     # URL is every sort, filter and page change; it costs no query.
     model =
       table(socket).entry.built.model
-      |> Model.for_actor(reader(table(socket)))
+      |> Model.for_actor(reader(socket))
       |> Model.zoned(table(socket).caller.time_zone)
       |> in_words()
       |> Model.defaults(page_assigns(socket))
@@ -246,7 +247,7 @@ defmodule AshDataTable.Live.Core do
     # here and before every read: the model then holds what the read action
     # and the calculations are given. What Ash refuses is not kept.
     {state, model, missing, refused} =
-      Reading.settle(model, current_state(table(socket), model), reader(table(socket)))
+      Reading.settle(model, current_state(table(socket), model), reader(socket))
 
     # what was refused before is shown for as long as nothing else has
     # taken its place
@@ -482,7 +483,10 @@ defmodule AshDataTable.Live.Core do
   # A table that follows live updates also says which listener is its own
   # (`origin`): what it changes itself is not announced to it, as it shows
   # what its action returned (`AshDataTable.Query.reader_opts/1`).
-  def reader(%Phoenix.LiveView.Socket{} = socket), do: reader(table(socket))
+  # Who is asking, with what the page gives every call to Ash for the table
+  # the callback works on (`values/1`).
+  def reader(%Phoenix.LiveView.Socket{} = socket),
+    do: reader(table(socket)) ++ [page_values: values(socket)]
 
   def reader(%Table{} = table) do
     # with what the table resolved of `authorize?` for itself
@@ -556,21 +560,94 @@ defmodule AshDataTable.Live.Core do
     end)
   end
 
-  # What a default of an asked argument is given (D9): the assigns the tag
-  # was given, or for a table attached to a LiveView its assigns as they are
-  # now, as LiveView gives them, without the documented assigns of LiveView
-  # (`flash`, `live_action`, `streams`, `uploads`) and without any table.
+  # What a default of an asked argument and a function of the page are
+  # given (stage 4 D9, stage 6 D5): the assigns the tag was given, or for a
+  # table attached to a LiveView its assigns as they are now, as LiveView
+  # gives them (`socket.assigns`, a field of `Phoenix.LiveView.Socket.t`).
   def page_assigns(socket) do
     case table(socket).options.page_assigns do
-      :socket ->
-        socket.assigns
-        |> Map.drop([:flash, :live_action, :streams, :uploads])
-        |> Map.reject(fn {_name, value} -> is_struct(value, Table) end)
-
-      assigns ->
-        assigns
+      :socket -> socket.assigns
+      assigns -> assigns
     end
   end
+
+  # What the page gives every call to Ash for the table the callback works
+  # on, as its functions say now (stage 6 D5): `context`, `private_arguments`
+  # and `page_arguments`, each a map, or a function of the page's assigns and
+  # of which table asks (`%{table: id, path: path, resource: resource}`).
+  # Called in the LiveView's process, before any read or write starts; a
+  # change of what they return reads nothing again by itself.
+  def values(socket) do
+    %{caller: caller, entry: entry} = table(socket)
+    assigns = page_assigns(socket)
+    ref = %{table: entry.id, path: entry.path, resource: entry.resource}
+
+    %{
+      context: value(caller.context, :context, assigns, ref),
+      private_arguments: value(caller.private_arguments, :private_arguments, assigns, ref),
+      page_arguments: value(caller.page_arguments, :page_arguments, assigns, ref)
+    }
+  end
+
+  defp value(nil, _name, _assigns, _ref), do: %{}
+  defp value(%{} = given, _name, _assigns, _ref), do: given
+
+  defp value(fun, name, assigns, ref) do
+    case called(name, fn ->
+           if is_function(fun, 1), do: fun.(assigns), else: fun.(assigns, ref)
+         end) do
+      %{} = given ->
+        given
+
+      other ->
+        raise ArgumentError,
+              "the `#{name}` function of the table returned #{inspect(other, limit: 5)}; it " <>
+                "returns a map"
+    end
+  end
+
+  defp called(name, fun) do
+    fun.()
+  rescue
+    error ->
+      reraise ArgumentError,
+              [
+                message:
+                  "the `#{name}` function of the table raised: " <> Exception.message(error)
+              ],
+              __STACKTRACE__
+  end
+
+  # The page's veto, as `AshDataTable.Operation` asks it (stage 6 D9): a
+  # function of the request, which holds the page's assigns as they are now
+  # and says which table asks. It answers `:cont` or `{:halt, message}`;
+  # any other answer raises, as a veto that answers `:ok` would otherwise
+  # refuse every write without a word.
+  def veto(socket) do
+    %{caller: %{before_action: before}, entry: entry} = table(socket)
+    assigns = page_assigns(socket)
+
+    fn request ->
+      request = %{request | table: entry.id, path: entry.path}
+
+      case answer(before, request, assigns) do
+        :cont ->
+          :cont
+
+        {:halt, message} when is_binary(message) ->
+          {:halt, message}
+
+        other ->
+          raise ArgumentError,
+                "the `before_action` of the table answered #{inspect(other, limit: 5)}; it " <>
+                  "answers `:cont`, or `{:halt, message}` with the message as a string"
+      end
+    end
+  end
+
+  defp answer(nil, _request, _assigns), do: :cont
+  defp answer(fun, request, _assigns) when is_function(fun, 1), do: fun.(request)
+  defp answer(fun, request, assigns), do: fun.(request, assigns)
 
   # Puts a text into the live region, to be read out.
   def say(socket, text) do
@@ -604,9 +681,8 @@ defmodule AshDataTable.Live.Core do
     {:noreply, socket}
   end
 
-  # What a write is given (`AshDataTable.Operation.Input`): the intent, and
-  # the table as it is now. The veto and the page values are the defaults
-  # until stage 6.
+  # What a write is given (`AshDataTable.Operation.Input`): the intent, the
+  # table as it is now, and the page's veto and values, made now.
   def operation(socket, intent, more \\ []) do
     table = table(socket)
     entry = table.entry
@@ -626,6 +702,8 @@ defmodule AshDataTable.Live.Core do
         state: entry.state,
         parent: parent,
         opts: reader(table),
+        veto: veto(socket),
+        page_values: values(socket),
         picking: Picker.picking(table),
         rows: entry.rows,
         panel: entry.panel,

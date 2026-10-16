@@ -78,6 +78,10 @@ defmodule AshDataTable.Resource.Acting do
           | {:record_argument_not_found, atom, atom}
           | {:record_argument_not_public, atom, atom}
           | {:record_argument_no_single_key, atom, atom, [atom]}
+          | {:page_argument_not_found, atom, atom}
+          | {:page_argument_not_public, atom, atom}
+          | {:page_argument_is_record_argument, atom, atom}
+          | {:page_argument_twice, atom, atom}
           | {:record_argument_not_a_key, atom, atom, term, atom, term}
           | Referencing.undeclarable()
           | {:no_field, :row | :table | :create, atom, input}
@@ -93,12 +97,14 @@ defmodule AshDataTable.Resource.Acting do
 
   `declaration` is the `action` as written in the block
   (`AshDataTable.Resource.Action`). A `reference` of it that cannot be used is
-  what is wrong with it, too (`AshDataTable.Resource.Referencing.declared/4`).
+  what is wrong with it, too (`AshDataTable.Resource.Referencing.declared/4`),
+  and so is a `page_argument` (`page_arguments/2`).
   """
   @spec offered(Ash.Resource.t() | Spark.Dsl.t(), struct) ::
           {:ok, :row | :table, struct} | {:error, reason}
   def offered(resource, declaration) do
     with {:ok, kind, action} <- named(resource, declaration),
+         :ok <- page_arguments(action, declaration),
          :ok <-
            Referencing.undeclarable(
              resource,
@@ -108,6 +114,43 @@ defmodule AshDataTable.Resource.Acting do
            ) do
       {:ok, kind, action}
     end
+  end
+
+  @doc """
+  The names of the arguments the page fills, as an action's declaration
+  says them (`page_argument`).
+  """
+  @spec page_names(struct) :: [atom]
+  def page_names(declaration),
+    do: for(%{name: name} <- Map.get(declaration, :page_arguments) || [], do: name)
+
+  # A `page_argument` names a public argument of the action, other than the
+  # one a row's key goes to, and that once.
+  defp page_arguments(action, declaration) do
+    names = page_names(declaration)
+    twice = names -- Enum.uniq(names)
+    record_argument = Map.get(declaration, :record_argument)
+
+    Enum.find_value(names, :ok, fn name ->
+      argument = Enum.find(action.arguments, &(&1.name == name))
+
+      cond do
+        name in twice ->
+          {:error, {:page_argument_twice, action.name, name}}
+
+        name == record_argument ->
+          {:error, {:page_argument_is_record_argument, action.name, name}}
+
+        is_nil(argument) ->
+          {:error, {:page_argument_not_found, action.name, name}}
+
+        not argument.public? ->
+          {:error, {:page_argument_not_public, action.name, name}}
+
+        true ->
+          nil
+      end
+    end)
   end
 
   defp named(resource, %{name: name} = declaration) do
@@ -189,15 +232,16 @@ defmodule AshDataTable.Resource.Acting do
   The inputs of an action, in its own order: the public attributes it
   accepts, then its public arguments. A private attribute or argument is
   never given from the outside. Nor is the argument that takes a row's
-  primary key (`record_argument`): the table gives it.
+  primary key (`record_argument`): the table gives it. Nor are those the
+  page fills (`page`, the names of the action's `page_argument`s).
 
   An argument that hands keys to a relationship is given by choosing the
   related records, where there is something to choose them with
   (`managing/3`). So is one whose resource the block names: `references`
   are the `reference`s of the action's declaration (`referring/5`).
   """
-  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct]) :: [input]
-  def inputs(resource, action, record_argument \\ nil, references \\ []) do
+  @spec inputs(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct], [atom]) :: [input]
+  def inputs(resource, action, record_argument \\ nil, references \\ [], page \\ []) do
     attributes =
       for name <- Map.get(action, :accept) || [],
           attribute = Info.attribute(resource, name),
@@ -208,6 +252,7 @@ defmodule AshDataTable.Resource.Acting do
     arguments =
       for %{public?: true, name: name} = argument <- action.arguments,
           name != record_argument,
+          name not in page,
           do:
             argument
             |> argument()
@@ -402,10 +447,11 @@ defmodule AshDataTable.Resource.Acting do
   The required inputs of an action that a table has no field for. An action
   with one cannot be run from a table.
   """
-  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct]) :: [input]
-  def unusable(resource, action, record_argument \\ nil, references \\ []) do
+  @spec unusable(Ash.Resource.t() | Spark.Dsl.t(), struct, atom | nil, [struct], [atom]) ::
+          [input]
+  def unusable(resource, action, record_argument \\ nil, references \\ [], page \\ []) do
     for %{editor: nil, required?: true} = input <-
-          inputs(resource, action, record_argument, references),
+          inputs(resource, action, record_argument, references, page),
         do: input
   end
 
@@ -633,6 +679,25 @@ defmodule AshDataTable.Resource.Acting do
       "The action `#{name}` says `record_argument :#{argument}`, and that argument is of the type " <>
         "#{inspect(type)}, which is not stored as the primary key `#{key}` is (#{inspect(key_type)}). " <>
         "The argument is given the primary key of the row as it is, so it has to be of the key's type."
+
+  def message({:page_argument_not_found, name, argument}),
+    do:
+      "The action `#{name}` says `page_argument :#{argument}`, and has no argument named " <>
+        "`#{argument}`. A page argument is an argument of the action that the page fills."
+
+  def message({:page_argument_not_public, name, argument}),
+    do:
+      "The action `#{name}` says `page_argument :#{argument}`, and its argument `#{argument}` " <>
+        "is not public. A page gives a private argument through `private_arguments`, without " <>
+        "a declaration; `page_argument` is for a public one that the panel is not to ask for."
+
+  def message({:page_argument_is_record_argument, name, argument}),
+    do:
+      "The action `#{name}` says `page_argument :#{argument}`, and `#{argument}` is its " <>
+        "`record_argument`, which the table gives the row's primary key. It cannot be both."
+
+  def message({:page_argument_twice, name, argument}),
+    do: "The action `#{name}` says `page_argument :#{argument}` more than once."
 
   def message(reason) when elem(reason, 0) in @undeclarable,
     do: Referencing.undeclarable_message(reason)

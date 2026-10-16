@@ -49,8 +49,6 @@ defmodule AshDataTable.Edit do
   @spec save(Model.t(), Column.t(), map, String.t() | [String.t()], [Query.option()]) :: result
   def save(%Model{} = model, %Column{editable?: true} = column, key, typed, opts)
       when is_map(key) and (is_binary(typed) or is_list(typed)) do
-    opts = Query.reader_opts(opts)
-
     case Record.fetch(model, key, opts) do
       {:ok, record} -> save_record(model, column, record, typed, opts)
       :error -> {:error, nil, {:text, :record_gone, []}}
@@ -86,7 +84,6 @@ defmodule AshDataTable.Edit do
   @spec clear(Model.t(), Column.t(), map, [Query.option()]) :: result
   def clear(%Model{} = model, %Column{} = column, key, opts) when is_map(key) do
     true = clearable?(column)
-    opts = Query.reader_opts(opts)
 
     case Record.fetch(model, key, opts) do
       {:ok, record} ->
@@ -158,12 +155,10 @@ defmodule AshDataTable.Edit do
       )
       when is_map(key) do
     ask? = Keyword.get(opts, :ask?, false)
-    # the chosen record is read as the picker's table reads
-    chooser = opts
-    opts = Query.reader_opts(opts)
 
+    # the chosen record is read as the picker's table reads
     with {:ok, record} <- Record.fetch(model, key, opts),
-         {:ok, chosen, value} <- referred(reference, named, chooser) do
+         {:ok, chosen, value} <- referred(reference, named, opts) do
       held = Map.get(record, reference.source_attribute)
 
       cond do
@@ -215,7 +210,8 @@ defmodule AshDataTable.Edit do
     record
     |> AshPhoenix.Form.for_update(
       column.update_action,
-      [as: "cell", warn_on_unhandled_errors?: false, forms: [auto?: false]] ++ opts
+      [as: "cell", warn_on_unhandled_errors?: false, forms: [auto?: false]] ++
+        Query.action_opts(opts, model.resource, column.update_action)
     )
     |> AshPhoenix.Form.submit(params: %{key => value})
     |> case do
@@ -244,12 +240,10 @@ defmodule AshDataTable.Edit do
           {:ok, Ash.Resource.record(), AshPhoenix.Form.t()} | :hidden | :error
   def open(%Model{} = model, %Column{editable?: true, editor: editor} = column, key, id, opts)
       when editor in [:group, :groups, :union] and is_map(key) do
-    opts = Query.reader_opts(opts)
-
     with {:ok, record} <- Record.fetch(model, key, opts) do
       if AshDataTable.Resource.Embedding.hidden?(Map.get(record, column.name)),
         do: :hidden,
-        else: {:ok, record, form(record, column, id, opts)}
+        else: {:ok, record, form(model, record, column, id, opts)}
     end
   end
 
@@ -273,7 +267,6 @@ defmodule AshDataTable.Edit do
           | {:error, nil, Errors.message()}
   def put(%Model{} = model, %Column{editable?: true} = column, input, key, params, id, opts)
       when is_map(key) and is_map(params) do
-    opts = Query.reader_opts(opts)
     name = Atom.to_string(column.name)
 
     case Record.fetch(model, key, opts) do
@@ -289,8 +282,8 @@ defmodule AshDataTable.Edit do
             unchanged(model, record, opts)
 
           true ->
-            record
-            |> form(column, id, opts)
+            model
+            |> form(record, column, id, opts)
             |> AshPhoenix.Form.submit(params: Act.values([input], params, model.time_zone))
             |> case do
               {:ok, saved} ->
@@ -309,8 +302,13 @@ defmodule AshDataTable.Edit do
     end
   end
 
-  defp form(record, column, id, opts),
-    do: AshPhoenix.Form.for_update(record, column.update_action, Act.form_opts(id) ++ opts)
+  defp form(model, record, column, id, opts),
+    do:
+      AshPhoenix.Form.for_update(
+        record,
+        column.update_action,
+        Act.form_opts(id) ++ Query.action_opts(opts, model.resource, column.update_action)
+      )
 
   @doc """
   Whether `typed` is what an editor of `column` holds: one text, and for an
@@ -388,7 +386,8 @@ defmodule AshDataTable.Edit do
     # what the form cannot put at a field is read from its raw errors below
     |> AshPhoenix.Form.for_update(
       column.update_action,
-      [as: "cell", warn_on_unhandled_errors?: false, forms: [auto?: false]] ++ opts
+      [as: "cell", warn_on_unhandled_errors?: false, forms: [auto?: false]] ++
+        Query.action_opts(opts, model.resource, column.update_action)
     )
     |> AshPhoenix.Form.submit(params: %{Atom.to_string(column.name) => typed})
     |> case do

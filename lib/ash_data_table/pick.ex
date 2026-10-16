@@ -61,7 +61,7 @@ defmodule AshDataTable.Pick do
   The picker's table authorizes as a nested table does: as the table around
   it was told, else as its own resource's domain says. What is read here is
   read the same way, so that a record counts as chosen exactly when the
-  picker could have shown it.
+  picker could have shown it, with what the page gives (`page_values`).
   """
   @spec reader(referred, keyword) :: keyword
   def reader(%{destination: destination}, opts) do
@@ -75,6 +75,7 @@ defmodule AshDataTable.Pick do
     |> Keyword.take([:scope, :actor, :tenant])
     |> Keyword.put(:authorize?, authorize?)
     |> Query.reader_opts()
+    |> Kernel.++(Keyword.take(opts, [:page_values]))
   end
 
   @doc """
@@ -124,7 +125,8 @@ defmodule AshDataTable.Pick do
 
   def current(%{destination: destination, choose_action: action} = reference, value, opts) do
     arguments = arguments(opts)
-    opts = reader(reference, opts)
+    reader = reader(reference, opts)
+    read_opts = Query.reader_opts(reader)
     attribute = Ash.Resource.Info.attribute(destination, reference.destination_attribute)
 
     with {:ok, value} when not is_nil(value) <-
@@ -132,8 +134,9 @@ defmodule AshDataTable.Pick do
          {:ok, %_{} = record} <-
            destination
            |> Ash.Query.filter(^ref(attribute.name) == ^value)
-           |> Ash.Query.for_read(action, arguments, opts)
-           |> Ash.read_one(opts) do
+           |> Query.privately(reader, action)
+           |> Ash.Query.for_read(action, arguments, read_opts)
+           |> Ash.read_one(read_opts) do
       {:ok, record}
     else
       _none_or_not_theirs -> :error

@@ -8,7 +8,8 @@ defmodule AshDataTable.Resource.Action do
   in when the table is rendered.
 
   `references` holds the `reference`s of the action
-  (`AshDataTable.Resource.Reference`), in the declared order.
+  (`AshDataTable.Resource.Reference`), in the declared order, and
+  `page_arguments` its `page_argument`s (`AshDataTable.Resource.PageArgument`).
   """
 
   defstruct [
@@ -19,7 +20,8 @@ defmodule AshDataTable.Resource.Action do
     :record_argument,
     :__identifier__,
     :__spark_metadata__,
-    references: []
+    references: [],
+    page_arguments: []
   ]
 
   @type t :: %__MODULE__{
@@ -28,7 +30,8 @@ defmodule AshDataTable.Resource.Action do
           confirm: String.t() | false | nil,
           bulk?: boolean | nil,
           record_argument: atom | nil,
-          references: [AshDataTable.Resource.Reference.t()]
+          references: [AshDataTable.Resource.Reference.t()],
+          page_arguments: [AshDataTable.Resource.PageArgument.t()]
         }
 
   @schema [

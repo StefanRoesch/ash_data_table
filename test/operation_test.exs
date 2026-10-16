@@ -37,7 +37,7 @@ defmodule AshDataTable.OperationTest do
   defp veto(answer) do
     test = self()
 
-    fn ->
+    fn _request ->
       send(test, :veto_asked)
       answer
     end

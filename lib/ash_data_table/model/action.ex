@@ -11,6 +11,8 @@ defmodule AshDataTable.Model.Action do
   #   * `record_argument` is set on a generic action that is a row action:
   #     the argument that takes the primary key of the row. The table fills
   #     it in itself, so it is no input.
+  #   * `page_arguments` are the arguments the page fills
+  #     (`page_argument`), from its `page_arguments`: no inputs either.
   #   * `returns` is set on a generic action that returns an enum value:
   #     the cell type and the values with their labels, by which the value
   #     it returned is said (`AshDataTable.Format.said/3`).
@@ -38,6 +40,7 @@ defmodule AshDataTable.Model.Action do
     :link,
     :record_argument,
     :returns,
+    page_arguments: [],
     inputs: [],
     panel?: false,
     bulk?: false
@@ -50,6 +53,7 @@ defmodule AshDataTable.Model.Action do
           confirm: String.t() | nil,
           link: {atom, atom} | nil,
           record_argument: atom | nil,
+          page_arguments: [atom],
           returns: %{cell_type: :enum, values: AshDataTable.Resource.CellType.values()} | nil,
           inputs: [AshDataTable.Model.Input.t()],
           panel?: boolean,

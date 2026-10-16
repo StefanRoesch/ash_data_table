@@ -59,6 +59,9 @@ defmodule AshDataTable do
   alias AshDataTable.Present
   alias AshDataTable.Routes
 
+  # What the page gives the table, as `attach/4` and the tag take it.
+  @page [:context, :private_arguments, :page_arguments, :before_action]
+
   @doc """
   Renders the table of a resource inside a LiveView.
 
@@ -196,6 +199,26 @@ defmodule AshDataTable do
     doc:
       "What a default of an asked argument is given when it is a function (`ask :currency, default: &MyApp.Defaults.currency/1`): the assigns of the page that it looks at, such as `%{current_user: @current_user}`. A mounted table gives such a function the assigns of its socket."
 
+  attr :context, :any,
+    default: nil,
+    doc:
+      "What the page adds to the `context` of every call to Ash the table makes, its nested tables and pickers included: a map, or a function of `assigns` (and of which table asks, `%{table: id, path: path, resource: resource}`) that returns one. See \"What the page gives\" in `attach/4`."
+
+  attr :private_arguments, :any,
+    default: nil,
+    doc:
+      "Arguments the page gives the actions the table runs, by name: a map, or a function as for `context`. An action is given those it declares `public?: false`, and no others."
+
+  attr :page_arguments, :any,
+    default: nil,
+    doc:
+      "The values of the arguments an `action` of the table's block says the page fills (`page_argument`), by name: a map, or a function as for `context`."
+
+  attr :before_action, :any,
+    default: nil,
+    doc:
+      "Asked before every write, after the table's checks: a function of the `AshDataTable.Request` (and of `assigns`) that answers `:cont`, or `{:halt, message}`, which stops the write and says the message."
+
   # Rows to select with nothing to run on them, one at a time (`:single`) or
   # several (`:multi`): how the table is shown for a person to choose from.
   # Internal; the demo's pages for selection use it.
@@ -227,6 +250,8 @@ defmodule AshDataTable do
               "got: #{inspect(assigns.heading)}"
     end
 
+    page!(Map.take(assigns, @page), "<AshDataTable.table>")
+
     ~H"""
     <.live_component
       module={AshDataTable.Live.Embedded}
@@ -245,6 +270,10 @@ defmodule AshDataTable do
       page_assigns={@assigns}
       time_zone={@time_zone}
       select={@select}
+      context={@context}
+      private_arguments={@private_arguments}
+      page_arguments={@page_arguments}
+      before_action={@before_action}
     />
     """
   end
@@ -278,6 +307,30 @@ defmodule AshDataTable do
   A default of an asked argument that is a function is given the
   LiveView's assigns.
 
+  ## What the page gives
+
+  Four options add server values to what the table does, for the table and
+  every table it shows (nested tables, pickers' tables):
+
+    * `context` - put into the `context` of every call to Ash the table
+      makes (reads, writes, summaries), deep-merged with the scope's;
+    * `private_arguments` - by name: an action is given those it declares
+      `public?: false` (a read through `Ash.Query.set_argument/3`, a write
+      as `private_arguments`), and no others;
+    * `page_arguments` - by name, the values of the arguments an `action`
+      of the table's block says the page fills (`page_argument`), which the
+      action panel does not ask for;
+    * `before_action` - asked before every write, after the table's own
+      checks, with an `AshDataTable.Request`: `:cont` lets it go on,
+      `{:halt, message}` stops it and says the message. Anything else
+      raises.
+
+  The first three are a map, or a function of the LiveView's assigns, or
+  of them and which table asks (`%{table: id, path: path, resource:
+  resource}`); `before_action` is a function of the request, or of it and
+  the assigns. They are called in the LiveView's process before every read
+  and write. A new value of theirs reads nothing again by itself.
+
   Names and ids are unique on a page: two tables of one resource need an
   `id` each, and no id may begin with another's and `-row-` or `-pick-`
   (the ids of the tables a table shows). Attaching again under the same
@@ -301,8 +354,10 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          [heading: true, url: false, mounted?: false]
+          @page ++ [heading: true, url: false, mounted?: false]
       )
+
+    page!(Map.new(Keyword.take(opts, @page)), "AshDataTable.attach/4")
 
     table = opts[:table] || :default
 
@@ -337,10 +392,34 @@ defmodule AshDataTable do
       page_assigns: :socket,
       time_zone:
         AshDataTable.Zone.check!(opts[:time_zone], "The `time_zone` of AshDataTable.attach/4"),
-      select: nil
+      select: nil,
+      context: opts[:context],
+      private_arguments: opts[:private_arguments],
+      page_arguments: opts[:page_arguments],
+      before_action: opts[:before_action]
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
+  end
+
+  defp page!(given, where) do
+    for {name, value} <- given, not is_nil(value) do
+      fits? =
+        case name do
+          :before_action -> is_function(value, 1) or is_function(value, 2)
+          _value -> is_map(value) or is_function(value, 1) or is_function(value, 2)
+        end
+
+      if not fits? do
+        raise ArgumentError,
+              "the `#{name}` of #{where} is " <>
+                if(name == :before_action,
+                  do: "a function of the request, or of the request and the page's assigns",
+                  else:
+                    "a map, or a function of the page's assigns, or of them and which table asks"
+                ) <> ", got: #{inspect(value, limit: 5)}"
+      end
+    end
   end
 
   @doc """

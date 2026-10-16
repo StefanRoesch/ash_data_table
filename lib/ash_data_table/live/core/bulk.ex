@@ -186,7 +186,7 @@ defmodule AshDataTable.Live.Core.Bulk do
       end
 
     panel =
-      Panel.panel(Core.table(socket), fn _input -> nil end, %{
+      Panel.panel(socket, fn _input -> nil end, %{
         kind: :bulk,
         action: action,
         key: nil,

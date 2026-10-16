@@ -105,8 +105,6 @@ defmodule AshDataTable.Act do
   """
   @spec run(Model.t(), Action.t(), map, keyword) :: result
   def run(%Model{} = model, %Action{type: :action} = action, key, opts) when is_map(key) do
-    opts = Query.reader_opts(opts)
-
     with {:ok, record} <- Record.fetch(model, key, opts) do
       case run_generic(model, action, given(action, key), opts) do
         {:done, value} ->
@@ -124,10 +122,10 @@ defmodule AshDataTable.Act do
   end
 
   def run(%Model{} = model, %Action{} = action, key, opts) when is_map(key) do
-    opts = Query.reader_opts(opts)
+    given = from_page(action, opts)
 
     with {:ok, record} <- Record.fetch(model, key, opts) do
-      case submit(model, form(record, action, "action", opts), %{}, opts) do
+      case submit(model, form(record, action, "action", opts), given, opts) do
         {:error, form} ->
           message = Errors.joined(messages(form, model))
 
@@ -152,13 +150,13 @@ defmodule AshDataTable.Act do
   @spec open(Model.t(), Action.t(), map, String.t(), keyword) ::
           {:ok, Ash.Resource.record(), form, [Model.Input.t()]} | :error
   def open(%Model{} = model, %Action{type: :action} = action, key, id, opts) when is_map(key) do
-    with {:ok, record} <- Record.fetch(model, key, Query.reader_opts(opts)) do
+    with {:ok, record} <- Record.fetch(model, key, opts) do
       {:ok, record, open_generic(model, action, id, opts), action.inputs}
     end
   end
 
   def open(%Model{} = model, %Action{} = action, key, id, opts) when is_map(key) do
-    opts = Query.reader_opts(opts)
+    from_page(action, opts)
 
     with {:ok, record} <- Record.fetch(model, key, opts) do
       {:ok, record, form(record, action, id, opts), inputs(action, record)}
@@ -172,8 +170,52 @@ defmodule AshDataTable.Act do
   the form.
   """
   @spec open_generic(Model.t(), Action.t(), String.t(), keyword) :: form
-  def open_generic(%Model{resource: resource}, %Action{type: :action, name: name}, id, opts),
-    do: AshPhoenix.Form.for_action(resource, name, form_opts(id) ++ Query.reader_opts(opts))
+  def open_generic(
+        %Model{resource: resource},
+        %Action{type: :action, name: name} = action,
+        id,
+        opts
+      ) do
+    from_page(action, opts)
+
+    AshPhoenix.Form.for_action(
+      resource,
+      name,
+      form_opts(id) ++ Query.action_opts(opts, resource, name)
+    )
+  end
+
+  @doc """
+  What the page gives an action itself: the arguments its declaration says
+  the page fills (`page_argument`), by name, with the values of the page's
+  `page_arguments` (the `page_values` of `opts`). Nothing from the
+  browser replaces them. Raises for one the page gives no value, when the
+  action opens and when it runs: that is a mistake of the page's.
+  """
+  @spec from_page(Action.t(), keyword) :: map
+  def from_page(%Action{page_arguments: []}, _opts), do: %{}
+
+  def from_page(%Action{page_arguments: names} = action, opts) do
+    given =
+      case opts[:page_values] do
+        %{page_arguments: %{} = given} -> given
+        _nothing -> %{}
+      end
+
+    for name <- names, into: %{} do
+      case Query.given(given, name) do
+        {:ok, value} ->
+          {Atom.to_string(name), value}
+
+        :error ->
+          raise ArgumentError,
+                "the action `#{action.name}` of the table takes its argument `#{name}` from the " <>
+                  "page (`page_argument :#{name}`), but the page's `page_arguments` give it no " <>
+                  "value. Give one: `page_arguments: %{#{name}: ...}`, or a function that " <>
+                  "returns such a map."
+      end
+    end
+  end
 
   @doc """
   What the table itself gives a generic action that runs on the record
@@ -231,6 +273,7 @@ defmodule AshDataTable.Act do
     case unchosen(action.inputs, params, nil, opts) do
       [] ->
         form = open_generic(model, action, id, opts)
+        given = Map.merge(given, from_page(action, opts))
 
         case AshPhoenix.Form.submit(form,
                params: taken(action.inputs, params, given, model.time_zone)
@@ -319,7 +362,8 @@ defmodule AshDataTable.Act do
       |> Ash.Resource.Info.attributes()
       |> Enum.reduce(struct(resource), &Map.put(&2, &1.name, nil))
 
-    form(blank, action, id, Query.reader_opts(opts))
+    from_page(action, opts)
+    form(blank, action, id, opts)
   end
 
   @doc "The form of the table's create action. `id` is the id of the form."
@@ -328,7 +372,7 @@ defmodule AshDataTable.Act do
     AshPhoenix.Form.for_create(
       model.resource,
       action.name,
-      form_opts(id) ++ Query.reader_opts(opts)
+      form_opts(id) ++ Query.action_opts(opts, model.resource, action.name)
     )
   end
 
@@ -370,31 +414,28 @@ defmodule AshDataTable.Act do
   def submit_row(%Model{} = model, %Action{type: :action} = action, key, params, id, opts) do
     given = Map.merge(files(opts), given(action, key))
 
-    case Record.fetch(model, key, Query.reader_opts(opts)) do
+    case Record.fetch(model, key, opts) do
       {:ok, _record} -> submit_generic(model, action, params, given, id, opts)
       :error -> {:error, nil, {:text, :record_gone, []}}
     end
   end
 
   def submit_row(%Model{} = model, %Action{} = action, key, params, id, opts) do
-    chooser = opts
-    opts = Query.reader_opts(opts)
-
     case Record.fetch(model, key, opts) do
       {:ok, record} ->
         inputs = inputs(action, record)
 
-        case unchosen(inputs, params, record, chooser) do
+        case unchosen(inputs, params, record, opts) do
           [] ->
+            given =
+              files(opts)
+              |> Map.merge(cleared(action, inputs, record, opts))
+              |> Map.merge(from_page(action, opts))
+
             submit(
               model,
               form(record, action, id, opts),
-              taken(
-                inputs,
-                params,
-                Map.merge(files(chooser), cleared(action, inputs, record, chooser)),
-                model.time_zone
-              ),
+              taken(inputs, params, given, model.time_zone),
               opts
             )
 
@@ -554,8 +595,6 @@ defmodule AshDataTable.Act do
   def values(inputs, params, zone), do: taken(inputs, params, %{}, zone)
 
   defp submit(model, form, params, opts) do
-    opts = Query.reader_opts(opts)
-
     case AshPhoenix.Form.submit(form, params: params) do
       {:ok, %_{} = record} when form.type != :destroy ->
         # the row is shown from what the action returns
@@ -573,11 +612,21 @@ defmodule AshDataTable.Act do
     end
   end
 
-  defp form(record, %Action{type: :update, name: name}, id, opts),
-    do: AshPhoenix.Form.for_update(record, name, form_opts(id) ++ opts)
+  defp form(%resource{} = record, %Action{type: :update, name: name}, id, opts),
+    do:
+      AshPhoenix.Form.for_update(
+        record,
+        name,
+        form_opts(id) ++ Query.action_opts(opts, resource, name)
+      )
 
-  defp form(record, %Action{type: :destroy, name: name}, id, opts),
-    do: AshPhoenix.Form.for_destroy(record, name, form_opts(id) ++ opts)
+  defp form(%resource{} = record, %Action{type: :destroy, name: name}, id, opts),
+    do:
+      AshPhoenix.Form.for_destroy(
+        record,
+        name,
+        form_opts(id) ++ Query.action_opts(opts, resource, name)
+      )
 
   @doc """
   The options of a form of the panel. What the form cannot put at a field

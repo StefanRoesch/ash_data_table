@@ -1389,7 +1389,8 @@ defmodule AshDataTable.Model do
               declaration.label,
               declaration.confirm || nil,
               declaration.record_argument,
-              declaration.references
+              declaration.references,
+              Acting.page_names(declaration)
             )
 
           # a table action runs on no record, and so on no selection of them
@@ -1409,7 +1410,13 @@ defmodule AshDataTable.Model do
       {:error, {:declared_twice, name}}
     else
       with {:ok, kind, action} <- Acting.offered(resource, declaration) do
-        if Acting.unusable(resource, action, declaration.record_argument, declaration.references) ==
+        if Acting.unusable(
+             resource,
+             action,
+             declaration.record_argument,
+             declaration.references,
+             Acting.page_names(declaration)
+           ) ==
              [],
            do: {:ok, kind, action},
            else: :unusable
@@ -1432,7 +1439,8 @@ defmodule AshDataTable.Model do
                 Acting.message(reason)
 
       {:ok, action} ->
-        create = action(resource, table, action, columns, "New #{name(resource)}", nil, nil, [])
+        create =
+          action(resource, table, action, columns, "New #{name(resource)}", nil, nil, [], [])
 
         cond do
           Acting.unusable(resource, action) != [] ->
@@ -1530,10 +1538,10 @@ defmodule AshDataTable.Model do
   # An action as a table offers it, with the inputs a table has a field for.
   # `record_argument` is the argument of a generic action that the table
   # gives itself, which is no input.
-  defp action(resource, table, action, columns, label, confirm, record_argument, references) do
+  defp action(resource, table, action, columns, label, confirm, record_argument, references, page) do
     inputs =
       for %{editor: editor} = input when not is_nil(editor) <-
-            Acting.inputs(resource, action, record_argument, references) do
+            Acting.inputs(resource, action, record_argument, references, page) do
         Input
         |> struct!(
           Map.merge(input, %{
@@ -1555,6 +1563,7 @@ defmodule AshDataTable.Model do
       inputs: inputs,
       panel?: Acting.panel?(inputs),
       record_argument: record_argument,
+      page_arguments: page,
       returns: returns(action)
     }
   end

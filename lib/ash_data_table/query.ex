@@ -49,6 +49,9 @@ defmodule AshDataTable.Query do
   # how many records are read at a time where records are read to the end
   @batch_size 100
 
+  # the key of the table's own in the context of what it runs: `origin/2`
+  @origin :ash_data_table_origin
+
   defmodule Page do
     @moduledoc false
     # One page of records and where a person can go from it.
@@ -83,6 +86,16 @@ defmodule AshDataTable.Query do
           | {:tenant, term}
           | {:authorize?, boolean}
           | {:origin, pid | nil}
+          | {:page_values, page_values}
+
+  @typedoc """
+  What the page gives every call to Ash (stage 6): `context`, which every
+  call is given, and by name the `private_arguments`, which an action is
+  given where it declares an argument of that name `public?: false`, and
+  the `page_arguments`, which an action is given where its declaration
+  names them (`page_argument`). From server code only.
+  """
+  @type page_values :: %{context: map, private_arguments: map, page_arguments: map}
 
   @doc """
   Reads the page `state` points at.
@@ -99,7 +112,7 @@ defmodule AshDataTable.Query do
 
     with {:ok, result} <-
            Ash.read(
-             query(model, state, Model.loads(model), read_opts),
+             query(model, state, Model.loads(model), opts),
              [page: page_opts(model, state)] ++ read_opts
            ),
          # internal ticket #35: see "In steps" above; through the table's
@@ -109,7 +122,7 @@ defmodule AshDataTable.Query do
              result,
              Model.aggregates(model),
              model,
-             [action: model.read_action] ++ read_opts
+             [action: model.read_action] ++ opts
            ) do
       {:ok, page(result, model, state)}
     end
@@ -158,16 +171,11 @@ defmodule AshDataTable.Query do
     # #35: see "In steps" above).
     related =
       case page_opts(model, state) do
-        false -> query(model, state, [], read_opts)
-        page_opts -> model |> query(state, [], read_opts) |> Ash.Query.page(page_opts)
+        false -> query(model, state, [], opts)
+        page_opts -> model |> query(state, [], opts) |> Ash.Query.page(page_opts)
       end
 
-    parent_opts =
-      Keyword.put(
-        read_opts,
-        :authorize?,
-        read_opts[:authorize?] or Keyword.get(opts, :parent_authorize?, true)
-      )
+    parent_opts = parent_opts(read_opts, opts)
 
     with {:ok, %_{} = parent} <-
            get(
@@ -178,7 +186,7 @@ defmodule AshDataTable.Query do
              [load: [{via.name, related}]] ++ parent_opts
            ),
          {:ok, result} <- related(Map.get(parent, via.name)),
-         {:ok, result} <- load(result, model, [action: model.read_action] ++ read_opts) do
+         {:ok, result} <- load(result, model, [action: model.read_action] ++ opts) do
       {:ok, %{page(result, model, state) | parent: parent}}
     else
       {:ok, nil} -> {:error, :parent_gone}
@@ -203,7 +211,7 @@ defmodule AshDataTable.Query do
     read_opts = reader_opts(opts)
 
     model
-    |> query(%{state | sort: nil}, [], read_opts)
+    |> query(%{state | sort: nil}, [], opts)
     |> Ash.Query.select(model.primary_key)
     |> stream(model, read_opts)
     |> Enum.map(&Map.take(&1, model.primary_key))
@@ -225,7 +233,7 @@ defmodule AshDataTable.Query do
     read_opts = reader_opts(opts)
 
     model
-    |> query(%State{}, [], read_opts)
+    |> query(%State{}, [], opts)
     |> by_keys(model, keys)
     |> stream(model, read_opts)
     |> Enum.to_list()
@@ -254,8 +262,8 @@ defmodule AshDataTable.Query do
 
     related =
       case keys do
-        :all -> query(model, %{state | sort: nil}, [], read_opts)
-        keys -> model |> query(%State{}, [], read_opts) |> by_keys(model, keys)
+        :all -> query(model, %{state | sort: nil}, [], opts)
+        keys -> model |> query(%State{}, [], opts) |> by_keys(model, keys)
       end
 
     through_parent(via, related, key, read_opts, opts)
@@ -265,12 +273,7 @@ defmodule AshDataTable.Query do
   # key `key`: that record is read, as `read_related/4` reads it, with the
   # relationship loaded through the query.
   defp through_parent(via, related, key, read_opts, opts) do
-    parent_opts =
-      Keyword.put(
-        read_opts,
-        :authorize?,
-        read_opts[:authorize?] or Keyword.get(opts, :parent_authorize?, true)
-      )
+    parent_opts = parent_opts(read_opts, opts)
 
     with {:ok, %_{} = parent} <-
            get(
@@ -286,6 +289,19 @@ defmodule AshDataTable.Query do
       {:ok, nil} -> {:error, :parent_gone}
       {:error, error} -> {:error, error}
     end
+  end
+
+  # How the parent of related records is read: as the person, with
+  # authorization when either table authorizes, and with what the page
+  # gives the parent's read action.
+  defp parent_opts(read_opts, opts) do
+    opts
+    |> Keyword.take([:page_values])
+    |> Keyword.merge(read_opts)
+    |> Keyword.put(
+      :authorize?,
+      read_opts[:authorize?] or Keyword.get(opts, :parent_authorize?, true)
+    )
   end
 
   @doc """
@@ -305,8 +321,6 @@ defmodule AshDataTable.Query do
   @spec rows(Model.t(), map | nil, [map], keyword) ::
           {:ok, [Ash.Resource.record()]} | {:error, term}
   def rows(%Model{} = model, parent, keys, opts) do
-    read_opts = reader_opts(opts)
-
     read =
       case model.via do
         nil -> {:ok, records(model, keys, opts)}
@@ -314,7 +328,7 @@ defmodule AshDataTable.Query do
       end
 
     with {:ok, records} <- read do
-      load(records, model, [action: model.read_action] ++ read_opts)
+      load(records, model, [action: model.read_action] ++ opts)
     end
   rescue
     error -> {:error, error}
@@ -340,7 +354,7 @@ defmodule AshDataTable.Query do
 
     matching =
       model
-      |> query(%{state | sort: nil}, [], read_opts)
+      |> query(%{state | sort: nil}, [], opts)
       |> by_keys(model, keys)
       |> Ash.Query.select(model.primary_key)
 
@@ -400,7 +414,7 @@ defmodule AshDataTable.Query do
           {:ok, %{optional(atom) => {:ok, term} | :unavailable}}
           | {:error, :parent_gone | :forbidden | term}
   def summaries(%Model{} = model, %State{} = state, parent, opts) do
-    read_opts = reader_opts(opts)
+    read_opts = opts |> Keyword.delete(:origin) |> reader_opts()
     columns = Model.summarised(model)
     action = Ash.Resource.Info.action(model.resource, model.read_action)
 
@@ -413,8 +427,9 @@ defmodule AshDataTable.Query do
 
     unavailable = Map.new(columns, &{&1.name, :unavailable})
 
-    # no sort, and no page: every record that matches
-    matching = query(%{model | via: nil}, %{state | sort: nil}, [], read_opts)
+    # no sort, and no page: every record that matches. What marks a table's
+    # own writes (`origin/2`) is of no use to a read; what the page gives is.
+    matching = query(%{model | via: nil}, %{state | sort: nil}, [], Keyword.delete(opts, :origin))
 
     with [_ | _] <- asked,
          {:ok, matching} <- limited(matching, model, parent, read_opts, opts),
@@ -463,9 +478,8 @@ defmodule AshDataTable.Query do
         {column.name, column.summary, field: column.field, read_action: model.read_action}
       end
 
-    # the query says who is asking; what marks a table's own writes
-    # (`origin/2`) is of no use to a read
-    opts = [authorize_fields?: true] ++ Keyword.delete(read_opts, :context)
+    # the query says who is asking, as `summaries/4` read it
+    opts = [authorize_fields?: true] ++ read_opts
 
     with {:ok, values} <- Ash.aggregate(matching, aggregates, opts) do
       {:ok,
@@ -531,28 +545,34 @@ defmodule AshDataTable.Query do
     do: loaded(result, Model.loads(model) ++ Model.aggregates(model), model, opts)
 
   # `loads` put onto the records in one statement, as the person.
-  defp loaded(result, [], _model, _read_opts), do: {:ok, result}
-  defp loaded([], _loads, _model, _read_opts), do: {:ok, []}
-  defp loaded(%{results: []} = page, _loads, _model, _read_opts), do: {:ok, page}
+  defp loaded(result, [], _model, _opts), do: {:ok, result}
+  defp loaded([], _loads, _model, _opts), do: {:ok, []}
+  defp loaded(%{results: []} = page, _loads, _model, _opts), do: {:ok, page}
 
-  defp loaded(%struct{results: records} = page, loads, model, read_opts)
+  defp loaded(%struct{results: records} = page, loads, model, opts)
        when struct in [Ash.Page.Offset, Ash.Page.Keyset] do
-    with {:ok, records} <- Ash.load(records, through(loads, model, read_opts), read_opts),
+    with {:ok, records} <- Ash.load(records, through(loads, model, opts), loading(opts)),
          do: {:ok, %{page | results: records}}
   end
 
-  defp loaded(records, loads, model, read_opts),
-    do: Ash.load(records, through(loads, model, read_opts), read_opts)
+  defp loaded(records, loads, model, opts),
+    do: Ash.load(records, through(loads, model, opts), loading(opts))
+
+  defp loading(opts), do: Keyword.take(opts, [:action]) ++ reader_opts(opts)
 
   # What Ash is asked to load. Through the table's read action, where that
   # takes arguments, it is a query of that action with them: Ash would
-  # otherwise run the action without any.
-  defp through(loads, %Model{read_action: action, read_arguments: arguments} = model, read_opts) do
-    if read_opts[:action] == action and arguments != %{} do
+  # otherwise run the action without any. So it is where the page gives
+  # that action private arguments.
+  defp through(loads, %Model{read_action: action, read_arguments: arguments} = model, opts) do
+    private = private(opts, model.resource, action)
+
+    if opts[:action] == action and (arguments != %{} or private != %{}) do
       model.resource
       |> Ash.Query.new()
       |> Ash.Query.load(loads)
-      |> Ash.Query.for_read(action, arguments, Keyword.delete(read_opts, :action))
+      |> set_private(private)
+      |> Ash.Query.for_read(action, arguments, reader_opts(opts))
     else
       loads
     end
@@ -570,19 +590,23 @@ defmodule AshDataTable.Query do
   @spec get(Ash.Resource.t(), atom, map, map, keyword) ::
           {:ok, Ash.Resource.record() | nil} | {:error, Ash.Error.t()}
   def get(resource, action, key, arguments, opts)
-      when is_atom(action) and is_map(key) and arguments == %{} do
-    Ash.get(resource, key, [not_found_error?: false, action: action] ++ opts)
-  end
-
-  # `Ash.get/3` gives an action no arguments. With them the record is read
-  # as it does read it: the one record with that key, through the action.
-  def get(resource, action, key, arguments, opts)
       when is_atom(action) and is_map(key) and is_map(arguments) do
-    resource
-    |> Ash.Query.new()
-    |> Ash.Query.filter(^Map.to_list(key))
-    |> Ash.Query.for_read(action, arguments, Keyword.delete(opts, :load))
-    |> Ash.read_one([not_found_error?: false] ++ opts)
+    private = private(opts, resource, action)
+    read_opts = Keyword.take(opts, [:load]) ++ reader_opts(opts)
+
+    if arguments == %{} and private == %{} do
+      Ash.get(resource, key, [not_found_error?: false, action: action] ++ read_opts)
+    else
+      # `Ash.get/3` gives an action no arguments. With them the record is
+      # read as it does read it: the one record with that key, through the
+      # action.
+      resource
+      |> Ash.Query.new()
+      |> Ash.Query.filter(^Map.to_list(key))
+      |> set_private(private)
+      |> Ash.Query.for_read(action, arguments, reader_opts(opts))
+      |> Ash.read_one([not_found_error?: false] ++ read_opts)
+    end
   end
 
   @doc """
@@ -617,6 +641,8 @@ defmodule AshDataTable.Query do
 
         _some ->
           model.resource
+          |> Ash.Query.new()
+          |> set_private(private(opts, model.resource, model.read_action))
           |> Ash.Query.for_read(model.read_action, model.read_arguments, reader_opts(opts))
           |> Map.fetch!(:errors)
       end
@@ -691,28 +717,42 @@ defmodule AshDataTable.Query do
 
   # The sort a person chose goes in before the action's preparations run, so
   # that a sort of the action itself comes second, as a tie-breaker.
-  defp query(model, state, loads, read_opts) do
+  defp query(model, state, loads, opts) do
     model.resource
     |> Ash.Query.new()
     |> sort(known_sort(state.sort, model), model.via)
     |> filter(known(state.filters, model), model.time_zone)
     |> Ash.Query.load(loads)
-    |> Ash.Query.for_read(model.read_action, model.read_arguments, read_opts)
+    |> set_private(private(opts, model.resource, model.read_action))
+    |> Ash.Query.for_read(model.read_action, model.read_arguments, reader_opts(opts))
   end
 
-  @doc "Who is asking, as the options of an Ash call: scope, or actor and tenant, and `authorize?`."
+  @doc """
+  Who is asking, as the options of an Ash call: scope, or actor and tenant,
+  `authorize?`, and the `context` the page gives (`page_values`), with the
+  table's own key last, which the page cannot set. Taking the options it
+  gives again gives them unchanged.
+  """
   @spec reader_opts([option]) :: keyword
   def reader_opts(opts) do
-    context =
+    who =
       case opts[:scope] do
         nil -> Keyword.take(opts, [:actor, :tenant])
         scope -> [scope: scope]
       end
 
-    context
+    page =
+      case opts[:page_values] do
+        %{context: %{} = context} -> Map.delete(context, @origin)
+        _nothing -> %{}
+      end
+
+    context = page |> Map.merge(opts[:context] || %{}) |> origin(opts[:origin])
+
+    who
     |> Enum.reject(fn {_key, value} -> is_nil(value) end)
     |> Keyword.put(:authorize?, Keyword.get(opts, :authorize?, true))
-    |> origin(opts[:origin])
+    |> then(&if(context == %{}, do: &1, else: Keyword.put(&1, :context, context)))
   end
 
   # A table that follows live updates says of what it runs that it ran it:
@@ -721,8 +761,68 @@ defmodule AshDataTable.Query do
   # has shown what its action returned. It is in the context of that one
   # action, and not shared with the actions it runs in turn: what those
   # change besides is announced to the table like anything else.
-  defp origin(reader, nil), do: reader
-  defp origin(reader, pid), do: Keyword.put(reader, :context, %{ash_data_table_origin: pid})
+  defp origin(context, nil), do: context
+  defp origin(context, pid), do: Map.put(context, @origin, pid)
+
+  @doc """
+  What the page gives `action` of `resource` as private arguments
+  (`page_values`), by name: the values of the names the action declares
+  `public?: false`, and no others. A name the action has as a public
+  argument, or does not have, is left out: one function of the page may
+  serve the tables of several resources.
+  """
+  @spec private([option] | keyword, Ash.Resource.t(), atom) :: %{optional(atom) => term}
+  def private(opts, resource, action) do
+    with %{private_arguments: %{} = given} when given != %{} <- opts[:page_values],
+         %{arguments: arguments} <- Ash.Resource.Info.action(resource, action) do
+      for %{public?: false, name: name} <- arguments,
+          {:ok, value} <- [given(given, name)],
+          into: %{},
+          do: {name, value}
+    else
+      _nothing -> %{}
+    end
+  end
+
+  @doc "A value the page gives by `name`, under the atom or its text."
+  @spec given(map, atom) :: {:ok, term} | :error
+  def given(given, name) do
+    case Map.fetch(given, name) do
+      {:ok, value} -> {:ok, value}
+      :error -> Map.fetch(given, Atom.to_string(name))
+    end
+  end
+
+  @doc """
+  The options of an action of `resource` built from `opts`: who is asking,
+  as `reader_opts/1` gives it, and the private arguments the page gives
+  that action (`private/3`).
+  """
+  @spec action_opts([option] | keyword, Ash.Resource.t(), atom) :: keyword
+  def action_opts(opts, resource, action) do
+    case private(opts, resource, action) do
+      private when private == %{} -> reader_opts(opts)
+      private -> [private_arguments: private] ++ reader_opts(opts)
+    end
+  end
+
+  @doc """
+  `query` with the private arguments the page gives `action` (`private/3`):
+  set before the query is built for the action, as `Ash.Query.for_read/4`
+  takes none.
+  """
+  @spec privately(Ash.Query.t(), keyword, atom) :: Ash.Query.t()
+  def privately(%Ash.Query{resource: resource} = query, opts, action),
+    do: set_private(query, private(opts, resource, action))
+
+  # A read is given its private arguments before it is built for its action
+  # (`Ash.Query.for_read/4` takes none): `Ash.Query.set_argument/3`, for the
+  # names `private/3` gives, and no others.
+  defp set_private(query, private),
+    do:
+      Enum.reduce(private, query, fn {name, value}, query ->
+        Ash.Query.set_argument(query, name, value)
+      end)
 
   # The two functions below look like a repetition of what `AshDataTable.State`
   # already does, and they are meant to be one: they are the last guard for

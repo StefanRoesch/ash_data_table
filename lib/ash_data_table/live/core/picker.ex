@@ -204,7 +204,7 @@ defmodule AshDataTable.Live.Core.Picker do
              Pick.chosen(
                input.reference,
                named,
-               [arguments: arguments] ++ chooser(Core.table(socket))
+               [arguments: arguments] ++ chooser(socket)
              ),
            {:ok, entry} <- entry(input, record, Core.table(socket).caller.time_zone) do
         entry
@@ -261,7 +261,7 @@ defmodule AshDataTable.Live.Core.Picker do
       end)
 
     held = for key <- panel.refs[name], %{row: {_, _} = row} <- [known[key]], do: named(row)
-    opts = [arguments: arguments] ++ chooser(Core.table(socket))
+    opts = [arguments: arguments] ++ chooser(socket)
 
     added =
       Enum.reduce_while(Enum.uniq_by(rows, &named/1), [], fn row, added ->
@@ -425,7 +425,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # Who is asking, for what is read of a destination to choose from: the
   # reader, and what this table was told about authorization, which its
   # picker's table is told too (`AshDataTable.Pick.reader/2`).
-  def chooser(table), do: picking(table) ++ Core.reader(table)
+  def chooser(socket), do: picking(Core.table(socket)) ++ Core.reader(socket)
 
   def picking(table), do: [authorize_given: table.entry.authorize_given]
 
@@ -435,7 +435,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # arguments the picker's table has for this person, and as Ash takes it.
   defp picked_with(socket, reference, sent) when is_binary(sent) do
     table = Core.table(socket)
-    reader = Pick.reader(reference, chooser(table))
+    reader = Pick.reader(reference, chooser(socket))
 
     model =
       reference.destination

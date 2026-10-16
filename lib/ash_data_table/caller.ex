@@ -10,18 +10,41 @@ defmodule AshDataTable.Caller do
   #     typed and filtered by (`AshDataTable.Zone`); a nested table and a
   #     picker are in that of the table they are rendered in. UTC until the
   #     table is told another.
+  #   * `context`, `private_arguments`, `page_arguments`: what the page adds
+  #     to every call to Ash, each a map or a function of the page's assigns
+  #     (and of which table asks, for one of two arguments), nil for none;
+  #     `before_action`: the page's veto, a function of the
+  #     `AshDataTable.Request` (and the assigns), nil for none. The live
+  #     layer calls them with the assigns as they are then, in the
+  #     LiveView's process (target F8): the caller holds the functions, never
+  #     what they return.
   #
   # The 2a functions keep their keyword `opts` (target F7): `reader_opts/1`
   # is that list.
+
+  @typedoc "A map, or a function of the page's assigns (and of which table asks) to one."
+  @type page_value :: map | (map -> map) | (map, map -> map) | nil
 
   @type t :: %__MODULE__{
           scope: term,
           actor: term,
           tenant: term,
-          time_zone: String.t()
+          time_zone: String.t(),
+          context: page_value,
+          private_arguments: page_value,
+          page_arguments: page_value,
+          before_action:
+            (AshDataTable.Request.t() -> term) | (AshDataTable.Request.t(), map -> term) | nil
         }
 
-  defstruct scope: nil, actor: nil, tenant: nil, time_zone: nil
+  defstruct scope: nil,
+            actor: nil,
+            tenant: nil,
+            time_zone: nil,
+            context: nil,
+            private_arguments: nil,
+            page_arguments: nil,
+            before_action: nil
 
   @doc "A caller of these values; the time zone is UTC unless one is given."
   @spec new(keyword) :: t
