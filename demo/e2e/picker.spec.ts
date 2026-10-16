@@ -279,6 +279,7 @@ test.describe("the grid in the picker", () => {
     await tasks.press("Shift+ArrowDown")
     expect(await people.selectedKeys()).toEqual([keys[1]])
 
+    await pushed.expectSelected(people)
     expect(await pushed.besides("select"), "none of it talks to the server but to say what is selected").toEqual([])
     await expect(tasks.picker).toBeVisible()
   })
@@ -439,6 +440,8 @@ test.describe("choosing", () => {
     await people.radio(kim).click()
     expect(await people.selectedKeys()).toEqual([kim])
     await people.radio(mia).click()
+    await expect(people.radio(mia)).toBeChecked()
+    await pushed.expectSelected(people)
     expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
 
     await tasks.saves(cell, () => tasks.pickerChoose.click())

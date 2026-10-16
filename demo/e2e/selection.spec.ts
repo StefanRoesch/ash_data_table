@@ -147,6 +147,7 @@ test.describe("selecting with the pointer", () => {
     await expect(tasks.rowLine(SECOND)).toHaveAttribute("aria-selected", "true")
     await expect(tasks.rowLine(FIRST)).toHaveAttribute("aria-selected", "false")
     expect(await tasks.selectedKeys()).toEqual([SECOND])
+    await pushed.expectSelected(tasks)
     await expect(tasks.selectedCount).toHaveText("1 selected")
     await expect(tasks.clearSelection).toBeVisible()
     await expect(tasks.bulkButtons).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
@@ -159,6 +160,7 @@ test.describe("selecting with the pointer", () => {
     await expect(tasks.selectedCount).toHaveText("")
     await expect(tasks.clearSelection).toBeHidden()
 
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
   })
 
@@ -185,6 +187,7 @@ test.describe("selecting with the pointer", () => {
     await expect(tasks.pageBox).toBeChecked()
     expect(await mixed()).toBe(false)
     expect(await tasks.selectedKeys()).toHaveLength(25)
+    await pushed.expectSelected(tasks)
     await expect(tasks.selectedCount).toHaveText("25 selected")
     for (const box of await tasks.boxes.all()) await expect(box).toBeChecked()
 
@@ -193,6 +196,7 @@ test.describe("selecting with the pointer", () => {
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.selectedCount).toHaveText("")
 
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
   })
 
@@ -253,6 +257,7 @@ test.describe("selecting from the keyboard", () => {
     expect(await tasks.selectedKeys()).toEqual([FIRST])
 
     expect(await page.evaluate(() => window.scrollY)).toBe(0)
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select"), "selecting and moving send nothing but what is selected").toEqual([])
   })
 
@@ -340,6 +345,7 @@ test.describe("selecting from the keyboard", () => {
     await tasks.press("ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown", "Shift+ArrowDown")
     expect(await tasks.selectedKeys()).toEqual([...keys.slice(0, 3), keys[5], keys[6]])
 
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select"), "none of it is sent but what is selected").toEqual([])
   })
 
@@ -930,6 +936,8 @@ test.describe("a nested table", () => {
     expect(await comments.selectedKeys()).toEqual([])
     expect(await tasks.selectedKeys()).toEqual([SECOND])
     await expect(tasks.selectedCount).toHaveText("1 selected")
+    await pushed.expectSelected(tasks)
+    await pushed.expectSelected(comments)
     expect(await pushed.besides("select")).toEqual([])
   })
 

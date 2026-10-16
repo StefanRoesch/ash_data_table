@@ -232,6 +232,7 @@ test.describe("with the keyboard", () => {
     await tasks.press("Escape", "ArrowDown")
     await expect(tasks.actionsCell(SECOND), "back on the cell, the arrow keys move again").toBeFocused()
 
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select"), "none of it asks the server anything but to say what is selected").toEqual([])
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
   })

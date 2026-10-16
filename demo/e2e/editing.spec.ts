@@ -339,6 +339,7 @@ test.describe("saving", () => {
     // Space is the key of row selection on a cell: what is selected is
     // sent, and nothing else
     expect(await tasks.selectedKeys()).toEqual([FIRST])
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select")).toEqual([])
 
     await tasks.saves(billable, () => tasks.press("Enter"))

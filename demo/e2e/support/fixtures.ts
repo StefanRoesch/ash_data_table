@@ -57,6 +57,27 @@ export class Sent {
     return (await this.all()).filter((pushed) => pushed.event === event).length
   }
 
+  /**
+   * What the last `select` of the table `id` since the last `clear` said is
+   * selected: the rows as the hook names them, or "all"; undefined where it
+   * sent none.
+   */
+  async selected(id: string): Promise<string[] | "all" | undefined> {
+    const last = (await this.all()).filter((pushed) => pushed.event === "select" && pushed.table === id).at(-1)
+    return last && (last.params.all ? "all" : last.params.rows)
+  }
+
+  /**
+   * That the last `select` of `table` since the last `clear` said what its
+   * hook shows selected: the same rows, in any order (none, where nothing
+   * is selected and no `select` was sent).
+   */
+  async expectSelected(table: Table): Promise<void> {
+    const sent = await this.selected(table.id)
+    const shown = [...(await table.selectedKeys())].sort()
+    expect(sent === "all" ? sent : [...(sent ?? [])].sort(), `what the last select of ${table.id} said`).toEqual(shown)
+  }
+
   // Everything the page pushed before this is heard once this returns. An
   // event is pushed in the task of the key or click that caused it, or in a
   // timer of 0 ms it set (leaving an editor), which runs before the timer

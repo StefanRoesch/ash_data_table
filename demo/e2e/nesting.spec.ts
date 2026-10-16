@@ -322,6 +322,7 @@ test.describe("with the keyboard", () => {
     }
 
     // F2 on the cell of the nested table went into it; nothing else happened
+    await pushed.expectSelected(tasks)
     expect(await pushed.besides("select")).toEqual([])
     // the expander is a cell of the row; a line and what is under it are not
     expect(await tasks.selectedKeys()).toEqual([FIRST])

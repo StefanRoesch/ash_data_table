@@ -117,6 +117,7 @@ test.describe("the field of an argument that holds several related records", () 
     await labels.cell(added.key, "name").click()
     await expect(labels.box(added.key)).toBeChecked()
     await expect(labels.selectedCount).toHaveText(`${held.length + 1} selected`)
+    await pushed.expectSelected(labels)
     expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
 
     await tasks.pickerChoose.click()
@@ -220,6 +221,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     await tasks.press("Enter")
     await expect(tasks.picker).toBeVisible()
     await expect(labels.box(added.key)).toBeChecked()
+    await pushed.expectSelected(labels)
     expect(await pushed.besides("select"), "nothing was sent but what is selected").toEqual([])
 
     // Tab leaves the grid for the picker's buttons
@@ -266,6 +268,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     await labels.cell(keys[0], "name").focus()
     await tasks.press("Shift+ArrowDown", "Shift+ArrowDown")
     expect(await labels.selectedKeys()).toEqual(keys.slice(0, 3))
+    await pushed.expectSelected(labels)
     await expect(labels.selectedCount).toHaveText("3 selected")
 
     await labels.pageBox.click()
@@ -279,6 +282,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     expect(await labels.selectedKeys()).toEqual(keys.slice(1, 4))
     await labels.clearSelection.click()
     expect(await labels.selectedKeys()).toEqual([])
+    await pushed.expectSelected(labels)
     expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
 
     // nothing selected is a choice: of no label
