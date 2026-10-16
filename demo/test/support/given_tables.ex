@@ -292,3 +292,43 @@ defmodule DemoWeb.Support.GivenTagLive do
     """
   end
 end
+
+defmodule DemoWeb.Support.Heard do
+  @moduledoc """
+  An `on_mount` hook for the router page of the cards (`/support/heard/cards`):
+  it assigns the test's pid from the session, hands the test every event of
+  the table (`{:heard, message}`), and runs a command the test sends
+  (`{:run, fun}`, `fun` taking the socket and returning it), as a host's
+  hook hears and commands a router page. `context/2` and `before_action/2`
+  are what the route names.
+  """
+  import Phoenix.LiveView
+
+  def on_mount(:default, _params, session, socket) do
+    socket =
+      socket
+      |> Phoenix.Component.assign(test: session["test"], answer: :cont)
+      |> attach_hook(:heard, :handle_info, fn
+        {:ash_data_table, _id, _event} = message, socket ->
+          send(socket.assigns.test, {:heard, message})
+          {:halt, socket}
+
+        {:run, fun}, socket ->
+          {:halt, fun.(socket)}
+
+        _other, socket ->
+          {:cont, socket}
+      end)
+
+    {:cont, socket}
+  end
+
+  @doc "The context of the route: the test's pid and which table asks."
+  def context(assigns, ref), do: %{test: assigns.test, ref: ref}
+
+  @doc "The veto of the route: tells the test, and answers as the assign `answer` says."
+  def before_action(request, assigns) do
+    send(assigns.test, {:asked, request, true})
+    assigns.answer
+  end
+end

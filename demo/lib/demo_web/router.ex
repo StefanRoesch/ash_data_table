@@ -251,6 +251,19 @@ defmodule DemoWeb.Router do
           layout: {DemoWeb.Support.Layouts, :frame}
       end
 
+      # The router page of the cards, with what a route gives a table and
+      # hears of it (stage 6), heard and commanded by an `on_mount` hook.
+      live_session :heard, on_mount: [DemoWeb.Support.Heard] do
+        ash_data_table "/heard/cards", Demo.Support.Given.Card,
+          layout: false,
+          notify: true,
+          open: "Open",
+          context: {DemoWeb.Support.Heard, :context},
+          private_arguments: %{secret: "s3"},
+          page_arguments: %{to: "ann"},
+          before_action: {DemoWeb.Support.Heard, :before_action}
+      end
+
       # Pages whose `on_mount` hook assigns another person while they are
       # open (`DemoWeb.Support.Switch`): the bulletins, and the crates at
       # two routes of one id, between which a patch attaches the table anew.

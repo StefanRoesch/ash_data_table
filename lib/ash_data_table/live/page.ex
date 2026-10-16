@@ -352,11 +352,30 @@ defmodule AshDataTable.Live.Page do
         live?: route.live?,
         mounted?: true,
         time_zone: time_zone(route.resource, assigns)
-      ] ++ reader(route.resource, assigns)
+      ] ++ reader(route.resource, assigns) ++ given(route)
     )
   end
 
-  defp given(socket), do: layout_assigns(socket.assigns.route, socket.assigns)
+  defp given(%Phoenix.LiveView.Socket{} = socket),
+    do: layout_assigns(socket.assigns.route, socket.assigns)
+
+  # What the route gives the table and hears of it (stage 6), as
+  # `AshDataTable.attach/4` takes it: a `{module, function}` as a function.
+  defp given(route) do
+    for name <- [:notify, :open, :context, :private_arguments, :page_arguments, :before_action],
+        Map.has_key?(route, name) do
+      case {name, route[name]} do
+        {:before_action, {module, function}} ->
+          {name, fn request, assigns -> apply(module, function, [request, assigns]) end}
+
+        {_name, {module, function}} when name not in [:notify, :open] ->
+          {name, fn assigns, ref -> apply(module, function, [assigns, ref]) end}
+
+        {_name, value} ->
+          {name, value}
+      end
+    end
+  end
 
   @impl true
   def render(assigns) do

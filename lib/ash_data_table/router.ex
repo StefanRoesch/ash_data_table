@@ -63,6 +63,16 @@ defmodule AshDataTable.Router do
       the domain says otherwise. Written in the router, and taken from
       nowhere else. See "Without authorization" below.
 
+    * `:notify`, `:open`, `:context`, `:private_arguments`,
+      `:page_arguments`, `:before_action` - as the options of
+      `AshDataTable.attach/4`, written so that a route can hold them: a
+      function as `{module, function}`, called as `function(assigns,
+      table_ref)` (`before_action`: `function(request, assigns)`), else a
+      literal map. The events reach the host's `on_mount` hooks of the
+      `live_session`, which hear them with an `attach_hook/4` on
+      `:handle_info` and may give the table, `:table`, commands there. See
+      `AshDataTable.Live.Page`.
+
     * `:live?` - `false` mounts the table without live updates: it does not
       follow what others change, and neither do the tables nested in its
       rows and its pickers. `true` says that it has to follow them, and is
@@ -102,6 +112,8 @@ defmodule AshDataTable.Router do
   that authorizes, where they would see other records, and a table that
   authorizes never links to a page without.
   """
+  @page [:notify, :open, :context, :private_arguments, :page_arguments, :before_action]
+
   defmacro ash_data_table(path, resource, opts \\ []) do
     # As Phoenix does for the modules named in routes: expanding the alias as
     # if inside a function keeps the router from depending on the resource at
@@ -125,7 +137,7 @@ defmodule AshDataTable.Router do
             "ash_data_table expects a resource module as its second argument, got: #{inspect(resource)}"
     end
 
-    case Keyword.keys(opts) -- [:id, :layout, :authorize?, :table, :live?] do
+    case Keyword.keys(opts) -- ([:id, :layout, :authorize?, :table, :live?] ++ @page) do
       [] -> :ok
       unknown -> raise ArgumentError, "unknown options for ash_data_table: #{inspect(unknown)}"
     end
@@ -175,19 +187,66 @@ defmodule AshDataTable.Router do
             "the :live? of ash_data_table must be `true` or `false`, got: #{inspect(live?)}"
     end
 
+    page =
+      for name <- @page,
+          Keyword.has_key?(opts, name),
+          into: %{},
+          do: {name, page!(name, opts[name])}
+
     [
       # only used by hosts that still generate route helpers
       as: String.to_atom("ash_data_table_" <> String.replace(id, "-", "_")),
       metadata: %{
-        ash_data_table: %{
-          resource: resource,
-          table: table,
-          id: id,
-          layout: layout,
-          authorize?: authorize?,
-          live?: live?
-        }
+        ash_data_table:
+          %{
+            resource: resource,
+            table: table,
+            id: id,
+            layout: layout,
+            authorize?: authorize?,
+            live?: live?
+          }
+          |> Map.merge(page)
       }
     ]
+  end
+
+  # What the page gives its table and hears of it (stage 6), as a route can
+  # hold it: a literal, or `{module, function}` for a function, which the
+  # page calls as `attach/4` calls its own.
+  defp page!(:notify, notify) when notify == true or is_list(notify) do
+    for name <- List.wrap(notify), name != true, name not in AshDataTable.Event.names() do
+      raise ArgumentError,
+            "the :notify of ash_data_table names #{inspect(name)}, which is no event of a table. " <>
+              "They are: #{inspect(AshDataTable.Event.names())}"
+    end
+
+    notify
+  end
+
+  defp page!(:open, label) when is_binary(label), do: label
+
+  defp page!(:before_action, {module, function} = mf) when is_atom(module) and is_atom(function),
+    do: mf
+
+  defp page!(name, {module, function} = mf)
+       when name in [:context, :private_arguments, :page_arguments] and is_atom(module) and
+              is_atom(function),
+       do: mf
+
+  defp page!(name, %{} = map) when name in [:context, :private_arguments, :page_arguments],
+    do: map
+
+  defp page!(name, value) do
+    shape =
+      case name do
+        :notify -> "`true` or a list of events"
+        :open -> "the label of its button, a string"
+        :before_action -> "{module, function}"
+        _value -> "a map, or {module, function}"
+      end
+
+    raise ArgumentError,
+          "the :#{name} of ash_data_table must be #{shape}, got: #{inspect(value)}"
   end
 end
