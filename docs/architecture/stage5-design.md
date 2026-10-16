@@ -3,7 +3,7 @@
 
 > **Decided by the owner, 2026-10-15:** all recommendations D1–D9 accepted, incl. D5 (a new test group K: the nested-upload part of `label_import_test.exs:280` moves into a browser test; the demo test keeps the part up to the panel) and D8 (the measurable stability rule; two fixing attempts, then the fallback, and the owner is told). Also from the stage 3c drift check: the actor-change race (`nested_create_test.exs:127`) is fixed in this stage — when who is asking changes, what is open below closes first; and the changed expected value in `argument_line_test.exs:170–171` is kept as an agreed change.
 
-Status: **for the owner to decide.** Nothing of it is built. Code references are of `9f1031f` (the end of stage 3c). Names follow [target.md](target.md); words follow `CONTEXT.md`. The decisions are in section 8.
+Status: **built** (2026-10-16), see section 10 "As built"; the drift check is still to come. Code references in sections 1–9 are of `9f1031f` (the end of stage 3c). Names follow [target.md](target.md); words follow `CONTEXT.md`. The decisions are in section 8.
 
 Stage 5 runs before stage 4 (RQ2). It is the riskiest stage: the mechanism that shows a nested table changes. The research proved it in a toy (`ash_reference/headless-table-architecture.md` §10, files under `…/scratchpad/headless-research/exp/`: `lib/portal_live.ex`, `test/portal_test.exs`, `browser/portal.mjs`). This note says how it fits the real code.
 
@@ -324,3 +324,44 @@ Each step: each suite once (root, demo, browser), its own commit or commits on `
 - The perf comparison with the baseline is written into `baseline.md`: bytes per action as in section 6, Ash reads and statements not more, times within 20 %.
 - Target §9 stage 5 ticked, or the fallback recorded.
 - **The drift check** (target §9): an independent reviewer compares the build with target.md — `Live.Registry` and `Table` per §4.4, the rules of §1.5 (the parent's key from the registry, ids as claims, uploads and async closed with their entry), §6's "one id names all four", the cleanup of F11, and that only the agreed tests changed. The stage is done only after it.
+
+## 10. As built
+
+Commits on `main` after `stage5-start`: `4adf8ea` (two perf measurements), `1cc69f6` (step 1), `35eb89a` (step 2), `493c400` (the fix the gate called for), `0682ef6` (step 3), `8c14f6e` (step 4), `d550d76` (D9), `1382f7d` (`redetail/1` removed).
+
+**The shape.** As section 2, with these details:
+
+- `AshDataTable.Live.Registry` (`live/registry.ex`): `within/3`, `known?/2`, `async/2`, `take_stream/1`, `give_back/2`, `add/3`, `close/2`, `portals/1`. Stream names `"rows"`, `"rows_1"`, … (strings: no atom is made). `within/3` shows a table other than the top the options of a placed table (no URL, heading or page of its own); the top's options stay in `Table.options`.
+- Reconciliation is `Live.Core.Nesting.reconcile/1` with `children/2` (nested tables and pickers' tables, with what each is told and its target). An entry is told with `Core.told/2` and again only when `given` changed.
+- `Caller.authorize?` is what the top was told (nil untold); `Table.put/2` routes `authorize?` to the entry.
+- The wiring draws a table with a private `body/1`; the root element of each table stays in `render/1` (a live component's root must be a static tag). Portals are a keyed comprehension over `{entry, stream}`: a portal is rendered again only when its table or its stream changed. The top grid is given its stream whenever the top changes (as when it was a component of its own); without that, `Phoenix.LiveViewTest` put the rows after the `<tfoot>`.
+- The picker's table is drawn by `body/1` in the slot of `Parts.Picker.picker/1`.
+
+**The gate (D8).** The first run of the nesting specs ten times failed once: `nesting.spec.ts:702` ("many tables open at once") threw "portal target … not found". Cause: LiveView locks a hook's element while its event is answered and keeps patches to it aside; with a second event of the grid on its way, the cell of a newly opened line was kept aside while its portal, outside the grid, was moved at once. Fix (first attempt): the transport unlocks a grid's own push (`assets/js/transport/live_view.js`; the grid's hook keeps what a person does in it, `beforeUpdate`). With it, and the keyed portals, the specs passed ten times in a row (1,576 tests, with `portals.spec.ts`) and the whole suite once (962). No fallback.
+
+**The race of the drift check.** `Core.asker/2`: when the top is told another scope, actor, tenant or `authorize?`, it forgets `open` and `picker`, puts the expanded details back closed, and the nested tables close in the same update. `nested_create_test.exs:127` passed 400 runs in a row afterwards (about 1 in 300–400 failed before), with no "client exited" in the log; `portals.spec.ts` "another person asking" checks it in the browser.
+
+**Uploads.** `Files.drop_files/1` gives up only the files of the entry's own uploads (`entry.uploads`); closing an entry cancels and disallows them; a name given up is allowed again.
+
+**Tests that changed.** Group I: `DemoWeb.TablePage` (events and forms by name through `AshDataTable.Test`, the read seam unwraps the wrapper, `seen/1`), the snapshot normaliser (three portal rules), `table_page_test.exs` (one selector: the wrapper is unwrapped). Call target: `task_components_test.exs:41` reads through `seen/1` in place of `LazyHTML.from_fragment/1`, same assertions. Group K: `label_import_test.exs` stops at the panel; the upload is `files.spec.ts` "in a nested table". D4: the one class string in 15 snapshots (21 lines), reviewed. New: `test/registry_test.exs`, `demo/e2e/portals.spec.ts`, `demo/e2e/server/switch_live.ex` (`/e2e/switch`).
+
+**Performance** (`demo/perf/baseline.mjs`, same machine: at the start load 2.3; at the end a second run at load 5.0, after a first at 11.8 whose times are not used; bytes alike in both):
+
+| Action | Median ms, start → end | Bytes, start → end | Callbacks ms | Ash reads, statements |
+| --- | --- | --- | --- | --- |
+| Cell save | 45.3 → 35.4 | 7,258 → 7,282 | 27.3 → 24.4 | 4, 7 both |
+| Expanding a row | 13.7 → 9.9 | 3,272 → 3,284 | 0.1 → 0.1 | 0, 0 |
+| Opening a nested table | 53.7 → 43.0 | 30,709 → 37,315 (+6,606) | 5.8 → 5.8 | 2, 2 |
+| Opening the picker | 54.6 → 35.2 | 27,586 → 31,835 (+4,249) | 12.1 → 10.7 | 2, 4 |
+| Cell save in a nested table (new) | 17.9 → 23.6 (+32 %) | 3,225 → 3,476 | 8.6 → 8.4 | 1, 2 |
+| Cell save with a nested table open (new) | 36.5 → 36.3 | 11,318 → 7,517 (no details put back) | 25.2 → 20.2 | 4, 7 |
+| Page change | 76.1 → 69.3 | 153,438 → 153,510 | 5.2 → 5.0 | 4, 7 |
+
+The cell save in a nested table is the one time over 20 %: the server's part is the same (8.4 ms), so it is the browser's patch, which now goes through the component of the table on the page; at a load of 5 it is not settled.
+
+Opening a nested table or a picker sends the static markup of a table again each time: a live component of the same module reused the statics LiveView already had; a table drawn in a new item of the portals (or in the dialog) does not. Measured with `Phoenix.LiveViewTest`, opening a second nested table while one is open costs the same as the first. Growth measured, not cured; a way to share those statics is for stage 7.
+
+The pool (D3), on the dev server after opening and closing the comments of 20 tasks one after the other: one component, two streams on the socket (`rows` and `rows_1`, which is free again), no entry left, 372,616 bytes of the LiveView's process after a garbage collection (at the start: one stream, 264,240 and 372,616 bytes for the two pages then open; which was the measured one was not told apart).
+
+**Not done as written.** The done-check's "no `live_component` in `lib/`": the table on the page is still one (`AshDataTable.table/1`, `Live.Page`) until stage 4; the nested and the picker's are gone. The perf comparison is here, not in `baseline.md` (the build's rule for documents). Target §9 is left to the drift check.
+
