@@ -922,6 +922,7 @@ Notes from the drift check of stage 2 (2026-10-15):
 - [ ] Remove the nested `live_component`.
 - [ ] `AshDataTable.Test`: read a nested table from its portal; send its events by name. `DemoWeb.TablePage` uses it.
 - [ ] Browser tests of the portal combination itself (R §10.7 point 2), and one per removal path: live delete, page change, filter, actor change, `detach` (`detach` once stage 4 has it).
+- Performance (owner, 2026-10-16): opening a nested table or a picker sends 4–7 KB more than before stage 5 (portals do not share the static markup that live components of one module shared). Accepted; looked at again in stage 7. Times are within 20 % (measured back to back on an idle machine, `8032ef2`).
 
 ### Stage 4: attach, function component, wiring on top. Runs after stage 5
 
