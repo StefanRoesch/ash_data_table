@@ -6,6 +6,7 @@
 //   node baseline.mjs
 //   PERF_PORT=4490 PERF_REPS=15 node baseline.mjs
 //   PERF_PAGE=/support/modes/embedded/tasks node baseline.mjs
+//   PERF_NOTIFIED=1 node baseline.mjs   also a save on /perf/notified (stage 6)
 //
 // `PERF_PAGE` is the page measured, /tasks unless it is given: the same
 // table placed by the tag in a LiveView of the host's is
@@ -251,6 +252,19 @@ try {
   await page.locator(`[id="${nested(withComments)}"]`).waitFor({ state: "detached" })
   await expander(withComments).click()
 
+  // ---- selecting a row: the click on its box to the box checked, with
+  // what the server sends meanwhile (stage 6: the hook tells it `select`)
+  const box = (k) => `[id="task-row-${k}-s"] > input`
+  results.select_row = await measured("select a row", REPS, async (i) => {
+    const run = await until(tasks, `document.querySelector('${box(key(i))}').checked`, click(box(key(i))))
+    // the server has answered before the box is taken out again
+    await sleep(100)
+    await page.locator(box(key(i))).click()
+    await page.waitForFunction(new Function(`return !document.querySelector('${box(key(i))}').checked`))
+    await sleep(100)
+    return run
+  })
+
   // ---- a page change: the click on "Next" to the rows of the next page
   // forth and back between the first two pages
   results.page_change = await measured("page change", REPS, async (i) => {
@@ -263,6 +277,20 @@ try {
   })
 
   await tasks.close()
+
+  // ---- a cell save on a page that is told every event, gives a context and
+  // asks a veto (stage 6, /perf/notified): only where the page is there
+  if (process.env.PERF_NOTIFIED === "1") {
+    const notified = await open(context, "/perf/notified", "task")
+    const [first] = await notified.rowKeys()
+    const was = await notified.cell(first, "title").textContent()
+    results.cell_save_notified = await measured("cell save, notified", REPS, (i) =>
+      save(notified, first, "title", `Baseline edit ${i}`),
+    )
+    await save(notified, first, "title", was.trim())
+    await notified.close()
+  }
+
   await context.close()
 } finally {
   await stop()
