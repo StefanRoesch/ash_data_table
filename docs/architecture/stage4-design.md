@@ -1,6 +1,6 @@
 # Stage 4: design note (attach, the plain function component, the wiring on top)
 
-Status: **for the owner to decide.** Nothing is built. Code references are of `2c9845f`. LiveView references are of the installed `phoenix_live_view` 1.2.12, under `demo/deps/phoenix_live_view/` (written `LV lib/…` below). Names follow [target.md](target.md); words follow `CONTEXT.md`. The model for this note is [stage5-design.md](stage5-design.md).
+Status: **accepted by the owner, 2026-10-16, all as recommended.** Code references are of `2c9845f`. LiveView references are of the installed `phoenix_live_view` 1.2.12, under `demo/deps/phoenix_live_view/` (written `LV lib/…` below). Names follow [target.md](target.md); words follow `CONTEXT.md`. The model for this note is [stage5-design.md](stage5-design.md).
 
 Stage 4 runs after stage 5 (RQ2). Stage 5 left it three things (stage5-design §10): the top `live_component` in `AshDataTable.table/1` and in `Live.Page`; `Caller.authorize?`, written and never read; and the done-check line "no `live_component` in `lib/`", which must be reworded (section 9).
 
