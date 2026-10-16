@@ -99,7 +99,10 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       assert %{shown: "Too loud!\nReally.", message: "must not shout"} =
                failure(html, "essay", essay.id, "body")
 
-      assert [{"p", [{"data-paragraph", ""}], ["Too loud!\nReally."]}, {"span", _attributes, ["must not shout"]}] =
+      assert [
+               {"p", [{"data-paragraph", ""}], ["Too loud!\nReally."]},
+               {"span", _attributes, ["must not shout"]}
+             ] =
                inner(html, essay.id, "body")
 
       # and a save that goes through shows the new text the same way
