@@ -212,7 +212,8 @@ defmodule DemoWeb.Support.GivenLive do
   fails where the session says `"fail"`, and a veto that tells the test
   what it was asked, with which assigns, and answers as the assign `answer`
   says (the session's `"answer"`, else `:cont`). `"context"` in the session replaces the
-  context function. Everything the page hears it hands to the test, but
+  context function; with `"count"`, the context function tells the test
+  `{:called, table}` each time it is called. Everything the page hears it hands to the test, but
   `{:run, fun}`: a command of the test's, run here.
 
   Mounted with `Phoenix.LiveViewTest.live_isolated/3`.
@@ -226,8 +227,11 @@ defmodule DemoWeb.Support.GivenLive do
     test = Map.fetch!(session, "test")
     fail? = Map.get(session, "fail", false)
 
+    count? = Map.get(session, "count", false)
+
     context =
       Map.get(session, "context", fn assigns, ref ->
+        if count?, do: send(assigns.test, {:called, ref.table})
         %{test: assigns.test, ref: ref, fail: fail?}
       end)
 

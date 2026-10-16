@@ -35,6 +35,9 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Table
   alias AshDataTable.Text
 
+  # the page's values of the callback that runs, by the table that asks (`callback/1`)
+  @values {__MODULE__, :page_values}
+
   def mount(socket) do
     # Everything the table holds, in one value: what it was told, who is
     # asking, and the table itself (`AshDataTable.Table`; every field is
@@ -61,9 +64,11 @@ defmodule AshDataTable.Live.Core do
   # whose listener sends it the batch as a message.
   def heard(socket, id, batch) do
     if Registry.known?(socket, id) do
-      socket
-      |> Registry.within(id, &put(&1, waiting: table(&1).entry.waiting ++ batch))
-      |> tidy()
+      callback(fn ->
+        socket
+        |> Registry.within(id, &put(&1, waiting: table(&1).entry.waiting ++ batch))
+        |> tidy()
+      end)
     else
       socket
     end
@@ -71,20 +76,24 @@ defmodule AshDataTable.Live.Core do
 
   # What the host asks of the table on the page (`AshDataTable.refresh/2`
   # and the other commands), and all that follows from it.
-  def command(socket, fun), do: socket |> fun.() |> tidy()
+  def command(socket, fun), do: callback(fn -> socket |> fun.() |> tidy() end)
 
   # What the table on the page is told, by the tag's attributes or by
   # `AshDataTable.attach/4`, and all that follows from it.
   def tell(socket, given) do
-    {:ok, socket} = told(given, socket)
-    tidy(socket)
+    callback(fn ->
+      {:ok, socket} = told(given, socket)
+      tidy(socket)
+    end)
   end
 
   # Every event is parsed first (`AshDataTable.Intent`): what it asks for,
   # its values still claims, handed to the module of its topic. One whose
   # payload has another shape, and one that is not named for this table,
   # gets the answer the table gives such an event (`malformed/2`).
-  def handle_event(event, params, socket) do
+  def handle_event(event, params, socket), do: callback(fn -> event(event, params, socket) end)
+
+  defp event(event, params, socket) do
     {id, plain} = addressed(event)
 
     result =
@@ -150,17 +159,40 @@ defmodule AshDataTable.Live.Core do
   # (`Registry.current?/2`).
   def handle_async({:ash_data_table, id, {kind, _token}} = key, result, socket) do
     if Registry.current?(socket, key) do
-      {:noreply, socket} =
-        Registry.within(socket, id, fn socket ->
-          case kind do
-            :bulk -> Bulk.handle_async(kind, result, socket)
-            _read_or_summary -> Reading.handle_async(kind, result, socket)
-          end
-        end)
+      callback(fn ->
+        {:noreply, socket} =
+          Registry.within(socket, id, fn socket ->
+            case kind do
+              :bulk -> Bulk.handle_async(kind, result, socket)
+              _read_or_summary -> Reading.handle_async(kind, result, socket)
+            end
+          end)
 
-      {:noreply, tidy(socket)}
+        {:noreply, tidy(socket)}
+      end)
     else
       {:noreply, socket}
+    end
+  end
+
+  # One callback of the LiveView, the tables' and every table's under them:
+  # the page's values are called once in it for each table that asks
+  # (`values/1`), and forgotten when it ends, also when it raises. A
+  # callback inside another (a command a hook of the page gives while the
+  # table's own runs) shares the outer one's.
+  defp callback(fun) do
+    case Process.get(@values) do
+      nil ->
+        Process.put(@values, %{})
+
+        try do
+          fun.()
+        after
+          Process.delete(@values)
+        end
+
+      %{} ->
+        fun.()
     end
   end
 
@@ -597,10 +629,30 @@ defmodule AshDataTable.Live.Core do
   # of which table asks (`%{table: id, path: path, resource: resource}`).
   # Called in the LiveView's process, before any read or write starts; a
   # change of what they return reads nothing again by itself.
+  #
+  # Each function is called once per callback and table (`callback/1`): the
+  # reads and the write of one event are given the same values.
   def values(socket) do
-    %{caller: caller, entry: entry} = table(socket)
-    assigns = page_assigns(socket)
+    %{entry: entry} = table(socket)
     ref = %{table: entry.id, path: entry.path, resource: entry.resource}
+
+    case Process.get(@values) do
+      %{^ref => values} ->
+        values
+
+      %{} = known ->
+        values = values(socket, ref)
+        Process.put(@values, Map.put(known, ref, values))
+        values
+
+      nil ->
+        values(socket, ref)
+    end
+  end
+
+  defp values(socket, ref) do
+    %{caller: caller} = table(socket)
+    assigns = page_assigns(socket)
 
     %{
       context: value(caller.context, :context, assigns, ref),

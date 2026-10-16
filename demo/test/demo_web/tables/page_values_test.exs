@@ -111,6 +111,38 @@ defmodule DemoWeb.Tables.PageValuesTest do
     assert Ash.get!(Card, card.id).assignee == nil
   end
 
+  test "a function of the page is called once in a callback, for each table that asks",
+       %{conn: conn, card: card} do
+    {:ok, view, _html} = given(conn, %{"count" => true})
+    render(view)
+    _mounted = calls()
+
+    # a save, the record read again before it, and what it returned
+    save(view, "card", card.id, "title", "Renamed")
+    assert_reply view, %{ok: true}
+    assert calls() == ["card"]
+
+    # a sort, which reads the page again
+    view |> element("[id='card-head-title']") |> render_click()
+    render_async(view)
+    assert calls() == ["card"]
+
+    # a row opened, and a nested table in it that reads: each asks once
+    nested = nested("card", card.id, "remarks")
+    expand(view, "card", card.id)
+    _expanded = calls()
+    toggle(view, "card", card.id, "remarks")
+    assert Enum.frequencies(calls()) == %{nested => 1}
+  end
+
+  defp calls(sofar \\ []) do
+    receive do
+      {:called, table} -> calls([table | sofar])
+    after
+      0 -> Enum.reverse(sofar)
+    end
+  end
+
   test "a function of the page that returns no map raises, naming the option", %{conn: conn} do
     assert_raise ArgumentError, ~r/the `context` function of the table returned :nope/, fn ->
       given(conn, %{"context" => fn _assigns -> :nope end})
