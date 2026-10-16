@@ -104,23 +104,19 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
     Map.keys(entries) |> Enum.sort()
   end
 
-  defp heard(view) do
+  # What was announced, once it has reached the page; `gone` are the keys of
+  # the rows the test expects to go, which the hook lets go
+  # (`ash_data_table:leaving`, answered with `left`).
+  defp heard(view, gone \\ []) do
     AshDataTable.Test.flush(view)
     render_async(view, 10_000)
-    left(view)
-    render_async(view, 10_000)
-  end
 
-  defp left(view) do
-    {ref, _topic, _proxy} = view.proxy
-
-    receive do
-      {^ref, {:push_event, "ash_data_table:leaving", %{table: table, row: row}}} ->
-        forge(view, table, "left", %{"row" => row})
-        left(view)
-    after
-      0 -> :ok
+    for row <- gone do
+      assert_push_event(view, "ash_data_table:leaving", %{table: table, row: ^row})
+      forge(view, table, "left", %{"row" => row})
     end
+
+    render_async(view, 10_000)
   end
 
   test "every nested table stays drawn into a line of its parent, and the table on the page stays the entry, through every kind of callback",
@@ -172,7 +168,7 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
     heard(view)
     assert holds!(view) == [comments, deep]
     Ash.destroy!(first, as(world.admin))
-    heard(view)
+    heard(view, [first.id])
     assert holds!(view) == [comments]
     Ash.create!(Comment, %{body: "Third comment", task_id: task.id}, as(world.admin))
     heard(view)

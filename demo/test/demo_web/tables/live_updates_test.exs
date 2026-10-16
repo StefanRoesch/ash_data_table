@@ -70,25 +70,19 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
   # The page once what was announced has reached it. A listener gathers for
   # 100 ms; `AshDataTable.Test.flush/1` has it hand over at once, and the table
   # may read again for what it heard. A row that is to go is asked about
-  # first (`ash_data_table:leaving`), and the hook, which these tests do not
+  # first (`ash_data_table:leaving`): `gone` are the keys of the rows the
+  # test expects to go, and for each the hook, which these tests do not
   # have, answers that no cell of it is being edited.
-  defp heard(view) do
+  defp heard(view, gone \\ []) do
     AshDataTable.Test.flush(view)
     render_async(view, 10_000)
-    left(view)
+    Enum.each(gone, &left(view, &1))
     render(view)
   end
 
-  defp left(view) do
-    {ref, _topic, _proxy} = view.proxy
-
-    receive do
-      {^ref, {:push_event, "ash_data_table:leaving", %{table: table, row: row}}} ->
-        forge(view, table, "left", %{"row" => row})
-        left(view)
-    after
-      0 -> :ok
-    end
+  defp left(view, row) do
+    assert_push_event(view, "ash_data_table:leaving", %{table: table, row: ^row})
+    forge(view, table, "left", %{"row" => row})
   end
 
   defp titles(html), do: column(html, "task", "title")
@@ -304,7 +298,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
          %{world: world, member: member, theirs: theirs} do
       Ash.destroy!(theirs, as(world.admin))
 
-      html = heard(member)
+      html = heard(member, [theirs.id])
       assert titles(html) == ["Mine"]
       assert text(html, "#task-range") == "1–1 of 1"
       assert notice(html) == ""
@@ -314,7 +308,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
          %{world: world, member: member, mine: mine, theirs: theirs} do
       select(member, "task", [theirs.id, mine.id])
       Ash.destroy!(theirs, as(world.admin))
-      heard(member)
+      heard(member, [theirs.id])
 
       assert_push_event(member, "ash_data_table:select", %{table: "task", rows: rows})
       assert rows == [[mine.id, nil]]
@@ -694,7 +688,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
 
       Ash.destroy!(task, as(world.admin))
 
-      html = heard(member)
+      html = heard(member, [task.id])
       assert titles(html) == ["Another task"]
       assert column(html, nested, "body") == []
       assert listeners(comments) == 0
@@ -808,7 +802,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       # the panel is closed: the table on the page looks again, and asks
       cancel_panel(member, comments)
       render(member)
-      left(member)
+      left(member, task.id)
       assert titles(render(member)) == ["Another task"]
     end
 
@@ -1069,7 +1063,7 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
     test "a record destroyed in one goes from the other", %{view: view, second: second} do
       act(view, "comment", second.id, "destroy")
 
-      html = heard(view)
+      html = heard(view, [second.id])
       assert column(html, "comment", "body") == ["First comment"]
       assert column(html, "comment_compact", "body") == ["First comment"]
     end

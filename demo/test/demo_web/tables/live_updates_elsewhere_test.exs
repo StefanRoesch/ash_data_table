@@ -38,25 +38,19 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
   # The page once what was announced has reached it. A listener gathers for
   # 100 ms; `AshDataTable.Test.flush/1` has it hand over at once, and the table
   # may read again for what it heard. A row that is to go is asked about
-  # first (`ash_data_table:leaving`), and the hook, which these tests do not
+  # first (`ash_data_table:leaving`): `gone` are the keys of the rows the
+  # test expects to go, and for each the hook, which these tests do not
   # have, answers that no cell of it is being edited.
-  defp heard(view) do
+  defp heard(view, gone \\ []) do
     AshDataTable.Test.flush(view)
     render_async(view, 10_000)
-    left(view)
+    Enum.each(gone, &left(view, &1))
     render(view)
   end
 
-  defp left(view) do
-    {ref, _topic, _proxy} = view.proxy
-
-    receive do
-      {^ref, {:push_event, "ash_data_table:leaving", %{table: table, row: row}}} ->
-        forge(view, table, "left", %{"row" => row})
-        left(view)
-    after
-      0 -> :ok
-    end
+  defp left(view, row) do
+    assert_push_event(view, "ash_data_table:leaving", %{table: table, row: ^row})
+    forge(view, table, "left", %{"row" => row})
   end
 
   defp titles(html, id \\ "bulletin"), do: column(html, id, "title")
@@ -105,7 +99,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
       Ash.update!(plain, %{hidden?: true}, authorize?: false)
 
-      html = heard(reader)
+      html = heard(reader, [plain.id])
       assert titles(html) == ["Stays"]
       assert text(html, "#bulletin-range") == "1–1 of 1"
       refute html =~ "Plain"
@@ -310,7 +304,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
       assert column(heard(view), "pin", "note") == ["First", "Second, edited"]
 
       Ash.destroy!(first, authorize?: false)
-      html = heard(view)
+      html = heard(view, ["north-1"])
       assert column(html, "pin", "note") == ["Second, edited"]
       assert column(html, "pin", "slot") == ["2"]
 
