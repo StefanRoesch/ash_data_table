@@ -50,7 +50,10 @@ defmodule Demo.Support.Given.Heard do
 end
 
 defmodule Demo.Support.Given.Card do
-  @moduledoc "A card, with remarks; a page fills in whom it is assigned to."
+  @moduledoc """
+  A card, with remarks; a page fills in whom it is assigned to. Its table
+  `:mapped` shows its size, a map cell.
+  """
   use Ash.Resource,
     domain: Demo.Support.Given,
     data_layer: Ash.DataLayer.Ets,
@@ -79,6 +82,16 @@ defmodule Demo.Support.Given.Card do
     end
 
     action :count_cards
+  end
+
+  tables do
+    # with a map cell, whose panel the table draws itself in controlled mode
+    table :mapped do
+      update_action :update
+      column :title
+      column :size
+      action :rename
+    end
   end
 
   actions do
@@ -110,7 +123,7 @@ defmodule Demo.Support.Given.Card do
     update :update do
       primary? true
       require_atomic? false
-      accept [:title]
+      accept [:title, :size]
       argument :secret, :string, public?: false
       change &Demo.Support.Given.Heard.write/2
     end
@@ -129,6 +142,10 @@ defmodule Demo.Support.Given.Card do
     attribute :title, :string, public?: true
     attribute :assignee, :string, public?: true
     attribute :code, :string, public?: true, sensitive?: true
+
+    attribute :size, :map,
+      public?: true,
+      constraints: [fields: [width: [type: :integer], height: [type: :integer]]]
   end
 
   relationships do
@@ -190,7 +207,8 @@ defmodule DemoWeb.Support.GivenLive do
   `context` that holds the test's pid and which table asks, a private
   argument, the page arguments of the session (`"page"`, else the
   assignee), the events the session's `"notify"` names, the "Open" its
-  `"open"` labels, what the host draws itself (`"controlled"`), a read that
+  `"open"` labels, what the host draws itself (`"controlled"`), the named
+  table the session's `"table"` names, else the default one, a read that
   fails where the session says `"fail"`, and a veto that tells the test
   what it was asked, with which assigns, and answers as the assign `answer`
   says (the session's `"answer"`, else `:cont`). `"context"` in the session replaces the
@@ -217,6 +235,7 @@ defmodule DemoWeb.Support.GivenLive do
       socket
       |> assign(test: test, answer: Map.get(session, "answer", :cont))
       |> AshDataTable.attach(:cards, Card,
+        table: Map.get(session, "table"),
         context: context,
         private_arguments: %{secret: "s3", to: "browser"},
         page_arguments: Map.get(session, "page", %{to: "ann"}),

@@ -10,11 +10,15 @@ defmodule AshDataTable.Live.Core.Requests do
   # `submit_request/4`, `cancel_request/3`), each of which goes the way
   # the person's own answer would: through `AshDataTable.Operation`, with
   # its checks, the veto and the record read again. One request at a time;
-  # a new one takes the old one's place, and an answer to another `ref`
-  # does nothing.
+  # a new one takes the old one's place, with a `ref` and a `:requested` of
+  # its own, and an answer to another `ref` does nothing. A request holds
+  # what it was made for (`for`: of a panel its kind, action and row, of a
+  # question what Confirm runs), so that a panel that opens in another's
+  # place is a new request, not the old one's `ref` over other fields.
   #
   # Only for the table on the page; a nested table and a picker's table
-  # draw what they open themselves, as does a map cell's panel.
+  # draw what they open themselves, as does a map cell's panel: a panel of
+  # such a kind ends a request held, and is never handed to the host.
 
   alias AshDataTable.Event
   alias AshDataTable.Live.Core
@@ -41,36 +45,47 @@ defmodule AshDataTable.Live.Core.Requests do
     request = %{
       ref: ref(),
       kind: :confirm,
+      for: run,
       run: run,
       action: action.name,
       key: key,
       question: action.confirm
     }
 
+    # a panel held for the host is the old request, which this one ends
+    socket =
+      if match?(%{kind: :panel}, Core.table(socket).entry.request),
+        do: Core.put(socket, panel: nil, picker: nil),
+        else: socket
+
     held(socket, request)
   end
 
   @doc """
   After every callback (`AshDataTable.Live.Core.tidy/1`): a panel that
-  opened is held as a request, one that closed is no longer.
+  opened is held as a request, a new one with a `ref` of its own when it
+  is another panel than the one held; one that closed, or opened of a kind
+  the table draws itself, ends the panel's request. A question held stays
+  until a panel opens after it.
   """
   def follow(socket) do
     %{panel: panel, request: request} = Core.table(socket).entry
 
-    cond do
-      not controlled?(socket, :panel) ->
-        socket
-
-      is_map(panel) and panel.kind in @kinds and not match?(%{kind: :panel}, request) ->
-        held(socket, %{ref: ref(), kind: :panel})
-
-      is_nil(panel) and match?(%{kind: :panel}, request) ->
-        Core.put(socket, request: nil)
-
-      true ->
-        socket
+    case {controlled?(socket, :panel) && handed(panel), request} do
+      {false, _request} -> socket
+      {nil, %{kind: :panel}} -> Core.put(socket, request: nil)
+      {nil, _confirm_or_none} -> socket
+      {made_for, %{kind: :panel, for: made_for}} -> socket
+      {made_for, _other} -> held(socket, %{ref: ref(), kind: :panel, for: made_for})
     end
   end
+
+  # What a panel the host draws is made for; nil for none, and for one the
+  # table draws itself.
+  defp handed(%{kind: kind, action: action, key: key}) when kind in @kinds,
+    do: {kind, action.name, key}
+
+  defp handed(_none_or_drawn_by_the_table), do: nil
 
   defp held(socket, request) do
     socket

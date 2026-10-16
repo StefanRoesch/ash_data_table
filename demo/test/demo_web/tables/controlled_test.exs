@@ -143,6 +143,68 @@ defmodule DemoWeb.Tables.ControlledTest do
     assert Ash.get!(Card, card.id).title == "First"
   end
 
+  describe "a request is the one it was made for" do
+    test "a second panel is a new request, and the first one's ref is refused",
+         %{conn: conn, card: card} do
+      {:ok, view, _html} = given(conn, %{"notify" => [:requested]})
+
+      act(view, "card", card.id, "rename")
+      assert_received {:heard, {:ash_data_table, "card", {:requested, %{ref: first}}}}
+
+      open_create(view, "card")
+      assert_received {:heard, {:ash_data_table, "card", {:requested, %{ref: second}}}}
+      assert second != first
+      assert %{ref: ^second, kind: :panel, action: :create} = request(view)
+
+      # the first ref is stale: the rename it was for does not run
+      params = %{"title" => "Renamed", "reason" => "typo"}
+      answer(view, &AshDataTable.submit_request(&1, :cards, first, params))
+      assert Ash.get!(Card, card.id).title == "First"
+      assert %{ref: ^second, action: :create} = request(view)
+    end
+
+    test "a map cell's panel is the table's own: the request held ends, the host is told nothing",
+         %{conn: conn, card: card} do
+      {:ok, view, _html} = given(conn, %{"notify" => [:requested], "table" => :mapped})
+
+      act(view, "card_mapped", card.id, "rename")
+      assert_received {:heard, {:ash_data_table, "card_mapped", {:requested, %{ref: ref}}}}
+
+      html = edit(view, "card_mapped", card.id, "size")
+      refute_received {:heard, {:ash_data_table, "card_mapped", {:requested, _details}}}
+      assert request(view) == nil
+      # drawn by the table itself
+      assert panel(html, "card_mapped") != nil
+
+      params = %{"title" => "Renamed", "reason" => "typo"}
+      answer(view, &AshDataTable.submit_request(&1, :cards, ref, params))
+      assert Ash.get!(Card, card.id).title == "First"
+    end
+
+    test "a question held while a panel is open ends the panel, and stays the request",
+         %{conn: conn, card: card} do
+      {:ok, view, _html} = given(conn, %{"notify" => [:requested]})
+
+      act(view, "card", card.id, "rename")
+      assert_received {:heard, {:ash_data_table, "card", {:requested, %{ref: panel_ref}}}}
+
+      act(view, "card", card.id, "destroy")
+
+      assert_received {:heard,
+                       {:ash_data_table, "card", {:requested, %{ref: ref, kind: :confirm}}}}
+
+      assert %{ref: ^ref, kind: :confirm, action: :destroy} = request(view)
+
+      params = %{"title" => "Renamed", "reason" => "typo"}
+      answer(view, &AshDataTable.submit_request(&1, :cards, panel_ref, params))
+      assert Ash.get!(Card, card.id).title == "First"
+
+      answer(view, &AshDataTable.confirm_request(&1, :cards, ref))
+      assert Ash.read!(Card) == []
+      assert request(view) == nil
+    end
+  end
+
   test "attach refuses a panel a page cannot draw, and names its action" do
     assert_raise ArgumentError, ~r/the action `create` has the field `file`/, fn ->
       AshDataTable.attach(%Phoenix.LiveView.Socket{}, :scans, Demo.Support.Files.Scan,
