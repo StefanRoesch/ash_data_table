@@ -152,7 +152,10 @@ defmodule AshDataTable.MixProject do
       {:simple_sat, "~> 0.1", only: :test},
       # A time zone database for the tests of zones other than UTC. A host
       # configures its own (`tz` or `tzdata`); the library needs none.
-      {:tz, "~> 0.28", only: :test}
+      {:tz, "~> 0.28", only: :test},
+      # `AshDataTable.Test` reads a page with it, as `Phoenix.LiveViewTest`
+      # does; a host's tests have it already.
+      {:lazy_html, ">= 0.1.0", only: :test}
     ]
   end
 

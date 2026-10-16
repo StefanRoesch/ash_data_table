@@ -33,7 +33,9 @@ defmodule AshDataTable.Test do
   the browser shows it; `send_event/5` sends a table its event by its name,
   whichever table it is; `send_form/5` sends a form of a nested table as
   the browser does. They read the page with `LazyHTML`, which
-  `Phoenix.LiveViewTest` needs too.
+  `Phoenix.LiveViewTest` needs too. `send_form/5` builds what a form sends
+  with internals of `Phoenix.LiveViewTest` (`DOM.collect_form_values/2`
+  and `DOM.all_value_inputs/2`), and is tested against LiveView 1.2.12.
 
       html = render(view)
       AshDataTable.Test.page(html) |> LazyHTML.query("[id='task-row-1-t-comments-table']")
@@ -217,9 +219,15 @@ defmodule AshDataTable.Test do
       end
   end
 
-  # The table an event's name is for: `ash_data_table:ID:event`, split at
-  # the first and the last `:`.
-  defp table_named(event) do
+  @doc """
+  The id of the table an event's name is for: `ash_data_table:ID:event`,
+  split at the first and the last `:`. A name without a table raises.
+
+      AshDataTable.Test.table_named("ash_data_table:task-row-1-t-comments:sort")
+      #=> "task-row-1-t-comments"
+  """
+  @spec table_named(String.t()) :: String.t()
+  def table_named(event) do
     case String.split(event, ":") do
       ["ash_data_table" | [_, _ | _] = rest] -> rest |> Enum.drop(-1) |> Enum.join(":")
       _unnamed -> raise ArgumentError, "#{inspect(event)} names no table"

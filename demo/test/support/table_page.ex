@@ -1138,15 +1138,6 @@ defmodule DemoWeb.TablePage do
   defp send_form(view, selector, kind, values, opts \\ [check: true]),
     do: AshDataTable.Test.send_form(view, selector, kind, values, opts)
 
-  # The table an event's name is for: `ash_data_table:ID:event`, split at
-  # the first and the last `:`.
-  defp table_named(event) do
-    case String.split(event, ":") do
-      ["ash_data_table" | [_, _ | _] = rest] -> rest |> Enum.drop(-1) |> Enum.join(":")
-      _unnamed -> raise ArgumentError, "#{inspect(event)} names no table"
-    end
-  end
-
   # The element of the hook that sends an event in a browser.
   defp hook_of(event)
        when event in ~w(panel_add panel_remove panel_unpick panel_clear panel_cancel),
@@ -1240,7 +1231,7 @@ defmodule DemoWeb.TablePage do
         do: raise(ArgumentError, "#{inspect(selector)} is no table's: it has no phx-target")
 
       payload = Map.merge(values, push["value"] || %{})
-      send_event(view, table_named(push["event"]), push["event"], payload)
+      send_event(view, AshDataTable.Test.table_named(push["event"]), push["event"], payload)
     end)
   end
 
