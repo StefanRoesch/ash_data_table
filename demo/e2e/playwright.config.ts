@@ -1,22 +1,27 @@
 import { defineConfig, devices } from "@playwright/test"
 import { workerCount } from "./support/server"
 
-// The files of the suite run side by side, the tests of a file in their
-// order. Each worker has a server and a database of its own, started by the
-// worker itself (support/server.ts): ports 4480 and up, databases
-// `demo_e2e_0` and up, each a copy of the one the global setup seeds. A dev
-// server on 4478 and a `./server.sh` on 4479 are left alone.
+// Every test runs on its own: in a database transaction of its own, which is
+// rolled back when it ends (the fixture `sandbox`, support/server.ts), so no
+// test changes what another reads and nothing is seeded again. So the tests
+// of all files run side by side, in any order, spread over the workers.
+// Each worker has a server and a database of its own, started by the worker
+// itself (support/server.ts, which says why not one server for all): ports
+// 4480 and up, databases `demo_e2e_0` and up, each a copy of the one the
+// global setup seeds. A dev server on 4478 and a `./server.sh` on 4479 are
+// left alone.
 //
 //   npm test                          as many workers as the machine carries
-//   E2E_WORKERS=4 npm test            four of them; 1 runs the files in turn
+//   E2E_WORKERS=4 npm test            four of them; 1 runs the tests in turn
+//   npm test -- editing.spec.ts       the tests of one file
+//   npm test -- --only-changed=main   the files that changed since `main`,
+//                                     and those that import a changed file
 //   npm run test:server -- editing    against a running `./server.sh`, one
 //                                     test at a time, with nothing started
 export default defineConfig({
   testDir: ".",
   testMatch: /\.spec\.ts$/,
-  // A test that writes seeds its worker's database again when it is done
-  // (support/fixtures.ts), so the tests of a file never run at the same time.
-  fullyParallel: false,
+  fullyParallel: true,
   workers: workerCount(),
   globalSetup: "./global.setup.ts",
   forbidOnly: !!process.env.CI,

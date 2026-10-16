@@ -60,19 +60,28 @@ const DATABASE = NAME ? `demo_e2e_${NAME}` : "demo_e2e"
 
 /**
  * How many workers, and so how many servers and databases: E2E_WORKERS, or
- * half the cores and no more than six. A worker is a BEAM (about 0.2 GB), a
- * Chromium with its pages (about 0.45 GB) and the sessions of its database.
- * More of them than that made every test several times slower on the
- * machine this was measured on (12 cores), and the run no shorter.
+ * half the machine's threads (`os.availableParallelism()`). A worker that
+ * runs a test keeps more than one thread busy: its Chromium with the page,
+ * its server, and Postgres; more workers than the machine carries make every
+ * test slower and the run no shorter. A worker is a BEAM (about 0.2 GB), a
+ * Chromium with its pages (about 0.45 GB) and one connection of its database
+ * per test.
  */
 export function workerCount(): number {
   if (EXTERNAL) return 1
   const asked = Number(process.env.E2E_WORKERS)
   if (Number.isInteger(asked) && asked > 0) return asked
-  return Math.max(1, Math.min(6, Math.floor(os.availableParallelism() / 2)))
+  return Math.max(1, Math.floor(os.availableParallelism() / 2))
 }
 
-const env = { ...process.env, MIX_ENV: "e2e" }
+// The servers' BEAMs do not spin while they wait for work (`+sbwt none` and
+// the like, erl(1)): several of them on one machine would otherwise take
+// the time of the browsers.
+const env = {
+  ...process.env,
+  MIX_ENV: "e2e",
+  ERL_FLAGS: [process.env.ERL_FLAGS, "+sbwt none +sbwtdcpu none +sbwtdio none"].filter(Boolean).join(" "),
+}
 
 /**
  * Before any worker starts: the build, the assets and the template database.
