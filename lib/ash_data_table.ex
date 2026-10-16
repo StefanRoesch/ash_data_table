@@ -199,6 +199,11 @@ defmodule AshDataTable do
     doc:
       "What a default of an asked argument is given when it is a function (`ask :currency, default: &MyApp.Defaults.currency/1`): the assigns of the page that it looks at, such as `%{current_user: @current_user}`. A mounted table gives such a function the assigns of its socket."
 
+  attr :notify, :any,
+    default: nil,
+    doc:
+      "Which events the page is told, as `{:ash_data_table, id, {event, details}}` messages to its LiveView (`AshDataTable.Event`): `true` for all, or a list of their names. None without it."
+
   attr :context, :any,
     default: nil,
     doc:
@@ -251,6 +256,7 @@ defmodule AshDataTable do
     end
 
     page!(Map.take(assigns, @page), "<AshDataTable.table>")
+    notify!(assigns.notify, "<AshDataTable.table>")
 
     ~H"""
     <.live_component
@@ -274,6 +280,7 @@ defmodule AshDataTable do
       private_arguments={@private_arguments}
       page_arguments={@page_arguments}
       before_action={@before_action}
+      notify={@notify}
     />
     """
   end
@@ -306,6 +313,14 @@ defmodule AshDataTable do
   a table with `url: true` was attached to the LiveView before.
   A default of an asked argument that is a function is given the
   LiveView's assigns.
+
+  ## What the page hears
+
+  `notify: true`, or a list of event names, sends the LiveView a message
+  `{:ash_data_table, id, {event, details}}` for each event of the table,
+  `id` being the table's: see `AshDataTable.Event`. Without it the table
+  sends none, so a LiveView whose `handle_info/2` has no clause for them is
+  safe.
 
   ## What the page gives
 
@@ -354,10 +369,11 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          @page ++ [heading: true, url: false, mounted?: false]
+          [:notify] ++ @page ++ [heading: true, url: false, mounted?: false]
       )
 
     page!(Map.new(Keyword.take(opts, @page)), "AshDataTable.attach/4")
+    notify!(opts[:notify], "AshDataTable.attach/4")
 
     table = opts[:table] || :default
 
@@ -396,11 +412,33 @@ defmodule AshDataTable do
       context: opts[:context],
       private_arguments: opts[:private_arguments],
       page_arguments: opts[:page_arguments],
-      before_action: opts[:before_action]
+      before_action: opts[:before_action],
+      notify: opts[:notify]
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
   end
+
+  defp notify!(notify, _where) when notify in [nil, true], do: :ok
+
+  defp notify!(names, where) when is_list(names) do
+    case names -- AshDataTable.Event.names() do
+      [] ->
+        :ok
+
+      unknown ->
+        raise ArgumentError,
+              "the `notify` of #{where} names #{inspect(unknown)}, which are no events of a " <>
+                "table. They are: #{inspect(AshDataTable.Event.names())}"
+    end
+  end
+
+  defp notify!(other, where),
+    do:
+      raise(
+        ArgumentError,
+        "the `notify` of #{where} is `true` or a list of events, got: #{inspect(other, limit: 5)}"
+      )
 
   defp page!(given, where) do
     for {name, value} <- given, not is_nil(value) do

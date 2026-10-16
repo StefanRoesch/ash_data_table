@@ -6,6 +6,7 @@ defmodule AshDataTable.Live.Core.Cells do
   alias AshDataTable.Edit
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
@@ -161,11 +162,12 @@ defmodule AshDataTable.Live.Core.Cells do
   # result, or the record as it is and the cell marked with what was typed.
   defp saved(result, socket, key, column, typed) do
     case result do
-      {:ok, %Operation.Outcome{record: record}} ->
+      {:ok, %Operation.Outcome{record: record} = outcome} ->
         {:reply, %{ok: true},
          socket
          |> Reading.put_failure(key, record, column.name, nil)
-         |> Reading.put_row(key, record)}
+         |> Reading.put_row(key, record)
+         |> Notify.told(outcome.event)}
 
       {:error, %Operation.Failure{record: %_{} = record, message: message, places: places}} ->
         # what was typed into a sensitive cell is not kept, and not shown
@@ -202,12 +204,13 @@ defmodule AshDataTable.Live.Core.Cells do
       {:error, %Operation.Failure{unchosen: [_ | _]}} ->
         {:reply, %{ok: false}, Picker.unavailable(socket)}
 
-      {:ok, %Operation.Outcome{record: record}} ->
+      {:ok, %Operation.Outcome{record: record} = outcome} ->
         {:reply, %{ok: true},
          socket
          |> Core.put(picker: nil)
          |> Reading.put_failure(key, record, column.name, nil)
-         |> Reading.put_row(key, record)}
+         |> Reading.put_row(key, record)
+         |> Notify.told(outcome.event)}
 
       {:error, %Operation.Failure{record: %_{} = record, message: message, chosen: chosen}} ->
         {:reply, %{ok: false},

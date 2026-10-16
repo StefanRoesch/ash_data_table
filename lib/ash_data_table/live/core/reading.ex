@@ -10,8 +10,10 @@ defmodule AshDataTable.Live.Core.Reading do
   import Phoenix.LiveView
 
   alias AshDataTable.Errors
+  alias AshDataTable.Event
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
   alias AshDataTable.Model
@@ -21,6 +23,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Query
   alias AshDataTable.Sensitive
   alias AshDataTable.State
+  alias AshDataTable.Text
 
   require AshDataTable.Live.Current, as: Current
 
@@ -264,9 +267,27 @@ defmodule AshDataTable.Live.Core.Reading do
     end
   end
 
-  # Shows what a read gave. `read` says which one it was: the `:first` of
-  # this table, done while it is mounted, or a `:later` one.
-  defp show(socket, {:ok, %Query.Page{} = page}, _read) do
+  # Shows what a read gave, and tells the host (`:read`, `:read_failed`).
+  # `read` says which one it was: the `:first` of this table, done while it
+  # is mounted, or a `:later` one.
+  defp show(socket, result, read) do
+    socket = shown(socket, result, read)
+    %{model: model, state: state, row_count: count, error: error} = Core.table(socket).entry
+
+    event =
+      case result do
+        {:ok, %Query.Page{total: total}} ->
+          Event.read(model, state, count, total)
+
+        {:error, reason} ->
+          forbidden? = reason == :forbidden or is_struct(reason, Ash.Error.Forbidden)
+          Event.read_failed(error && Text.say(error), forbidden?)
+      end
+
+    Notify.told(socket, event)
+  end
+
+  defp shown(socket, {:ok, %Query.Page{} = page}, _read) do
     %{id: id, model: model} = Core.table(socket).entry
 
     rows =
@@ -328,7 +349,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # The row a nested table belongs to is gone, or no longer this person's to
   # read: nothing is known about its related records, which is not the same
   # as there being none.
-  defp show(socket, {:error, :parent_gone}, _read),
+  defp shown(socket, {:error, :parent_gone}, _read),
     do: show_message(socket, {:text, :record_gone, []})
 
   # A nested table whose destination this person may not read, in either of
@@ -336,7 +357,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # so it says something in every case: that they are not allowed when the
   # destination's table is declared with `on_forbidden :message`, and no more
   # than that the records are not available otherwise. Never "No records".
-  defp show(socket, {:error, refusal}, _read)
+  defp shown(socket, {:error, refusal}, _read)
        when Current.entry(socket, :nested?) and
               (refusal == :forbidden or is_struct(refusal, Ash.Error.Forbidden)) do
     case Core.table(socket).entry.model.on_forbidden do
@@ -348,7 +369,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # A table to choose from whose read is refused: the picker has told the
   # person that there is a table, so it says something in every case, as a
   # nested table does.
-  defp show(socket, {:error, %Ash.Error.Forbidden{}}, _read)
+  defp shown(socket, {:error, %Ash.Error.Forbidden{}}, _read)
        when is_map(Current.entry(socket, :choose)) do
     case Core.table(socket).entry.model.on_forbidden do
       :message -> show_message(socket, {:text, :not_allowed, []})
@@ -359,21 +380,21 @@ defmodule AshDataTable.Live.Core.Reading do
   # A table of its own that is limited to related records, whose destination
   # this person may not read: Ash put its refusal in place of the records.
   # It is the refusal of this table's read, as below.
-  defp show(socket, {:error, :forbidden}, read),
-    do: show(socket, {:error, Ash.Error.Forbidden.exception([])}, read)
+  defp shown(socket, {:error, :forbidden}, read),
+    do: shown(socket, {:error, Ash.Error.Forbidden.exception([])}, read)
 
   # A read the resource refuses outright. Unless the table is declared with
   # `on_forbidden :message`, the person is not told that there is a table:
   # nothing of it is rendered, and a table that is a page of its own answers
   # as a page that does not exist.
-  defp show(socket, {:error, %Ash.Error.Forbidden{} = error}, read) do
+  defp shown(socket, {:error, %Ash.Error.Forbidden{} = error}, read) do
     case Core.table(socket).entry.model.on_forbidden do
       :message -> show_error(socket, error)
       :not_found -> socket |> show_error(error) |> Core.put(gone?: true) |> not_found(read)
     end
   end
 
-  defp show(socket, {:error, error}, _read), do: show_error(socket, error)
+  defp shown(socket, {:error, error}, _read), do: show_error(socket, error)
 
   defp show_error(socket, error),
     do: show_message(socket, error_text(error, Core.table(socket).entry.model))

@@ -11,6 +11,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   alias AshDataTable.Caller
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Files
+  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Model
@@ -29,6 +30,13 @@ defmodule AshDataTable.Live.Core.Bulk do
   # of it, and the table reads again as them.
   def handle_async(:bulk, result, socket) do
     %{caller: caller, entry: %{running: %{by: by}}} = Core.table(socket)
+
+    # the host is told what was done, whoever asks now
+    socket =
+      case result do
+        {:ok, %{event: event}} -> Notify.told(socket, event)
+        _exit -> socket
+      end
 
     if Caller.who(caller) == by,
       do: ran(result, socket),

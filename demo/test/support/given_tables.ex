@@ -28,7 +28,10 @@ defmodule Demo.Support.Given.Heard do
     with %{test: test, ref: ref} <- query.context,
          do: send(test, {:read, query.resource, ref, Ash.Query.get_argument(query, :secret)})
 
-    query
+    # a read the page's context says to fail
+    if query.context[:fail],
+      do: Ash.Query.add_error(query, Ash.Error.Invalid.exception(errors: [])),
+      else: query
   end
 
   @doc "A change that tells the test what a write was given, when it runs."
@@ -57,24 +60,50 @@ defmodule Demo.Support.Given.Card do
   table do
     label_field :title
     update_action :update
+    create_action :create
 
     column :title
     column :assignee
+    column :code
 
     relationship :remarks
 
     action :assign do
       page_argument :to
     end
+
+    action :rename
+
+    action :destroy do
+      confirm false
+    end
+
+    action :count_cards
   end
 
   actions do
-    defaults create: [:title]
-
     read :read do
       primary? true
       argument :secret, :string, public?: false
       prepare &Demo.Support.Given.Heard.read/2
+    end
+
+    create :create do
+      accept [:title, :code]
+      argument :note, :string
+      argument :pin, :string, sensitive?: true
+    end
+
+    destroy :destroy
+
+    update :rename do
+      require_atomic? false
+      accept [:title]
+      argument :reason, :string, allow_nil?: false
+    end
+
+    action :count_cards, :integer do
+      run fn _input, _context -> {:ok, 3} end
     end
 
     update :update do
@@ -98,6 +127,7 @@ defmodule Demo.Support.Given.Card do
     uuid_primary_key :id
     attribute :title, :string, public?: true
     attribute :assignee, :string, public?: true
+    attribute :code, :string, public?: true, sensitive?: true
   end
 
   relationships do
@@ -153,7 +183,8 @@ defmodule DemoWeb.Support.GivenLive do
   A host LiveView whose cards are attached with what it gives them: a
   `context` that holds the test's pid and which table asks, a private
   argument, the page arguments of the session (`"page"`, else the
-  assignee), and a veto that tells the test what it was asked, with which
+  assignee), the events the session's `"notify"` names, a read that fails
+  where the session says `"fail"`, and a veto that tells the test what it was asked, with which
   assigns, and answers as the assign `answer` says (the session's
   `"answer"`, else `:cont`). `"context"` in the session replaces the
   context function. Everything the page hears it hands to the test.
@@ -167,9 +198,12 @@ defmodule DemoWeb.Support.GivenLive do
   @impl true
   def mount(_params, session, socket) do
     test = Map.fetch!(session, "test")
+    fail? = Map.get(session, "fail", false)
 
     context =
-      Map.get(session, "context", fn assigns, ref -> %{test: assigns.test, ref: ref} end)
+      Map.get(session, "context", fn assigns, ref ->
+        %{test: assigns.test, ref: ref, fail: fail?}
+      end)
 
     socket =
       socket
@@ -181,7 +215,8 @@ defmodule DemoWeb.Support.GivenLive do
         before_action: fn request, assigns ->
           send(assigns.test, {:asked, request, Map.has_key?(assigns, :cards)})
           assigns.answer
-        end
+        end,
+        notify: Map.get(session, "notify")
       )
 
     {:ok, socket}
@@ -204,7 +239,7 @@ end
 defmodule DemoWeb.Support.GivenTagLive do
   @moduledoc """
   The cards placed with the tag, given the same as `DemoWeb.Support.GivenLive`
-  gives them, and the page's assigns as `assigns`.
+  gives them, and the page's assigns as `assigns`; told reads and saves.
   """
   use Phoenix.LiveView
 
@@ -233,6 +268,7 @@ defmodule DemoWeb.Support.GivenTagLive do
           assigns.answer
         end
       }
+      notify={[:read, :row_saved]}
     />
     """
   end

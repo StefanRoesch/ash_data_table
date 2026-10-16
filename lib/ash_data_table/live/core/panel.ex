@@ -11,6 +11,7 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Files
+  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Model
@@ -601,14 +602,20 @@ defmodule AshDataTable.Live.Core.Panel do
   defp submitted(socket, %{kind: :bulk, action: action}, {:start, run, files}),
     do: {:noreply, Bulk.start_bulk(socket, action, run, files)}
 
-  defp submitted(socket, %{kind: :cell, key: key}, {:ok, %Operation.Outcome{record: record}}),
-    do: {:noreply, socket |> Core.put(panel: nil) |> Reading.put_row(key, record)}
+  defp submitted(socket, %{kind: :cell, key: key}, {:ok, %Operation.Outcome{} = saved}),
+    do:
+      {:noreply,
+       socket
+       |> Core.put(panel: nil)
+       |> Reading.put_row(key, saved.record)
+       |> Notify.told(saved.event)}
 
   defp submitted(socket, %{kind: :table, action: action}, {:ok, %Operation.Outcome{} = done}) do
     action =
       Operation.table_action(Core.operation(socket, nil), Atom.to_string(action.name)) || action
 
-    {:noreply, socket |> Core.put(panel: nil) |> done(action, done.value)}
+    {:noreply,
+     socket |> Core.put(panel: nil) |> done(action, done.value) |> Notify.told(done.event)}
   end
 
   defp submitted(socket, %{kind: :create}, {:ok, %Operation.Outcome{} = created}) do
@@ -619,7 +626,10 @@ defmodule AshDataTable.Live.Core.Panel do
         do: Core.put(socket, panel: nil),
         else: socket |> Core.put(panel: nil) |> add_row(created.record)
 
-    {:noreply, Core.say(socket, {:text, :created, name: created_name(model)})}
+    {:noreply,
+     socket
+     |> Core.say({:text, :created, name: created_name(model)})
+     |> Notify.told(created.event)}
   end
 
   defp submitted(socket, %{kind: :row, key: key, action: action}, result) do
@@ -772,25 +782,29 @@ defmodule AshDataTable.Live.Core.Panel do
 
   # What became of a row action, run straight away or from its panel: the
   # reply to the hook, and the page as it is now.
-  defp ran({:ok, %Operation.Outcome{record: %_{} = record}}, socket, key, action) do
+  defp ran({:ok, %Operation.Outcome{record: %_{} = record} = outcome}, socket, key, action) do
     {:reply, %{ok: true},
      socket
      |> Reading.put_action_failure(key, record, nil)
      |> Reading.put_row(key, record)
-     |> Core.say({:text, :action_done, action: action.label})}
+     |> Core.say({:text, :action_done, action: action.label})
+     |> Notify.told(outcome.event)}
   end
 
   # destroyed, or no longer this person's to read: the row is not theirs to
   # see any more
-  defp ran({:ok, %Operation.Outcome{gone?: true}}, socket, key, action) do
+  defp ran({:ok, %Operation.Outcome{gone?: true} = outcome}, socket, key, action) do
     {:reply, %{ok: true, removed: true},
-     socket |> Reading.remove_row(key) |> Core.say({:text, :action_done, action: action.label})}
+     socket
+     |> Reading.remove_row(key)
+     |> Core.say({:text, :action_done, action: action.label})
+     |> Notify.told(outcome.event)}
   end
 
   # A generic action returns no row: the table says what it returned and
   # reads again, as any record may be another by now.
-  defp ran({:ok, %Operation.Outcome{value: value}}, socket, _key, action),
-    do: {:reply, %{ok: true}, done(socket, action, value)}
+  defp ran({:ok, %Operation.Outcome{value: value} = outcome}, socket, _key, action),
+    do: {:reply, %{ok: true}, socket |> done(action, value) |> Notify.told(outcome.event)}
 
   defp ran(
          {:error, %Operation.Failure{record: %_{} = record, message: message}},
@@ -822,8 +836,8 @@ defmodule AshDataTable.Live.Core.Panel do
   # selected rows is said: there is no row to say it on.
   defp run_table(socket, intent, action) do
     case Operation.run(Core.operation(socket, intent)) do
-      {:ok, %Operation.Outcome{value: value}} ->
-        done(socket, action, value)
+      {:ok, %Operation.Outcome{value: value} = outcome} ->
+        socket |> done(action, value) |> Notify.told(outcome.event)
 
       {error, message_or_failure} when error in [:error, :halted] ->
         text =

@@ -4,7 +4,9 @@ defmodule AshDataTable.Live.Core.Nesting do
   # tables, what makes it one of related records, expanding a row and
   # opening a line, and what a nested table and a picker's table are given.
 
+  alias AshDataTable.Event
   alias AshDataTable.Live.Core
+  alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -216,9 +218,15 @@ defmodule AshDataTable.Live.Core.Nesting do
     with true <- expandable?,
          lines when is_list(lines) <- open[key],
          %Relationship{name: name} <- Model.relationship(model, name) do
+      event = if name in lines, do: :row_collapsed, else: :row_expanded
       lines = if name in lines, do: List.delete(lines, name), else: lines ++ [name]
+      pk = Core.table(socket).entry.rows[key].pk
 
-      {:noreply, socket |> Core.put(open: Map.put(open, key, lines)) |> Reading.put_detail(key)}
+      {:noreply,
+       socket
+       |> Core.put(open: Map.put(open, key, lines))
+       |> Reading.put_detail(key)
+       |> Notify.told(Event.line(event, pk, name))}
     else
       _ -> {:noreply, socket}
     end

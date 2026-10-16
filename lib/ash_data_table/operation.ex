@@ -34,6 +34,7 @@ defmodule AshDataTable.Operation do
   alias AshDataTable.Bulk
   alias AshDataTable.Edit
   alias AshDataTable.Errors
+  alias AshDataTable.Event
   alias AshDataTable.Model
   alias AshDataTable.Query
   alias AshDataTable.Record
@@ -103,8 +104,8 @@ defmodule AshDataTable.Operation do
     # A write that was done: the `record` as the action returned it, with
     # what the columns show loaded (nil for a generic action); `value` what
     # a generic action returned; `gone?` for a record that was destroyed,
-    # or that is not the person's to read any more. `event` is filled in
-    # stage 6, with what the page is told.
+    # or that is not the person's to read any more. `event` is what the
+    # page is told of it (`AshDataTable.Event`), when it asks.
     defstruct record: nil, value: nil, gone?: false, event: nil
 
     @type t :: %__MODULE__{}
@@ -146,7 +147,10 @@ defmodule AshDataTable.Operation do
          true <- Edit.typed?(column, typed),
          %{} = row <- input.rows[key],
          :cont <- asked(input, :cell, column, row) do
-      input.model |> Edit.save(column, row.pk, typed, opts(input)) |> edited()
+      input.model
+      |> Edit.save(column, row.pk, typed, opts(input))
+      |> edited()
+      |> event(&Event.saved(input.model, column, row.pk, &1.record))
     else
       halted -> halted(halted)
     end
@@ -159,7 +163,10 @@ defmodule AshDataTable.Operation do
          true <- Edit.clearable?(column),
          %{} = row <- input.rows[key],
          :cont <- asked(input, :clear, column, row) do
-      input.model |> Edit.clear(column, row.pk, opts(input)) |> edited()
+      input.model
+      |> Edit.clear(column, row.pk, opts(input))
+      |> edited()
+      |> event(&Event.saved(input.model, column, row.pk, &1.record))
     else
       halted -> halted(halted)
     end
@@ -181,11 +188,21 @@ defmodule AshDataTable.Operation do
           input.picking ++ opts(input)
 
       case Edit.refer(input.model, column, row.pk, named, opts) do
-        :changed -> {:ask, column.confirm}
-        :unavailable -> {:error, %Failure{message: @gone, unchosen: [column]}}
-        {:ok, record} -> {:ok, %Outcome{record: record}}
-        {:error, %_{} = record, message, chosen} -> failed(record, message, chosen: chosen)
-        {:error, nil, message} -> failed(nil, message)
+        :changed ->
+          {:ask, column.confirm}
+
+        :unavailable ->
+          {:error, %Failure{message: @gone, unchosen: [column]}}
+
+        {:ok, record} ->
+          {:ok, %Outcome{record: record}}
+          |> event(&Event.saved(input.model, column, row.pk, &1.record))
+
+        {:error, %_{} = record, message, chosen} ->
+          failed(record, message, chosen: chosen)
+
+        {:error, nil, message} ->
+          failed(nil, message)
       end
     else
       halted -> halted(halted)
@@ -236,7 +253,10 @@ defmodule AshDataTable.Operation do
     with %Model.Action{panel?: false} = action <- action(input.model.actions, name),
          %{} = row <- input.rows[key],
          :cont <- asked(input, :row, action, key: row.pk) do
-      input.model |> Act.run(action, row.pk, opts(input)) |> ran()
+      input.model
+      |> Act.run(action, row.pk, opts(input))
+      |> ran()
+      |> event(&Event.ran(input.model, action, row.pk, Act.from_page(action, opts(input)), &1))
     else
       halted -> halted(halted)
     end
@@ -246,7 +266,10 @@ defmodule AshDataTable.Operation do
     with %Model.Action{panel?: false} = action <- table_action(input, name),
          true <- event == :table_run or is_nil(action.confirm),
          :cont <- asked(input, :table, action) do
-      input.model |> Act.run_generic(action, %{}, opts(input)) |> ran()
+      input.model
+      |> Act.run_generic(action, %{}, opts(input))
+      |> ran()
+      |> event(&Event.ran(input.model, action, nil, Act.from_page(action, opts(input)), &1))
     else
       halted -> halted(halted)
     end
@@ -273,9 +296,17 @@ defmodule AshDataTable.Operation do
          :cont <- asked(input, :map_cell, column, row) do
       input.with_files.(fn _files ->
         case Edit.put(input.model, column, field, row.pk, params, panel.form.id, opts(input)) do
-          {:ok, record} -> {:ok, %Outcome{record: record}}
-          {:error, %AshPhoenix.Form{} = form} -> {:error, %Failure{form: form}}
-          {:error, nil, message} -> failed(nil, message)
+          {:ok, record} ->
+            event(
+              {:ok, %Outcome{record: record}},
+              &Event.saved(input.model, column, row.pk, &1.record)
+            )
+
+          {:error, %AshPhoenix.Form{} = form} ->
+            {:error, %Failure{form: form}}
+
+          {:error, nil, message} ->
+            failed(nil, message)
         end
       end)
     else
@@ -292,6 +323,9 @@ defmodule AshDataTable.Operation do
         input.model
         |> Act.submit_row(action, row.pk, params, panel.form.id, opts)
         |> ran()
+        |> event(
+          &Event.ran(input.model, action, row.pk, given(input, action, panel, params, files), &1)
+        )
       end)
     else
       halted -> halted(halted)
@@ -305,6 +339,9 @@ defmodule AshDataTable.Operation do
         input.model
         |> Act.submit_generic(action, params, files, panel.form.id, chooser(input))
         |> ran()
+        |> event(
+          &Event.ran(input.model, action, nil, given(input, action, panel, params, files), &1)
+        )
       end)
     else
       halted -> halted(halted)
@@ -329,6 +366,15 @@ defmodule AshDataTable.Operation do
                 chooser(input)
               )
               |> created(given)
+              |> event(
+                &Event.ran(
+                  input.model,
+                  action,
+                  nil,
+                  given(input, action, panel, params, files),
+                  &1
+                )
+              )
 
             :error ->
               failed(nil, @gone)
@@ -401,7 +447,14 @@ defmodule AshDataTable.Operation do
       ] ++ opts(input)
 
     model = input.model
-    {:start, fn -> Bulk.run(model, action, selection, given, opts) end, files}
+    told = Map.merge(given, Act.from_page(action, opts))
+
+    run = fn ->
+      outcome = Bulk.run(model, action, selection, given, opts)
+      Map.put(outcome, :event, Event.bulk(model, action, selection, told, outcome))
+    end
+
+    {:start, run, files}
   end
 
   @doc """
@@ -480,6 +533,19 @@ defmodule AshDataTable.Operation do
 
   defp selected(:all), do: :all
   defp selected({:rows, rows}), do: rows
+
+  # What the page is told of a write that was done.
+  defp event({:ok, %Outcome{} = outcome}, event), do: {:ok, %{outcome | event: event.(outcome)}}
+  defp event(result, _event), do: result
+
+  # What an action of a panel was given: what its form sent for the inputs,
+  # its files, and what the page gives it.
+  defp given(input, action, panel, params, files) do
+    panel.inputs
+    |> Act.values(params, panel.time_zone)
+    |> Map.merge(files)
+    |> Map.merge(Act.from_page(action, opts(input)))
+  end
 
   defp edited({:ok, record}), do: {:ok, %Outcome{record: record}}
 

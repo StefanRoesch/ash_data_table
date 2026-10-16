@@ -18,6 +18,8 @@ defmodule AshDataTable.Caller do
   #     layer calls them with the assigns as they are then, in the
   #     LiveView's process (target F8): the caller holds the functions, never
   #     what they return.
+  #   * `notify`: which events the page is told (`AshDataTable.Event`):
+  #     `true` for all, a list of their names, nil for none.
   #
   # The 2a functions keep their keyword `opts` (target F7): `reader_opts/1`
   # is that list.
@@ -34,7 +36,8 @@ defmodule AshDataTable.Caller do
           private_arguments: page_value,
           page_arguments: page_value,
           before_action:
-            (AshDataTable.Request.t() -> term) | (AshDataTable.Request.t(), map -> term) | nil
+            (AshDataTable.Request.t() -> term) | (AshDataTable.Request.t(), map -> term) | nil,
+          notify: true | [atom] | nil
         }
 
   defstruct scope: nil,
@@ -44,7 +47,8 @@ defmodule AshDataTable.Caller do
             context: nil,
             private_arguments: nil,
             page_arguments: nil,
-            before_action: nil
+            before_action: nil,
+            notify: nil
 
   @doc "A caller of these values; the time zone is UTC unless one is given."
   @spec new(keyword) :: t

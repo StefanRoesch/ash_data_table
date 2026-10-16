@@ -84,7 +84,8 @@ defmodule AshDataTable.Bulk do
   @typedoc """
   What became of a run:
 
-    * `done` - on how many records the action ran;
+    * `done` - on how many records the action ran, and `succeeded` their
+      primary keys;
     * `failed` - the primary keys of the records it did not run on, as far
       as they were named or read;
     * `failures` - why not: each message with the number of records it is
@@ -94,6 +95,7 @@ defmodule AshDataTable.Bulk do
   """
   @type outcome :: %{
           done: non_neg_integer,
+          succeeded: [map],
           failed: [map],
           failures: [{Errors.message(), pos_integer}]
         }
@@ -125,7 +127,8 @@ defmodule AshDataTable.Bulk do
     outcome =
       model
       |> batches(keys, opts)
-      |> Enum.reduce(%{done: 0, ran: MapSet.new(), failures: []}, fn records, outcome ->
+      |> Enum.reduce(%{done: 0, ran: MapSet.new(), succeeded: [], failures: []}, fn records,
+                                                                                    outcome ->
         act(model, action, records, input, opts, outcome)
       end)
 
@@ -138,6 +141,7 @@ defmodule AshDataTable.Bulk do
 
     %{
       done: outcome.done,
+      succeeded: Enum.reverse(outcome.succeeded),
       failed: failed,
       failures: outcome.failures |> count({:text, :record_gone, []}, gone) |> Enum.reverse()
     }
@@ -209,7 +213,8 @@ defmodule AshDataTable.Bulk do
           %{
             outcome
             | done: outcome.done + 1,
-              ran: MapSet.put(outcome.ran, written(model, record))
+              ran: MapSet.put(outcome.ran, written(model, record)),
+              succeeded: [Map.take(record, model.primary_key) | outcome.succeeded]
           }
 
         {:error, message} ->
@@ -254,6 +259,8 @@ defmodule AshDataTable.Bulk do
       outcome
       | done: outcome.done + length(ran),
         ran: Enum.reduce(ran, outcome.ran, &MapSet.put(&2, &1)),
+        succeeded:
+          Enum.reduce(records, outcome.succeeded, &[Map.take(&1, model.primary_key) | &2]),
         failures: failures
     }
   end

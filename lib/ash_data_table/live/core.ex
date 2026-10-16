@@ -182,7 +182,7 @@ defmodule AshDataTable.Live.Core do
           [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
             [:select, :choose, :page_assigns, :parent_arguments] ++
-            [:context, :private_arguments, :page_arguments, :before_action]
+            [:context, :private_arguments, :page_arguments, :before_action, :notify]
         )
       )
 
