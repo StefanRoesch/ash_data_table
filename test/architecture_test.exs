@@ -41,7 +41,11 @@ defmodule AshDataTable.ArchitectureTest do
       `AshDataTable` have, as strings
       (`phx-hook="AshDataTable.Grid"`; target 4.5, Q15);
     * the presentation hints of `Model.Column` (`component`, `max_lines`,
-      `sticky_label?`, `editor`), which the core passes on (target 6, F3).
+      `sticky_label?`), which the core passes on (target 6, F3): the second
+      test checks that no module of 2a or 2b but the model, which makes
+      them, reads one, but `Live.Core.in_words/1`, which puts the words of
+      a component's column into it (the design note of stage 7, D14).
+      `editor` is no hint: it decides how a value is given and written.
 
   It fails on any finding from the end of stage 3c (target 5.5).
   """
@@ -189,6 +193,40 @@ defmodule AshDataTable.ArchitectureTest do
       {"reads from Ash outside Query, Record, Pick and Bulk (S1)", reads()}
     ])
   end
+
+  # The presentation hints (stage 7, D14): a key `component:` (in a pattern
+  # or a map), `.max_lines`, `.sticky_label?`, in a file of 2a or 2b but
+  # the model's own (`model.ex`, `model/`), which makes them from the
+  # declaration, and but `Live.Core.in_words/1`.
+  test "no module of the internals reads a presentation hint" do
+    found =
+      for file <- Path.wildcard("lib/**/*.ex"),
+          part(file) in ~w(2a 2b),
+          not String.starts_with?(file, @lib <> "/model"),
+          words = in_words(file),
+          {number, line} <- named_in(file),
+          is_integer(number),
+          number not in words,
+          line =~ ~r/\bcomponent:|\.max_lines\b|\.sticky_label\?/,
+          do: "#{file}:#{number}: #{String.trim(line)}"
+
+    assert found == []
+  end
+
+  # The lines of `Live.Core.in_words/1`: from its head to the next function.
+  defp in_words(@lib <> "/live/core.ex" = file) do
+    lines = file |> File.read!() |> String.split("\n") |> Enum.with_index(1)
+    {_line, first} = Enum.find(lines, fn {line, _number} -> line =~ ~r/^  def in_words\(/ end)
+
+    last =
+      Enum.find_value(lines, length(lines), fn {line, number} ->
+        number > first and line =~ ~r/^  defp? / and number
+      end)
+
+    Enum.to_list(first..(last - 1))
+  end
+
+  defp in_words(_file), do: []
 
   defp xref(args) do
     path =

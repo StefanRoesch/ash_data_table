@@ -139,6 +139,14 @@ defmodule AshDataTable.Kit do
     * `field`, `control` - a field of the panel (`data-field`), its control.
     * `failure` - the message of a failed cell: a popover with `id`.
 
+  ## Presentation hints
+
+  What a column says of how it is drawn is for the parts alone: its
+  `component` (drawn before the kit's `cell/1` and `editor/1`), `max_lines`
+  (the cell's `data-lines`) and the table's `sticky_label?` (a header's
+  `data-label`). The table reads, sorts, filters and writes the same
+  without them.
+
   ## Contract versions
 
   A part added later comes with a default in `use AshDataTable.Kit`, and a
