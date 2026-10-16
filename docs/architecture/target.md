@@ -859,34 +859,34 @@ not stray from the target:
 
 ### Stage 1: split
 
-- [ ] Cut by the line ranges of 4.8, refreshed against the code at the start of the stage.
-- [ ] Directories per part (5.5); the dependency test in report mode (`test/architecture_test.exs`).
-- [ ] Move `Model.CellType` → `Resource.CellType`; `Model.Operator` → `Resource.Operator`; `Model.humanize/1` → `Resource.Words`; `Sensitive.sensitive?/typed?/empty?` → `Resource.Exposing` (V2–V5).
-- [ ] `Resource.Embedding` stops building `Model.Field` (V1).
-- [ ] `Resource.Relating.table?/1` stops calling `AshDataTable.Resource` (V8).
-- [ ] `Notifier` → `Resource.Notifier`, part 1 (Q9, V6).
-- [ ] `label/1` out of the tag module into 2a (V11).
-- [ ] Function components → `AshDataTable.Parts.*` (4.5), still reading today's assigns.
-- [ ] `render/1` → `Parts.Grid`, `Parts.Heading`, `Parts.Arguments`, `Parts.Selection`, `Parts.Messages`, `Parts.Summary`.
-- [ ] `Model.hideable/1` moves to part 3 with the markup that uses it (F3).
-- [ ] Hooks stay in the component module, so the rendered `phx-hook` names stay (M2).
-- [ ] `shown_as/1` from `AshTable.Components` into `AshDataTable.Component` (owner, 2026-10-14; first moved into `Resource.Presenting`, which broke §5.1).
-- [ ] Update `docs/agents/architecture.md`.
+- [x] Cut by the line ranges of 4.8, refreshed against the code at the start of the stage.
+- [x] Directories per part (5.5); the dependency test in report mode (`test/architecture_test.exs`).
+- [x] Move `Model.CellType` → `Resource.CellType`; `Model.Operator` → `Resource.Operator`; `Model.humanize/1` → `Resource.Words`; `Sensitive.sensitive?/typed?/empty?` → `Resource.Exposing` (V2–V5).
+- [x] `Resource.Embedding` stops building `Model.Field` (V1).
+- [x] `Resource.Relating.table?/1` stops calling `AshDataTable.Resource` (V8).
+- [x] `Notifier` → `Resource.Notifier`, part 1 (Q9, V6).
+- [x] `label/1` out of the tag module into 2a (V11).
+- [x] Function components → `AshDataTable.Parts.*` (4.5), still reading today's assigns.
+- [x] `render/1` → `Parts.Grid`, `Parts.Heading`, `Parts.Arguments`, `Parts.Selection`, `Parts.Messages`, `Parts.Summary`.
+- [x] `Model.hideable/1` moves to part 3 with the markup that uses it (F3).
+- [x] Hooks stay in the component module, so the rendered `phx-hook` names stay (M2).
+- [x] `shown_as/1` from `AshTable.Components` into `AshDataTable.Component` (owner, 2026-10-14; first moved into `Resource.Presenting`, which broke §5.1).
+- [x] Update `docs/agents/architecture.md`.
 
 ### Stage 1b: hooks to JS files (Q15)
 
-- [ ] First: check that a colocated hook that imports from the package works in a release build.
-- [ ] The hooks as real JS files in the package (4.5 table), with the internal transport object (S20); the colocated hooks become thin imports.
-- [ ] The `app.js`/npm path for other UI technologies and custom builds; the installer.
-- [ ] Snapshots normalise hook names.
+- [x] First: check that a colocated hook that imports from the package works in a release build.
+- [x] The hooks as real JS files in the package (4.5 table), with the internal transport object (S20); the colocated hooks become thin imports.
+- [x] The `app.js`/npm path for other UI technologies and custom builds; the installer.
+- [x] Snapshots normalise hook names.
 
 ### Stage 2: one state value
 
-- [ ] `AshDataTable.Live.Entry`: today's assigns of `mount/1` with their comments, plus the selected keys field (empty until stage 6, RQ1).
-- [ ] `AshDataTable.Table` per live component: options, `Caller`, the entry of this table. `@tables` stays until stage 5 (F5).
-- [ ] `AshDataTable.Caller`: reader values from `reader/1` and `Query.reader_opts/1`, the time zone, and the functions; no assigns (F8). `Caller.reader_opts/1` produces today's `opts`; no 2a signature changes (F7).
-- [ ] `State` is wrapped, not replaced.
-- [ ] `Parts.*` read `@table` / the entry, not loose assigns. Measure the `/tasks` diff before and after (R §6 stage 3).
+- [x] `AshDataTable.Live.Entry`: today's assigns of `mount/1` with their comments, plus the selected keys field (empty until stage 6, RQ1).
+- [x] `AshDataTable.Table` per live component: options, `Caller`, the entry of this table. `@tables` stays until stage 5 (F5).
+- [x] `AshDataTable.Caller`: reader values from `reader/1` and `Query.reader_opts/1`, the time zone, and the functions; no assigns (F8). `Caller.reader_opts/1` produces today's `opts`; no 2a signature changes (F7).
+- [x] `State` is wrapped, not replaced.
+- [x] `Parts.*` read `@table` / the entry, not loose assigns. Measure the `/tasks` diff before and after (R §6 stage 3).
 
 Notes from the drift check of stage 2 (2026-10-15):
 - Functions join `Caller` in stage 6 (none exist before). Parts get single fields of the entry, never `@table` (it holds the caller and actor).
@@ -896,46 +896,46 @@ Notes from the drift check of stage 2 (2026-10-15):
 
 ### Stage 3a: drawing data and intents
 
-- [ ] `AshDataTable.Present`: rows, cells, the panel's fields, picker rows and labels, failed edits; values, not texts (RQ6); no sensitive value on any path (F1). `panel_value/3` moves into it. `Sensitive.scrub/2` inside.
-- [ ] `AshDataTable.Intent`: parse every event of `docs/agents/architecture.md` "Events".
-- [ ] No behaviour change; the markup snapshots stay identical.
+- [x] `AshDataTable.Present`: rows, cells, the panel's fields, picker rows and labels, failed edits; values, not texts (RQ6); no sensitive value on any path (F1). `panel_value/3` moves into it. `Sensitive.scrub/2` inside.
+- [x] `AshDataTable.Intent`: parse every event of `docs/agents/architecture.md` "Events".
+- [x] No behaviour change; the markup snapshots stay identical.
 
 ### Stage 3b: the write pipeline
 
-- [ ] `AshDataTable.Operation`: one function per write, with its input value (F9); the checks of today's handlers; re-read; outcome. `reveal` is the only way to a sensitive value.
-- [ ] Outcomes of `Operation`, `Bulk` and `Query` as message terms; words made in the LiveView process by the translation step (F2). `Text`, `Format`, the wording of `Errors` and `Gettext` become 3w; `Format` a helper of the drawing side (RQ6).
-- [ ] `Act`, `Edit`, `Pick`, `Bulk`, `Record` keep their arguments.
+- [x] `AshDataTable.Operation`: one function per write, with its input value (F9); the checks of today's handlers; re-read; outcome. `reveal` is the only way to a sensitive value.
+- [x] Outcomes of `Operation`, `Bulk` and `Query` as message terms; words made in the LiveView process by the translation step (F2). `Text`, `Format`, the wording of `Errors` and `Gettext` become 3w; `Format` a helper of the drawing side (RQ6).
+- [x] `Act`, `Edit`, `Pick`, `Bulk`, `Record` keep their arguments.
 
 ### Stage 3c: the live core
 
-- [ ] `AshDataTable.Live.Core` and `Live.Core.Reading`, `.Cells`, `.Panel`, `.Picker`, `.Bulk`, `.Files`, `.Nesting`, `.Updates`, `.Url` (4.8 table), as private file splits.
-- [ ] Event names namespaced per Q4 through the test seam `send_event/4`; hooks push with the table id.
-- [ ] The component (`table_component.ex`) delegates to the core; nothing else left in it.
-- [ ] Dependency test fails on violations from here on.
+- [x] `AshDataTable.Live.Core` and `Live.Core.Reading`, `.Cells`, `.Panel`, `.Picker`, `.Bulk`, `.Files`, `.Nesting`, `.Updates`, `.Url` (4.8 table), as private file splits.
+- [x] Event names namespaced per Q4 through the test seam `send_event/4`; hooks push with the table id.
+- [x] The component (`table_component.ex`) delegates to the core; nothing else left in it.
+- [x] Dependency test fails on violations from here on.
 
 ### Stage 5: nesting through portals (D-nested, D-events "one mechanism"). Runs before stage 4
 
-- [ ] Prove it on one nested table first (task → comments), browser and demo suites green; then the rest.
-- [ ] Fallback (D-events): nested live components inside the library, as today. Use it if a LiveView release breaks portals inside streams, or if the browser tests of the combination cannot be made stable (RQ3).
-- [ ] Nested tables and pickers as registry entries with their own streams, inside today's top-level component (`Live.Core.Nesting`, `Live.Registry`).
-- [ ] `AshDataTable.Live.Registry`: stream names from a pool, async keys `{:ash_data_table, id, …}`; upload names stay in `Files`, by id.
-- [ ] The wiring renders one portal per nested table at the top level, parents first; `Parts.Related` renders only the empty target cell; the picker's table is drawn in place, in the slot of `Parts.Picker`.
-- [ ] One close by path: async cancel, uploads cancelled and disallowed, stream reset, entry removed, stream name back to the pool. The registry reconciles its entries against the open rows in the page after every event (F11).
-- [ ] Remove `@tables` (V14).
-- [ ] Remove the nested `live_component`.
-- [ ] `AshDataTable.Test`: read a nested table from its portal; send its events by name. `DemoWeb.TablePage` uses it.
-- [ ] Browser tests of the portal combination itself (R §10.7 point 2), and one per removal path: live delete, page change, filter, actor change, `detach` (`detach` once stage 4 has it).
+- [x] Prove it on one nested table first (task → comments), browser and demo suites green; then the rest.
+- [x] Fallback (D-events): nested live components inside the library, as today. Use it if a LiveView release breaks portals inside streams, or if the browser tests of the combination cannot be made stable (RQ3). Not needed: the portals held, and the browser tests of the combination are stable.
+- [x] Nested tables and pickers as registry entries with their own streams, inside today's top-level component (`Live.Core.Nesting`, `Live.Registry`).
+- [x] `AshDataTable.Live.Registry`: stream names from a pool, async keys `{:ash_data_table, id, …}`; upload names stay in `Files`, by id.
+- [x] The wiring renders one portal per nested table at the top level, parents first; `Parts.Related` renders only the empty target cell; the picker's table is drawn in place, in the slot of `Parts.Picker`.
+- [x] One close by path: async cancel, uploads cancelled and disallowed, stream reset, entry removed, stream name back to the pool. The registry reconciles its entries against the open rows in the page after every event (F11).
+- [x] Remove `@tables` (V14).
+- [x] Remove the nested `live_component`.
+- [x] `AshDataTable.Test`: read a nested table from its portal; send its events by name. `DemoWeb.TablePage` uses it.
+- [x] Browser tests of the portal combination itself (R §10.7 point 2), and one per removal path: live delete, page change, filter, actor change, `detach` (`detach` once stage 4 has it).
 - Performance (owner, 2026-10-16): opening a nested table or a picker sends 4–7 KB more than before stage 5 (portals do not share the static markup that live components of one module shared). Accepted; looked at again in stage 7. Times are within 20 % (measured back to back on an idle machine, `8032ef2`).
 
 ### Stage 4: attach, function component, wiring on top. Runs after stage 5
 
-- [ ] `AshDataTable.attach/4`, `detach/2`: hooks for `handle_event`, `handle_async`, `handle_info`, and `handle_params` with `url: true`; first read in place.
-- [ ] `AshDataTable.attached/1` with `streams={@streams}`; documented: not inside a stream item of the host's own (F11).
-- [ ] `AshDataTable.Live.Page` uses `attach` (R §8 decision 8).
-- [ ] `<AshDataTable.table>` as one live component holding the same core and rendering `attached/1` (Q1, `AshDataTable.Live.Embedded`).
-- [ ] Listener relay per Q10.
-- [ ] The mode-independent demo tests run three ways (mounted, embedded, attached) on a chosen subset: the ten snapshot states plus one test file per feature group (F14).
-- [ ] Exactly one `live_component` in `lib/`: the tag's (`AshDataTable.table/1` renders `AshDataTable.Live.Embedded`). None for nested tables or pickers, none behind the router line (`Live.Page` uses `attach`), none with `attach`. This replaces stage 5's line "no `live_component` in `lib/`" (stage 4 design note, section 9).
+- [x] `AshDataTable.attach/4`, `detach/2`: hooks for `handle_event`, `handle_async`, `handle_info`, and `handle_params` with `url: true`; first read in place.
+- [x] `AshDataTable.attached/1` with `streams={@streams}`; documented: not inside a stream item of the host's own (F11).
+- [x] `AshDataTable.Live.Page` uses `attach` (R §8 decision 8).
+- [x] `<AshDataTable.table>` as one live component holding the same core and rendering `attached/1` (Q1, `AshDataTable.Live.Embedded`).
+- [x] Listener relay per Q10.
+- [x] The mode-independent demo tests run three ways (mounted, embedded, attached) on a chosen subset: the ten snapshot states plus one test file per feature group (F14).
+- [x] Exactly one `live_component` in `lib/`: the tag's (`AshDataTable.table/1` renders `AshDataTable.Live.Embedded`). None for nested tables or pickers, none behind the router line (`Live.Page` uses `attach`), none with `attach`. This replaces stage 5's line "no `live_component` in `lib/`" (stage 4 design note, section 9).
 
 ### Stage 6: events, commands, page values, veto (D-events, D-before, D-nolinks)
 
