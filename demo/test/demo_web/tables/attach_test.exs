@@ -227,12 +227,13 @@ defmodule DemoWeb.Tables.AttachTest do
 
     defp switch(view, assigns), do: send(view.pid, {:switch, assigns})
 
-    # Waits until `count` messages are in the mailbox of `pid`.
-    defp waiting(pid, count) do
-      case Process.info(pid, :message_queue_len) do
-        {:message_queue_len, len} when len >= count -> :ok
-        _fewer -> waiting(pid, count)
-      end
+    # Waits until `count` more messages have reached the mailbox of `pid`,
+    # whose receiving is traced (`:erlang.trace/3` with `:receive`).
+    defp arrived(pid, count) do
+      for _message <- 1..count//1,
+          do: assert_receive({:trace, ^pid, :receive, _message}, 5_000)
+
+      :ok
     end
 
     defp user(conn, user),
@@ -261,13 +262,17 @@ defmodule DemoWeb.Tables.AttachTest do
       # so the page holds after the ping until both wait. A reader may not
       # read the bulletin kept back, so it is not saved.
       :ok = :sys.suspend(view.pid)
+      :erlang.trace(view.pid, true, [:receive])
       saving = Task.async(fn -> save(view, "bulletin", hidden.id, "title", "Changed") end)
-      waiting(view.pid, 1)
+      # the ping
+      arrived(view.pid, 1)
       send(view.pid, {:hold, self()})
       switch(view, %{reader: %{role: :reader}})
       :ok = :sys.resume(view.pid)
       assert_receive :held
-      waiting(view.pid, 2)
+      # the hold, the switch, the resume, and the event after the ping's answer
+      arrived(view.pid, 4)
+      :erlang.trace(view.pid, false, [:receive])
       send(view.pid, :go)
       Task.await(saving)
       assert_reply(view, %{ok: false})

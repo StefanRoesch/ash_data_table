@@ -149,16 +149,33 @@ defmodule DemoWeb.Tables.PageValuesTest do
     end
   end
 
-  test "attach refuses a page value of another shape" do
-    socket = %Phoenix.LiveView.Socket{}
+  test "attach refuses a page value of another shape", %{conn: conn} do
+    {:ok, view, _html} = given(conn)
 
-    assert_raise ArgumentError,
-                 ~r/the `context` of AshDataTable.attach\/4 is a map, or a function/,
-                 fn -> AshDataTable.attach(socket, :cards, Card, context: "project 7") end
+    assert refused(view, :cards, Card, context: "project 7") =~
+             "the `context` of AshDataTable.attach/4 is a map, or a function"
 
-    assert_raise ArgumentError,
-                 ~r/the `before_action` of AshDataTable.attach\/4 is a function of the request/,
-                 fn -> AshDataTable.attach(socket, :cards, Card, before_action: %{}) end
+    assert refused(view, :cards, Card, before_action: %{}) =~
+             "the `before_action` of AshDataTable.attach/4 is a function of the request"
+  end
+
+  # What `AshDataTable.attach/4` raises on the socket of the page, in its
+  # process; the page goes on as it was.
+  defp refused(view, name, resource, opts) do
+    send(
+      view.pid,
+      {:run,
+       fn socket ->
+         try do
+           {socket, AshDataTable.attach(socket, name, resource, opts)}
+         rescue
+           error in ArgumentError -> {socket, {:raised, Exception.message(error)}}
+         end
+       end}
+    )
+
+    assert_receive {:ran, {:raised, message}}
+    message
   end
 
   test "the tag gives them too, with its assigns", %{conn: conn, card: card} do

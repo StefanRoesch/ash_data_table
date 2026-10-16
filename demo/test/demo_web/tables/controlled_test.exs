@@ -205,15 +205,23 @@ defmodule DemoWeb.Tables.ControlledTest do
     end
   end
 
-  test "attach refuses a panel a page cannot draw, and names its action" do
-    assert_raise ArgumentError, ~r/the action `create` has the field `file`/, fn ->
-      AshDataTable.attach(%Phoenix.LiveView.Socket{}, :scans, Demo.Support.Files.Scan,
-        controlled: [:panel]
-      )
+  test "attach refuses a panel a page cannot draw, and names its action", %{conn: conn} do
+    {:ok, view, _html} = given(conn, %{})
+
+    # on the socket of the page, in its process; the page goes on as it was
+    refused = fn name, resource, opts ->
+      run(view, fn socket ->
+        try do
+          {socket, AshDataTable.attach(socket, name, resource, opts)}
+        rescue
+          error in ArgumentError -> {socket, Exception.message(error)}
+        end
+      end)
     end
 
-    assert_raise ArgumentError, ~r/is a list of `:confirm` and `:panel`/, fn ->
-      AshDataTable.attach(%Phoenix.LiveView.Socket{}, :cards, Card, controlled: [:picker])
-    end
+    assert refused.(:scans, Demo.Support.Files.Scan, controlled: [:panel]) =~
+             "the action `create` has the field `file`"
+
+    assert refused.(:cards, Card, controlled: [:picker]) =~ "is a list of `:confirm` and `:panel`"
   end
 end
