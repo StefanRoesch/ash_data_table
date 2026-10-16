@@ -1120,8 +1120,16 @@ defmodule AshDataTable.Attrs do
   # ---- what opens over the page ------------------------------------------------
 
   # The table's question dialog, which the grid's hook opens.
-  def confirm(id) do
-    %{"id" => "#{id}-dialog", "role" => "dialog", "aria-labelledby" => "#{id}-dialog-question"}
+  #
+  # Modal, a `<dialog>` the hook opens with `showModal()`; inline, a region
+  # of the page the hook shows (`hidden` until it asks), named by its
+  # question: not an `alertdialog`, which ARIA has be modal.
+  def confirm(id, presentation) do
+    Map.merge(opened(presentation), %{
+      "id" => "#{id}-dialog",
+      "aria-labelledby" => "#{id}-dialog-question",
+      "hidden" => presentation == :inline
+    })
   end
 
   # What opens is modal (a `<dialog>`, `role=dialog`, which the hook opens

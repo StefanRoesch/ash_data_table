@@ -237,13 +237,6 @@ defmodule AshDataTable.Live.Drawing do
       />
       <Kit.part part={:whole_text} kit={@options.kit} id={@entry.id} />
       <Kit.part
-        part={:confirm}
-        kit={@options.kit}
-        bulk={@entry.bulk}
-        id={@entry.id}
-        model={@entry.model}
-      />
-      <Kit.part
         :for={
           {kind, text} <-
             Parts.Messages.messages(@entry.error, @entry.fill, @entry.loading?, @entry.row_count)
@@ -269,6 +262,14 @@ defmodule AshDataTable.Live.Drawing do
         target={@myself}
       />
       <:opened>
+        <Kit.part
+          part={:confirm}
+          kit={@options.kit}
+          bulk={@entry.bulk}
+          id={@entry.id}
+          model={@entry.model}
+          presentation={presentation(@options, :confirm)}
+        />
         <Kit.part
           :if={@entry.panel && not match?(%{kind: :panel}, @entry.request)}
           part={:panel}

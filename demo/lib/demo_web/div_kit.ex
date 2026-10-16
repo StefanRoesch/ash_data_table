@@ -2,7 +2,7 @@ defmodule DemoWeb.DivKit do
   @moduledoc """
   A kit of the demo's own (`AshDataTable.Kit`): the grid drawn with `div`s
   in place of a `<table>`, its rows, cells and footer too, and the action
-  panel and the picker opened in the page, not over it. It is what a kit of
+  panel, the picker and the question opened in the page, not over it. It is what a kit of
   one's own looks like, and what the library's tests check a kit with: its
   markup is not the default's, and the table's hooks find everything by
   the markers alone (`AshDataTable.KitCase`, `e2e/kit.spec.ts`).
@@ -15,7 +15,6 @@ defmodule DemoWeb.DivKit do
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
 
-  def presentation(:confirm), do: :modal
   def presentation(_thing), do: :inline
 
   def grid(assigns) do

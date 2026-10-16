@@ -165,7 +165,7 @@ The live core calls none of these. What its events and the markup both mean is i
 
 ## The wiring and the live core
 
-The drawing is `AshDataTable.attached/1` (the root element of the table on the page, and the five colocated hooks, four lines each, which import the hooks of `assets/js/`) and `AshDataTable.Live.Drawing` (`lib/ash_data_table/live/drawing.ex`, part 4): `drawn/1` (the table on the page, then one portal per nested table, each in a root element with the kit's class) and `body/1` (the parts of one table, in their order, each through the table's kit, `options.kit`, inside the kit's `root/1`: the panel and the picker in its slot `opened`). The markup contract (ids, `aria-colindex`, components) and one section per feature is the long comment at the top of `lib/ash_data_table/attrs.ex`; read the section of the feature you touch. The callbacks are `Live.Embedded`'s (the tag) and the hooks of `Live.Hooks` (an attached table, the page); each hands the socket to the live core.
+The drawing is `AshDataTable.attached/1` (the root element of the table on the page, and the five colocated hooks, four lines each, which import the hooks of `assets/js/`) and `AshDataTable.Live.Drawing` (`lib/ash_data_table/live/drawing.ex`, part 4): `drawn/1` (the table on the page, then one portal per nested table, each in a root element with the kit's class) and `body/1` (the parts of one table, in their order, each through the table's kit, `options.kit`, inside the kit's `root/1`: the question, the panel and the picker in its slot `opened`). The markup contract (ids, `aria-colindex`, components) and one section per feature is the long comment at the top of `lib/ash_data_table/attrs.ex`; read the section of the feature you touch. The callbacks are `Live.Embedded`'s (the tag) and the hooks of `Live.Hooks` (an attached table, the page); each hands the socket to the live core.
 
 The logic is `AshDataTable.Live.Core` (2b), one module per topic (`lib/ash_data_table/live/core.ex`, `core/*.ex`). Each topic module has `on/2`, one clause per intent of its topic. Find a function with:
 
@@ -264,7 +264,7 @@ They are JS files of the package, in `assets/js/`. `AshDataTable` keeps five col
 | `editing.js` | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
 | `arrays.js` | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
 | `sensitive.js` | sensitive cells | `reveal`, `hide` |
-| `dialog.js` | the dialog | `ask`: the table's question dialog; without it (`ID-dialog`, a `<dialog>`) nothing is confirmed and what would be asked about does not run |
+| `dialog.js` | the dialog | `ask`: the table's question, modal (`ID-dialog`, a `<dialog>`, `showModal()`) or in the page (`data-presentation="inline"`, `role=region`, `askInline`: shown, focus on Cancel, a button or Escape answers, focus back; a question asked while one is open gives the first up as Cancel); without it nothing is confirmed and what would be asked about does not run |
 | `failure.js` | the message of a failed cell | `showMessage` |
 | `whole_text.js` | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
 

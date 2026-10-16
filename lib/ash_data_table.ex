@@ -238,8 +238,9 @@ defmodule AshDataTable do
   attr :presentation, :list,
     default: [],
     doc:
-      "Whether the action panel and the picker open over the page (`:modal`) or in it " <>
-        "(`:inline`): `[panel: :inline, picker: :inline]`, over what the kit says. See " <>
+      "Whether the action panel, the picker and the question open over the page (`:modal`) " <>
+        "or in it (`:inline`): `[panel: :inline, picker: :inline, confirm: :inline]`, over " <>
+        "what the kit says. See " <>
         "\"Modal or inline\" in `attach/4`."
 
   # Rows to select with nothing to run on them, one at a time (`:single`) or
@@ -302,7 +303,7 @@ defmodule AshDataTable do
       notify={@notify}
       open={@open}
       kit={kit!(@kit, "<AshDataTable.table>")}
-      presentation={presentation!(@presentation, "<AshDataTable.table>")}
+      presentation={presentation!(@presentation, @kit, "<AshDataTable.table>")}
     />
     """
   end
@@ -381,13 +382,17 @@ defmodule AshDataTable do
 
   The action panel and the picker open as the table's kit says
   (`c:AshDataTable.Kit.presentation/1`): over the page, as a modal dialog
-  (`AshDataTable.Kit.Default`), or in it, under the table. `presentation:
-  [panel: :inline, picker: :inline]` says it for one table, and wins. Over
-  the page, the page is inert while it is open, and Escape is Cancel. In
-  the page, focus moves into it as it opens and back to what opened it as
-  it goes, Escape inside it is Cancel, and nothing else is inert: Tab
-  leaves it. What the panel shows and what the table checks are the same
-  either way. The question before an action is modal.
+  (`AshDataTable.Kit.Default`), or in it, under the table. So does the
+  question before an action. `presentation: [panel: :inline, picker:
+  :inline, confirm: :inline]` says it for one table, and wins. Over the
+  page, the page is inert while it is open, and Escape is Cancel. In the
+  page, focus moves into it as it opens and back to what opened it as it
+  goes, Escape inside it is Cancel, and nothing else is inert: Tab leaves
+  it. What the panel shows and what the table checks are the same either
+  way. A question inline needs the panel and the picker inline too, as it
+  is asked from them. One question at a time: a question asked while
+  another of the table is still open in the page gives the first up, as
+  Cancel does.
 
   ## What the page draws itself
 
@@ -485,7 +490,7 @@ defmodule AshDataTable do
       open: open!(opts[:open], "AshDataTable.attach/4"),
       controlled: controlled!(opts[:controlled], resource, table),
       kit: kit!(opts[:kit], "AshDataTable.attach/4"),
-      presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4")
+      presentation: presentation!(opts[:presentation] || [], opts[:kit], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
@@ -533,18 +538,33 @@ defmodule AshDataTable do
 
   # What opens in the page, or over it, as the table is told: the panel and
   # the picker, each `:modal` or `:inline`.
-  defp presentation!(given, where) do
+  #
+  # A question inline while the panel or the picker is modal could not be
+  # answered: it is asked from them, and the page under a modal dialog is
+  # inert. That is refused.
+  defp presentation!(given, kit, where) do
     if not (is_list(given) and
               Enum.all?(
                 given,
                 &match?(
-                  {thing, how} when thing in [:panel, :picker] and how in [:modal, :inline],
+                  {thing, how}
+                  when thing in [:panel, :picker, :confirm] and how in [:modal, :inline],
                   &1
                 )
               )) do
       raise ArgumentError,
-            "the `presentation` of #{where} is a list of `panel:` and `picker:`, each `:modal` " <>
-              "or `:inline` (the question is modal in this version), got: #{inspect(given, limit: 5)}"
+            "the `presentation` of #{where} is a list of `panel:`, `picker:` and `confirm:`, " <>
+              "each `:modal` or `:inline`, got: #{inspect(given, limit: 5)}"
+    end
+
+    kit = kit!(kit, where)
+    how = &(Keyword.get(given, &1) || kit.presentation(&1))
+
+    if how.(:confirm) == :inline and :modal in [how.(:panel), how.(:picker)] do
+      raise ArgumentError,
+            "the `presentation` of #{where} has the question (`confirm`) inline and the panel " <>
+              "or the picker modal: a question they ask could not be answered in the page " <>
+              "under them. Open them inline too, or the question modal."
     end
 
     given

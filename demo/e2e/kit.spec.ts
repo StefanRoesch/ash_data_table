@@ -107,6 +107,50 @@ test.describe("the picker in the page", () => {
   })
 })
 
+test.describe("the question in the page", () => {
+  const question = (page: Page) => page.locator('[id="kit-dialog"]')
+
+  async function asked(page: Page, anchor: string) {
+    const button = page.locator(`[id="kit-row-${anchor}-a-destroy"]`)
+    await button.focus()
+    await page.keyboard.press("Enter")
+    await expect(question(page)).toBeVisible()
+    await expect(question(page)).toHaveAttribute("data-presentation", "inline")
+    await expect(question(page)).toHaveAttribute("role", "region")
+    await expect(page.locator('dialog[id="kit-dialog"]')).toHaveCount(0)
+    await expect(page.locator('[id="kit-dialog-question"]')).toHaveText("Delete it?")
+    // focus on the safe answer
+    await expect(question(page).locator("button[value='cancel']")).toBeFocused()
+    return button
+  }
+
+  test("Escape and Cancel give it up, run nothing, and put focus back on the button", async ({ page }) => {
+    const anchor = await opened(page)
+    let button = await asked(page, anchor)
+    await page.keyboard.press("Escape")
+    await expect(question(page)).toBeHidden()
+    await expect(button).toBeFocused()
+    button = await asked(page, anchor)
+    await question(page).locator("button[value='cancel']").click()
+    await expect(question(page)).toBeHidden()
+    await expect(button).toBeFocused()
+    await expect(page.locator(`[id="kit-row-${anchor}"]`)).toHaveCount(1)
+  })
+
+  test("Tab leaves it, axe finds nothing wrong, and Confirm runs the action", async ({ page }) => {
+    const anchor = await opened(page)
+    await asked(page, anchor)
+    await expectNoAxeViolations(page)
+    await question(page).locator("button[value='confirm']").focus()
+    await page.keyboard.press("Tab")
+    await expect.poll(() => focusIn(page, "kit-dialog")).toBe(false)
+    await expect(question(page)).toBeVisible()
+    await question(page).locator("button[value='confirm']").click()
+    await expect(question(page)).toBeHidden()
+    await expect(page.locator(`[id="kit-row-${anchor}"]`)).toHaveCount(0)
+  })
+})
+
 test.describe("what opens over the page, with the same kit", () => {
   test("the panel is a modal dialog: focus in, Escape takes it away, focus back", async ({ page }) => {
     const anchor = await opened(page, "?presentation=modal")

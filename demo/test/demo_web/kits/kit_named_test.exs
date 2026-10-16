@@ -77,6 +77,14 @@ defmodule DemoWeb.Kits.KitNamedTest do
     assert drawn_by_div_kit?(render_async(view), "kit-pick-owner")
   end
 
+  test "a question in the page needs the panel and the picker in the page too" do
+    assert_raise ArgumentError, ~r/has the question \(`confirm`\) inline and the panel/, fn ->
+      AshDataTable.attach(%Phoenix.LiveView.Socket{}, :table, Demo.Support.Plain.Memo,
+        presentation: [confirm: :inline]
+      )
+    end
+  end
+
   test "a cell is the component's first, else the kit's, which is given no sensitive value",
        %{conn: conn} do
     {tenant, key, session} = KitCase.given(DemoWeb.Support.MarkedKit, :rows, :modal)

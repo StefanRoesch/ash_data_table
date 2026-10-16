@@ -16,8 +16,8 @@ defmodule AshDataTable.KitCase do
   a cell whose save failed (`:failed`), a row action's panel with a file
   (`:panel`), a map cell's panel (`:map_panel`), the picker of a reference
   cell (`:picker`), and the result of an action on selected rows
-  (`:selected`). Each is drawn with the action panel and the picker opened
-  over the page (`:modal`) and in it (`:inline`).
+  (`:selected`). Each is drawn with the action panel, the picker and the
+  question opened over the page (`:modal`) and in it (`:inline`).
 
   What a person does with the keyboard and hears from a screen reader is
   not checked here: that needs a browser. The library checks it for
@@ -88,7 +88,7 @@ defmodule AshDataTable.KitCase do
      %{
        "kit" => kit,
        "tenant" => tenant,
-       "presentation" => [panel: presentation, picker: presentation]
+       "presentation" => [panel: presentation, picker: presentation, confirm: presentation]
      }}
   end
 
@@ -136,7 +136,7 @@ defmodule AshDataTable.KitCase do
              "the page holds the sensitive value of AshDataTable.Test.Resource (#{at})"
 
       page = AshDataTable.Test.page(html)
-      problems = common(page, at) ++ special(page, at, key, presentation)
+      problems = common(page, at, presentation) ++ special(page, at, key, presentation)
 
       assert problems == [],
              "the kit draws the state #{inspect(at)} without:\n  " <> Enum.join(problems, "\n  ")
@@ -183,9 +183,32 @@ defmodule AshDataTable.KitCase do
 
   @columns ~w(name note secret done size place kind owner)
 
-  defp common(page, :error), do: need(page, "[id='kit-error'][role=alert]", "the read's error")
+  defp common(page, :error, _presentation),
+    do: need(page, "[id='kit-error'][role=alert]", "the read's error")
 
-  defp common(page, _state) do
+  defp common(page, state, presentation) do
+    grid(page, state) ++ question(page, presentation)
+  end
+
+  # The question: a `<dialog>` over the page, or a region in it named by
+  # its question, hidden until the hook asks.
+  defp question(page, :modal),
+    do:
+      need(
+        page,
+        "dialog[id='kit-dialog'][role=dialog][data-presentation='modal'][aria-labelledby='kit-dialog-question']",
+        "the question, a modal <dialog>"
+      )
+
+  defp question(page, :inline),
+    do:
+      need(
+        page,
+        "[id='kit-dialog'][role=region][data-presentation='inline'][aria-labelledby='kit-dialog-question'][hidden]",
+        "the question, in the page and hidden"
+      ) ++ none(page, "dialog[id='kit-dialog']", "the question as a <dialog> while it is inline")
+
+  defp grid(page, _state) do
     grid =
       need(
         page,
@@ -200,7 +223,6 @@ defmodule AshDataTable.KitCase do
         need(page, "form[id='kit-filters']", "the filter row's form") ++
         need(page, "[id='kit-whole'][data-whole][popover]", "the whole-text popover") ++
         need(page, "[id='kit-status'][role=status]", "the live region") ++
-        need(page, "dialog[id='kit-dialog'][role=dialog]", "the question dialog, a <dialog>") ++
         need(page, "[id='kit-dialog'] [id='kit-dialog-question']", "where it asks") ++
         need(page, "[id='kit-dialog'] button[value='cancel']", "its Cancel") ++
         need(page, "[id='kit-dialog'] button[value='confirm']", "its Confirm") ++

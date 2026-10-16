@@ -95,9 +95,11 @@ defmodule AshDataTable.Kit do
       and the failure template `ID-failure`. It draws a `header_cell` and a
       `filter_cell` per column, a `row` or a `detail` per item.
     * `whole_text` - the popover `ID-whole`.
-    * `confirm` - the question dialog `ID-dialog`: a `<dialog>`
-      (`role=dialog`) with `ID-dialog-question` and the buttons
-      `value="cancel"` and `value="confirm"`. Modal only.
+    * `confirm` - the question `ID-dialog` (`Attrs.confirm/2`,
+      `data-presentation`): a `<dialog>` when it is modal, an element with
+      `role=region` when it is inline (hidden until the hook asks), with
+      `ID-dialog-question` and the buttons `value="cancel"` and
+      `value="confirm"`.
     * `panel` - the action panel (`Attrs.panel/…`, `data-presentation`): a
       `<dialog>` when it is modal, an element with `role=region` when it is
       inline; its form, a `field` per field, `data-cancel` and a submit.
@@ -369,11 +371,10 @@ defmodule AshDataTable.Kit do
 
     for thing <- [:panel, :picker, :confirm],
         presentation = module.presentation(thing),
-        presentation not in [:modal, :inline] or (thing == :confirm and presentation != :modal) do
+        presentation not in [:modal, :inline] do
       raise ArgumentError,
             "#{where} was given `kit: #{inspect(module)}`, whose `presentation(#{inspect(thing)})` " <>
-              "is #{inspect(presentation)}: it is `:modal` or `:inline`, and the question " <>
-              "(`:confirm`) is `:modal` in this version"
+              "is #{inspect(presentation)}: it is `:modal` or `:inline`"
     end
 
     module

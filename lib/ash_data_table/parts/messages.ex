@@ -94,6 +94,8 @@ defmodule AshDataTable.Parts.Messages do
   attr :bulk, :any, required: true
   attr :id, :any, required: true
   attr :model, :any, required: true
+  # `:modal`, a dialog over the page, or `:inline`, a part of it
+  attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
 
   def dialog(assigns) do
@@ -106,7 +108,11 @@ defmodule AshDataTable.Parts.Messages do
       <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
         a dialog that is not visible yet when it opens cannot take the focus. Its
         edge is its shadow, which forced colours take away: there it has a border. --%>
-      <dialog {Attrs.confirm(@id)} class={@kit.class(:confirm, %{})}>
+      <.dynamic_tag
+        tag_name={if @presentation == :modal, do: "dialog", else: "section"}
+        {Attrs.confirm(@id, @presentation)}
+        class={@kit.class(:confirm, %{presentation: @presentation})}
+      >
         <form method="dialog">
           <p id={"#{@id}-dialog-question"}></p>
           <div class="mt-6 flex justify-end gap-2">
@@ -116,7 +122,7 @@ defmodule AshDataTable.Parts.Messages do
             </button>
           </div>
         </form>
-      </dialog>
+      </.dynamic_tag>
     </div>
     """
   end

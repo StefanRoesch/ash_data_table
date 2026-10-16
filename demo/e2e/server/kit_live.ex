@@ -3,8 +3,8 @@ defmodule DemoWeb.E2E.KitLive do
   A page for the browser tests of a kit of one's own (the design note of
   stage 7, test groups Y and AA): a table of `AshDataTable.Test.Resource`
   drawn with the demo's kit of `div`s (`DemoWeb.DivKit`), whose action
-  panel and picker open in the page. `?presentation=modal` opens them over
-  it, as the default kit does. The records are kept in memory, in a tenant
+  panel, picker and question open in the page. `?presentation=modal` opens
+  them over it, as the default kit does. The records are kept in memory, in a tenant
   of the page's own, made as it mounts.
   """
   use DemoWeb, :live_view
@@ -24,7 +24,7 @@ defmodule DemoWeb.E2E.KitLive do
        id: "kit",
        tenant: tenant,
        kit: DemoWeb.DivKit,
-       presentation: [panel: presentation, picker: presentation]
+       presentation: [panel: presentation, picker: presentation, confirm: presentation]
      )}
   end
 

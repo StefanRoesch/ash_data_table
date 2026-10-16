@@ -8,8 +8,8 @@ defmodule AshDataTable.Kit.Default do
   `super/1` (or `super/2` in `class/2`) draws what this kit draws.
 
   It opens the action panel, the picker and the question as modal dialogs
-  (`presentation/1`); a table can open its panel and its picker in the page
-  instead (`presentation: [panel: :inline]`, see `AshDataTable.attach/4`).
+  (`presentation/1`); a table can open them in the page instead
+  (`presentation: [panel: :inline]`, see `AshDataTable.attach/4`).
   """
   @behaviour AshDataTable.Kit
 
@@ -112,9 +112,13 @@ defmodule AshDataTable.Kit.Default do
   # dialog that is not visible yet when it opens cannot take the focus. Its
   # edge is its shadow, which forced colours take away: there it has a
   # border.
-  def class(:confirm, _state),
+  def class(:confirm, %{presentation: :modal}),
     do:
       "m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
+
+  def class(:confirm, %{presentation: :inline}),
+    do:
+      "mt-4 w-full max-w-md rounded-box border border-base-content/40 bg-base-100 p-6 text-base-content"
 
   # The action panel and the picker: modal at the right edge of the
   # window; inline under the table, with an edge of its own.

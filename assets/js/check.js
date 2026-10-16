@@ -23,9 +23,13 @@ const lacks = {
     // action on the selection; without the dialog nothing of it runs
     const line = hook.line()
     const asks = hook.el.querySelector(`${QUESTION},${CONFIRM}`) || (line && line.querySelector(BULK))
+    // modal: a <dialog> the hook opens; inline: a region of the page
     const dialog = hook.part("dialog")
-    if (asks && !(dialog && dialog.matches(DIALOG) && typeof dialog.showModal === "function")) {
-      missing.push(`its question dialog (a <dialog> ${DIALOG} with the id ${hook.id}-dialog)`)
+    const question = dialog && (dialog.dataset.presentation === "inline"
+      ? dialog.matches(`${REGION}${OPENED}`)
+      : dialog.matches(DIALOG) && typeof dialog.showModal === "function")
+    if (asks && !question) {
+      missing.push(`its question dialog (a <dialog> ${DIALOG}, or ${REGION} with data-presentation="inline", with the id ${hook.id}-dialog)`)
     }
     for (const row of hook.rows()) {
       for (const cell of cellsOf(row)) {

@@ -20,7 +20,7 @@ Answer "as recommended", or per number.
 | D8 | The parts of contract 1 | The list of section 3.8 |
 | D9 | Where a kit is named | `config :ash_data_table, kit:`, `kit=` on the tag, `kit:` at attach and on the router line (Q12). Nested tables and pickers' tables draw with the kit of the table on the page |
 | D10 | A cell's resolution | The column's `component`, else the kit's `cell/1`, else `Kit.Default.cell/1`. The same for the editor. A sensitive column has no component and the kit's `cell/1` gets `:masked` with no value |
-| D11 | Modal or inline | The kit says it per thing that opens (`presentation/1`: `:modal` or `:inline`); `presentation: [panel: :inline]` overrides it per table. The part's root carries `data-presentation`; the hooks follow it. The confirm stays modal-only in v1 |
+| D11 | Modal or inline | The kit says it per thing that opens (`presentation/1`: `:modal` or `:inline`); `presentation: [panel: :inline]` overrides it per table. The part's root carries `data-presentation`; the hooks follow it. The confirm is modal or inline like the others (b, owner 2026-10-17) |
 | D12 | `KitCase` and `Test.Resource` | `use AshDataTable.KitCase, kit: MyKit` renders a fixed table of an ETS resource shipped in `lib/` through the kit, in every state and both presentations, and asserts every marker, the element kinds the hooks need, and that no rendered state holds the test resource's sensitive value. Keyboard and screen-reader behaviour are the library's browser suite's, for `Kit.Default` and a test kit, not `KitCase`'s |
 | D13 | The development check in the hook | On `mounted`/`updated`, only when LiveView's client debug is on (`liveSocket.isDebugEnabled()`); `console.error` naming the part and the missing marker |
 | D14 | The presentation hints (F3) | `component`, `max_lines`, `sticky_label?` are hints; `editor` is not (it decides the write path) and leaves the list. A test asserts that no module of 2a or 2b branches on the three |
@@ -183,11 +183,11 @@ From `body/1` (`lib/ash_data_table.ex:1484-1660`) and `Parts.*`. Each part gets 
 
 | Option | For | Against |
 | --- | --- | --- |
-| a. `Kit.presentation(:panel \| :picker \| :confirm)`, `Kit.Default` answers `:modal` for all three; option `presentation: [panel: :inline, picker: :inline]` on tag, attach and router line. `Attrs` puts `data-presentation` on the part's root. **Modal:** the root is a `<dialog>`, the hook calls `showModal()` (today's behaviour: page inert, focus trapped by the browser, Escape is Cancel). **Inline:** the root is any element with `role="region"` and `aria-labelledby`, drawn where the kit's `root/1` puts the slot `:opened` (by default after the grid); the hook moves focus to the first control as it opens, Escape inside it is Cancel, focus goes back to the opener when it goes; nothing is inert, Tab leaves it. The confirm is modal-only in v1 | one marker decides; the panel's form and events are the same; the server does not know the difference | a kit author must keep a `<dialog>` for a modal part (`KitCase` checks it) |
-| b. Inline confirm too | complete | an inline question that the page can Tab away from leaves an action half asked; ARIA says an `alertdialog` should be modal (WAI-ARIA 1.2, `alertdialog`) |
+| a. `Kit.presentation(:panel \| :picker \| :confirm)`, `Kit.Default` answers `:modal` for all three; option `presentation: [panel: :inline, picker: :inline]` on tag, attach and router line. `Attrs` puts `data-presentation` on the part's root. **Modal:** the root is a `<dialog>`, the hook calls `showModal()` (today's behaviour: page inert, focus trapped by the browser, Escape is Cancel). **Inline:** the root is any element with `role="region"` and `aria-labelledby`, drawn where the kit's `root/1` puts the slot `:opened` (by default after the grid); the hook moves focus to the first control as it opens, Escape inside it is Cancel, focus goes back to the opener when it goes; nothing is inert, Tab leaves it. The confirm is modal-only in v1 (not taken: the owner chose b, 2026-10-17) | one marker decides; the panel's form and events are the same; the server does not know the difference | a kit author must keep a `<dialog>` for a modal part (`KitCase` checks it) |
+| b. Inline confirm too (**chosen by the owner, 2026-10-17**: "any component must be customizable, this is also true for dialogs") | complete | an inline question that the page can Tab away from leaves an action half asked; ARIA says an `alertdialog` should be modal (WAI-ARIA 1.2, `alertdialog`): so an inline question is a `role="region"` named by its question, not an `alertdialog`, and one question at a time per table |
 | c. The host places the inline panel with a slot of its own | full freedom | that is controlled mode (D17), which already gives it |
 
-**Recommendation: a.** Inline needs the panel's hook to find its grid by `data-table` (D4), not by its id. A picker inline shows its table in the page under the panel or the cell's row; the picker's table is still a registry entry, drawn in the part's slot as today.
+**Recommendation: a; the owner chose b (2026-10-17).** Inline needs the panel's hook to find its grid by `data-table` (D4), not by its id. A picker inline shows its table in the page under the panel or the cell's row; the picker's table is still a registry entry, drawn in the part's slot as today.
 
 **D12. `KitCase` and `AshDataTable.Test.Resource`.**
 
@@ -370,7 +370,7 @@ For your yes; target.md is not changed by this note.
 4. R §4.4's "supports the old number for one minor release" is not taken: no compatibility code before the release (D15).
 5. S3: `class/2` is called for parts drawn once per table; row and cell state is styled through attributes (D7). `presentation/1` joins the callbacks (D11).
 6. S5: a marker is an ARIA role or an existing `data-*` attribute; no `data-part` (D2).
-7. §9 stage 7, "presentation … confirm dialog": the confirm is modal-only in v1 (D11 b).
+7. §9 stage 7, "presentation … confirm dialog": the confirm is modal or inline like the panel and the picker (D11 b, chosen by the owner 2026-10-17; this amendment first said "modal-only in v1").
 8. Stage 6 D14 and S7/S8: controlled mode gains `:picker`, `pick_request/4`, `add_group_request/4`, `remove_group_request/4`; nested tables stay uncontrolled in v1 (D17).
 9. §7.5, rows under fixed headers: after the release, as a kit option (D20).
 10. `CONTEXT.md` gains "kit", "part", "bundle", "marker" in the documentation pass after stage 7 (the rule for docs during the refactor).

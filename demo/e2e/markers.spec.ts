@@ -222,7 +222,7 @@ test.describe("a column that asks before a save", () => {
     await expect(cell(page, "a", "name").locator("textarea")).toHaveValue("Anvil")
     expect(await pushed.count("save")).toBe(0)
     expect(said).toContain(
-      "ash_data_table: the grid kit-grid has no its question dialog (a <dialog> [role=dialog] with the id kit-dialog)",
+      'ash_data_table: the grid kit-grid has no its question dialog (a <dialog> [role=dialog], or [role=region] with data-presentation="inline", with the id kit-dialog)',
     )
     expect(said.some((text) => text.startsWith("ash_data_table: the grid kit-grid has no question dialog"))).toBe(true)
   })
