@@ -37,7 +37,8 @@ defmodule AshDataTable.Event do
 
   A key is a primary key as a map (`%{id: "…"}`). A record is the one the
   action returned to the person, with every `sensitive?` value in it
-  replaced by `%AshDataTable.Sensitive.Masked{}`, as a row is shown: read
+  replaced by `%AshDataTable.Sensitive.Masked{}`, as a row is shown; a
+  generic action's `result` is scrubbed the same way, every record in it: read
   the record yourself for a sensitive field. It is nil where the record is
   no longer the person's to read. `arguments` are what the action was
   given, as typed, by name: without sensitive ones, and a file by its name
@@ -143,7 +144,7 @@ defmodule AshDataTable.Event do
        action: action.name,
        key: key,
        arguments: arguments(model, action, given),
-       result: outcome.value
+       result: Sensitive.scrub(outcome.value)
      }}
   end
 

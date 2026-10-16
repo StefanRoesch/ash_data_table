@@ -555,6 +555,25 @@ defmodule AshDataTable.SensitiveTest do
     end
   end
 
+  describe "what a page is told" do
+    test "a generic action's result is scrubbed, as a record of a row is" do
+      action = %Model.Action{name: :newest_owner, type: :action, label: "Newest owner"}
+      owner = struct(Owner, id: Ash.UUID.generate(), name: "Ann", badge: "B-7")
+
+      assert {:action_ran, %{result: result}} =
+               AshDataTable.Event.ran(Model.build(Owner), action, nil, %{}, %{value: owner})
+
+      assert result.name == "Ann"
+      assert result.badge == %Masked{}
+
+      # in a list, too
+      assert {:action_ran, %{result: [listed]}} =
+               AshDataTable.Event.ran(Model.build(Owner), action, nil, %{}, %{value: [owner]})
+
+      assert listed.badge == %Masked{}
+    end
+  end
+
   describe "at compile time" do
     test "a component on a sensitive column is an error" do
       error =
