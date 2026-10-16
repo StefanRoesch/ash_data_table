@@ -415,6 +415,10 @@ test.describe("an action that asks first", () => {
   }) => {
     await tasks.action(SECOND, "destroy").click()
     await expect(confirm).toHaveAttribute("data-destructive")
+    // the marker is what the look follows: the answer that deletes has a
+    // ground of its own
+    const ground = (button: Locator) => button.evaluate((node) => getComputedStyle(node).backgroundColor)
+    const deleting = await ground(confirm)
     await cancel.click()
     await answered(tasks)
 
@@ -424,6 +428,7 @@ test.describe("an action that asks first", () => {
     await tasks.editor(status).selectOption({ label: "In review" })
     await expect(tasks.question).toHaveAccessibleName("Change the state of this task?")
     await expect(confirm).not.toHaveAttribute("data-destructive")
+    await expect.poll(() => ground(confirm)).not.toBe(deleting)
   })
 
   test("Confirm takes the row out of the page, counts it out, and puts focus on the same cell of the row after it", async ({

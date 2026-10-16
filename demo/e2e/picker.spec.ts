@@ -186,6 +186,19 @@ test.describe("opening the picker", () => {
     await tasks.pickerChoose.click({ force: true })
     await expect(tasks.picker).toBeVisible()
     expect(await pushed.count("picked")).toBe(0)
+
+    // `aria-disabled` is what its look follows: once a row is selected it
+    // looks otherwise
+    const look = () =>
+      tasks.pickerChoose.evaluate((node) => {
+        const style = getComputedStyle(node)
+        return [style.backgroundColor, style.color, style.opacity, style.pointerEvents].join(" ")
+      })
+    const unusable = await look()
+    await people.cell(await people.rowKey(1), "name").focus()
+    await tasks.press(" ")
+    await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "false")
+    await expect.poll(look).not.toBe(unusable)
   })
 
   test("the project has no \"None\": a task has to have one", async ({ tasks }) => {
