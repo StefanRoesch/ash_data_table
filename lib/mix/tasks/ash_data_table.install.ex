@@ -23,6 +23,10 @@ if Code.ensure_loaded?(Igniter) do
       * `assets/css/app.css`: adds an `@source` line, so that Tailwind sees
         the classes the table's markup uses. It points at the dependency
         where it really is, which for a path dependency is that checkout.
+      * the endpoint: adds `compress: true` to the `websocket` options of the
+        `/live` socket, so that LiveView's messages are deflated on the wire.
+        A table's patches repeat their markup: a page change of 25 rows is
+        about a tenth as large. An explicit `compress` is left as it is.
       * `.formatter.exs`: adds `:ash_data_table` to `import_deps`, for the DSL.
       * `config/config.exs`: sets `config :ash_data_table` to the application's
         own app layout (`MyAppWeb.Layouts.app/1`), Gettext backend
@@ -54,6 +58,7 @@ if Code.ensure_loaded?(Igniter) do
       |> add_hook()
       |> add_tailwind_source()
       |> configure()
+      |> compress_socket()
       |> Igniter.add_notice(next_steps())
     end
 
@@ -335,6 +340,63 @@ if Code.ensure_loaded?(Igniter) do
         {:error, igniter} ->
           {false, igniter}
       end
+    end
+
+    ## the endpoint
+
+    # `websocket: [compress: true, ...]` on `socket "/live", ...`: put into the
+    # options as they are, an explicit `compress` kept. An endpoint without
+    # such a socket, or with options it cannot read, is left with the notice.
+    defp compress_socket(igniter) do
+      with {igniter, endpoint} when endpoint != nil <-
+             Igniter.Libs.Phoenix.select_endpoint(igniter),
+           {:ok, {igniter, _source, zipper}} <-
+             Igniter.Project.Module.find_module(igniter, endpoint),
+           {:ok, zipper} <- Igniter.Code.Common.move_to_do_block(zipper),
+           # tried first, as the updater cannot answer that it leaves the module
+           {:ok, _zipper} <- compress(zipper) do
+        Igniter.Project.Module.find_and_update_module!(igniter, endpoint, &compress/1)
+      else
+        {:error, igniter} -> Igniter.add_notice(igniter, compress_notice())
+        {igniter, nil} -> Igniter.add_notice(igniter, compress_notice())
+        :error -> Igniter.add_notice(igniter, compress_notice())
+      end
+    end
+
+    defp compress(zipper) do
+      with {:ok, zipper} <-
+             Igniter.Code.Function.move_to_function_call_in_current_scope(
+               zipper,
+               :socket,
+               3,
+               &Igniter.Code.Function.argument_equals?(&1, 0, "/live")
+             ),
+           {:ok, zipper} <- Igniter.Code.Function.move_to_nth_argument(zipper, 2),
+           {:ok, zipper} <-
+             Igniter.Code.Keyword.put_in_keyword(
+               zipper,
+               [:websocket, :compress],
+               true,
+               &{:ok, &1}
+             ) do
+        {:ok, zipper}
+      else
+        _ -> :error
+      end
+    end
+
+    defp compress_notice do
+      """
+      ash_data_table could not turn on compression on LiveView's socket: no endpoint \
+      with a `socket "/live", Phoenix.LiveView.Socket, ...` it can read.
+
+      A table's patches repeat their markup, and deflate takes them to a fraction \
+      of their size. In your endpoint:
+
+          socket "/live", Phoenix.LiveView.Socket,
+            websocket: [compress: true, connect_info: [session: @session_options]],
+            ...
+      """
     end
 
     ## shared
