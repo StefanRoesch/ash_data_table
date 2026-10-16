@@ -952,12 +952,9 @@ defmodule DemoWeb.Tables.PrivateActionTest do
 
       # nothing private was run, or so much as asked about
       assert Ran.actions() == [
-               # the count, loaded onto the page in a step of its own
-               {Dossier, :open, :load},
+               # the page, with the count
                {Dossier, :open, :read},
-               # the notes it counts, read with that load
-               {Note, :read, :load},
-               # and asked about, for the line "Notes"
+               # the notes' public read action
                {Note, :read, :read}
              ]
     end

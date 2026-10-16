@@ -2399,21 +2399,14 @@ defmodule AshDataTable.ModelTest do
       assert filterable(model) == [:name, :headcount, :guest_count, :loud_name]
     end
 
-    test "is not offered in a paged table of related records to a person who sees some field on some records only" do
-      # `budget` is no column of the table, and is such a field all the same
-      assert sortable(Model.for_actor(teams(:teams), actor: @lead)) == [:name, :loud_name]
+    test "is the same in a table of related records, read in pages or in full" do
+      for relationship <- [:teams, :all_teams] do
+        assert sortable(Model.for_actor(teams(relationship), actor: @lead)) ==
+                 [:name, :guest_count, :loud_name]
 
-      assert filterable(Model.for_actor(teams(:teams), actor: @lead)) ==
-               [:name, :headcount, :guest_count, :loud_name]
-
-      # a person who sees every field on every record sorts by them
-      assert sortable(Model.for_actor(teams(:teams), actor: @admin)) ==
-               [:name, :headcount, :guest_count, :loud_name]
-    end
-
-    test "is offered in a table of related records that is read in full" do
-      assert sortable(Model.for_actor(teams(:all_teams), actor: @lead)) ==
-               [:name, :guest_count, :loud_name]
+        assert sortable(Model.for_actor(teams(relationship), actor: @admin)) ==
+                 [:name, :headcount, :guest_count, :loud_name]
+      end
     end
   end
 

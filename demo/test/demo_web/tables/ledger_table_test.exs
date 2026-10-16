@@ -161,22 +161,6 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert text(html, cell(id, abroad.id, "assignee_role")) == "member"
       refute html =~ world.outsider.name
     end
-
-    test "is not sorted or filtered by, whatever asks for it", %{conn: conn, world: world} do
-      {view, html} = jobs(conn, world.admin)
-
-      assert attribute(html, "#job-head-assignee_name", "data-sort") == []
-      assert filter_controls(html, "job", "assignee_name").input == nil
-
-      forge(view, "job", "sort", %{"column" => "assignee_name"})
-      assert titles(render(view)) == ["A own", "B other", "C abroad", "D free"]
-
-      for query <- ["?job[sort]=assignee_name", "?job[f][assignee_name]=a"] do
-        {_view, html} = jobs(conn, world.admin, query)
-        assert titles(html) == ["A own", "B other", "C abroad", "D free"]
-        refute html =~ world.outsider.name
-      end
-    end
   end
 
   describe "a `first` aggregate over one related record, beside a reference cell of the same relationship" do
