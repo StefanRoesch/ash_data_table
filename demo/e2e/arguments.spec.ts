@@ -88,20 +88,20 @@ test.describe("the line of /tasks", () => {
   test("what is typed is sent when Enter is used, not at every key, and is in the URL", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.argument("search").focus()
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.type("login")
-    expect(await frames.all(), "typing sends nothing").toEqual([])
+    expect(await pushed.all(), "typing sends nothing").toEqual([])
     await expect(tasks.rows).toHaveCount(25)
 
     await tasks.reads(() => page.keyboard.press("Enter"))
 
     // LiveView sends what the input held back, and then the form: once or
     // twice the same, of which the second changes nothing
-    expect(await frames.count("arguments")).toBeGreaterThan(0)
-    expect(await frames.count("arguments")).toBeLessThanOrEqual(2)
+    expect(await pushed.count("arguments")).toBeGreaterThan(0)
+    expect(await pushed.count("arguments")).toBeLessThanOrEqual(2)
     await expect(tasks.argument("search"), "focus stays where the person is typing").toBeFocused()
     expect(params(page)).toEqual({ "task[a][search]": "login" })
 
@@ -119,12 +119,12 @@ test.describe("the line of /tasks", () => {
     )
   })
 
-  test("what is typed is sent when the input is left, too", async ({ page, tasks, frames }) => {
+  test("what is typed is sent when the input is left, too", async ({ page, tasks, pushed }) => {
     await tasks.argument("search").fill("login")
-    await frames.clear()
+    await pushed.clear()
     await tasks.reads(() => page.keyboard.press("Tab"))
 
-    expect(await frames.count("arguments")).toBe(1)
+    expect(await pushed.count("arguments")).toBe(1)
     await expect(tasks.argument("due_within-days")).toBeFocused()
     expect(await total(tasks)).toBeLessThan(SEED.tasks.acme)
   })
@@ -156,14 +156,14 @@ test.describe("the line of /tasks", () => {
     expect(await total(tasks)).toBe(found)
   })
 
-  test("the arrow keys in the grid still send nothing", async ({ tasks, frames }) => {
+  test("the arrow keys in the grid still send nothing", async ({ tasks, pushed }) => {
     await tasks.argument("search").fill("the")
     await tasks.reads(() => tasks.argument("search").press("Enter"))
 
     await tasks.cell(await tasks.rowKey(1), "title").focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowDown", "ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "End", "Home")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("the grid does not move when the line under it fills", async ({ tasks }) => {

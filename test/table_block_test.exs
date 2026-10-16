@@ -7368,7 +7368,7 @@ defmodule AshDataTable.TableBlockTest do
 
       dropped =
         for {extension, entity} <- entities,
-            fields = entity.target.__struct__() |> Map.keys(),
+            fields = entity.target |> struct() |> Map.keys(),
             key <- keys(entity),
             key not in fields do
           "`#{entity.name}` of #{inspect(extension)} accepts `#{key}`, but " <>

@@ -66,7 +66,7 @@ test.describe("the cell of a value made of fields", () => {
 
   test("has neither a sort nor a filter, and is a cell like any other to the arrow keys, which send nothing", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -77,7 +77,7 @@ test.describe("the cell of a value made of fields", () => {
     }
 
     await projects.cell(PORTAL.id, "budget").focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("ArrowRight")
     await expect(projects.cell(PORTAL.id, "client")).toBeFocused()
     await projects.press("ArrowRight")
@@ -85,21 +85,21 @@ test.describe("the cell of a value made of fields", () => {
     await projects.press("ArrowLeft", "ArrowDown")
     await expect(projects.cell(WAREHOUSE, "client")).toBeFocused()
     await projects.header("client").click()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 
 test.describe("opening the editor of an embedded resource", () => {
   test("Enter opens the side panel, headed by the column and the record, with focus in its first field; Escape closes it and focus is on the cell again", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
     const cell = projects.cell(PORTAL.id, "client")
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("Enter")
 
     await expect(projects.panel).toBeVisible()
@@ -107,26 +107,26 @@ test.describe("opening the editor of an embedded resource", () => {
     await expect(projects.panel).toHaveAccessibleName("Client: Customer portal")
     await expect(projects.panelSubmit).toHaveText("Save")
     await expect(box(projects.panel, "Name")).toBeFocused()
-    expect(await frames.count("edit")).toBe(1)
+    expect(await pushed.count("edit")).toBe(1)
 
     await page.keyboard.press("Escape")
     await expect(projects.panel).toHaveCount(0)
     await expect(cell).toBeFocused()
     await expect(cell).toHaveText(PORTAL.client)
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
   })
 
-  test("F2 and a double click open it too; a key that types a character does not", async ({ page, frames }) => {
+  test("F2 and a double click open it too; a key that types a character does not", async ({ page, pushed }) => {
     const projects = projectsOf(page)
     await projects.open()
     const cell = projects.cell(PORTAL.id, "client")
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("x", "5")
     await expect(projects.panel).toHaveCount(0)
     await expect(cell).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     await projects.press("F2")
     await expect(projects.panel).toBeVisible()
@@ -177,7 +177,7 @@ test.describe("opening the editor of an embedded resource", () => {
 test.describe("saving an embedded resource from the side panel", () => {
   test("with the keyboard: the fields are tab stops in their order, Save saves, the cell shows the new value and has the focus", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -203,7 +203,7 @@ test.describe("saving an embedded resource from the side panel", () => {
     await page.keyboard.type("Hamburg")
     await projects.panelSettled()
 
-    await frames.clear()
+    await pushed.clear()
     await projects.panelSubmit.focus()
     await page.keyboard.press("Enter")
 
@@ -212,8 +212,8 @@ test.describe("saving an embedded resource from the side panel", () => {
       "Name: Hafen AG, Email: office@hafensohne.test, Key account?: No, Address: Street: Ernstweg 48, City: Hamburg, Postcode: 60948",
     )
     await expect(cell).toBeFocused()
-    expect(await frames.count("panel_submit")).toBe(1)
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(1)
+    expect(await pushed.count("save")).toBe(0)
 
     // and it is what the record holds
     await projects.open()
@@ -307,7 +307,7 @@ test.describe("saving an embedded resource from the side panel", () => {
     await expect(cell).toBeFocused()
   })
 
-  test("Save without a change saves nothing and closes the panel", async ({ page, frames }) => {
+  test("Save without a change saves nothing and closes the panel", async ({ page, pushed }) => {
     const projects = projectsOf(page)
     await projects.open()
     const cell = projects.cell(PORTAL.id, "client")
@@ -319,7 +319,7 @@ test.describe("saving an embedded resource from the side panel", () => {
     await expect(cell).toHaveText(PORTAL.client)
     await expect(cell).toBeFocused()
     await expect(projects.status).toBeEmpty()
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
   })
 })
 

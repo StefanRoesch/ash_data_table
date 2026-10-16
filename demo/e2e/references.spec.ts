@@ -39,7 +39,7 @@ test.describe("as the admin", () => {
 
   test("is a cell the arrow keys stop at, with nothing to sort or to filter; one whose key no action accepts has nothing to edit", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     for (const column of ["project", "assignee", "reporter"]) {
       await expect(tasks.header(column)).not.toHaveAttribute("aria-sort")
@@ -58,7 +58,7 @@ test.describe("as the admin", () => {
     await tasks.press("ArrowLeft")
     await expect(tasks.cell(FIRST, "reporter")).toBeFocused()
 
-    await frames.clear()
+    await pushed.clear()
     const before = await tasks.cell(FIRST, "reporter").textContent()
     await tasks.press("Enter", "F2", "x")
     await expect(tasks.openEditors).toHaveCount(0)
@@ -67,7 +67,7 @@ test.describe("as the admin", () => {
     // Enter on its heading and in its filter cell do nothing either
     await tasks.press("ArrowUp", "Enter", "ArrowUp", "Enter")
     await expect(tasks.header("reporter")).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(new URL(tasks.page.url()).search).toBe("")
   })
 

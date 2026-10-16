@@ -105,7 +105,7 @@ test.describe("the member, whose rights depend on the record", () => {
 
   test("the smaller grid is whole: the boxes, the expanders, 21 columns and the actions, numbered 1 to 24, walked without a gap", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.open()
     const first = await tasks.rowKey(1)
@@ -125,7 +125,7 @@ test.describe("the member, whose rights depend on the record", () => {
     expect(await numbering("#task-filter-row td")).toEqual(oneToTwentyFour)
 
     await tasks.cell(first, "title").focus()
-    await frames.clear()
+    await pushed.clear()
     const walked = [await tasks.focused()]
     for (let step = 0; step < 25; step++) {
       await tasks.press("ArrowRight")
@@ -158,13 +158,13 @@ test.describe("the member, whose rights depend on the record", () => {
     await expect(tasks.actionsHeader).toBeFocused()
     await tasks.press("ArrowLeft")
     await expect(tasks.header("reporter")).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(await tasks.tabStops()).toHaveLength(1)
   })
 
   test("a field hidden on some records keeps its column: the hidden cells say so and cannot be edited", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.open()
     // the member sees the estimate of the tasks assigned to them
@@ -179,12 +179,12 @@ test.describe("the member, whose rights depend on the record", () => {
     await expect(hidden).toHaveAttribute("aria-readonly", "true")
 
     await hidden.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter", "F2", "7", "x")
     await hidden.dblclick()
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(hidden).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("a filter on a field hidden on some records finds only what the member may see of it", async ({
@@ -283,10 +283,10 @@ test.describe("the viewer, who may change nothing", () => {
     await expect(tasks.grid.locator("[data-value]")).toHaveCount(0)
   })
 
-  test("no gesture opens an editor in any column", async ({ tasks, frames }) => {
+  test("no gesture opens an editor in any column", async ({ tasks, pushed }) => {
     await tasks.open()
     const first = await tasks.rowKey(1)
-    await frames.clear()
+    await pushed.clear()
 
     for (const column of EDITABLE) {
       const cell = tasks.cell(first, column)
@@ -300,7 +300,7 @@ test.describe("the viewer, who may change nothing", () => {
       await expect(tasks.openEditors, `a double click on ${column}`).toHaveCount(0)
     }
 
-    expect(await frames.all(), "and the server was asked nothing").toEqual([])
+    expect(await pushed.all(), "and the server was asked nothing").toEqual([])
   })
 
   test("reading works as for anyone: moving, sorting, filtering", async ({ page, tasks }) => {

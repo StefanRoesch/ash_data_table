@@ -27,6 +27,10 @@ config :demo, DemoWeb.Endpoint,
 # Mounts the routes of `e2e/server`, which seed the database again (see the router).
 config :demo, e2e_routes: true
 
+# What the page of a browser test sent its LiveViews, heard on the server
+# (`e2e/server/recorder.ex`, read by `Sent` in `e2e/support/fixtures.ts`).
+config :demo, e2e_children: [DemoWeb.E2E.Recorder]
+
 # A warning or an error in the server's output is worth seeing; the rest is noise.
 config :logger, level: :warning
 

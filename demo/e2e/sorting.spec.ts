@@ -92,18 +92,18 @@ test("an aggregate and a calculation sort like any column", async ({ tasks }) =>
 test("a column that cannot be sorted has no sort state and ignores click and Enter", async ({
   page,
   tasks,
-  frames,
+  pushed,
 }) => {
   // `description` is declared `sortable? false`; `headline` is computed in Elixir
   for (const column of ["description", "headline"]) {
     const header = tasks.header(column)
     await expect(header).not.toHaveAttribute("aria-sort")
 
-    await frames.clear()
+    await pushed.clear()
     await header.click()
     await expect(header).toBeFocused()
     await tasks.press("Enter")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(params(page)).toEqual({})
   }
 

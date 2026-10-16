@@ -48,14 +48,21 @@ async function destroy(table: Table, key: string): Promise<void> {
   await expect(table.row(key)).toHaveCount(0)
 }
 
-/** How many portals of nested tables the page holds, and how many are not where they go. */
-async function portals(page: Page): Promise<{ templates: number; loose: number }> {
-  return page.evaluate(() => ({
-    templates: document.querySelectorAll("template[data-phx-portal]").length,
-    loose: Array.from(document.querySelectorAll("[id^='_lv_portal_wrap_']")).filter(
-      (wrapper) => !wrapper.parentElement?.matches("td[data-nested]"),
-    ).length,
-  }))
+/**
+ * How many nested tables the page shows through portals, by the table's own
+ * marker of each (`data-ash-data-table-portal`, which names the cell it goes
+ * into), and how many of them are not in that cell.
+ */
+async function portals(page: Page): Promise<{ portals: number; loose: number }> {
+  return page.evaluate(() => {
+    const marked = Array.from(document.querySelectorAll<HTMLElement>("[data-ash-data-table-portal]"))
+    return {
+      portals: marked.length,
+      loose: marked.filter(
+        (marker) => marker.closest("td[data-nested]")?.id !== marker.dataset.ashDataTablePortal,
+      ).length,
+    }
+  })
 }
 
 /** The first row of a table whose comments are not none, with its comments open. */
@@ -77,16 +84,17 @@ test.describe("the portal of a nested table", () => {
     await tasks.open()
     const comments = await tasks.openLine(FIRST, "comments")
 
-    // the nested table is in its cell, inside the portal's wrapper, which
-    // takes no part in the layout
-    const wrapper = tasks.nestedCell(FIRST, "comments").locator(":scope > [id^='_lv_portal_wrap_']")
-    await expect(wrapper).toHaveCount(1)
-    await expect(wrapper).toHaveCSS("display", "contents")
-    await expect(wrapper.locator(":scope > div[data-pin] > div > [data-read]")).toHaveAttribute(
-      "id",
-      comments.id,
-    )
-    expect(await portals(page)).toEqual({ templates: 1, loose: 0 })
+    // the nested table is in its cell, in the element that marks its portal,
+    // which is laid out in the cell, whatever the portal wraps it in
+    const cell = tasks.nestedCell(FIRST, "comments")
+    const marker = cell.locator(`[data-ash-data-table-portal="${await cell.getAttribute("id")}"]`)
+    await expect(marker).toHaveCount(1)
+    await expect(marker.locator(":scope > div > [data-read]")).toHaveAttribute("id", comments.id)
+    const [inner, outer] = [(await marker.boundingBox())!, (await cell.boundingBox())!]
+    expect(inner.x).toBeGreaterThanOrEqual(outer.x)
+    expect(inner.y).toBeGreaterThanOrEqual(outer.y)
+    expect(inner.y).toBeLessThan(outer.y + outer.height)
+    expect(await portals(page)).toEqual({ portals: 1, loose: 0 })
 
     // its rows are its stream's: a sort reads them again, in their place
     await expect(comments.rows).not.toHaveCount(0)
@@ -97,7 +105,7 @@ test.describe("the portal of a nested table", () => {
     // closed: nothing of it is left
     await tasks.line(FIRST, "comments").click()
     await expect(comments.root).toHaveCount(0)
-    expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   })
 
   test("goes three levels down, each table in the row of the one above it, and back up", async ({ page }) => {
@@ -113,13 +121,13 @@ test.describe("the portal of a nested table", () => {
       comments.nestedCell(comment, "author").locator(`[id="${author.id}-grid"]`),
     ).toHaveCount(1)
     await expect(tasks.nestedCell(key, "comments").locator(`[id="${comments.id}-grid"]`)).toHaveCount(1)
-    expect(await portals(page)).toEqual({ templates: 3, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 3, loose: 0 })
 
     // closing the middle one closes the one under it as well
     await tasks.line(key, "comments").click()
     await expect(comments.root).toHaveCount(0)
     await expect(author.root).toHaveCount(0)
-    expect(await portals(page)).toEqual({ templates: 1, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 1, loose: 0 })
   })
 
   test("a teleported grid's hook mounts once: one style sheet per grid, also when its row is put again", async ({
@@ -178,7 +186,7 @@ test.describe("a row put again under an open nested table", () => {
       await expect(tasks.cell(FIRST, "title")).toHaveText("Put again with focus below")
       await expect(deep).toBeFocused()
       await expect(projectTasks.nestedCell(key, "comments").locator(`[id="${comments.id}-grid"]`)).toHaveCount(1)
-      expect(await portals(page)).toEqual({ templates: 3, loose: 0 })
+      expect(await portals(page)).toEqual({ portals: 3, loose: 0 })
 
       // text typed into the filter of a nested table, not yet sent
       await projectTasks.filterCell("title").focus()
@@ -214,7 +222,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
 
     await expect(tasks.row(FIRST)).toHaveCount(0)
     await expect(comments.root).toHaveCount(0)
-    expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   })
 
   test("a page change", async ({ page, tasks }) => {
@@ -223,7 +231,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
     await tasks.reads(() => tasks.next.click())
     await expect(comments.root).toHaveCount(0)
     await expect(tasks.next).toBeFocused()
-    expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   })
 
   test("a sort", async ({ page, tasks }) => {
@@ -231,7 +239,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
     const comments = await tasks.openLine(FIRST, "comments")
     await tasks.reads(() => tasks.header("title").click())
     await expect(comments.root).toHaveCount(0)
-    expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   })
 
   test("a filter", async ({ page, tasks }) => {
@@ -243,7 +251,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
     await tasks.reads(() => tasks.press("Enter"))
     await expect(comments.root).toHaveCount(0)
     await expect(tasks.filterValue("title")).toBeFocused()
-    expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   })
 
   test("another person asking: the tables under the rows close at once, and the rows are read again", async ({
@@ -257,7 +265,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
     await tasks.reads(() => page.locator("#become").click())
     await expect(comments.root).toHaveCount(0)
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
-    expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
 
     // opened again, it is the viewer's: they may write no comment
     const again = await tasks.openLine(FIRST, "comments")
@@ -288,7 +296,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
     await expect(comments.row(comment)).toHaveCount(0)
     await expect(author.root).toHaveCount(0)
     await expect(comments.root).toHaveCount(1)
-    expect(await portals(page)).toEqual({ templates: 2, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 2, loose: 0 })
   })
 })
 
@@ -346,6 +354,6 @@ test.describe("the table of a picker leaves with its picker", () => {
     await tasks.reads(() => tasks.forge("sort", { column: "title" }))
     await expect(tasks.picker).toHaveCount(0)
     await expect(people.root).toHaveCount(0)
-    expect(await portals(page)).toEqual({ templates: 1, loose: 0 })
+    expect(await portals(page)).toEqual({ portals: 1, loose: 0 })
   })
 })

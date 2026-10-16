@@ -14,6 +14,8 @@ defmodule Demo.Application do
       {Phoenix.PubSub, name: Demo.PubSub},
       # Start a worker by calling: Demo.Worker.start_link(arg)
       # {Demo.Worker, arg},
+      # what an environment adds: the browser tests' recorder (config/e2e.exs)
+      Application.get_env(:demo, :e2e_children, []),
       # Start to serve requests, typically the last entry
       DemoWeb.Endpoint
     ]
@@ -21,7 +23,7 @@ defmodule Demo.Application do
     # See https://hexdocs.pm/elixir/Supervisor.html
     # for other strategies and supported options
     opts = [strategy: :one_for_one, name: Demo.Supervisor]
-    Supervisor.start_link(children, opts)
+    Supervisor.start_link(List.flatten(children), opts)
   end
 
   # Tell Phoenix to update the endpoint configuration

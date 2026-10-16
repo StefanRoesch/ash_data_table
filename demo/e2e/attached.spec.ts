@@ -25,14 +25,21 @@ function csv(name: string, text: string) {
 
 const params = (page: Page) => Object.fromEntries(new URL(page.url()).searchParams)
 
-/** How many portals of nested tables the page holds, and how many are not where they go. */
-async function portals(page: Page): Promise<{ templates: number; loose: number }> {
-  return page.evaluate(() => ({
-    templates: document.querySelectorAll("template[data-phx-portal]").length,
-    loose: Array.from(document.querySelectorAll("[id^='_lv_portal_wrap_']")).filter(
-      (wrapper) => !wrapper.parentElement?.matches("td[data-nested]"),
-    ).length,
-  }))
+/**
+ * How many nested tables the page shows through portals, by the table's own
+ * marker of each (`data-ash-data-table-portal`, which names the cell it goes
+ * into), and how many of them are not in that cell.
+ */
+async function portals(page: Page): Promise<{ portals: number; loose: number }> {
+  return page.evaluate(() => {
+    const marked = Array.from(document.querySelectorAll<HTMLElement>("[data-ash-data-table-portal]"))
+    return {
+      portals: marked.length,
+      loose: marked.filter(
+        (marker) => marker.closest("td[data-nested]")?.id !== marker.dataset.ashDataTablePortal,
+      ).length,
+    }
+  })
 }
 
 async function opened(page: Page): Promise<{ labels: Table; tasks: Table }> {
@@ -108,13 +115,13 @@ test("a nested table two levels deep, each in the row of the one above it", asyn
   const nested = await tasks.openLine(task, "labels")
 
   await expect(nested.rows).not.toHaveCount(0)
-  expect(await portals(page)).toEqual({ templates: 2, loose: 0 })
+  expect(await portals(page)).toEqual({ portals: 2, loose: 0 })
 
   // and back up
   await labels.line(label, "tasks").click()
   await expect(tasks.root).toHaveCount(0)
   await expect(nested.root).toHaveCount(0)
-  expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+  expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
 })
 
 test("the picker of a reference cell opens with its table, and closes", async ({ page }) => {
@@ -168,7 +175,7 @@ test("attached again as another person, the tables under the rows close and the 
   await tasks.reads(() => page.locator("#become").click())
   await expect(comments.root).toHaveCount(0)
   await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
-  expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+  expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
 
   // opened again, it is the viewer's: they may write no comment
   const again = await tasks.openLine(FIRST, "comments")
@@ -186,7 +193,7 @@ test("detached with a nested table open, the table goes with what it shows, and 
   await page.locator("#detach").click()
   await expect(tasks.root).toHaveCount(0)
   await expect(comments.root).toHaveCount(0)
-  expect(await portals(page)).toEqual({ templates: 0, loose: 0 })
+  expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   await expect(labels.rows).not.toHaveCount(0)
 
   await page.locator("#again").click()

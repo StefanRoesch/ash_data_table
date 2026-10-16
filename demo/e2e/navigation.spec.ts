@@ -153,15 +153,15 @@ test("Up from the first data row reaches the filter row, then the header", async
   expect(await tasks.tabStops()).toEqual(["task-filter-assignee"])
 })
 
-test("moving about sends nothing to the server", async ({ tasks, frames }) => {
+test("moving about sends nothing to the server", async ({ tasks, pushed }) => {
   await tasks.cell(await tasks.rowKey(1), FIRST).focus()
-  await frames.clear()
+  await pushed.clear()
 
   await tasks.press("ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp")
   await tasks.press("End", "Home", "Control+End", "Control+Home", "PageDown", "PageUp")
   await tasks.press("ArrowUp", "ArrowUp", "ArrowRight", "ArrowDown", "ArrowDown")
 
-  expect(await frames.all()).toEqual([])
+  expect(await pushed.all()).toEqual([])
   expect(await tasks.tabStops()).toHaveLength(1)
 })
 
@@ -176,13 +176,13 @@ test("a click on a cell moves focus and the tab stop to it", async ({ tasks }) =
   await expect(tasks.cell(second, "comment_count")).toBeFocused()
 })
 
-test("Space on a cell selects its row, and does nothing else", async ({ page, tasks, frames }) => {
+test("Space on a cell selects its row, and does nothing else", async ({ page, tasks, pushed }) => {
   const first = await tasks.rowKey(1)
   const cell = tasks.cell(first, FIRST)
   const text = await cell.textContent()
 
   await cell.focus()
-  await frames.clear()
+  await pushed.clear()
   await page.keyboard.press("Space")
 
   // what selecting is and lasts through is in selection.spec.ts
@@ -191,7 +191,7 @@ test("Space on a cell selects its row, and does nothing else", async ({ page, ta
   await expect(cell).toHaveText(text!)
   await expect(tasks.openEditors).toHaveCount(0)
   expect(await page.evaluate(() => window.scrollY), "the page does not scroll").toBe(0)
-  expect(await frames.besides("select")).toEqual([])
+  expect(await pushed.besides("select")).toEqual([])
 })
 
 test.describe(() => {
@@ -200,14 +200,14 @@ test.describe(() => {
   test("Space does nothing on a cell of a table whose rows cannot be selected", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const first = await tasks.rowKey(1)
     const cell = tasks.cell(first, FIRST)
     const text = await cell.textContent()
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.press("Space")
 
     await expect(tasks.grid.locator("[aria-selected]")).toHaveCount(0)
@@ -215,7 +215,7 @@ test.describe(() => {
     await expect(cell).toHaveText(text!)
     await expect(tasks.openEditors).toHaveCount(0)
     expect(await page.evaluate(() => window.scrollY), "the page does not scroll").toBe(0)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 

@@ -51,7 +51,7 @@ test.afterEach(async ({ page }) => {
 })
 
 test.describe("which cells can be edited", () => {
-  test("a cell that cannot be edited says so, and no key opens it", async ({ tasks, frames }) => {
+  test("a cell that cannot be edited says so, and no key opens it", async ({ tasks, pushed }) => {
     // a calculation, an aggregate, a column with `update_action false`, and
     // an attribute no action accepts
     for (const column of ["overdue?", "comment_count", "headline", "external_ref", "inserted_at"]) {
@@ -67,12 +67,12 @@ test.describe("which cells can be edited", () => {
 
     const headline = tasks.cell(FIRST, "headline")
     await headline.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter", "F2", "x")
     await headline.dblclick()
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(headline).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 
@@ -80,14 +80,14 @@ test.describe("starting and giving up an edit", () => {
   test("Enter opens the column's editor in the cell, with the cell's value", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const title = tasks.cell(FIRST, "title")
     const editor = tasks.editor(title)
     const height = await rowHeight(tasks, FIRST)
 
     await title.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
 
     await expect(editor).toBeFocused()
@@ -106,16 +106,16 @@ test.describe("starting and giving up an edit", () => {
     await expect(title).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
-    expect(await frames.all(), "the server heard nothing of it").toEqual([])
+    expect(await pushed.all(), "the server heard nothing of it").toEqual([])
   })
 
   test("F2 opens the editor; Enter on a value that has not changed saves nothing", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const title = tasks.cell(FIRST, "title")
     await title.focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("F2")
     await expect(tasks.editor(title)).toBeFocused()
@@ -125,14 +125,14 @@ test.describe("starting and giving up an edit", () => {
     await expect(title).toBeFocused()
     await expect(title).toHaveText("Rename the onboarding email")
     await expect(title).not.toHaveAttribute("aria-busy")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     // typed over with the same text: still nothing to save
     await tasks.press("Enter")
     await tasks.retype("Rename the onboarding email")
     await tasks.press("Enter")
     await expect(title).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("a printable key starts the edit with that character", async ({ tasks }) => {
@@ -161,10 +161,10 @@ test.describe("starting and giving up an edit", () => {
 })
 
 test.describe("saving", () => {
-  test("Enter saves, and focus stays on the cell", async ({ page, tasks, frames }) => {
+  test("Enter saves, and focus stays on the cell", async ({ page, tasks, pushed }) => {
     const title = tasks.cell(FIRST, "title")
     await title.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await tasks.retype("Edited in the browser")
 
@@ -175,7 +175,7 @@ test.describe("saving", () => {
 
     await expect(title).toHaveText("Edited in the browser")
     await expect(title, "and after the row was patched").toBeFocused()
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
     // the row is shown from the action's result: its calculation has followed
     await expect(tasks.cell(FIRST, "headline")).toContainText("Edited in the browser")
@@ -325,21 +325,21 @@ test.describe("saving", () => {
 
   test("a checkbox cell toggles with Enter or F2 and saves at once; typing does nothing, and Space selects the row", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const billable = tasks.cell(FIRST, "billable?")
     await expect(billable).toHaveAttribute("data-value", "true")
     await expect(billable).toContainText("Yes")
 
     await billable.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Space", "x")
     await expect(billable).toHaveAttribute("data-value", "true")
     await expect(tasks.openEditors).toHaveCount(0)
     // Space is the key of row selection on a cell: what is selected is
     // sent, and nothing else
     expect(await tasks.selectedKeys()).toEqual([FIRST])
-    expect(await frames.besides("select")).toEqual([])
+    expect(await pushed.besides("select")).toEqual([])
 
     await tasks.saves(billable, () => tasks.press("Enter"))
     await expect(billable).toHaveAttribute("data-value", "false")
@@ -350,7 +350,7 @@ test.describe("saving", () => {
     await expect(billable).toHaveAttribute("data-value", "true")
     await expect(billable).toContainText("Yes")
     await expect(billable).toBeFocused()
-    expect(await frames.count("save")).toBe(2)
+    expect(await pushed.count("save")).toBe(2)
   })
 
   test("text of several lines: Shift+Enter makes a line, Enter saves", async ({ page, tasks }) => {
@@ -431,14 +431,14 @@ test.describe("saving", () => {
 test.describe("a choice", () => {
   test("Enter opens the menu at the cell's value; moving through it saves nothing, Enter saves", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const priority = tasks.cell(FIRST, "priority")
     const editor = tasks.editor(priority)
     await expect(priority).toHaveText("Medium")
 
     await priority.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await expect(editor).toBeFocused()
     await expect(editor).toHaveValue("medium")
@@ -447,63 +447,63 @@ test.describe("a choice", () => {
 
     await tasks.press("ArrowDown")
     await expect(editor).toBeFocused()
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     await tasks.saves(priority, () => tasks.press("Enter"))
     await expect(priority).toHaveText("High")
     await expect(priority).toHaveAttribute("data-value", "high")
     await expect(priority).toBeFocused()
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
-  test("a choice made with the pointer saves when it is made", async ({ tasks, frames }) => {
+  test("a choice made with the pointer saves when it is made", async ({ tasks, pushed }) => {
     const priority = tasks.cell(FIRST, "priority")
     await priority.dblclick()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.saves(priority, () => tasks.editor(priority).selectOption({ label: "Low" }))
     await expect(priority).toHaveText("Low")
     await expect(priority).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
   test("a letter opens the menu at the first choice that starts with it, unsaved; Escape gives it up", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await withoutMenu(page)
     const priority = tasks.cell(FIRST, "priority")
     await priority.focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("u")
     await expect(tasks.editor(priority)).toBeFocused()
     await expect(tasks.editor(priority)).toHaveValue("urgent")
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     await tasks.press("Escape")
     await expect(priority).toHaveText("Medium")
     await expect(priority).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("in a closed menu the arrow keys change the value without saving; Enter or leaving saves", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await withoutMenu(page)
     const priority = tasks.cell(FIRST, "priority")
     const editor = tasks.editor(priority)
     await priority.focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("Enter", "ArrowDown", "ArrowDown")
     await expect(editor).toBeFocused()
     await expect(editor).toHaveValue("urgent")
-    expect(await frames.count("save"), "a step through the choices is not yet a choice").toBe(0)
+    expect(await pushed.count("save"), "a step through the choices is not yet a choice").toBe(0)
 
     await tasks.saves(priority, () => tasks.press("Enter"))
     await expect(priority).toHaveText("Urgent")
@@ -513,17 +513,17 @@ test.describe("a choice", () => {
     await expect(editor).toHaveValue("high")
     await tasks.saves(priority, () => tasks.cell(SECOND, "title").click())
     await expect(priority).toHaveText("High")
-    expect(await frames.count("save")).toBe(2)
+    expect(await pushed.count("save")).toBe(2)
   })
 
   test("with the browser's menu open, Escape closes the menu first and the editor stays", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const priority = tasks.cell(FIRST, "priority")
     const editor = tasks.editor(priority)
     await priority.focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("Enter")
     await expect(editor).toBeFocused()
@@ -533,7 +533,7 @@ test.describe("a choice", () => {
     await tasks.press("Escape")
     await expect(priority).toBeFocused()
     await expect(priority).toHaveText("Medium")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 
@@ -555,7 +555,7 @@ test.describe("a column that asks before it saves", () => {
     await tasks.page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 0)))
   }
 
-  test.beforeEach(async ({ page, tasks, frames }) => {
+  test.beforeEach(async ({ page, tasks, pushed }) => {
     await withoutMenu(page)
     status = tasks.cell(SECOND, "status")
     editor = tasks.editor(status)
@@ -564,7 +564,7 @@ test.describe("a column that asks before it saves", () => {
 
     // "To do" becomes "In progress" in the editor, and Enter commits
     await status.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter", "ArrowDown")
     await expect(editor).toHaveValue("in_progress")
     await tasks.press("Enter")
@@ -573,12 +573,12 @@ test.describe("a column that asks before it saves", () => {
 
   test("the dialog opens at the moment of commit, before anything is saved", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await expect(tasks.dialog).toBeVisible()
     await expect(tasks.dialog).toHaveAccessibleName("Change the state of this task?")
     await expect(cancel, "focus is on the safe answer").toBeFocused()
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     // Tab stays in the dialog
     await tasks.press("Tab")
@@ -589,13 +589,13 @@ test.describe("a column that asks before it saves", () => {
     }
   })
 
-  test("Cancel returns to the editor, with what was chosen", async ({ tasks, frames }) => {
+  test("Cancel returns to the editor, with what was chosen", async ({ tasks, pushed }) => {
     await cancel.click()
     await answered(tasks)
 
     await expect(editor).toBeFocused()
     await expect(editor).toHaveValue("in_progress")
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     // and the question comes again at the next commit
     await tasks.press("Enter")
@@ -605,25 +605,25 @@ test.describe("a column that asks before it saves", () => {
     await tasks.press("Escape")
     await expect(status).toHaveText("To do")
     await expect(status).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
-  test("Escape in the dialog acts as Cancel", async ({ tasks, frames }) => {
+  test("Escape in the dialog acts as Cancel", async ({ tasks, pushed }) => {
     await tasks.press("Escape")
     await answered(tasks)
 
     await expect(editor).toBeFocused()
     await expect(editor).toHaveValue("in_progress")
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
   })
 
-  test("Confirm saves, and focus returns to the cell", async ({ tasks, frames }) => {
+  test("Confirm saves, and focus returns to the cell", async ({ tasks, pushed }) => {
     await tasks.saves(status, () => confirm.click())
 
     await expect(tasks.dialog).toBeHidden()
     await expect(status).toHaveText("In progress")
     await expect(status).toBeFocused()
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
   test("Confirm by keyboard saves too", async ({ tasks }) => {
@@ -636,7 +636,7 @@ test.describe("a column that asks before it saves", () => {
 
   test("leaving the cell asks too: Cancel pulls back into the editor, Confirm leaves focus where it went", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const elsewhere = tasks.cell(THIRD, "title")
     await cancel.click()
@@ -645,7 +645,7 @@ test.describe("a column that asks before it saves", () => {
 
     await elsewhere.click()
     await expect(tasks.dialog).toBeVisible()
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
     await cancel.click()
     await answered(tasks)
     await expect(editor).toBeFocused()
@@ -656,16 +656,16 @@ test.describe("a column that asks before it saves", () => {
     await tasks.saves(status, () => confirm.click())
     await expect(status).toHaveText("In progress")
     await expect(elsewhere).toBeFocused()
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
-  test("a choice made with the pointer asks as well", async ({ tasks, frames }) => {
+  test("a choice made with the pointer asks as well", async ({ tasks, pushed }) => {
     await cancel.click()
     await answered(tasks)
     await editor.selectOption({ label: "In review" })
 
     await expect(tasks.dialog).toBeVisible()
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
     await tasks.saves(status, () => confirm.click())
     await expect(status).toHaveText("In review")
   })
@@ -726,7 +726,7 @@ test.describe("a save that fails", () => {
 
   test("with Enter, focus stays on the failed cell and its message shows; Escape restores the value", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const title = tasks.cell(SECOND, "title")
     await typeTooShort(tasks, title)
@@ -743,7 +743,7 @@ test.describe("a save that fails", () => {
     await expect(title).not.toHaveAttribute("data-value")
     await expect(title).toBeFocused()
     await expect(tasks.failure(title)).toHaveCount(0)
-    expect(await frames.count("discard")).toBe(1)
+    expect(await pushed.count("discard")).toBe(1)
   })
 
   test("the editor of a failed cell holds what was typed; Escape in it restores the value", async ({
@@ -765,12 +765,12 @@ test.describe("a save that fails", () => {
 
   test("a failed cell can be put right: a good value saves, the old value is no failure", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const title = tasks.cell(SECOND, "title")
     await typeTooShort(tasks, title)
     await tasks.saves(title, () => tasks.press("Enter"))
-    await frames.clear()
+    await pushed.clear()
 
     // typing the value the record has gives the edit up: nothing is saved
     await tasks.press("Enter")
@@ -778,7 +778,7 @@ test.describe("a save that fails", () => {
     await tasks.press("Enter")
     await expect(title).not.toHaveAttribute("aria-invalid")
     await expect(title).toHaveText("Remove the dashboard charts")
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     await typeTooShort(tasks, title)
     await tasks.saves(title, () => tasks.press("Enter"))
@@ -995,7 +995,7 @@ test.describe("a record that is gone", () => {
 
 test("after editing, the grid is still one tab stop and the arrow keys are still silent", async ({
   tasks,
-  frames,
+  pushed,
 }) => {
   const title = tasks.cell(FIRST, "title")
   await title.focus()
@@ -1006,13 +1006,13 @@ test("after editing, the grid is still one tab stop and the arrow keys are still
   await tasks.retype("ab")
   await tasks.saves(title, () => tasks.press("Enter"))
 
-  await frames.clear()
+  await pushed.clear()
   await tasks.press("ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp", "End", "Home")
   // Home is the first cell of the row, its box: the expander and the title are beside it
   await expect(tasks.boxCell(FIRST)).toBeFocused()
   await title.focus()
   await tasks.press("PageDown", "PageUp")
   await expect(title).toBeFocused()
-  expect(await frames.all()).toEqual([])
+  expect(await pushed.all()).toEqual([])
   expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
 })

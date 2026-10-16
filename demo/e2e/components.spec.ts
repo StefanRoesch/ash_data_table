@@ -38,7 +38,7 @@ test.afterEach(async ({ page }) => {
 test.describe("the slider, from the keyboard", () => {
   test("Enter opens it in the cell with the cell's value; its keys are its own; Escape gives it up", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
@@ -46,7 +46,7 @@ test.describe("the slider, from the keyboard", () => {
     const height = await rowHeight(tasks, SECOND)
 
     await progress.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
 
     await expect(slider).toBeFocused()
@@ -71,19 +71,19 @@ test.describe("the slider, from the keyboard", () => {
     await tasks.press("Home")
     await expect(slider).toHaveValue("0")
     await expect(slider).toBeFocused()
-    expect(await frames.all(), "a step with a key is not yet a choice").toEqual([])
+    expect(await pushed.all(), "a step with a key is not yet a choice").toEqual([])
 
     await tasks.press("Escape")
     await expect(progress).toHaveText("5")
     await expect(progress).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-c-progress`])
-    expect(await frames.all(), "the server heard nothing of it").toEqual([])
+    expect(await pushed.all(), "the server heard nothing of it").toEqual([])
   })
 
   test("steps with the keys are saved by Enter, once, through the column's action", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
@@ -91,11 +91,11 @@ test.describe("the slider, from the keyboard", () => {
     await progress.focus()
     await tasks.press("F2")
     await expect(slider).toBeFocused()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowRight", "ArrowRight", "ArrowRight", "PageUp")
     const chosen = await slider.inputValue()
     expect(Number(chosen)).toBeGreaterThan(8)
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     await tasks.saves(progress, () => tasks.press("Enter"))
 
@@ -105,33 +105,33 @@ test.describe("the slider, from the keyboard", () => {
     await expect(progress.locator("progress")).toHaveAttribute("value", chosen)
     // `set_progress` starts a task that is still to do: the column's own action ran
     await expect(tasks.cell(SECOND, "status")).toHaveText("In progress")
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-c-progress`])
   })
 
-  test("Tab leaves the grid and saves what the keys chose", async ({ tasks, frames }) => {
+  test("Tab leaves the grid and saves what the keys chose", async ({ tasks, pushed }) => {
     const progress = tasks.cell(SECOND, "progress")
 
     await progress.focus()
     await tasks.press("Enter", "ArrowRight", "ArrowRight")
-    await frames.clear()
+    await pushed.clear()
     await tasks.saves(progress, () => tasks.press("Tab"))
 
     await expect(tasks.openEditors).toHaveCount(0)
     expect(await tasks.hasFocus(), "focus has left the grid").toBe(false)
     await expect(progress).toHaveText("7")
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
   test("a printable key opens it with its value kept: a slider takes no characters", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
 
     await progress.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("9")
     await expect(slider).toBeFocused()
     await expect(slider).toHaveValue("5")
@@ -141,7 +141,7 @@ test.describe("the slider, from the keyboard", () => {
     await tasks.press("Enter")
     await expect(progress).toBeFocused()
     await expect(progress).toHaveText("5")
-    expect(await frames.all(), "nothing changed, so nothing was saved").toEqual([])
+    expect(await pushed.all(), "nothing changed, so nothing was saved").toEqual([])
   })
 })
 
@@ -155,7 +155,7 @@ test.describe("the slider, with the pointer", () => {
   test("nothing is sent while it is dragged; letting go saves once, and it stays open", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
@@ -165,7 +165,7 @@ test.describe("the slider, with the pointer", () => {
     await progress.dblclick()
     await expect(slider).toBeFocused()
     await expect(slider).toHaveValue("5")
-    await frames.clear()
+    await pushed.clear()
 
     const from = await pointOn(slider, 0.3)
     const to = await pointOn(slider, 0.7)
@@ -179,11 +179,11 @@ test.describe("the slider, with the pointer", () => {
     expect(Number(dragged)).toBeGreaterThan(first)
     // the number beside the slider follows it
     await expect(number).toHaveText(dragged)
-    expect(await frames.all(), "nothing is sent while the slider is dragged").toEqual([])
+    expect(await pushed.all(), "nothing is sent while the slider is dragged").toEqual([])
 
     await tasks.saves(progress, () => page.mouse.up())
 
-    expect(await frames.count("save"), "one save, on letting go").toBe(1)
+    expect(await pushed.count("save"), "one save, on letting go").toBe(1)
     await expect(slider).toBeFocused()
     await expect(slider).toHaveValue(dragged)
     await expect(number).toHaveText(dragged)
@@ -198,19 +198,19 @@ test.describe("the slider, with the pointer", () => {
     await tasks.saves(progress, () => page.mouse.up())
     const again = await slider.inputValue()
     expect(again).not.toBe(dragged)
-    expect(await frames.count("save")).toBe(2)
+    expect(await pushed.count("save")).toBe(2)
 
     // Enter closes it: there is nothing left to save
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(progress).toBeFocused()
     await expect(progress).toHaveText(again)
     await expect(progress.locator("progress")).toHaveAttribute("value", again)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
-  test("Escape gives up what is not saved, and nothing that is", async ({ page, tasks, frames }) => {
+  test("Escape gives up what is not saved, and nothing that is", async ({ page, tasks, pushed }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
 
@@ -223,7 +223,7 @@ test.describe("the slider, with the pointer", () => {
     expect(Number(saved)).toBeGreaterThan(40)
 
     // moved on with the keys, which is not saved yet
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowRight", "ArrowRight", "ArrowRight")
     await expect(slider).toHaveValue(String(Number(saved) + 3))
 
@@ -233,7 +233,7 @@ test.describe("the slider, with the pointer", () => {
     // the cell shows what was saved, as the server sent it meanwhile
     await expect(progress).toHaveText(saved)
     await expect(progress.locator("progress")).toHaveAttribute("value", saved)
-    expect(await frames.all(), "Escape sends nothing").toEqual([])
+    expect(await pushed.all(), "Escape sends nothing").toEqual([])
 
     // and it is what the record has
     await tasks.open()
@@ -255,7 +255,7 @@ test.describe("a save through the slider that fails", () => {
   test("closes the slider and marks the cell as any failed cell; Escape restores the value", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const key = await doneTask(tasks)
     const progress = tasks.cell(key, "progress")
@@ -283,7 +283,7 @@ test.describe("a save through the slider that fails", () => {
     expect(await tasks.tabStops()).toEqual([`task-row-${key}-c-progress`])
 
     // the slider of a failed cell holds what was chosen
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await expect(slider).toBeFocused()
     await expect(slider).toHaveValue(chosen)
@@ -296,7 +296,7 @@ test.describe("a save through the slider that fails", () => {
     await expect(progress).not.toHaveAttribute("aria-invalid")
     await expect(progress).toHaveText("100")
     await expect(progress.locator("progress")).toHaveAttribute("value", "100")
-    expect(await frames.count("discard")).toBe(1)
+    expect(await pushed.count("discard")).toBe(1)
   })
 })
 
@@ -320,7 +320,7 @@ test.describe("a column that asks before it saves, edited with the slider", () =
   test("letting go asks; Cancel saves nothing and stays in the slider; Confirm saves", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
@@ -328,7 +328,7 @@ test.describe("a column that asks before it saves, edited with the slider", () =
     const confirm = tasks.question.getByRole("button", { name: "Confirm" })
 
     await progress.dblclick()
-    await frames.clear()
+    await pushed.clear()
     const point = await pointOn(slider, 0.4)
     await page.mouse.move(point.x, point.y)
     await page.mouse.down()
@@ -339,13 +339,13 @@ test.describe("a column that asks before it saves, edited with the slider", () =
     await expect(tasks.question).toBeVisible()
     await expect(tasks.question).toHaveAccessibleName(QUESTION)
     await expect(cancel).toBeFocused()
-    expect(await frames.count("save"), "nothing is saved before the answer").toBe(0)
+    expect(await pushed.count("save"), "nothing is saved before the answer").toBe(0)
 
     await cancel.click()
     await answered(tasks)
     await expect(slider).toBeFocused()
     await expect(slider, "what was chosen is still there").toHaveValue(chosen)
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
 
     // Enter commits what is not saved: the question again, and Confirm saves
     await tasks.press("Enter")
@@ -356,19 +356,19 @@ test.describe("a column that asks before it saves, edited with the slider", () =
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(progress).toBeFocused()
     await expect(progress).toHaveText(chosen)
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
   test("Confirm after letting go saves once, and the slider stays open with the focus", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const progress = tasks.cell(SECOND, "progress")
     const slider = tasks.editor(progress)
 
     await progress.dblclick()
-    await frames.clear()
+    await pushed.clear()
     const point = await pointOn(slider, 0.8)
     await page.mouse.move(point.x, point.y)
     await page.mouse.down()
@@ -381,12 +381,12 @@ test.describe("a column that asks before it saves, edited with the slider", () =
 
     await expect(slider).toBeFocused()
     await expect(slider).toHaveValue(chosen)
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
 
     // Escape: nothing is unsaved, and the cell shows what the record has now
     await tasks.press("Escape")
     await expect(progress).toHaveText(chosen)
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 })
 
@@ -395,7 +395,7 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
 
   test("shows the estimate with its unit, and edits it in a number input beside the unit", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const estimate = tasks.cell(FIRST, "estimate_hours")
     const editor = tasks.editor(estimate)
@@ -403,7 +403,7 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
     await expect(estimate).toHaveText("39 h")
 
     await estimate.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await expect(editor).toBeFocused()
     await expect(editor).toHaveAttribute("type", "number")
@@ -417,21 +417,21 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
     await tasks.retype("12.5")
     await tasks.press("ArrowLeft", "ArrowRight", "Home", "End")
     await expect(editor).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     await tasks.saves(estimate, () => tasks.press("Enter"))
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(estimate).toBeFocused()
     await expect(estimate).toHaveText("12.5 h")
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 
-  test("a change is not saved until Enter or leaving: Escape gives it up", async ({ tasks, frames }) => {
+  test("a change is not saved until Enter or leaving: Escape gives it up", async ({ tasks, pushed }) => {
     const estimate = tasks.cell(FIRST, "estimate_hours")
     const editor = tasks.editor(estimate)
 
     await estimate.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("F2")
     // the arrow keys step a number input, which is a change and no save
     await tasks.press("ArrowUp", "ArrowUp")
@@ -439,7 +439,7 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
     await tasks.press("Escape")
     await expect(estimate).toHaveText("39 h")
     await expect(estimate).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     // a click beside the input, on the unit, leaves the editor open
     await tasks.press("Enter")
@@ -451,14 +451,14 @@ test.describe("the demo's own component, whose editor saves on Enter or on leavi
     await tasks.saves(estimate, () => tasks.cell(FIRST, "title").click())
     await expect(estimate).toHaveText("7 h")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
   })
 })
 
 test.describe("the action panel", () => {
   test("has the slider as the field of the progress, which is sent with the form and not before", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.acts(SECOND, () => tasks.action(SECOND, "set_progress").click())
     const field = tasks.field("progress")
@@ -470,14 +470,14 @@ test.describe("the action panel", () => {
     await expect(field).toHaveAccessibleName(/^Progress/)
     await expect(number).toHaveText("5")
 
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowRight", "ArrowRight", "ArrowRight")
     await expect(field).toHaveValue("8")
     await expect(number).toHaveText("8")
     await tasks.panelSettled()
     // the form tells the server what it holds; nothing is saved by that
-    expect(await frames.count("save")).toBe(0)
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
     await expect(tasks.cell(SECOND, "progress")).toHaveText("5")
     await expect(number).toHaveText("8")
 
@@ -485,8 +485,8 @@ test.describe("the action panel", () => {
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.cell(SECOND, "progress")).toHaveText("8")
     await expect(tasks.cell(SECOND, "status")).toHaveText("In progress")
-    expect(await frames.count("save")).toBe(0)
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("save")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(1)
   })
 })
 

@@ -25,9 +25,13 @@ test.beforeEach(async ({ page, actor }) => {
 test.describe("the page", () => {
   test("is reached from the header and from the front page", async ({ page }) => {
     await page.goto("/")
+    // the header's links navigate live: a full page load would cut the socket,
+    // and forget what the page held
+    await page.evaluate(() => ((window as any).beforeHeaderLink = true))
     await page.getByRole("navigation", { name: "Main" }).getByRole("link", { name: "Dashboard" }).click()
     await expect(page).toHaveURL(/\/dashboard$/)
     await tasks.ready()
+    expect(await page.evaluate(() => (window as any).beforeHeaderLink)).toBe(true)
 
     await page.goto("/")
     await page.locator("#embedded").getByRole("link", { name: "dashboard" }).click()
@@ -213,13 +217,13 @@ test.describe("two grids on one page", () => {
 
   test("the keys move in the grid that has the focus, and each grid remembers its own cell", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projectKeys = await projects.rowKeys()
     const taskKeys = await tasks.rowKeys()
 
     await projects.tabStop.focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("ArrowDown", "ArrowRight")
     await expect(projects.cell(projectKeys[1], "name")).toBeFocused()
     expect(await projects.tabStops()).toEqual([`dashboard-projects-row-${projectKeys[1]}-c-name`])
@@ -248,7 +252,7 @@ test.describe("two grids on one page", () => {
     await tasks.press("ArrowUp", "PageUp")
     await expect(tasks.header("title"), "the top of the second grid").toBeFocused()
     expect(await projects.hasFocus()).toBe(false)
-    expect(await frames.all(), "moving about sends nothing").toEqual([])
+    expect(await pushed.all(), "moving about sends nothing").toEqual([])
 
     // Tab from the one comes to the cell the other was left on
     await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
@@ -287,7 +291,7 @@ test.describe("editing", () => {
   })
 
   test("each table has the editors of its own resource, and one whose resource names no update action has none", async ({
-    frames,
+    pushed,
   }) => {
     // two of them are reference cells, edited in the picker, and one a map, edited in the side panel
     await expect(tasks.editorTemplates).toHaveCount(14)
@@ -302,14 +306,14 @@ test.describe("editing", () => {
 
     const name = reporter.cell(await reporter.rowKey(1), "name")
     await name.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter", "F2", "x")
     await name.dblclick()
     await expect(reporter.openEditors).toHaveCount(0)
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(projects.openEditors).toHaveCount(0)
     await expect(name).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("a cell of the projects saves through the projects' own action", async ({ page }) => {
@@ -333,7 +337,7 @@ test.describe("editing", () => {
 
   test("a cell saves through its own table, and the other table is not read again", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const names = await projects.columnTexts("name")
     await projects.grid.evaluate((grid) => {
@@ -348,7 +352,7 @@ test.describe("editing", () => {
 
     const title = tasks.cell(SECOND, "title")
     await title.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await expect(tasks.editor(title)).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(1)
@@ -356,7 +360,7 @@ test.describe("editing", () => {
     await tasks.saves(title, () => tasks.press("Enter"))
     await expect(title).toHaveText("Edited on the dashboard")
     await expect(title).toBeFocused()
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     expect(await tasks.tabStops()).toEqual([`dashboard-tasks-row-${SECOND}-c-title`])
 
     expect(await page.evaluate(() => (window as any).__projectsPatched)).toBe(0)

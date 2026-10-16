@@ -34,11 +34,14 @@ test.describe("the link of a nested table", () => {
 
     await expect(nested.fullView).toHaveText("Open in full view")
     await expect(nested.fullView).toHaveAccessibleName("Open in full view: Comments")
+    // a live navigation: the page is not loaded afresh, and keeps what it held
+    await page.evaluate(() => ((window as any).beforeFullView = true))
     await nested.fullView.click()
 
     const full = comments(page)
     await full.ready()
     expect(new URL(page.url()).pathname).toBe("/comments")
+    expect(await page.evaluate(() => (window as any).beforeFullView)).toBe(true)
     expect(params(page)).toEqual({ "comment[of][task][comments]": FIRST })
 
     await expect(page.getByRole("heading", { level: 1 })).toHaveText("Comments")

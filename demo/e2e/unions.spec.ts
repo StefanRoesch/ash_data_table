@@ -47,32 +47,32 @@ test.describe("the cell of a union", () => {
     }
   })
 
-  test("has neither a sort nor a filter", async ({ page, frames }) => {
+  test("has neither a sort nor a filter", async ({ page, pushed }) => {
     const specimens = specimensOf(page)
     await specimens.open()
 
     await expect(specimens.header("a_union")).not.toHaveAttribute("aria-sort")
     await expect(specimens.filterCell("a_union").locator("input, select, button")).toHaveCount(0)
-    await frames.clear()
+    await pushed.clear()
     await specimens.header("a_union").click()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 
 test.describe("the side panel of a union", () => {
   test("Enter opens it with the kind chosen and that kind's value; a key that types does not; Escape closes it, and focus is on the cell again", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const specimens = specimensOf(page)
     await specimens.open()
     const cell = specimens.cell(NUMBER.id, "a_union")
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await specimens.press("7", "x")
     await expect(specimens.panel).toHaveCount(0)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     await specimens.press("Enter")
     await expect(specimens.panel).toBeVisible()
@@ -91,7 +91,7 @@ test.describe("the side panel of a union", () => {
     await expect(specimens.panel).toHaveCount(0)
     await expect(cell).toBeFocused()
     await expect(cell).toHaveText(NUMBER.shown)
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
   })
 
   test("a kind made of fields has those fields; F2 and a double click open the panel too", async ({ page }) => {
@@ -163,7 +163,7 @@ test.describe("the side panel of a union", () => {
 test.describe("Save", () => {
   test("by keyboard alone: another kind, its value, Enter; the cell shows it and has the focus", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const specimens = specimensOf(page)
     await specimens.open()
@@ -181,7 +181,7 @@ test.describe("Save", () => {
     await expect(text).toBeFocused()
     await page.keyboard.type("by keyboard")
     await specimens.panelSettled()
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.press("Tab")
     await expect(specimens.panelCancel).toBeFocused()
     await page.keyboard.press("Tab")
@@ -191,7 +191,7 @@ test.describe("Save", () => {
     await expect(specimens.panel).toHaveCount(0)
     await expect(cell).toHaveText("by keyboard")
     await expect(cell).toBeFocused()
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
 
     // it is stored: the page shows it again after a reload
     await specimens.open()

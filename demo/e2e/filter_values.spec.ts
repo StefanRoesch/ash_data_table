@@ -42,7 +42,7 @@ test.describe("is any of", () => {
   test("by mouse: the list opens under its button, and what is ticked applies when it is left", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const state = several(tasks, "status")
 
@@ -61,12 +61,12 @@ test.describe("is any of", () => {
     const list = (await state.list.boundingBox())!
     expect(list.y, "under the button").toBeGreaterThanOrEqual(button.y + button.height)
 
-    await frames.clear()
+    await pushed.clear()
     await state.list.getByText("To do", { exact: true }).click()
     await state.list.getByText("Done", { exact: true }).click()
     await expect(state.box("To do")).toBeChecked()
     await expect(state.list, "ticking leaves the list open").toBeVisible()
-    expect(await frames.all(), "ticking asks the server nothing").toEqual([])
+    expect(await pushed.all(), "ticking asks the server nothing").toEqual([])
     expect(params(page)).toEqual({})
 
     // a click anywhere else closes the list and applies
@@ -81,10 +81,10 @@ test.describe("is any of", () => {
     // the button closes it as well; with nothing changed, nothing is read
     await state.button.click()
     await expect(state.list).toBeVisible()
-    await frames.clear()
+    await pushed.clear()
     await state.button.click()
     await expect(state.list).toBeHidden()
-    expect(await frames.count("filter")).toBe(0)
+    expect(await pushed.count("filter")).toBe(0)
 
     // one value less, and the button names the one that is left
     await state.button.click()

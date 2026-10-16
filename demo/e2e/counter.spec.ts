@@ -50,7 +50,7 @@ test.describe("in the editor of a cell", () => {
 
   test("says how long the text is and the most it can be, and follows what is typed without the server", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const name = (await cell.innerText()).trim()
     const editor = await edit(labels, cell)
@@ -61,7 +61,7 @@ test.describe("in the editor of a cell", () => {
     await expect(editor).toHaveAccessibleName("Name")
     await expect(editor).not.toHaveAttribute("maxlength")
 
-    await frames.clear()
+    await pushed.clear()
     await labels.retype("ab")
     await expect(count).toHaveText("2/30")
     await page.keyboard.type("c")
@@ -70,7 +70,7 @@ test.describe("in the editor of a cell", () => {
     await page.keyboard.press("Backspace")
     await expect(count).toHaveText("1/30")
     await expect(editor).toHaveAccessibleDescription("1/30")
-    expect(await frames.all(), "counting sends nothing").toEqual([])
+    expect(await pushed.all(), "counting sends nothing").toEqual([])
 
     await labels.press("Escape")
     await expect(cell.locator("[data-count]")).toHaveCount(0)
@@ -146,16 +146,16 @@ test.describe("in the editor of a cell", () => {
     expect(during.cell.width).toBe(before.cell.width)
   })
 
-  test("a click on the counter leaves the focus in the text, and saves nothing", async ({ frames }) => {
+  test("a click on the counter leaves the focus in the text, and saves nothing", async ({ pushed }) => {
     const editor = await edit(labels, cell)
     await labels.retype("kept open")
-    await frames.clear()
+    await pushed.clear()
 
     await cell.locator("[data-count]").click()
 
     await expect(editor).toBeFocused()
     await expect(editor).toHaveValue("kept open")
-    expect(await frames.count("save")).toBe(0)
+    expect(await pushed.count("save")).toBe(0)
   })
 
   test("past the most it says so with a number greater than the most, and Ash refuses the text", async ({

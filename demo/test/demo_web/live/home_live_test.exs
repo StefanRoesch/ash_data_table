@@ -41,8 +41,9 @@ defmodule DemoWeb.HomeLiveTest do
     assert has_element?(view, "#embedded a[href='/dashboard']")
 
     {:ok, _view, html} = live(conn, "/tasks")
-    # the header's links navigate live: a full page load would cut the socket
-    assert html =~ ~r{<a href="/projects"[^>]*data-phx-link="redirect"[^>]*>Projects</a>}
+    assert html =~ ~r{<a href="/projects"[^>]*>Projects</a>}
+    # that the header's links navigate live, which a full page load would
+    # not, the browser shows (`dashboard.spec.ts`)
   end
 
   test "the actor switcher stores the chosen actor in the session", %{conn: conn, world: world} do

@@ -13,8 +13,10 @@ export async function expectNoAxeViolations(page: Page, within?: string): Promis
   // when the server takes more than 300 ms. It belongs to no state of a
   // table and is gone a moment later. It is not there yet while a page that
   // has just been opened is still connecting, and would come up in the
-  // middle of the check: so the page has to be connected first.
-  await expect(page.locator("[data-phx-session]:not(.phx-connected)")).toHaveCount(0)
+  // middle of the check: so the page has to be connected first, which the
+  // demo says on the document (`data-loading`, from LiveView's
+  // `phx:page-loading-start` until its `phx:page-loading-stop`).
+  await expect(page.locator("html[data-loading]")).toHaveCount(0)
   await expect(page.locator("body > canvas")).toBeHidden()
 
   // Two things keep a check short on a page of 1,500 elements, where it

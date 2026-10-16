@@ -91,11 +91,11 @@ test.describe("the panel of an action with a file argument", () => {
 })
 
 test.describe("Run", () => {
-  test("sends the file and gives it to the action, which reads it: a label per line", async ({ page, frames }) => {
+  test("sends the file and gives it to the action, which reads it: a label per line", async ({ page, pushed }) => {
     await openImport(labels)
     await fileInput(labels).setInputFiles(csv("labels.csv", "zebra,#00aa00\nyak\n"))
     await labels.panelSettled()
-    await frames.clear()
+    await pushed.clear()
 
     // by keyboard: Enter on "Run"
     await labels.panelSubmit.focus()
@@ -105,7 +105,7 @@ test.describe("Run", () => {
     await expect(labels.result).toHaveText("Import: 2")
     await expect(labels.rows).toHaveCount(SEED.labels.acme + 2)
     expect(await labels.columnTexts("name")).toEqual(expect.arrayContaining(["yak", "zebra"]))
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
 
     const zebra = labels.rows.filter({ hasText: "zebra" })
     await expect(zebra.locator('td[id$="-c-colour"]')).toHaveText("#00aa00")
@@ -200,7 +200,7 @@ test.describe("Run", () => {
 })
 
 test.describe("a file the upload does not take", () => {
-  test("too large: said at the field as it is chosen, read out, and nothing runs", async ({ page, frames }) => {
+  test("too large: said at the field as it is chosen, read out, and nothing runs", async ({ page, pushed }) => {
     await openImport(labels)
     const input = fileInput(labels)
 
@@ -223,7 +223,7 @@ test.describe("a file the upload does not take", () => {
     await input.setInputFiles(csv("small.csv", "zebra\n"))
     await labels.panelSettled()
     await expect(input).not.toHaveAttribute("aria-invalid")
-    await frames.clear()
+    await pushed.clear()
     await labels.panelSubmit.click()
     await expect(labels.panel).toHaveCount(0)
     await expect(labels.result).toHaveText("Import: 1")

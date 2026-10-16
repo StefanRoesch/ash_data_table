@@ -278,8 +278,9 @@ defmodule DemoWeb.Router do
     end
   end
 
-  # For the browser tests (`e2e/`), in the e2e environment only: seeds the
-  # database again, so that a test that edits starts from known data,
+  # For the browser tests (`e2e/`), in the e2e environment only: what a
+  # test's page sent its LiveViews; seeds the database again, so that a
+  # test that edits starts from known data,
   # deletes a task behind the table's back, and makes the reads of the
   # comments fail; a page whose tables let their rows be selected with
   # nothing to run on them; one whose table is given another actor while
@@ -287,6 +288,21 @@ defmodule DemoWeb.Router do
   # whose tables are attached to it; one that offers "Open"; and one that
   # draws a panel of its table itself.
   if Application.compile_env(:demo, :e2e_routes, false) do
+    # what the page of a test sent its LiveViews, by the page's session
+    # (`DemoWeb.E2E.Recorder`)
+    pipeline :e2e_session do
+      plug :accepts, ["json"]
+      plug :fetch_session
+    end
+
+    scope "/e2e", DemoWeb.E2E do
+      pipe_through :e2e_session
+
+      post "/recorder", RecorderController, :start
+      get "/recorded", RecorderController, :heard
+      delete "/recorded", RecorderController, :forget
+    end
+
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
       delete "/tasks/:id", DemoWeb.E2E.DataController, :delete_task

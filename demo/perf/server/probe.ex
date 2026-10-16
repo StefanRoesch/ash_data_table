@@ -87,7 +87,7 @@ defmodule Demo.Perf.Probe do
   refers to, which other processes may refer to as well.
   """
   def live_views do
-    for pid <- Process.list(), view = view(pid) do
+    for %{pid: pid} <- Phoenix.LiveView.Debug.list_liveviews(), view = view(pid) do
       before = memory(pid)
       :erlang.garbage_collect(pid)
 
@@ -106,21 +106,13 @@ defmodule Demo.Perf.Probe do
   @doc "What the whole VM holds, from `:erlang.memory/0`."
   def vm, do: Map.new(:erlang.memory())
 
-  # A LiveView is a process that says it started in its view's `mount/3`
-  # (LiveView puts that into `$initial_call`) and has a socket in its state.
+  # A LiveView and its socket, as `Phoenix.LiveView.Debug` gives them; nil
+  # for one that ended meanwhile.
   defp view(pid) do
-    with {_view, :mount, 3} <- :proc_lib.translate_initial_call(pid),
-         %{socket: %Phoenix.LiveView.Socket{} = socket} <- state(pid) do
-      %{module: socket.view, url: socket.assigns[:url]}
-    else
-      _other -> nil
+    case Phoenix.LiveView.Debug.socket(pid) do
+      {:ok, socket} -> %{module: socket.view, url: socket.assigns[:url]}
+      {:error, _reason} -> nil
     end
-  end
-
-  defp state(pid) do
-    :sys.get_state(pid, 1000)
-  catch
-    :exit, _reason -> nil
   end
 
   defp memory(pid), do: info(pid, :memory)

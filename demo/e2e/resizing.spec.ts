@@ -33,13 +33,13 @@ test.describe("with the pointer", () => {
   test("dragging the handle makes the column narrower and wider, and no other column changes", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const before = await tasks.widths()
     const title = await tasks.width("title")
     const index = (await tasks.columns()).indexOf("title") + 2 // the boxes and the expanders come first
     expect(before[index]).toBe(title)
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.drag("title", -100)
     expect(await tasks.width("title")).toBe(title - 100)
@@ -61,7 +61,7 @@ test.describe("with the pointer", () => {
     }
 
     // the server has heard of none of it, and the URL says nothing
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(params(page)).toEqual({})
   })
 
@@ -84,11 +84,11 @@ test.describe("with the pointer", () => {
   test("neither a drag nor a click on the handle sorts; a click on the header beside it still does", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const header = tasks.header("title")
     await expect(header).toHaveAttribute("data-sort", "")
-    await frames.clear()
+    await pushed.clear()
 
     // let go over the handle itself, over the header, and over a cell of another column
     await tasks.drag("title", -40)
@@ -100,7 +100,7 @@ test.describe("with the pointer", () => {
     await tasks.resizer("title").click()
     await tasks.resizer("title").dblclick()
 
-    expect(await frames.count("sort")).toBe(0)
+    expect(await pushed.count("sort")).toBe(0)
     await expect(header).toHaveAttribute("aria-sort", "none")
     expect(params(page)).toEqual({})
 
@@ -236,13 +236,13 @@ test.describe("with the keyboard", () => {
   test("F2 on a header goes to its handle; the arrow keys move it, Enter undoes, Escape goes back", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const header = tasks.header("title")
     const handle = tasks.resizer("title")
     const title = await tasks.width("title")
     await header.focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("F2")
     await expect(handle).toBeFocused()
@@ -280,7 +280,7 @@ test.describe("with the keyboard", () => {
     expect(await tasks.width("title")).toBe(title - STEP)
 
     // none of it sorted, or said anything to the server
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(params(page)).toEqual({})
     await expect(header).toHaveAttribute("aria-sort", "none")
   })

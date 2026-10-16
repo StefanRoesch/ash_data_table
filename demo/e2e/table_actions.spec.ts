@@ -102,7 +102,7 @@ test.describe("an action that runs at once", () => {
   for (const theme of ["light", "dark"] as const) {
     test(`says what it returned above the grid, reads it out, and leaves focus on its button (${theme})`, async ({
       page,
-      frames,
+      pushed,
     }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await labels.open()
@@ -111,7 +111,7 @@ test.describe("an action that runs at once", () => {
       const count = labels.tableAction("count_unused")
       const top = (await labels.grid.boundingBox())!.y
 
-      await frames.clear()
+      await pushed.clear()
       await count.click()
 
       await expect(labels.result).toHaveText("Count unused: 0")
@@ -120,8 +120,8 @@ test.describe("an action that runs at once", () => {
       await expect(labels.panel).toHaveCount(0)
       await expect(labels.question).toBeHidden()
       await expect(count).toBeFocused()
-      expect(await frames.count("table_act")).toBe(1)
-      expect(await frames.count("table_run")).toBe(0)
+      expect(await pushed.count("table_act")).toBe(1)
+      expect(await pushed.count("table_run")).toBe(0)
 
       // the table has read again, and shows what it showed
       await expect(labels.rows).toHaveCount(SEED.labels.acme)
@@ -132,31 +132,31 @@ test.describe("an action that runs at once", () => {
     })
   }
 
-  test("from the keyboard: Enter and Space on its button run it, once each", async ({ page, frames }) => {
+  test("from the keyboard: Enter and Space on its button run it, once each", async ({ page, pushed }) => {
     await makeUnused(labels, "spare")
     const count = labels.tableAction("count_unused")
 
     await count.focus()
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.press("Enter")
     await expect(labels.result).toHaveText("Count unused: 1")
     await expect(count).toBeFocused()
 
     await page.keyboard.press("Space")
     await expect(labels.status).toHaveText("Count unused: 1")
-    expect(await frames.count("table_act")).toBe(2)
+    expect(await pushed.count("table_act")).toBe(2)
   })
 })
 
 test.describe("an action that asks first", () => {
   test("asks in the table's dialog; Cancel runs nothing and puts focus back on the button", async ({
     page,
-    frames,
+    pushed,
   }) => {
     await makeUnused(labels, "spare")
     const remove = labels.tableAction("remove_unused")
 
-    await frames.clear()
+    await pushed.clear()
     await remove.click()
     await expect(labels.question).toBeVisible()
     await expect(labels.question).toHaveAccessibleName(QUESTION)
@@ -170,16 +170,16 @@ test.describe("an action that asks first", () => {
     await expect(remove).toBeFocused()
     await expect(labels.result).toHaveCount(0)
     await expect(labels.rows).toHaveCount(SEED.labels.acme + 1)
-    expect(await frames.count("table_run")).toBe(0)
+    expect(await pushed.count("table_run")).toBe(0)
   })
 
   test("Confirm runs it: the table says that it is done, and shows the records as they are now", async ({
-    frames,
+    pushed,
   }) => {
     await makeUnused(labels, "spare")
     const remove = labels.tableAction("remove_unused")
 
-    await frames.clear()
+    await pushed.clear()
     await remove.click()
     await labels.question.getByRole("button", { name: "Confirm" }).click()
 
@@ -188,8 +188,8 @@ test.describe("an action that asks first", () => {
     await expect(labels.rows).toHaveCount(SEED.labels.acme)
     await expect(labels.columnCells("name").filter({ hasText: "spare" })).toHaveCount(0)
     await expect(remove).toBeFocused()
-    expect(await frames.count("table_act")).toBe(1)
-    expect(await frames.count("table_run")).toBe(1)
+    expect(await pushed.count("table_act")).toBe(1)
+    expect(await pushed.count("table_run")).toBe(1)
   })
 })
 

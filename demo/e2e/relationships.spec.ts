@@ -87,13 +87,13 @@ test.describe("the field of an argument that holds several related records", () 
   test("\"Choose\" opens the table of the labels on top of the panel, with the rows of the task's labels selected; a choice is listed, and \"Run\" saves it", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const held = await openSetLabels(tasks, FIRST)
-    await frames.clear()
+    await pushed.clear()
 
     const labels = await openLabels(tasks)
-    expect(await frames.count("pick_input")).toBe(1)
+    expect(await pushed.count("pick_input")).toBe(1)
     await expect(tasks.picker).toHaveAccessibleName("Labels: choose label")
     expect(await modals(page)).toEqual({ open: ["task-panel", "task-picker"], focusIn: "task-picker" })
 
@@ -113,15 +113,15 @@ test.describe("the field of an argument that holds several related records", () 
 
     // one more, with a click anywhere on its row
     const added = await another(labels, held)
-    await frames.clear()
+    await pushed.clear()
     await labels.cell(added.key, "name").click()
     await expect(labels.box(added.key)).toBeChecked()
     await expect(labels.selectedCount).toHaveText(`${held.length + 1} selected`)
-    expect(await frames.besides("select"), "selecting sends nothing but what is selected").toEqual([])
+    expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
 
     await tasks.pickerChoose.click()
     await expect(tasks.picker).toHaveCount(0)
-    expect(await frames.count("picked")).toBe(1)
+    expect(await pushed.count("picked")).toBe(1)
     await expect(tasks.fieldChoose("labels")).toBeFocused()
     await expect(tasks.fieldChosenItems("labels")).toHaveText([...held, added.name])
 
@@ -135,7 +135,7 @@ test.describe("the field of an argument that holds several related records", () 
 
   test("the button of a label takes it out, and focus goes to what stands in its place; \"Run\" takes it off the task", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     // a task with two labels at least: the first gets one more first
     let held = await openSetLabels(tasks, FIRST)
@@ -146,13 +146,13 @@ test.describe("the field of an argument that holds several related records", () 
       await expect(tasks.picker).toHaveCount(0)
       held = (await tasks.fieldChosenItems("labels").allTextContents()).map((text) => text.trim())
     }
-    await frames.clear()
+    await pushed.clear()
 
     // from the keyboard: the button is a button
     await tasks.fieldRemove("labels", 0).focus()
     await tasks.press("Enter")
     await expect(tasks.fieldChosenItems("labels")).toHaveText(held.slice(1))
-    expect(await frames.count("panel_unpick")).toBe(1)
+    expect(await pushed.count("panel_unpick")).toBe(1)
     // the label that stood after it stands in its place
     await expect(tasks.fieldRemove("labels", 0)).toBeFocused()
     await expect(tasks.fieldRemove("labels", 0)).toHaveAccessibleName(`Remove ${held[1]}`)
@@ -194,7 +194,7 @@ test.describe("the picker for several records, from the keyboard", () => {
 
   test("Enter on the field's button opens it; Space selects a row and takes it out; Enter on a row chooses nothing; \"Choose\" takes what is selected", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const held = await openSetLabels(tasks, SECOND)
     await tasks.fieldChoose("labels").focus()
@@ -207,7 +207,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     // to a row that is not selected, by the arrow keys
     const added = await another(labels, held)
     await labels.cell(added.key, "name").focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("Space")
     await expect(labels.box(added.key)).toBeChecked()
@@ -220,7 +220,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     await tasks.press("Enter")
     await expect(tasks.picker).toBeVisible()
     await expect(labels.box(added.key)).toBeChecked()
-    expect(await frames.besides("select"), "nothing was sent but what is selected").toEqual([])
+    expect(await pushed.besides("select"), "nothing was sent but what is selected").toEqual([])
 
     // Tab leaves the grid for the picker's buttons
     await tasks.pickerChoose.focus()
@@ -254,14 +254,14 @@ test.describe("the picker for several records, from the keyboard", () => {
 
   test("Shift with Down Arrow selects the rows it passes, and the box of the header all rows of the page, as in any table with boxes", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const held = await openSetLabels(tasks, SECOND)
     const labels = await openLabels(tasks)
     if (held.length > 0) await labels.clearSelection.click()
     expect(await labels.selectedKeys()).toEqual([])
     const keys = await labels.rowKeys()
-    await frames.clear()
+    await pushed.clear()
 
     await labels.cell(keys[0], "name").focus()
     await tasks.press("Shift+ArrowDown", "Shift+ArrowDown")
@@ -279,7 +279,7 @@ test.describe("the picker for several records, from the keyboard", () => {
     expect(await labels.selectedKeys()).toEqual(keys.slice(1, 4))
     await labels.clearSelection.click()
     expect(await labels.selectedKeys()).toEqual([])
-    expect(await frames.besides("select"), "selecting sends nothing but what is selected").toEqual([])
+    expect(await pushed.besides("select"), "selecting sends nothing but what is selected").toEqual([])
 
     // nothing selected is a choice: of no label
     await tasks.pickerChoose.click()
@@ -376,7 +376,7 @@ test.describe("a reference cell that is edited through an argument: the assignee
 
   test("Enter opens the picker on the person the task is assigned to; a choice saves through the column's action", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const deadlines = new Table(page, "deadline", "/deadlines")
     await deadlines.open(`/deadlines?deadline[a][by]=${inDays(60)}`)
@@ -391,11 +391,11 @@ test.describe("a reference cell that is edited through an argument: the assignee
     await expect(cell).not.toHaveAttribute("aria-readonly")
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await deadlines.press("Enter")
     await expect(deadlines.picker).toBeVisible()
     await expect(deadlines.picker).toHaveAccessibleName("Assignee: choose user")
-    expect(await frames.count("pick")).toBe(1)
+    expect(await pushed.count("pick")).toBe(1)
 
     const people = deadlines.pickerTable("assignee")
     await people.ready()
@@ -520,7 +520,7 @@ for (const theme of ["light", "dark"] as const) {
 test("a row that names no label this person may read is not taken: nothing is chosen, and the picker says so", async ({
   page,
   tasks,
-  frames,
+  pushed,
 }) => {
   const held = await openSetLabels(tasks, FIRST)
   const labels = await openLabels(tasks)
@@ -532,13 +532,13 @@ test("a row that names no label this person may read is not taken: nothing is ch
     row.id = `${id}-row-4f0e6f66-0000-4000-8000-000000000000`
   }, labels.id)
   await page.locator(`[id="${labels.id}-row-4f0e6f66-0000-4000-8000-000000000000"] input[type=checkbox]`).click()
-  await frames.clear()
+  await pushed.clear()
   await tasks.pickerChoose.click()
 
   await expect(tasks.pickerError).toHaveText("This record is no longer available.")
   await expect(tasks.pickerError).toHaveRole("alert")
   await expect(tasks.picker).toBeVisible()
-  expect(await frames.count("picked")).toBe(1)
+  expect(await pushed.count("picked")).toBe(1)
   await expectNoAxeViolations(page)
 
   await tasks.press("Escape")

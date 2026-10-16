@@ -770,9 +770,10 @@ defmodule AshDataTable.Parts.Grid do
               # a line's mark stands under its row's
               "[&>tbody>tr>td[data-line]>div>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>div>button[aria-expanded]]:before:me-2",
               # the create button on a line, and the buttons of the nested table's
-              # table actions, once the nested table under it has read
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>div>[data-read])>td[data-line]>div>button[data-create]]:inline-flex",
-              "[&>tbody>tr:has(+tr>td[data-nested]>div>div>div>[data-read])>td[data-line]>div>button[data-table-action]]:inline-flex"
+              # table actions, once the nested table under it has read: found by
+              # the table's own marker of its portal, whatever LiveView wraps it in
+              "[&>tbody>tr:has(+tr>td[data-nested]_[data-ash-data-table-portal]>div>[data-read])>td[data-line]>div>button[data-create]]:inline-flex",
+              "[&>tbody>tr:has(+tr>td[data-nested]_[data-ash-data-table-portal]>div>[data-read])>td[data-line]>div>button[data-table-action]]:inline-flex"
             ]
           }
           phx-update="stream"

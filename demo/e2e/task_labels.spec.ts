@@ -136,7 +136,7 @@ test.describe("reading", () => {
 
 test.describe("the note", () => {
   test("it is the one column with an editor; the parts of the key cannot be edited", async ({
-    frames,
+    pushed,
   }) => {
     await expect(table.editorTemplates).toHaveCount(1)
     await expect(table.editorTemplates).toHaveId("task_label-editor-note")
@@ -147,12 +147,12 @@ test.describe("the note", () => {
       const cell = table.cell(FIRST, column)
       await expect(cell).toHaveAttribute("aria-readonly", "true")
       await cell.focus()
-      await frames.clear()
+      await pushed.clear()
       await table.press("Enter", "F2", "x")
       await cell.dblclick()
       await expect(table.openEditors).toHaveCount(0)
       await expect(cell).toBeFocused()
-      expect(await frames.all()).toEqual([])
+      expect(await pushed.all()).toEqual([])
     }
   })
 
@@ -188,20 +188,20 @@ test.describe("the note", () => {
 
     test("it is saved on the row that was edited, of three that share a task", async ({
       page,
-      frames,
+      pushed,
     }) => {
       const keys = await table.rowKeys()
-      await frames.clear()
+      await pushed.clear()
       await writeNote(SECOND, "Because the docs are wrong")
 
       const note = table.cell(SECOND, "note")
       await expect(note).toHaveText("Because the docs are wrong")
       await expect(note).toBeFocused()
       await expect(note).not.toHaveAttribute("aria-invalid")
-      expect(await frames.count("save")).toBe(1)
+      expect(await pushed.count("save")).toBe(1)
       // the event names the row by both parts of its key
-      const [save] = (await frames.all()).filter((frame) => frame.includes('"save"'))
-      expect(JSON.parse(save)[4].value).toMatchObject({
+      const [save] = (await pushed.all()).filter((one) => one.event === "save")
+      expect(save.params).toMatchObject({
         row: SECOND,
         column: "note",
         value: "Because the docs are wrong",
@@ -279,10 +279,10 @@ test.describe("the note", () => {
       await expect(table.range).toHaveText(`1–25 of ${SEED.taskLabels.acme - 2}`)
     })
 
-    test("Escape gives the edit up, and nothing is saved", async ({ frames }) => {
+    test("Escape gives the edit up, and nothing is saved", async ({ pushed }) => {
       const note = table.cell(THIRD, "note")
       await note.focus()
-      await frames.clear()
+      await pushed.clear()
       await table.press("Enter")
       await table.retype("Not meant")
       await table.press("Escape")
@@ -290,7 +290,7 @@ test.describe("the note", () => {
       await expect(table.openEditors).toHaveCount(0)
       await expect(note).toHaveText("")
       await expect(note).toBeFocused()
-      expect(await frames.all()).toEqual([])
+      expect(await pushed.all()).toEqual([])
     })
   })
 

@@ -115,15 +115,15 @@ test.describe("a sensitive cell at rest", () => {
     expect(received.holding("Customer portal").length).toBeGreaterThan(0)
   })
 
-  test("is neither sorted nor filtered by, and a URL that says so is not followed", async ({ page, frames }) => {
+  test("is neither sorted nor filtered by, and a URL that says so is not followed", async ({ page, pushed }) => {
     const projects = projectsOf(page)
     await projects.open()
 
     await expect(projects.header("budget")).not.toHaveAttribute("aria-sort")
     await expect(projects.filterCell("budget").locator("input, select, button")).toHaveCount(0)
-    await frames.clear()
+    await pushed.clear()
     await projects.header("budget").click()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     const before = await projects.columnTexts("name")
     await projects.open(`/projects?project[sort]=-budget&project[f][budget]=${PORTAL.budget}`)
@@ -141,7 +141,7 @@ test.describe("a sensitive cell at rest", () => {
 test.describe("showing a value", () => {
   test("the button asks the server for the one cell, and the cell shows and says the value", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const received = new Received(page)
     const projects = projectsOf(page)
@@ -150,7 +150,7 @@ test.describe("showing a value", () => {
     const { mask, value, button } = parts(cell)
     const height = await rowHeight(projects, PORTAL.id)
 
-    await frames.clear()
+    await pushed.clear()
     received.clear()
     await button.click()
 
@@ -163,8 +163,8 @@ test.describe("showing a value", () => {
     expect(await rowHeight(projects, PORTAL.id)).toBe(height)
 
     // one event, with the row and the column, and one answer with the value
-    expect(await frames.count("reveal")).toBe(1)
-    expect((await frames.all()).length).toBe(1)
+    expect(await pushed.count("reveal")).toBe(1)
+    expect((await pushed.all()).length).toBe(1)
     expect(received.holding(PORTAL.budget).length).toBe(1)
     // and no other budget came with it
     for (const budget of BUDGETS.filter((budget) => budget !== PORTAL.budget)) {
@@ -199,7 +199,7 @@ test.describe("showing a value", () => {
 
   test("Shift+Enter on the cell shows it and hides it; Escape hides it; Tab out of the grid hides it", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -207,11 +207,11 @@ test.describe("showing a value", () => {
     const { mask, value } = parts(cell)
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("Shift+Enter")
     await expect(value).toHaveText(WAREHOUSE.budget)
     await expect(cell).toBeFocused()
-    expect(await frames.count("reveal")).toBe(1)
+    expect(await pushed.count("reveal")).toBe(1)
     // no editor: Enter alone is the editor's
     await expect(projects.openEditors).toHaveCount(0)
 
@@ -267,14 +267,14 @@ test.describe("showing a value", () => {
     await expectNoBudgetIn(await markup(projects))
   })
 
-  test("an empty cell has nothing to show: Shift+Enter asks nothing", async ({ page, frames }) => {
+  test("an empty cell has nothing to show: Shift+Enter asks nothing", async ({ page, pushed }) => {
     const projects = projectsOf(page)
     await projects.open()
 
     await projects.cell(MOBILE, "budget").focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("Shift+Enter")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 
@@ -283,7 +283,7 @@ test.describe("editing a sensitive cell", () => {
 
   test("Enter opens an editor that hides what is typed, and holds nothing; Escape gives it up", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -297,25 +297,25 @@ test.describe("editing a sensitive cell", () => {
     await expect(editor).toHaveAccessibleName("Budget")
     await expect(editor).toHaveValue("")
 
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.type("99")
     await projects.press("Escape")
     await expect(projects.openEditors).toHaveCount(0)
     await expect(cell).toBeFocused()
     await expect(parts(cell).mask).toHaveText(MASK)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
-  test("an editor nothing was typed into saves nothing", async ({ page, frames }) => {
+  test("an editor nothing was typed into saves nothing", async ({ page, pushed }) => {
     const projects = projectsOf(page)
     await projects.open()
     const cell = projects.cell(PORTAL.id, "budget")
 
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
     await projects.press("Enter", "Enter")
     await expect(projects.openEditors).toHaveCount(0)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     // and the budget is what it was
     await projects.press("Shift+Enter")
@@ -324,7 +324,7 @@ test.describe("editing a sensitive cell", () => {
 
   test("what is typed is saved, and is shown nowhere: the cell keeps its mask, and the server sends nothing of it back", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const received = new Received(page)
     const projects = projectsOf(page)
@@ -338,10 +338,10 @@ test.describe("editing a sensitive cell", () => {
     expect(await rowHeight(projects, PORTAL.id)).toBe(height)
 
     received.clear()
-    await frames.clear()
+    await pushed.clear()
     await projects.saves(cell, () => projects.press("Enter"))
 
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     await expect(parts(cell).mask).toHaveText(MASK)
     await expect(cell).toBeFocused()
     expect(await markup(projects)).not.toContain("4455667")
@@ -443,13 +443,13 @@ test.describe("emptying a sensitive cell", () => {
 
   test("Tab goes from the input to \"Clear\" and Shift+Tab back, without closing the editor or saving", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
     const cell = projects.cell(PORTAL.id, "budget")
     const { editor, clear } = await open(projects, cell)
-    await frames.clear()
+    await pushed.clear()
 
     await page.keyboard.type("12")
     await projects.press("Tab")
@@ -458,7 +458,7 @@ test.describe("emptying a sensitive cell", () => {
     await projects.press("Shift+Tab")
     await expect(editor).toBeFocused()
     await expect(editor, "what was typed is still there").toHaveValue("12")
-    expect(await frames.all(), "nothing was saved on the way").toEqual([])
+    expect(await pushed.all(), "nothing was saved on the way").toEqual([])
 
     // Escape on the button gives the edit up, as it does on the input
     await projects.press("Tab")
@@ -466,14 +466,14 @@ test.describe("emptying a sensitive cell", () => {
     await projects.press("Escape")
     await expect(projects.openEditors).toHaveCount(0)
     await expect(cell).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     await projects.press("Shift+Enter")
     await expect(parts(cell).value).toHaveText(PORTAL.budget)
   })
 
   test("Tab from \"Clear\" leaves the grid and saves what was typed, as leaving the input does", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -482,13 +482,13 @@ test.describe("emptying a sensitive cell", () => {
     await page.keyboard.type("4455")
     await projects.press("Tab")
     await expect(clear).toBeFocused()
-    await frames.clear()
+    await pushed.clear()
 
     await projects.saves(cell, () => projects.press("Tab"))
 
     expect(await projects.hasFocus()).toBe(false)
-    expect(await frames.count("save")).toBe(1)
-    expect(await frames.count("clear")).toBe(0)
+    expect(await pushed.count("save")).toBe(1)
+    expect(await pushed.count("clear")).toBe(0)
     await expect(projects.openEditors).toHaveCount(0)
     await cell.focus()
     await projects.press("Shift+Enter")
@@ -498,7 +498,7 @@ test.describe("emptying a sensitive cell", () => {
   for (const key of ["Enter", "Space"] as const) {
     test(`${key} on "Clear" empties the budget: one event that names the cell, and the cell is empty`, async ({
       page,
-      frames,
+      pushed,
     }) => {
       const received = new Received(page)
       const projects = projectsOf(page)
@@ -509,16 +509,16 @@ test.describe("emptying a sensitive cell", () => {
       await page.keyboard.type("999")
       await projects.press("Tab")
       await expect(clear).toBeFocused()
-      await frames.clear()
+      await pushed.clear()
       received.clear()
 
       await projects.saves(cell, () => projects.press(key))
 
-      expect(await frames.count("clear")).toBe(1)
-      expect(await frames.count("save")).toBe(0)
-      const [sent] = (await frames.all()).filter((frame) => frame.includes('"clear"'))
+      expect(await pushed.count("clear")).toBe(1)
+      expect(await pushed.count("save")).toBe(0)
+      const [sent] = (await pushed.all()).filter((one) => one.event === "clear")
       // the server is asked by name: the row and the column, and no value
-      expect(JSON.parse(sent)[4].value).toEqual({ row: PORTAL.id, column: "budget" })
+      expect(sent.params).toEqual({ row: PORTAL.id, column: "budget" })
 
       await expect(projects.openEditors).toHaveCount(0)
       await expect(cell).toBeFocused()
@@ -541,7 +541,7 @@ test.describe("emptying a sensitive cell", () => {
 
   test("a click on \"Clear\" empties the budget too, and an empty editor still saves nothing", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -549,22 +549,22 @@ test.describe("emptying a sensitive cell", () => {
 
     // nothing typed, Enter: nothing is sent, and the budget stays
     await open(projects, cell)
-    await frames.clear()
+    await pushed.clear()
     await projects.press("Enter")
     await expect(projects.openEditors).toHaveCount(0)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     await expect(parts(cell).mask).toHaveText(MASK)
 
     const { clear } = await open(projects, cell)
     await projects.saves(cell, () => clear.click())
-    expect(await frames.count("clear")).toBe(1)
+    expect(await pushed.count("clear")).toBe(1)
     await expect(cell).toHaveText("")
     await expect(cell).toBeFocused()
   })
 
   test("a column with a question asks it first: Cancel goes back to the editor, Confirm empties", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
@@ -576,19 +576,19 @@ test.describe("emptying a sensitive cell", () => {
     })
     const cell = projects.cell(PORTAL.id, "budget")
     const { editor, clear } = await open(projects, cell)
-    await frames.clear()
+    await pushed.clear()
 
     await clear.click()
     await expect(projects.question.locator("p")).toHaveText("Change the budget?")
     await projects.question.getByRole("button", { name: "Cancel" }).click()
     await expect(editor).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     await expect(projects.openEditors).toHaveCount(1)
 
     await clear.click()
     await expect(projects.question.locator("p")).toHaveText("Change the budget?")
     await projects.saves(cell, () => projects.question.getByRole("button", { name: "Confirm" }).click())
-    expect(await frames.count("clear")).toBe(1)
+    expect(await pushed.count("clear")).toBe(1)
     await expect(cell).toHaveText("")
   })
 })
@@ -619,13 +619,13 @@ test.describe("emptying a sensitive field of the action panel", () => {
 
   test("used, the field says that it will be cleared and the button says \"Keep\"; \"Keep\" takes it back; nothing has run", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = projectsOf(page)
     await projects.open()
     await projects.action(PORTAL.id, "set_budget").click()
     await expect(projects.panel).toBeVisible()
-    await frames.clear()
+    await pushed.clear()
 
     await projects.press("Tab", "Enter")
     const keep = projects.panel.getByRole("button", { name: "Keep Budget" })
@@ -634,7 +634,7 @@ test.describe("emptying a sensitive field of the action panel", () => {
     await expect(keep).toHaveAccessibleDescription("Will be cleared.")
     await expect(projects.panel.getByText("Will be cleared.")).toBeVisible()
     await expect(projects.field("budget")).toHaveCount(0)
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
 
     await projects.press("Enter")
     const clear = projects.panel.getByRole("button", { name: "Clear Budget" })

@@ -72,12 +72,12 @@ test.describe("the footer row", () => {
   test("is reached with Arrow Down from the last record, and is where Down ends", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.open()
     await summed(tasks)
     const last = (await tasks.rowKeys()).at(-1)!
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.cell(last, "progress").focus()
     await tasks.press("ArrowDown")
@@ -110,7 +110,7 @@ test.describe("the footer row", () => {
     await tasks.press("PageDown")
     await expect(page.locator("#task-summaries-select"), "Page Down stays").toBeFocused()
 
-    expect(await frames.all(), "moving about asks the server nothing").toEqual([])
+    expect(await pushed.all(), "moving about asks the server nothing").toEqual([])
   })
 
   test("a summary is hidden with its column, and comes back with it", async ({ tasks }) => {

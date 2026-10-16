@@ -93,7 +93,7 @@ test.describe("the editor of a number cell", () => {
   for (const theme of ["light", "dark"] as const) {
     test(`a number past its limit is typed, sent and refused by Ash, at the cell (${theme})`, async ({
       page,
-      frames,
+      pushed,
     }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await specimens.open()
@@ -108,10 +108,10 @@ test.describe("the editor of a number cell", () => {
       expect(await validity(editor)).toMatchObject({ valid: false, rangeOverflow: true })
       await expectNoAxeViolations(page)
 
-      await frames.clear()
+      await pushed.clear()
       await specimens.saves(integer, () => specimens.press("Enter"))
 
-      expect(await frames.count("save")).toBe(1)
+      expect(await pushed.count("save")).toBe(1)
       await expect(integer).toHaveAttribute("aria-invalid", "true")
       await expect(specimens.failure(integer)).toHaveText("must be less than or equal to 1000")
       await expect(integer).toContainText("5000")
@@ -119,7 +119,7 @@ test.describe("the editor of a number cell", () => {
     })
   }
 
-  test("a fraction in a whole number is sent and refused by Ash too", async ({ frames }) => {
+  test("a fraction in a whole number is sent and refused by Ash too", async ({ pushed }) => {
     const integer = specimens.cell(FIRST, "an_integer")
     await integer.focus()
     await specimens.press("Enter")
@@ -127,10 +127,10 @@ test.describe("the editor of a number cell", () => {
     await editor.fill("1.5")
     expect(await validity(editor)).toMatchObject({ valid: false, stepMismatch: true })
 
-    await frames.clear()
+    await pushed.clear()
     await specimens.saves(integer, () => specimens.press("Enter"))
 
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     await expect(integer).toHaveAttribute("aria-invalid", "true")
     await expect(specimens.failure(integer)).not.toBeEmpty()
   })
@@ -202,7 +202,7 @@ test.describe("a number field of the action panel", () => {
     test(`a number past its limit is sent when Save is used, and refused by Ash at the field (${theme})`, async ({
       page,
       tasks,
-      frames,
+      pushed,
     }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await tasks.open()
@@ -215,12 +215,12 @@ test.describe("a number field of the action panel", () => {
       await tasks.panelSettled()
       await expectNoAxeViolations(page)
 
-      await frames.clear()
+      await pushed.clear()
       await tasks.panelSubmit.click()
       await tasks.question.getByRole("button", { name: "Confirm" }).click()
       await tasks.panelSettled()
 
-      expect(await frames.count("panel_submit")).toBe(1)
+      expect(await pushed.count("panel_submit")).toBe(1)
       await expect(tasks.panel).toBeVisible()
       await expect(every).toHaveValue("400")
       await expect(every).toHaveAttribute("aria-invalid", "true")
@@ -232,7 +232,7 @@ test.describe("a number field of the action panel", () => {
   test("what the browser cannot read as a number is still held back, and never sent as nothing", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const every = tasks.panel.getByRole("spinbutton", { name: "Every" })
     await every.fill("")
@@ -242,12 +242,12 @@ test.describe("a number field of the action panel", () => {
     await expect(every, "which the control gives as nothing").toHaveValue("")
     await tasks.panelSettled()
 
-    await frames.clear()
+    await pushed.clear()
     await tasks.panelSubmit.click()
     // nothing to wait for: the page is asked again after a moment
     await page.waitForTimeout(300)
 
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
     await expect(tasks.question).toBeHidden()
     await expect(tasks.panel).toBeVisible()
     await expect(every).toBeFocused()
@@ -282,38 +282,38 @@ test.describe("a number of the argument line", () => {
 
   test("a number past its limit is sent on Enter and refused by Ash at the input", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const days = tasks.argument("due_within-days")
     await days.fill("-1")
     expect(await validity(days)).toMatchObject({ valid: false, rangeUnderflow: true })
 
-    await frames.clear()
+    await pushed.clear()
     await days.press("Enter")
 
     await expect(tasks.argumentError("due_within-days")).toHaveText(
       "must be greater than or equal to 0",
     )
     // the change of the input, and the line itself
-    expect(await frames.count("arguments")).toBeGreaterThan(0)
+    expect(await pushed.count("arguments")).toBeGreaterThan(0)
     await expect(days).toHaveValue("-1")
   })
 
   test("what the browser cannot read as a number is still held back on Enter", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const days = tasks.argument("due_within-days")
     await days.fill("")
     await days.pressSequentially("1e")
     expect(await validity(days)).toMatchObject({ valid: false, badInput: true })
 
-    await frames.clear()
+    await pushed.clear()
     await days.press("Enter")
     await page.waitForTimeout(300)
 
-    expect(await frames.count("arguments")).toBe(0)
+    expect(await pushed.count("arguments")).toBe(0)
     await expect(days).toBeFocused()
     await expect(tasks.argumentError("due_within-days")).toHaveCount(0)
   })

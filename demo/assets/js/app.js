@@ -40,8 +40,17 @@ const liveSocket = new LiveSocket("/live", Socket, {
 
 // Show progress bar on live navigation and form submits
 topbar.config({barColors: {0: "#29d"}, shadowColor: "rgba(0, 0, 0, .3)"})
-window.addEventListener("phx:page-loading-start", _info => topbar.show(300))
-window.addEventListener("phx:page-loading-stop", _info => topbar.hide())
+// and say on the document whether the page is loading: from the first
+// render until LiveView has joined, and while a live navigation or a form
+// submit waits (the browser tests wait for it, `e2e/support/a11y.ts`)
+window.addEventListener("phx:page-loading-start", _info => {
+  document.documentElement.dataset.loading = ""
+  topbar.show(300)
+})
+window.addEventListener("phx:page-loading-stop", _info => {
+  delete document.documentElement.dataset.loading
+  topbar.hide()
+})
 
 // connect if there are any LiveViews on the page
 liveSocket.connect()

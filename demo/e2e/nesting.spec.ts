@@ -272,24 +272,24 @@ test.describe("with the keyboard", () => {
 
   test("moving about, in the lines and in a nested table, sends nothing; opening a line sends one event", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.expanderCell(FIRST).focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowRight")
     await expect(tasks.lines(FIRST)).toHaveCount(7)
-    expect(await frames.count("expand")).toBe(1)
-    expect(await frames.all()).toHaveLength(1)
+    expect(await pushed.count("expand")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
 
     await tasks.press("ArrowDown")
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowRight")
     const comments = tasks.nested(FIRST, "comments")
     await comments.loaded()
-    expect(await frames.count("toggle")).toBe(1)
-    expect(await frames.all()).toHaveLength(1)
+    expect(await pushed.count("toggle")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
 
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("ArrowDown", "Enter")
     await tasks.press("ArrowRight", "ArrowDown", "ArrowUp", "ArrowUp", "ArrowLeft", "End", "Home")
     await tasks.press("Control+End", "Control+Home", "PageDown", "PageUp", "Escape")
@@ -297,17 +297,17 @@ test.describe("with the keyboard", () => {
     await tasks.press("ArrowDown", "ArrowDown", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp")
     await expect(tasks.expanderCell(FIRST)).toBeFocused()
 
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(await tasks.tabStops()).toHaveLength(1)
   })
 
   test("a character does nothing on an expander, a line and the cell of a nested table; Space selects the row from its expander, and nothing from the others", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.openLine(FIRST, "project")
-    await frames.clear()
+    await pushed.clear()
 
     for (const cell of [
       tasks.expanderCell(FIRST),
@@ -322,7 +322,7 @@ test.describe("with the keyboard", () => {
     }
 
     // F2 on the cell of the nested table went into it; nothing else happened
-    expect(await frames.besides("select")).toEqual([])
+    expect(await pushed.besides("select")).toEqual([])
     // the expander is a cell of the row; a line and what is under it are not
     expect(await tasks.selectedKeys()).toEqual([FIRST])
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
@@ -549,7 +549,7 @@ test.describe("editing in a nested table", () => {
 
   test("a cell is edited and saved as on a page of its own, and the table around it is not read again", async ({
     page,
-    frames,
+    pushed,
   }) => {
     const projects = new Table(page, "project", "/projects")
     await projects.open()
@@ -563,13 +563,13 @@ test.describe("editing in a nested table", () => {
     // while a cell is edited its editor is the one tab stop of the tree
     expect(await projects.tabStops()).toEqual(["TEXTAREA"])
     await projects.retype("Edited under its project")
-    await frames.clear()
+    await pushed.clear()
     await nested.saves(title, () => projects.press("Enter"))
 
     await expect(title).toHaveText("Edited under its project")
     await expect(title).toBeFocused()
-    expect(await frames.count("save")).toBe(1)
-    expect(await frames.all()).toHaveLength(1)
+    expect(await pushed.count("save")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
     await expect(projects.line(MOBILE_APP, "tasks")).toHaveAttribute("aria-expanded", "true")
 
     // Escape gives the edit up, and only the next one leaves the table
@@ -590,7 +590,7 @@ test.describe("editing in a nested table", () => {
   test("the comments, the labels and the project under a task are edited as on their own pages", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     for (const { relationship, column, value, path, id } of [
       { relationship: "comments", column: "body", value: "Edited under its task", path: "/comments", id: "comment" },
@@ -608,15 +608,15 @@ test.describe("editing in a nested table", () => {
       await tasks.press("Enter")
       await expect(nested.editor(cell), relationship).toBeFocused()
       await tasks.retype(value)
-      await frames.clear()
+      await pushed.clear()
       await nested.saves(cell, () => tasks.press("Enter"))
 
       await expect(cell, relationship).toHaveText(value)
       await expect(cell, relationship).toBeFocused()
       await expect(cell, relationship).not.toHaveAttribute("aria-invalid")
       // one save, of this table, and nothing is read again: the rows stay where they are
-      expect(await frames.count("save"), relationship).toBe(1)
-      expect(await frames.all(), relationship).toHaveLength(1)
+      expect(await pushed.count("save"), relationship).toBe(1)
+      expect(await pushed.all(), relationship).toHaveLength(1)
       expect(await nested.rowKeys(), relationship).toEqual(keys)
       await expect(tasks.line(FIRST, relationship)).toHaveAttribute("aria-expanded", "true")
 
@@ -627,19 +627,19 @@ test.describe("editing in a nested table", () => {
     }
   })
 
-  test("the people under a task cannot be edited: their table names no update action", async ({ tasks, frames }) => {
+  test("the people under a task cannot be edited: their table names no update action", async ({ tasks, pushed }) => {
     const reporter = await tasks.openLine(FIRST, "reporter")
     await expect(reporter.editorTemplates).toHaveCount(0)
     await expect(reporter.grid.locator("[aria-readonly]")).toHaveCount(0)
 
     const name = reporter.cell(await reporter.rowKey(1), "name")
     await name.focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter", "F2", "x")
     await name.dblclick()
     await expect(reporter.openEditors).toHaveCount(0)
     await expect(name).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("a column that asks first asks in the nested table's own dialog, and a failed save marks its cell", async ({

@@ -150,8 +150,8 @@ defmodule DemoWeb.Tables.FullViewLinkTest do
       # columns and their actions
       assert attribute(html, "[id='#{id}-view']", "colspan") == ["8"]
       assert attribute(html, "[id='#{id}-full-view']", "tabindex") == ["-1"]
-      # a live navigation: the page is not loaded afresh
-      assert attribute(html, "[id='#{id}-full-view']", "data-phx-link") == ["redirect"]
+      # that it is a live navigation, which does not load the page afresh,
+      # the browser shows (`full_view.spec.ts`)
     end
 
     test "names a row whose key has several attributes by each of them", %{

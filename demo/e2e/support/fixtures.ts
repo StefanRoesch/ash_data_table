@@ -4,66 +4,73 @@ import { reseed } from "./data"
 import { test as base } from "./server"
 import { Table } from "./table"
 
-/**
- * What the page sent to the server over its WebSocket, heartbeats left out.
- * LiveView sends `[join_ref, ref, topic, event, payload]`; an event a person
- * causes has the event "event" and names itself in the payload. A table
- * names each of its events with itself (`ash_data_table:TABLE_ID:save`);
- * kept here by its own name (`save`), as the snapshots keep it.
- */
-export class Frames {
-  private sent: string[] = []
+/** An event the page pushed to its LiveView, as the server heard it. */
+export type Pushed = {
+  /** A table's event by its own name (`save`), a page's own by its whole name. */
+  event: string
+  /** The id of the table the event is of; null for a page's own. */
+  table: string | null
+  /** What the event carried. */
+  params: any
+}
 
-  constructor(private page: Page) {
-    page.on("websocket", (socket) => {
-      socket.on("framesent", (frame) => {
-        // the parts of an uploaded file are sent as bytes: no event of a person
-        if (typeof frame.payload !== "string") return
-        const text = String(frame.payload)
-        if (!text.includes('"heartbeat"'))
-          this.sent.push(text.replace(/"event":"ash_data_table:[^":]+:/g, '"event":"'))
-      })
-    })
+/**
+ * What the page of the test pushed to its LiveViews: every event, as the
+ * server heard it, in order (`DemoWeb.E2E.Recorder`, from LiveView's
+ * telemetry). The page's session names the test (`POST /e2e/recorder`);
+ * the page of another browser in the same test is not heard.
+ */
+export class Sent {
+  private constructor(private page: Page) {}
+
+  /** Names the test in the page's session: what its LiveViews hear from then on is kept. */
+  static async start(page: Page): Promise<Sent> {
+    const response = await page.request.post("/e2e/recorder", { data: { test: crypto.randomUUID() } })
+    expect(response.status(), "POST /e2e/recorder: is the server running in MIX_ENV=e2e?").toBe(200)
+    return new Sent(page)
   }
 
-  /** Forgets what was sent so far. */
+  /** Forgets what was pushed so far. */
   async clear(): Promise<void> {
     await this.flush()
-    this.sent = []
+    expect((await this.page.request.delete("/e2e/recorded")).status()).toBe(200)
   }
 
-  /** Everything sent since the last `clear`. */
-  async all(): Promise<string[]> {
+  /** Everything pushed since the last `clear`. */
+  async all(): Promise<Pushed[]> {
     await this.flush()
-    return [...this.sent]
+    const response = await this.page.request.get("/e2e/recorded")
+    expect(response.status()).toBe(200)
+    return response.json()
   }
 
   /**
-   * Everything sent since the last `clear` but the events of these names:
+   * Everything pushed since the last `clear` but the events of these names:
    * what is selected is sent on every change (`select`), and nothing else is.
    */
-  async besides(...events: string[]): Promise<string[]> {
-    await this.flush()
-    return this.sent.filter((text) => {
-      const [, , , kind, payload] = JSON.parse(text)
-      return !(kind === "event" && events.includes(payload.event))
-    })
+  async besides(...events: string[]): Promise<Pushed[]> {
+    return (await this.all()).filter((pushed) => !events.includes(pushed.event))
   }
 
   /** How many events of this name the page pushed: "save", "sort", "filter", "page", "discard". */
   async count(event: string): Promise<number> {
-    await this.flush()
-    return this.sent.filter((text) => {
-      const [, , , kind, payload] = JSON.parse(text)
-      return kind === "event" && payload.event === event
-    }).length
+    return (await this.all()).filter((pushed) => pushed.event === event).length
   }
 
-  // A frame is sent in the task of the key or click that caused it, or in a
-  // timer of 0 ms after it (leaving an editor). A round trip to the page
-  // after such a timer comes back behind every frame sent until then.
+  // Everything the page pushed before this is heard once this returns. An
+  // event is pushed in the task of the key or click that caused it, or in a
+  // timer of 0 ms it set (leaving an editor), which runs before the timer
+  // of 0 ms set here after it. Then an event of the tests' own goes the way
+  // of every event of the page: the LiveView answers it after all that came
+  // before it on the socket. It is an event of a table that is not there
+  // (`e2e-barrier`), which every table answers alike and the recorder does
+  // not keep. A page without a table pushes no table event.
   private async flush(): Promise<void> {
-    await this.page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 20)))
+    await this.page.evaluate(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+      const grid: any = document.querySelector("[phx-hook='AshDataTable.Grid']")
+      if (grid?._ashDataTable) await grid._ashDataTable.pushEventTo(grid, "ash_data_table:e2e-barrier:save", {})
+    })
   }
 }
 
@@ -119,7 +126,7 @@ type Options = {
 
 type Fixtures = {
   seededAgain: void
-  frames: Frames
+  pushed: Sent
   consoleErrors: ConsoleErrors
   nativeDialogs: NativeDialogs
   /** The table at /tasks. */
@@ -144,9 +151,9 @@ export const test = base.extend<Options & Fixtures>({
     { auto: true },
   ],
 
-  frames: [
+  pushed: [
     async ({ page }, use) => {
-      await use(new Frames(page))
+      await use(await Sent.start(page))
     },
     { auto: true },
   ],

@@ -74,9 +74,9 @@ test.describe("the button and its list", () => {
   test("\"Columns\" opens a list with a box per column; a box hides its column and shows it again", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
-    await frames.clear()
+    await pushed.clear()
     await expect(tasks.columnsButton).toHaveText("Columns")
     await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "false")
     await expect(tasks.columnsButton).toHaveAttribute("aria-controls", "task-columns")
@@ -135,7 +135,7 @@ test.describe("the button and its list", () => {
     expect(await tasks.shownColumns()).toEqual(before)
 
     // the server has heard of none of it, and the URL says nothing
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(params(page)).toEqual({})
   })
 
@@ -493,7 +493,7 @@ test("from a line under a row, Up Arrow goes to the column a person was in, or t
 test.describe("what is hidden outlives what the server sends", () => {
   test.use({ writes: true })
 
-  test("a sort, a filter, another page, a saved cell and an expanded row", async ({ page, tasks, frames }) => {
+  test("a sort, a filter, another page, a saved cell and an expanded row", async ({ page, tasks, pushed }) => {
     await tasks.open()
     const hidden = ["status", "priority", "due_on"]
     await tasks.hide(...hidden)
@@ -563,7 +563,7 @@ test.describe("what is hidden outlives what the server sends", () => {
     await same("after the filters were cleared")
 
     // of all of it, the server heard the sorts, the filters, the page, the save and the rows that opened
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     expect(params(page)).toEqual({ "task[sort]": "title" })
   })
 
@@ -846,7 +846,7 @@ test.describe("the widths of the columns", () => {
 test.describe("what is open in a column when it is hidden", () => {
   test.use({ writes: true })
 
-  test("an editor is left as focus leaves it: what was typed is saved", async ({ page, tasks, frames }) => {
+  test("an editor is left as focus leaves it: what was typed is saved", async ({ page, tasks, pushed }) => {
     await tasks.open()
     const cell = tasks.cell(FIRST, "description")
     await tasks.openColumns()
@@ -854,11 +854,11 @@ test.describe("what is open in a column when it is hidden", () => {
     await tasks.press("Enter")
     await expect(tasks.editor(cell)).toBeFocused()
     await tasks.retype("A text of another kind")
-    await frames.clear()
+    await pushed.clear()
 
     await toggleInPlace(tasks, "description")
     await expect(tasks.header("description")).toBeHidden()
-    await expect.poll(() => frames.count("save")).toBe(1)
+    await expect.poll(() => pushed.count("save")).toBe(1)
     await expect(tasks.openEditors).toHaveCount(0)
     await expect(cell).toHaveText("A text of another kind")
     await expect(cell).not.toHaveAttribute("aria-busy")
@@ -874,17 +874,17 @@ test.describe("what is open in a column when it is hidden", () => {
     await expect(cell).toHaveText("A text of another kind")
   })
 
-  test("an editor a person leaves for the list is saved before its column goes", async ({ tasks, frames }) => {
+  test("an editor a person leaves for the list is saved before its column goes", async ({ tasks, pushed }) => {
     await tasks.open()
     const cell = tasks.cell(FIRST, "description")
     await cell.focus()
     await tasks.press("Enter")
     await tasks.retype("A text of a third kind")
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.saves(cell, () => tasks.columnsButton.click())
     await tasks.hide("description")
-    expect(await frames.count("save")).toBe(1)
+    expect(await pushed.count("save")).toBe(1)
     await tasks.unhide("description")
     await expect(cell).toHaveText("A text of a third kind")
   })

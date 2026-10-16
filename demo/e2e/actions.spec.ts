@@ -152,10 +152,10 @@ test.describe("the actions column", () => {
 test.describe("with the keyboard", () => {
   test("the actions cell is a cell the arrow keys stop at, under a header and a filter cell of its own", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.cell(FIRST, "reporter").focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("ArrowRight")
     await expect(tasks.actionsCell(FIRST)).toBeFocused()
@@ -184,17 +184,17 @@ test.describe("with the keyboard", () => {
     await tasks.press("Control+End")
     await expect(tasks.actionsCell((await tasks.rowKeys()).at(-1)!)).toBeFocused()
 
-    expect(await frames.all(), "moving about asks the server nothing").toEqual([])
+    expect(await pushed.all(), "moving about asks the server nothing").toEqual([])
     expect(await tasks.tabStops()).toHaveLength(1)
   })
 
   test("Enter and F2 go to the first button; Left and Right move between the buttons, and Escape comes back to the cell", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const cell = tasks.actionsCell(FIRST)
     await cell.focus()
-    await frames.clear()
+    await pushed.clear()
 
     // Space and a character are nothing on the cell
     await tasks.press("Space", "x")
@@ -232,7 +232,7 @@ test.describe("with the keyboard", () => {
     await tasks.press("Escape", "ArrowDown")
     await expect(tasks.actionsCell(SECOND), "back on the cell, the arrow keys move again").toBeFocused()
 
-    expect(await frames.besides("select"), "none of it asks the server anything but to say what is selected").toEqual([])
+    expect(await pushed.besides("select"), "none of it asks the server anything but to say what is selected").toEqual([])
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
   })
 
@@ -261,24 +261,24 @@ test.describe("with the keyboard", () => {
 
   test("Enter on a button runs its action, and so does Space; focus stays on the button", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.actionsCell(FIRST).focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Enter")
     await tasks.acts(FIRST, () => tasks.press("Enter"))
 
     await expect(tasks.cell(FIRST, "status")).toHaveText("Archived")
     await expect(tasks.action(FIRST, "archive"), "through the patch of its row").toBeFocused()
-    expect(await frames.count("act")).toBe(1)
-    expect(await frames.all()).toHaveLength(1)
+    expect(await pushed.count("act")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
 
     await tasks.press("Escape", "ArrowDown", "F2")
     await expect(tasks.action(SECOND, "archive")).toBeFocused()
     await tasks.acts(SECOND, () => tasks.press("Space"))
     await expect(tasks.cell(SECOND, "status")).toHaveText("Archived")
     await expect(tasks.action(SECOND, "archive")).toBeFocused()
-    expect(await frames.count("act")).toBe(2)
+    expect(await pushed.count("act")).toBe(2)
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
   })
 })
@@ -286,10 +286,10 @@ test.describe("with the keyboard", () => {
 test.describe("an action that runs straight away", () => {
   test("a click on its button sends one event; the row comes back changed, and focus stays on the button", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const height = await rowHeight(tasks, FIRST)
-    await frames.clear()
+    await pushed.clear()
     await tasks.acts(FIRST, () => tasks.action(FIRST, "archive").click())
 
     await expect(tasks.cell(FIRST, "status")).toHaveText("Archived")
@@ -298,8 +298,8 @@ test.describe("an action that runs straight away", () => {
     await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("aria-busy")
     await expect(tasks.actionsCell(FIRST)).not.toHaveAttribute("aria-invalid")
     await expect(tasks.status, "it is read out").toHaveText("Archive: done")
-    expect(await frames.count("act")).toBe(1)
-    expect(await frames.all()).toHaveLength(1)
+    expect(await pushed.count("act")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
 
     // the cell of the button is the grid's tab stop now, and the row is as high as it was
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
@@ -311,22 +311,22 @@ test.describe("an action that runs straight away", () => {
     await expect(tasks.cell(FIRST, "status")).toHaveText("Archived")
   })
 
-  test("a click beside the buttons is a click on the cell: nothing runs", async ({ tasks, frames }) => {
+  test("a click beside the buttons is a click on the cell: nothing runs", async ({ tasks, pushed }) => {
     const cell = tasks.actionsCell(FIRST)
     await cell.scrollIntoViewIfNeeded()
     const box = (await cell.boundingBox())!
-    await frames.clear()
+    await pushed.clear()
     // the right end of the cell, after its last button
     await tasks.page.mouse.click(box.x + box.width - 3, box.y + box.height / 2)
 
     await expect(cell).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test.describe("on /task_labels", () => {
     test("a destroy action declared with `confirm false` runs at one click, on a row with a key of two parts", async ({
       page,
-      frames,
+      pushed,
     }) => {
       const taskLabels = new Table(page, "task_label", "/task_labels")
       await taskLabels.open()
@@ -338,12 +338,12 @@ test.describe("an action that runs straight away", () => {
       // same: the action asks when it runs on several rows (selection.spec.ts)
       await expect(taskLabels.question).toBeHidden()
 
-      await frames.clear()
+      await pushed.clear()
       await taskLabels.action(second, "destroy").click()
 
       await expect(taskLabels.row(second)).toHaveCount(0)
       expect((await taskLabels.rowKeys()).slice(0, 2)).toEqual([first, third])
-      expect(await frames.count("act")).toBe(1)
+      expect(await pushed.count("act")).toBe(1)
       await expect(taskLabels.actionsCell(third), "the row after it").toBeFocused()
       await expect(taskLabels.range).toHaveText(`1–24 of ${total - 1}`)
       await expect(taskLabels.status).toHaveText("Remove: done")
@@ -362,9 +362,9 @@ test.describe("an action that asks first", () => {
 
   test("the dialog asks the action's question before anything is sent, and says by its colour that the answer deletes", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
-    await frames.clear()
+    await pushed.clear()
     await tasks.action(SECOND, "destroy").click()
 
     // the table's own dialog, in the page, and not the browser's `confirm`
@@ -376,7 +376,7 @@ test.describe("an action that asks first", () => {
     await expect(cancel, "focus is on the safe answer").toBeFocused()
     await expect(confirm).toHaveClass(/\bbtn-error\b/)
     await expect(confirm).not.toHaveClass(/\bbtn-primary\b/)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     // Tab stays in the dialog
     await tasks.press("Tab")
@@ -389,10 +389,10 @@ test.describe("an action that asks first", () => {
 
   test("Cancel sends nothing and puts focus back on the button; so does Escape", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const destroy = tasks.action(SECOND, "destroy")
-    await frames.clear()
+    await pushed.clear()
 
     await destroy.click()
     await cancel.click()
@@ -409,7 +409,7 @@ test.describe("an action that asks first", () => {
     await expect(tasks.rows).toHaveCount(25)
     await expect(tasks.row(SECOND)).toBeVisible()
     await expect(tasks.actionsCell(SECOND)).not.toHaveAttribute("aria-busy")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
   })
 
@@ -433,7 +433,7 @@ test.describe("an action that asks first", () => {
   test("Confirm takes the row out of the page, counts it out, and puts focus on the same cell of the row after it", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const total = SEED.tasks.acme
     await expect(tasks.range).toHaveText(`1–25 of ${total}`)
@@ -442,7 +442,7 @@ test.describe("an action that asks first", () => {
     expect(await tasks.rowIndexes()).toEqual(Array.from({ length: 25 }, (_, index) => index + 3))
 
     await tasks.action(SECOND, "destroy").click()
-    await frames.clear()
+    await pushed.clear()
     await confirm.click()
 
     await expect(tasks.row(SECOND)).toHaveCount(0)
@@ -451,7 +451,7 @@ test.describe("an action that asks first", () => {
     expect((await tasks.rowKeys()).slice(0, 2)).toEqual([FIRST, THIRD])
     await expect(tasks.actionsCell(THIRD)).toBeFocused()
     expect(await tasks.tabStops()).toEqual([`task-row-${THIRD}-a`])
-    expect(await frames.count("act")).toBe(1)
+    expect(await pushed.count("act")).toBe(1)
 
     await expect(tasks.range).toHaveText(`1–24 of ${total - 1}`)
     await expect(tasks.grid).toHaveAttribute("aria-rowcount", String(total + 2))
@@ -528,14 +528,14 @@ test.describe("an action that failed", () => {
     test("the actions cell is marked with the action's message, which is read out; focus is not moved", async ({
       page,
       tasks,
-      frames,
+      pushed,
     }) => {
       const cell = tasks.actionsCell(FIRST)
       const archive = tasks.action(FIRST, "archive")
       const message = tasks.failure(cell)
       const height = await rowHeight(tasks, FIRST)
 
-      await frames.clear()
+      await pushed.clear()
       await tasks.acts(FIRST, () => archive.click())
 
       await expect(archive, "focus stays on the button").toBeFocused()
@@ -547,7 +547,7 @@ test.describe("an action that failed", () => {
       await expect(tasks.status, "it is read out").toHaveText(`Archive failed: ${REFUSED}`)
       await expect(tasks.cell(FIRST, "status"), "nothing was changed").not.toHaveText("Archived")
       await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
-      expect(await frames.count("act")).toBe(1)
+      expect(await pushed.count("act")).toBe(1)
 
       // the message shows while the cell, or a button in it, has focus or the
       // pointer, and the row never grows
@@ -577,7 +577,7 @@ test.describe("an action that failed", () => {
 
     test("Escape on a button goes back to the cell, and Escape on the cell gives the failure up", async ({
       tasks,
-      frames,
+      pushed,
     }) => {
       const cell = tasks.actionsCell(FIRST)
       await cell.focus()
@@ -586,18 +586,18 @@ test.describe("an action that failed", () => {
       await expect(cell).toHaveAttribute("aria-invalid", "true")
       await expect(tasks.action(FIRST, "archive")).toBeFocused()
 
-      await frames.clear()
+      await pushed.clear()
       await tasks.press("Escape")
       await expect(cell).toBeFocused()
       await expect(cell, "the first Escape leaves the button").toHaveAttribute("aria-invalid", "true")
-      expect(await frames.all()).toEqual([])
+      expect(await pushed.all()).toEqual([])
 
       await tasks.press("Escape")
       await expect(cell).not.toHaveAttribute("aria-invalid")
       await expect(cell).not.toHaveAttribute("aria-describedby")
       await expect(tasks.failure(cell)).toHaveCount(0)
       await expect(cell).toBeFocused()
-      expect(await frames.count("dismiss")).toBe(1)
+      expect(await pushed.count("dismiss")).toBe(1)
       expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
       await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
     })
@@ -634,7 +634,7 @@ test.describe("an action that failed", () => {
     test("the hook marks the actions cell itself, and Escape on the cell takes the mark away", async ({
       request,
       tasks,
-      frames,
+      pushed,
     }) => {
       const key = await tasks.rowKey(6)
       const cell = tasks.actionsCell(key)
@@ -655,14 +655,14 @@ test.describe("an action that failed", () => {
       await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
       expect(await rowHeight(tasks, key)).toBeCloseTo(height, 0)
 
-      await frames.clear()
+      await pushed.clear()
       await tasks.press("Escape", "Escape")
       await expect(cell).not.toHaveAttribute("aria-invalid")
       await expect(cell).not.toHaveAttribute("aria-describedby")
       await expect(tasks.failure(cell)).toHaveCount(0)
       await expect(cell).toBeFocused()
       await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
-      expect(await frames.all(), "the mark was the hook's: the server is not asked").toEqual([])
+      expect(await pushed.all(), "the mark was the hook's: the server is not asked").toEqual([])
     })
 
     test("an action with inputs opens no panel for it, and marks the cell", async ({ request, tasks }) => {
@@ -683,9 +683,9 @@ test.describe("the action panel", () => {
   test("is a modal dialog at the right edge of the window, named by its heading; focus moves to its first control", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
-    await frames.clear()
+    await pushed.clear()
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
 
     await expect(tasks.panel).toBeVisible()
@@ -693,7 +693,7 @@ test.describe("the action panel", () => {
     await expect(tasks.panel).toHaveAccessibleName("Reassign: Rename the onboarding email")
     await expect(tasks.panelTitle).toHaveRole("heading")
     expect(await tasks.panel.evaluate((panel) => panel.matches(":modal"))).toBe(true)
-    expect(await frames.count("act")).toBe(1)
+    expect(await pushed.count("act")).toBe(1)
     // nothing has run
     await expect(tasks.status).toHaveText("")
 
@@ -713,10 +713,10 @@ test.describe("the action panel", () => {
     expect(box.width).toBeCloseTo(448, 0)
   })
 
-  test("Tab stays in the panel, and the page behind it is out of reach", async ({ page, tasks, frames }) => {
+  test("Tab stays in the panel, and the page behind it is out of reach", async ({ page, tasks, pushed }) => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
     await expect(tasks.fieldChoose("assignee_id")).toBeFocused()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("Tab")
     await expect(tasks.field("reason")).toBeFocused()
@@ -746,23 +746,23 @@ test.describe("the action panel", () => {
     await expect(tasks.panel, "a click beside the panel leaves it open").toBeVisible()
     await expect(tasks.panelTitle).toHaveText("Reassign: Rename the onboarding email")
     expect(await tasks.hasFocus()).toBe(false)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 
   test("Escape closes it and nothing has run; focus is back on the button that opened it. Cancel does the same", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const reassign = tasks.action(FIRST, "reassign")
     await tasks.acts(FIRST, () => reassign.click())
     await tasks.field("reason").fill("Never mind")
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
     await expect(reassign).toBeFocused()
-    expect(await frames.count("panel_cancel")).toBe(1)
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("panel_cancel")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(0)
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-a`])
 
     // from the keyboard, and with Cancel
@@ -788,7 +788,7 @@ test.describe("the action panel", () => {
 
   test("Run runs the action with what the fields hold: the row comes back changed, and focus is on its button again", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     // the panel of an attribute shows the record's value
     const progress = tasks.action(SECOND, "set_progress")
@@ -802,7 +802,7 @@ test.describe("the action panel", () => {
     await expect(tasks.field("progress")).toHaveAccessibleName(/^Progress/)
 
     await tasks.field("progress").fill("60")
-    await frames.clear()
+    await pushed.clear()
     // Enter in a field of one line submits the form
     await tasks.press("Enter")
 
@@ -812,7 +812,7 @@ test.describe("the action panel", () => {
     await expect(tasks.cell(SECOND, "status")).toHaveText("In progress")
     await expect(progress).toBeFocused()
     await expect(tasks.status).toHaveText("Set progress: done")
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
     expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-a`])
 
     // an argument and an attribute, with the button
@@ -839,7 +839,7 @@ test.describe("the action panel", () => {
   test("says what the action makes of a field once that field was used, and of every field after Run", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
     const reason = tasks.field("reason")
@@ -858,8 +858,8 @@ test.describe("the action panel", () => {
     await expect(reason).toHaveAccessibleDescription("length must be greater than or equal to 3 2/200")
     await expect(reason, "typing keeps the focus and what was typed").toBeFocused()
     await expect(reason).toHaveValue("ab")
-    expect(await frames.count("panel_validate")).toBeGreaterThan(0)
-    expect(await frames.count("panel_submit")).toBe(0)
+    expect(await pushed.count("panel_validate")).toBeGreaterThan(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
 
     // put right, it says nothing any more
     await page.keyboard.type("c")
@@ -873,7 +873,7 @@ test.describe("the action panel", () => {
     await expect(tasks.panel).toHaveCount(0)
     await tasks.acts(FIRST, () => tasks.action(FIRST, "reassign").click())
     await expect(tasks.panel.locator("[data-error]")).toHaveCount(0)
-    await frames.clear()
+    await pushed.clear()
     await tasks.panelSubmit.click()
 
     await expect(tasks.fieldError("reason")).toHaveText("is required")
@@ -882,7 +882,7 @@ test.describe("the action panel", () => {
     expect(await tasks.panel.evaluate((panel) => panel.matches(":modal"))).toBe(true)
     await expect(tasks.status).toHaveText("Reassign failed: Reason: is required")
     expect(await focusInPanel(tasks)).toBe(true)
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
     await expect(tasks.cell(FIRST, "status"), "nothing ran").not.toHaveText("Archived")
   })
 
@@ -918,7 +918,7 @@ test.describe("the action panel", () => {
   test("an action that asks first asks when Run is used, in the dialog on top of the panel; Cancel comes back to the panel as it was", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const cancel = tasks.question.getByRole("button", { name: "Cancel" })
     const confirm = tasks.question.getByRole("button", { name: "Confirm" })
@@ -930,7 +930,7 @@ test.describe("the action panel", () => {
     // renders for one that has: it is put there by hand, after the last
     // patch of the panel.
     await tasks.panelSettled()
-    await frames.clear()
+    await pushed.clear()
     await tasks.panel.evaluate((panel) => panel.setAttribute("data-question", "Report this progress?"))
 
     await tasks.panelSubmit.click()
@@ -938,7 +938,7 @@ test.describe("the action panel", () => {
     await expect(tasks.question).toHaveAccessibleName("Report this progress?")
     await expect(cancel).toBeFocused()
     await expect(confirm).toHaveClass(/\bbtn-primary\b/)
-    expect(await frames.count("panel_submit"), "nothing is sent before the answer").toBe(0)
+    expect(await pushed.count("panel_submit"), "nothing is sent before the answer").toBe(0)
 
     // on top of the panel, which is still there behind it
     await expect(tasks.panel).toBeVisible()
@@ -961,7 +961,7 @@ test.describe("the action panel", () => {
     await expect(tasks.panel).toBeVisible()
     await expect(tasks.panelSubmit, "focus is back where it was in the panel").toBeFocused()
     await expect(tasks.field("progress")).toHaveValue("70")
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     // Escape answers the question, not the panel
     await tasks.press("Enter")
@@ -970,14 +970,14 @@ test.describe("the action panel", () => {
     await answered(tasks)
     await expect(tasks.panel).toBeVisible()
     await expect(tasks.panelSubmit).toBeFocused()
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
 
     await tasks.panelSubmit.click()
     await confirm.click()
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.cell(SECOND, "progress")).toHaveText("70")
     await expect(tasks.action(SECOND, "set_progress")).toBeFocused()
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
   })
 
   test("the question can also be asked while a panel is open: it is on top, and gives the focus back to the panel", async ({
@@ -1040,7 +1040,7 @@ test.describe("creating a record", () => {
   test("it is a tab stop before the grid, opens the panel with the create action's inputs, and gets the focus back", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     // before the grid stand "Columns" (hiding.spec.ts) and the inputs of
     // the argument line, and before those the create button
@@ -1054,13 +1054,13 @@ test.describe("creating a record", () => {
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.create).toBeFocused()
 
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.press("Enter")
     await expect(tasks.panel).toBeVisible()
     await expect(tasks.panel).toHaveAccessibleName("New task")
     expect(await tasks.panel.evaluate((panel) => panel.matches(":modal"))).toBe(true)
     await expect(tasks.panelSubmit).toHaveText("Create")
-    expect(await frames.count("create")).toBe(1)
+    expect(await pushed.count("create")).toBe(1)
     expect(await tasks.fields()).toEqual([
       "title",
       "description",
@@ -1122,7 +1122,7 @@ test.describe("creating a record", () => {
   test("a field of every type is filled in, and the new record is the first row of the page, with the focus on its first cell", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     const total = SEED.tasks.acme
     const before = await tasks.rowKeys()
@@ -1159,10 +1159,10 @@ test.describe("creating a record", () => {
     await expect(tasks.field("title")).toHaveValue("Made in the browser")
     await expect(tasks.panel.locator("[data-error]")).toHaveCount(0)
 
-    await frames.clear()
+    await pushed.clear()
     await tasks.panelSubmit.click()
     await expect(tasks.panel).toHaveCount(0)
-    expect(await frames.count("panel_submit")).toBe(1)
+    expect(await pushed.count("panel_submit")).toBe(1)
 
     // the first row of the page, before the rows that were there
     await expect(tasks.rows).toHaveCount(26)
@@ -1381,7 +1381,7 @@ test.describe("creating in a nested table", () => {
 
   test("with the pointer: the button opens the panel of the nested table, and the new record is its first row, with the focus", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const comments = await tasks.openLine(FIRST, "comments")
     const create = tasks.lineCreate(FIRST, "comments")
@@ -1389,7 +1389,7 @@ test.describe("creating in a nested table", () => {
     const [first] = await comments.columns()
     const count = await tasks.cell(FIRST, "comment_count").textContent()
 
-    await frames.clear()
+    await pushed.clear()
     await create.click()
     await expect(comments.panel).toBeVisible()
     await expect(comments.panel).toHaveAccessibleName("New comment")
@@ -1399,8 +1399,8 @@ test.describe("creating in a nested table", () => {
     await expect(comments.field("body")).toBeFocused()
     await expect(tasks.panel, "the table around it has no panel for it").toHaveCount(0)
     await expect(tasks.line(FIRST, "comments"), "the line stays open").toHaveAttribute("aria-expanded", "true")
-    expect(await frames.count("create")).toBe(1)
-    expect(await frames.count("toggle")).toBe(0)
+    expect(await pushed.count("create")).toBe(1)
+    expect(await pushed.count("toggle")).toBe(0)
 
     // given up, focus is back on the line's button
     await tasks.press("Escape")
@@ -1436,14 +1436,14 @@ test.describe("creating in a nested table", () => {
 
   test("with the keyboard: F2 on the line goes into its controls, the arrow keys move between them, Enter uses one", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     const comments = await tasks.openLine(FIRST, "comments")
     const line = tasks.lineCell(FIRST, "comments")
     const toggle = tasks.line(FIRST, "comments")
     const create = tasks.lineCreate(FIRST, "comments")
     await line.focus()
-    await frames.clear()
+    await pushed.clear()
 
     await tasks.press("F2")
     await expect(toggle, "first the button that opens the line").toBeFocused()
@@ -1457,7 +1457,7 @@ test.describe("creating in a nested table", () => {
     await expect(toggle).toBeFocused()
     await tasks.press("Escape")
     await expect(line).toBeFocused()
-    expect(await frames.all(), "none of it asks the server anything").toEqual([])
+    expect(await pushed.all(), "none of it asks the server anything").toEqual([])
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-l-comments-c`])
     await expect(toggle).toHaveAttribute("aria-expanded", "true")
 
@@ -1465,8 +1465,8 @@ test.describe("creating in a nested table", () => {
     await tasks.press("F2", "ArrowRight", "Enter")
     await expect(comments.panel).toBeVisible()
     await expect(comments.field("body")).toBeFocused()
-    expect(await frames.count("create")).toBe(1)
-    expect(await frames.count("toggle"), "the line was not used").toBe(0)
+    expect(await pushed.count("create")).toBe(1)
+    expect(await pushed.count("toggle"), "the line was not used").toBe(0)
     await tasks.press("Escape")
     await expect(comments.panel).toHaveCount(0)
     await expect(create).toBeFocused()

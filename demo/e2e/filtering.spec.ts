@@ -85,21 +85,21 @@ test.describe("the controls of the filter row", () => {
   test("the filters are no tab stops, and the keys in an input are the input's", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.filterCell("title").focus()
     expect(await tasks.tabStops()).toEqual(["task-filter-title"])
 
     await tasks.press("Enter")
     await expect(tasks.filterValue("title")).toBeFocused()
-    await frames.clear()
+    await pushed.clear()
     await page.keyboard.type("se")
     await tasks.press("ArrowLeft", "ArrowRight", "ArrowDown", "ArrowUp", "Home", "End")
     await expect(tasks.filterValue("title")).toBeFocused()
     await page.keyboard.type("ss")
     await expect(tasks.filterValue("title")).toHaveValue("sess")
 
-    expect(await frames.all(), "typing asks the server nothing").toEqual([])
+    expect(await pushed.all(), "typing asks the server nothing").toEqual([])
     expect(await tasks.tabStops()).toEqual(["task-filter-title"])
   })
 
@@ -139,16 +139,16 @@ test.describe("a printable key on a filter cell goes into the filter and types t
   test("text: the key is the first character; one over an applied value replaces it", async ({
     page,
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.filterCell("title").focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("s")
     await expect(tasks.filterValue("title")).toBeFocused()
     await expect(tasks.filterValue("title")).toHaveValue("s")
     await page.keyboard.type("ess")
     await expect(tasks.filterValue("title")).toHaveValue("sess")
-    expect(await frames.all(), "typing asks the server nothing").toEqual([])
+    expect(await pushed.all(), "typing asks the server nothing").toEqual([])
     expect(await tasks.tabStops(), "the cell is still the grid's one tab stop").toEqual([
       "task-filter-title",
     ])
@@ -212,16 +212,16 @@ test.describe("a printable key on a filter cell goes into the filter and types t
     // how a date is typed is the browser's, by its locale
     test.use({ locale: "en-US" })
 
-    test("the key goes into the first part of the date", async ({ page, tasks, frames }) => {
+    test("the key goes into the first part of the date", async ({ page, tasks, pushed }) => {
       await tasks.filterCell("due_on").focus()
-      await frames.clear()
+      await pushed.clear()
       await tasks.press("1")
       await expect(tasks.filterValue("due_on")).toBeFocused()
       await expect(tasks.filterValue("due_on"), "not a date yet").toHaveValue("")
       // the month goes on, then the day and the year
       await page.keyboard.type("2152030")
       await expect(tasks.filterValue("due_on")).toHaveValue("2030-12-15")
-      expect(await frames.all()).toEqual([])
+      expect(await pushed.all()).toEqual([])
       await tasks.reads(() => tasks.press("Enter"))
       expect(params(page)).toEqual({ "task[f][due_on]": "2030-12-15" })
       await expect(tasks.empty).toHaveText("No records")
@@ -275,10 +275,10 @@ test.describe("a printable key on a filter cell goes into the filter and types t
 
   test("what is no printable key, and a cell without a filter, stay as they are", async ({
     tasks,
-    frames,
+    pushed,
   }) => {
     await tasks.filterCell("title").focus()
-    await frames.clear()
+    await pushed.clear()
     await tasks.press("Space", "Control+a", "Alt+s")
     await expect(tasks.filterCell("title")).toBeFocused()
     await expect(tasks.filterValue("title")).toHaveValue("")
@@ -288,7 +288,7 @@ test.describe("a printable key on a filter cell goes into the filter and types t
     await tasks.press("s", "5")
     await expect(tasks.filterCell("description")).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
-    expect(await frames.all()).toEqual([])
+    expect(await pushed.all()).toEqual([])
   })
 })
 
