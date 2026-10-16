@@ -156,6 +156,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
              )
              |> Enum.uniq() == ["false"]
 
+      assert attribute(html, "#task-table[role=grid]", "role") != []
       assert attribute(html, "[id='task-row-#{task.id}-x'] [role=grid]", "id") == []
     end
 
@@ -335,6 +336,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
       id = nested(task.id, "latest_comment")
 
       assert headers(html, id) == ["ID", "Body", "Inserted at", "Task ID", "Author ID"]
+      assert attribute(html, "[id='#{id}-head-row'] [role=columnheader]", "role") != []
       assert attribute(html, "[id='#{id}-head-row'] [role=columnheader][aria-sort]", "id") == []
       assert attribute(html, "[id='#{id}-head-row'] [role=columnheader][phx-click]", "id") == []
       assert attribute(html, "[id='#{id}-filter-row'] :is(input, select)", "id") == []
@@ -809,6 +811,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
         {_view, html, id} = open_line(conn, task, relationship)
         assert editors(html, id) == [], relationship
 
+        assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "role") != []
+
         assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "aria-readonly") == [],
                relationship
       end
@@ -1176,6 +1180,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
 
       html = expand(view, Ecto.UUID.generate())
       assert_reply view, %{open: false}
+      assert attribute(html, "#task-table [role=gridcell]", "role") != []
       assert attribute(html, "#task-table [role=gridcell][data-line]", "id") == []
 
       # nor without a row at all
@@ -1202,6 +1207,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
         html =
           forge(view, "task", "toggle", %{"row" => task.id, "relationship" => name})
 
+        assert attribute(html, "#task-table[role=grid]", "role") != []
         assert attribute(html, "[id='task-row-#{task.id}-x'] [role=grid]", "id") == []
       end
 

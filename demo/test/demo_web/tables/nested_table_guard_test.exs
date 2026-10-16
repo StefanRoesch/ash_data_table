@@ -272,6 +272,8 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
       assert text(html, "#tasks-range") == "1–25 of 60"
       assert attribute(html, "#tasks-clear-filters", "id") == []
 
+      assert attribute(html, "#tasks-table [role=columnheader][aria-sort]", "role") != []
+
       assert attribute(
                html,
                "#tasks-table [role=columnheader][aria-sort]:not([aria-sort=none])",
@@ -322,6 +324,8 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
         assert column(html, "task", "title") == @unsorted
 
+        assert attribute(html, "#task-table [role=columnheader][aria-sort]", "role") != []
+
         assert attribute(
                  html,
                  "#task-table [role=columnheader][aria-sort]:not([aria-sort=none])",
@@ -356,6 +360,8 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
         assert column(html, "task", "title") == @unsorted
 
+        assert attribute(html, "#task-table [role=columnheader][aria-sort]", "role") != []
+
         assert attribute(
                  html,
                  "#task-table [role=columnheader][aria-sort]:not([aria-sort=none])",
@@ -389,6 +395,8 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
         assert column(html, id, "title") == @unsorted
 
+        assert attribute(html, "[id='#{id}-table'] [role=columnheader][aria-sort]", "role") != []
+
         assert attribute(
                  html,
                  "[id='#{id}-table'] [role=columnheader][aria-sort]:not([aria-sort=none])",
@@ -414,6 +422,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
       for column <- ["name", "tasks.title", "inserted_at"] do
         html = send_sort(view, id, column)
+        assert attribute(html, "[id='#{id}-table'] [role=columnheader]", "role") != []
         assert attribute(html, "[id='#{id}-table'] [role=columnheader][aria-sort]", "id") == []
         assert length(column(html, id, "name")) == 1
       end

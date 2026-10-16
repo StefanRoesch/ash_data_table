@@ -371,6 +371,7 @@ defmodule DemoWeb.Tables.TaskAuthorizationTest do
     test "is offered no editing at all: no cell is marked, and there is no editor",
          %{html: html} do
       assert titles(html) == ["Write the report"]
+      assert attribute(html, "#task-table [role=gridcell]", "role") != []
       assert attribute(html, "#task-table [role=gridcell]", "aria-readonly") == []
       assert editors(html, "task") == []
       assert attribute(html, "#task template", "id") == []

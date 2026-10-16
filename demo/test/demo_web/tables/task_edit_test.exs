@@ -774,6 +774,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
       id = nested(task.id, "reporter")
 
       assert column(html, id, "name") == [world.admin.name]
+      assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "role") != []
       assert attribute(html, "[id='#{id}-table'] [role=gridcell]", "aria-readonly") == []
       assert editors(html, id) == []
       assert attribute(html, "[id='#{id}'] template", "id") == []

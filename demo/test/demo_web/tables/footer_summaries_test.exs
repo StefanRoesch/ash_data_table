@@ -118,7 +118,9 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
          %{conn: conn, world: world} do
       {_view, html} = open_table(conn, world.admin)
 
-      assert attribute(html, "#task-foot", "id") == ["task-foot"]
+      # the footer group is in the grid, after its records, and its first row
+      # is the summaries'
+      assert attribute(html, "#task-table[role=grid] > #task-foot", "id") == ["task-foot"]
       assert attribute(html, "#task-foot > [role=row]", "id") == ["task-summaries"]
       assert attribute(html, "#task-summaries", "role") == ["row"]
 
@@ -486,6 +488,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       {view, html} = open_table(conn, world.admin, "/projects")
       # the table of the projects declares no summary
+      assert attribute(html, "#project-table", "role") == ["grid"]
       assert attribute(html, "#project-foot", "id") == []
 
       expand(view, "project", project.id)
@@ -495,7 +498,11 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       assert length(column(html, id, "title")) == 3
 
-      assert attribute(html, "[id='#{id}-foot'] > [role=row]:first-child", "id") == [
+      assert attribute(
+               html,
+               "[id='#{id}-table'][role=grid] > [id='#{id}-foot'] > [role=row]:first-child",
+               "id"
+             ) == [
                "#{id}-summaries"
              ]
 
@@ -537,6 +544,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
       # "New comment": its task is chosen from the table of the tasks
       {view, html} = open_table(conn, world.admin, "/comments")
+      assert attribute(html, "#comment-table", "role") == ["grid"]
       assert attribute(html, "#comment-foot", "id") == []
 
       open_create(view, "comment")

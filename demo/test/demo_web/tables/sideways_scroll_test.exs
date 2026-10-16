@@ -45,9 +45,11 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
 
   test "a table that does not say it marks none", %{conn: conn} do
     {:ok, _view, html} = live(conn, "/labels")
+    assert attribute(html, "#label-table [role=columnheader]", "role") != []
     assert attribute(html, "#label-table [role=columnheader][data-label]", "id") == []
 
     {:ok, _view, html} = live(conn, "/comments")
+    assert attribute(html, "#comment-table [role=columnheader]", "role") != []
     assert attribute(html, "#comment-table [role=columnheader][data-label]", "id") == []
   end
 
@@ -70,6 +72,7 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
     assert "overscroll-x-contain" in String.split(class)
     assert attribute(html, "[id='#{comments}-scrollbar']", "aria-hidden") == ["true"]
     # the comments say nothing of their label
+    assert attribute(html, "[id='#{comments}-table'] [role=columnheader]", "role") != []
     assert attribute(html, "[id='#{comments}-table'] [role=columnheader][data-label]", "id") == []
 
     # what a line holds stays at the left edge as well

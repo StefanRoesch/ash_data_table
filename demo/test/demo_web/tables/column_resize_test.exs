@@ -60,6 +60,7 @@ defmodule DemoWeb.Tables.ColumnResizeTest do
     end
 
     assert attribute(html, "#task-filter-row [data-resize]", "id") == []
+    assert attribute(html, "#task-table > [role=rowgroup]", "role") != []
     assert attribute(html, "#task-table > [role=rowgroup] [data-resize]", "id") == []
   end
 

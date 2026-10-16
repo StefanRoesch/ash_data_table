@@ -883,6 +883,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "is not, where it is told nothing and has no action to run on several rows",
          %{html: html} do
       assert attribute(html, "#plain-grid", "data-select") == []
+      assert attribute(html, "#plain-table [role=gridcell]", "role") != []
       assert attribute(html, "#plain-table [role=gridcell][data-selector]", "id") == []
       assert selection(html, "plain") == nil
       assert attribute(html, "#plain-table", "aria-colcount") == ["1"]
@@ -891,6 +892,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "nor where its records have no primary key, whatever it is told", %{html: html} do
       assert column(html, "tally", "title") == ["A tally"]
       assert attribute(html, "#tally-grid", "data-select") == []
+      assert attribute(html, "#tally-table [role=gridcell]", "role") != []
       assert attribute(html, "#tally-table [role=gridcell][data-selector]", "id") == []
       assert selection(html, "tally") == nil
     end
