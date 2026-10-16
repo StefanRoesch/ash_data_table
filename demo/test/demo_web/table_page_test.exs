@@ -8,7 +8,7 @@ defmodule DemoWeb.TablePageTest do
   test "the content of a portal is read where the browser shows it" do
     html = """
     <div id="task"><div id="task-grid" data-ash-data-table phx-target="1"></div>
-    <template id="p1" data-phx-portal="#spot"><div id="_lv_portal_wrap_p1"><div id="task-picker" data-ash-data-table-portal="spot" data-question="Q?"><h2 id="task-picker-title">Pick</h2><template id="p2" data-phx-portal="[id='inner']"><div id="_lv_portal_wrap_p2"><span id="deep" data-ash-data-table-portal="inner">deep</span></div></template><div><button>Cancel</button></div></div></div></template>
+    <template id="p1"><div><div id="task-picker" data-ash-data-table-portal="spot" data-question="Q?"><h2 id="task-picker-title">Pick</h2><template id="p2"><div><span id="deep" data-ash-data-table-portal="inner">deep</span></div></template><div><button>Cancel</button></div></div></div></template>
     <template id="task-editor-title" data-editor="text"><input type="text"/></template>
     </div><div id="spot"><p id="inner"></p></div>
     """
@@ -27,7 +27,7 @@ defmodule DemoWeb.TablePageTest do
   test "the content of a portal is read where the browser shows it, in an attached table" do
     html = """
     <div id="task"><div id="task-grid" data-ash-data-table></div>
-    <template id="p1" data-phx-portal="#spot"><div id="_lv_portal_wrap_p1"><div id="task-picker" data-ash-data-table-portal="spot" data-question="Q?"><h2 id="task-picker-title">Pick</h2><template id="p2" data-phx-portal="[id='inner']"><div id="_lv_portal_wrap_p2"><span id="deep" data-ash-data-table-portal="inner">deep</span></div></template><div><button>Cancel</button></div></div></div></template>
+    <template id="p1"><div><div id="task-picker" data-ash-data-table-portal="spot" data-question="Q?"><h2 id="task-picker-title">Pick</h2><template id="p2"><div><span id="deep" data-ash-data-table-portal="inner">deep</span></div></template><div><button>Cancel</button></div></div></div></template>
     <template id="task-editor-title" data-editor="text"><input type="text"/></template>
     </div><div id="spot"><p id="inner"></p></div>
     """
