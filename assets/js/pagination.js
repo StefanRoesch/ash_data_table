@@ -10,9 +10,12 @@
 // the page that is shown now and, in a table without page numbers, to
 // the other of the two. When the pagination itself goes away, with a
 // read that failed, focus goes to the grid.
+import {GRID, OF, PAGER, PAGE_NOW} from "./markers.js"
+
 export default {
   mounted() {
-    this.gridId = this.el.id.replace(/-pagination$/, "-table")
+    // the table it is of
+    this.table = this.el.getAttribute(OF)
     this.used = null
     this.hasFocus = false
     // the control that had focus last
@@ -40,7 +43,7 @@ export default {
     const usable = control => control && this.el.contains(control) && !control.disabled
     const control = [
       document.getElementById(this.used),
-      this.el.querySelector("[aria-current='page']"),
+      this.el.querySelector(PAGE_NOW),
       ...this.el.querySelectorAll("button")
     ].find(usable)
     this.used = null
@@ -58,8 +61,8 @@ export default {
   // To the grid's tab stop; in a nested table, whose tab stop may be
   // anywhere in the tables around it, to the cell the controls are in.
   toGrid() {
-    const cell = this.el.closest("td[data-pager]") ||
-      document.querySelector(`[id="${CSS.escape(this.gridId)}"] [tabindex="0"]`)
+    const cell = this.el.closest(PAGER) ||
+      document.querySelector(`${GRID}[${OF}="${CSS.escape(this.table)}"] [tabindex="0"]`)
     if (cell) cell.focus({preventScroll: true})
   }
 }

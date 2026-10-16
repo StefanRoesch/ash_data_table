@@ -3,7 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {LIST, is} from "./shared.js"
+import {CURRENT, DETAIL, ROWGROUP, SELECTION, SELECTOR, TABLE} from "../markers.js"
+import {LISTED, cellsOf, firstRow, groupsOf, is, place} from "./shared.js"
 
 export default {
   // Whether rows can be selected, and how many at a time: "multi",
@@ -23,21 +24,21 @@ export default {
   // The rows of records of the page, top to bottom: not what is
   // open under a row.
   records() {
-    const table = this.el.querySelector("table")
-    return table ? Array.from(table.tBodies).filter(body => !is(body, "detail") && body.rows[0]) : []
+    return groupsOf(this.table()).filter(body => !is(body, DETAIL) && firstRow(body))
   },
 
-  // The row of records a cell is in, if it is in one.
+  // The row of records a cell is in, if it is in one: not the header
+  // or the footer, nor the lines of a detail.
   record(cell) {
-    const body = cell.parentElement.parentElement
-    return body.tagName === "TBODY" && !is(body, "detail") ? body : null
+    const body = cell.closest(ROWGROUP)
+    return body && body.closest(TABLE) === cell.closest(TABLE) && !is(body, DETAIL) ? body : null
   },
 
   keyOf(body) { return body.id.slice(this.id.length + 5) },
 
   // What the server is told of a row: nothing more than its key,
   // where that is its primary key, else what the row says itself.
-  named(body) { return body.dataset.key !== undefined ? LIST(body.dataset.key) : null },
+  named(body) { return body.dataset.key !== undefined ? LISTED(body.dataset.key) : null },
 
   // The line above the grid, and its parts.
   line() { return document.getElementById(`${this.id}-selection`) },
@@ -155,7 +156,8 @@ export default {
     const from = this.record(cell)
     const to = rows[rows.indexOf(from) + step]
     if (!to) return
-    const target = to.rows[0].cells[Math.min(cell.cellIndex, to.rows[0].cells.length - 1)]
+    const cells = cellsOf(firstRow(to))
+    const target = cells[Math.min(place(cell), cells.length - 1)]
     // with every record selected there is none to add
     if (selection.all) return target.focus()
     if (!selection.range) selection.range = {anchor: this.keyOf(from), before: this.shown()}
@@ -188,16 +190,17 @@ export default {
     // In a table to choose one from, the row of the record that is
     // chosen now is selected until the person selects another.
     if (this.chooses() && mode === "single" && !selection.touched) {
-      const current = rows.find(body => is(body, "current") && !selection.keys.has(this.keyOf(body)))
+      const current = rows.find(body => is(body, CURRENT) && !selection.keys.has(this.keyOf(body)))
       if (current) return this.select(new Map([[this.keyOf(current), this.named(current)]]), false, false)
     }
     let onPage = 0
     for (const body of rows) {
       const on = selection.all || selection.keys.has(this.keyOf(body))
       if (on) onPage++
-      const row = body.rows[0]
+      const row = firstRow(body)
       if (row.getAttribute("aria-selected") !== String(on)) row.setAttribute("aria-selected", String(on))
-      const box = row.cells[0].querySelector("input")
+      const selector = row.querySelector(SELECTOR)
+      const box = selector && selector.querySelector("input")
       if (box && box.checked !== on) box.checked = on
     }
     // A table to choose from says again what is selected when the
@@ -213,8 +216,8 @@ export default {
     const every = rows.length > 0 && onPage === rows.length
     // this table's own header: not that of a table nested in it,
     // which may stand before it in the page
-    const table = this.el.querySelector("table")
-    const page = table && table.tHead && table.tHead.querySelector("th[data-select-page] input")
+    const head = this.part("select-head")
+    const page = head && head.querySelector("input")
     if (page) {
       if (page.checked !== every) page.checked = every
       const some = onPage > 0 && !every
@@ -256,7 +259,7 @@ export default {
   // in this one is inside this table's element too, and is that
   // table's.
   onLineClick(e) {
-    const line = e.target.closest && e.target.closest("[data-selection]")
+    const line = e.target.closest && e.target.closest(SELECTION)
     if (!line || line !== this.line()) return
     const button = e.target.closest("button")
     if (!button) return

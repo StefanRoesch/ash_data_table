@@ -15,9 +15,10 @@
 // are the table's own (S6), and a second transport, for another UI
 // technology, will say what of this is to be a seam.
 
-// The table a hook's element is of: every id in a table starts with the
-// table's, and the element of a hook ends in the name of its part.
-const tableOf = el => el.id.replace(/-(grid|panel|picker|pagination)$/, "")
+import {GRID, OF} from "../markers.js"
+
+// The table a hook's element is of, which the element says (`data-table`).
+const tableOf = el => el.getAttribute(OF)
 
 // The name an event of a table goes by, as the table's markup names its own.
 const named = (el, event) => `ash_data_table:${tableOf(el)}:${event}`
@@ -36,7 +37,7 @@ export function liveView(hook) {
       // cell (`<.portal>`): kept aside, the cell would not be there when its
       // table is moved, and LiveView would fail. So a grid is not locked;
       // its hook keeps what a person is doing in it (`beforeUpdate`).
-      if (hook.el.hasAttribute("data-ash-data-table")) {
+      if (hook.el.matches(GRID)) {
         const unlock = pushed => {
           if (pushed.target !== hook.el) return
           hook.el.removeEventListener(`phx:push:${name}`, unlock)

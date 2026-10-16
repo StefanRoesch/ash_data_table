@@ -15,10 +15,12 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
+import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
+
 export default {
   mounted() {
     const dialog = this.el
-    const grid = document.getElementById(dialog.id.replace(/-panel$/, "-grid"))
+    const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(dialog.getAttribute(OF))}"]`)
     this.grid = grid && grid._ashDataTable
     // the control that opened the panel has the focus still
     const active = document.activeElement
@@ -30,18 +32,18 @@ export default {
     // Where that is the button that takes a group away, it goes on
     // to the group's first field: Enter there is not to remove what
     // the person came to edit.
-    if (document.activeElement && document.activeElement.matches("[data-remove-group]")) this.into(dialog.id)
+    if (document.activeElement && document.activeElement.matches(REMOVE_GROUP)) this.into(dialog.id)
     // Escape: the dialog stays until the server has taken it away
     dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
-    dialog.addEventListener("click", e => { if (e.target.closest("[data-cancel]")) this.cancel() })
+    dialog.addEventListener("click", e => { if (e.target.closest(CANCEL)) this.cancel() })
     // What the editor of a column's component shows of its control's
     // value besides the control (the number beside a slider) follows
     // the control here, as it does in a cell, without waiting for
     // the server.
     dialog.addEventListener("input", e => {
-      const field = e.target.closest && e.target.closest("[data-field]")
-      if (!field || !e.target.matches("[data-control]")) return
-      for (const shown of field.querySelectorAll("[data-value-text]")) shown.textContent = e.target.value
+      const field = e.target.closest && e.target.closest(FIELD)
+      if (!field || !e.target.matches(CONTROL)) return
+      for (const shown of field.querySelectorAll(VALUE_TEXT)) shown.textContent = e.target.value
     })
     // The field of an array that is given value by value: its rows
     // are added and taken away here, as they are in a cell, by the
@@ -53,26 +55,26 @@ export default {
       if (own) own.dispatchEvent(new Event("input", {bubbles: true}))
     }
     dialog.addEventListener("click", e => {
-      const list = e.target.closest && e.target.closest("[data-list]")
+      const list = e.target.closest && e.target.closest(LIST)
       if (!list || !this.grid) return
-      if (e.target.closest("[data-add]")) this.grid.addValue(list, "").focus()
-      else if (e.target.closest("[data-remove]")) this.grid.removeValue(list, e.target.closest("[data-item]"))
+      if (e.target.closest(ADD)) this.grid.addValue(list, "").focus()
+      else if (e.target.closest(REMOVE)) this.grid.removeValue(list, e.target.closest(ITEM))
       else return
       changed(list)
     })
     // a box of such a field: what it holds is sent by the input beside it
     dialog.addEventListener("change", e => {
-      const item = e.target.closest && e.target.closest("[data-list] [data-item]")
+      const item = e.target.closest && e.target.closest(`${LIST} ${ITEM}`)
       if (!item || e.target.type !== "checkbox" || !this.grid) return
       this.grid.hold(item)
-      changed(item.closest("[data-list]"))
+      changed(item.closest(LIST))
     })
     // A field made of groups (an embedded resource, a map, an array
     // of either): the server adds a group and takes one away, and
     // says where focus goes then: into the group that was added,
     // or to what stands where the one that is gone stood.
     dialog.addEventListener("click", e => {
-      const button = e.target.closest && e.target.closest("[data-add-group],[data-remove-group]")
+      const button = e.target.closest && e.target.closest(`${ADD_GROUP},${REMOVE_GROUP}`)
       if (!button) return
       const add = button.dataset.addGroup !== undefined
       let path = null
@@ -83,7 +85,7 @@ export default {
     // one out, and says where focus goes then: to the button of the
     // record that stands where it stood, or to the field's "Choose".
     dialog.addEventListener("click", e => {
-      const button = e.target.closest && e.target.closest("[data-unpick]")
+      const button = e.target.closest && e.target.closest(UNPICK)
       if (!button) return
       let named = null
       try { named = JSON.parse(button.dataset.unpick) } catch (_error) { return }
@@ -93,7 +95,7 @@ export default {
     // server to note it, or to take it back, and has the focus
     // again once the field is rendered anew.
     dialog.addEventListener("click", e => {
-      const button = e.target.closest && e.target.closest("[data-clear-field]")
+      const button = e.target.closest && e.target.closest(CLEAR_FIELD)
       if (!button) return
       this.transport.push("panel_clear", {input: button.dataset.clearField}).then(reply => this.into(reply && reply.focus))
     })
@@ -163,7 +165,7 @@ export default {
 
   mark() {
     if (!this.grid) return
-    for (const list of this.el.querySelectorAll("[data-list]")) {
+    for (const list of this.el.querySelectorAll(LIST)) {
       let places = []
       try { places = JSON.parse(list.parentElement.dataset.invalid || "[]") } catch (_error) { /* none */ }
       this.grid.markValues(list, places)
@@ -181,11 +183,11 @@ export default {
       const opener = this.opener && this.opener.isConnected
         ? this.opener
         : (this.openerId ? document.getElementById(this.openerId) : null)
-      const cell = opener && opener.closest("td,th")
+      const cell = opener && opener.closest(`${GRIDCELL},${HEADER}`)
       if (active && active !== document.body && active !== cell) return
       if (opener && opener.getClientRects().length > 0) opener.focus({preventScroll: true})
       // a button of the line above the grid went with the selection
-      else if (this.grid && this.grid.el.isConnected && opener && opener.closest("[data-selection]")) this.grid.toTabStop()
+      else if (this.grid && this.grid.el.isConnected && opener && opener.closest(SELECTION)) this.grid.toTabStop()
       else if (this.grid && this.grid.el.isConnected) this.grid.refocus()
     })
   }

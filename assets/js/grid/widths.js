@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {HANDLE} from "../markers.js"
-import {STEP} from "./shared.js"
+import {GRIDCELL, HANDLE, HEADER, ROW, ROWGROUP} from "../markers.js"
+import {STEP, cellsOf} from "./shared.js"
 
 export default {
   // A person changes how wide a column is with the handle at the
@@ -32,9 +32,16 @@ export default {
   // written again after every patch.
 
   // The cells of the header row, left to right.
-  headCells() {
-    const table = this.el.querySelector("table")
-    return table && table.tHead && table.tHead.rows[0] ? Array.from(table.tHead.rows[0].cells) : []
+  headCells() { return cellsOf(this.part("head-row")) },
+
+  // A rule's selector of the cells under a column, which stands at
+  // `place` (`aria-colindex`): of the records and the lines under
+  // them, and of the footer row of the summaries. Not a cell that
+  // spans the grid, and not a cell of a grid nested in it.
+  under(table, place) {
+    const at = `#${CSS.escape(table.id)}`
+    const cell = `${GRIDCELL}[aria-colindex="${place}"]:not([colspan])`
+    return `:is(${at}>${ROWGROUP}>${ROW}>${cell},#${CSS.escape(`${this.id}-summaries`)}>${cell})`
   },
 
   // The handle of a column's header, if it has one: the columns of
@@ -68,8 +75,8 @@ export default {
   // of one are not shown at all (`display: none`), which takes
   // them out of what a screen reader is told as well.
   restyle() {
-    const table = this.el.querySelector("table")
-    if (!table || !table.tHead) return
+    const table = this.table()
+    if (!table || !this.part("head")) return
     const heads = this.headCells()
     this.styled = this.headed(heads)
     this.goneAt = new Set()
@@ -78,7 +85,7 @@ export default {
       return
     }
     const at = `#${CSS.escape(table.id)}`
-    const filters = table.tHead.rows[1]
+    const filters = cellsOf(this.part("filter-row"))
     let css = this.widths ? `${at}{width:auto;min-width:0;max-width:none}` : ""
     for (const th of heads) {
       const gone = this.hidden.has(th.id)
@@ -87,10 +94,9 @@ export default {
       const place = th.getAttribute("aria-colindex")
       const head = `#${CSS.escape(th.id)}`
       // of the rows, and of the footer row of the summaries
-      const cells = `${at}>:is(tbody,tfoot)>tr>td[aria-colindex="${place}"]:not([colspan])`
-      const filter = filters && filters.cells[th.cellIndex] && filters.cells[th.cellIndex].id
-        ? `#${CSS.escape(filters.cells[th.cellIndex].id)}`
-        : null
+      const cells = this.under(table, place)
+      const below = filters[Number(place) - 1]
+      const filter = below && below.id ? `#${CSS.escape(below.id)}` : null
       const all = [head, cells].concat(filter ? [filter] : [])
       if (gone) {
         this.goneAt.add(place)
@@ -188,7 +194,7 @@ export default {
     const handle = e.target.closest(HANDLE)
     if (!handle || e.button !== 0 || e.isPrimary === false) return
     e.preventDefault()
-    const th = handle.parentElement
+    const th = handle.closest(HEADER)
     if (!this.freeze()) return
     const drag = {id: th.id, x: e.clientX, width: th.getBoundingClientRect().width, forward: this.forward(th), moved: false}
     try { handle.setPointerCapture(e.pointerId) } catch (_error) { return }
@@ -226,7 +232,7 @@ export default {
   // other keys that would move about the grid or scroll the page
   // do nothing here. Tab leaves the grid, as from a cell.
   onResizeKeydown(e, handle) {
-    const th = handle.parentElement
+    const th = handle.closest(HEADER)
     const [least, most] = this.limits(handle)
     const step = key => {
       if (!this.freeze()) return

@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, ROW, SECRET, SELECTOR, PARAGRAPH} from "../markers.js"
 import {is, WHOLE_FOCUS, WHOLE_POINTER, WHOLE_LEAVE} from "./shared.js"
 
 export default {
@@ -33,15 +34,14 @@ export default {
   // Null for a cell that shows all it holds, and for one that has
   // no whole text to show.
   cutIn(cell) {
-    if (!cell || !cell.isConnected || cell.tagName !== "TD" || this.spans(cell)) return null
-    const body = cell.parentElement.parentElement
-    if (body.tagName !== "TBODY" || is(body, "detail")) return null
-    if (is(cell, "selector") || is(cell, "expander") || is(cell, "actions")) return null
+    if (!cell || !cell.isConnected || !is(cell, GRIDCELL) || this.spans(cell)) return null
+    if (!this.record(cell)) return null
+    if (is(cell, SELECTOR) || is(cell, EXPANDER) || is(cell, ACTIONS)) return null
     // never for a sensitive cell: neither its mask nor its value
-    if (cell.querySelector("[data-reveal],[data-mask],[data-secret]")) return null
+    if (cell.querySelector(`${REVEAL},${MASK},${SECRET}`)) return null
     if (cell.hasAttribute("aria-invalid") || cell.hasAttribute("aria-busy")) return null
     if (this.editing && this.editing.cell === cell) return null
-    const text = cell.querySelector(":scope > p") || cell
+    const text = cell.querySelector(`:scope > ${PARAGRAPH}`) || cell
     const cut = text === cell ? cell.scrollWidth > cell.clientWidth : text.scrollHeight > text.clientHeight
     return cut ? text : null
   },
@@ -143,7 +143,7 @@ export default {
       // the row of the cell is watched for as long: a live update
       // may bring another text
       const watch = new MutationObserver(() => this.freshWhole())
-      watch.observe(cell.parentElement, {subtree: true, childList: true, characterData: true})
+      watch.observe(cell.closest(ROW), {subtree: true, childList: true, characterData: true})
       this.whole = {cell, by, text, watch}
       document.addEventListener("keydown", this.onWholeKey, true)
     }

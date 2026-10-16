@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {GRID, HANDLE} from "../markers.js"
-import {PRINTABLE, is} from "./shared.js"
+import {ACTIONS, CREATE, EXPANDER, FILTER, GRID, HANDLE, HEADER, LINE, NESTED, PAGER, ROW, ROWGROUP, SELECT_PAGE, TABLE_ACTION, VIEW} from "../markers.js"
+import {PRINTABLE, cellsOf, is} from "./shared.js"
 
 export default {
   // Whether the expander of a row, or a line, is open.
@@ -19,8 +19,8 @@ export default {
   open(cell) {
     const button = cell.querySelector("button")
     if (!button || button.dataset.pending !== undefined) return
-    if (is(cell, "line")) {
-      const row = cell.closest("tbody").dataset.row
+    if (is(cell, LINE)) {
+      const row = cell.closest(ROWGROUP).dataset.row
       this.transport.push("toggle", {row, relationship: cell.dataset.line})
     } else {
       button.dataset.pending = ""
@@ -59,7 +59,7 @@ export default {
     if (control) return this.onControlKeydown(e, control)
     const rows = this.rows()
     const head = this.headRows()
-    const r = cell.parentElement.rowIndex
+    const r = rows.indexOf(cell.closest(ROW))
     // Where Page Down and Ctrl+End end: at the last row, but for
     // the footer row of the summaries, which is an Arrow Down
     // further, as the header rows are an Arrow Up further from
@@ -68,7 +68,7 @@ export default {
     const ctrl = e.ctrlKey || e.metaKey
     let handled = true
     // the expander of a row, and a line under it
-    const expands = is(cell, "expander") || is(cell, "line")
+    const expands = is(cell, EXPANDER) || is(cell, LINE)
     // with Shift, Down Arrow and Up Arrow select as they go
     if (e.shiftKey && (e.key === "ArrowDown" || e.key === "ArrowUp") && this.selects() === "multi" && this.record(cell)) {
       this.extend(cell, e.key === "ArrowDown" ? 1 : -1)
@@ -106,17 +106,17 @@ export default {
         this.move(ctrl ? Math.min(head, lastR) : r, this.col)
         break
       case "End": {
-        const row = ctrl ? rows[lastR] : cell.parentElement
-        if (!this.spans(row.cells[0])) this.col = this.edge(row, -1)
-        this.move(row.rowIndex, this.edge(row, -1))
+        const row = ctrl ? rows[lastR] : cell.closest(ROW)
+        if (!this.spans(cellsOf(row)[0])) this.col = this.edge(row, -1)
+        this.move(rows.indexOf(row), this.edge(row, -1))
         break
       }
       case "Enter":
-        if (cell.tagName === "TH" && cell.dataset.sort !== undefined) cell.click()
-        else if (cell.dataset.filter !== undefined || is(cell, "pager") || is(cell, "actions")) this.enter(cell)
+        if (is(cell, HEADER) && cell.dataset.sort !== undefined) cell.click()
+        else if (is(cell, FILTER) || is(cell, PAGER) || is(cell, ACTIONS)) this.enter(cell)
         else if (expands) this.open(cell)
-        else if (is(cell, "nested")) this.enterNested(cell)
-        else if (is(cell, "view")) this.follow(cell)
+        else if (is(cell, NESTED)) this.enterNested(cell)
+        else if (is(cell, VIEW)) this.follow(cell)
         else if (this.canEdit(cell)) this.startEdit(cell, null)
         // in a table to choose one record from, Enter on a row chooses it
         else if (this.chooses() && this.selects() === "single" && this.record(cell)) this.chooseRow(this.record(cell))
@@ -125,12 +125,12 @@ export default {
       case "F2":
         // on the header of a column: to the handle that changes
         // the column's width
-        if (cell.tagName === "TH" && this.handleOf(cell)) this.handleOf(cell).focus()
+        if (is(cell, HEADER) && this.handleOf(cell)) this.handleOf(cell).focus()
         // into a cell that holds controls; a line among them, when
         // it holds more than the button that opens it
-        else if (cell.dataset.filter !== undefined || is(cell, "pager") || is(cell, "actions")) this.enter(cell)
-        else if (is(cell, "line") && cell.querySelector("button[data-create],button[data-table-action]")) this.enter(cell)
-        else if (is(cell, "nested")) this.enterNested(cell)
+        else if (is(cell, FILTER) || is(cell, PAGER) || is(cell, ACTIONS)) this.enter(cell)
+        else if (is(cell, LINE) && cell.querySelector(`${CREATE},${TABLE_ACTION}`)) this.enter(cell)
+        else if (is(cell, NESTED)) this.enterNested(cell)
         else if (this.canEdit(cell)) this.startEdit(cell, null)
         else handled = false
         break
@@ -149,11 +149,11 @@ export default {
       // is swallowed so that the page does not scroll.
       case " ":
         if (!this.selects()) break
-        if (is(cell, "selectPage")) this.togglePage()
+        if (is(cell, SELECT_PAGE)) this.togglePage()
         else if (this.record(cell)) this.toggleRow(this.record(cell))
         break
       default:
-        if (PRINTABLE(e) && cell.dataset.filter !== undefined) {
+        if (PRINTABLE(e) && is(cell, FILTER)) {
           // Typing on a filter cell goes into the filter as Enter
           // does, and the browser goes on to type the character
           // there: over the text or number, which is selected; into

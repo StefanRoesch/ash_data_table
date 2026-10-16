@@ -50,7 +50,7 @@ export const VIEW = "[data-view]"
 export const FILTER = "[data-filter]"
 // a cell whose text is a paragraph of several lines, and that paragraph
 export const LINES = "[data-lines]"
-export const TEXT = "[data-text]"
+export const PARAGRAPH = "[data-paragraph]"
 // the row group of a row's detail, and the row of the record chosen now
 export const DETAIL = "[data-detail]"
 export const CURRENT = "[data-current]"

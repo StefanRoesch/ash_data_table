@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {COUNT} from "../markers.js"
 import {UNREADABLE, LENGTH} from "./shared.js"
 
 export default {
@@ -51,7 +52,7 @@ export default {
   // Counts every counter in an element again, from what its control
   // holds now: after a patch, and when an editor is filled in.
   recountIn(scope) {
-    for (const counter of scope.querySelectorAll("[data-count][id]")) {
+    for (const counter of scope.querySelectorAll(`${COUNT}[id]`)) {
       const control = scope.querySelector(`[aria-describedby~="${counter.id}"]`)
       if (control && control.value !== undefined) this.recount(counter, control)
     }

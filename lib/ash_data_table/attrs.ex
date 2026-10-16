@@ -27,7 +27,7 @@ defmodule AshDataTable.Attrs do
     [role=grid] [role=rowgroup] [role=row] [role=gridcell] [role=columnheader] [role=dialog]
     [data-ash-data-table] data-table
     [colspan] [data-selector] [data-select-page] [data-expander] [data-line] [data-nested]
-    [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-text] [data-detail]
+    [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
     [data-current] [data-summaries]
     [data-resize] [data-open] [data-action] [data-create] [data-table-action]
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen]

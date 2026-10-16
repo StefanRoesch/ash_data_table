@@ -2,7 +2,7 @@
 // constants, helpers that need no hook, and what is the same for all
 // grids of a page (where the scrollbars at the bottom edge go, whether
 // focus is moving with Tab).
-import {GRID} from "../markers.js"
+import {CONTROL, DIALOG, GRID, GRIDCELL, HEADER, ROW, ROWGROUP, TABLE} from "../markers.js"
 
 // a key that types a character
 export const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey
@@ -25,26 +25,56 @@ export const UNREADABLE = form =>
 // holds the nested table it is in. Nothing beyond a dialog: a
 // dialog is a place of its own.
 export const AROUND = (node, what) => {
-  const found = node.parentElement && node.parentElement.closest(`${what},dialog`)
+  const found = node.parentElement && node.parentElement.closest(`${what},${DIALOG}`)
   return found && found.matches(what) ? found : null
 }
+
+// The grid's structure, by its markers alone (the design note of
+// stage 7, D4): whatever elements a kit draws it with, a grid
+// (`role=grid`) holds rows, each record's in a row group of its own,
+// and a row holds cells, a column's header or a grid cell. A cell
+// says where it stands among the columns (`aria-colindex`, from 1).
+
+// a cell of a row: a column's header or a grid cell
+export const CELL = `${GRIDCELL},${HEADER}`
+
+// the cells of a row, in their order
+export const cellsOf = row => row ? Array.from(row.children).filter(child => child.matches(CELL)) : []
+
+// where a cell stands among the columns, counted from 0
+export const place = cell => Number(cell.getAttribute("aria-colindex")) - 1
+
+// The rows of a grid, the header rows first: not those of a grid
+// nested in it, which stand in one of its cells.
+export const rowsOf = table => table ? Array.from(table.querySelectorAll(ROW)).filter(row => row.closest(TABLE) === table) : []
+
+// the row groups of a grid's records and details, in their order
+export const groupsOf = table => table ? Array.from(table.querySelectorAll(ROWGROUP)).filter(group => group.closest(TABLE) === table) : []
+
+// the first row of a row group: a record's own row, or the first line
+// of a detail
+export const firstRow = group => group.querySelector(ROW)
+
+// whether a cell spans the grid: a line, the cell of a nested table,
+// of its pages or of its link to the full view
+export const SPANNING = cell => Number(cell.getAttribute("colspan") || 1) > 1
 
 // The control of an editor: what holds the value and takes the
 // focus. A built-in editor is its own control. The editor of a
 // column's component is whatever the component renders, and its
 // control is the one that carries what the table gave it
 // (`data-control`), else the first form control in it.
-export const CONTROL = root => root.matches("[data-control]")
+export const CONTROL_IN = root => root.matches(CONTROL)
   ? root
-  : (root.querySelector("[data-control]") || root.querySelector("input,select,textarea") || root)
+  : (root.querySelector(CONTROL) || root.querySelector("input,select,textarea") || root)
 
 // What an editor holds, as a cell says it: a list is written as
 // JSON. Two values are the same when they are written the same.
-export const TEXT = value => Array.isArray(value) ? JSON.stringify(value) : value
-export const SAME = (a, b) => TEXT(a) === TEXT(b)
+export const WRITTEN = value => Array.isArray(value) ? JSON.stringify(value) : value
+export const SAME = (a, b) => WRITTEN(a) === WRITTEN(b)
 
 // the list a cell says
-export const LIST = text => {
+export const LISTED = text => {
   try {
     const list = JSON.parse(text)
     return Array.isArray(list) ? list : []
@@ -77,11 +107,10 @@ export const LENGTH = (text, {count, trim, casing}) => {
 // a control that text is typed into: typing on its cell replaces its value
 export const TYPED = "textarea,input:is([type=text],[type=search],[type=tel],[type=url],[type=email],[type=password],[type=number],:not([type]))"
 
-// What a cell is besides a cell of a column: the expander of a row, a
-// line under an expanded row, the cell that holds a nested table, the
-// cell that holds a nested table's pages, or the one that holds its
-// link to the full view.
-export const is = (cell, what) => cell.dataset[what] !== undefined
+// What a cell is besides a cell of a column, by its marker: the
+// expander of a row (`EXPANDER`), a line under an expanded row
+// (`LINE`), the cell that holds a nested table (`NESTED`), …
+export const is = (node, marker) => node.matches(marker)
 
 export const STEP = 10
 

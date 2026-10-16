@@ -3,6 +3,9 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {ROW} from "../markers.js"
+import {cellsOf, place} from "./shared.js"
+
 export default {
   // A person hides a column of the table, and shows it again, in
   // the list that "Columns" opens above the grid: a box for every
@@ -38,9 +41,10 @@ export default {
   // of its row that is shown: after it, else before it.
   seenNear(cell) {
     if (!this.gone(cell)) return cell
-    const cells = cell.parentElement.cells
-    for (let i = cell.cellIndex + 1; i < cells.length; i++) if (!this.gone(cells[i])) return cells[i]
-    for (let i = cell.cellIndex - 1; i >= 0; i--) if (!this.gone(cells[i])) return cells[i]
+    const cells = cellsOf(cell.closest(ROW))
+    const at = place(cell)
+    for (let i = at + 1; i < cells.length; i++) if (!this.gone(cells[i])) return cells[i]
+    for (let i = at - 1; i >= 0; i--) if (!this.gone(cells[i])) return cells[i]
     return cell
   },
 
@@ -48,15 +52,16 @@ export default {
   // one side of it (`by` is 1 or -1); where the cell stands itself
   // when there is none.
   step(cell, by) {
-    const cells = cell.parentElement.cells
-    for (let i = cell.cellIndex + by; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
-    return cell.cellIndex
+    const cells = cellsOf(cell.closest(ROW))
+    const at = place(cell)
+    for (let i = at + by; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
+    return at
   },
 
   // Where the first cell of a row that is shown stands (`by` is
   // 1), or the last (-1).
   edge(row, by) {
-    const cells = row.cells
+    const cells = cellsOf(row)
     const from = by > 0 ? 0 : cells.length - 1
     for (let i = from; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
     return from

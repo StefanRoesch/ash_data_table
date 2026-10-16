@@ -3,13 +3,14 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {PRINTABLE, SELECT_KEYS, TEXT, SAME, TYPED} from "./shared.js"
+import {ADD, COUNT, GRIDCELL, ITEM, REMOVE, VALUE_TEXT} from "../markers.js"
+import {PRINTABLE, SELECT_KEYS, WRITTEN, SAME, TYPED} from "./shared.js"
 
 export default {
   // A list editor (`[data-list]`), in a cell or in the action
   // panel: its rows, one per value, each with the control that
   // holds the value. The panel's hook uses these too.
-  items(list) { return Array.from(list.querySelectorAll("[data-item]")) },
+  items(list) { return Array.from(list.querySelectorAll(ITEM)) },
 
   controlIn(item) { return item.querySelector("textarea,input:not([type=hidden])") },
 
@@ -26,11 +27,11 @@ export default {
     const control = this.controlIn(item)
     if (control.type === "checkbox") control.checked = value === "true"
     else control.value = value
-    list.querySelector("[data-add]").before(item)
+    list.querySelector(ADD).before(item)
     this.hold(item)
     this.number(list)
     this.recountIn(item)
-    if (control.tagName === "TEXTAREA" && list.closest("td")) this.fit(control)
+    if (control.tagName === "TEXTAREA" && list.closest(GRIDCELL)) this.fit(control)
     return control
   },
 
@@ -42,7 +43,7 @@ export default {
     const next = items[at + 1] || items[at - 1]
     item.remove()
     this.number(list)
-    ;(next ? this.controlIn(next) : list.querySelector("[data-add]")).focus()
+    ;(next ? this.controlIn(next) : list.querySelector(ADD)).focus()
   },
 
   fill(list, values) {
@@ -73,12 +74,12 @@ export default {
       const place = String(index + 1)
       this.controlIn(item).setAttribute("aria-label", list.dataset.valueLabel.replace("{n}", place))
       // the counter of a text is named by the row's place, too
-      const counter = item.querySelector("[data-count]")
+      const counter = item.querySelector(COUNT)
       if (counter && list.id) {
         counter.id = `${list.id}-count-${place}`
         this.controlIn(item).setAttribute("aria-describedby", counter.id)
       }
-      item.querySelector("[data-remove]").setAttribute("aria-label", list.dataset.removeLabel.replace("{n}", place))
+      item.querySelector(REMOVE).setAttribute("aria-label", list.dataset.removeLabel.replace("{n}", place))
     })
   },
 
@@ -131,7 +132,7 @@ export default {
   // the number beside a slider. An element of the editor that is
   // marked `data-value-text` is kept at the control's value.
   showValue(ed) {
-    for (const shown of ed.root.querySelectorAll("[data-value-text]")) {
+    for (const shown of ed.root.querySelectorAll(VALUE_TEXT)) {
       const text = shown.childNodes.length === 1 && shown.firstChild.nodeType === 3 ? shown.firstChild : null
       // the text node is changed where there is one: the observer
       // of the rows has nothing to do with it
@@ -419,7 +420,7 @@ export default {
     // what was typed into a sensitive cell is not kept in the page
     const template = this.editorOf(cell)
     const secret = template && template.dataset.editor === "secret"
-    cell.dataset.value = secret ? "" : TEXT(value)
-    cell.dataset.saved = TEXT(old)
+    cell.dataset.value = secret ? "" : WRITTEN(value)
+    cell.dataset.saved = WRITTEN(old)
   },
 }

@@ -8,10 +8,13 @@
 // once (`ash_data_table:choose`). Escape and Cancel ask the server to
 // take the picker away; when it is gone, focus goes back to the
 // cell, or to the button of the panel, that opened it.
+import {cellsOf} from "./grid/shared.js"
+import {ARGUMENTS, CANCEL, GRID, GRIDCELL, HEADER, NONE, OF, TAKE} from "./markers.js"
+
 export default {
   mounted() {
     const dialog = this.el
-    const grid = document.getElementById(dialog.id.replace(/-picker$/, "-grid"))
+    const grid = document.querySelector(`${GRID}[${OF}="${CSS.escape(dialog.getAttribute(OF))}"]`)
     // the hook of the table the picker belongs to: its dialog asks
     // a column's question
     this.grid = grid && grid._ashDataTable
@@ -28,9 +31,9 @@ export default {
     dialog.addEventListener("cancel", e => { e.preventDefault(); this.cancel() })
     dialog.addEventListener("click", e => {
       if (!e.target.closest) return
-      if (e.target.closest("[data-cancel]")) this.cancel()
-      else if (e.target.closest("[data-none]")) this.choose(null)
-      else if (e.target.closest("[data-take]")) this.chooseSelected()
+      if (e.target.closest(CANCEL)) this.cancel()
+      else if (e.target.closest(NONE)) this.choose(null)
+      else if (e.target.closest(TAKE)) this.chooseSelected()
     })
     dialog.addEventListener("ash_data_table:selection", e => this.heard(e.detail))
     dialog.addEventListener("ash_data_table:choose", e => { this.heard(e.detail); this.chooseSelected() })
@@ -40,7 +43,7 @@ export default {
 
   // The table in the picker, as its hook.
   table() {
-    const grid = this.el.querySelector("[data-ash-data-table]")
+    const grid = this.el.querySelector(GRID)
     return grid && grid._ashDataTable
   },
 
@@ -51,8 +54,9 @@ export default {
     const table = this.table()
     if (!table || !this.el.isConnected) return
     this.heard(table.selected())
-    const current = table.el.querySelector("tr[aria-selected='true']")
-    const cell = current ? current.cells[Math.min(table.lead(), current.cells.length - 1)] : table.cellAt(table.pos.r, table.pos.c)
+    const current = table.rows().find(row => row.getAttribute("aria-selected") === "true")
+    const cells = current ? cellsOf(current) : []
+    const cell = current ? cells[Math.min(table.lead(), cells.length - 1)] : table.cellAt(table.pos.r, table.pos.c)
     if (cell) cell.focus()
   },
 
@@ -61,7 +65,7 @@ export default {
   // selected, no row among it.
   heard(detail) {
     this.rows = detail && detail.rows ? detail.rows : []
-    const button = this.el.querySelector("[data-take]")
+    const button = this.el.querySelector(TAKE)
     if (!button || this.several) return
     const none = this.rows.length === 0
     button.setAttribute("aria-disabled", String(none))
@@ -87,7 +91,7 @@ export default {
     if (cell) cell.setAttribute("aria-busy", "true")
     // What the argument line of the picker's table holds: the
     // record is read through the same action, given the same.
-    const line = this.el.querySelector("form[data-arguments]")
+    const line = this.el.querySelector(`form${ARGUMENTS}`)
     // @ts-expect-error: a FormData is what URLSearchParams takes; TypeScript's DOM types say otherwise
     const held = line ? new URLSearchParams(new FormData(line)).toString() : null
     const payload = this.several ? {rows: row, arguments: held} : {row, confirmed: !!confirmed, arguments: held}
@@ -107,7 +111,7 @@ export default {
   // The cell the picker was opened from, when it was a cell.
   cell() {
     const opener = this.opener && this.opener.isConnected ? this.opener : (this.openerId ? document.getElementById(this.openerId) : null)
-    return opener && opener.matches("td[role='gridcell']") ? opener : null
+    return opener && opener.matches(GRIDCELL) ? opener : null
   },
 
   cancel() { this.transport.push("picker_cancel", {}) },
@@ -121,7 +125,7 @@ export default {
       const opener = this.opener && this.opener.isConnected
         ? this.opener
         : (this.openerId ? document.getElementById(this.openerId) : null)
-      const cell = opener && opener.closest("td,th")
+      const cell = opener && opener.closest(`${GRIDCELL},${HEADER}`)
       if (failed && cell && cell === opener && this.grid) {
         this.grid.fail(cell, failed, () => {
           const message = document.getElementById(`${cell.id}-error`)

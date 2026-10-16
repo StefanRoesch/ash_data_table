@@ -3,6 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {CHOICES} from "../markers.js"
+
 export default {
   // A filter for several of a column's values ("is any of") has a
   // button in its filter cell and a list of boxes that the button
@@ -23,7 +25,7 @@ export default {
 
   openChoices(button) {
     const cell = this.cellOf(button)
-    const list = cell && cell.querySelector("[data-choices]")
+    const list = cell && cell.querySelector(CHOICES)
     if (!list || !list.showPopover) return
     this.closeChoices(true, false)
     const boxes = this.choiceBoxes(list)

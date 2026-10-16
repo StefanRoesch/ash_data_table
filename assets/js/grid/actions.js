@@ -3,7 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {is} from "./shared.js"
+import {DETAIL, ROWGROUP} from "../markers.js"
+import {cellsOf, firstRow, is, place} from "./shared.js"
 
 export default {
   // Uses a button of a row's actions cell: one event with the row
@@ -46,12 +47,12 @@ export default {
   // its column, and the rows after and before its own.
   note(cell, button) {
     const row = step => {
-      let body = cell.closest("tbody")
-      do { body = step(body) } while (body && (body.tagName !== "TBODY" || is(body, "detail")))
+      let body = cell.closest(ROWGROUP)
+      do { body = step(body) } while (body && (!is(body, ROWGROUP) || is(body, DETAIL)))
       return body ? body.id : null
     }
     this.acted = {
-      c: cell.cellIndex,
+      c: place(cell),
       next: row(body => body.nextElementSibling),
       previous: row(body => body.previousElementSibling),
       button: button.id
@@ -63,9 +64,10 @@ export default {
   // else to the grid's first cell.
   refocus() {
     const acted = this.acted || {}
-    const body = [acted.next, acted.previous].map(id => id && document.getElementById(id)).find(body => body && body.rows[0])
+    const body = [acted.next, acted.previous].map(id => id && document.getElementById(id)).find(body => body && firstRow(body))
+    const cells = body ? cellsOf(firstRow(body)) : []
     const cell = body
-      ? body.rows[0].cells[Math.min(acted.c, body.rows[0].cells.length - 1)]
+      ? cells[Math.min(acted.c, cells.length - 1)]
       : this.cellBack(this.headRows(), this.lead())
     if (cell) cell.focus({preventScroll: true})
   },

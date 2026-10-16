@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {GRID, HANDLE} from "../markers.js"
-import {AROUND, is, page} from "./shared.js"
+import {ACTION, ACTIONS, CHOICES, CHOICES_BUTTON, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE} from "../markers.js"
+import {AROUND, CELL, SPANNING, cellsOf, firstRow, is, page, place, rowsOf} from "./shared.js"
 
 export default {
   // The grid on the page that this one is nested in, at whatever
@@ -29,12 +29,12 @@ export default {
   // that table has around its grid (its dialog, its "Clear filters").
   owns(node) {
     if (!node || !node.closest || node.closest(GRID) !== this.el) return false
-    const holder = node.closest("td[data-nested]")
+    const holder = node.closest(NESTED)
     return !holder || holder === node || !this.el.contains(holder)
   },
 
   // The cell of the grid around this one that holds it, if any.
-  holder() { return AROUND(this.el, "td[data-nested]") },
+  holder() { return AROUND(this.el, NESTED) },
 
   // The number of columns before the first data column.
   lead() { return Number(this.el.dataset.lead || 0) },
@@ -45,26 +45,39 @@ export default {
   trailOf(cell) {
     const trail = []
     for (let node = cell; node;) {
-      if (is(node, "nested")) trail.push(node.dataset.lineCell, node.dataset.expanderCell)
-      else if (is(node, "line")) trail.push(node.id.replace(/-l-[^-]+-c$/, "-e"))
+      if (is(node, NESTED)) trail.push(node.dataset.lineCell, node.dataset.expanderCell)
+      else if (is(node, LINE)) trail.push(node.id.replace(/-l-[^-]+-c$/, "-e"))
       const grid = node.closest(GRID)
-      node = grid ? AROUND(grid, "td[data-nested]") : null
+      node = grid ? AROUND(grid, NESTED) : null
       if (node) trail.push(node.id)
     }
     return trail
   },
 
+  // The grid itself: the first in this element, as the grids nested
+  // in it stand in its cells.
+  table() { return this.el.querySelector(TABLE) },
+
+  // The rows of the grid: the header rows first, wherever the header
+  // sits among the stream's rows in the page, then the rows of the
+  // records and what is under them, as they stand, and the footer's
+  // rows last.
   rows() {
-    // HTMLTableElement.rows lists the header rows first, wherever the
-    // header sits among the stream's rows in the DOM.
-    const table = this.el.querySelector("table")
-    return table ? table.rows : []
+    const rows = rowsOf(this.table())
+    const head = this.part("head")
+    const foot = this.part("foot")
+    const of = part => part ? rows.filter(row => part.contains(row)) : []
+    const rest = rows.filter(row => !(head && head.contains(row)) && !(foot && foot.contains(row)))
+    return of(head).concat(rest, of(foot))
   },
+
+  // Where a row stands among them.
+  rowAt(row) { return this.rows().indexOf(row) },
 
   // The rows above the data rows: the header and the filter row.
   headRows() {
-    const table = this.el.querySelector("table")
-    return table && table.tHead ? table.tHead.rows.length : 1
+    const head = this.part("head")
+    return head ? head.querySelectorAll(ROW).length : 1
   },
 
   // The input, menu or button of a filter, or the editor of a cell,
@@ -75,7 +88,7 @@ export default {
   },
 
   cellOf(node) {
-    const cell = node && node.closest ? node.closest("td,th") : null
+    const cell = node && node.closest ? node.closest(CELL) : null
     return cell && this.owns(cell) ? cell : null
   },
 
@@ -84,7 +97,7 @@ export default {
   // its link.
   lastRow(rows) {
     const foot = rows.length - 1
-    return foot > 0 && is(rows[foot], "summaries") ? foot - 1 : foot
+    return foot > 0 && is(rows[foot], SUMMARIES) ? foot - 1 : foot
   },
 
   // The cell at the place of one that is gone, as `cellAt`, but
@@ -96,8 +109,8 @@ export default {
   cellAt(r, c) {
     const rows = this.rows()
     if (rows.length === 0) return null
-    const row = rows[Math.max(0, Math.min(r, rows.length - 1))]
-    const cell = row.cells[Math.max(0, Math.min(c, row.cells.length - 1))]
+    const cells = cellsOf(rows[Math.max(0, Math.min(r, rows.length - 1))])
+    const cell = cells[Math.max(0, Math.min(c, cells.length - 1))]
     // never a cell of a hidden column: the one beside it
     return cell ? this.seenNear(cell) : null
   },
@@ -109,7 +122,7 @@ export default {
     tree.activeId = cell.id
     tree.owner = this.el
     tree.trail = this.trailOf(cell)
-    this.pos = {r: cell.parentElement.rowIndex, c: cell.cellIndex}
+    this.pos = {r: this.rowAt(cell.closest(ROW)), c: place(cell)}
     // while a cell is edited its editor is the tab stop, so that
     // Shift+Tab from the editor leaves the grid as Tab does
     const tabIndex = this.editing && this.editing.cell === cell ? -1 : 0
@@ -184,14 +197,12 @@ export default {
   // row's index on, in the order they stand in. The server counts
   // the same way for the rows it sends later.
   renumber() {
-    const table = this.el.querySelector("table")
+    const table = this.table()
     let index = table && Number(table.dataset.firstRow)
     if (!index) return
-    for (const body of table.tBodies) {
-      if (is(body, "detail") || !body.rows[0]) continue
-      if (body.rows[0].getAttribute("aria-rowindex") !== String(index)) {
-        body.rows[0].setAttribute("aria-rowindex", String(index))
-      }
+    for (const body of this.records()) {
+      const row = firstRow(body)
+      if (row.getAttribute("aria-rowindex") !== String(index)) row.setAttribute("aria-rowindex", String(index))
       index++
     }
   },
@@ -199,14 +210,14 @@ export default {
   // A cell that spans the table: a line, the cell of a nested table,
   // the cell of a nested table's pages. Moving up and down through
   // one keeps the column the person was in.
-  spans(cell) { return cell.colSpan > 1 },
+  spans(cell) { return SPANNING(cell) },
 
   onFocusin(e) {
     const tree = this.tree()
     const cell = this.cellOf(e.target)
     if (!cell) { tree.hadFocus = false; return }
     tree.hadFocus = true
-    if (!this.spans(cell)) this.col = cell.cellIndex
+    if (!this.spans(cell)) this.col = place(cell)
     this.setActive(cell)
     this.showMessage()
     this.focusedWhole(e.target === cell ? cell : null)
@@ -245,20 +256,20 @@ export default {
     if (e.target.closest(HANDLE)) { e.stopPropagation(); return }
     const cell = this.cellOf(e.target)
     if (!cell) return
-    if (!this.spans(cell)) this.col = cell.cellIndex
+    if (!this.spans(cell)) this.col = place(cell)
     this.selection.range = null
     // the box of a row, and the one of the page: a click on it or
     // beside it in its cell uses it, with focus on the cell
-    if (this.selects() && (is(cell, "selector") || is(cell, "selectPage"))) {
-      if (is(cell, "selectPage")) this.togglePage()
-      else if (e.shiftKey && this.selects() === "multi") this.selectTo(cell.closest("tbody"))
-      else this.toggleRow(cell.closest("tbody"))
+    if (this.selects() && (is(cell, SELECTOR) || is(cell, SELECT_PAGE))) {
+      if (is(cell, SELECT_PAGE)) this.togglePage()
+      else if (e.shiftKey && this.selects() === "multi") this.selectTo(cell.closest(ROWGROUP))
+      else this.toggleRow(cell.closest(ROWGROUP))
       if (document.activeElement !== cell) cell.focus()
       return
     }
     // the expander of a row and the button of a line: used, with
     // focus on their cell
-    if (is(cell, "expander") || is(cell, "line")) {
+    if (is(cell, EXPANDER) || is(cell, LINE)) {
       const button = e.target.closest("button")
       // another control of a line (its create button) is used as it
       // is, and keeps the focus: its panel gives it back
@@ -270,25 +281,25 @@ export default {
     }
     // a button of the actions cell: used, and it keeps the focus. A
     // click beside the buttons is a click on the cell.
-    if (is(cell, "actions")) {
-      const opener = e.target.closest("button[data-open]")
+    if (is(cell, ACTIONS)) {
+      const opener = e.target.closest(OPEN)
       if (opener) return this.openRow(cell)
-      const button = e.target.closest("button[data-action]")
+      const button = e.target.closest(ACTION)
       if (button) return this.act(button)
     }
     // the button of a sensitive cell: shows the value, or hides it
     // again, with focus on the cell, which the value is shown for
     // as long as it has
-    if (e.target.closest("button[data-reveal]")) {
+    if (e.target.closest(REVEAL)) {
       if (document.activeElement !== cell) cell.focus()
       this.reveal(cell)
       return
     }
     // the button of a filter for several values opens its list, and
     // closes it again, which applies what was ticked
-    const chooser = e.target.closest("[data-choices-button]")
+    const chooser = e.target.closest(CHOICES_BUTTON)
     if (chooser) return this.choosing ? this.closeChoices(true, false) : this.openChoices(chooser)
-    if (e.target.closest("[data-choices]")) return
+    if (e.target.closest(CHOICES)) return
     // a click on a filter's control or in an editor leaves focus there
     if (this.controlOf(e.target)) return
     if (this.editing && this.editing.cell === cell) return
@@ -306,7 +317,7 @@ export default {
   onMousedown(e) {
     const cell = this.cellOf(e.target)
     if (!cell || !e.shiftKey || this.selects() !== "multi" || !this.record(cell)) return
-    if (this.controlOf(e.target) && !is(cell, "selector")) return
+    if (this.controlOf(e.target) && !is(cell, SELECTOR)) return
     if (this.editing && this.editing.cell === cell) return
     e.preventDefault()
   },
@@ -317,7 +328,7 @@ export default {
     const handle = e.target.closest(HANDLE)
     if (handle) {
       e.stopPropagation()
-      this.resetWidth(handle.parentElement)
+      this.resetWidth(handle.closest(CELL))
       return
     }
     const cell = this.cellOf(e.target)
@@ -381,7 +392,7 @@ export default {
       // of a nested table, the actions of a row, a line's controls
       case "ArrowLeft":
       case "ArrowRight":
-        if (is(cell, "pager") || is(cell, "actions") || is(cell, "line")) {
+        if (is(cell, PAGER) || is(cell, ACTIONS) || is(cell, LINE)) {
           this.toControl(cell, control, e.key === "ArrowLeft" ? -1 : 1)
           e.preventDefault()
         }

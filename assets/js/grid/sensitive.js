@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {ACTIONS, MASK, MASKED, REVEAL, SECRET} from "../markers.js"
 import {is} from "./shared.js"
 
 export default {
@@ -11,14 +12,14 @@ export default {
   // the live region the value is put into. Null for every other
   // cell, and for a sensitive cell without a value, which is empty.
   secretOf(cell) {
-    const button = cell.querySelector(":scope > span > button[data-reveal]")
+    const button = cell.querySelector(REVEAL)
     if (!button) return null
     const within = button.parentElement
     return {
       button,
-      mask: within.querySelector("[data-mask]"),
-      masked: within.querySelector("[data-masked]"),
-      value: within.querySelector("[data-secret]")
+      mask: within.querySelector(MASK),
+      masked: within.querySelector(MASKED),
+      value: within.querySelector(SECRET)
     }
   },
 
@@ -104,14 +105,14 @@ export default {
     if (restore) {
       this.marked.delete(cell)
       const error = document.getElementById(`${cell.id}-error`)
-      if (error && is(cell, "actions")) error.remove()
+      if (error && is(cell, ACTIONS)) error.remove()
       cell.removeAttribute("aria-invalid")
       cell.removeAttribute("aria-describedby")
       delete cell.dataset.value
       delete cell.dataset.saved
       restore()
       this.showMessage()
-    } else if (is(cell, "actions")) {
+    } else if (is(cell, ACTIONS)) {
       // the message of a row action that failed is given up
       this.transport.push("dismiss", {row: this.rowKey(cell)})
     } else {

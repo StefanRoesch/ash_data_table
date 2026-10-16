@@ -3,6 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {GRIDCELL, ROW, ROWGROUP} from "../markers.js"
 import {PLACE, BAR, SEEN} from "./shared.js"
 
 export default {
@@ -44,7 +45,7 @@ export default {
   // After every patch, and when the grid or the table in it is
   // another size.
   measure() {
-    const table = this.el.querySelector("table")
+    const table = this.table()
     if (table !== this.sized) {
       if (this.sized) this.measured.unobserve(this.sized)
       if (table) this.measured.observe(table)
@@ -80,7 +81,7 @@ export default {
 
   // Writes the rules, when they would be others than before.
   repin() {
-    const table = this.el.querySelector("table")
+    const table = this.table()
     if (!table) return
     const view = this.el.clientWidth
     const [pins, width] = this.stays()
@@ -90,9 +91,13 @@ export default {
     if (says === this.pinned) return
     this.pinned = says
     const at = `#${CSS.escape(table.id)}`
+    // the cells of the column: in the header and the filter row, and
+    // of the records and their lines (not a cell that spans the grid)
+    const body = place => `${at}>${ROWGROUP}>${ROW}>${GRIDCELL}[aria-colindex="${place}"]:not([colspan])`
     const cells = th => {
       const place = th.getAttribute("aria-colindex")
-      return `${at}>thead>tr>[aria-colindex="${place}"],${at}>tbody>tr>td[aria-colindex="${place}"]:not([colspan])`
+      const head = ["head-row", "filter-row"].map(row => `#${CSS.escape(`${this.id}-${row}`)}>[aria-colindex="${place}"]`)
+      return `${head.join(",")},${body(place)}`
     }
     let css = `#${CSS.escape(this.el.id)}{--ash-data-table-view:${view}px}`
     if (pins.length > 0) {
@@ -105,8 +110,8 @@ export default {
         css += `${last}{box-shadow:inset -1px 0 0 0 ${line}}`
         // A cell that stays is not seen through while it is
         // dimmed: its text is, as far as the cell would be.
-        const dimmed = pins.map(([th]) => `>tbody>tr>td[aria-colindex="${th.getAttribute("aria-colindex")}"]:not([colspan])`)
-          .map(cell => `${at}${cell}[aria-busy],${at}[aria-busy]${cell}`)
+        const dimmed = pins.map(([th]) => body(th.getAttribute("aria-colindex")))
+          .map(cell => `${cell}[aria-busy],${cell.replace(at, `${at}[aria-busy]`)}`)
         css += `${dimmed.join(",")}{opacity:1;color:color-mix(in oklab,currentColor 70%,transparent)}`
       }
       // forced colours take the shadow away: there the edge is a border

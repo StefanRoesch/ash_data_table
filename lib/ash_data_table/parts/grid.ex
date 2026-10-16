@@ -388,7 +388,7 @@ defmodule AshDataTable.Parts.Grid do
 
   defp paragraph(shown, _column, false) do
     {:safe, shown} = Phoenix.HTML.html_escape(shown)
-    if IO.iodata_length(shown) == 0, do: {:safe, shown}, else: {:safe, ["<p>", shown, "</p>"]}
+    if IO.iodata_length(shown) == 0, do: {:safe, shown}, else: {:safe, [~s(<p data-paragraph>), shown, "</p>"]}
   end
 
   # What was typed into an editor, as its cell shows it.

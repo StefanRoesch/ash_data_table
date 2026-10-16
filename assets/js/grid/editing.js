@@ -3,21 +3,21 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {CONTROL, LIST, TYPED, is} from "./shared.js"
+import {ADD, CLEAR, COUNT, EXPANDER, GRIDCELL, ITEM, REMOVE, ROWGROUP} from "../markers.js"
+import {CONTROL_IN, LISTED, TYPED, is} from "./shared.js"
 
 export default {
   // A cell's ids hold what an event names: `ID-row-KEY` on the row's
-  // <tbody>, and `ID-row-KEY-c-COLUMN` on the cell.
-  rowKey(cell) { return cell.closest("tbody").id.slice(this.id.length + 5) },
-  columnOf(cell) { return cell.id.slice(cell.closest("tbody").id.length + 3) },
+  // row group, and `ID-row-KEY-c-COLUMN` on the cell.
+  rowKey(cell) { return cell.closest(ROWGROUP).id.slice(this.id.length + 5) },
+  columnOf(cell) { return cell.id.slice(cell.closest(ROWGROUP).id.length + 3) },
 
   editorOf(cell) { return document.getElementById(`${this.id}-editor-${this.columnOf(cell)}`) },
 
   // A data cell of an editable column that the server has not marked
   // as read-only for this person, and whose last save has been answered.
   canEdit(cell) {
-    const body = cell.parentElement.parentElement
-    return cell.tagName === "TD" && body.tagName === "TBODY" && !is(body, "detail") && !is(cell, "expander") &&
+    return is(cell, GRIDCELL) && !!this.record(cell) && !is(cell, EXPANDER) &&
       cell.getAttribute("aria-readonly") !== "true" && !cell.hasAttribute("aria-busy") &&
       !!this.editorOf(cell)
   },
@@ -58,7 +58,7 @@ export default {
     }
     const root = template.content.firstElementChild.cloneNode(true)
     if (type === "choices" || type === "list") return this.startList(cell, template, root, key)
-    const input = CONTROL(root)
+    const input = CONTROL_IN(root)
     const current = this.valueOf(cell)
     // whether a sensitive cell holds a value: it then has its mask
     const held = !!this.secretOf(cell)
@@ -103,7 +103,7 @@ export default {
       // use it. It is part of the editor: focus on it is focus in
       // the editor, and leaving it saves what was typed, as leaving
       // the input does. A cell that holds nothing has none.
-      const clear = root.querySelector("button[data-clear]")
+      const clear = root.querySelector(CLEAR)
       if (clear && !held) clear.remove()
       else if (clear) {
         ed.clear = clear
@@ -121,7 +121,7 @@ export default {
       if (root !== input) root.addEventListener("mousedown", e => { if (e.target !== input) e.preventDefault() })
       // typing replaces the text; the character itself is typed by the browser
       if (key !== null) { input.value = ""; handled = false }
-      ed.count = root.querySelector("[data-count][popover]")
+      ed.count = root.querySelector(`${COUNT}[popover]`)
       this.recountIn(root)
       this.fit(input)
       input.focus()
@@ -205,8 +205,8 @@ export default {
   startList(cell, template, root, key) {
     const choices = template.dataset.editor === "choices"
     // an enum without values has nothing to tick
-    if (!root.querySelector("input,[data-add]")) return key === null
-    const current = LIST(this.valueOf(cell))
+    if (!root.querySelector(`input,${ADD}`)) return key === null
+    const current = LISTED(this.valueOf(cell))
     const saved = Array.from(cell.childNodes)
     cell.setAttribute("phx-update", "ignore")
     cell.replaceChildren(root)
@@ -232,11 +232,11 @@ export default {
       : read().join(", ")
     // What "unchanged" means: the list the record has, as these
     // controls hold it. A failed cell shows what was typed instead.
-    load(cell.dataset.saved !== undefined ? LIST(cell.dataset.saved) : current)
+    load(cell.dataset.saved !== undefined ? LISTED(cell.dataset.saved) : current)
     const old = read()
     load(current)
     // the values the action refused when this cell was saved last
-    if (!choices && cell.dataset.invalid !== undefined) this.markValues(root, LIST(cell.dataset.invalid))
+    if (!choices && cell.dataset.invalid !== undefined) this.markValues(root, LISTED(cell.dataset.invalid))
     const ed = {cell, root, input: root, type: template.dataset.editor, saved, old, read, shown, list: true, confirm: template.dataset.confirm, lastKey: null}
     this.editing = ed
     cell.tabIndex = -1
@@ -261,8 +261,8 @@ export default {
       if (control) control.focus()
     })
     root.addEventListener("click", e => {
-      if (e.target.closest("[data-add]")) this.addValue(root, "").focus()
-      else if (e.target.closest("[data-remove]")) this.removeValue(root, e.target.closest("[data-item]"))
+      if (e.target.closest(ADD)) this.addValue(root, "").focus()
+      else if (e.target.closest(REMOVE)) this.removeValue(root, e.target.closest(ITEM))
     })
     root.addEventListener("input", e => {
       if (e.target.tagName === "TEXTAREA") this.fit(e.target)
@@ -273,7 +273,7 @@ export default {
     const controls = Array.from(root.querySelectorAll("input,textarea"))
     // into the first value, or to the button that adds one when
     // there is none yet
-    const first = controls[0] || root.querySelector("[data-add]")
+    const first = controls[0] || root.querySelector(ADD)
     if (key === null) {
       first.focus()
       if (first.matches(TYPED)) first.select()
@@ -293,7 +293,7 @@ export default {
     // of dates or of boxes a key opens the editor, as Enter does.
     const added = this.addValue(root, "")
     if (!added.matches(TYPED)) {
-      added.closest("[data-item]").remove()
+      added.closest(ITEM).remove()
       first.focus()
       return true
     }
@@ -302,7 +302,7 @@ export default {
       // a character a number does not take adds nothing
       setTimeout(() => {
         if (this.editing === ed && added.isConnected && added.value === "" && !added.validity.badInput) {
-          this.removeValue(root, added.closest("[data-item]"))
+          this.removeValue(root, added.closest(ITEM))
         }
       }, 0)
     }

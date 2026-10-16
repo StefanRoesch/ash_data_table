@@ -86,6 +86,7 @@
 // is the same for every grid through ./shared.js. No two sections may
 // name a method alike: that is checked as the object is put together.
 
+import {CHOICES, COUNT, OF} from "../markers.js"
 import {KEPT, PLACE} from "./shared.js"
 import counter from "./counter.js"
 import tree from "./tree.js"
@@ -106,7 +107,7 @@ import wholeText from "./whole_text.js"
 const core = {
   mounted() {
     // the table's id, which every id in it starts with
-    this.id = this.el.id.replace(/-grid$/, "")
+    this.id = this.el.getAttribute(OF)
     // for the hooks of the grids around this one and in it
     this.el._ashDataTable = this
     // the cell arrow keys start from: the first data cell of the first
@@ -201,7 +202,7 @@ const core = {
     // again from what the inputs hold. (The panel's hook does the
     // same for the panel.)
     const line = this.part("arguments")
-    if (line && line.querySelector("[data-count]")) {
+    if (line && line.querySelector(COUNT)) {
       this.counted = new MutationObserver(() => this.recountIn(line))
       this.counted.observe(line, {subtree: true, childList: true, characterData: true})
     }
@@ -256,7 +257,7 @@ const core = {
     // a box of a filter for several values is ticked: the filter
     // row's form does not hear of it before the list is closed
     for (const type of ["change", "input"]) {
-      this.el.addEventListener(type, own(e => { if (e.target.closest("[data-choices]")) e.stopPropagation() }))
+      this.el.addEventListener(type, own(e => { if (e.target.closest(CHOICES)) e.stopPropagation() }))
     }
     this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
     this.el.addEventListener("mouseleave", () => this.onPointer(null))
