@@ -11,7 +11,7 @@ defmodule DemoWeb.Tables.MapTableTest do
   panel, the form's change and submit events carry what its fields hold,
   and `panel_add` and `panel_remove` add a value and take one away.
   """
-  use DemoWeb.ConnCase, async: false
+  use DemoWeb.ModeCase, async: false
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

@@ -8,7 +8,7 @@ defmodule DemoWeb.Tables.ReferenceCellTest do
   the admin and the member, within their organization; a viewer may not read
   people at all.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

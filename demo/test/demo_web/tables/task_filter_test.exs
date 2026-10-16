@@ -3,7 +3,7 @@ defmodule DemoWeb.Tables.TaskFilterTest do
   Filtering the mounted table of `Demo.Tracker.Task` at `/tasks`: the filter
   row under the header, as a person meets and operates it.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

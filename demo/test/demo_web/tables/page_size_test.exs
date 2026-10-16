@@ -6,7 +6,7 @@ defmodule DemoWeb.Tables.PageSizeTest do
   their read action, by offset. The comments offer 10, 20 and 50 and open
   with 20, by keyset. The projects offer none.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

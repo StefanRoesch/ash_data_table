@@ -16,6 +16,39 @@ defmodule DemoWeb.Router do
     plug DemoWeb.Locale
   end
 
+  # The tests that run three ways (`DemoWeb.ModeCase`): on a host of their
+  # own, the table of the router line of a path placed by the tag, or
+  # attached to a LiveView (`test/support/modes_tables.ex`), and the
+  # dashboard with its tables attached.
+  # The tests that run three ways (`DemoWeb.ModeCase`): on a host of their
+  # own, the table of the router line of a path placed by the tag, or
+  # attached to a LiveView (`test/support/modes_tables.ex`), with the
+  # `on_mount` hooks of that line's live session; and the dashboard with
+  # its tables attached.
+  if Application.compile_env(:demo, :test_routes, false) do
+    for {mode, dashboard} <- [
+          embedded: DemoWeb.DashboardLive,
+          attached: DemoWeb.Support.AttachedDashboardLive
+        ] do
+      scope "/", host: "#{mode}." do
+        pipe_through :browser
+
+        live_session :"modes_#{mode}_support",
+          on_mount: [DemoWeb.Support.Assigns, DemoWeb.Locale],
+          session: %{"prefix" => "/support"} do
+          live "/support/*path", DemoWeb.Support.ModesLive, mode
+        end
+
+        live_session :"modes_#{mode}",
+          on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone],
+          session: %{"prefix" => ""} do
+          live "/dashboard", dashboard
+          live "/*path", DemoWeb.Support.ModesLive, mode
+        end
+      end
+    end
+  end
+
   scope "/", DemoWeb do
     pipe_through :browser
 
@@ -251,13 +284,26 @@ defmodule DemoWeb.Router do
   end
 
   # For the performance scripts (`perf/`), in the perf environment only: the
-  # table of /tasks once more, in pages of 100, and what the server measured.
+  # table of /tasks once more, in pages of 100 and placed by the tag, and
+  # what the server measured.
   if Application.compile_env(:demo, :perf_routes, false) do
     scope "/perf" do
       pipe_through :browser
 
       live_session :perf, on_mount: [DemoWeb.Actor] do
         ash_data_table "/tasks100", Demo.Perf.Task
+      end
+    end
+
+    # /tasks once more, its table placed by the tag in a LiveView of the
+    # host's (`test/support/modes_tables.ex`), as a test of three modes does
+    scope "/support/modes" do
+      pipe_through :browser
+
+      live_session :perf_modes,
+        on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone],
+        session: %{"prefix" => ""} do
+        live "/embedded/*path", DemoWeb.Support.ModesLive, :embedded
       end
     end
 

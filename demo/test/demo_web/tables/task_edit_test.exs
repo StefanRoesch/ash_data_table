@@ -6,7 +6,7 @@ defmodule DemoWeb.Tables.TaskEditTest do
   hook then sends one `save` event with the row, the column and the value as
   typed. These tests send that event as the hook does and read the page.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

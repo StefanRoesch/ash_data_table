@@ -5,7 +5,7 @@ defmodule DemoWeb.Tables.TaskArgumentsTest do
   search term), and the calculation `due_within?` as two columns, one that
   fixes its argument and one that asks for it.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

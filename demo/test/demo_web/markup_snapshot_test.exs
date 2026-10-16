@@ -16,7 +16,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
   place in the page) and what the per-test ids put into an email.
   """
   # the support pages keep their records in ETS tables of their own
-  use DemoWeb.ConnCase, async: false
+  use DemoWeb.ModeCase, async: false
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

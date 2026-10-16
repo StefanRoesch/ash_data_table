@@ -14,7 +14,7 @@ defmodule DemoWeb.Tables.FileActionsTest do
   (`file_input/4`, `render_upload/3`), and the panel's button is the form's
   submit event. The demo's own, on Postgres, is in `label_import_test.exs`.
   """
-  use DemoWeb.ConnCase, async: false
+  use DemoWeb.ModeCase, async: false
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

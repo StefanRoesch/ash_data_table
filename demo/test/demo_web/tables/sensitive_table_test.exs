@@ -8,7 +8,7 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
 
   The demo's own, on Postgres, is in `project_budget_test.exs`.
   """
-  use DemoWeb.ConnCase, async: false
+  use DemoWeb.ModeCase, async: false
 
   import ExUnit.CaptureLog
   import Phoenix.LiveViewTest

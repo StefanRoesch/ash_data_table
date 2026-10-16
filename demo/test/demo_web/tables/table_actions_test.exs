@@ -12,7 +12,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
   does is sent as the hook sends it: the `act` event of a row's button, and
   `table_run` once a question was answered with Confirm.
   """
-  use DemoWeb.ConnCase, async: false
+  use DemoWeb.ModeCase, async: false
 
   import ExUnit.CaptureLog
   import Phoenix.LiveViewTest

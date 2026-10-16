@@ -4,7 +4,7 @@ defmodule DemoWeb.Tables.TaskCreateTest do
   create button on the line of the table's name, the action panel with the
   create action's inputs, and the new row at the top of the page.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

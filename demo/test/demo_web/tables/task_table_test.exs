@@ -3,7 +3,7 @@ defmodule DemoWeb.Tables.TaskTableTest do
   The mounted table of `Demo.Tracker.Task`, as a person meets it at `/tasks`:
   a table with a declared set of columns.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

@@ -11,7 +11,7 @@ defmodule DemoWeb.Tables.PickerTest do
   and read the page. What a hand-made event can and cannot do is tested
   here too: the row it names is a claim.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

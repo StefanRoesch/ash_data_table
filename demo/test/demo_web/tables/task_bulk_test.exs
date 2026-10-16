@@ -10,7 +10,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
   read the page and the database. What the hook itself does is in the
   browser tests (`e2e/selection.spec.ts`).
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

@@ -9,7 +9,7 @@ defmodule DemoWeb.Tables.TaskActionsTest do
   question of an action that has one. These tests send that event as the
   hook does, fill in the panel's form as a person does, and read the page.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

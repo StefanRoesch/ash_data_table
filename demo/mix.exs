@@ -5,7 +5,7 @@ defmodule Demo.MixProject do
     [
       app: :demo,
       version: "0.1.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.18",
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       aliases: aliases(),
@@ -36,7 +36,7 @@ defmodule Demo.MixProject do
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   # What the browser tests and the performance scripts need of the server.
   defp elixirc_paths(:e2e), do: ["lib", "e2e/server"]
-  defp elixirc_paths(:perf), do: ["lib", "perf/server"]
+  defp elixirc_paths(:perf), do: ["lib", "perf/server", "test/support/modes_tables.ex"]
   defp elixirc_paths(_), do: ["lib"]
 
   # Specifies your project dependencies.

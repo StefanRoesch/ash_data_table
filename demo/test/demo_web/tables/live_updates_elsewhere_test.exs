@@ -10,7 +10,7 @@ defmodule DemoWeb.Tables.LiveUpdatesElsewhereTest do
 
   The demo's own, on Postgres, are in `live_updates_test.exs`.
   """
-  use DemoWeb.ConnCase, async: false
+  use DemoWeb.ModeCase, async: false
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

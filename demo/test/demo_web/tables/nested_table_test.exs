@@ -6,7 +6,7 @@ defmodule DemoWeb.Tables.NestedTableTest do
   Driven by the events the table's hook sends (`expand` with a row's key,
   `toggle` with a row's key and a relationship's name).
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import Phoenix.LiveViewTest
   import DemoWeb.TablePage

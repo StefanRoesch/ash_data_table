@@ -8,7 +8,7 @@ defmodule DemoWeb.Tables.FooterSummariesTest do
 
   A summary is asked for beside the rows: `render_async/2` waits for both.
   """
-  use DemoWeb.ConnCase, async: true
+  use DemoWeb.ModeCase, async: true
 
   import ExUnit.CaptureLog
   import Phoenix.LiveViewTest
