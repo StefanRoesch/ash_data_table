@@ -1,3 +1,4 @@
+import type { Page } from "@playwright/test"
 import { expectNoAxeViolations } from "./support/a11y"
 import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
@@ -284,5 +285,123 @@ test.describe("in a nested table", () => {
     await labels.open()
     const expected = [...before, ["idea", "#64748b"] as [string, string]].sort(([a], [b]) => a.localeCompare(b))
     expect(await labelList(labels)).toEqual(expected)
+  })
+})
+
+test.describe("in two tables of one page, one nested in the other", () => {
+  // /e2e/imports: the labels with their import, under a label its tasks,
+  // and under a task its labels, with their import. Every table of a page
+  // is drawn by one component, whose uploads they share (stage 5): each
+  // table gives up and cancels only its own. The nested panel is opened
+  // with the top one still open, which a person cannot do behind a modal
+  // dialog, so it is sent by hand (`forge`); its own controls are used as a
+  // person uses them.
+  async function opened(page: Page): Promise<{ top: Table; tasks: Table; nested: Table; label: string; task: string }> {
+    const top = new Table(page, "label", "/e2e/imports")
+    await top.open()
+    const [label] = await top.rowKeys()
+    const tasks = await top.openLine(label, "tasks")
+    const [task] = await tasks.rowKeys()
+    const nested = await tasks.openLine(task, "labels")
+    return { top, tasks, nested, label, task }
+  }
+
+  async function chooseIn(table: Table, name: string, text: string): Promise<void> {
+    await fileInput(table).setInputFiles(csv(name, text))
+    await table.panelSettled()
+    await expect(fileInput(table)).not.toHaveAttribute("aria-invalid")
+  }
+
+  async function openNestedImport(nested: Table): Promise<void> {
+    await nested.forge("table_act", { action: "import" })
+    await expect(nested.panel).toBeVisible()
+  }
+
+  test("a file chosen in the top table's panel stays and is sent, whatever the nested table's panel does with its own", async ({
+    page,
+  }) => {
+    const { top, nested } = await opened(page)
+
+    await openImport(top)
+    await chooseIn(top, "top.csv", "alpha\n")
+
+    // the nested panel: a file chosen, and the panel cancelled
+    await openNestedImport(nested)
+    await chooseIn(nested, "cancelled.csv", "gamma\n")
+    await nested.panelCancel.click()
+    await expect(nested.panel).toHaveCount(0)
+
+    // and again: a file chosen and sent
+    await openNestedImport(nested)
+    await chooseIn(nested, "nested.csv", "beta\n")
+    await nested.panelSubmit.click()
+    await expect(nested.panel).toHaveCount(0)
+    await expect(nested.result).toHaveText("Import: 1")
+
+    // the top panel still has its file, and sends it
+    await expect(top.panel).toBeVisible()
+    await expect(fileInput(top)).not.toHaveAttribute("aria-invalid")
+    await top.panelSubmit.click()
+    await expect(top.panel).toHaveCount(0)
+    await expect(top.result).toHaveText("Import: 1")
+
+    await labels.open()
+    const names = (await labelList(labels)).map(([name]) => name)
+    expect(names).toEqual(expect.arrayContaining(["alpha", "beta"]))
+    expect(names).not.toContain("gamma")
+  })
+
+  test("closing a nested table while its file is being sent cancels that upload and leaves the top table's alone", async ({
+    page,
+  }) => {
+    // the parts of a file go to the server as binary frames of the
+    // page's socket: while `holding`, they are kept back
+    let holding = false
+    const held: unknown[] = []
+    await page.routeWebSocket(/\/live\/websocket/, (ws) => {
+      const server = ws.connectToServer()
+      ws.onMessage((message) => {
+        if (holding && typeof message !== "string") held.push(message)
+        else server.send(message)
+      })
+    })
+
+    const { top, tasks, nested, label, task } = await opened(page)
+
+    await openImport(top)
+    await chooseIn(top, "top.csv", "alpha\n")
+
+    await openNestedImport(nested)
+    await chooseIn(nested, "nested.csv", "beta\n")
+    holding = true
+    await nested.panelSubmit.click()
+    await expect.poll(() => held.length).toBeGreaterThan(0)
+
+    // the nested table goes while its file is on its way: its line closed
+    await tasks.forge("toggle", { row: task, relationship: "labels" })
+    await expect(page.locator(`[id="${nested.id}"]`)).toHaveCount(0)
+    holding = false
+
+    await expect(top.panel).toBeVisible()
+    await expect(fileInput(top)).not.toHaveAttribute("aria-invalid")
+    await top.panelSubmit.click()
+    await expect(top.panel).toHaveCount(0)
+    await expect(top.result).toHaveText("Import: 1")
+
+    // the nested table, open again under the same id (the run read the
+    // labels again, which closed what was open under them), takes a file
+    await top.openLine(label, "tasks")
+    const again = await tasks.openLine(task, "labels")
+    await tasks.lineAction(task, "labels", "import").click()
+    await expect(again.panel).toBeVisible()
+    await chooseIn(again, "again.csv", "delta\n")
+    await again.panelSubmit.click()
+    await expect(again.panel).toHaveCount(0)
+    await expect(again.result).toHaveText("Import: 1")
+
+    await labels.open()
+    const names = (await labelList(labels)).map(([name]) => name)
+    expect(names).toEqual(expect.arrayContaining(["alpha", "delta"]))
+    expect(names).not.toContain("beta")
   })
 })

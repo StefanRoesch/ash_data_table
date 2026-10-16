@@ -90,6 +90,24 @@ defmodule Demo.Tracker.Label do
       column :name
       column :colour
     end
+
+    # The labels with their import, and under each label its tasks, whose
+    # rows nest the labels again, with their own import: two tables of one
+    # page whose panels take a file. It is mounted nowhere; a page of the
+    # browser tests places it (`/e2e/imports`).
+    table :imports do
+      column :name
+      column :colour
+
+      relationship :tasks
+
+      action :import
+
+      upload :file do
+        accept ~w(.csv)
+        max_file_size 100_000
+      end
+    end
   end
 
   actions do

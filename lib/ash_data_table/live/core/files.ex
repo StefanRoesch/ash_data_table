@@ -45,18 +45,19 @@ defmodule AshDataTable.Live.Core.Files do
         name = upload_name(socket.assigns.table.entry.id, input)
 
         # allowed once, and again after a table of the same id closed and
-        # gave it up (`AshDataTable.Live.Registry.close/2`)
-        if match?(%{^name => %{allowed?: true}}, socket.assigns[:uploads] || %{}) do
-          socket
-        else
-          socket
-          |> allow_upload(name,
-            accept: input.upload.accept,
-            max_entries: 1,
-            max_file_size: input.upload.max_file_size
-          )
-          |> Core.put(uploads: Enum.uniq([name | socket.assigns.table.entry.uploads]))
-        end
+        # gave it up (`AshDataTable.Live.Registry.close/2`); this table's
+        # either way, also when the table before it could not give it up
+        socket =
+          if match?(%{^name => %{allowed?: true}}, socket.assigns[:uploads] || %{}),
+            do: socket,
+            else:
+              allow_upload(socket, name,
+                accept: input.upload.accept,
+                max_entries: 1,
+                max_file_size: input.upload.max_file_size
+              )
+
+        Core.put(socket, uploads: Enum.uniq([name | socket.assigns.table.entry.uploads]))
       end)
 
     Core.put(socket, panel: panel)

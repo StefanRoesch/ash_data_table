@@ -225,8 +225,8 @@ defmodule DemoWeb.Router do
   # database again, so that a test that edits starts from known data,
   # deletes a task behind the table's back, and makes the reads of the
   # comments fail; a page whose tables let their rows be selected with
-  # nothing to run on them; and one whose table is given another actor
-  # while it is open.
+  # nothing to run on them; one whose table is given another actor while
+  # it is open; and one whose tables nested in each other take files.
   if Application.compile_env(:demo, :e2e_routes, false) do
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
@@ -241,6 +241,7 @@ defmodule DemoWeb.Router do
       live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
         live "/select", SelectLive
         live "/switch", SwitchLive
+        live "/imports", ImportsLive
       end
     end
   end

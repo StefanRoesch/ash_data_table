@@ -121,8 +121,10 @@ defmodule AshDataTable.Live.Registry do
   @doc """
   Closes the table `id`, which is not the one on the page: its listener
   stopped, its tasks cancelled, the copies of a run's files removed, its
-  uploads cancelled and given up, its stream emptied and its name back in
-  the pool, its entry gone. What closes a table closes the tables under it
+  uploads cancelled and given up (an upload whose file is on its way when
+  the table closes stays allowed: LiveView drops its entry once the upload
+  has stopped, and a table of the same id takes the name again), its
+  stream emptied and its name back in the pool, its entry gone. What closes a table closes the tables under it
   too (`reconcile`): a table is never left without the one it is in.
   """
   def close(socket, id) do
@@ -137,13 +139,17 @@ defmodule AshDataTable.Live.Registry do
           |> Enum.reduce(socket, &cancel_async(&2, async(&2, &1)))
           |> AshDataTable.Live.Core.Files.drop_copies()
 
-        # an upload with entries cannot be given up: they are cancelled first
+        # an upload with entries cannot be given up: they are cancelled
+        # first. One that is being sent is only told to stop, and is there
+        # until it has: LiveView refuses to give up its upload till then.
         Enum.reduce(uploads, socket, fn name, socket ->
           case socket.assigns[:uploads] do
             %{^name => %{entries: entries}} ->
-              entries
-              |> Enum.reduce(socket, &cancel_upload(&2, name, &1.ref))
-              |> disallow_upload(name)
+              socket = Enum.reduce(entries, socket, &cancel_upload(&2, name, &1.ref))
+
+              if socket.assigns.uploads[name].entries == [],
+                do: disallow_upload(socket, name),
+                else: socket
 
             _gone ->
               socket
