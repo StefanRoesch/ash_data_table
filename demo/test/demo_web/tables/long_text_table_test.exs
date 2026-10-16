@@ -118,7 +118,7 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       assert {"aria-hidden", "true"} in attributes
       assert {"phx-update", "ignore"} in attributes
       # empty to the last character: not even a line break, which it would show
-      assert html =~ ~r/<div id="essay-whole"[^>]*><\/div>/
+      assert html =~ ~r/<div [^>]*\bid="essay-whole"[^>]*><\/div>/
 
       # the sensitive value is nowhere; no cell has a `title`
       refute html =~ @token

@@ -52,6 +52,7 @@ defmodule AshDataTable do
   """
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -817,7 +818,7 @@ defmodule AshDataTable do
 
   def attached(assigns) do
     ~H"""
-    <div id={@table.entry.id} class="ash-data-table" data-read={not is_nil(@table.entry.page)}>
+    <div {Attrs.root(@table.entry.id, @table.entry.page)} class="ash-data-table">
       <.drawn table={@table} streams={@streams} uploads={@uploads} />
     </div>
     """
@@ -1400,12 +1401,7 @@ defmodule AshDataTable do
     >
       <div class="sticky left-0 w-0" data-pin data-ash-data-table-portal={entry.target}>
         <div class="w-[var(--ash-data-table-view)]">
-          <div
-            :if={!entry.gone?}
-            id={entry.id}
-            class="ash-data-table"
-            data-read={not is_nil(entry.page)}
-          >
+          <div :if={!entry.gone?} {Attrs.root(entry.id, entry.page)} class="ash-data-table">
             <.body
               entry={entry}
               options={%{@table.options | url: nil, heading: false, mounted?: false, controlled: []}}
@@ -1599,9 +1595,8 @@ defmodule AshDataTable do
     >
       <div
         :if={@chooser && !@chooser.gone?}
-        id={@chooser.id}
+        {Attrs.root(@chooser.id, @chooser.page)}
         class="ash-data-table"
-        data-read={not is_nil(@chooser.page)}
       >
         <.body
           entry={@chooser}

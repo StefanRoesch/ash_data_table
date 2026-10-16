@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Summary do
   # component's assigns.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Format
   alias AshDataTable.Parts
   alias AshDataTable.Text
@@ -65,10 +66,7 @@ defmodule AshDataTable.Parts.Summary do
     <tr
       :if={@summarised? and @page}
       phx-no-format
-      id={"#{@id}-summaries"}
-      role="row"
-      aria-rowindex={Parts.Common.summary_rowindex(@page)}
-      data-summaries
+      {Attrs.summaries(@id, @page)}
     >
               <td
                 :if={@selecting}
@@ -91,9 +89,8 @@ defmodule AshDataTable.Parts.Summary do
                 id={"#{@id}-summary-#{column.name}"}
                 role="gridcell"
                 aria-colindex={Parts.Common.colindex(index, @lead)}
-                aria-busy={column.summary && @summing? && "true"}
                 tabindex="-1"
-                data-summary={column.summary}
+                {Attrs.summary(column, @summing?)}
                 class="whitespace-nowrap"
                 phx-no-format
               ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} time_zone={@time_zone} /></td>

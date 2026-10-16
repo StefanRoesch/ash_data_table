@@ -5,6 +5,7 @@ defmodule AshDataTable.Parts.Related do
   # link to the full view.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Parts
   alias AshDataTable.Text
 
@@ -69,9 +70,9 @@ defmodule AshDataTable.Parts.Related do
               id={"#{@row_id}-l-#{relationship.name}-create"}
               tabindex="-1"
               data-create
-              class="btn btn-xs ms-2 hidden h-5 align-top"
               phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "create")}
               phx-target={@myself}
+              class="btn btn-xs ms-2 hidden h-5 align-top"
             >
               {@creates[relationship.name].create}
             </button>
@@ -86,21 +87,17 @@ defmodule AshDataTable.Parts.Related do
               id={"#{@row_id}-l-#{relationship.name}-do-#{action.name}"}
               tabindex="-1"
               data-table-action={action.name}
-              class="btn btn-xs ms-2 hidden h-5 align-top"
               phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "table_act")}
               phx-value-action={action.name}
               phx-target={@myself}
+              class="btn btn-xs ms-2 hidden h-5 align-top"
             >
               {action.label}
             </button>
           </div>
         </td>
       </tr>
-      <tr
-        :if={relationship.name in @row.lines}
-        id={"#{@row_id}-n-#{relationship.name}"}
-        role="row"
-      >
+      <tr :if={relationship.name in @row.lines} id={"#{@row_id}-n-#{relationship.name}"} role="row">
         <td
           id={"#{@row_id}-n-#{relationship.name}-c"}
           role="gridcell"
@@ -197,17 +194,9 @@ defmodule AshDataTable.Parts.Related do
     <tr
       :if={@nested? and full_view?(@page, @full_view)}
       phx-no-format
-      id={"#{@id}-view-row"}
-      role="row"
+      {Attrs.row("#{@id}-view-row")}
     >
-              <td
-                id={"#{@id}-view"}
-                role="gridcell"
-                colspan={length(@model.columns) + @lead + Parts.Common.trail(@acting?)}
-                aria-colindex="1"
-                tabindex="-1"
-                data-view
-              >
+              <td {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}>
                 <.link
                   id={"#{@id}-full-view"}
                   navigate={@full_view}

@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Pagination do
   # component's assigns.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Model
   alias AshDataTable.Parts
   alias AshDataTable.Text
@@ -41,19 +42,14 @@ defmodule AshDataTable.Parts.Pagination do
     ~H"""
     <nav
       :if={not @nested?}
-      id={"#{@id}-pagination"}
-      phx-hook="AshDataTable.Pagination"
-      aria-label={Text.t(:pagination, table: @label)}
+      {Attrs.pagination(@id, @label, false)}
       class="mt-4 flex flex-wrap items-center justify-between gap-4"
     >
       <.pages {assigns} />
     </nav>
     <div
       :if={@nested?}
-      id={"#{@id}-pagination"}
-      phx-hook="AshDataTable.Pagination"
-      role="group"
-      aria-label={Text.t(:pagination, table: @label)}
+      {Attrs.pagination(@id, @label, true)}
       class="sticky left-4 flex w-fit flex-wrap items-center justify-start gap-4"
     >
       <.pages {assigns} />

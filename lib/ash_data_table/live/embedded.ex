@@ -13,6 +13,7 @@ defmodule AshDataTable.Live.Embedded do
   # Use it through `AshDataTable.table/1`.
   use Phoenix.LiveComponent
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Live.Core
 
   @impl true
@@ -36,7 +37,7 @@ defmodule AshDataTable.Live.Embedded do
 
   def render(assigns) do
     ~H"""
-    <div id={@table.entry.id} class="ash-data-table" data-read={not is_nil(@table.entry.page)}>
+    <div {Attrs.root(@table.entry.id, @table.entry.page)} class="ash-data-table">
       <AshDataTable.attached
         table={@table}
         streams={@streams}

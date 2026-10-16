@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Selection do
   # component's assigns.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Model
   alias AshDataTable.Parts
   alias AshDataTable.Text
@@ -57,17 +58,7 @@ defmodule AshDataTable.Parts.Selection do
 
     ~H"""
     <div
-      id={"#{@id}-selection"}
-      role="group"
-      aria-label={Text.t(:selected_rows)}
-      data-selection
-      data-more={@more?}
-      data-selected={Text.t(:selected, count: "{n}")}
-      data-all={
-        if @total,
-          do: Text.t(:all_selected, count: @total),
-          else: Text.t(:all_selected_uncounted)
-      }
+      {Attrs.selection(@id, @more?, @total)}
       class="flex flex-wrap items-center gap-2"
     >
       <p id={"#{@id}-selected"} role="status" phx-update="ignore" class="text-sm"></p>

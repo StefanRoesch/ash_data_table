@@ -5,9 +5,9 @@ defmodule AshDataTable.Parts.Picker do
 
   import AshDataTable.Parts.Common, only: [said: 1]
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Present
   alias AshDataTable.Text
-  alias Phoenix.LiveView.JS
 
   # The picker: where a person chooses the related record of a reference
   # cell, or of a field of the action panel that holds such a key. A modal
@@ -28,13 +28,7 @@ defmodule AshDataTable.Parts.Picker do
   def picker(assigns) do
     ~H"""
     <dialog
-      id={"#{@id}-picker"}
-      phx-hook="AshDataTable.Picker"
-      phx-mounted={JS.ignore_attributes(["open"])}
-      phx-target={@target}
-      data-question={said(@picker.question)}
-      data-several={@picker.several?}
-      aria-labelledby={"#{@id}-picker-title"}
+      {Attrs.picker(@id, said(@picker.question), @picker.several?, @target)}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-3xl overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
     >
       <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{said(@picker.title)}</h2>
@@ -49,15 +43,14 @@ defmodule AshDataTable.Parts.Picker do
       </p>
       {render_slot(@inner_block)}
       <div class="mt-6 flex justify-end gap-2">
-        <button type="button" id={"#{@id}-picker-cancel"} class="btn" data-cancel>
+        <button type="button" {Attrs.cancel("#{@id}-picker-cancel")} class="btn">
           {Text.t(:cancel)}
         </button>
         <button
           :if={@picker.none?}
           type="button"
-          id={"#{@id}-picker-none"}
+          {Attrs.none(@id)}
           class="btn"
-          data-none
         >
           {Text.t(:choose_none)}
         </button>
@@ -68,11 +61,8 @@ defmodule AshDataTable.Parts.Picker do
         selected is a choice too, of no record. --%>
         <button
           type="button"
-          id={"#{@id}-picker-choose"}
+          {Attrs.take(@id, @picker.several?)}
           class={["btn btn-primary", not @picker.several? && "btn-disabled"]}
-          aria-disabled={to_string(not @picker.several?)}
-          phx-mounted={JS.ignore_attributes(["aria-disabled", "class"])}
-          data-take
         >
           {Text.t(:choose)}
         </button>

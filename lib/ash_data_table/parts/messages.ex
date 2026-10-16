@@ -10,6 +10,7 @@ defmodule AshDataTable.Parts.Messages do
 
   import AshDataTable.Parts.Common, only: [said: 1]
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Parts
   alias AshDataTable.Text
   alias Phoenix.LiveView.JS
@@ -66,7 +67,7 @@ defmodule AshDataTable.Parts.Messages do
     <%!-- Read out after each filter change, and when a save fails. A live region
     is only read when its content changes, so every other announcement ends in a
     no-break space. --%>
-    <p id={"#{@id}-status"} role="status" aria-live="polite" class="sr-only" phx-no-format>{said(@announcement)}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
+    <p {Attrs.status(@id)} class="sr-only" phx-no-format>{said(@announcement)}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
     <%!-- What the last action on the selected rows came to: on how many records
     it ran, on how many it did not, and why not. It is read out through the live
     region above, and stays until the selection changes. In the text colour. --%>
@@ -109,11 +110,7 @@ defmodule AshDataTable.Parts.Messages do
     table's other popovers; as wide and as high as it may be, it scrolls. --%>
     <div
       phx-no-format
-      id={"#{@id}-whole"}
-      popover="manual"
-      phx-update="ignore"
-      aria-hidden="true"
-      data-whole
+      {Attrs.whole(@id)}
       class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow"
       phx-no-format
     ></div>
@@ -138,8 +135,7 @@ defmodule AshDataTable.Parts.Messages do
         a dialog that is not visible yet when it opens cannot take the focus. Its
         edge is its shadow, which forced colours take away: there it has a border. --%>
         <dialog
-          id={"#{@id}-dialog"}
-          aria-labelledby={"#{@id}-dialog-question"}
+          {Attrs.confirm(@id)}
           class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
         >
           <form method="dialog">

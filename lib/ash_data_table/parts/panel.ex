@@ -8,6 +8,7 @@ defmodule AshDataTable.Parts.Panel do
 
   import AshDataTable.Parts.Common, only: [said: 1]
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Act
   alias AshDataTable.Format
   alias AshDataTable.Model
@@ -15,7 +16,6 @@ defmodule AshDataTable.Parts.Panel do
   alias AshDataTable.Parts
   alias AshDataTable.Present
   alias AshDataTable.Text
-  alias Phoenix.LiveView.JS
 
   # The action panel: where a person gives the inputs of a row action, or of
   # the create action, before it runs. A modal dialog at the right edge of
@@ -36,14 +36,7 @@ defmodule AshDataTable.Parts.Panel do
     <%!-- `open` is the hook's: a patch leaves it alone. Not daisyUI's `modal`,
     for the reason given at the other dialog. --%>
     <dialog
-      id={"#{@id}-panel"}
-      phx-hook="AshDataTable.Panel"
-      phx-mounted={JS.ignore_attributes(["open"])}
-      phx-target={@target}
-      data-question={said(@panel.question)}
-      data-ask={@panel.kind == :cell && "changed"}
-      data-destructive={@panel.destructive?}
-      aria-labelledby={"#{@id}-panel-title"}
+      {Attrs.panel(@id, @panel, said(@panel.question), @target)}
       class="m-0 ms-auto h-dvh max-h-dvh w-full max-w-md overflow-y-auto bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border"
     >
       <%!-- `novalidate`, for the reason given at the argument line: the
@@ -81,7 +74,7 @@ defmodule AshDataTable.Parts.Panel do
           target={@target}
         />
         <div class="mt-6 flex justify-end gap-2">
-          <button type="button" id={"#{@id}-panel-cancel"} class="btn" data-cancel>
+          <button type="button" {Attrs.cancel("#{@id}-panel-cancel")} class="btn">
             {Text.t(:cancel)}
           </button>
           <button
@@ -270,7 +263,7 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="button"
             id={"#{@id}-r-#{position - 1}"}
-            data-unpick={Parts.Grid.held([Atom.to_string(@input.name), key])}
+            data-unpick={Attrs.held([Atom.to_string(@input.name), key])}
             aria-label={
               if called,
                 do: Text.t(:remove_group, column: called),
@@ -298,7 +291,7 @@ defmodule AshDataTable.Parts.Panel do
         role="group"
         aria-labelledby={"#{@id}-label"}
         aria-describedby={@described}
-        data-invalid={@places != [] && Parts.Grid.held(@places)}
+        data-invalid={@places != [] && Attrs.held(@places)}
         class="flex flex-col gap-1"
       >
         <%!-- A form sends nothing for a list without values. This entry is
@@ -555,7 +548,7 @@ defmodule AshDataTable.Parts.Panel do
           :if={is_map(@held) and not @field.required?}
           type="button"
           id={"#{@id}-remove"}
-          data-remove-group={Parts.Grid.held(@inside.path)}
+          data-remove-group={Attrs.held(@inside.path)}
           aria-label={Text.t(:remove_group, column: @field.label)}
           class="btn btn-ghost btn-xs mb-1"
         >
@@ -579,7 +572,7 @@ defmodule AshDataTable.Parts.Panel do
         :if={not is_map(@held)}
         type="button"
         id={"#{@id}-add"}
-        data-add-group={Parts.Grid.held(@inside.path)}
+        data-add-group={Attrs.held(@inside.path)}
         class="btn btn-sm"
       >
         {Text.t(:add_value)}
@@ -639,7 +632,7 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="button"
             id={"#{@id}-#{key}-remove"}
-            data-remove-group={Parts.Grid.held(@inside.path ++ [key])}
+            data-remove-group={Attrs.held(@inside.path ++ [key])}
             aria-label={Text.t(:remove_value, column: @field.label, position: index + 1)}
             class="btn btn-ghost btn-xs mb-1"
           >
@@ -667,7 +660,7 @@ defmodule AshDataTable.Parts.Panel do
       <button
         type="button"
         id={"#{@id}-add"}
-        data-add-group={Parts.Grid.held(@inside.path)}
+        data-add-group={Attrs.held(@inside.path)}
         class="btn btn-sm"
       >
         {Text.t(:add_value)}

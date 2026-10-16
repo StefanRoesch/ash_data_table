@@ -112,7 +112,7 @@ defmodule AshDataTable.ArchitectureTest do
       path == "component.ex" or String.starts_with?(path, "component/") ->
         "3c"
 
-      String.starts_with?(path, ~w(parts/ kit/ components/)) ->
+      path == "attrs.ex" or String.starts_with?(path, ~w(parts/ kit/ components/)) ->
         "3"
 
       String.starts_with?(path, "live/") ->
