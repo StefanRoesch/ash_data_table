@@ -33,7 +33,8 @@ defmodule AshDataTable do
       config :ash_data_table,
         layout: {MyAppWeb.Layouts, :app},
         gettext_backend: MyAppWeb.Gettext,
-        translate_error: {MyAppWeb.CoreComponents, :translate_error}
+        translate_error: {MyAppWeb.CoreComponents, :translate_error},
+        kit: MyAppWeb.TableKit
 
     * `:layout` - the function component a mounted table is rendered in:
       see `AshDataTable.Live.Page`. Without it, mounted tables are rendered bare.
@@ -47,8 +48,11 @@ defmodule AshDataTable do
       failed save, of a row action or a create that failed, and those of a
       read that failed with an error the action returned. Without it, a message is shown as the resource wrote it, with
       its variables filled in.
+    * `:kit` - the module the tables are drawn with: see `AshDataTable.Kit`.
+      Without it, `AshDataTable.Kit.Default`. A table is given one of its own
+      with `kit`, which wins.
 
-  `mix ash_data_table.install` sets all three for a new Phoenix application.
+  `mix ash_data_table.install` sets the first three for a new Phoenix application.
   """
   use Phoenix.Component
 
@@ -225,6 +229,12 @@ defmodule AshDataTable do
     doc:
       "Asked before every write, after the table's checks: a function of the `AshDataTable.Request` (and of `assigns`) that answers `:cont`, or `{:halt, message}`, which stops the write and says the message."
 
+  attr :kit, :atom,
+    default: nil,
+    doc:
+      "The module the table is drawn with (`AshDataTable.Kit`), and the tables it shows. " <>
+        "Defaults to `config :ash_data_table, kit: …`, else `AshDataTable.Kit.Default`."
+
   # Rows to select with nothing to run on them, one at a time (`:single`) or
   # several (`:multi`): how the table is shown for a person to choose from.
   # Internal; the demo's pages for selection use it.
@@ -284,7 +294,7 @@ defmodule AshDataTable do
       before_action={@before_action}
       notify={@notify}
       open={@open}
-      kit={AshDataTable.Kit.Default}
+      kit={kit!(@kit, "<AshDataTable.table>")}
     />
     """
   end
@@ -307,8 +317,8 @@ defmodule AshDataTable do
   changes.
 
   The options are the attributes of `table/1`: `id`, `table`, `scope`,
-  `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading` and
-  `time_zone`. Besides, `url: true` keeps sort, filters and page in the
+  `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading`,
+  `time_zone` and `kit`. Besides, `url: true` keeps sort, filters and page in the
   page's URL, under the table's id. That needs a LiveView mounted by the
   router and not inside another; it needs no `handle_params/3` of its own.
   Call `attach/4` in `mount/3`: the table then reads when LiveView first
@@ -406,7 +416,7 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          [:notify, :open] ++
+          [:notify, :open, :kit] ++
           @page ++ [heading: true, url: false, mounted?: false, controlled: []]
       )
 
@@ -454,7 +464,7 @@ defmodule AshDataTable do
       notify: opts[:notify],
       open: open!(opts[:open], "AshDataTable.attach/4"),
       controlled: controlled!(opts[:controlled], resource, table),
-      kit: AshDataTable.Kit.Default
+      kit: kit!(opts[:kit], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
@@ -488,6 +498,17 @@ defmodule AshDataTable do
 
     Enum.uniq(kinds)
   end
+
+  # The kit a table is drawn with: the one it is given, else the one of the
+  # configuration, else the default.
+  defp kit!(nil, _where) do
+    case Application.get_env(:ash_data_table, :kit) do
+      nil -> AshDataTable.Kit.Default
+      kit -> AshDataTable.Kit.check!(kit, "`config :ash_data_table`")
+    end
+  end
+
+  defp kit!(kit, where), do: AshDataTable.Kit.check!(kit, where)
 
   defp open!(label, _where) when is_nil(label) or is_binary(label), do: label
 

@@ -63,7 +63,7 @@ defmodule AshDataTable.Router do
       the domain says otherwise. Written in the router, and taken from
       nowhere else. See "Without authorization" below.
 
-    * `:notify`, `:open`, `:context`, `:private_arguments`,
+    * `:notify`, `:open`, `:kit`, `:context`, `:private_arguments`,
       `:page_arguments`, `:before_action` - as the options of
       `AshDataTable.attach/4`, written so that a route can hold them: a
       function as `{module, function}`, called as `function(assigns,
@@ -112,7 +112,7 @@ defmodule AshDataTable.Router do
   that authorizes, where they would see other records, and a table that
   authorizes never links to a page without.
   """
-  @page [:notify, :open, :context, :private_arguments, :page_arguments, :before_action]
+  @page [:notify, :open, :kit, :context, :private_arguments, :page_arguments, :before_action]
 
   defmacro ash_data_table(path, resource, opts \\ []) do
     # As Phoenix does for the modules named in routes: expanding the alias as
@@ -226,6 +226,9 @@ defmodule AshDataTable.Router do
 
   defp page!(:open, label) when is_binary(label), do: label
 
+  # a module, which `AshDataTable.attach/4` checks: it may not be compiled yet
+  defp page!(:kit, kit) when is_atom(kit) and not is_nil(kit), do: kit
+
   defp page!(:before_action, {module, function} = mf) when is_atom(module) and is_atom(function),
     do: mf
 
@@ -242,6 +245,7 @@ defmodule AshDataTable.Router do
       case name do
         :notify -> "`true` or a list of events"
         :open -> "the label of its button, a string"
+        :kit -> "a module that uses AshDataTable.Kit"
         :before_action -> "{module, function}"
         _value -> "a map, or {module, function}"
       end
