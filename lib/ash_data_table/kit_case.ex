@@ -17,7 +17,8 @@ defmodule AshDataTable.KitCase do
   (`:panel`), a map cell's panel (`:map_panel`), the picker of a reference
   cell (`:picker`), and the result of an action on selected rows
   (`:selected`). Each is drawn with the action panel, the picker and the
-  question opened over the page (`:modal`) and in it (`:inline`).
+  question opened over the page (`:modal`), in it (`:inline`), and the
+  panel and the picker over the page with the question in it (`:mixed`).
 
   What a person does with the keyboard and hears from a screen reader is
   not checked here: that needs a browser. The library checks it for
@@ -43,6 +44,13 @@ defmodule AshDataTable.KitCase do
   @doc "The states a kit is drawn in."
   def states, do: @states
 
+  @doc """
+  How what opens is drawn: all over the page (`:modal`), all in it
+  (`:inline`), and the panel and the picker over the page with the question
+  in it (`:mixed`).
+  """
+  def presentations, do: [:modal, :inline, :mixed]
+
   defmacro __using__(opts) do
     kit = Keyword.fetch!(opts, :kit)
     endpoint = Keyword.fetch!(opts, :endpoint)
@@ -55,7 +63,8 @@ defmodule AshDataTable.KitCase do
       @endpoint unquote(endpoint)
       @kit unquote(kit)
 
-      for presentation <- [:modal, :inline], state <- AshDataTable.KitCase.states() do
+      for presentation <- AshDataTable.KitCase.presentations(),
+          state <- AshDataTable.KitCase.states() do
         @presentation presentation
         @state state
 
@@ -88,9 +97,19 @@ defmodule AshDataTable.KitCase do
      %{
        "kit" => kit,
        "tenant" => tenant,
-       "presentation" => [panel: presentation, picker: presentation, confirm: presentation]
+       "presentation" => [
+         panel: over(presentation),
+         picker: over(presentation),
+         confirm: asked(presentation)
+       ]
      }}
   end
+
+  # what the panel and the picker are, and the question, in a presentation
+  defp over(:mixed), do: :modal
+  defp over(presentation), do: presentation
+  defp asked(:mixed), do: :inline
+  defp asked(presentation), do: presentation
 
   defp seed(tenant) do
     opts = [tenant: tenant, authorize?: false]
@@ -192,6 +211,8 @@ defmodule AshDataTable.KitCase do
 
   # The question: a `<dialog>` over the page, or a region in it named by
   # its question, hidden until the hook asks.
+  defp question(page, :mixed), do: question(page, :inline)
+
   defp question(page, :modal),
     do:
       need(
@@ -431,6 +452,8 @@ defmodule AshDataTable.KitCase do
   end
 
   # What opens: a `<dialog>` over the page, or a region in it.
+  defp opened(page, id, :mixed), do: opened(page, id, :modal)
+
   defp opened(page, id, :modal),
     do:
       need(

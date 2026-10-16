@@ -102,7 +102,8 @@ defmodule AshDataTable.Test.Resource do
     * `owner`, a reference cell with its picker (`AshDataTable.Test.Resource.Owner`),
       and `parts`, the nested table under a row (`AshDataTable.Test.Resource.Part`);
     * a row action that takes a file (`stamp`), one that asks first and
-      runs on the selected rows (`destroy`), and the create action.
+      runs on the selected rows (`destroy`), and the create action; `place`
+      asks before its panel saves a change.
 
   A read in a tenant whose name begins with `broken` fails, for the
   table's error.
@@ -141,7 +142,10 @@ defmodule AshDataTable.Test.Resource do
       component AshDataTable.Components.Progress
     end
 
-    column :place
+    column :place do
+      confirm "Change the place?"
+    end
+
     column :kind
     column :owner
 

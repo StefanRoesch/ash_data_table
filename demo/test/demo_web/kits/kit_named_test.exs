@@ -77,12 +77,17 @@ defmodule DemoWeb.Kits.KitNamedTest do
     assert drawn_by_div_kit?(render_async(view), "kit-pick-owner")
   end
 
-  test "a question in the page needs the panel and the picker in the page too" do
-    assert_raise ArgumentError, ~r/has the question \(`confirm`\) inline and the panel/, fn ->
-      AshDataTable.attach(%Phoenix.LiveView.Socket{}, :table, Demo.Support.Plain.Memo,
-        presentation: [confirm: :inline]
-      )
-    end
+  test "a question in the page goes with a panel and a picker over the page", %{conn: conn} do
+    {tenant, _key, session} = KitCase.given(AshDataTable.Kit.Default, :rows, :mixed)
+    on_exit(fn -> KitCase.clean(tenant) end)
+    {:ok, _view, html} = live_isolated(conn, AshDataTable.KitCase.Live, session: session)
+    page = LazyHTML.from_document(html)
+
+    assert page
+           |> LazyHTML.query(
+             "section[id='kit-dialog'][role=region][data-presentation='inline'][hidden]"
+           )
+           |> Enum.count() == 1
   end
 
   test "a cell is the component's first, else the kit's, which is given no sensitive value",

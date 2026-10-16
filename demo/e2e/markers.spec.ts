@@ -85,6 +85,8 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await page.keyboard.press("Enter")
     await expect(name).toHaveText("Anvil")
     await expect(name.locator("textarea")).toHaveCount(0)
+    // the save has been answered: a cell whose save is on its way opens no editor
+    await expect(name).not.toHaveAttribute("aria-busy")
 
     await page.keyboard.press("Enter")
     await expect(name.locator("textarea")).toBeFocused()

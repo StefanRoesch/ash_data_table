@@ -4,7 +4,8 @@ defmodule DemoWeb.E2E.KitLive do
   stage 7, test groups Y and AA): a table of `AshDataTable.Test.Resource`
   drawn with the demo's kit of `div`s (`DemoWeb.DivKit`), whose action
   panel, picker and question open in the page. `?presentation=modal` opens
-  them over it, as the default kit does. The records are kept in memory, in a tenant
+  them over it, as the default kit does; `?presentation=mixed` the panel
+  and the picker over it, and the question in it. The records are kept in memory, in a tenant
   of the page's own, made as it mounts.
   """
   use DemoWeb, :live_view
@@ -15,7 +16,14 @@ defmodule DemoWeb.E2E.KitLive do
   def mount(params, _session, socket) do
     tenant = "e2e-kit-#{System.unique_integer([:positive])}"
     if connected?(socket), do: seed(tenant)
-    presentation = if params["presentation"] == "modal", do: :modal, else: :inline
+    # `?presentation=modal`, `mixed` (the panel and the picker over the
+    # page, the question in it), else everything in the page
+    {over, asked} =
+      case params["presentation"] do
+        "modal" -> {:modal, :modal}
+        "mixed" -> {:modal, :inline}
+        _inline -> {:inline, :inline}
+      end
 
     {:ok,
      socket
@@ -24,7 +32,7 @@ defmodule DemoWeb.E2E.KitLive do
        id: "kit",
        tenant: tenant,
        kit: DemoWeb.DivKit,
-       presentation: [panel: presentation, picker: presentation, confirm: presentation]
+       presentation: [panel: over, picker: over, confirm: asked]
      )}
   end
 
@@ -37,7 +45,13 @@ defmodule DemoWeb.E2E.KitLive do
     create.(Resource.Owner, %{name: "Bob"})
 
     first =
-      create.(Resource, %{name: "Anchor", note: "first", size: 40, owner_id: ann.id})
+      create.(Resource, %{
+        name: "Anchor",
+        note: "first",
+        size: 40,
+        place: %{city: "Bern", zip: "3000"},
+        owner_id: ann.id
+      })
 
     create.(Resource, %{name: "Bolt", size: 3})
     create.(Resource, %{name: "Cog"})

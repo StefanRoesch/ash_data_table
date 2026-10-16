@@ -264,7 +264,7 @@ They are JS files of the package, in `assets/js/`. `AshDataTable` keeps five col
 | `editing.js` | editing | `startEdit`, `pick`, `editInPanel`, `startList` |
 | `arrays.js` | the values of an array | the values of the list editor; then the editor of a component, `commit`, `finish`, `close`, `detach`, `released` (live updates), `save` |
 | `sensitive.js` | sensitive cells | `reveal`, `hide` |
-| `dialog.js` | the dialog | `ask`: the table's question, modal (`ID-dialog`, a `<dialog>`, `showModal()`) or in the page (`data-presentation="inline"`, `role=region`, `askInline`: shown, focus on Cancel, a button or Escape answers, focus back; a question asked while one is open gives the first up as Cancel); without it nothing is confirmed and what would be asked about does not run |
+| `dialog.js` | the dialog | `ask`: the table's question, modal (`ID-dialog`, a `<dialog>`, `showModal()`) or in the page (`data-presentation="inline"`, `role=region`, `askInline`: shown, focus on Cancel, a button or Escape answers, focus back; a question asked while one is open gives the first up as Cancel; asked from a panel or picker that is modal, a copy with ids ending in `-in` is shown inside it and removed when answered, and a patch that takes it away answers Cancel); without it nothing is confirmed and what would be asked about does not run |
 | `failure.js` | the message of a failed cell | `showMessage` |
 | `whole_text.js` | the whole text of a cell | the popover `ID-whole` with the text of a cell that cuts some off, on focus and on the pointer: `cutIn`, `seenIn`, `showWhole`, `placeWhole`, `freshWhole`, `hideWhole`; `textFor` (what the hook puts into a cell with `max_lines`) |
 

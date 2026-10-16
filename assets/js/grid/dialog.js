@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {DESTRUCTIVE} from "../markers.js"
+import {DESTRUCTIVE, DIALOG, OPENED} from "../markers.js"
 import {ATTRIBUTE} from "./shared.js"
 
 // Whether the table's question is drawn in the page, not over it.
@@ -46,9 +46,24 @@ export default {
   // focus is in the question or nowhere. Nothing else is inert, and Tab
   // leaves it. One question at a time, as a modal one is: one asked while
   // another is still open gives the first up, as Cancel does.
+  //
+  // Asked from a panel or a picker that is open over the page (modal),
+  // the page under it is inert: the question is shown inside that panel
+  // or picker, as a copy with ids of its own (`-in`), which goes again
+  // when it is answered. A patch that takes the copy away answers it as
+  // Cancel does.
   askInline(dialog) {
     if (this.answer) this.answer(false)
     const opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null
+    const over = opener && opener.closest(`${DIALOG}${OPENED}`)
+    const modal = over && over.getAttribute("data-presentation") === "modal" && !over.contains(dialog) ? over : null
+    let shown = dialog
+    if (modal) {
+      shown = /** @type {HTMLElement} */ (dialog.cloneNode(true))
+      for (const node of [shown, ...shown.querySelectorAll("[id]")]) node.id = `${node.id}-in`
+      shown.setAttribute("aria-labelledby", `${dialog.getAttribute("aria-labelledby")}-in`)
+      modal.append(shown)
+    }
     return new Promise(resolve => {
       const onClick = e => {
         const button = e.target.closest && e.target.closest("button[value]")
@@ -62,20 +77,24 @@ export default {
         e.stopPropagation()
         answer(false)
       }
+      const gone = new MutationObserver(() => { if (!shown.isConnected) answer(false) })
       const answer = yes => {
         this.answer = null
-        dialog.removeEventListener("click", onClick)
-        dialog.removeEventListener("keydown", onKeydown)
-        const back = dialog.contains(document.activeElement) || document.activeElement === document.body
-        dialog.hidden = true
+        gone.disconnect()
+        shown.removeEventListener("click", onClick)
+        shown.removeEventListener("keydown", onKeydown)
+        const back = shown.contains(document.activeElement) || document.activeElement === document.body
+        if (modal) shown.remove()
+        else shown.hidden = true
         if (back && opener && opener.isConnected) opener.focus({preventScroll: true})
         resolve(yes)
       }
       this.answer = answer
-      dialog.addEventListener("click", onClick)
-      dialog.addEventListener("keydown", onKeydown)
-      dialog.hidden = false
-      const first = dialog.querySelector("button[value]")
+      shown.addEventListener("click", onClick)
+      shown.addEventListener("keydown", onKeydown)
+      if (modal) gone.observe(modal, {childList: true, subtree: true})
+      shown.hidden = false
+      const first = shown.querySelector("button[value]")
       if (first) first.focus()
     })
   },

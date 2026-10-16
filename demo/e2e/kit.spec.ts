@@ -6,7 +6,8 @@ import { expect, test } from "./support/fixtures"
 // /e2e/kit draws a table of `AshDataTable.Test.Resource` with the demo's
 // kit of `div`s (`DemoWeb.DivKit`), whose action panel and picker open in
 // the page (`data-presentation="inline"`), or over it with
-// `?presentation=modal`. What opens: focus goes in, Escape and Cancel take
+// `?presentation=modal`, or the panel and the picker over the page with
+// the question in it (`?presentation=mixed`). What opens: focus goes in, Escape and Cancel take
 // it away and put focus back on what opened it, and Tab leaves what is
 // inline; axe finds nothing wrong either way. The grid of `div`s: the
 // arrow keys, editing, a nested table.
@@ -148,6 +149,38 @@ test.describe("the question in the page", () => {
     await question(page).locator("button[value='confirm']").click()
     await expect(question(page)).toBeHidden()
     await expect(page.locator(`[id="kit-row-${anchor}"]`)).toHaveCount(0)
+  })
+})
+
+test.describe("the question in the page, asked from a panel over it", () => {
+  test("is shown inside the panel, takes the focus, and Escape and Cancel give it up there", async ({ page }) => {
+    const anchor = await opened(page, "?presentation=mixed")
+    // the panel of a map cell, which asks before it saves a change
+    await cell(page, anchor, "place").focus()
+    await page.keyboard.press("Enter")
+    const panel = page.locator('dialog[id="kit-panel"]')
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await panel.locator('[data-field="place.city"] :is(input, textarea)').fill("Thun")
+    const submit = page.locator('[id="kit-panel-submit"]')
+    const question = panel.locator('[id="kit-dialog-in"]')
+    for (const answer of ["Escape", "cancel"]) {
+      await submit.click()
+      await expect(question).toBeVisible()
+      await expect(question).toHaveAttribute("role", "region")
+      await expect(question).toHaveAttribute("data-presentation", "inline")
+      await expect(question.locator('[id="kit-dialog-question-in"]')).toHaveText("Change the place?")
+      await expect(question.locator("button[value='cancel']")).toBeFocused()
+      if (answer === "Escape") {
+        await expectNoAxeViolations(page)
+        await page.keyboard.press("Escape")
+      } else await question.locator("button[value='cancel']").click()
+      await expect(question).toHaveCount(0)
+      // the panel stays open, and focus is back on its button
+      await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+      await expect(submit).toBeFocused()
+    }
+    // the question of the page itself was not shown
+    await expect(page.locator('[id="kit-dialog"]')).toBeHidden()
   })
 })
 

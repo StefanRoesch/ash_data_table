@@ -303,7 +303,7 @@ defmodule AshDataTable do
       notify={@notify}
       open={@open}
       kit={kit!(@kit, "<AshDataTable.table>")}
-      presentation={presentation!(@presentation, @kit, "<AshDataTable.table>")}
+      presentation={presentation!(@presentation, "<AshDataTable.table>")}
     />
     """
   end
@@ -389,8 +389,9 @@ defmodule AshDataTable do
   page, focus moves into it as it opens and back to what opened it as it
   goes, Escape inside it is Cancel, and nothing else is inert: Tab leaves
   it. What the panel shows and what the table checks are the same either
-  way. A question inline needs the panel and the picker inline too, as it
-  is asked from them. One question at a time: a question asked while
+  way. A question in the page that is asked from a panel or a picker open
+  over the page is shown inside it, where it can be answered. One question
+  at a time: a question asked while
   another of the table is still open in the page gives the first up, as
   Cancel does.
 
@@ -490,7 +491,7 @@ defmodule AshDataTable do
       open: open!(opts[:open], "AshDataTable.attach/4"),
       controlled: controlled!(opts[:controlled], resource, table),
       kit: kit!(opts[:kit], "AshDataTable.attach/4"),
-      presentation: presentation!(opts[:presentation] || [], opts[:kit], "AshDataTable.attach/4")
+      presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
@@ -538,11 +539,7 @@ defmodule AshDataTable do
 
   # What opens in the page, or over it, as the table is told: the panel and
   # the picker, each `:modal` or `:inline`.
-  #
-  # A question inline while the panel or the picker is modal could not be
-  # answered: it is asked from them, and the page under a modal dialog is
-  # inert. That is refused.
-  defp presentation!(given, kit, where) do
+  defp presentation!(given, where) do
     if not (is_list(given) and
               Enum.all?(
                 given,
@@ -555,16 +552,6 @@ defmodule AshDataTable do
       raise ArgumentError,
             "the `presentation` of #{where} is a list of `panel:`, `picker:` and `confirm:`, " <>
               "each `:modal` or `:inline`, got: #{inspect(given, limit: 5)}"
-    end
-
-    kit = kit!(kit, where)
-    how = &(Keyword.get(given, &1) || kit.presentation(&1))
-
-    if how.(:confirm) == :inline and :modal in [how.(:panel), how.(:picker)] do
-      raise ArgumentError,
-            "the `presentation` of #{where} has the question (`confirm`) inline and the panel " <>
-              "or the picker modal: a question they ask could not be answered in the page " <>
-              "under them. Open them inline too, or the question modal."
     end
 
     given

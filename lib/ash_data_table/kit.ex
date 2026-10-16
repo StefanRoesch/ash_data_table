@@ -99,7 +99,8 @@ defmodule AshDataTable.Kit do
       `data-presentation`): a `<dialog>` when it is modal, an element with
       `role=region` when it is inline (hidden until the hook asks), with
       `ID-dialog-question` and the buttons `value="cancel"` and
-      `value="confirm"`.
+      `value="confirm"`. Inline, and asked from a panel or a picker that is
+      modal, the hook shows a copy of it inside that panel or picker.
     * `panel` - the action panel (`Attrs.panel/…`, `data-presentation`): a
       `<dialog>` when it is modal, an element with `role=region` when it is
       inline; its form, a `field` per field, `data-cancel` and a submit.
