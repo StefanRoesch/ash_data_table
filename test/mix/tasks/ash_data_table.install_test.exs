@@ -181,13 +181,10 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
       """)
     end
 
-    test "turns on compression on LiveView's socket" do
+    test "leaves the endpoint as it is: its socket's settings are the application's" do
       project()
       |> install()
-      |> assert_has_patch("lib/test_web/endpoint.ex", """
-      - |    websocket: [connect_info: [session: @session_options]],
-      + |    websocket: [connect_info: [session: @session_options], compress: true],
-      """)
+      |> assert_unchanged("lib/test_web/endpoint.ex")
     end
 
     test "says what is left to do" do
@@ -446,44 +443,6 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
 
       refute diff(igniter) =~ "{TestWeb.Layouts, :app}"
       assert diff(igniter) =~ "gettext_backend: TestWeb.Gettext"
-    end
-  end
-
-  describe "compression, in an endpoint that is not the default one" do
-    test "an explicit `compress` is left as it is" do
-      endpoint =
-        String.replace(
-          @endpoint,
-          "websocket: [connect_info:",
-          "websocket: [compress: false, connect_info:"
-        )
-
-      project(%{"lib/test_web/endpoint.ex" => endpoint})
-      |> install()
-      |> assert_unchanged("lib/test_web/endpoint.ex")
-    end
-
-    test "a socket whose options it cannot read is left as it is, and the step is explained" do
-      endpoint =
-        String.replace(
-          @endpoint,
-          "websocket: [connect_info: [session: @session_options]]",
-          "websocket: true"
-        )
-
-      igniter =
-        project(%{"lib/test_web/endpoint.ex" => endpoint})
-        |> install()
-        |> assert_unchanged("lib/test_web/endpoint.ex")
-
-      assert notice?(igniter, "websocket: [compress: true")
-    end
-
-    test "without an endpoint, the step is explained" do
-      igniter =
-        test_project(files: Map.delete(phoenix_files(), "lib/test_web/endpoint.ex")) |> install()
-
-      assert notice?(igniter, "websocket: [compress: true")
     end
   end
 end
