@@ -43,11 +43,7 @@ defmodule AshDataTable.Parts.Grid do
       aria-valuemax={Attrs.most_width()}
       tabindex="-1"
       data-resize
-      class={[
-        "absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none",
-        "focus:outline-2 focus:-outline-offset-2 focus:outline-base-content",
-        "[&:is(:hover,:focus,[data-dragging])]:after:absolute [&:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&:is(:hover,:focus,[data-dragging])]:after:end-0 [&:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&:is(:hover,:focus,[data-dragging])]:after:border-base-content [&:is(:hover,:focus,[data-dragging])]:after:content-['']"
-      ]}
+      class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&:is(:hover,:focus,[data-dragging])]:after:absolute [&:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&:is(:hover,:focus,[data-dragging])]:after:end-0 [&:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&:is(:hover,:focus,[data-dragging])]:after:border-base-content [&:is(:hover,:focus,[data-dragging])]:after:content-['']"
     ></span>
     """
   end
@@ -524,9 +520,6 @@ defmodule AshDataTable.Parts.Grid do
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :acting?, :any, required: true
   attr :open, :string, default: nil
   # whether the hook asks the question of a row action; in controlled mode
@@ -568,165 +561,105 @@ defmodule AshDataTable.Parts.Grid do
     its end does not go on to scroll the table around it. Its attributes are
     `AshDataTable.Attrs.grid/5`'s. --%>
     <div
-      phx-no-format
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose)}
       class={["overflow-x-auto outline-none", @nested? && "overscroll-x-contain"]}
     >
-        <table
-          {Attrs.table(@id, @label, @labelledby, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
-          class={
-            [
-              "table",
-              # a nested table is as wide as its columns need and no wider; in
-              # everything else it looks as a table on a page does
-              @nested? && "w-auto",
-              # what every cell looks like is set once here, to keep each cell's markup small:
-              # the focus ring, which a cell keeps while its editor has the focus. In
-              # the text colour: the one colour a theme promises to be seen on its
-              # background, which its brand colour need not be.
-              "[&_:is(td,th):focus]:outline-2 [&_:is(td,th):focus]:-outline-offset-2 [&_:is(td,th):focus]:outline-base-content",
-              "[&>tbody>tr>td:not([data-nested]):focus-within]:outline-2 [&>tbody>tr>td:not([data-nested]):focus-within]:-outline-offset-2 [&>tbody>tr>td:not([data-nested]):focus-within]:outline-base-content",
-              # A cell whose save is on its way, and the rows of a table that is
-              # reading: dimmed, and no further than text may be. The header and the
-              # filters are not dimmed, as they can be used meanwhile and are muted
-              # already; nor is a nested table, which is not what is reading.
-              "[&_td[aria-busy]]:opacity-70 [&[aria-busy]>tbody>tr>td:not([data-nested])]:opacity-70",
-              # A cell whose save or action failed: a ring and a mark, both drawn by
-              # the cell's style, so that they add nothing to a row's markup. The ring
-              # is a border, which forced colours keep and a shadow they do not, in
-              # the error colour mixed with the text colour, so that it is seen on the
-              # background in a theme whose error colour alone is not. With focus it
-              # moves inside the focus ring, and both show.
-              "[&_td[aria-invalid]]:relative [&_td[aria-invalid]]:before:pointer-events-none [&_td[aria-invalid]]:before:absolute [&_td[aria-invalid]]:before:inset-0 [&_td[aria-invalid]]:before:border-2 [&_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&_td[aria-invalid]]:before:content-['']",
-              "[&_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px]",
-              # The mark is what says "failed" without a colour: a "!" in the cell's
-              # padding at its end, in the text colour. It is for the eye only (the
-              # empty alternative text): the cell says the same with `aria-invalid`.
-              "[&_td[aria-invalid]]:after:absolute [&_td[aria-invalid]]:after:end-2 [&_td[aria-invalid]]:after:top-1/2 [&_td[aria-invalid]]:after:-translate-y-1/2 [&_td[aria-invalid]]:after:leading-none [&_td[aria-invalid]]:after:font-bold [&_td[aria-invalid]]:after:content-['!'_/_'']",
-              # one line per row: long text is cut off, not wrapped. Not in a cell
-              # that spans the table: a line, or the cell a nested table is in.
-              "[&>tbody>tr>td:not([colspan],[data-actions])]:max-w-80 [&>tbody>tr>td:not([colspan],[data-actions])]:truncate [&>tbody>tr>td[data-actions]]:whitespace-nowrap",
-              # But for the cells of a column that says `max_lines`: their text is
-              # in a paragraph that wraps, keeps the line breaks of the value and is
-              # cut off after that many lines (`data-lines` on the cell). The row is
-              # as high as its highest cell. A word longer than the column breaks.
-              "[&>tbody>tr>td[data-lines]]:whitespace-normal [&>tbody>tr>td[data-lines]>p]:min-w-40 [&>tbody>tr>td[data-lines]>p]:break-words [&>tbody>tr>td[data-lines]>p]:whitespace-pre-line",
-              "[&>tbody>tr>td[data-lines='2']>p]:line-clamp-2 [&>tbody>tr>td[data-lines='3']>p]:line-clamp-3 [&>tbody>tr>td[data-lines='4']>p]:line-clamp-4 [&>tbody>tr>td[data-lines='5']>p]:line-clamp-5 [&>tbody>tr>td[data-lines='6']>p]:line-clamp-6 [&>tbody>tr>td[data-lines='7']>p]:line-clamp-7 [&>tbody>tr>td[data-lines='8']>p]:line-clamp-8 [&>tbody>tr>td[data-lines='9']>p]:line-clamp-9 [&>tbody>tr>td[data-lines='10']>p]:line-clamp-10",
-              # the expander of a row and the button of a line (which is in the
-              # element of its cell that stays in view). Their mark is a
-              # triangle drawn in CSS, not a character: it turns about its own
-              # centre, so it sits in the same place open and closed.
-              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&>tbody>tr>td[data-expander]]:w-0 [&>tbody>tr>td[data-expander]>button]:px-1",
-              # the box that selects a row: its cell as narrow as the box, and
-              # the box in the middle of it
-              "[&>tbody>tr>td[data-selector]]:w-0 [&>tbody>tr>td[data-selector]>input]:block",
-              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-['']",
-              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current",
-              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90",
-              # forced colours would fill the two transparent sides of the triangle
-              # and make it a square, which looks the same open and closed
-              "[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&>tbody>tr>:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
-              # a line's mark stands under its row's
-              "[&>tbody>tr>td[data-line]>div>button[aria-expanded]]:ps-1 [&>tbody>tr>td[data-line]>div>button[aria-expanded]]:before:me-2",
-              # the create button on a line, and the buttons of the nested table's
-              # table actions, once the nested table under it has read: found by
-              # the table's own marker of its portal, whatever LiveView wraps it in
-              "[&>tbody>tr:has(+tr>td[data-nested]_[data-ash-data-table-portal]>div>[data-read])>td[data-line]>div>button[data-create]]:inline-flex",
-              "[&>tbody>tr:has(+tr>td[data-nested]_[data-ash-data-table-portal]>div>[data-read])>td[data-line]>div>button[data-table-action]]:inline-flex"
-            ]
-          }
-        >
-          <thead id={"#{@id}-head"}>
-            <tr {Attrs.row("#{@id}-head-row", "1")}>
-              <%!-- The first column, where rows can be selected: a box per row,
+      <table
+        {Attrs.table(@id, @label, @labelledby, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
+        class={["table", @nested? && "w-auto"]}
+      >
+        <thead id={"#{@id}-head"}>
+          <tr {Attrs.row("#{@id}-head-row", "1")}>
+            <%!-- The first column, where rows can be selected: a box per row,
               and here the one that stands for the rows of the page. Its state
               is the hook's, as is that of every box under it. Where one row at a
               time is selected there is nothing to stand for, and the rows have
               radio buttons of one group: one of them at most is on. --%>
-              <th
-                :if={@selecting}
-                {Attrs.header("#{@id}-select-head", "1", %{"data-select-page" => @selecting == :multi})}
-                class="w-0"
-              >
-                <input
-                  :if={@selecting == :multi}
-                  type="checkbox"
-                  tabindex="-1"
-                  aria-label={Text.t(:select_page)}
-                  class={["checkbox checkbox-xs block", Parts.Editors.box_edge()]}
-                />
-                <span :if={@selecting == :single} class="sr-only">{Text.t(:select_row)}</span>
-              </th>
-              <th
-                :if={@expandable?}
-                {Attrs.header("#{@id}-expander-head", @lead)}
-                class="w-0"
-              >
-                <span class="sr-only">{Text.t(:related_records)}</span>
-              </th>
-              <th
-                :for={{column, index} <- Enum.with_index(@model.columns)}
-                id={"#{@id}-head-#{column.name}"}
-                role="columnheader"
-                scope="col"
-                aria-colindex={Parts.Common.colindex(index, @lead)}
-                aria-label={column.label}
+            <th
+              :if={@selecting}
+              {Attrs.header("#{@id}-select-head", "1", %{"data-select-page" => @selecting == :multi})}
+              class="w-0"
+            >
+              <input
+                :if={@selecting == :multi}
+                type="checkbox"
                 tabindex="-1"
-                {Attrs.column_header(@id, column, @state.sort, @model.sticky_label? and column == @label_column, @myself)}
-                class={[
-                  "relative whitespace-nowrap",
-                  column.sortable? && "cursor-pointer select-none"
-                ]}
-                phx-no-format
-              >{column.label}<span :if={column.sortable?} aria-hidden="true">{sort_mark(@state.sort, column)}</span><.resizer id={"#{@id}-resize-#{column.name}"} column={column} /></th>
-              <th
-                :if={@acting?}
-                {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
-                class="whitespace-nowrap"
-              >
-                {Text.t(:actions)}
-              </th>
-            </tr>
-            <tr {Attrs.row("#{@id}-filter-row", "2")}>
-              <td :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")}>
-              </td>
-              <td :if={@expandable?} {Attrs.gridcell("#{@id}-expander-filter", @lead)}>
-              </td>
-              <td
-                :for={{column, index} <- Enum.with_index(@model.columns)}
+                aria-label={Text.t(:select_page)}
+                class={["checkbox checkbox-xs block", Parts.Editors.box_edge()]}
+              />
+              <span :if={@selecting == :single} class="sr-only">{Text.t(:select_row)}</span>
+            </th>
+            <th
+              :if={@expandable?}
+              {Attrs.header("#{@id}-expander-head", @lead)}
+              class="w-0"
+            >
+              <span class="sr-only">{Text.t(:related_records)}</span>
+            </th>
+            <th
+              :for={{column, index} <- Enum.with_index(@model.columns)}
+              id={"#{@id}-head-#{column.name}"}
+              role="columnheader"
+              scope="col"
+              aria-colindex={Parts.Common.colindex(index, @lead)}
+              aria-label={column.label}
+              tabindex="-1"
+              {Attrs.column_header(@id, column, @state.sort, @model.sticky_label? and column == @label_column, @myself)}
+              class={[
+                "relative whitespace-nowrap",
+                column.sortable? && "cursor-pointer select-none"
+              ]}
+              phx-no-format
+            >{column.label}<span :if={column.sortable?} aria-hidden="true">{sort_mark(@state.sort, column)}</span><.resizer id={"#{@id}-resize-#{column.name}"} column={column} /></th>
+            <th
+              :if={@acting?}
+              {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
+              class="whitespace-nowrap"
+            >
+              {Text.t(:actions)}
+            </th>
+          </tr>
+          <tr {Attrs.row("#{@id}-filter-row", "2")}>
+            <td :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")}></td>
+            <td :if={@expandable?} {Attrs.gridcell("#{@id}-expander-filter", @lead)}></td>
+            <td
+              :for={{column, index} <- Enum.with_index(@model.columns)}
+              id={"#{@id}-filter-#{column.name}"}
+              role="gridcell"
+              aria-colindex={Parts.Common.colindex(index, @lead)}
+              tabindex="-1"
+              data-filter={column.operators != []}
+            >
+              <Parts.Filter.filter
+                :if={column.operators != []}
                 id={"#{@id}-filter-#{column.name}"}
-                role="gridcell"
-                aria-colindex={Parts.Common.colindex(index, @lead)}
-                tabindex="-1"
-                data-filter={column.operators != []}
-              >
-                <Parts.Filter.filter
-                  :if={column.operators != []}
-                  id={"#{@id}-filter-#{column.name}"}
-                  table={@id}
-                  form={"#{@id}-filters"}
-                  column={column}
-                  filter={Parts.Filter.shown_filter(@rejected, @pending, @state, column.name)}
-                  rejected?={is_map_key(@rejected, column.name)}
-                  applied?={is_map_key(@state.filters, column.name)}
-                  target={@myself}
-                />
-              </td>
-              <td :if={@acting?} {Attrs.gridcell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}>
-              </td>
-            </tr>
-          </thead>
-          <%!-- Written without whitespace on purpose: every byte of a row is sent again
+                table={@id}
+                form={"#{@id}-filters"}
+                column={column}
+                filter={Parts.Filter.shown_filter(@rejected, @pending, @state, column.name)}
+                rejected?={is_map_key(@rejected, column.name)}
+                applied?={is_map_key(@state.filters, column.name)}
+                target={@myself}
+              />
+            </td>
+            <td
+              :if={@acting?}
+              {Attrs.gridcell("#{@id}-actions-filter", length(@model.columns) + @lead + 1)}
+            >
+            </td>
+          </tr>
+        </thead>
+        <%!-- Written without whitespace on purpose: every byte of a row is sent again
           whenever the row is, and a cell's text must not be padded. An item of the
           stream is a row or, after its row, the row's detail (see "Nested tables"
           at the top). --%>
-          <tbody
-            :for={{dom_id, row} <- @rows}
-            id={dom_id}
-            role="rowgroup"
-            {Attrs.rowgroup(row, @selecting)}
-            phx-no-format
-          ><Parts.Related.lines
+        <tbody
+          :for={{dom_id, row} <- @rows}
+          id={dom_id}
+          role="rowgroup"
+          {Attrs.rowgroup(row, @selecting)}
+          phx-no-format
+        ><Parts.Related.lines
               :if={Attrs.detail?(row) && row.lines}
               id={@id}
               row={row}
@@ -784,104 +717,103 @@ defmodule AshDataTable.Parts.Grid do
               {Attrs.action(action, @asks?)}
               class="btn btn-xs -my-1 me-1"
             >{action.label}</button>{action_failure("#{dom_id}-a", row)}</td></tr></tbody>
-          <%!-- The pages of a nested table are a last row of its grid: reached with
+        <%!-- The pages of a nested table are a last row of its grid: reached with
           the arrow keys and entered with Enter, as a filter is, and no tab stop in the
           middle of the grid around it. The element stays where it is once it is there,
           as every child of a stream's container with an id does. --%>
-          <%!-- In the text of the table: the range reads as it does under a table
+        <%!-- In the text of the table: the range reads as it does under a table
           on a page, not as a footer's heading. What the two rows hold stays at
           the left edge of the table's scroll area, as what a line holds does. --%>
-          <tfoot
-            :if={@nested? or @summarised?}
-            id={"#{@id}-foot"}
-            class="font-normal text-base-content"
-            hidden={
-              not (@summarised? and not is_nil(@page)) and
-                not (@nested? and
-                       (Parts.Pagination.pages?(@page, @model) or
-                          Parts.Related.full_view?(@page, @full_view)))
-            }
+        <tfoot
+          :if={@nested? or @summarised?}
+          id={"#{@id}-foot"}
+          class="font-normal text-base-content"
+          hidden={
+            not (@summarised? and not is_nil(@page)) and
+              not (@nested? and
+                     (Parts.Pagination.pages?(@page, @model) or
+                        Parts.Related.full_view?(@page, @full_view)))
+          }
+        >
+          <Parts.Summary.summaries
+            acting?={@acting?}
+            expandable?={@expandable?}
+            id={@id}
+            lead={@lead}
+            model={@model}
+            page={@page}
+            selecting={@selecting}
+            summarised?={@summarised?}
+            summary={@summary}
+            summing?={@summing?}
+            time_zone={@time_zone}
+          />
+          <tr
+            :if={@nested? and Parts.Pagination.pages?(@page, @model)}
+            {Attrs.row("#{@id}-foot-row")}
           >
-            <Parts.Summary.summaries
-              acting?={@acting?}
-              expandable?={@expandable?}
-              id={@id}
-              lead={@lead}
-              model={@model}
-              page={@page}
-              selecting={@selecting}
-              summarised?={@summarised?}
-              summary={@summary}
-              summing?={@summing?}
-              time_zone={@time_zone}
-            />
-            <tr
-              :if={@nested? and Parts.Pagination.pages?(@page, @model)}
-              {Attrs.row("#{@id}-foot-row")}
-            >
-              <td {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}>
-                <Parts.Pagination.pagination
-                  id={@id}
-                  nested?={true}
-                  page={@page}
-                  model={@model}
-                  state={@state}
-                  row_count={@row_count}
-                  label={@label}
-                  target={@myself}
-                />
-              </td>
-            </tr>
-            <Parts.Related.full_view
-              acting?={@acting?}
-              full_view={@full_view}
-              id={@id}
-              label={@label}
-              lead={@lead}
-              model={@model}
-              nested?={@nested?}
-              page={@page}
-            />
-          </tfoot>
-        </table>
-        <%!-- One editor per editable column. The hook opens a copy of it in the
+            <td {Attrs.spanning("#{@id}-pager", Attrs.colcount(@model, @lead, @acting?), %{"data-pager" => true})}>
+              <Parts.Pagination.pagination
+                id={@id}
+                nested?={true}
+                page={@page}
+                model={@model}
+                state={@state}
+                row_count={@row_count}
+                label={@label}
+                target={@myself}
+              />
+            </td>
+          </tr>
+          <Parts.Related.full_view
+            acting?={@acting?}
+            full_view={@full_view}
+            id={@id}
+            label={@label}
+            lead={@lead}
+            model={@model}
+            nested?={@nested?}
+            page={@page}
+          />
+        </tfoot>
+      </table>
+      <%!-- One editor per editable column. The hook opens a copy of it in the
         cell being edited; which cell that is, the server never knows. A
         reference column has an empty one: its cells are edited in the picker,
         which the hook asks for. So has the column of a map cell, which is
         edited in the side panel. --%>
-        <template
-          :for={column <- @model.columns}
-          :if={column.editable?}
+      <template
+        :for={column <- @model.columns}
+        :if={column.editable?}
+        id={"#{@id}-editor-#{column.name}"}
+        data-editor={Attrs.editor_kind(column)}
+        data-commit={column.editor == :component && column.component.commit}
+        data-confirm={column.confirm}
+      >
+        <.editor
+          :if={column.editor not in [:reference, :group, :groups, :union]}
           id={"#{@id}-editor-#{column.name}"}
-          data-editor={Attrs.editor_kind(column)}
-          data-commit={column.editor == :component && column.component.commit}
-          data-confirm={column.confirm}
-        >
-          <.editor
-            :if={column.editor not in [:reference, :group, :groups, :union]}
-            id={"#{@id}-editor-#{column.name}"}
-            column={column}
-            allow_nil?={allow_nil?(@model.resource, column)}
-          />
-        </template>
-        <Parts.Messages.failure
-          acting?={@acting?}
-          editing?={@editing?}
-          id={@id}
+          column={column}
+          allow_nil?={allow_nil?(@model.resource, column)}
         />
-      </div>
+      </template>
+      <Parts.Messages.failure
+        acting?={@acting?}
+        editing?={@editing?}
+        id={@id}
+      />
+    </div>
     <%!-- The scrollbar of the grid once more, for when the grid's own is
     below the window: the hook shows it at the bottom edge of the window, as
     wide as the grid, and keeps the two together. For the pointer alone: no
     tab stop, and nothing a screen reader is told of, as the grid scrolls
     with the focus. Patches leave it as the hook has it. --%>
     <div
-      phx-no-format
       {Attrs.scrollbar(@id)}
       class="fixed z-10 overflow-x-scroll overflow-y-hidden"
     >
-        <div class="h-px"></div>
-      </div>
+      <div class="h-px"></div>
+    </div>
     """
   end
 
@@ -890,9 +822,77 @@ defmodule AshDataTable.Parts.Grid do
   # `--ash-data-table-ground` and `--ash-data-table-line` where a host sets
   # them, else these (the ground behind the cells that stay in view, the
   # edge beside them).
-  def root do
-    "ash-data-table [--ash-data-table-default-ground:var(--color-base-100)] [--ash-data-table-default-line:var(--color-base-content)]"
-  end
+  #
+  # And the look of every grid inside it, the nested tables' and the
+  # pickers' tables' too, which are drawn inside this root: written once
+  # here, on the grid's markers (`role=grid`, `role=rowgroup`, `role=row`,
+  # `role=gridcell`, `data-lines`, `aria-invalid`, …), not on every grid,
+  # so that an opened nested table or picker sends none of it (the design
+  # note of stage 7, D6). A rule about a grid's own cells reaches them
+  # through its row groups and rows (`>`), so that a nested table, which
+  # stands in a cell, is not one of them. Written out in full, as Tailwind
+  # finds a class only as it is written in the source.
+  @root Enum.join(
+          [
+            "ash-data-table",
+            "[--ash-data-table-default-ground:var(--color-base-100)] [--ash-data-table-default-line:var(--color-base-content)]",
+            # the focus ring, which a cell keeps while its editor has the focus. In
+            # the text colour: the one colour a theme promises to be seen on its
+            # background, which its brand colour need not be.
+            "[&_:is([role=gridcell],[role=columnheader]):focus]:outline-2 [&_:is([role=gridcell],[role=columnheader]):focus]:-outline-offset-2 [&_:is([role=gridcell],[role=columnheader]):focus]:outline-base-content",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested]):focus-within]:outline-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested]):focus-within]:-outline-offset-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested]):focus-within]:outline-base-content",
+            # A cell whose save is on its way, and the rows of a table that is
+            # reading: dimmed, and no further than text may be. The header and the
+            # filters are not dimmed, as they can be used meanwhile and are muted
+            # already; nor is a nested table, which is not what is reading.
+            "[&_[role=gridcell][aria-busy]]:opacity-70 [&_[role=grid][aria-busy]>[role=rowgroup]>[role=row]>[role=gridcell]:not([data-nested])]:opacity-70",
+            # A cell whose save or action failed: a ring and a mark, both drawn by
+            # the cell's style, so that they add nothing to a row's markup. The ring
+            # is a border, which forced colours keep and a shadow they do not, in
+            # the error colour mixed with the text colour, so that it is seen on the
+            # background in a theme whose error colour alone is not. With focus it
+            # moves inside the focus ring, and both show.
+            "[&_[role=gridcell][aria-invalid]]:relative [&_[role=gridcell][aria-invalid]]:before:pointer-events-none [&_[role=gridcell][aria-invalid]]:before:absolute [&_[role=gridcell][aria-invalid]]:before:inset-0 [&_[role=gridcell][aria-invalid]]:before:border-2 [&_[role=gridcell][aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&_[role=gridcell][aria-invalid]]:before:content-['']",
+            "[&_[role=gridcell][aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px]",
+            # The mark is what says "failed" without a colour: a "!" in the cell's
+            # padding at its end, in the text colour. It is for the eye only (the
+            # empty alternative text): the cell says the same with `aria-invalid`.
+            "[&_[role=gridcell][aria-invalid]]:after:absolute [&_[role=gridcell][aria-invalid]]:after:end-2 [&_[role=gridcell][aria-invalid]]:after:top-1/2 [&_[role=gridcell][aria-invalid]]:after:-translate-y-1/2 [&_[role=gridcell][aria-invalid]]:after:leading-none [&_[role=gridcell][aria-invalid]]:after:font-bold [&_[role=gridcell][aria-invalid]]:after:content-['!'_/_'']",
+            # one line per row: long text is cut off, not wrapped. Not in a cell
+            # that spans the table: a line, or the cell a nested table is in.
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([colspan],[data-actions])]:max-w-80 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:not([colspan],[data-actions])]:truncate [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-actions]]:whitespace-nowrap",
+            # But for the cells of a column that says `max_lines`: their text is
+            # in a paragraph that wraps, keeps the line breaks of the value and is
+            # cut off after that many lines (`data-lines` on the cell). The row is
+            # as high as its highest cell. A word longer than the column breaks.
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]]:whitespace-normal [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:min-w-40 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:break-words [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:whitespace-pre-line",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='2']>[data-paragraph]]:line-clamp-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='3']>[data-paragraph]]:line-clamp-3 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='4']>[data-paragraph]]:line-clamp-4 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='5']>[data-paragraph]]:line-clamp-5 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='6']>[data-paragraph]]:line-clamp-6 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='7']>[data-paragraph]]:line-clamp-7 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='8']>[data-paragraph]]:line-clamp-8 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='9']>[data-paragraph]]:line-clamp-9 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='10']>[data-paragraph]]:line-clamp-10",
+            # the expander of a row and the button of a line (which is in the
+            # element of its cell that stays in view). Their mark is a
+            # triangle drawn in CSS, not a character: it turns about its own
+            # centre, so it sits in the same place open and closed.
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:cursor-pointer [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-expander]]:w-0 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-expander]>button]:px-1",
+            # the box that selects a row: its cell as narrow as the box, and
+            # the box in the middle of it
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-selector]]:w-0 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-selector]>input]:block",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:inline-block [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:size-0 [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:content-['']",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-y-transparent [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-current",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:transition-transform [&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded=true]]:before:rotate-90",
+            # forced colours would fill the two transparent sides of the triangle
+            # and make it a square, which looks the same open and closed
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
+            # a line's mark stands under its row's
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-line]_button[aria-expanded]]:ps-1 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-line]_button[aria-expanded]]:before:me-2",
+            # the create button on a line, and the buttons of the nested table's
+            # table actions, once the nested table under it has read: found by
+            # the table's own marker of its portal, whatever LiveView wraps it in
+            "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-create]]:inline-flex",
+            "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-table-action]]:inline-flex"
+          ],
+          " "
+        )
+
+  def root, do: @root
 
   # The columns a person can hide, in the table's order: every column but the
   # one a record is called by, the attribute of the resource's `label_field`,

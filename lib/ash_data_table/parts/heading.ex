@@ -52,9 +52,6 @@ defmodule AshDataTable.Parts.Heading do
     """
   end
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :heading, :any, required: true
   attr :id, :any, required: true
   attr :label, :any, required: true
@@ -76,27 +73,26 @@ defmodule AshDataTable.Parts.Heading do
         not @nested? and
           (@heading || (@page && (@model.create || @offered != []) && is_nil(@related)))
       }
-      phx-no-format
       id={"#{@id}-header"}
       class="mb-4 flex min-h-8 items-center justify-between gap-2"
     >
-        <.dynamic_tag
-          :if={@heading}
-          tag_name={if is_integer(@heading), do: "h#{@heading}", else: "div"}
-          id={"#{@id}-name"}
-          class="text-lg font-semibold"
-        >
-          {@label}
-        </.dynamic_tag>
-        <%!-- not beside an error: a table that could not read offers nothing --%>
-        <div
-          :if={@page && (@model.create || @offered != []) && is_nil(@related)}
-          class="ms-auto flex flex-wrap items-center justify-end gap-2"
-        >
-          <.create :if={@model.create} id={@id} action={@model.create} target={@myself} />
-          <.table_actions id={@id} actions={@offered} target={@myself} />
-        </div>
+      <.dynamic_tag
+        :if={@heading}
+        tag_name={if is_integer(@heading), do: "h#{@heading}", else: "div"}
+        id={"#{@id}-name"}
+        class="text-lg font-semibold"
+      >
+        {@label}
+      </.dynamic_tag>
+      <%!-- not beside an error: a table that could not read offers nothing --%>
+      <div
+        :if={@page && (@model.create || @offered != []) && is_nil(@related)}
+        class="ms-auto flex flex-wrap items-center justify-end gap-2"
+      >
+        <.create :if={@model.create} id={@id} action={@model.create} target={@myself} />
+        <.table_actions id={@id} actions={@offered} target={@myself} />
       </div>
+    </div>
     """
   end
 end

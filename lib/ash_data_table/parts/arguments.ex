@@ -215,9 +215,6 @@ defmodule AshDataTable.Parts.Arguments do
   defp argument_type(editor) when editor in [:text, :plain], do: "text"
   defp argument_type(editor), do: Parts.Editors.input_type(editor)
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :id, :any, required: true
   attr :lines, :any, required: true
   attr :model, :any, required: true
@@ -240,7 +237,6 @@ defmodule AshDataTable.Parts.Arguments do
     held back, by the hook (`UNREADABLE`). --%>
     <form
       :if={@model.arguments != []}
-      phx-no-format
       id={"#{@id}-arguments"}
       phx-change={Parts.Common.event(@id, "arguments")}
       phx-submit={Parts.Common.event(@id, "arguments")}
@@ -252,23 +248,26 @@ defmodule AshDataTable.Parts.Arguments do
         if(@nested?, do: "px-4 py-2", else: "mb-2")
       ]}
     >
-        <.argument
-          :for={argument <- @model.arguments}
-          id={"#{@id}-arg-#{Model.Argument.argument_id(argument)}"}
-          named={Model.Argument.argument_id(argument)}
-          name={argument_name(argument)}
-          argument={argument}
-          value={Map.get(@lines, Model.Argument.key(argument)) || Model.Argument.shown(argument, @state, @refused)}
-          errors={
-            case @refused[Model.Argument.key(argument)] do
-              nil -> []
-              %{messages: messages} -> messages
-            end
-          }
-          target={@myself}
-          table={@id}
-        />
-      </form>
+      <.argument
+        :for={argument <- @model.arguments}
+        id={"#{@id}-arg-#{Model.Argument.argument_id(argument)}"}
+        named={Model.Argument.argument_id(argument)}
+        name={argument_name(argument)}
+        argument={argument}
+        value={
+          Map.get(@lines, Model.Argument.key(argument)) ||
+            Model.Argument.shown(argument, @state, @refused)
+        }
+        errors={
+          case @refused[Model.Argument.key(argument)] do
+            nil -> []
+            %{messages: messages} -> messages
+          end
+        }
+        target={@myself}
+        table={@id}
+      />
+    </form>
     """
   end
 

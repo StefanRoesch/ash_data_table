@@ -175,9 +175,6 @@ defmodule AshDataTable.Parts.Related do
   # the destination's table, and the nested table has been read.
   def full_view?(page, full_view), do: not is_nil(page) and not is_nil(full_view)
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :acting?, :any, required: true
   attr :full_view, :any, required: true
   attr :id, :any, required: true
@@ -193,21 +190,20 @@ defmodule AshDataTable.Parts.Related do
     for the same reason: reached with the arrow keys and followed with Enter. --%>
     <tr
       :if={@nested? and full_view?(@page, @full_view)}
-      phx-no-format
       {Attrs.row("#{@id}-view-row")}
     >
-              <td {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}>
-                <.link
-                  id={"#{@id}-full-view"}
-                  navigate={@full_view}
-                  tabindex="-1"
-                  aria-label={Text.t(:full_view_of, table: @label)}
-                  class="link sticky left-4 text-sm"
-                >
-                  {Text.t(:full_view)}
-                </.link>
-              </td>
-            </tr>
+      <td {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}>
+        <.link
+          id={"#{@id}-full-view"}
+          navigate={@full_view}
+          tabindex="-1"
+          aria-label={Text.t(:full_view_of, table: @label)}
+          class="link sticky left-4 text-sm"
+        >
+          {Text.t(:full_view)}
+        </.link>
+      </td>
+    </tr>
     """
   end
 end

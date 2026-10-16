@@ -240,9 +240,6 @@ defmodule AshDataTable.Parts.Filter do
 
   defp operator_text(operator), do: Text.t(String.to_existing_atom("operator_#{operator}"))
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :id, :any, required: true
   attr :myself, :any, required: true
 
@@ -251,13 +248,12 @@ defmodule AshDataTable.Parts.Filter do
     <%!-- The form of the filter row. A form cannot sit inside a table around
     its cells, so the controls name it instead. --%>
     <form
-      phx-no-format
       id={"#{@id}-filters"}
       phx-change={Parts.Common.event(@id, "filter")}
       phx-submit={Parts.Common.event(@id, "filter")}
       phx-target={@myself}
     >
-      </form>
+    </form>
     """
   end
 end

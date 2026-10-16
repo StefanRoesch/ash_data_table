@@ -106,9 +106,6 @@ defmodule AshDataTable.Parts.Selection do
     """
   end
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :bulk, :any, required: true
   attr :choose, :any, required: true
   attr :id, :any, required: true
@@ -128,51 +125,48 @@ defmodule AshDataTable.Parts.Selection do
     it at one end, "Clear filters" and "Columns" at the other. As high as a
     button, so that the table does not move when one of them appears; a nested
     table keeps no room free for it. --%>
-    <div
-      phx-no-format
-      class={[
-        "flex flex-wrap items-center gap-2",
-        if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-between")
-      ]}
-    >
-        <.selection
-          :if={@selecting == :multi}
-          id={@id}
-          page={@page}
-          row_count={@row_count}
-          choose?={not is_nil(@choose)}
-          bulk={@bulk}
-          running?={not is_nil(@running)}
-        />
-        <Parts.Messages.notice
-          id={@id}
-          myself={@myself}
-          nested?={@nested?}
-          notice?={@notice?}
-        />
-        <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
-        <button
-          :if={@state.filters != %{}}
-          type="button"
-          id={"#{@id}-clear-filters"}
-          tabindex={@nested? && "-1"}
-          class={["btn btn-sm", not @nested? && "ms-auto"]}
-          phx-click={
-            JS.push(Parts.Common.event(@id, "clear_filters"), target: @myself)
-            |> JS.focus(to: "##{@id}-table [tabindex='0']")
-          }
-        >
-          {Text.t(:clear_filters)}
-        </button>
-        <Parts.Grid.columns
-          :if={length(@model.columns) > 1 and Parts.Grid.hideable(@model) != []}
-          id={@id}
-          columns={Parts.Grid.hideable(@model)}
-          keeps_one?={Model.keeps_one?(@model)}
-          state={@state}
-          class={not @nested? and @state.filters == %{} and "ms-auto"}
-        />
-      </div>
+    <div class={[
+      "flex flex-wrap items-center gap-2",
+      if(@nested?, do: "justify-start", else: "mb-2 min-h-8 justify-between")
+    ]}>
+      <.selection
+        :if={@selecting == :multi}
+        id={@id}
+        page={@page}
+        row_count={@row_count}
+        choose?={not is_nil(@choose)}
+        bulk={@bulk}
+        running?={not is_nil(@running)}
+      />
+      <Parts.Messages.notice
+        id={@id}
+        myself={@myself}
+        nested?={@nested?}
+        notice?={@notice?}
+      />
+      <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
+      <button
+        :if={@state.filters != %{}}
+        type="button"
+        id={"#{@id}-clear-filters"}
+        tabindex={@nested? && "-1"}
+        class={["btn btn-sm", not @nested? && "ms-auto"]}
+        phx-click={
+          JS.push(Parts.Common.event(@id, "clear_filters"), target: @myself)
+          |> JS.focus(to: "##{@id}-table [tabindex='0']")
+        }
+      >
+        {Text.t(:clear_filters)}
+      </button>
+      <Parts.Grid.columns
+        :if={length(@model.columns) > 1 and Parts.Grid.hideable(@model) != []}
+        id={@id}
+        columns={Parts.Grid.hideable(@model)}
+        keeps_one?={Model.keeps_one?(@model)}
+        state={@state}
+        class={not @nested? and @state.filters == %{} and "ms-auto"}
+      />
+    </div>
     """
   end
 end

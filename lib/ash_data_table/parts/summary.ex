@@ -41,9 +41,6 @@ defmodule AshDataTable.Parts.Summary do
   defp summary_text(:min), do: :summary_min
   defp summary_text(:max), do: :summary_max
 
-  # Its markup keeps the indentation it had in the table component's
-  # `render/1`, held by `phx-no-format`, so that the text in it, and with it
-  # the page, is the same byte for byte.
   attr :acting?, :any, required: true
   attr :expandable?, :any, required: true
   attr :id, :any, required: true
@@ -65,44 +62,43 @@ defmodule AshDataTable.Parts.Summary do
     "Footer summaries" at the top. --%>
     <tr
       :if={@summarised? and @page}
-      phx-no-format
       {Attrs.summaries(@id, @page)}
     >
-              <td
-                :if={@selecting}
-                id={"#{@id}-summaries-select"}
-                role="gridcell"
-                aria-colindex="1"
-                tabindex="-1"
-              >
-              </td>
-              <td
-                :if={@expandable?}
-                id={"#{@id}-summaries-expander"}
-                role="gridcell"
-                aria-colindex={@lead}
-                tabindex="-1"
-              >
-              </td>
-              <td
-                :for={{column, index} <- Enum.with_index(@model.columns)}
-                id={"#{@id}-summary-#{column.name}"}
-                role="gridcell"
-                aria-colindex={Parts.Common.colindex(index, @lead)}
-                tabindex="-1"
-                {Attrs.summary(column, @summing?)}
-                class="whitespace-nowrap"
-                phx-no-format
-              ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} time_zone={@time_zone} /></td>
-              <td
-                :if={@acting?}
-                id={"#{@id}-summaries-actions"}
-                role="gridcell"
-                aria-colindex={length(@model.columns) + @lead + 1}
-                tabindex="-1"
-              >
-              </td>
-            </tr>
+      <td
+        :if={@selecting}
+        id={"#{@id}-summaries-select"}
+        role="gridcell"
+        aria-colindex="1"
+        tabindex="-1"
+      >
+      </td>
+      <td
+        :if={@expandable?}
+        id={"#{@id}-summaries-expander"}
+        role="gridcell"
+        aria-colindex={@lead}
+        tabindex="-1"
+      >
+      </td>
+      <td
+        :for={{column, index} <- Enum.with_index(@model.columns)}
+        id={"#{@id}-summary-#{column.name}"}
+        role="gridcell"
+        aria-colindex={Parts.Common.colindex(index, @lead)}
+        tabindex="-1"
+        {Attrs.summary(column, @summing?)}
+        class="whitespace-nowrap"
+        phx-no-format
+      ><.summary :if={column.summary} column={column} summary={@summary && @summary[column.name]} time_zone={@time_zone} /></td>
+      <td
+        :if={@acting?}
+        id={"#{@id}-summaries-actions"}
+        role="gridcell"
+        aria-colindex={length(@model.columns) + @lead + 1}
+        tabindex="-1"
+      >
+      </td>
+    </tr>
     """
   end
 end
