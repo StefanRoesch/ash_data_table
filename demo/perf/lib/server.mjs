@@ -4,11 +4,27 @@
 import { spawn } from "node:child_process"
 import { openSync } from "node:fs"
 import path from "node:path"
+import { startWire } from "./wire.mjs"
 
 const DEMO = path.resolve(import.meta.dirname, "..", "..")
 
 export const PORT = Number(process.env.PERF_PORT ?? 4479)
 export const BASE = `http://127.0.0.1:${PORT}`
+
+/**
+ * With PERF_WIRE=1 the browser talks to a proxy on PORT that counts the bytes
+ * on the wire (lib/wire.mjs), and the server listens on PORT + 1.
+ */
+export const WIRE = process.env.PERF_WIRE === "1"
+const SERVER_PORT = WIRE ? PORT + 1 : PORT
+let wire = null
+
+/**
+ * The bytes the server has sent on LiveView WebSockets so far, as they went
+ * over the wire, and whether they are deflated; null without PERF_WIRE=1.
+ */
+export const wireReceived = () => wire?.received() ?? null
+export const wireDeflate = () => wire?.deflate() ?? null
 
 /** What the report prints as the command the server was started with. */
 export const serverCommand = (database) =>
@@ -19,14 +35,14 @@ export const serverCommand = (database) =>
  * function that stops it.
  */
 export async function startServer(database) {
-  if (await answers()) {
+  if ((await answers()) || (WIRE && (await answers(`http://127.0.0.1:${SERVER_PORT}`)))) {
     throw new Error(`something is already listening on ${BASE}; stop it, or set PERF_PORT`)
   }
 
   const log = openSync(path.join(import.meta.dirname, "..", "server.log"), "a")
   const child = spawn("mix", ["phx.server"], {
     cwd: DEMO,
-    env: { ...process.env, MIX_ENV: "perf", PERF_DB: database, PORT: String(PORT) },
+    env: { ...process.env, MIX_ENV: "perf", PERF_DB: database, PORT: String(SERVER_PORT) },
     stdio: ["ignore", log, log],
     // a process group of its own, so that all of it can be stopped
     detached: true,
@@ -35,7 +51,13 @@ export async function startServer(database) {
   let exited = false
   child.on("exit", () => (exited = true))
 
+  if (WIRE) {
+    wire = await startWire(PORT, SERVER_PORT, { deflate: process.env.PERF_WIRE_DEFLATE !== "0" })
+  }
+
   const stop = async () => {
+    await wire?.close()
+    wire = null
     if (exited) return
     process.kill(-child.pid, "SIGTERM")
     for (let i = 0; i < 100 && !exited; i++) await sleep(100)
@@ -55,9 +77,9 @@ export async function startServer(database) {
   throw new Error("the server did not answer within five minutes; see perf/server.log")
 }
 
-async function answers() {
+async function answers(base = BASE) {
   try {
-    await fetch(BASE, { signal: AbortSignal.timeout(2000) })
+    await fetch(base, { signal: AbortSignal.timeout(2000) })
     return true
   } catch {
     return false

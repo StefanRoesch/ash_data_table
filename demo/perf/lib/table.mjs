@@ -5,7 +5,7 @@
 // is not included. Frame sizes are those of the WebSocket text frames the
 // server sent, uncompressed.
 
-import { BASE, drainEvents, sleep } from "./server.mjs"
+import { BASE, drainEvents, sleep, wireReceived } from "./server.mjs"
 
 const ADMIN = "Ada Admin · admin · acme"
 
@@ -111,6 +111,7 @@ export class Table {
     await drainEvents()
     const receivedBefore = this.received.length
     const sentBefore = this.sent.length
+    const wireBefore = wireReceived()
 
     await this.page.evaluate(arm, argument)
     await act()
@@ -129,6 +130,8 @@ export class Table {
       frames_received: frames.length,
       bytes_received: frames.reduce((sum, bytes) => sum + bytes, 0),
       largest_frame_bytes: Math.max(0, ...frames),
+      // PERF_WIRE=1: the same frames as they went over the wire
+      wire_bytes_received: wireBefore === null ? null : wireReceived() - wireBefore,
       frames_sent: this.sent.length - sentBefore,
       server: await drainEvents(),
     }

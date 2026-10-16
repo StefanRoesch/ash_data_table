@@ -27,8 +27,11 @@ defmodule DemoWeb.Endpoint do
                   do: [:user_agent, session: @session_options],
                   else: [session: @session_options]
 
+  # `compress: true`: permessage-deflate on the LiveView socket. A table's
+  # patches repeat their markup, and deflate takes a page change to a fraction
+  # of its bytes (demo/perf, PERF_WIRE=1).
   socket "/live", Phoenix.LiveView.Socket,
-    websocket: [connect_info: @connect_info],
+    websocket: [compress: true, connect_info: @connect_info],
     longpoll: [connect_info: @connect_info]
 
   # Serve at "/" the static files from "priv/static" directory.

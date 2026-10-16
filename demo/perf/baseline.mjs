@@ -7,6 +7,8 @@
 //   PERF_PORT=4490 PERF_REPS=15 node baseline.mjs
 //   PERF_PAGE=/support/modes/embedded/tasks node baseline.mjs
 //   PERF_NOTIFIED=1 node baseline.mjs   also a save on /perf/notified (stage 6)
+//   PERF_WIRE=1 node baseline.mjs       also the bytes on the wire
+//   PERF_WIRE=1 PERF_WIRE_DEFLATE=0 node baseline.mjs   the same, uncompressed
 //
 // `PERF_PAGE` is the page measured, /tasks unless it is given: the same
 // table placed by the tag in a LiveView of the host's is
@@ -18,12 +20,21 @@
 // callbacks of the LiveView and the table (`handle_event`, a component's
 // `update`), Ash's reads and the database's statements. Run `./setup.sh`
 // first.
+//
+// The frames' bytes are those Playwright shows, inflated. With `PERF_WIRE=1`
+// the browser talks to the server through a proxy (lib/wire.mjs) that also
+// counts what the server sent on the wire: deflated when the browser and the
+// server agreed on permessage-deflate (`compress: true` on the endpoint's
+// socket), with the frames' headers. `PERF_WIRE_DEFLATE=0` keeps the browser
+// from offering it, so the same server answers uncompressed. Deflate keeps
+// its context from message to message, so a later message compresses
+// better than the first: compare runs in this script's order only.
 
 import { writeFileSync } from "node:fs"
 import os from "node:os"
 import path from "node:path"
 import { chromium } from "@playwright/test"
-import { BASE, sleep, startServer, versions } from "./lib/server.mjs"
+import { BASE, sleep, startServer, versions, wireDeflate } from "./lib/server.mjs"
 import { logIn, open, Table } from "./lib/table.mjs"
 
 const REPS = Number(process.env.PERF_REPS ?? 15)
@@ -116,6 +127,12 @@ function summary(runs) {
     median_bytes_received: median(of((run) => run.bytes_received)),
     bytes_received: [...new Set(of((run) => run.bytes_received))].sort((a, b) => a - b),
     frames_received: [...new Set(of((run) => run.frames_received))],
+    ...(runs[0].wire_bytes_received === null
+      ? {}
+      : {
+          median_wire_bytes_received: median(of((run) => run.wire_bytes_received)),
+          wire_bytes_received: [...new Set(of((run) => run.wire_bytes_received))].sort((a, b) => a - b),
+        }),
     median_callbacks_ms: round(median(of((run) => run.server.callbacks_us)) / 1000),
     median_ash_reads_ms: round(median(of((run) => run.server.ash_reads_us)) / 1000),
     median_database_ms: round(median(of((run) => run.server.database_us)) / 1000),
@@ -289,6 +306,7 @@ try {
     return run
   })
 
+  if (wireDeflate() !== null) results.wire = { permessage_deflate: wireDeflate() }
   await tasks.close()
 
   // ---- a cell save on a page that is told every event, gives a context and
