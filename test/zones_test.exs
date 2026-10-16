@@ -356,7 +356,7 @@ defmodule AshDataTable.ZonesTest do
         })
       end
 
-      on_exit(fn -> Ash.DataLayer.Ets.stop(Filtering) end)
+      on_exit(fn -> AshDataTable.Test.Ets.stop(Filtering) end)
       :ok
     end
 
