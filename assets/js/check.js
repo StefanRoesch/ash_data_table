@@ -7,7 +7,7 @@
 // of its own has to write. Nothing is checked otherwise.
 
 import {CELL, cellsOf} from "./grid/shared.js"
-import {DIALOG, OF, TABLE} from "./markers.js"
+import {DIALOG, OF, SENDER, TABLE} from "./markers.js"
 
 // What a hook's element lacks, as words, by the part it is.
 const lacks = {
@@ -18,6 +18,7 @@ const lacks = {
     if (!table) return [`an element ${TABLE} in its element`]
     const missing = []
     if (!hook.part("head")) missing.push(`its header (an element with the id ${hook.id}-head)`)
+    if (!document.querySelector(`${SENDER}[${OF}="${CSS.escape(hook.id)}"]`)) missing.push(`its sender (an element ${SENDER} that names its table)`)
     for (const row of hook.rows()) {
       for (const cell of cellsOf(row)) {
         if (!cell.hasAttribute("aria-colindex")) missing.push(`aria-colindex on the cell ${cell.id || `(${CELL})`}`)
@@ -30,13 +31,16 @@ const lacks = {
     return [[`${OF}`, hook.el.matches(`[${OF}]`)], [DIALOG, hook.el.matches(DIALOG)]]
       .filter(([, there]) => !there).map(([what]) => `${what} on its element`)
   },
+  sender(hook) {
+    return hook.el.matches(`[${OF}]`) ? [] : [`${OF} on its element`]
+  },
   pagination(hook) {
     return hook.el.matches(`[${OF}]`) ? [] : [`${OF} on its element`]
   }
 }
 
 // `part` is what the hook is: "grid", "dialog" (the action panel, the
-// picker) or "pagination".
+// picker), "sender" or "pagination".
 export function check(hook, part) {
   if (!hook.transport || !hook.transport.debug()) return
   for (const what of lacks[part](hook)) {

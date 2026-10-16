@@ -109,6 +109,7 @@ defmodule DemoWeb.E2E.MarkersLive do
           </div>
           <span id="kit-columns-status" role="status" phx-update="ignore"></span>
         </div>
+        <div id="kit-sender" phx-hook="AshDataTable.Sender" data-sender data-table="kit" hidden></div>
         <div
           id="kit-grid"
           phx-hook="AshDataTable.Grid"
@@ -218,6 +219,14 @@ defmodule DemoWeb.E2E.MarkersLive do
                     tabindex="-1"
                     data-nested
                   >
+                    <div
+                      id={"kit-row-#{key}-t-parts-sender"}
+                      phx-hook="AshDataTable.Sender"
+                      data-sender
+                      data-table={"kit-row-#{key}-t-parts"}
+                      hidden
+                    >
+                    </div>
                     <div
                       id={"kit-row-#{key}-t-parts-grid"}
                       phx-hook="AshDataTable.Grid"

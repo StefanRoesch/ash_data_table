@@ -33,6 +33,8 @@ export const DIALOG = "[role=dialog]"
 export const GRID = "[data-ash-data-table]"
 // the element of each hook names the table it is of, by its id
 export const OF = "data-table"
+// the element beside a grid whose hook pushes the grid's events
+export const SENDER = "[data-sender]"
 
 // ---- what a cell or row group is besides a cell of a column
 

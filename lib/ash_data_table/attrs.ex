@@ -25,7 +25,7 @@ defmodule AshDataTable.Attrs do
 
   @markers ~w(
     [role=grid] [role=rowgroup] [role=row] [role=gridcell] [role=columnheader] [role=dialog]
-    [data-ash-data-table] data-table
+    [data-ash-data-table] data-table [data-sender]
     [colspan] [data-selector] [data-select-page] [data-expander] [data-line] [data-nested]
     [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
     [data-current] [data-summaries]
@@ -64,6 +64,20 @@ defmodule AshDataTable.Attrs do
       "data-choose" => not is_nil(choose),
       "data-chosen-rows" => choose && selecting == :multi && held(chosen_rows(choose)),
       "tabindex" => "-1"
+    }
+  end
+
+  # The sender of the grid's events: an empty element beside the grid whose
+  # hook pushes the events the grid's hook sends, so that LiveView locks it,
+  # not the grid, while an event is on its way (see
+  # `assets/js/transport/live_view.js`). `data-table` names the table.
+  def sender(id) do
+    %{
+      "id" => "#{id}-sender",
+      "phx-hook" => "AshDataTable.Sender",
+      "data-sender" => true,
+      "data-table" => id,
+      "hidden" => true
     }
   end
 

@@ -559,7 +559,9 @@ defmodule AshDataTable.Parts.Grid do
     sideways in its own, a nested table as the table on the page (see
     "scrolling sideways" in the hook). A nested table that is scrolled to
     its end does not go on to scroll the table around it. Its attributes are
-    `AshDataTable.Attrs.grid/5`'s. --%>
+    `AshDataTable.Attrs.grid/5`'s. Before it the sender of its events,
+    which LiveView locks while one is on its way, in place of the grid. --%>
+    <div {Attrs.sender(@id)}></div>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose)}
       class={["overflow-x-auto outline-none", @nested? && "overscroll-x-contain"]}

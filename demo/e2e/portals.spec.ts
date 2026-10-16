@@ -352,17 +352,18 @@ test.describe("the table of a picker leaves with its picker", () => {
   })
 })
 
-// Stage 5 found that LiveView locks a hook's element while the hook's event
-// is answered, and keeps aside what comes for it meanwhile: a nested table's
-// cell inside a locked grid was not there when its portal moved. So no grid
-// is locked (`assets/js/transport/live_view.js`), and its hook keeps what a
-// person does in it. This holds back the answers of the server, as one
-// stream (what the server sends is not read), while the line of a row is
-// opened and then a cell of the grid is saved; then it lets them through in
-// their order: the line's answer, and the nested table with it, come while
-// the save, sent after the line, is still to be answered. The nested table
-// must arrive, and the save as well (the design note of stage 7, D19).
-test.describe("a grid takes what the server sends while one of its events is on its way", () => {
+// Stage 5 found that LiveView locks the element of a hook while the hook's
+// event is answered, and keeps aside what comes for it meanwhile: a nested
+// table's cell inside a locked grid was not there when its portal moved. So
+// the grid's events are pushed by its sender, an element beside the grid
+// (`assets/js/sender.js`), and the grid is never locked. This holds back
+// the answers of the server, as one stream (what the server sends is not
+// read), while the line of a row is opened and then a cell of the grid is
+// saved; then it lets them through in their order: the line's answer, with
+// the cell the nested table goes into, comes while the grid's own save is
+// still on its way. The nested table must arrive in its cell, and the save
+// as well (the design note of stage 7, D19).
+test.describe("a grid is never locked while one of its own events is on its way", () => {
   test("a nested table opened just before a save arrives while the save is still to be answered", async ({
     page,
     tasks,

@@ -1460,7 +1460,7 @@ defmodule AshDataTable do
   # The markup of one table, inside its root element: the table on the
   # page's, a nested table's in its portal, a picker's table in its dialog.
   #
-  # The four hooks at the end are JS files in the package, under
+  # The five hooks at the end are JS files in the package, under
   # `assets/js/` (`assets/js/index.js`). LiveView writes a colocated hook
   # into `_build/ENV/phoenix-colocated/ash_data_table/`, beside a link named
   # `node_modules` that `mix.exs` points at this package's `assets`
@@ -1645,6 +1645,11 @@ defmodule AshDataTable do
       // In the package: assets/js/picker.js
       import {Picker} from "../node_modules/js/index.js"
       export default Picker
+    </script>
+    <script :type={Phoenix.LiveView.ColocatedHook} name=".Sender">
+      // In the package: assets/js/sender.js
+      import {Sender} from "../node_modules/js/index.js"
+      export default Sender
     </script>
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Grid">
       // In the package: assets/js/grid/

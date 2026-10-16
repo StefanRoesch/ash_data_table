@@ -8,6 +8,8 @@
 interface Element {
   // the hook of a grid, on its element (grid/index.js, `mounted`)
   _ashDataTable?: any
+  // the hook of a grid's sender, on its element (sender.js, `mounted`)
+  _ashDataTableSender?: any
   focus(options?: FocusOptions): void
 }
 
