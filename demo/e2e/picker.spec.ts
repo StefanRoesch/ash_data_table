@@ -597,6 +597,10 @@ test.describe("choosing", () => {
       expect(names).toContain("Olga Outsider")
       for (const acme of ["Ada Admin", "Max Member", "Vera Viewer", "Kim Ernst"]) expect(names).not.toContain(acme)
       await tasks.press("Escape")
+      // the picker is gone, and has given the focus back to its cell, before
+      // another cell is used: it would take the focus back from there
+      await expect(tasks.picker).toHaveCount(0)
+      await expect(tasks.cell(key, "assignee")).toBeFocused()
 
       const projects = await openPicker(tasks, key, "project")
       // Globex has a "Mobile app" of its own: not the one of Acme
