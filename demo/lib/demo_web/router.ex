@@ -3,13 +3,6 @@ defmodule DemoWeb.Router do
 
   import AshDataTable.Router
 
-  # The browser tests' database transactions (`DemoWeb.E2E.Sandbox`, in the
-  # e2e environment only): the first hook of each live session they visit,
-  # so that the hooks after it read in the test's transaction.
-  @sandbox if Application.compile_env(:demo, :sql_sandbox, false),
-             do: [DemoWeb.E2E.Sandbox],
-             else: []
-
   pipeline :browser do
     plug :accepts, ["html"]
     plug :fetch_session
@@ -62,7 +55,7 @@ defmodule DemoWeb.Router do
 
     # The same actor and tenant on the socket. The table routes go in here.
     # The zone of the browser, for the datetimes of the tables (`DemoWeb.Zone`).
-    live_session :default, on_mount: @sandbox ++ [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
+    live_session :default, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
       live "/", HomeLive
       # Two tables placed in a LiveView of the demo's own.
       live "/dashboard", DashboardLive
@@ -317,7 +310,7 @@ defmodule DemoWeb.Router do
     scope "/e2e", DemoWeb.E2E do
       pipe_through :browser
 
-      live_session :e2e, on_mount: @sandbox ++ [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
+      live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
         live "/select", SelectLive
         live "/switch", SwitchLive
         live "/imports", ImportsLive

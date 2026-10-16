@@ -29,8 +29,8 @@ config :demo, Demo.Repo,
   queue_interval: 10_000
 
 # The endpoint has the plug `Phoenix.Ecto.SQL.Sandbox` (with `POST` and
-# `DELETE /sandbox`) and the live socket the user agent the plug's metadata
-# comes in, and the live sessions `DemoWeb.E2E.Sandbox` (see the router).
+# `DELETE /sandbox`), and the live socket the user agent the plug's metadata
+# comes in, which `DemoWeb.E2E.Sandbox` allows each LiveView with.
 config :demo, sql_sandbox: true
 
 # The port is set in config/runtime.exs from PORT; demo/e2e/server.sh and
@@ -44,7 +44,8 @@ config :demo, DemoWeb.Endpoint,
 # Mounts the routes of `e2e/server` (see the router).
 config :demo, e2e_routes: true
 
-# The sandbox's manual mode where the endpoint serves (`DemoWeb.E2E.Sandbox`),
+# The sandbox's manual mode where the endpoint serves, and every LiveView
+# allowed into its test's transaction (`DemoWeb.E2E.Sandbox`),
 # and what the page of a browser test sent its LiveViews, heard on the server
 # (`e2e/server/recorder.ex`, read by `Sent` in `e2e/support/fixtures.ts`).
 config :demo, e2e_children: [DemoWeb.E2E.Sandbox, DemoWeb.E2E.Recorder]
