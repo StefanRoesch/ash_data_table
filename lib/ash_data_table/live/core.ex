@@ -46,21 +46,12 @@ defmodule AshDataTable.Live.Core do
   # announced, each the action's type and the record's primary key, for the
   # table whose listener it is. It is looked at once this update is done
   # (`tidy/1`). A batch for a table that is no longer shown is dropped.
-  #
-  # The table that heard is rendered again with the details of its
-  # expanded rows: see `redetail/1`.
   def update(%{live: {:heard, id, batch}}, socket) do
     if Registry.known?(socket, id) do
-      socket =
-        socket
-        |> Registry.within(id, &put(&1, waiting: &1.assigns.table.entry.waiting ++ batch))
-        |> tidy()
-
       {:ok,
-       if(Registry.known?(socket, id),
-         do: Registry.within(socket, id, &Updates.redetail/1),
-         else: socket
-       )}
+       socket
+       |> Registry.within(id, &put(&1, waiting: &1.assigns.table.entry.waiting ++ batch))
+       |> tidy()}
     else
       {:ok, socket}
     end
@@ -145,15 +136,10 @@ defmodule AshDataTable.Live.Core do
     if Registry.known?(socket, id) do
       {:noreply, socket} =
         Registry.within(socket, id, fn socket ->
-          {:noreply, socket} =
-            case kind do
-              :bulk -> Bulk.handle_async(kind, result, socket)
-              _read_or_summary -> Reading.handle_async(kind, result, socket)
-            end
-
-          # the answer to the summaries renders the table again without any
-          # of its rows, as what a listener hands over does: see `redetail/1`
-          {:noreply, if(kind == :summary, do: Updates.redetail(socket), else: socket)}
+          case kind do
+            :bulk -> Bulk.handle_async(kind, result, socket)
+            _read_or_summary -> Reading.handle_async(kind, result, socket)
+          end
         end)
 
       {:noreply, tidy(socket)}

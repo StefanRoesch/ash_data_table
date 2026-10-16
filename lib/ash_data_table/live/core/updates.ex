@@ -214,21 +214,6 @@ defmodule AshDataTable.Live.Core.Updates do
   defp stay(socket, row),
     do: Core.put(socket, leaving: MapSet.delete(socket.assigns.table.entry.leaving, row))
 
-  # A table that is rendered again for what a listener handed over puts
-  # the details of its expanded rows into the stream again, with the nested
-  # tables in them. Those stay as they are, and read nothing for it. It is
-  # for the page as a test holds it (`Phoenix.LiveViewTest`), which makes
-  # the page anew from everything that was rendered, and so loses sight of
-  # a nested table that a later rendering of this table does not hold; a
-  # browser patches a nested table where it stands.
-  def redetail(socket) do
-    %{rows: rows, open: open} = socket.assigns.table.entry
-
-    Enum.reduce(open, socket, fn {key, lines}, socket ->
-      if lines != [] and is_map_key(rows, key), do: Reading.put_detail(socket, key), else: socket
-    end)
-  end
-
   # A row with its record as it was read again. What has failed in the row
   # is still shown, on the record as it is now.
   defp put_fresh(socket, key, record) do

@@ -171,7 +171,7 @@ grep -n '^  def\|^  defp' lib/ash_data_table/live/core.ex lib/ash_data_table/liv
 | `Core.Reading` | `settle`, `read`, footer summaries (`due`, `summarise`, `unsummed`), `read_opts`; `handle_async/3` of `:read` and `:summary`; showing a read (`unfilled`, `show`, `not_found`, `put_row`, rows through `Present.row/3`, `put_detail`, `put_failure`, `remove_row`, `announce`, `title_of`, `label`, `row_key`); `on/2` of `sort`, `filter`, `clear_filter`, `clear_filters`, `page`, `page_size` |
 | `Core.Url` | `on/2` of `arguments`, `argument_add`, `argument_remove`; `reargue`, `refilter`, `go` and the URL (`path`, `query_params`) |
 | `Core.Nesting` | `relate`, `build`, `nested_model`, `creates`; what a nested table and a picker's table are given (`nested_reader`, `picker_reader`); `on/2` of `expand`, `toggle`; `reconcile/1` (opens the nested tables and pickers' tables that are rendered, tells one again what changed, closes those no longer reached) and `children/2` |
-| `Core.Updates` | live updates: `listen`, `follow`, `working`, `refresh`, `leave`, `redetail`, `notice`; `on/2` of `left`, `read_again` |
+| `Core.Updates` | live updates: `listen`, `follow`, `working`, `refresh`, `leave`, `notice`; `on/2` of `left`, `read_again` |
 | `Core.Cells` | `on/2` of `save`, `clear`, `reveal`, `edit` (a map cell's panel), `discard`, `dismiss`; what came of a save or a reference cell's choice (`saved`, `referred`) |
 | `Core.Picker` | `on/2` of `pick`, `pick_input`, `picked`, `picker_cancel`, `panel_unpick`; the fields of the panel given by choosing (`choose_input`, `choose_inputs`, `entry`, `hold`), `picked_with` |
 | `Core.Panel` | `on/2` of `act`, `table_act`, `table_run`, `create` and the panel's events; `panel/3`, `open_act`, `errors`, `submit`/`submitted`, after a create or a run (`add_row`, `failed_panel`, `ran`, `run_table`, `done`) |
@@ -219,7 +219,7 @@ The component has one assign of its own, `table` (`AshDataTable.Table`), beside 
 
 - `start_async(:read, …)` in `Core.Reading.read/1`. The first read of a table on the page runs in place, so the first render has rows. Later reads, and every read of a nested table, run async with `busy?` set.
 - `start_async(:bulk, …)` in `Core.Bulk.start_bulk`, with the run `Operation.bulk/1` or `Operation.submit/1` hands back (`AshDataTable.Bulk.run/5`). Its outcome holds message terms; `Core.Bulk.handle_async(:bulk, …)` keeps them, each text once (`Text.counted/1`), and the part says them in this process.
-- `start_async(:summary, …)` in `Core.Reading.summarise/1`, which calls `AshDataTable.Query.summaries/4`: beside the read of the rows, never before them. `read/1`, `put_row`, `remove_row`, `add_row` and `follow` say that it is due (`due/2`); `tidy/1` starts it once. Its answer also runs `redetail/1`, for the page as a LiveView test holds it.
+- `start_async(:summary, …)` in `Core.Reading.summarise/1`, which calls `AshDataTable.Query.summaries/4`: beside the read of the rows, never before them. `read/1`, `put_row`, `remove_row`, `add_row` and `follow` say that it is due (`due/2`); `tidy/1` starts it once.
 - One stream per table, its name from the pool (`entry.stream`), configured with `dom_id`. An item is a row (`Present.row/3`, a `Present.Row`) or the detail under an expanded row (`detail`, a map with `detail?`). A new read resets it. `put_row` and `put_detail` insert one item; `remove_row` deletes a row and its detail. The server does not keep the records.
 
 ### Nested tables through portals
