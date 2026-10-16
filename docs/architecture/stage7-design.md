@@ -1,6 +1,6 @@
 # Stage 7: design note (markers, bundles, the kit, what opens, controlled mode widened)
 
-Status: **proposed, waiting for the owner.** Code references are of `6c0245b`. LiveView references are of the installed `phoenix_live_view` 1.2.12 under `demo/deps/phoenix_live_view/` (written `LV …`). The research is `ash_reference/headless-table-architecture.md` (written `R §n`, outside the repository). Names follow [target.md](target.md); words follow `CONTEXT.md`. The model for this note is [stage6-design.md](stage6-design.md).
+Status: **accepted by the owner on 2026-10-16, all as recommended (D1–D22).** Code references are of `6c0245b`. LiveView references are of the installed `phoenix_live_view` 1.2.12 under `demo/deps/phoenix_live_view/` (written `LV …`). The research is `ash_reference/headless-table-architecture.md` (written `R §n`, outside the repository). Names follow [target.md](target.md); words follow `CONTEXT.md`. The model for this note is [stage6-design.md](stage6-design.md).
 
 Stage 7 is the last stage of the refactor. It makes the look and the behaviour of every UI element replaceable against a contract that can be checked: the hooks find the table's elements by markers only, every element gets its markers from one place (`AshDataTable.Attrs`), a kit draws the parts, and a host can take over what opens (controlled mode) for every kind of thing that opens on the table on the page. The table stays "just an interface" to the resource: whatever a kit or a host draws, the inputs go back through `Operation`, and nothing sensitive reaches a part.
 
