@@ -20,10 +20,10 @@ import panel from "./panel.js"
 import picker from "./picker.js"
 import {hook} from "./transport/live_view.js"
 
-export const Grid = hook(grid)
-export const Pagination = hook(pagination)
-export const Panel = hook(panel)
-export const Picker = hook(picker)
+export const Grid = hook(grid, "grid")
+export const Pagination = hook(pagination, "pagination")
+export const Panel = hook(panel, "dialog")
+export const Picker = hook(picker, "dialog")
 
 export const hooks = {
   "AshDataTable.Grid": Grid,

@@ -283,8 +283,9 @@ defmodule DemoWeb.Router do
   # comments fail; a page whose tables let their rows be selected with
   # nothing to run on them; one whose table is given another actor while
   # it is open; one whose tables nested in each other take files; one
-  # whose tables are attached to it; one that offers "Open"; and one that
-  # draws a panel of its table itself.
+  # whose tables are attached to it; one that offers "Open"; one that
+  # draws a panel of its table itself; and a grid of `div`s that carries the
+  # table's markers and the grid's hook (stage 7a).
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -317,6 +318,7 @@ defmodule DemoWeb.Router do
         live "/attached", AttachedLive
         live "/opened", OpenedLive
         live "/controlled", ControlledLive
+        live "/markers", MarkersLive
       end
     end
   end

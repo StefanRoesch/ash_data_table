@@ -351,3 +351,53 @@ test.describe("the table of a picker leaves with its picker", () => {
     expect(await portals(page)).toEqual({ portals: 1, loose: 0 })
   })
 })
+
+// Stage 5 found that LiveView locks a hook's element while the hook's event
+// is answered, and keeps aside what comes for it meanwhile: a nested table's
+// cell inside a locked grid was not there when its portal moved. So no grid
+// is locked (`assets/js/transport/live_view.js`), and its hook keeps what a
+// person does in it. This holds back the answers of the server, as one
+// stream (what the server sends is not read), while the line of a row is
+// opened and then a cell of the grid is saved; then it lets them through in
+// their order: the line's answer, and the nested table with it, come while
+// the save, sent after the line, is still to be answered. The nested table
+// must arrive, and the save as well (the design note of stage 7, D19).
+test.describe("a grid takes what the server sends while one of its events is on its way", () => {
+  test("a nested table opened just before a save arrives while the save is still to be answered", async ({
+    page,
+    tasks,
+  }) => {
+    let holding = false
+    const held: Array<() => void> = []
+    await page.routeWebSocket(/\/live\/websocket/, (ws) => {
+      const server = ws.connectToServer()
+      server.onMessage((message) => {
+        if (holding) held.push(() => ws.send(message))
+        else ws.send(message)
+      })
+    })
+    await tasks.open()
+    const second = await tasks.rowKey(2)
+    await tasks.expand(FIRST)
+
+    holding = true
+    await tasks.line(FIRST, "comments").click()
+    const cell = tasks.cell(second, "title")
+    await cell.focus()
+    await tasks.press("Enter")
+    await expect(tasks.editor(cell)).toBeFocused()
+    await tasks.retype("Saved while a table opens")
+    await tasks.press("Enter")
+    // the save is on its way (the hook says so on the cell as it sends it),
+    // and neither it nor the line has been answered
+    await expect(cell).toHaveAttribute("aria-busy", "true")
+    await expect(tasks.nested(FIRST, "comments").grid).toHaveCount(0)
+
+    holding = false
+    for (const send of held.splice(0)) send()
+
+    await tasks.nested(FIRST, "comments").loaded()
+    await expect(cell).toHaveText("Saved while a table opens")
+    await expect(cell).not.toHaveAttribute("aria-busy")
+  })
+})

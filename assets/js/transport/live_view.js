@@ -10,11 +10,15 @@
 //     target.md Q4); the hooks name it plainly.
 //   on(event, handler)  hears an event the server sends (`push_event`).
 //   off(event)  stops hearing it.
+//   debug()  whether LiveView's client debug is on (`liveSocket.
+//     enableDebug()`, a hook's documented `this.liveSocket`): then the
+//     hooks check the markers they rely on (`check.js`).
 //
 // This module is internal: the names of the events and their payloads
 // are the table's own (S6), and a second transport, for another UI
 // technology, will say what of this is to be a seam.
 
+import {check} from "../check.js"
 import {GRID, OF} from "../markers.js"
 
 // The table a hook's element is of, which the element says (`data-table`).
@@ -62,18 +66,30 @@ export function liveView(hook) {
     off(event) {
       for (const ref of heard.get(event) || []) hook.removeHandleEvent(ref)
       heard.delete(event)
+    },
+
+    debug() {
+      return !!(hook.liveSocket && hook.liveSocket.isDebugEnabled())
     }
   }
 }
 
 // A LiveView hook made of one of the hooks of the table: the same
-// object, which has its transport before it is mounted.
-export function hook(behaviour) {
+// object, which has its transport before it is mounted, and checks its
+// markers after it is mounted and after every patch while the client
+// debug is on. `part` is what it is (see `check.js`).
+export function hook(behaviour, part) {
   return {
     ...behaviour,
     mounted() {
       this.transport = liveView(this)
-      return behaviour.mounted.call(this)
+      const mounted = behaviour.mounted.call(this)
+      check(this, part)
+      return mounted
+    },
+    updated() {
+      if (behaviour.updated) behaviour.updated.call(this)
+      check(this, part)
     }
   }
 }
