@@ -284,8 +284,9 @@ defmodule DemoWeb.Router do
   # nothing to run on them; one whose table is given another actor while
   # it is open; one whose tables nested in each other take files; one
   # whose tables are attached to it; one that offers "Open"; one that
-  # draws a panel of its table itself; and a grid of `div`s that carries the
-  # table's markers and the grid's hook (stage 7a).
+  # draws a panel of its table itself; a grid of `div`s that carries the
+  # table's markers and the grid's hook (stage 7a); and one whose saves wait
+  # until the test lets them go.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -306,6 +307,7 @@ defmodule DemoWeb.Router do
       delete "/tasks/:id", DemoWeb.E2E.DataController, :delete_task
       post "/comments/break", DemoWeb.E2E.DataController, :break_comments
       post "/comments/mend", DemoWeb.E2E.DataController, :mend_comments
+      post "/held/release", DemoWeb.E2E.HeldController, :release
     end
 
     scope "/e2e", DemoWeb.E2E do
@@ -319,6 +321,7 @@ defmodule DemoWeb.Router do
         live "/opened", OpenedLive
         live "/controlled", ControlledLive
         live "/markers", MarkersLive
+        live "/held", HeldLive
       end
     end
   end

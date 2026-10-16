@@ -112,6 +112,10 @@ export const TYPED = "textarea,input:is([type=text],[type=search],[type=tel],[ty
 // (`LINE`), the cell that holds a nested table (`NESTED`), …
 export const is = (node, marker) => node.matches(marker)
 
+// The attribute a marker of an attribute names (`[data-paragraph]` is
+// `data-paragraph`), for an element the hook writes the marker on.
+export const ATTRIBUTE = marker => marker.slice(1, -1)
+
 export const STEP = 10
 
 // The scrollbars at the bottom edge of the window (see "scrolling

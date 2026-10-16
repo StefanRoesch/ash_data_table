@@ -40,7 +40,7 @@ async function keysBy(table: Table, column: string, text: string): Promise<{ wit
 /** What a cell with several lines shows: its paragraph, measured. */
 async function paragraph(cell: Locator) {
   return cell.evaluate((td) => {
-    const p = td.querySelector(":scope > p")!
+    const p = td.querySelector(":scope > [data-paragraph]")!
     const style = getComputedStyle(p)
     return {
       lines: Math.round(p.clientHeight / parseFloat(style.lineHeight)),
@@ -118,6 +118,36 @@ test.describe("a column with `max_lines 3` (/comments/compact)", () => {
     await cell.focus()
     await expect(whole(table)).toBeVisible()
     expect(await text(whole(table))).toBe("Moved to the next sprint.")
+  })
+})
+
+// What the hook puts into a cell with several lines as its save goes out is
+// the paragraph the server draws, with its marker, and so cut off as that is.
+// The save waits on the server until the test lets it go (/e2e/held, whose
+// essays show up to three lines of their body and are edited).
+test.describe("a cell with several lines whose save is on its way (/e2e/held)", () => {
+  test("shows what was typed cut off after the column's lines, as the server's paragraph is", async ({ page }) => {
+    const table = new Table(page, "essay", "/e2e/held")
+    await table.open()
+    const cell = table.cell((await table.rowKeys())[0], "body")
+    await expect(cell).toHaveAttribute("data-lines", "3")
+    await cell.focus()
+    await table.press("Enter")
+    await expect(table.editor(cell)).toBeFocused()
+    const typed = "A long line of an essay that goes on. ".repeat(20).trim()
+    await table.retype(typed)
+    await table.press("Enter")
+
+    // the save is on its way, and waits on the server
+    await expect(cell).toHaveAttribute("aria-busy", "true")
+    expect(await text(cell)).toBe(typed)
+    expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true, clamp: "3", overflow: "hidden" })
+
+    const released = await page.request.post("/e2e/held/release")
+    expect(await released.json()).toEqual({ released: true })
+    await expect(cell).not.toHaveAttribute("aria-busy")
+    expect(await paragraph(cell)).toMatchObject({ lines: 3, cut: true, clamp: "3" })
+    expect(await text(cell)).toBe(typed)
   })
 })
 

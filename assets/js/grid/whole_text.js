@@ -4,7 +4,7 @@
 // puts together, and share its state through `this`.
 
 import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, ROW, SECRET, SELECTOR, PARAGRAPH, UNSEEN} from "../markers.js"
-import {is, WHOLE_FOCUS, WHOLE_POINTER, WHOLE_LEAVE} from "./shared.js"
+import {ATTRIBUTE, is, WHOLE_FOCUS, WHOLE_POINTER, WHOLE_LEAVE} from "./shared.js"
 
 export default {
   // A cell shows one line of its text, or as many as its column
@@ -58,10 +58,13 @@ export default {
   },
 
   // What a cell with several lines shows of a text that the hook
-  // puts into it: the paragraph the server would render.
+  // puts into it: the paragraph the server would render, with its
+  // marker (`PARAGRAPH`), which the rules of the table's look cut off
+  // after the column's lines and `cutIn` measures.
   textFor(cell, text) {
     if (cell.dataset.lines === undefined || text === "") return [document.createTextNode(text)]
     const paragraph = document.createElement("p")
+    paragraph.setAttribute(ATTRIBUTE(PARAGRAPH), "")
     paragraph.textContent = text
     return [paragraph]
   },
