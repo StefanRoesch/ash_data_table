@@ -271,7 +271,8 @@ defmodule DemoWeb.Router do
   # comments fail; a page whose tables let their rows be selected with
   # nothing to run on them; one whose table is given another actor while
   # it is open; one whose tables nested in each other take files; one
-  # whose tables are attached to it; and one that offers "Open".
+  # whose tables are attached to it; one that offers "Open"; and one that
+  # draws a panel of its table itself.
   if Application.compile_env(:demo, :e2e_routes, false) do
     scope "/e2e" do
       post "/seed", DemoWeb.E2E.DataController, :seed
@@ -289,6 +290,7 @@ defmodule DemoWeb.Router do
         live "/imports", ImportsLive
         live "/attached", AttachedLive
         live "/opened", OpenedLive
+        live "/controlled", ControlledLive
       end
     end
   end

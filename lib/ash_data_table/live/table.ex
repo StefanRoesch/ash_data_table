@@ -32,6 +32,9 @@ defmodule AshDataTable.Table do
   #   * `router`: the router of the page, which says where the host mounts a
   #     table (the full view, the parent of a table limited to related
   #     records).
+  #   * `controlled`: what the host draws itself, of `:confirm` (the
+  #     questions before an action) and `:panel` (the action panels), with
+  #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Requests`).
   #
   # A table nested in a row or in a picker is placed by the table it is in:
   # it keeps no state in the URL, has no heading and is no page of its own
@@ -54,7 +57,8 @@ defmodule AshDataTable.Table do
     mounted?: false,
     page_assigns: %{},
     target: nil,
-    router: nil
+    router: nil,
+    controlled: []
   }
 
   # `authorize?` is the entry's: as each table was told it

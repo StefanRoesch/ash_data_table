@@ -644,6 +644,9 @@ defmodule AshDataTable.Parts.Grid do
   # the page, is the same byte for byte.
   attr :acting?, :any, required: true
   attr :open, :string, default: nil
+  # whether the hook asks the question of a row action; in controlled mode
+  # the host does (`AshDataTable.Live.Core.Requests`)
+  attr :asks?, :boolean, default: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
   attr :creates, :any, required: true
@@ -959,7 +962,7 @@ defmodule AshDataTable.Parts.Grid do
               id={"#{dom_id}-a-#{action.name}"}
               tabindex="-1"
               data-action={action.name}
-              data-question={action.confirm}
+              data-question={@asks? && action.confirm}
               data-destructive={action.type == :destroy}
               class="btn btn-xs -my-1 me-1"
             >{action.label}</button>{action_failure("#{dom_id}-a", row)}</td></tr></tbody>

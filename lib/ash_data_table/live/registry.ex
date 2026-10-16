@@ -65,7 +65,7 @@ defmodule AshDataTable.Live.Registry do
   defp placed(_current, %{path: [_top]}, options), do: options
 
   defp placed(_current, _entry, options),
-    do: %{options | url: nil, heading: false, mounted?: false}
+    do: %{options | url: nil, heading: false, mounted?: false, controlled: []}
 
   @doc "Whether the table `id` is one of these: the one on the page or another."
   def known?(socket, id),

@@ -23,6 +23,7 @@ defmodule AshDataTable.Live.Core do
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Updates
   alias AshDataTable.Live.Core.Url
@@ -188,7 +189,8 @@ defmodule AshDataTable.Live.Core do
           [:id, :resource, :table, :scope, :actor, :tenant, :url, :label, :mounted?, :heading] ++
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
             [:select, :choose, :page_assigns, :parent_arguments] ++
-            [:context, :private_arguments, :page_arguments, :before_action, :notify]
+            [:context, :private_arguments, :page_arguments, :before_action, :notify] ++
+            [:controlled]
         )
       )
 
@@ -553,6 +555,8 @@ defmodule AshDataTable.Live.Core do
   #     let go in the same render. It may take rows away, and so tables
   #     under them, which are closed;
   #   * a selection made under other filters is given up (`Selection.scoped/1`);
+  #   * in controlled mode, a panel that opened or closed is held or let go
+  #     as a request (`Requests.follow/1`);
   #   * the summaries that are due are asked for.
   defp tidy(socket) do
     socket
@@ -560,6 +564,7 @@ defmodule AshDataTable.Live.Core do
     |> each(&Updates.follow/1)
     |> Nesting.reconcile()
     |> each(&Selection.scoped/1)
+    |> Requests.follow()
     |> each(&Reading.summarise/1)
   end
 

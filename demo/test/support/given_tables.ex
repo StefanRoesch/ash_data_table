@@ -75,7 +75,7 @@ defmodule Demo.Support.Given.Card do
     action :rename
 
     action :destroy do
-      confirm false
+      confirm "Delete this card?"
     end
 
     action :count_cards
@@ -184,10 +184,11 @@ defmodule DemoWeb.Support.GivenLive do
   A host LiveView whose cards are attached with what it gives them: a
   `context` that holds the test's pid and which table asks, a private
   argument, the page arguments of the session (`"page"`, else the
-  assignee), the events the session's `"notify"` names, a read that fails
-  where the session says `"fail"`, and a veto that tells the test what it was asked, with which
-  assigns, and answers as the assign `answer` says (the session's
-  `"answer"`, else `:cont`). `"context"` in the session replaces the
+  assignee), the events the session's `"notify"` names, the "Open" its
+  `"open"` labels, what the host draws itself (`"controlled"`), a read that
+  fails where the session says `"fail"`, and a veto that tells the test
+  what it was asked, with which assigns, and answers as the assign `answer`
+  says (the session's `"answer"`, else `:cont`). `"context"` in the session replaces the
   context function. Everything the page hears it hands to the test, but
   `{:run, fun}`: a command of the test's, run here.
 
@@ -219,7 +220,8 @@ defmodule DemoWeb.Support.GivenLive do
           assigns.answer
         end,
         notify: Map.get(session, "notify"),
-        open: Map.get(session, "open")
+        open: Map.get(session, "open"),
+        controlled: Map.get(session, "controlled", [])
       )
 
     {:ok, socket}

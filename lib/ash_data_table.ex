@@ -384,7 +384,8 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          [:notify, :open] ++ @page ++ [heading: true, url: false, mounted?: false]
+          [:notify, :open] ++
+          @page ++ [heading: true, url: false, mounted?: false, controlled: []]
       )
 
     page!(Map.new(Keyword.take(opts, @page)), "AshDataTable.attach/4")
@@ -429,10 +430,40 @@ defmodule AshDataTable do
       page_arguments: opts[:page_arguments],
       before_action: opts[:before_action],
       notify: opts[:notify],
-      open: open!(opts[:open], "AshDataTable.attach/4")
+      open: open!(opts[:open], "AshDataTable.attach/4"),
+      controlled: controlled!(opts[:controlled], resource, table)
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
+  end
+
+  # What the host draws itself (controlled mode): the questions before an
+  # action and the action panels. A panel the host cannot be handed in this
+  # version (a file, a group or a union, records chosen in the picker) is
+  # refused here, for every action of the table that would open one.
+  defp controlled!(kinds, resource, table) do
+    if not (is_list(kinds) and Enum.all?(kinds, &(&1 in [:confirm, :panel]))) do
+      raise ArgumentError,
+            "the `controlled` of AshDataTable.attach/4 is a list of `:confirm` and `:panel`, " <>
+              "got: #{inspect(kinds, limit: 5)}"
+    end
+
+    if :panel in kinds do
+      model = AshDataTable.Model.build(resource, table: table)
+
+      for action <- [model.create | model.actions ++ model.table_actions],
+          action && action.panel?,
+          input <- action.inputs,
+          input.editor in [:file, :group, :groups, :union, :reference, :references] do
+        raise ArgumentError,
+              "AshDataTable.attach/4 was given `controlled: [:panel]`, and the panel of the " <>
+                "action `#{action.name}` has the field `#{input.name}`, which a page cannot " <>
+                "draw in this version: a file, a group of fields or a union, or records " <>
+                "chosen in the picker. Leave `:panel` out, and the table draws its panels."
+      end
+    end
+
+    Enum.uniq(kinds)
   end
 
   defp open!(label, _where) when is_nil(label) or is_binary(label), do: label
@@ -554,6 +585,115 @@ defmodule AshDataTable do
 
     result
   end
+
+  @doc """
+  The request a table attached with `controlled:` holds for the page to
+  draw, or nil:
+
+    * `ref` - what the answer names (a new request has another);
+    * `kind` - `:confirm`, a question before an action, or `:panel`, the
+      action panel of a row action, a table action, a create or an action
+      on the selection;
+    * `action`, `key` - the action and its row's primary key (nil for none);
+    * `question` - the question to ask before it runs, or nil;
+    * `title`, `errors` - of a panel: its title, and what the action said
+      that is about none of its fields;
+    * `fields` - of a panel, each with `name`, `label`, `type`, `required?`,
+      `value` (what it holds as typed; nil for a sensitive field), `values`
+      (the choices of an enum, else nil) and `errors`.
+
+  Texts are in words. The page answers with `confirm_request/3`,
+  `validate_request/4`, `submit_request/4` and `cancel_request/3`; each
+  goes as the person's own answer would, through the table's checks, the
+  veto and the record read again, and does nothing for another `ref`.
+  `:requested` (`AshDataTable.Event`) says that one is waiting.
+  """
+  @spec request(AshDataTable.Table.t() | nil) :: map | nil
+  def request(nil), do: nil
+
+  def request(%AshDataTable.Table{} = table) do
+    case AshDataTable.Live.Core.Requests.projection(table) do
+      nil ->
+        nil
+
+      request ->
+        said = &AshDataTable.Text.say/1
+
+        %{
+          request
+          | question: request.question && said.(request.question),
+            title: request.title && said.(request.title),
+            errors: Enum.map(request.errors, said),
+            fields:
+              for field <- request.fields do
+                %{
+                  field
+                  | label: said.(field.label),
+                    errors: Enum.map(field.errors, said),
+                    values:
+                      field.values &&
+                        for({value, label} <- field.values, do: {value, said.(label)})
+                }
+              end
+        }
+    end
+  end
+
+  @doc "Answers the question of request `ref` with Confirm: the action runs."
+  @spec confirm_request(Phoenix.LiveView.Socket.t(), atom, String.t()) ::
+          Phoenix.LiveView.Socket.t()
+  def confirm_request(socket, name, ref),
+    do:
+      answer(
+        socket,
+        name,
+        ref,
+        :confirm,
+        "AshDataTable.confirm_request/3",
+        &AshDataTable.Live.Core.Requests.confirmed/2
+      )
+
+  @doc """
+  What the page's form of request `ref` holds now, `params` as the panel's
+  form sends them (by field name, as typed): the action says what it makes
+  of it, as `request/1` then shows. Nothing runs.
+  """
+  @spec validate_request(Phoenix.LiveView.Socket.t(), atom, String.t(), map) ::
+          Phoenix.LiveView.Socket.t()
+  def validate_request(socket, name, ref, params) when is_map(params),
+    do:
+      answer(socket, name, ref, :panel, "AshDataTable.validate_request/4", fn socket, _request ->
+        AshDataTable.Live.Core.Requests.panel(socket, {:panel_validate, params})
+      end)
+
+  @doc """
+  Runs the action of request `ref` with `params`, as the panel's Run does:
+  done, the request is gone; refused, it stays, with what the action said
+  at its fields.
+  """
+  @spec submit_request(Phoenix.LiveView.Socket.t(), atom, String.t(), map) ::
+          Phoenix.LiveView.Socket.t()
+  def submit_request(socket, name, ref, params) when is_map(params),
+    do:
+      answer(socket, name, ref, :panel, "AshDataTable.submit_request/4", fn socket, _request ->
+        AshDataTable.Live.Core.Requests.panel(socket, {:panel_submit, params})
+      end)
+
+  @doc "Gives request `ref` up, as Cancel does: nothing runs."
+  @spec cancel_request(Phoenix.LiveView.Socket.t(), atom, String.t()) ::
+          Phoenix.LiveView.Socket.t()
+  def cancel_request(socket, name, ref) do
+    command(socket, name, "AshDataTable.cancel_request/3", fn socket ->
+      case AshDataTable.Live.Core.table(socket).entry.request do
+        %{ref: ^ref, kind: :panel} -> AshDataTable.Live.Core.Requests.panel(socket, :panel_cancel)
+        %{ref: ^ref} -> AshDataTable.Live.Core.put(socket, request: nil)
+        _stale -> socket
+      end
+    end)
+  end
+
+  defp answer(socket, name, ref, kind, where, fun),
+    do: command(socket, name, where, &AshDataTable.Live.Core.Requests.answer(&1, ref, kind, fun))
 
   @doc """
   What a host may read of an `AshDataTable.Table`, as the assign holds it:
@@ -1383,6 +1523,7 @@ defmodule AshDataTable do
     <Parts.Grid.grid
       acting?={@entry.acting?}
       open={@entry.open_label}
+      asks?={:confirm not in @options.controlled}
       busy?={@entry.busy?}
       choose={@entry.choose}
       creates={@entry.creates}
@@ -1417,7 +1558,7 @@ defmodule AshDataTable do
       model={@entry.model}
     />
     <Parts.Panel.panel
-      :if={@entry.panel}
+      :if={@entry.panel && not match?(%{kind: :panel}, @entry.request)}
       id={@entry.id}
       panel={Present.panel(@entry.panel, Files.files_said(@entry, @uploads))}
       files={files!(@entry, @uploads)}

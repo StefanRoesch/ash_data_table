@@ -15,6 +15,7 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Pick
@@ -45,18 +46,7 @@ defmodule AshDataTable.Live.Core.Panel do
   # Nothing of it is taken on trust: the action has to be one this table
   # offers this person, and the row one of the page. Whether the action runs
   # straight away or opens its panel is the table's to say, not the event's.
-  def on({:act, key, name}, socket) do
-    %{model: model, rows: rows} = Core.table(socket).entry
-
-    with %Model.Action{} = action <- Operation.action(model.actions, name),
-         %{} = row <- rows[key] do
-      if action.panel?,
-        do: open_act(socket, key, row, action),
-        else: ran(Operation.run(Core.operation(socket, {:act, key, name})), socket, key, action)
-    else
-      _ -> {:reply, %{ok: false}, socket}
-    end
-  end
+  def on({:act, key, name}, socket), do: act(socket, key, name, false)
 
   # Sent by the button of a table action: the action by name. It has to be
   # one this table offers this person, and the table has to have read: a
@@ -84,12 +74,15 @@ defmodule AshDataTable.Live.Core.Panel do
         {:noreply, Files.opened(socket, panel)}
 
       %Model.Action{confirm: question} = action when is_binary(question) ->
-        {:noreply,
-         push_event(socket, "ash_data_table:ask", %{
-           table: id,
-           action: action.name,
-           question: question
-         })}
+        if Requests.controlled?(socket, :confirm),
+          do: {:noreply, Requests.ask(socket, {:table_run, name}, action, nil)},
+          else:
+            {:noreply,
+             push_event(socket, "ash_data_table:ask", %{
+               table: id,
+               action: action.name,
+               question: question
+             })}
 
       %Model.Action{} = action ->
         {:noreply, run_table(socket, {:table_act, name}, action)}
@@ -241,6 +234,29 @@ defmodule AshDataTable.Live.Core.Panel do
   end
 
   def on(:create, socket), do: {:noreply, socket}
+
+  # A row action, `confirmed?` once its question was answered: by the hook
+  # before it sent `act`, or in controlled mode by the host, which the
+  # table holds the question for (`Requests.ask/4`).
+  def act(socket, key, name, confirmed?) do
+    %{model: model, rows: rows} = Core.table(socket).entry
+
+    with %Model.Action{} = action <- Operation.action(model.actions, name),
+         %{} = row <- rows[key] do
+      cond do
+        action.panel? ->
+          open_act(socket, key, row, action)
+
+        is_binary(action.confirm) and not confirmed? and Requests.controlled?(socket, :confirm) ->
+          {:reply, %{ok: true}, Requests.ask(socket, {:act, key, name}, action, row.pk)}
+
+        true ->
+          ran(Operation.run(Core.operation(socket, {:act, key, name})), socket, key, action)
+      end
+    else
+      _ -> {:reply, %{ok: false}, socket}
+    end
+  end
 
   # An action panel as the table keeps it while it is open. Besides what it
   # is given: `typed` is what its form sent last, and `picked` the fields

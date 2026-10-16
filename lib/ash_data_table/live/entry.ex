@@ -138,6 +138,9 @@ defmodule AshDataTable.Live.Entry do
     # the inputs of, with its form. At most one per table; a new read
     # closes it.
     panel: nil,
+    # In controlled mode (`AshDataTable.Live.Core.Requests`): the question
+    # or the panel the host draws, with its `ref`; nil for none.
+    request: nil,
     # The files of the panel's uploads that an action has been given, by
     # the entry LiveView knows each by: those are LiveView's to drop.
     # And the copies of the files that an action on the selected rows is

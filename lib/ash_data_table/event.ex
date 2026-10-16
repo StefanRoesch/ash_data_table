@@ -32,6 +32,7 @@ defmodule AshDataTable.Event do
   | `:bulk_ran` | an action on a selection is done | `action`, `arguments`, `all?`, `succeeded` and `failed` (keys) |
   | `:selection_changed` | what is selected changed: by the person, or as the table ends or narrows it | `selected` (keys, as the browser named them: claims, not read again), `all?` (every record that matches) |
   | `:row_opened` | "Open" on a row, which the page offers with `open` (sent whatever `notify` says) | `key` |
+  | `:requested` | controlled mode: the table holds a request for the page to draw (`AshDataTable.request/1`) | `ref`, `kind` (`:confirm` or `:panel`) |
   | `:row_expanded`, `:row_collapsed` | a relationship's line under a row opened or closed | `key`, `relationship` |
 
   A key is a primary key as a map (`%{id: "…"}`). A record is the one the
@@ -60,6 +61,7 @@ defmodule AshDataTable.Event do
           | :bulk_ran
           | :selection_changed
           | :row_opened
+          | :requested
           | :row_expanded
           | :row_collapsed
 
@@ -79,6 +81,7 @@ defmodule AshDataTable.Event do
     :bulk_ran,
     :selection_changed,
     :row_opened,
+    :requested,
     :row_expanded,
     :row_collapsed
   ]
@@ -172,6 +175,57 @@ defmodule AshDataTable.Event do
   @doc false
   @spec selection([map], boolean) :: t
   def selection(keys, all?), do: {:selection_changed, %{selected: keys, all?: all?}}
+
+  @doc false
+  # What a host draws of the request a table holds in controlled mode
+  # (`AshDataTable.request/1`, which says its message terms in words): of a
+  # question, the action, its row and the question; of a panel besides its
+  # title, what is said of none of its fields, and its fields, each with
+  # its name, label, type, whether it is required, what it holds (nil for a
+  # sensitive one), the values of a choice and what is said at it.
+  @spec request(map) :: map | nil
+  def request(%{request: nil}), do: nil
+
+  def request(%{request: %{kind: :confirm} = request}) do
+    %{
+      ref: request.ref,
+      kind: :confirm,
+      action: request.action,
+      key: request.key,
+      question: request.question,
+      title: nil,
+      errors: [],
+      fields: []
+    }
+  end
+
+  def request(%{request: %{kind: :panel, ref: ref}, panel: %{} = panel, rows: rows}) do
+    shown = AshDataTable.Present.panel(panel)
+
+    %{
+      ref: ref,
+      kind: :panel,
+      action: panel.action.name,
+      key: panel.key && get_in(rows, [panel.key, :pk]),
+      question: Map.get(panel, :question),
+      title: shown.title,
+      errors: List.wrap(shown.errors),
+      fields:
+        for %{input: input} = field <- shown.fields do
+          %{
+            name: field.name,
+            label: input.label,
+            type: input.cell_type,
+            required?: input.required?,
+            value: if(input.sensitive?, do: nil, else: field.value),
+            values: input.values,
+            errors: field.errors
+          }
+        end
+    }
+  end
+
+  def request(_entry), do: nil
 
   @doc false
   @spec opened(map) :: t

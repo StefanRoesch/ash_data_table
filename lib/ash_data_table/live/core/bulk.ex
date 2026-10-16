@@ -14,6 +14,7 @@ defmodule AshDataTable.Live.Core.Bulk do
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Model
   alias AshDataTable.Operation
@@ -123,9 +124,18 @@ defmodule AshDataTable.Live.Core.Bulk do
            Operation.bulk_action(Core.operation(socket, intent), name) do
       question = question(action, selected(selection, Core.table(socket).entry))
 
-      if action.panel?,
-        do: {:reply, %{panel: true}, open_bulk(socket, action, selection, question)},
-        else: {:reply, %{ask: Text.say(question)}, socket}
+      cond do
+        action.panel? ->
+          {:reply, %{panel: true}, open_bulk(socket, action, selection, question)}
+
+        # in controlled mode the host asks it (`Requests.ask/4`)
+        Requests.controlled?(socket, :confirm) ->
+          {:reply, %{ok: true},
+           Requests.ask(socket, {:bulk_run, name}, %{action | confirm: question}, nil)}
+
+        true ->
+          {:reply, %{ask: Text.say(question)}, socket}
+      end
     else
       :error -> {:reply, %{ok: false}, socket}
     end
