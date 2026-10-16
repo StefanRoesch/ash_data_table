@@ -135,14 +135,27 @@ defmodule DemoWeb.Support.Switch do
   An `on_mount` hook for the tests: on the message `{:switch, assigns}` it
   assigns them to the socket and halts it, as a host's hook does that
   hears that another person is logged in, or that their scope changed.
+
+  On `{:hold, pid}` it tells `pid` `:held` and waits for `:go`, so that a
+  test can have messages wait in the page's mailbox in the order it wants.
   """
   import Phoenix.LiveView
 
   def on_mount(:default, _params, _session, socket) do
     {:cont,
      attach_hook(socket, :switch, :handle_info, fn
-       {:switch, assigns}, socket -> {:halt, Phoenix.Component.assign(socket, assigns)}
-       _other, socket -> {:cont, socket}
+       {:switch, assigns}, socket ->
+         {:halt, Phoenix.Component.assign(socket, assigns)}
+
+       {:hold, pid}, socket ->
+         send(pid, :held)
+
+         receive do
+           :go -> {:halt, socket}
+         end
+
+       _other, socket ->
+         {:cont, socket}
      end)}
   end
 end

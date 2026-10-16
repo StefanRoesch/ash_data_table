@@ -271,7 +271,7 @@ defmodule AshDataTable.Live.Page do
       socket =
         if socket.assigns.route,
           do: AshDataTable.detach(socket, :table),
-          else: attach_hook(socket, :ash_data_table_page, :after_render, &asked/1)
+          else: hooks(socket)
 
       label = AshDataTable.label(route.resource)
 
@@ -289,11 +289,37 @@ defmodule AshDataTable.Live.Page do
 
   # Who is asking may change while the page is open: a host's `on_mount`
   # hook may assign another `current_scope` (or whichever assigns the
-  # domain names), in any callback, and its hook may halt it. So after
-  # every render the page looks whether what it gave the table and the
-  # layout is still what the socket holds, and if not, it gives them what
-  # it holds now, in a callback of its own: the table is attached again
-  # under `:table`, which reads anew as the person asking now.
+  # domain names), in any callback, and its hook may halt it. So the page
+  # looks whether what it gave the table and the layout is still what the
+  # socket holds, and if not, it gives them what it holds now: the table is
+  # attached again under `:table`, which reads anew as the person asking
+  # now. It looks before the table is given any event, async result,
+  # message or URL, in hooks attached ahead of the table's, so that what
+  # waits in the mailbox runs as that person; and after every render, in a
+  # callback of its own, for a change that nothing follows.
+  defp hooks(socket) do
+    socket
+    |> attach_hook(:ash_data_table_page, :handle_event, fn _event, _params, socket ->
+      {:cont, asking(socket)}
+    end)
+    |> attach_hook(:ash_data_table_page, :handle_async, fn _key, _result, socket ->
+      {:cont, asking(socket)}
+    end)
+    |> attach_hook(:ash_data_table_page, :handle_info, fn _message, socket ->
+      {:cont, asking(socket)}
+    end)
+    |> attach_hook(:ash_data_table_page, :handle_params, fn _params, _url, socket ->
+      {:cont, asking(socket)}
+    end)
+    |> attach_hook(:ash_data_table_page, :after_render, &asked/1)
+  end
+
+  defp asking(socket) do
+    if given(socket) == socket.assigns.layout_assigns,
+      do: socket,
+      else: attached(socket)
+  end
+
   defp asked(socket) do
     if socket.assigns.route && given(socket) != socket.assigns.layout_assigns,
       do: send(self(), :ash_data_table_asked)
@@ -302,11 +328,7 @@ defmodule AshDataTable.Live.Page do
   end
 
   @impl true
-  def handle_info(:ash_data_table_asked, socket) do
-    if given(socket) == socket.assigns.layout_assigns,
-      do: {:noreply, socket},
-      else: {:noreply, attached(socket)}
-  end
+  def handle_info(:ash_data_table_asked, socket), do: {:noreply, socket}
 
   def handle_info(_message, socket), do: {:noreply, socket}
 

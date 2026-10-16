@@ -227,6 +227,14 @@ defmodule DemoWeb.Tables.AttachTest do
 
     defp switch(view, assigns), do: send(view.pid, {:switch, assigns})
 
+    # Waits until `count` messages are in the mailbox of `pid`.
+    defp waiting(pid, count) do
+      case Process.info(pid, :message_queue_len) do
+        {:message_queue_len, len} when len >= count -> :ok
+        _fewer -> waiting(pid, count)
+      end
+    end
+
     defp user(conn, user),
       do: Phoenix.ConnTest.init_test_session(conn, %{"assigns" => %{current_user: user}})
 
@@ -240,6 +248,32 @@ defmodule DemoWeb.Tables.AttachTest do
       render(view)
       assert titles(render_async(view)) == ["Plain"]
       assert assigns(view).layout_assigns.reader == %{role: :reader}
+    end
+
+    test "an event that is waiting when they are assigned runs as them", %{
+      conn: conn,
+      hidden: hidden
+    } do
+      {:ok, view, _html} = live(conn, "/support/switched/bulletins")
+
+      # the save waits in the page's mailbox behind what the hook assigns:
+      # LiveViewTest asks the page first (a ping) and then sends the event,
+      # so the page holds after the ping until both wait. A reader may not
+      # read the bulletin kept back, so it is not saved.
+      :ok = :sys.suspend(view.pid)
+      saving = Task.async(fn -> save(view, "bulletin", hidden.id, "title", "Changed") end)
+      waiting(view.pid, 1)
+      send(view.pid, {:hold, self()})
+      switch(view, %{reader: %{role: :reader}})
+      :ok = :sys.resume(view.pid)
+      assert_receive :held
+      waiting(view.pid, 2)
+      send(view.pid, :go)
+      Task.await(saving)
+      assert_reply(view, %{ok: false})
+
+      assert titles(render_async(view)) == ["Plain"]
+      assert Ash.get!(Bulletin, hidden.id, authorize?: false).title == "Kept back"
     end
 
     test "a run on the selected rows goes on, and says what it came to when the person is the same",
