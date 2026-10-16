@@ -16,10 +16,16 @@ defmodule AshDataTable.Live.Core.Notify do
   """
   def told(socket, nil), do: socket
 
-  def told(socket, {name, details}) do
+  def told(socket, event), do: told(socket, event, false)
+
+  @doc """
+  The same, `always?` sent whatever `notify` says: `:row_opened`, which
+  the page asked for with `open`.
+  """
+  def told(socket, {name, details}, always?) do
     %{caller: %{notify: notify}, entry: entry} = table = Core.table(socket)
 
-    if wanted?(notify, name) and not picking?(table) do
+    if (always? or wanted?(notify, name)) and not picking?(table) do
       [top | _] = entry.path
 
       details =

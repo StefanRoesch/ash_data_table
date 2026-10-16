@@ -643,6 +643,7 @@ defmodule AshDataTable.Parts.Grid do
   # `render/1`, held by `phx-no-format`, so that the text in it, and with it
   # the page, is the same byte for byte.
   attr :acting?, :any, required: true
+  attr :open, :string, default: nil
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
   attr :creates, :any, required: true
@@ -946,6 +947,13 @@ defmodule AshDataTable.Parts.Grid do
               data-actions
               {action_attributes("#{dom_id}-a", row)}
             ><button
+              :if={@open}
+              type="button"
+              id={"#{dom_id}-a-open"}
+              tabindex="-1"
+              data-open
+              class="btn btn-xs -my-1 me-1"
+            >{@open}</button><button
               :for={action <- @model.actions}
               type="button"
               id={"#{dom_id}-a-#{action.name}"}

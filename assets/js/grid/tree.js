@@ -271,6 +271,8 @@ export default {
     // a button of the actions cell: used, and it keeps the focus. A
     // click beside the buttons is a click on the cell.
     if (is(cell, "actions")) {
+      const opener = e.target.closest("button[data-open]")
+      if (opener) return this.openRow(cell)
       const button = e.target.closest("button[data-action]")
       if (button) return this.act(button)
     }

@@ -1,0 +1,213 @@
+<div id="phx-ID">
+<div class="ash-data-table" data-read="" id="card">
+<div class="mb-4 flex min-h-8 items-center justify-between gap-2" id="card-header">
+<div class="text-lg font-semibold" id="card-name">
+      Card
+    </div>
+<div class="ms-auto flex flex-wrap items-center justify-end gap-2">
+<button class="btn btn-sm" id="card-create" phx-click="create" type="button">
+  New card
+</button>
+<button class="btn btn-sm" data-table-action="count_cards" id="card-do-count_cards" phx-click="table_act" phx-value-action="count_cards" type="button">
+  Count cards
+</button>
+</div>
+</div>
+<form id="card-filters" phx-change="filter" phx-submit="filter">
+</form>
+<div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
+<div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 2 that match are selected" data-selected="{n} selected" data-selection="" id="card-selection" role="group">
+<p class="text-sm" id="card-selected" phx-update="ignore" role="status">
+</p>
+<div class="flex flex-wrap items-center gap-2" hidden="" id="card-selection-controls" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]">
+<button class="btn btn-sm" data-select-all="" hidden="" id="card-select-all" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;hidden&quot;]}]]" type="button">
+      Select all 2 that match
+    </button>
+<button class="btn btn-sm" data-clear="" id="card-clear-selection" type="button">
+      Clear selection
+    </button>
+<button class="btn btn-sm " data-bulk="assign" id="card-bulk-assign" type="button">
+      Assign
+    </button>
+<button class="btn btn-sm " data-bulk="rename" id="card-bulk-rename" type="button">
+      Rename
+    </button>
+<button class="btn btn-sm " data-bulk="destroy" data-destructive="" id="card-bulk-destroy" type="button">
+      Destroy
+    </button>
+</div>
+</div>
+<div class="ms-auto" id="card-columns-control">
+<button aria-controls="card-columns" aria-expanded="false" class="btn btn-sm" data-columns-button="" data-say-hidden="{column} hidden" data-say-shown="{column} shown" data-text-filtered="{n} filtered" data-text-hidden="{n} hidden" data-text-sorted="{n} sorted" data-text-with="Columns ({details})" data-text="Columns" id="card-columns-button" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;aria-expanded&quot;]}]]" type="button">
+<span id="card-columns-text" phx-update="ignore">Columns</span>
+</button>
+<div aria-label="Columns" class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow" data-columns-list="" id="card-columns" phx-mounted="[[&quot;ignore_attrs&quot;,{&quot;attrs&quot;:[&quot;style&quot;]}]]" popover="manual" role="group">
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="card-column-assignee-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="card-head-assignee" data-label="Assignee" id="card-column-assignee" type="checkbox"/>
+<span>Assignee</span>
+</label>
+<label class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap" id="card-column-code-entry">
+<input checked="" class="peer checkbox checkbox-xs border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" data-head="card-head-code" data-label="Code" id="card-column-code" type="checkbox"/>
+<span>Code</span>
+</label>
+</div>
+<p class="sr-only" id="card-columns-status" phx-update="ignore" role="status">
+</p>
+</div>
+</div>
+<p aria-live="polite" class="sr-only" id="card-status" role="status">
+</p>
+<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" id="card-grid" phx-hook=".Grid" tabindex="-1">
+<table aria-colcount="6" aria-label="Card" aria-multiselectable="true" aria-rowcount="4" class="table [&amp;_:is(td,th):focus]:outline-2 [&amp;_:is(td,th):focus]:-outline-offset-2 [&amp;_:is(td,th):focus]:outline-base-content [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:-outline-offset-2 [&amp;&gt;tbody&gt;tr&gt;td:not([data-nested]):focus-within]:outline-base-content [&amp;_td[aria-busy]]:opacity-70 [&amp;[aria-busy]&gt;tbody&gt;tr&gt;td:not([data-nested])]:opacity-70 [&amp;_td[aria-invalid]]:relative [&amp;_td[aria-invalid]]:before:pointer-events-none [&amp;_td[aria-invalid]]:before:absolute [&amp;_td[aria-invalid]]:before:inset-0 [&amp;_td[aria-invalid]]:before:border-2 [&amp;_td[aria-invalid]]:before:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] [&amp;_td[aria-invalid]]:before:content-[&#39;&#39;] [&amp;_td[aria-invalid]:is(:focus,:focus-within)]:before:inset-[3px] [&amp;_td[aria-invalid]]:after:absolute [&amp;_td[aria-invalid]]:after:end-2 [&amp;_td[aria-invalid]]:after:top-1/2 [&amp;_td[aria-invalid]]:after:-translate-y-1/2 [&amp;_td[aria-invalid]]:after:leading-none [&amp;_td[aria-invalid]]:after:font-bold [&amp;_td[aria-invalid]]:after:content-[&#39;!&#39;_/_&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:max-w-80 [&amp;&gt;tbody&gt;tr&gt;td:not([colspan],[data-actions])]:truncate [&amp;&gt;tbody&gt;tr&gt;td[data-actions]]:whitespace-nowrap [&amp;&gt;tbody&gt;tr&gt;td[data-lines]]:whitespace-normal [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:min-w-40 [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:break-words [&amp;&gt;tbody&gt;tr&gt;td[data-lines]&gt;p]:whitespace-pre-line [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;2&#39;]&gt;p]:line-clamp-2 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;3&#39;]&gt;p]:line-clamp-3 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;4&#39;]&gt;p]:line-clamp-4 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;5&#39;]&gt;p]:line-clamp-5 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;6&#39;]&gt;p]:line-clamp-6 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;7&#39;]&gt;p]:line-clamp-7 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;8&#39;]&gt;p]:line-clamp-8 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;9&#39;]&gt;p]:line-clamp-9 [&amp;&gt;tbody&gt;tr&gt;td[data-lines=&#39;10&#39;]&gt;p]:line-clamp-10 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:cursor-pointer [&amp;&gt;tbody&gt;tr&gt;td[data-expander]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-expander]&gt;button]:px-1 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]]:w-0 [&amp;&gt;tbody&gt;tr&gt;td[data-selector]&gt;input]:block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:inline-block [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:size-0 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:content-[&#39;&#39;] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-[0.3em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-y-transparent [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[0.45em] [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-current [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:transition-transform [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded=true]]:before:rotate-90 [&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&amp;&gt;tbody&gt;tr&gt;:is(td[data-expander],td[data-line])_button[aria-expanded]]:before:border-s-[CanvasText] [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:ps-1 [&amp;&gt;tbody&gt;tr&gt;td[data-line]&gt;div&gt;button[aria-expanded]]:before:me-2 [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-create]]:inline-flex [&amp;&gt;tbody&gt;tr:has(+tr&gt;td[data-nested]&gt;div&gt;div&gt;div&gt;[data-read])&gt;td[data-line]&gt;div&gt;button[data-table-action]]:inline-flex" data-first-row="3" id="card-table" phx-update="stream" role="grid">
+<thead id="card-head">
+<tr aria-rowindex="1" id="card-head-row" role="row">
+<th aria-colindex="1" class="w-0" data-select-page="" id="card-select-head" role="columnheader" scope="col" tabindex="-1">
+<input aria-label="Select all rows of this page" class="checkbox checkbox-xs block border-base-content/50 aria-invalid:border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" tabindex="-1" type="checkbox"/>
+</th>
+<th aria-colindex="2" class="w-0" id="card-expander-head" role="columnheader" scope="col" tabindex="-1">
+<span class="sr-only">Related records</span>
+</th>
+<th aria-colindex="3" aria-label="Title" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="card-head-title" phx-click="sort" phx-value-column="title" role="columnheader" scope="col" tabindex="-1">Title<span aria-hidden="true">
+</span>
+<span aria-label="Resize Title" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-title" role="separator" tabindex="-1">
+</span>
+</th>
+<th aria-colindex="4" aria-label="Assignee" aria-sort="none" class="relative whitespace-nowrap cursor-pointer select-none" data-sort="" id="card-head-assignee" phx-click="sort" phx-value-column="assignee" role="columnheader" scope="col" tabindex="-1">Assignee<span aria-hidden="true">
+</span>
+<span aria-label="Resize Assignee" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-assignee" role="separator" tabindex="-1">
+</span>
+</th>
+<th aria-colindex="5" aria-label="Code" class="relative whitespace-nowrap " id="card-head-code" role="columnheader" scope="col" tabindex="-1">Code<span aria-label="Resize Code" aria-orientation="vertical" aria-valuemax="1000" aria-valuemin="48" class="absolute inset-y-0 end-0 w-3 cursor-col-resize touch-none select-none focus:outline-2 focus:-outline-offset-2 focus:outline-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:absolute [&amp;:is(:hover,:focus,[data-dragging])]:after:inset-y-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:end-0 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-e-2 [&amp;:is(:hover,:focus,[data-dragging])]:after:border-base-content [&amp;:is(:hover,:focus,[data-dragging])]:after:content-[&#39;&#39;]" data-resize="" id="card-resize-code" role="separator" tabindex="-1">
+</span>
+</th>
+<th aria-colindex="6" class="whitespace-nowrap" id="card-actions-head" role="columnheader" scope="col" tabindex="-1">
+            Actions
+          </th>
+</tr>
+<tr aria-rowindex="2" id="card-filter-row" role="row">
+<td aria-colindex="1" id="card-select-filter" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="2" id="card-expander-filter" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="3" data-filter="" id="card-filter-title" role="gridcell" tabindex="-1">
+<div class="flex items-center gap-1">
+<select aria-label="How to filter Title" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="card-filters" id="card-filter-title-operator" name="filter[title][o]" tabindex="-1">
+<option value="contains">
+      contains
+    </option>
+<option value="equals">
+      equals
+    </option>
+<option value="starts_with">
+      starts with
+    </option>
+<option value="is_empty">
+      is empty
+    </option>
+</select>
+<input aria-label="Filter Title" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="card-filters" id="card-filter-title-value" name="filter[title][v]" phx-debounce="blur" tabindex="-1" type="text"/>
+</div>
+</td>
+<td aria-colindex="4" data-filter="" id="card-filter-assignee" role="gridcell" tabindex="-1">
+<div class="flex items-center gap-1">
+<select aria-label="How to filter Assignee" class="select select-xs w-auto not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="card-filters" id="card-filter-assignee-operator" name="filter[assignee][o]" tabindex="-1">
+<option value="contains">
+      contains
+    </option>
+<option value="equals">
+      equals
+    </option>
+<option value="starts_with">
+      starts with
+    </option>
+<option value="is_empty">
+      is empty
+    </option>
+</select>
+<input aria-label="Filter Assignee" class="input input-xs w-32 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" form="card-filters" id="card-filter-assignee-value" name="filter[assignee][v]" phx-debounce="blur" tabindex="-1" type="text"/>
+</div>
+</td>
+<td aria-colindex="5" id="card-filter-code" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="6" id="card-actions-filter" role="gridcell" tabindex="-1">
+</td>
+</tr>
+</thead>
+<tbody id="card-row-uuid-1">
+<tr aria-rowindex="3" id="card-row-uuid-1-r" role="row">
+<td aria-colindex="1" data-selector="" id="card-row-uuid-1-s" role="gridcell" tabindex="-1">
+<input aria-label="Select row" class="checkbox checkbox-xs border-base-content/50" tabindex="-1" type="checkbox"/>
+</td>
+<td aria-colindex="2" data-expander="" id="card-row-uuid-1-e" role="gridcell" tabindex="-1">
+<button aria-expanded="false" aria-label="Related records" tabindex="-1" type="button">
+</button>
+</td>
+<td aria-colindex="3" id="card-row-uuid-1-c-title" role="gridcell" tabindex="-1">First</td>
+<td aria-colindex="4" aria-readonly="true" id="card-row-uuid-1-c-assignee" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="5" aria-readonly="true" id="card-row-uuid-1-c-code" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="6" data-actions="" id="card-row-uuid-1-a" role="gridcell" tabindex="-1">
+<button class="btn btn-xs -my-1 me-1" data-open="" id="card-row-uuid-1-a-open" tabindex="-1" type="button">Open</button>
+<button class="btn btn-xs -my-1 me-1" data-action="assign" id="card-row-uuid-1-a-assign" tabindex="-1" type="button">Assign</button>
+<button class="btn btn-xs -my-1 me-1" data-action="rename" id="card-row-uuid-1-a-rename" tabindex="-1" type="button">Rename</button>
+<button class="btn btn-xs -my-1 me-1" data-action="destroy" data-destructive="" id="card-row-uuid-1-a-destroy" tabindex="-1" type="button">Destroy</button>
+</td>
+</tr>
+</tbody>
+<tbody data-detail="" data-row="uuid-1" hidden="" id="card-row-uuid-1-x">
+</tbody>
+<tbody id="card-row-uuid-2">
+<tr aria-rowindex="4" id="card-row-uuid-2-r" role="row">
+<td aria-colindex="1" data-selector="" id="card-row-uuid-2-s" role="gridcell" tabindex="-1">
+<input aria-label="Select row" class="checkbox checkbox-xs border-base-content/50" tabindex="-1" type="checkbox"/>
+</td>
+<td aria-colindex="2" data-expander="" id="card-row-uuid-2-e" role="gridcell" tabindex="-1">
+<button aria-expanded="false" aria-label="Related records" tabindex="-1" type="button">
+</button>
+</td>
+<td aria-colindex="3" id="card-row-uuid-2-c-title" role="gridcell" tabindex="-1">Second</td>
+<td aria-colindex="4" aria-readonly="true" id="card-row-uuid-2-c-assignee" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="5" aria-readonly="true" id="card-row-uuid-2-c-code" role="gridcell" tabindex="-1">
+</td>
+<td aria-colindex="6" data-actions="" id="card-row-uuid-2-a" role="gridcell" tabindex="-1">
+<button class="btn btn-xs -my-1 me-1" data-open="" id="card-row-uuid-2-a-open" tabindex="-1" type="button">Open</button>
+<button class="btn btn-xs -my-1 me-1" data-action="assign" id="card-row-uuid-2-a-assign" tabindex="-1" type="button">Assign</button>
+<button class="btn btn-xs -my-1 me-1" data-action="rename" id="card-row-uuid-2-a-rename" tabindex="-1" type="button">Rename</button>
+<button class="btn btn-xs -my-1 me-1" data-action="destroy" data-destructive="" id="card-row-uuid-2-a-destroy" tabindex="-1" type="button">Destroy</button>
+</td>
+</tr>
+</tbody>
+<tbody data-detail="" data-row="uuid-2" hidden="" id="card-row-uuid-2-x">
+</tbody>
+</table>
+<template data-editor="text" id="card-editor-title">
+<textarea aria-label="Title" class="block w-full min-w-40 resize-none bg-transparent p-0 text-sm break-words whitespace-pre-wrap outline-none" rows="1">
+</textarea>
+</template>
+<template id="card-failure">
+<span class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow" popover="manual">
+</span>
+</template>
+</div>
+<div aria-hidden="true" class="fixed z-10 overflow-x-scroll overflow-y-hidden" data-scrollbar="" hidden="" id="card-scrollbar" phx-update="ignore" tabindex="-1">
+<div class="h-px">
+</div>
+</div>
+<div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="card-whole" phx-update="ignore" popover="manual">
+</div>
+<div id="card-dialogs" phx-update="ignore">
+<dialog aria-labelledby="card-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="card-dialog">
+<form method="dialog">
+<p id="card-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary" value="confirm">Confirm</button>
+</div>
+</form>
+</dialog>
+</div>
+</div>
+</div>

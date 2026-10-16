@@ -6,6 +6,7 @@ defmodule AshDataTable.Live.Core.Panel do
   import Phoenix.LiveView
 
   alias AshDataTable.Act
+  alias AshDataTable.Event
   alias AshDataTable.Format
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Bulk
@@ -22,6 +23,20 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Typed
 
   require AshDataTable.Live.Current, as: Current
+
+  # Sent by the hook when a person uses the page's "Open" of a row: the row
+  # by the key in its DOM id. The page is told the row's primary key
+  # (`:row_opened`), whatever its `notify` says; nothing is read or
+  # written. A key that names no row of the page gets nothing.
+  def on({:open, key}, socket) do
+    case Core.table(socket).entry do
+      %{open_label: label, rows: %{^key => row}} when not is_nil(label) ->
+        {:noreply, Notify.told(socket, Event.opened(row.pk), true)}
+
+      _no_open_or_no_row ->
+        {:noreply, socket}
+    end
+  end
 
   # Sent by the hook when a person uses a button of a row's actions cell,
   # once they have answered the question of an action that has one: the row

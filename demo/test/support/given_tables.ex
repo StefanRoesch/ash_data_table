@@ -85,6 +85,7 @@ defmodule Demo.Support.Given.Card do
     read :read do
       primary? true
       argument :secret, :string, public?: false
+      prepare build(sort: [title: :asc])
       prepare &Demo.Support.Given.Heard.read/2
     end
 
@@ -217,7 +218,8 @@ defmodule DemoWeb.Support.GivenLive do
           send(assigns.test, {:asked, request, Map.has_key?(assigns, :cards)})
           assigns.answer
         end,
-        notify: Map.get(session, "notify")
+        notify: Map.get(session, "notify"),
+        open: Map.get(session, "open")
       )
 
     {:ok, socket}

@@ -36,6 +36,12 @@ export default {
     this.ask(question, button.dataset.destructive !== undefined).then(confirmed => { if (confirmed) run() })
   },
 
+  // Uses the page's "Open" of a row: the server is told the row, and
+  // tells the page. Nothing changes here.
+  openRow(cell) {
+    this.transport.push("open", {row: this.rowKey(cell)})
+  },
+
   // Where the cell of the action stands, for when its row is gone:
   // its column, and the rows after and before its own.
   note(cell, button) {

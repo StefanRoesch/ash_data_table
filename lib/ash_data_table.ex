@@ -199,6 +199,11 @@ defmodule AshDataTable do
     doc:
       "What a default of an asked argument is given when it is a function (`ask :currency, default: &MyApp.Defaults.currency/1`): the assigns of the page that it looks at, such as `%{current_user: @current_user}`. A mounted table gives such a function the assigns of its socket."
 
+  attr :open, :string,
+    default: nil,
+    doc:
+      "A button with this label in the actions cell of every row, first among its buttons, which tells the page `{:ash_data_table, id, {:row_opened, %{key: key}}}` (`AshDataTable.Event`), whatever `notify` says. Nothing is read or written: what \"open\" means is the page's."
+
   attr :notify, :any,
     default: nil,
     doc:
@@ -256,6 +261,7 @@ defmodule AshDataTable do
     end
 
     page!(Map.take(assigns, @page), "<AshDataTable.table>")
+    open!(assigns.open, "<AshDataTable.table>")
     notify!(assigns.notify, "<AshDataTable.table>")
 
     ~H"""
@@ -281,6 +287,7 @@ defmodule AshDataTable do
       page_arguments={@page_arguments}
       before_action={@before_action}
       notify={@notify}
+      open={@open}
     />
     """
   end
@@ -313,6 +320,14 @@ defmodule AshDataTable do
   a table with `url: true` was attached to the LiveView before.
   A default of an asked argument that is a function is given the
   LiveView's assigns.
+
+  ## "Open"
+
+  `open: "Open"` puts a button with that label in the actions cell of
+  every row, first among its buttons. It tells the LiveView
+  `{:ash_data_table, id, {:row_opened, %{key: key}}}`, with the row's
+  primary key, whatever `notify` says; what it opens is the page's (a
+  `push_navigate/2`, a panel of its own). Not in nested tables.
 
   ## What the page hears
 
@@ -369,7 +384,7 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          [:notify] ++ @page ++ [heading: true, url: false, mounted?: false]
+          [:notify, :open] ++ @page ++ [heading: true, url: false, mounted?: false]
       )
 
     page!(Map.new(Keyword.take(opts, @page)), "AshDataTable.attach/4")
@@ -413,11 +428,21 @@ defmodule AshDataTable do
       private_arguments: opts[:private_arguments],
       page_arguments: opts[:page_arguments],
       before_action: opts[:before_action],
-      notify: opts[:notify]
+      notify: opts[:notify],
+      open: open!(opts[:open], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
   end
+
+  defp open!(label, _where) when is_nil(label) or is_binary(label), do: label
+
+  defp open!(other, where),
+    do:
+      raise(
+        ArgumentError,
+        "the `open` of #{where} is the label of its button, a string, got: #{inspect(other, limit: 5)}"
+      )
 
   defp notify!(notify, _where) when notify in [nil, true], do: :ok
 
@@ -1357,6 +1382,7 @@ defmodule AshDataTable do
     />
     <Parts.Grid.grid
       acting?={@entry.acting?}
+      open={@entry.open_label}
       busy?={@entry.busy?}
       choose={@entry.choose}
       creates={@entry.creates}

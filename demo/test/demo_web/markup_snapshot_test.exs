@@ -360,6 +360,26 @@ defmodule DemoWeb.MarkupSnapshotTest do
     end
   end
 
+  describe "what the page offers" do
+    setup do
+      on_exit(fn ->
+        Demo.Support.Ets.stop([Demo.Support.Given.Card, Demo.Support.Given.Remark])
+      end)
+    end
+
+    test "11 \"Open\" first in every row's actions cell", %{conn: conn} do
+      for title <- ["First", "Second"],
+          do: Ash.Seed.seed!(Demo.Support.Given.Card, %{title: title})
+
+      {:ok, view, _html} =
+        live_isolated(conn, DemoWeb.Support.GivenLive,
+          session: %{"test" => self(), "open" => "Open"}
+        )
+
+      snapshot("11-cards-open", render_async(view, 10_000))
+    end
+  end
+
   describe "the panels of map cells and unions" do
     setup do
       on_exit(fn -> Demo.Support.Ets.stop(Site) end)

@@ -102,7 +102,7 @@ Writes:
 - `AshDataTable.Edit` (`edit.ex`): save one cell. `save/5`, `refer/5` (reference cell), `clear/4`, `open/5` and `put/7` (map cell in the panel).
 - `AshDataTable.Act` (`act.ex`): row actions, table actions and create, through `AshPhoenix.Form`. `open/5`, `validate/4`, `submit_row/6`, `run/4`; `open_create/4`, `submit_create/6`; `open_generic/4`, `run_generic/4`, `submit_generic/6`; `open_bulk/4`; `from_page/2` (the page arguments of an action, merged over its params; raises for one the page does not give).
 - `AshDataTable.Bulk` (`bulk.ex`): a row action on a selection. `run/5`; its outcome has `done`, `succeeded` and `failed` (keys) and `failures`, and from `Operation` the `event`.
-- `AshDataTable.Event` (`event.ex`, public types): the events a table tells the page (`names/0`: `:read`, `:read_failed`, `:row_saved`, `:row_created`, `:row_destroyed`, `:action_ran`, `:bulk_ran`, `:selection_changed`, `:row_expanded`, `:row_collapsed`) and their details, records scrubbed (`Sensitive.scrub/2`), `arguments/3` without sensitive ones and files by name. `Live.Core.Notify.told/2` adds `table`, `resource` and a nested table's `path`, filters by `notify`, leaves out a picker's tables, and sends `{:ash_data_table, top_id, {event, details}}` to `self()`: from `Core.Cells`, `Core.Panel`, `Core.Bulk.handle_async`, `Core.Reading.show` and `Core.Nesting` (`toggle`) and `Core.Selection`.
+- `AshDataTable.Event` (`event.ex`, public types): the events a table tells the page (`names/0`: `:read`, `:read_failed`, `:row_saved`, `:row_created`, `:row_destroyed`, `:action_ran`, `:bulk_ran`, `:selection_changed`, `:row_opened`, `:row_expanded`, `:row_collapsed`) and their details, records scrubbed (`Sensitive.scrub/2`), `arguments/3` without sensitive ones and files by name. `Live.Core.Notify.told/2` adds `table`, `resource` and a nested table's `path`, filters by `notify`, leaves out a picker's tables, and sends `{:ash_data_table, top_id, {event, details}}` to `self()`: from `Core.Cells`, `Core.Panel`, `Core.Bulk.handle_async`, `Core.Reading.show` and `Core.Nesting` (`toggle`) and `Core.Selection`.
 - What these say is a message term (`AshDataTable.Errors.message/0`), never words: see "Texts and values".
 - Files have no module of their own in 2a: the limits are in `Resource.Uploading` and the upload handling is `AshDataTable.Live.Core.Files`.
 
@@ -190,7 +190,7 @@ Every event is named with the table it is for: `ash_data_table:ID:event` (target
 - Argument line: `arguments`, `argument_add`, `argument_remove`.
 - Nested tables: `expand`, `toggle`.
 - Cells: `save`, `clear`, `discard`, `dismiss`, `reveal` (sensitive), `edit` (map cell, opens the panel).
-- Row actions and create: `act`, `create`.
+- Row actions and create: `act`, `create`; `open` (the page's "Open" of a row: `Core.Panel` tells the page `:row_opened`, whatever `notify` says).
 - Table actions: `table_act`, `table_run`.
 - Selection: `select` (every change of what is selected), `bulk`, `bulk_run` (the action only: the selection is the entry's), `bulk_seen`.
 - Action panel: `panel_validate`, `panel_submit`, `panel_add`, `panel_remove`, `panel_unpick`, `panel_clear`, `panel_cancel`.
@@ -251,6 +251,7 @@ They are JS files of the package, in `assets/js/`. `AshDataTable` keeps four col
 | `hiding.js` | hiding columns | the "Columns" list; the server never hears of it |
 | `scrolling.js` | scrolling sideways | each grid is its own scroll area; a style sheet of its own (`pins`) with how wide the area is (`--ash-data-table-view`, for the nested tables in it) and the cells that stay with `sticky_label?`; `intoView` after a keyboard move; the scrollbar at the bottom edge of the window (`barWanted`, `placeBar`, `toBar`, `fromBar`) |
 | `choices.js` | several values of a filter | the list of "is any of" and "is none of": `openChoices`, `closeChoices` (which applies), `onChoicesKeydown` |
+| `actions.js` and `tree.js` | the page's "Open" | `openRow` (a click on `button[data-open]`, first in the actions cell) |
 | `selecting.js` | selecting | painting what is selected, telling the server every change (`select`), `selected()`, `bulk` |
 | `actions.js` | row actions | `act`, the question of an action, refocus |
 | `editing.js` | editing | `startEdit`, `pick`, `editInPanel`, `startList` |

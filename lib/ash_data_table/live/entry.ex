@@ -161,6 +161,10 @@ defmodule AshDataTable.Live.Entry do
     # limited to.
     # `lead` is the number of columns before the first data column.
     selecting: nil,
+    # What the button of the page's "Open" says in every row's actions
+    # cell, first among its buttons (`open` of the table on the page, never
+    # a nested table's); nil for none.
+    open_label: nil,
     selected: [],
     all?: false,
     selected_under: nil,

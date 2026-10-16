@@ -48,6 +48,7 @@ defmodule AshDataTable.Intent do
           | {:reveal, key, String.t()}
           | {:edit, key, String.t()}
           | {:act, key, String.t()}
+          | {:open, key}
           | :create
           | {:table_act, String.t()}
           | {:table_run, String.t()}
@@ -139,6 +140,7 @@ defmodule AshDataTable.Intent do
     do: {:ok, {:act, row, action}}
 
   def parse("create", _params), do: {:ok, :create}
+  def parse("open", %{"row" => row}) when is_binary(row), do: {:ok, {:open, row}}
 
   # Table actions
   def parse("table_act", %{"action" => action}) when is_binary(action),

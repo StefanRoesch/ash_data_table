@@ -132,7 +132,7 @@ defmodule AshDataTable.Live.Core do
   defp topic(event) when event in [:pick, :pick_input, :picked, :picker_cancel, :panel_unpick],
     do: Picker
 
-  defp topic(event) when event in [:act, :table_act, :table_run, :create], do: Panel
+  defp topic(event) when event in [:act, :open, :table_act, :table_run, :create], do: Panel
 
   defp topic(event)
        when event in [:panel_validate, :panel_submit, :panel_add, :panel_remove] or
@@ -208,6 +208,12 @@ defmodule AshDataTable.Live.Core do
     # what the table was told about live updates: nil where it was told nothing
     socket = put(socket, live_given: assigns[:live?])
 
+    # what the page's "Open" of a row says: the table on the page's only
+    socket =
+      if Map.has_key?(assigns, :open),
+        do: put(socket, open_label: if(length(table(socket).entry.path) == 1, do: assigns.open)),
+        else: socket
+
     # the zone of the page, nil and "UTC" being UTC
     socket =
       if Map.has_key?(assigns, :time_zone),
@@ -282,8 +288,9 @@ defmodule AshDataTable.Live.Core do
      )
      |> put(missing: missing, refused: refused)
      |> put(lines: lines(table(socket).entry.lines, model, state, refused))
-     # whether the rows have an actions cell: the last column of the grid
-     |> put(acting?: model.actions != [])
+     # whether the rows have an actions cell: the last column of the grid,
+     # for the row actions and the page's "Open"
+     |> put(acting?: model.actions != [] or not is_nil(table(socket).entry.open_label))
      # whether the grid has a footer row: a column of this person's has a summary
      |> put(summarised?: Model.summarised(model) != [])
      # the table actions are offered once the table has read, as create is
@@ -679,7 +686,7 @@ defmodule AshDataTable.Live.Core do
        when event in ~w(sort filter clear_filter clear_filters arguments argument_add
                         argument_remove page page_size toggle table_act table_run bulk_run
                         bulk_seen select panel_validate panel_submit panel_cancel pick_input
-                        picker_cancel create discard dismiss left read_again),
+                        picker_cancel create open discard dismiss left read_again),
        do: {:noreply, socket}
 
   # A name the table has no event of: nothing is done, and nothing is
