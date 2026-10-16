@@ -27,7 +27,8 @@ defmodule AshDataTable.Table do
   #   * `page_assigns`: the assigns of the page, which a default of an asked
   #     argument may be a function of.
   #   * `target`: where the table's events go, the `phx-target` of its
-  #     parts: the component that draws it (`@myself`).
+  #     parts: the component that draws it (`@myself`) for the tag; nil for
+  #     a table attached to a LiveView, whose events go to the LiveView.
   #   * `router`: the router of the page, which says where the host mounts a
   #     table (the full view, the parent of a table limited to related
   #     records).

@@ -5,7 +5,7 @@ defmodule AshDataTable do
   A resource gets a table by listing the extension `AshDataTable.Resource`, and
   optionally describing the table in a `table do … end` block: its default
   table. It can have further, named tables beside it (`tables do table
-  :compact do … end end`). A table reaches a page in one of two ways:
+  :compact do … end end`). A table reaches a page in one of three ways:
 
     * mounted as a page of its own, with one line in the router: see
       `AshDataTable.Router.ash_data_table/3`;
@@ -269,19 +269,31 @@ defmodule AshDataTable do
   The options are the attributes of `table/1`: `id`, `table`, `scope`,
   `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading` and
   `time_zone`. Besides, `url: true` keeps sort, filters and page in the
-  page's URL, under the table's id; that needs a LiveView mounted by the
+  page's URL, under the table's id. That needs a LiveView mounted by the
   router and not inside another, with a `handle_params/3` of its own
-  (LiveView calls it on every patch; it may do nothing), and `attach/4`
-  called in `mount/3`: the table then reads in the first `handle_params/3`,
-  before the first render.
+  (LiveView calls it on every patch; it may do nothing). Call `attach/4`
+  in `mount/3`: the table then reads in the first `handle_params/3`,
+  before the first render. Attached later, it reads at the next
+  `handle_params/3`, or at once, with the URL of the last one, where a
+  table with `url: true` was attached to the LiveView before.
   A default of an asked argument that is a function is given the
   LiveView's assigns.
 
   Names and ids are unique on a page: two tables of one resource need an
-  `id` each. Attaching again under the same name tells the table again,
-  which reads anew when who is asking has changed (`scope`, `actor`,
-  `tenant`, `authorize?`); another resource, table or id under that name
-  raises: detach it first.
+  `id` each, and no id may begin with another's and `-row-` or `-pick-`
+  (the ids of the tables a table shows). Attaching again under the same
+  name tells the table again, which reads anew when who is asking has
+  changed (`scope`, `actor`, `tenant`, `authorize?`); another resource,
+  table or id under that name raises: detach it first.
+
+  Every event of the table renders the LiveView again, so give the
+  LiveView's components named assigns, not `assigns` whole or spread
+  attributes, or they render again on every event too.
+
+  The table takes these names on the LiveView: events named
+  `ash_data_table:…`, async keys `{:ash_data_table, _, _}` and the message
+  `{:ash_data_table_heard, _, _}`. Its hooks halt them; a LiveView keeps
+  its own events, async keys and messages to other names.
   """
   @spec attach(Phoenix.LiveView.Socket.t(), atom, Ash.Resource.t(), keyword) ::
           Phoenix.LiveView.Socket.t()
@@ -786,8 +798,8 @@ defmodule AshDataTable do
   # own: the table on the page, its nested tables at every depth, the tables
   # of open pickers. A nested table is drawn after the table on the page, at
   # the top of the template, and the browser moves it into its cell
-  # (`<.portal>`, whose wrapper `_lv_portal_wrap_…` takes no part in the
-  # layout). Its events name it (`ash_data_table:ID:event`) and reach this
+  # (`<.portal>`; its content says which cell it goes into,
+  # `data-ash-data-table-portal`, for `AshDataTable.Test.page/1`). Its events name it (`ash_data_table:ID:event`) and reach this
   # component, which finds it by that id. What its row renders decides
   # whether it stays: after every update, event and answer the open lines
   # of the rows on the page are compared with the tables shown, and a table
@@ -928,7 +940,7 @@ defmodule AshDataTable do
   # (`AshDataTable.Query.summaries/4`, which also says what is never shown: a
   # number over a field the person sees on some records only). They are
   # asked for beside the read of the rows (a task of its own, under the key
-  # `{:ash_data_table, id, :summary}`), which never waits for them: with every read but one that only sorts, after
+  # `{:ash_data_table, id, {:summary, token}}`), which never waits for them: with every read but one that only sorts, after
   # everything the table writes, and once per batch of live updates
   # (`summarise/1`, from `tidy/1`). Until the answer is there the cells keep
   # what they showed and are `aria-busy`. An answer that fails puts the dash
@@ -940,8 +952,10 @@ defmodule AshDataTable do
   # into the cell of the row it belongs to (`<.portal>`), parents before
   # their children (`AshDataTable.Live.Registry.portals/1`). The two
   # elements around a nested table pin it to the left edge of the scroll
-  # area around it and make it as wide as that area: the portal's own
-  # wrapper takes no part in the layout (`display: contents`).
+  # area around it and make it as wide as that area: the portal itself
+  # takes no part in the layout (`display: contents`). The outer one names
+  # the cell (`data-ash-data-table-portal`): what a test reads the page
+  # by, as the markup LiveView makes of a portal is LiveView's own.
   attr :table, :any, required: true
   attr :streams, :any, required: true
   attr :uploads, :any, required: true
@@ -966,7 +980,7 @@ defmodule AshDataTable do
       target={"[id='#{entry.target}']"}
       class="contents"
     >
-      <div class="sticky left-0 w-0" data-pin>
+      <div class="sticky left-0 w-0" data-pin data-ash-data-table-portal={entry.target}>
         <div class="w-[var(--ash-data-table-view)]">
           <div
             :if={!entry.gone?}

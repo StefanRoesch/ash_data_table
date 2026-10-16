@@ -37,31 +37,11 @@ defmodule AshDataTable.Live.Hooks do
   the first `handle_params` (D6); else it is done here, in place.
   """
   def attach(socket, name, given, url?) do
-    if url? do
-      cond do
-        is_nil(socket.router) ->
-          raise ArgumentError,
-                "AshDataTable.attach/4 was given `url: true` in #{inspect(socket.view)}, which " <>
-                  "is not mounted by the router (`live/3`): only a routed LiveView has a URL to " <>
-                  "keep the table's state in. Leave `url` out to keep it in the table."
-
-        not function_exported?(socket.view, :handle_params, 3) ->
-          raise ArgumentError,
-                "AshDataTable.attach/4 was given `url: true` in #{inspect(socket.view)}, which " <>
-                  "defines no `handle_params/3`. The table patches the URL, and LiveView calls " <>
-                  "the LiveView's own `handle_params/3` on every patch: define one, even one " <>
-                  "that does nothing (`def handle_params(_params, _url, socket), do: " <>
-                  "{:noreply, socket}`)."
-
-        socket.parent_pid != nil ->
-          raise ArgumentError,
-                "AshDataTable.attach/4 was given `url: true` in #{inspect(socket.view)}, which " <>
-                  "is rendered inside another LiveView: only the root LiveView has the URL. " <>
-                  "Leave `url` out to keep the table's state in the table."
-
-        true ->
-          :ok
-      end
+    if url? and is_nil(socket.router) do
+      raise ArgumentError,
+            "AshDataTable.attach/4 was given `url: true` in a LiveView that is not mounted by " <>
+              "the router (`live/3`): only a routed LiveView has a URL to keep the table's " <>
+              "state in. Leave `url` out to keep it in the table."
     end
 
     private = private(socket)
@@ -113,6 +93,16 @@ defmodule AshDataTable.Live.Hooks do
               "#{inspect(other)}; two tables of a page need an id each (`id: \"...\"`)."
     end
 
+    # the tables a table shows are named after it (`ID-row-…`, `ID-pick-…`):
+    # an id that one of them may have is no other table's
+    for {other, %{given: %{id: id}}} <- private.tables,
+        inside?(given.id, id) or inside?(id, given.id) do
+      raise ArgumentError,
+            "AshDataTable.attach/4: the id #{inspect(given.id)} and the id #{inspect(id)} of " <>
+              "the table under #{inspect(other)} clash: the tables a table shows have ids " <>
+              "that begin with its own and `-row-` or `-pick-`. Choose another id."
+    end
+
     table =
       Table.new()
       |> Table.put(target: nil, router: socket.router)
@@ -161,6 +151,9 @@ defmodule AshDataTable.Live.Hooks do
               "AshDataTable.detach/2: no table is attached under the assign #{inspect(name)}."
     end
   end
+
+  defp inside?(id, top),
+    do: String.starts_with?(id, top <> "-row-") or String.starts_with?(id, top <> "-pick-")
 
   # What the socket keeps of its tables.
   defp private(socket),
