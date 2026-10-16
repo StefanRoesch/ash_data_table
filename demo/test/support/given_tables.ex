@@ -137,7 +137,7 @@ defmodule Demo.Support.Given.Card do
 end
 
 defmodule Demo.Support.Given.Remark do
-  @moduledoc "A remark on a card, which points at a card."
+  @moduledoc "A remark on a card, which points at a card; deleting one asks first."
   use Ash.Resource,
     domain: Demo.Support.Given,
     data_layer: Ash.DataLayer.Ets,
@@ -149,10 +149,15 @@ defmodule Demo.Support.Given.Remark do
 
     column :body
     column :card
+
+    action :destroy do
+      confirm "Delete this remark?"
+    end
   end
 
   actions do
     defaults create: [:body, :card_id]
+    destroy :destroy
 
     read :read do
       primary? true

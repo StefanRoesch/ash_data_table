@@ -57,6 +57,25 @@ defmodule DemoWeb.Tables.ControlledTest do
     assert request(view) == nil
   end
 
+  test "a nested table asks its own question: only the table on the page is controlled",
+       %{conn: conn, card: card} do
+    remark = Ash.Seed.seed!(Remark, %{body: "A remark", card_id: card.id})
+    {:ok, view, _html} = given(conn, %{"notify" => [:requested]})
+    nested = nested("card", card.id, "remarks")
+
+    expand(view, "card", card.id)
+    html = toggle(view, "card", card.id, "remarks")
+
+    # the hook asks before it sends `act`
+    assert attribute(html, "[id='#{nested}-row-#{remark.id}-a-destroy']", "data-question") ==
+             ["Delete this remark?"]
+
+    act(view, nested, remark.id, "destroy")
+    refute_received {:heard, {:ash_data_table, "card", {:requested, _details}}}
+    assert request(view) == nil
+    assert Ash.read!(Remark) == []
+  end
+
   test "a panel is not drawn: the page has its fields, a sensitive one without its value",
        %{conn: conn} do
     {:ok, view, _html} = given(conn, %{})
