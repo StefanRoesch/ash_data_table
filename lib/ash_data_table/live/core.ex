@@ -168,7 +168,7 @@ defmodule AshDataTable.Live.Core do
       )
 
     # where it is: under the tables it was told it is rendered in
-    socket = put(socket, path: Map.get(assigns, :lineage, []) ++ [socket.assigns.table.entry.id])
+    socket = put(socket, path: Map.get(assigns, :path, []) ++ [socket.assigns.table.entry.id])
 
     # what the table was told about live updates: nil where it was told nothing
     socket = put(socket, live_given: assigns[:live?])

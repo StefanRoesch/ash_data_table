@@ -84,7 +84,7 @@ defmodule AshDataTable.RegistryTest do
 
     assert [{"t-row-1-t-comments", given, "t-row-1-n-comments-c"}] = Nesting.children(socket, "t")
     assert %{id: "t-row-1-t-comments", parent_key: %{id: 1}, url: nil, mounted?: false} = given
-    assert given.lineage == ["t"]
+    assert given.path == ["t"]
   end
 
   test "closing is by place: the sibling whose name the closed one's id begins is left open" do

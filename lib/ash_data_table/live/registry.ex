@@ -128,13 +128,14 @@ defmodule AshDataTable.Live.Registry do
   def close(socket, id) do
     socket =
       within(socket, id, fn socket ->
-        %{live: live, uploads: uploads, running_files: files} = socket.assigns.table.entry
+        %{live: live, uploads: uploads} = socket.assigns.table.entry
 
         if live, do: AshDataTable.Listener.stop(live.pid)
-        Enum.each(files, &File.rm/1)
 
         socket =
-          Enum.reduce([:read, :summary, :bulk], socket, &cancel_async(&2, async(&2, &1)))
+          [:read, :summary, :bulk]
+          |> Enum.reduce(socket, &cancel_async(&2, async(&2, &1)))
+          |> AshDataTable.Live.Core.Files.drop_copies()
 
         # an upload with entries cannot be given up: they are cancelled first
         Enum.reduce(uploads, socket, fn name, socket ->

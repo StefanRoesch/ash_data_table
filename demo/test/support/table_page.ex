@@ -1083,8 +1083,7 @@ defmodule DemoWeb.TablePage do
   @doc """
   Everything the LiveView of `view` and its components keep between two
   events, as text: their assigns, and what its process keeps besides (its
-  process dictionary, where every table of the page is noted in `@tables`).
-  For what a table must not hold on to, wherever it would hold it.
+  process dictionary). For what a table must not hold on to, wherever it would hold it.
   """
   def kept(view) do
     {:ok, socket} = Phoenix.LiveView.Debug.socket(view.pid)

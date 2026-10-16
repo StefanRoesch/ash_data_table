@@ -527,8 +527,8 @@ defmodule AshDataTable.Live.TableComponent do
   # The numbers are over every record the table matches, not over the page
   # (`AshDataTable.Query.summaries/4`, which also says what is never shown: a
   # number over a field the person sees on some records only). They are
-  # asked for beside the read of the rows (`start_async(:summary, …)`), which
-  # never waits for them: with every read but one that only sorts, after
+  # asked for beside the read of the rows (a task of its own, under the key
+  # `{:ash_data_table, id, :summary}`), which never waits for them: with every read but one that only sorts, after
   # everything the table writes, and once per batch of live updates
   # (`summarise/1`, from `tidy/1`). Until the answer is there the cells keep
   # what they showed and are `aria-busy`. An answer that fails puts the dash
@@ -636,16 +636,16 @@ defmodule AshDataTable.Live.TableComponent do
     """
   end
 
-  # The items of a table's stream, given to its grid whenever the table
-  # changes: the grid's comprehension over them is then rendered again, with
-  # nothing new in it but what the stream holds, as it was while every
-  # table was a component of its own (`Phoenix.LiveViewTest` keeps the rows
-  # of a stream where they are only then).
   # The nested tables, parents first, each with the items of its stream:
   # a portal is rendered again only when its table or its stream changed.
   defp portals(table, streams),
     do: for(entry <- Registry.portals(table), do: {entry, streams[entry.stream]})
 
+  # The items of a table's stream, given to its grid whenever the table
+  # changes: the grid's comprehension over them is then rendered again, with
+  # nothing new in it but what the stream holds, as it was while every
+  # table was a component of its own (`Phoenix.LiveViewTest` keeps the rows
+  # of a stream where they are only then).
   defp rows(_streams, nil), do: nil
 
   defp rows(streams, entry), do: streams[entry.stream]

@@ -238,7 +238,7 @@ defmodule AshDataTable.Live.Core.Nesting do
       authorize?: assigns.table.entry.authorize_given,
       page_assigns: assigns.table.options.page_assigns,
       time_zone: assigns.table.caller.time_zone,
-      lineage: assigns.table.entry.path,
+      path: assigns.table.entry.path,
       live?: passed_on(assigns.table.entry.live_given)
     }
   end
@@ -266,7 +266,7 @@ defmodule AshDataTable.Live.Core.Nesting do
       time_zone: assigns.table.caller.time_zone,
       depth: assigns.table.entry.depth + 1,
       depth_limit: assigns.table.entry.depth_limit,
-      lineage: assigns.table.entry.path,
+      path: assigns.table.entry.path,
       live?: passed_on(assigns.table.entry.live_given)
     }
   end
