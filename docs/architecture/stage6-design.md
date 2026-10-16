@@ -419,3 +419,37 @@ The design relies on no internal of LiveView, Phoenix, Ash or Spark: nothing `@m
 | 5 | `lib/ash_data_table/test.ex:115, 317-322`, `demo/test/support/table_page.ex:1261`, `demo/test/demo_web/markup_snapshot_test.exs:178-212` | read the markup `<.portal>` renders (`data-phx-portal`, the wrapper id `_lv_portal_wrap_…`), which `portal/1`'s docs do not promise (`LV lib/phoenix_component.ex:3603-3610`) | a: the table marks the content of each portal itself (an attribute of its own on the element it draws, naming the target cell); the helpers find that element by the table's own marker and move it, whatever LiveView wraps around it; the snapshots compare the table's elements only. b: wait for `Phoenix.LiveViewTest` to resolve portals (not announced). Recommended: a |
 
 **Recommendation:** item 1 in step 1, where D5 changes that function anyway; items 2–5 in step 0b, before anything new, so that the first new ability is built on public ground. Items 2–4 must keep the markup snapshots identical; item 5 changes the test helpers and the normaliser only (an agreed group, like stage 4's group L). If item 5 a cannot keep a snapshot byte for byte, you are told before the snapshots are rewritten.
+
+## 12. As built
+
+Commits on `main` after `stage6-start`: `310ef07` (step 0: status, target.md), `5fe8e87` (a step 0b leftover: the helpers' portal fixture), `749cf61` (`url: true` without `handle_params/3`), `e336120` (the router page attaches again before an event that waits), `5b4b32a` (`__metadata__` of a keyset record), `25876e2` (step 1), `bb90f95` (step 2), `a150604` and `49f449a` (step 3), `6f55732` (step 4), `fc58e7a` (step 5), `5200783` (step 6), `18a032c` (step 7), `e761b4f` (the perf actions of D18), `23b8e86` and `b6333d0` (two test races the final runs showed).
+
+**The shape.** As sections 1–4, with these details:
+
+- Page values travel in `opts` as `page_values`; every function of 2a reduces them where it calls Ash (`Query.reader_opts/1`, idempotent; `Query.action_opts/3` adds an action's private arguments; `Query.privately/3` sets them on a read before `for_read/4`). `Live.Core.reader/1` adds them for the entry the callback works on (`Live.Core.values/1`), and the key that decides whether to read again leaves them out. `page_assigns/1` gives `socket.assigns` whole.
+- The veto is `Live.Core.veto/1`, a closure of the `AshDataTable.Request`; `Operation` fills in what its checks found, the closure the table and path.
+- The selection lives in `Live.Core.Selection` (a module of its own beside `Core.Bulk`): `select` from the hook, `ash_data_table:select` from the server, `selected`, `all?` and `selected_under` in the entry. `bulk_seen` stays.
+- Controlled mode lives in `Live.Core.Requests`. Questions held: those of row actions, table actions and actions on the selection. A column's question before a save and a reference cell's are not in v1, nor a map cell's panel.
+- "Open" is `entry.open_label` (the entry's `open` already holds the expanded rows).
+
+**Not done as written.**
+
+- Steps 1 and 2, and 6 and 7, were built in one working tree; each was committed alone. The browser suite of step 2 ran twice: the first run took up the hook of step 3 half way (the dev server's asset watcher rebuilt the shared bundle; it was stopped for the rest of the stage) and was void. Browser runs then ran from a worktree at the commit under test. From step 5 on, on the owner's order, the browser suite and the gate ran once at the end of the stage, not per step; steps 6 and 7 ran their own test files and the library and demo suites.
+- The ten-runs gate ran after step 3 (2424 passed, `picker.spec.ts:593` failed twice) and at the end, where the owner stopped it (2195 passed, the same test failed once, 6 interrupted, 244 not run). Its cause was the test: it used a second cell while the first picker was still closing, and the picker gave the focus back to its own cell (`b6333d0`). No fallback of D17 was taken.
+- Tests changed beyond group R's helper: the tests that sent a selection with `bulk`/`bulk_run` or asserted `ash_data_table:bulk`, `ash_data_table:unselect` or `data-scope` (`task_bulk_test`, `bulk_elsewhere_test`, `attach_test`, `argument_line_test`, `live_updates_test`, `intent_test`, `operation_test`) now select first and assert `ash_data_table:select`; thirteen browser checks that selecting sends nothing allow `select` (`frames.besides`). The veto helper of `operation_test` takes the request. Fifteen snapshots lose `data-scope` and nothing else; state 11 is new.
+
+**Performance (D18).** `demo/perf/baseline.mjs` on `/tasks`, `stage6-start` in a worktree and `b6333d0`, back to back on the standard seed, 15 runs each, at the same load: 6.4 and 6.6 at the start of each run (another project's Docker VM held it there, so the times are relative). Median ms, start → end; bytes; Ash reads and statements:
+
+| Action | Median ms | Bytes | Reads, statements |
+| --- | --- | --- | --- |
+| Cell save | 95.8 → 94.8 (−1 %) | 7,302 → 7,312 | 4, 7 |
+| Expanding a row | 33.8 → 21.1 | 3,294 → 3,294 | 0, 0 |
+| Opening a nested table | 102.7 → 91.1 | 37,190 → 37,165 | 2, 2 |
+| Opening the picker | 107.9 → 123.1 (+14 %) | 31,915 → 31,915 | 2, 4 |
+| Cell save in a nested table | 51.9 → 55.2 (+6 %) | 3,484 → 3,494 | 1, 2 |
+| Cell save with a nested table open | 114.7 → 79.7 | 6,857 → 7,547 | 4, 7 |
+| Selecting a row | 6.1 → 6.1 | 0 → 198 (the `select` round trip) | 0, 0 |
+| Page change | 226.3 → 142.0 | 149,601 → 149,779 | 4, 7 |
+| Cell save, notified (`/perf/notified`, end only) | 83.2 | 7,312 | 4, 7 |
+
+Times within 20 %, reads and statements the same. A save on a page told every event, with a context function and a veto, costs what a save on `/tasks` does.
