@@ -528,52 +528,46 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       assert titles(render(admin)) == ["Saved here"]
     end
 
-    # What the table does once what was announced while `fun` ran has
-    # been handed to it: the records it reads through Ash, by resource, and
-    # the diffs it sends to the browser. Nothing, where the table made the
-    # change itself. What `fun` started itself (a read after a create, the
-    # footer summaries) is done before it is looked at.
+    # How many times the listeners of the page's tables handed the page
+    # what was announced while `fun` ran: none, where the table made the
+    # change itself (the notifier leaves its own listener out,
+    # `broadcast_from`). The listeners are traced from before `fun` runs
+    # until `AshDataTable.Test.flush/1` has had them hand over everything
+    # they gathered, so a batch their timer hands over early is counted too;
+    # what `fun` started itself (a read after a create, the footer
+    # summaries) is done before the flush.
     defp handed(view, fun) do
-      fun.()
-      render_async(view, 10_000)
+      listeners = AshDataTable.Listener.of(view.pid)
+      assert listeners != []
+      for pid <- listeners, do: :erlang.trace(pid, true, [:send])
 
-      test = self()
-      handler = "handed-#{System.unique_integer()}"
-      pid = view.pid
+      try do
+        fun.()
+        render_async(view, 10_000)
+        AshDataTable.Test.flush(view)
+      after
+        for pid <- listeners, Process.alive?(pid), do: :erlang.trace(pid, false, [:send])
+      end
 
-      # the reads of the page's process and of what it runs beside it
-      :telemetry.attach(
-        handler,
-        [:ash, :tracker, :read, :stop],
-        fn _event, _measurements, metadata, _config ->
-          if self() == pid or pid in (Process.get(:"$callers") || []),
-            do: send(test, {:handed_read, metadata.resource_short_name})
-        end,
-        nil
-      )
+      # every trace message of a listener is here once this is answered
+      for pid <- listeners do
+        ref = :erlang.trace_delivered(pid)
+        assert_receive {:trace_delivered, ^pid, ^ref}
+      end
 
-      sent =
-        try do
-          wire(view, fn ->
-            AshDataTable.Test.flush(view)
-            render_async(view, 10_000)
-          end)
-        after
-          :telemetry.detach(handler)
-        end
-
-      %{reads: handed_reads([]), diffs: length(Regex.scan(~r/event: "diff"/, sent))}
+      relayed(view.pid, 0)
     end
 
-    defp handed_reads(sofar) do
+    defp relayed(view, count) do
       receive do
-        {:handed_read, resource} -> handed_reads([resource | sofar])
+        {:trace, _listener, :send, _message, ^view} -> relayed(view, count + 1)
+        {:trace, _listener, :send, _message, _to} -> relayed(view, count)
       after
-        0 -> Enum.reverse(sofar)
+        0 -> count
       end
     end
 
-    defp nothing, do: %{reads: [], diffs: 0}
+    defp nothing, do: 0
 
     test "are not announced to it, whichever way it writes", %{
       world: world,
@@ -583,12 +577,9 @@ defmodule DemoWeb.Tables.LiveUpdatesTest do
       [project | _] = world.projects
 
       # a record another person changes is, for comparison
-      assert %{reads: [_ | _], diffs: diffs} =
-               handed(admin, fn ->
-                 Ash.update!(task, %{title: "By another"}, authorize?: false)
-               end)
-
-      assert diffs > 0
+      assert handed(admin, fn ->
+               Ash.update!(task, %{title: "By another"}, authorize?: false)
+             end) > 0
 
       # a cell
       assert handed(admin, fn -> save(admin, task.id, "title", "Saved here") end) == nothing()
