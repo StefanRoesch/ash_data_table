@@ -394,3 +394,39 @@ For your yes; target.md is not changed by this note.
 - F1: no sensitive value on any path but "Show"; `KitCase` checks it.
 - F3, F13, Q12 as decided; D-nested: no live component per nested table (D18 d not proposed).
 - Ash way and public API only (2026-10-16); greenfield (no old contract numbers, no shims); tests exactly once per suite at the end (2026-10-16); docs: the architecture map and the moduledocs of new public functions only.
+
+## 13. As built: 7a
+
+Commits on `main` after `stage7-start` (`c3e5a94`): `915bfb8` (step 0: status, target.md amendments 1–9), `a55a445` ("open the panel" in `baseline.mjs`, D22), `72b281a` (step 1), `8d3c302` (step 3), `07ebe47` (step 4 and test group X), `77e25e6` (step 5), `5a76a99` (step 6), `1bbef66` (a test formatted), `6256e58` (the grid's sender in place of the unlock; the snapshots, reviewed by the owner).
+
+**The shape.** As section 4, with these details:
+
+- `AshDataTable.Attrs` (`lib/ash_data_table/attrs.ex`, part 3: `test/architecture_test.exs` places `attrs.ex` there) and `assets/js/markers.js` name the same markers (`Attrs.markers/0`; `test/markers_test.exs` compares them and greps the hooks for the done-check of section 9). New on the markup: `role="rowgroup"` on a record's and a detail's row group, `role="dialog"` on the three dialogs, `data-table` on the element of each hook, `data-paragraph` on the paragraph of a cell with `max_lines`, `data-unseen` beside `sr-only` in a cell (D5), and the grid's sender (below).
+- **D3: fallback b, wider than the row, row group and cell.** With every bundle spread, "Page change" sent 11.3 % more (149,779 → 166,750 bytes), and a cell save 50 % more (the footer row of the summaries is sent twice per save, each cell's whole attribute list as one dynamic). So every element drawn per row or per column (a record's row group, row and cells, the action buttons, the header and filter cells, the lines, the summaries, the resizers, the editor templates) writes its constant attributes in the part and spreads only what varies (`Attrs.rowgroup/2`, `cell/5`, `actions/2`, `action/2`, `column_header/5`, `summary/2`). Elements drawn once per table spread their whole bundle. `KitCase` (7b) asserts the constants.
+- **D4: rows by place, not `aria-rowindex`** (accepted by the owner, 2026-10-16). A column is by `aria-colindex`; a row by its place among the grid's own `[role=row]`s, the header's first (the stream may put the records before the header in the page), the footer's last, as `HTMLTableElement.rows` had them. The lines of a detail have no `aria-rowindex`. Native controls are still asked for by kind (`input`, `button`, `form`, `template`, …), never the table's structure.
+- **D5: the default colours** (accepted by the owner, 2026-10-16). The hooks read `var(--ash-data-table-ground, var(--ash-data-table-default-ground, Canvas))` and the same for `-line`; the root sets only the `-default-` pair from daisyUI. A value set on the root itself would hide the one a host sets on an ancestor (`layout-and-embedding.md`).
+- **D6** is `Parts.Grid.root/0`: the rules written out in full on markers (Tailwind finds a class only as written), a grid's own cells reached through `[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]`. Only the root of the table on the page carries them; a table keeps `class="table"` (and `w-auto` nested).
+- **D18 c**: `phx-no-format` stays only where whitespace is drawn (the rows, a header's label, the live region, the failure template, the whole-text popover, the related heading).
+- **D13**: `assets/js/check.js`, run by the transport's `hook(behaviour, part)` after `mounted` and `updated` while `liveSocket.isDebugEnabled()`.
+- **D19: no unlock; a sender** (owner, 2026-10-16). `detail.unlock`/`detail.lock` of `phx:push` are not in LiveView 1.2.12's documentation (the guides JS interop, bindings and syncing changes at https://hexdocs.pm/phoenix_live_view/1.2.12/, nor its module docs; only a CHANGELOG fix, #4351, names `detail.lock()`): an internal. LiveView locks the element of the hook that pushes (`pushEventTo` of a hook). So the grid's events are pushed by its sender, an empty element drawn before the grid (`Attrs.sender/1`, `data-sender`, `data-table`, hook `.Sender`, `assets/js/sender.js`), and the grid is never locked. `portals.spec.ts` holds the server's answers as one stream (it reads none of them) while a line opens and then a cell saves: the nested table must arrive while the grid's own save is still on its way. Without the sender it fails with stage 5's "portal target … not found" (checked once).
+- **Test group Y** is `/e2e/markers` (`DemoWeb.E2E.MarkersLive`): a grid of `div`s and `span`s with the markers, a sender, a table nested in a cell, and a style sheet of no weight (`:where`); `markers.spec.ts` drives it (arrow keys, Enter into the nested table and Escape out, editing, Space and Shift+Down, widths, hiding) and checks D13. **Group X**: the ExUnit and Playwright helpers and about 60 test lines find rows and cells by role, not by tag; the ten `btn-error`/`btn-primary` assertions check `data-destructive`.
+
+**Bytes (D18, D3; §6), smallest of 15 runs, at `stage7-start` → the end.** The class list of a `<table>` was 4,321 bytes (4,328 nested), a resize handle's 501 (2,505 for the five columns of the comments table); an opened nested table's statics held 1,073 characters of indentation. Opening a nested table 33,923 → 29,813 (−4,110), opening the picker 31,932 → 26,814 (−5,118), "Page change" 149,307 → 144,991 (median −2.9 %), a cell save 7,312 → 7,309. D18 c alone: −168 bytes per nested table, −92 per picker; the sender: about +220 per nested table. The markup snapshots grow by about 2 KB per page with one table (the root's rules, 6,348 bytes, sent once at mount).
+
+**Performance (D22).** `demo/perf/baseline.mjs` on `/tasks`, `stage7-start` in a worktree and `6256e58`, back to back, 15 runs each, at the machine's load: 13.2 at the start of the first run, 5.5 at the start of the second, 2.9 after it. Median ms, start → end; median bytes; Ash reads and statements the same for every action:
+
+| Action | ms | bytes |
+| --- | --- | --- |
+| Cell save | 37.7 → 35.4 | 7,312 → 7,309 |
+| Expanding a row | 9.3 → 9.2 | 3,294 → 3,266 |
+| Opening a nested table | 42.4 → 38.3 | 37,195 → 32,985 |
+| Opening the picker | 36.1 → 34.4 | 41,071 → 32,508 |
+| Opening the panel | 25.9 → 23.3 | 4,231 → 4,201 |
+| Cell save in a nested table | 22.0 → 23.3 | 3,494 → 3,418 |
+| Cell save with a nested table open | 33.7 → 32.0 | 7,547 → 7,544 |
+| Selecting a row | 3.3 → 3.5 | 198 → 198 |
+| Page change | 69.1 → 73.6 | 149,735 → 145,420 |
+
+**Tests.** During the steps, `mix test --stale` (root and demo) and the browser spec files of each step, once per change. At the end, once each: root 1,232 tests, 0 failures; demo 2,862, 0 failures; browser 987 passed, 0 failed (8.0 min); no laptop sleep during any run.
+
+**Left for 7b.** The kit draws the parts; the bundles become its assigns; `KitCase` asserts the constants that D3 b leaves in the parts. The drift check of 7a.
