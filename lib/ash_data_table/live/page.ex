@@ -269,9 +269,12 @@ defmodule AshDataTable.Live.Page do
       socket = if socket.assigns.route, do: AshDataTable.detach(socket, :table), else: socket
       label = AshDataTable.label(route.resource)
 
+      # what the layout is given, but the flash, which changes: made once,
+      # so that a change of the table does not render the layout again
       socket =
         socket
         |> assign(route: route, page_title: label)
+        |> assign(layout_assigns: layout_assigns(route, socket.assigns))
         |> AshDataTable.attach(
           :table,
           route.resource,
@@ -297,10 +300,8 @@ defmodule AshDataTable.Live.Page do
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, :layout, layout(assigns.route))
-
     ~H"""
-    <.in_layout layout={@layout} {layout_assigns(assigns)}>
+    <.in_layout layout={layout(@route)} flash={@flash} given={@layout_assigns}>
       <div id={"#{@route.id}-page"}>
         <%!-- the page's heading is the first line of the table: its name, and
         its create button at the other end --%>
@@ -314,22 +315,32 @@ defmodule AshDataTable.Live.Page do
   defp layout(%{layout: :default}), do: Application.get_env(:ash_data_table, :layout, false)
   defp layout(%{layout: layout}), do: layout
 
-  # What the layout is told: the flash, and who is asking under the names the
-  # socket has them: those the resource's domain gives them, and the
+  # What the layout is told besides the flash: who is asking under the names
+  # the socket has them: those the resource's domain gives them, and the
   # conventional ones. An assign the socket does not have is not passed,
   # except `current_scope`, which the layout of a new Phoenix app expects.
-  defp layout_assigns(assigns) do
-    resource = assigns.route.resource
+  defp layout_assigns(%{resource: resource}, assigns) do
     names = resource |> AshDataTable.Domain.Info.assign_names() |> Map.values()
     zone = AshDataTable.Domain.Info.time_zone_assign(resource)
 
     assigns
-    |> Map.take([:flash, :current_user, zone | names])
+    |> Map.take([:current_user, zone | names])
     |> Map.put(:current_scope, assigns[:current_scope])
   end
 
-  defp in_layout(%{layout: {module, function}} = assigns) do
-    apply(module, function, [Map.delete(assigns, :layout)])
+  # The layout is given its assigns as one attribute, not spread: LiveView
+  # renders a component that is given spread attributes whole on every
+  # change, the layout's flash group with it, and every event of the table
+  # is a change of this page. They are made once (`handle_params/3`).
+  defp in_layout(%{layout: {module, function}, given: given} = assigns) do
+    assigns = assigns |> Map.drop([:layout, :given]) |> Map.merge(given)
+
+    assigns =
+      if match?(%{__changed__: %{given: _}}, assigns),
+        do: Map.put(assigns, :__changed__, nil),
+        else: assigns
+
+    apply(module, function, [assigns])
   end
 
   defp in_layout(assigns) do
