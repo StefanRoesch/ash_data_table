@@ -2453,10 +2453,10 @@ defmodule AshDataTable.ModelTest do
   end
 
   describe "for_actor/2 in a system that has run no policy yet" do
-    # Outside a release, modules are loaded when first used, and Ash asks an
-    # authorizer about fields only if its module is loaded already. A table
-    # opened first thing must not show every column for that. This needs a
-    # system of its own: here, the other tests have long loaded everything.
+    # Outside a release, modules are loaded when first used. A table opened
+    # first thing, before anything has loaded the policy authorizer, must not
+    # show every column. This needs a system of its own: here, the other
+    # tests have long loaded everything.
     @tag timeout: 120_000
     test "leaves out the columns a person can never see, the first time it is asked" do
       code = """

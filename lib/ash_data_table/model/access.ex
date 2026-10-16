@@ -23,7 +23,6 @@ defmodule AshDataTable.Model.Access do
   def hidden_fields(_resource, _read_action, [], _reader), do: []
 
   def hidden_fields(resource, read_action, fields, reader) do
-    ensure_authorizers_loaded(resource)
     {actor, opts} = actor_and_opts(reader)
 
     # `filter_is: true`, the default, is what tells the two kinds of hidden
@@ -45,7 +44,6 @@ defmodule AshDataTable.Model.Access do
   def partly_hidden_fields(_resource, _read_action, [], _reader), do: []
 
   def partly_hidden_fields(resource, read_action, fields, reader) do
-    ensure_authorizers_loaded(resource)
     {actor, opts} = actor_and_opts(reader)
 
     # With `filter_is: false` a field behind a check on the record counts as
@@ -74,7 +72,6 @@ defmodule AshDataTable.Model.Access do
   """
   @spec forbidden_actions(Ash.Resource.t(), [atom], reader) :: [atom]
   def forbidden_actions(resource, actions, reader) do
-    ensure_authorizers_loaded(resource)
     {actor, opts} = actor_and_opts(reader)
 
     Enum.filter(actions, fn action ->
@@ -105,17 +102,6 @@ defmodule AshDataTable.Model.Access do
       _action_on_records ->
         Ash.can({resource, action}, actor, opts)
     end
-  end
-
-  # `Ash.can_see_fields/4` asks each authorizer of the resource only if its
-  # module is already loaded (ash 3.34.4: `Ash.Authorizer` tests
-  # `function_exported?/3` without loading it), and takes a module that is not
-  # as "every field is visible". Outside a release modules are loaded on first
-  # use, so a table opened before anything else has run a policy would show
-  # every column. Internal ticket #28: this goes when Ash loads the module
-  # before it asks.
-  defp ensure_authorizers_loaded(resource) do
-    resource |> Ash.Resource.Info.authorizers() |> Enum.each(&Code.ensure_loaded/1)
   end
 
   # Ash's checks take the actor as an argument of its own, and the tenant
