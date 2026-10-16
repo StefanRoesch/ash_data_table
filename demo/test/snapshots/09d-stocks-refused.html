@@ -144,8 +144,6 @@
 </div>
 </div>
 </form>
-<form id="stock-filters" phx-change="filter" phx-submit="filter">
-</form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 3 that match are selected" data-more="" data-selected="{n} selected" data-selection="" id="stock-selection" role="group">
 <p class="text-sm" id="stock-selected" phx-update="ignore" role="status">
@@ -203,9 +201,11 @@
 </div>
 </div>
 <p aria-live="polite" class="sr-only" id="stock-status" role="status">At least: must be greater than or equal to 0 </p>
+<form id="stock-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="stock" hidden="" id="stock-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="stock" id="stock-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="stock" id="stock-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="10" aria-label="Stock" aria-multiselectable="true" aria-rowcount="5" class="table " data-first-row="3" id="stock-table" phx-update="stream" role="grid">
 <thead id="stock-head">
 <tr aria-rowindex="1" id="stock-head-row" role="row">
@@ -490,20 +490,6 @@
 </div>
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="stock-whole" phx-update="ignore" popover="manual">
 </div>
-<div id="stock-dialogs" phx-update="ignore">
-<dialog aria-labelledby="stock-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="stock-dialog" role="dialog">
-<form method="dialog">
-<p id="stock-dialog-question">
-</p>
-<div class="mt-6 flex justify-end gap-2">
-<button class="btn" value="cancel">Cancel</button>
-<button class="btn btn-primary data-destructive:btn-error" value="confirm">
-          Confirm
-        </button>
-</div>
-</form>
-</dialog>
-</div>
 <nav aria-label="Pagination: Stock" class="mt-4 flex flex-wrap items-center justify-between gap-4" data-table="stock" id="stock-pagination" phx-hook=".Pagination">
 <p class="me-auto text-sm" id="stock-range">1–2 of 3</p>
 <div class="join">
@@ -523,6 +509,20 @@
   </button>
 </div>
 </nav>
+<div id="stock-dialogs" phx-update="ignore">
+<dialog aria-labelledby="stock-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="stock-dialog" role="dialog">
+<form method="dialog">
+<p id="stock-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary data-destructive:btn-error" value="confirm">
+          Confirm
+        </button>
+</div>
+</form>
+</dialog>
+</div>
 </div>
 </div>
 </div>

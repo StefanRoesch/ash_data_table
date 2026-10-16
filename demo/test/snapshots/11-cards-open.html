@@ -13,8 +13,6 @@
 </button>
 </div>
 </div>
-<form id="card-filters" phx-change="filter" phx-submit="filter">
-</form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 2 that match are selected" data-selected="{n} selected" data-selection="" id="card-selection" role="group">
 <p class="text-sm" id="card-selected" phx-update="ignore" role="status">
@@ -57,9 +55,11 @@
 </div>
 <p aria-live="polite" class="sr-only" id="card-status" role="status">
 </p>
+<form id="card-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="card" hidden="" id="card-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="card" id="card-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="card" id="card-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="6" aria-label="Card" aria-multiselectable="true" aria-rowcount="4" class="table " data-first-row="3" id="card-table" phx-update="stream" role="grid">
 <thead id="card-head">
 <tr aria-rowindex="1" id="card-head-row" role="row">
@@ -200,7 +200,7 @@
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="card-whole" phx-update="ignore" popover="manual">
 </div>
 <div id="card-dialogs" phx-update="ignore">
-<dialog aria-labelledby="card-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="card-dialog" role="dialog">
+<dialog aria-labelledby="card-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="card-dialog" role="dialog">
 <form method="dialog">
 <p id="card-dialog-question">
 </p>

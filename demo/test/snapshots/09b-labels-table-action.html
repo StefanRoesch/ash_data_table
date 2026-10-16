@@ -28,8 +28,6 @@
 </button>
 </div>
 </div>
-<form id="label-filters" phx-change="filter" phx-submit="filter">
-</form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 3 that match are selected" data-selected="{n} selected" data-selection="" id="label-selection" role="group">
 <p class="text-sm" id="label-selected" phx-update="ignore" role="status">
@@ -68,9 +66,11 @@
 <p class="mb-2 text-sm" id="label-result">
 <span data-summary="">Count unused: 3</span>
 </p>
+<form id="label-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="label" hidden="" id="label-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="label" id="label-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="label" id="label-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="6" aria-label="Labels" aria-multiselectable="true" aria-rowcount="5" class="table " data-first-row="3" id="label-table" phx-update="stream" role="grid">
 <thead id="label-head">
 <tr aria-rowindex="1" id="label-head-row" role="row">
@@ -226,7 +226,7 @@
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="label-whole" phx-update="ignore" popover="manual">
 </div>
 <div id="label-dialogs" phx-update="ignore">
-<dialog aria-labelledby="label-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="label-dialog" role="dialog">
+<dialog aria-labelledby="label-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="label-dialog" role="dialog">
 <form method="dialog">
 <p id="label-dialog-question">
 </p>

@@ -33,8 +33,6 @@
 </div>
 </div>
 </form>
-<form id="task-filters" phx-change="filter" phx-submit="filter">
-</form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 30 that match are selected" data-more="" data-selected="{n} selected" data-selection="" id="task-selection" role="group">
 <p class="text-sm" id="task-selected" phx-update="ignore" role="status">
@@ -158,9 +156,11 @@
 <span data-summary="">Archive: 1 done, 1 not done.</span>
 <span data-failure="">You are not allowed to do this. (1)</span>
 </p>
+<form id="task-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="task" hidden="" id="task-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="task" id="task-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="task" id="task-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="24" aria-label="Tasks" aria-multiselectable="true" aria-rowcount="33" class="table " data-first-row="3" id="task-table" phx-update="stream" role="grid">
 <thead id="task-head">
 <tr aria-rowindex="1" id="task-head-row" role="row">
@@ -2448,20 +2448,6 @@
 </div>
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="task-whole" phx-update="ignore" popover="manual">
 </div>
-<div id="task-dialogs" phx-update="ignore">
-<dialog aria-labelledby="task-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="task-dialog" role="dialog">
-<form method="dialog">
-<p id="task-dialog-question">
-</p>
-<div class="mt-6 flex justify-end gap-2">
-<button class="btn" value="cancel">Cancel</button>
-<button class="btn btn-primary data-destructive:btn-error" value="confirm">
-          Confirm
-        </button>
-</div>
-</form>
-</dialog>
-</div>
 <nav aria-label="Pagination: Tasks" class="mt-4 flex flex-wrap items-center justify-between gap-4" data-table="task" id="task-pagination" phx-hook=".Pagination">
 <p class="me-auto text-sm" id="task-range">1–25 of 30</p>
 <div class="join">
@@ -2495,6 +2481,20 @@
 </select>
 </form>
 </nav>
+<div id="task-dialogs" phx-update="ignore">
+<dialog aria-labelledby="task-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="task-dialog" role="dialog">
+<form method="dialog">
+<p id="task-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary data-destructive:btn-error" value="confirm">
+          Confirm
+        </button>
+</div>
+</form>
+</dialog>
+</div>
 </div>
 </div>
 </div>

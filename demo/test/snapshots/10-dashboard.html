@@ -20,8 +20,6 @@
 </button>
 </div>
 </div>
-<form id="dashboard-projects-filters" phx-change="filter" phx-submit="filter">
-</form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 2 that match are selected" data-selected="{n} selected" data-selection="" id="dashboard-projects-selection" role="group">
 <p class="text-sm" id="dashboard-projects-selected" phx-update="ignore" role="status">
@@ -88,9 +86,11 @@
 </div>
 <p aria-live="polite" class="sr-only" id="dashboard-projects-status" role="status">
 </p>
+<form id="dashboard-projects-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="dashboard-projects" hidden="" id="dashboard-projects-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="dashboard-projects" id="dashboard-projects-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="dashboard-projects" id="dashboard-projects-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="12" aria-label="Projects" aria-multiselectable="true" aria-rowcount="4" class="table " data-first-row="3" id="dashboard-projects-table" phx-update="stream" role="grid">
 <thead id="dashboard-projects-head">
 <tr aria-rowindex="1" id="dashboard-projects-head-row" role="row">
@@ -385,20 +385,6 @@
 </div>
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="dashboard-projects-whole" phx-update="ignore" popover="manual">
 </div>
-<div id="dashboard-projects-dialogs" phx-update="ignore">
-<dialog aria-labelledby="dashboard-projects-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="dashboard-projects-dialog" role="dialog">
-<form method="dialog">
-<p id="dashboard-projects-dialog-question">
-</p>
-<div class="mt-6 flex justify-end gap-2">
-<button class="btn" value="cancel">Cancel</button>
-<button class="btn btn-primary data-destructive:btn-error" value="confirm">
-          Confirm
-        </button>
-</div>
-</form>
-</dialog>
-</div>
 <nav aria-label="Pagination: Projects" class="mt-4 flex flex-wrap items-center justify-between gap-4" data-table="dashboard-projects" id="dashboard-projects-pagination" phx-hook=".Pagination">
 <p class="me-auto text-sm" id="dashboard-projects-range">1–2 of 2</p>
 <div class="join">
@@ -415,6 +401,20 @@
   </button>
 </div>
 </nav>
+<div id="dashboard-projects-dialogs" phx-update="ignore">
+<dialog aria-labelledby="dashboard-projects-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="dashboard-projects-dialog" role="dialog">
+<form method="dialog">
+<p id="dashboard-projects-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary data-destructive:btn-error" value="confirm">
+          Confirm
+        </button>
+</div>
+</form>
+</dialog>
+</div>
 </div>
 </section>
 <section aria-labelledby="dashboard-tasks-name" id="dashboard-tasks-section">
@@ -448,8 +448,6 @@
 <input aria-required="true" class="input input-sm w-40 not-focus:not-aria-invalid:[--input-color:color-mix(in_oklab,var(--color-base-content)_50%,transparent)] aria-invalid:[--input-color:color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))]" id="dashboard-tasks-arg-due_within-days" min="0" name="arguments[c][due_within][days]" phx-debounce="blur" step="1" type="number" value="30"/>
 </div>
 </div>
-</form>
-<form id="dashboard-tasks-filters" phx-change="filter" phx-submit="filter">
 </form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All 30 that match are selected" data-more="" data-selected="{n} selected" data-selection="" id="dashboard-tasks-selection" role="group">
@@ -580,9 +578,11 @@
 </div>
 </div>
 <p aria-live="polite" class="sr-only" id="dashboard-tasks-status" role="status">There are new or changed records. </p>
+<form id="dashboard-tasks-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="dashboard-tasks" hidden="" id="dashboard-tasks-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="dashboard-tasks" id="dashboard-tasks-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="dashboard-tasks" id="dashboard-tasks-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="25" aria-label="Tasks" aria-multiselectable="true" aria-rowcount="33" class="table " data-first-row="3" id="dashboard-tasks-table" phx-update="stream" role="grid">
 <thead id="dashboard-tasks-head">
 <tr aria-rowindex="1" id="dashboard-tasks-head-row" role="row">
@@ -2896,20 +2896,6 @@
 </div>
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="dashboard-tasks-whole" phx-update="ignore" popover="manual">
 </div>
-<div id="dashboard-tasks-dialogs" phx-update="ignore">
-<dialog aria-labelledby="dashboard-tasks-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="dashboard-tasks-dialog" role="dialog">
-<form method="dialog">
-<p id="dashboard-tasks-dialog-question">
-</p>
-<div class="mt-6 flex justify-end gap-2">
-<button class="btn" value="cancel">Cancel</button>
-<button class="btn btn-primary data-destructive:btn-error" value="confirm">
-          Confirm
-        </button>
-</div>
-</form>
-</dialog>
-</div>
 <nav aria-label="Pagination: Tasks" class="mt-4 flex flex-wrap items-center justify-between gap-4" data-table="dashboard-tasks" id="dashboard-tasks-pagination" phx-hook=".Pagination">
 <p class="me-auto text-sm" id="dashboard-tasks-range">1–25 of 30</p>
 <div class="join">
@@ -2943,6 +2929,20 @@
 </select>
 </form>
 </nav>
+<div id="dashboard-tasks-dialogs" phx-update="ignore">
+<dialog aria-labelledby="dashboard-tasks-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="dashboard-tasks-dialog" role="dialog">
+<form method="dialog">
+<p id="dashboard-tasks-dialog-question">
+</p>
+<div class="mt-6 flex justify-end gap-2">
+<button class="btn" value="cancel">Cancel</button>
+<button class="btn btn-primary data-destructive:btn-error" value="confirm">
+          Confirm
+        </button>
+</div>
+</form>
+</dialog>
+</div>
 </div>
 </section>
 </div>

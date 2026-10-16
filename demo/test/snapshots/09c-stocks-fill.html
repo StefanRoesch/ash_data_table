@@ -239,8 +239,6 @@
 </div>
 </div>
 </form>
-<form id="stock-filters" phx-change="filter" phx-submit="filter">
-</form>
 <div class="flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between">
 <div aria-label="Selected rows" class="flex flex-wrap items-center gap-2" data-all="All that match are selected" data-selected="{n} selected" data-selection="" id="stock-selection" role="group">
 <p class="text-sm" id="stock-selected" phx-update="ignore" role="status">
@@ -298,9 +296,11 @@
 </div>
 </div>
 <p aria-live="polite" class="sr-only" id="stock-status" role="status">Fill in At least to see records. </p>
+<form id="stock-filters" phx-change="filter" phx-submit="filter">
+</form>
 <div data-sender="" data-table="stock" hidden="" id="stock-sender" phx-hook=".Sender">
 </div>
-<div class="overflow-x-auto outline-none " data-ash-data-table="" data-lead="2" data-select="multi" data-table="stock" id="stock-grid" phx-hook=".Grid" tabindex="-1">
+<div class="overflow-x-auto outline-none" data-ash-data-table="" data-lead="2" data-select="multi" data-table="stock" id="stock-grid" phx-hook=".Grid" tabindex="-1">
 <table aria-colcount="10" aria-label="Stock" aria-multiselectable="true" aria-rowcount="-1" class="table " data-first-row="3" id="stock-table" phx-update="stream" role="grid">
 <thead id="stock-head">
 <tr aria-rowindex="1" id="stock-head-row" role="row">
@@ -535,8 +535,11 @@
 </div>
 <div aria-hidden="true" class="inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow" data-whole="" id="stock-whole" phx-update="ignore" popover="manual">
 </div>
+<p class="py-8 text-center text-sm opacity-70" id="stock-fill">
+  Fill in At least to see records.
+</p>
 <div id="stock-dialogs" phx-update="ignore">
-<dialog aria-labelledby="stock-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" id="stock-dialog" role="dialog">
+<dialog aria-labelledby="stock-dialog-question" class="m-auto w-full max-w-md rounded-box bg-base-100 p-6 text-base-content shadow-xl backdrop:bg-black/40 forced-colors:border" data-presentation="modal" id="stock-dialog" role="dialog">
 <form method="dialog">
 <p id="stock-dialog-question">
 </p>
@@ -549,9 +552,6 @@
 </form>
 </dialog>
 </div>
-<p class="py-8 text-center text-sm opacity-70" id="stock-fill">
-  Fill in At least to see records.
-</p>
 </div>
 </div>
 </div>
