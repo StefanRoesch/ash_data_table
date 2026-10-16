@@ -886,7 +886,7 @@ defmodule AshDataTable do
     ~H"""
     <div
       {AshDataTable.Attrs.root(@table.entry.id, @table.entry.page)}
-      class={AshDataTable.Live.Drawing.root_class(@table)}
+      class={@table.options.kit.class(:root, %{nested?: false})}
     >
       <AshDataTable.Live.Drawing.drawn table={@table} streams={@streams} uploads={@uploads} />
     </div>

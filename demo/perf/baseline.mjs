@@ -245,6 +245,23 @@ try {
     return run
   })
 
+  // ---- opening the panel in the page: the same on /perf/inline/tasks,
+  // whose table opens its panel inline (stage 7b), in a page of its own
+  if (PAGE === "/tasks") {
+    const inlineTasks = await open(context, "/perf/inline/tasks", "task")
+    const inline =
+      `(() => { const panel = document.getElementById("task-panel");` +
+      ` return !!panel && panel.dataset.presentation === "inline" && panel.querySelector("form") !== null })()`
+    results.open_panel_inline = await measured("open the panel inline", REPS, async (i) => {
+      const run = await until(inlineTasks, inline, click(`[id="task-row-${key(i)}-a-reassign"]`))
+      // closed again, not measured
+      await inlineTasks.page.locator('[id="task-panel-cancel"]').click()
+      await inlineTasks.page.locator('[id="task-panel"]').waitFor({ state: "detached" })
+      return run
+    })
+    await inlineTasks.page.close()
+  }
+
   // ---- a cell save in a nested table, and one in the top table while a
   // nested table is open (stage 5: every table of a page is in one
   // component). The comments of the first task that has any.

@@ -339,8 +339,8 @@ defmodule DemoWeb.Router do
 
   # For the performance scripts (`perf/`), in the perf environment only: the
   # table of /tasks once more, in pages of 100, placed by the tag, and
-  # attached with what a page gives and hears (stage 6); and what the server
-  # measured.
+  # attached with what a page gives and hears (stage 6), and with its panel
+  # in the page (stage 7b); and what the server measured.
   if Application.compile_env(:demo, :perf_routes, false) do
     scope "/perf" do
       pipe_through :browser
@@ -348,6 +348,8 @@ defmodule DemoWeb.Router do
       live_session :perf, on_mount: [DemoWeb.Actor] do
         ash_data_table "/tasks100", Demo.Perf.Task
         live "/notified", DemoWeb.Perf.NotifiedLive
+        # /tasks with its action panel in the page (stage 7b)
+        ash_data_table "/inline/tasks", Demo.Tracker.Task, presentation: [panel: :inline]
       end
     end
 

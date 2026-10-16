@@ -15,7 +15,6 @@ defmodule AshDataTable.Live.Embedded do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Live.Core
-  alias AshDataTable.Live.Drawing
 
   @impl true
   def mount(socket), do: Core.mount(socket)
@@ -38,7 +37,10 @@ defmodule AshDataTable.Live.Embedded do
 
   def render(assigns) do
     ~H"""
-    <div {Attrs.root(@table.entry.id, @table.entry.page)} class={Drawing.root_class(@table)}>
+    <div
+      {Attrs.root(@table.entry.id, @table.entry.page)}
+      class={@table.options.kit.class(:root, %{nested?: false})}
+    >
       <AshDataTable.attached
         table={@table}
         streams={@streams}
