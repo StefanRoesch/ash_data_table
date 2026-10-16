@@ -143,6 +143,57 @@ test.describe("a grid drawn with other elements than a table's", () => {
   })
 })
 
+// A question before a save, and a kit that leaves the question dialog out:
+// nothing is saved without a question answered (the hook does not take a
+// missing dialog for a yes).
+test.describe("a column that asks before a save", () => {
+  async function renamed(page: Page, path: string): Promise<void> {
+    await page.goto(path)
+    await expect.poll(() => tabStops(page)).toEqual(["kit-row-a-c-name"])
+    const name = cell(page, "a", "name")
+    await name.focus()
+    await page.keyboard.press("Enter")
+    await expect(name.locator("textarea")).toBeFocused()
+    await page.keyboard.press("ControlOrMeta+A")
+    await page.keyboard.type("Anvil")
+    await page.keyboard.press("Enter")
+  }
+
+  test("asks in the question dialog, and saves once it is confirmed", async ({ page, pushed }) => {
+    await renamed(page, "/e2e/markers?asks=1")
+    const dialog = page.locator('[id="kit-dialog"]')
+    await expect(dialog).toBeVisible()
+    await expect(page.locator('[id="kit-dialog-question"]')).toHaveText("Rename this part?")
+    await dialog.getByRole("button", { name: "Confirm" }).click()
+    await expect(cell(page, "a", "name")).toHaveText("Anvil")
+    expect(await pushed.count("save")).toBe(1)
+  })
+
+  test("saves nothing where the question dialog is missing, and the development check names it", async ({
+    page,
+    pushed,
+    consoleErrors,
+  }) => {
+    const said: string[] = []
+    page.on("console", (message) => {
+      if (message.type() === "error") said.push(message.text())
+    })
+    consoleErrors.allow(/^ash_data_table: the grid kit-grid has no (its )?question dialog/)
+    await page.goto("/e2e/markers?asks=1&missing=dialog")
+    await page.evaluate(() => (window as any).liveSocket.enableDebug())
+    await page.reload()
+    await renamed(page, "/e2e/markers?asks=1&missing=dialog")
+    // nothing was saved: the editor is still open, with what was typed
+    await expect(cell(page, "a", "name").locator("textarea")).toBeFocused()
+    await expect(cell(page, "a", "name").locator("textarea")).toHaveValue("Anvil")
+    expect(await pushed.count("save")).toBe(0)
+    expect(said).toContain(
+      "ash_data_table: the grid kit-grid has no its question dialog (a <dialog> [role=dialog] with the id kit-dialog)",
+    )
+    expect(said.some((text) => text.startsWith("ash_data_table: the grid kit-grid has no question dialog"))).toBe(true)
+  })
+})
+
 test.describe("the development check of the hooks", () => {
   /** Turns LiveView's client debug on for the page, and loads it again. */
   async function debugging(page: Page, path: string): Promise<void> {

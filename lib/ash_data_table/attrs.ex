@@ -30,6 +30,7 @@ defmodule AshDataTable.Attrs do
     [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
     [data-current] [data-summaries]
     [data-resize] [data-open] [data-action] [data-create] [data-table-action] [data-destructive]
+    [data-question] [data-confirm]
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen]
     [data-choices-button] [data-choices]
     [data-control] [data-clear] [data-count] [data-value-text] [data-list] [data-item] [data-add]

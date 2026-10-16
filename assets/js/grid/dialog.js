@@ -10,9 +10,17 @@ export default {
   // Asks a question in the table's dialog and resolves to whether it
   // was confirmed. Escape closes the dialog as Cancel does. When it
   // closes, the browser puts focus back where it was.
+  //
+  // A table without its dialog (`ID-dialog`, a `<dialog>`), which a kit
+  // may have left out, is not confirmed: what would be asked about does
+  // not run. The development check names the dialog, and so does this
+  // while the client debug is on.
   ask(question, destructive) {
     const dialog = document.getElementById(`${this.id}-dialog`)
-    if (!dialog || !dialog.showModal) return Promise.resolve(true)
+    if (!dialog || typeof dialog.showModal !== "function") {
+      if (this.transport.debug()) console.error(`ash_data_table: the grid ${this.el.id} has no question dialog (a <dialog> with the id ${this.id}-dialog): nothing runs of what it would ask "${question}"`)
+      return Promise.resolve(false)
+    }
     document.getElementById(`${this.id}-dialog-question`).textContent = question
     // the answer that deletes says so (`data-destructive`), which
     // its look follows

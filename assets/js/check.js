@@ -7,7 +7,7 @@
 // of its own has to write. Nothing is checked otherwise.
 
 import {CELL, cellsOf} from "./grid/shared.js"
-import {DIALOG, OF, SENDER, TABLE} from "./markers.js"
+import {BULK, CONFIRM, DIALOG, OF, QUESTION, SENDER, TABLE} from "./markers.js"
 
 // What a hook's element lacks, as words, by the part it is.
 const lacks = {
@@ -19,6 +19,14 @@ const lacks = {
     const missing = []
     if (!hook.part("head")) missing.push(`its header (an element with the id ${hook.id}-head)`)
     if (!document.querySelector(`${SENDER}[${OF}="${CSS.escape(hook.id)}"]`)) missing.push(`its sender (an element ${SENDER} that names its table)`)
+    // a table that asks before something runs: a row action, a column, an
+    // action on the selection; without the dialog nothing of it runs
+    const line = hook.line()
+    const asks = hook.el.querySelector(`${QUESTION},${CONFIRM}`) || (line && line.querySelector(BULK))
+    const dialog = hook.part("dialog")
+    if (asks && !(dialog && dialog.matches(DIALOG) && typeof dialog.showModal === "function")) {
+      missing.push(`its question dialog (a <dialog> ${DIALOG} with the id ${hook.id}-dialog)`)
+    }
     for (const row of hook.rows()) {
       for (const cell of cellsOf(row)) {
         if (!cell.hasAttribute("aria-colindex")) missing.push(`aria-colindex on the cell ${cell.id || `(${CELL})`}`)

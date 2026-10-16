@@ -72,6 +72,11 @@ export const TABLE_ACTION = "[data-table-action]"
 // selected rows, the action panel, and the confirm of the question
 // dialog while it asks about one (the hook sets it there)
 export const DESTRUCTIVE = "[data-destructive]"
+// what asks a question in the table's dialog (`ID-dialog`) first: a row
+// action's button, the action panel and the picker, which say the
+// question, and the editor template of a column with one
+export const QUESTION = "[data-question]"
+export const CONFIRM = "[data-confirm]"
 // a sensitive cell: the button that asks for the value, the mask, what
 // a screen reader is told, and where the value goes
 export const REVEAL = "[data-reveal]"

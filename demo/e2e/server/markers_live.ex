@@ -13,7 +13,9 @@ defmodule DemoWeb.E2E.MarkersLive do
   hook must not take it for a record.
 
   `?missing=colindex` draws one cell without its place (`aria-colindex`),
-  for the development check of the hook (D13). Compiled and routed in the
+  for the development check of the hook (D13). `?asks=1` has the column
+  "Name" ask before a save, in the question dialog (`kit-dialog`), which
+  `?missing=dialog` leaves out: then nothing is saved. Compiled and routed in the
   e2e environment only; stage 7b replaces it with a kit of the demo's.
   """
   use DemoWeb, :live_view
@@ -34,7 +36,8 @@ defmodule DemoWeb.E2E.MarkersLive do
        columns: @columns,
        rows: @rows,
        parts: @parts,
-       missing: params["missing"]
+       missing: params["missing"],
+       asks: params["asks"] == "1"
      )}
   end
 
@@ -288,10 +291,27 @@ defmodule DemoWeb.E2E.MarkersLive do
               </div>
             <% end %>
           </div>
-          <template id="kit-editor-name" data-editor="text">
+          <template
+            id="kit-editor-name"
+            data-editor="text"
+            data-confirm={@asks && "Rename this part?"}
+          >
             <textarea rows="1" aria-label="Name"></textarea>
           </template>
         </div>
+        <dialog
+          :if={@missing != "dialog"}
+          id="kit-dialog"
+          role="dialog"
+          aria-labelledby="kit-dialog-question"
+          phx-update="ignore"
+        >
+          <form method="dialog">
+            <p id="kit-dialog-question"></p>
+            <button value="cancel">Cancel</button>
+            <button value="confirm">Confirm</button>
+          </form>
+        </dialog>
       </div>
     </Layouts.app>
     """
