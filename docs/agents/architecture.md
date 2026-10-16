@@ -39,7 +39,7 @@ One line per module. The functions named are the ones other modules call.
 
 The rules of a declaration live in one module per topic. Each is shared by the verifiers (which report a mistake) and the model (which builds on the answer). Most return `{:error, reason}` and turn the reason into text with `message/1`.
 
-- `Resource.Reading`: read action, pagination strategy, page sizes, what can be sorted. `read_action/2`, `strategy/2`, `page_sizes/2`, `sortable?/3`, `private_read/2`, `apart/2`.
+- `Resource.Reading`: read action, pagination strategy, page sizes, what can be sorted. `read_action/2`, `strategy/2`, `page_sizes/2`, `sortable?/3`, `private_read/2`.
 - `Resource.Editing`: the update action behind a column and whether it can serve an inline edit. `update_action/4`, `edit/4`, `editor/3`, `obstacle/2`.
 - `Resource.Acting`: row actions, table actions, create, and their inputs. `offered/2`, `create_action/2`, `inputs/4`, `record_argument/3`, `bulk?/3`.
 - `Resource.Arguing`: arguments of the read action and of calculation columns. `inputs/1`, `mistakes/3`, `declared_mistakes/2`.

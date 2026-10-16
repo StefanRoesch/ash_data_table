@@ -3,9 +3,9 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
   The tables of `DemoWeb.Tables.LedgerTableTest` once more, under Ash's own
   default for `config :ash, show_keysets_for_all_actions?:`, which the demo
   switches off. With it on, Ash computes a keyset for every record of every
-  page, and a page of related records that is sorted by an aggregate fails
-  for a person from whom a field policy hides a field on some records (the
-  library's internal ticket #35), also when it is read by offset.
+  page, also of a page of related records read by offset and sorted by an
+  aggregate, for a person from whom a field policy hides a field on some
+  records.
 
   The setting is the application's, read whenever a page is read: these
   tests do not run beside others.
@@ -79,7 +79,7 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
     assert column(html, "job", "title") == ["B other", "A own"]
   end
 
-  test "a nested table read in pages shows its aggregate column, and does not sort by it, which would fail",
+  test "a nested table read in pages shows its aggregate column, and sorts by it",
        %{view: view, other: other} do
     expand(view, "job", other.id)
     html = toggle(view, "job", other.id, "remarks")
@@ -87,12 +87,12 @@ defmodule DemoWeb.Tables.LedgerDefaultConfigTest do
 
     assert text(html, "[id='#{id}-error']") == nil
     assert column(html, id, "tagging_count") == ["0", "0", "0"]
-    assert attribute(html, "[id='#{id}-head-tagging_count']", "data-sort") == []
 
-    forge(view, id, "sort", %{"column" => "tagging_count"})
+    click(view, "[id='#{id}-head-tagging_count']")
     html = render_async(view)
 
     assert text(html, "[id='#{id}-error']") == nil
+    assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == ["ascending"]
     assert column(html, id, "body") == ["Not available", "Remark 2", "Not available"]
   end
 end

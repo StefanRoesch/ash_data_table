@@ -1,24 +1,18 @@
 defmodule AshDataTable.Resource.Verifiers.VerifyExposure do
   @moduledoc false
   # Warnings about aggregate and calculation columns that show more than
-  # their declarations suggest. Nothing here is a mistake in the `table`
-  # block: the resource may mean it, which is why these are warnings, and
-  # why the first kind can be answered on the column.
-  #
-  #   * A column that shows a field which a field policy protects, on the
-  #     related resource or on this one, while no field policy protects the
-  #     column itself: see `AshDataTable.Resource.Exposing`.
-  #   * A `first` aggregate column that the table has to read apart from the
-  #     row, and so cannot sort or filter by: see
-  #     `AshDataTable.Resource.Reading.apart/2`. A column that switches both off
-  #     itself has nothing to be told.
+  # their declarations suggest: a column that shows a field which a field
+  # policy protects, on the related resource or on this one, while no field
+  # policy protects the column itself (see `AshDataTable.Resource.Exposing`).
+  # Nothing here is a mistake in the `table` block: the resource may mean it,
+  # which is why these are warnings, and why they can be answered on the
+  # column.
   #
   # A verifier, not a transformer: both look at other resources.
   use Spark.Dsl.Verifier
 
   alias Ash.Resource.Info
   alias AshDataTable.Resource.Exposing
-  alias AshDataTable.Resource.Reading
   alias Spark.Dsl.Verifier
 
   @impl true
@@ -38,27 +32,12 @@ defmodule AshDataTable.Resource.Verifiers.VerifyExposure do
   end
 
   defp warnings(dsl, module, table) do
-    columns =
-      for column <- table.columns,
-          field = Info.calculation(dsl, column.name) || Info.aggregate(dsl, column.name),
-          do: {column, field}
-
-    exposed =
-      for {column, field} <- columns,
-          column.exposes_protected_field? != true,
-          exposures = Exposing.exposures(module, field),
-          exposures != [],
-          do: {exposed(module, field, exposures), Spark.Dsl.Entity.anno(column)}
-
-    apart =
-      for {aggregate, calculation} <- Reading.apart(module, Enum.map(columns, &elem(&1, 1))),
-          {column, field} <- columns,
-          column.name == aggregate,
-          # a column that says it is neither sorted nor filtered by loses nothing
-          not (column.sortable? == false and column.filterable? == false),
-          do: {apart(field, calculation), Spark.Dsl.Entity.anno(column)}
-
-    exposed ++ apart
+    for column <- table.columns,
+        column.exposes_protected_field? != true,
+        field = Info.calculation(dsl, column.name) || Info.aggregate(dsl, column.name),
+        exposures = Exposing.exposures(module, field),
+        exposures != [],
+        do: {exposed(module, field, exposures), Spark.Dsl.Entity.anno(column)}
   end
 
   # A warning without a place in the source is the text alone.
@@ -100,16 +79,5 @@ defmodule AshDataTable.Resource.Verifiers.VerifyExposure do
       "`Ash.Policy.Authorizer` among its authorizers and, if the resource has no policies yet, " <>
       "one that authorizes everything. If the column is meant to show this to everyone who reads " <>
       "a row, say so with `exposes_protected_field? true` on the column."
-  end
-
-  defp apart(%{name: name, relationship_path: path}, calculation) do
-    "The aggregate column `#{name}` is a `first` aggregate over the one record of " <>
-      "`#{Enum.join(path, ".")}`, and the calculation column `#{calculation}` reaches through the " <>
-      "same relationship. Read together through a SQL data layer, such an aggregate returns the " <>
-      "value of a related record that the reader may not read (ash_table issue #32). The table " <>
-      "therefore reads `#{name}` apart from the rest of the row, and does not sort or filter by it. " <>
-      "To have it read with the row again, and sorted and filtered by, take the aggregate out of " <>
-      "the join the two share: give it a `join_filter` or a `read_action` of its own. To leave it " <>
-      "at that, say `sortable? false` and `filterable? false` on the column."
   end
 end

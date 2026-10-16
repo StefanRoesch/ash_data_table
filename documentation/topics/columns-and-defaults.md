@@ -306,49 +306,6 @@ What the warning cannot see:
   column stays: there a hidden value counts as none, and nothing is told of
   the records it is hidden on.
 - **A reference cell is not sorted by**, as said above.
-- In a nested table there is one more case: see
-  [Nested tables](nested-tables.md#aggregate-columns-in-a-nested-table).
-
-### A `first` aggregate beside a calculation over the same relationship
-
-A `first` aggregate over one related record (through a belongs-to, or a
-has-one on a key of the destination) returns the value of a record the
-person may **not** read when the same SQL statement joins that relationship
-another way. This is a defect in the SQL layer, not Ash's rule (tracked as
-#32). In a table the other join is an expression calculation column that
-reaches through the same relationship, such as `expr(assignee.role)` beside
-`first :assignee_name, :assignee, :name`.
-
-The table keeps the two apart: it reads such an aggregate in a statement of
-its own, and does not sort or filter by it. The compiler says so, and says
-how to get both back:
-
-<!-- sketch -->
-```text
-warning: The aggregate column `boss_name` is a `first` aggregate over the one record of `boss`, and the calculation column `boss_initial` reaches through the same relationship. Read together through a SQL data layer, such an aggregate returns the value of a related record that the reader may not read (ash_table issue #32). The table therefore reads `boss_name` apart from the rest of the row, and does not sort or filter by it. To have it read with the row again, and sorted and filtered by, take the aggregate out of the join the two share: give it a `join_filter` or a `read_action` of its own. To leave it at that, say `sortable? false` and `filterable? false` on the column.
-```
-
-The table sees its own columns only. A read action or a policy of the
-resource that filters through the same relationship is another such join,
-which no column shows; there the aggregate needs its `join_filter` or its
-`read_action` whatever the table does. A reference cell is no such join: it
-loads the relationship in a statement of its own.
-
-The demo has no column of this kind. The library's tests have one, on
-Postgres
-([`demo/test/support/ledger_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/ledger_tables.ex)):
-
-<!-- source: demo/test/support/ledger_tables.ex -->
-```elixir
-# reaches through the relationship that the aggregate below is over
-column :assignee_role
-
-# read apart from the row for that, and neither sorted nor filtered by
-column :assignee_name do
-  sortable? false
-  filterable? false
-end
-```
 
 ## What cannot be a column
 

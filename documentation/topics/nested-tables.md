@@ -264,15 +264,6 @@ at all.
 Nothing is fetched before a line is opened. Expanding a row sends one event
 and reads nothing.
 
-**What the columns show besides attributes is read in further steps.** A
-nested table's records are read bare. Its calculations, its aggregates and
-its reference cells are then loaded onto those records, as the person
-(`Ash.load/3`). A table of its own reads its calculations with the page and
-its aggregates in a step after it. The reason is a defect in the SQL layer
-(tracked as #35): a statement that selects an aggregate beside a field that a
-field policy hides on some records fails where it is wrapped in a subquery,
-which a page of related records always is. The steps go when it is fixed.
-
 ## What a person may not see
 
 | The resource says | Under an expanded row |
@@ -302,39 +293,6 @@ reads, without a query (`Ash.can/3` for the destination's read action). A
 line stays for a person who may read some of the destination's records:
 which ones is known when they are read. See
 [Authorization](authorization.md).
-
-## When a total is not shown
-
-A nested table shows and announces no total while a filter is set on a
-column that the person sees on some records only. It then looks like a
-table whose read action does not count: "1–25", and Next as long as there is
-more.
-
-Ash counts a page of related records with the person's filter as it is
-written, without the field policies (tracked as #30). The rows are right: a
-hidden value counts as empty there. The count is not: it would say how many
-records match among those whose value the person may not see.
-
-**Try it:** `/projects` as Max Member, the tasks of "Mobile app". Filter
-"Estimate hours" by "at least" 1: the rows are his own tasks, and the range
-under them has no "of".
-
-A table of its own is not affected. It counts through the read itself.
-
-## Aggregate columns in a nested table
-
-Two sorts are not offered, because Ash cannot run them:
-
-- **By an aggregate that a field policy hides from the person on some
-  records.** This holds for every table, nested or not. See
-  [Columns and defaults](columns-and-defaults.md#aggregates-and-calculations-over-protected-fields).
-- **By any aggregate, in a nested table that is read in pages, for a person
-  who sees some field of that resource on some records only** (tracked as
-  #35). Filtering by the aggregate stays, and so does sorting by a
-  calculation.
-
-A person who sees every field on every record sorts by an aggregate in a
-nested table as on a page.
 
 ## The keyboard
 
@@ -529,8 +487,7 @@ column, its ID.
 
 The page is read as the nested table is: through the parent, with the
 relationship's own read action and sort, without sort, filters and pages for
-a single record, in full where Ash cannot page, and without a total while a
-filter is set on a column the person sees on some records only.
+a single record, and in full where Ash cannot page.
 
 It differs where a table of its own differs from a table in a cell. Its
 state is in the address. Its first read happens while the page is mounted.
@@ -562,7 +519,7 @@ those of the library as it is now):
 | `/tasks` → Labels (many-to-many, in full) | 2 | 16 ms |
 | `/tasks` → Project (belongs-to) | 2 | 14 ms |
 | `/tasks` → Newest comment (has-one of many) | 2 | 13 ms |
-| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 6: the parent with the count, the page, the calculation and the aggregate, one per reference cell | 38 ms, measured before the reference cells were columns |
+| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 5: the parent with the count, the page with the calculation and the aggregate, one per reference cell | 38 ms, measured before the reference cells were columns |
 
 About 17 KiB of the page's process for each open nested table: 0.93 MB with
 fifty open. Opening one more does not get much slower as they add up.

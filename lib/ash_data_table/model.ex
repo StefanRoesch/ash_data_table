@@ -424,16 +424,11 @@ defmodule AshDataTable.Model do
 
     row_refresh!(resource, table, fields)
 
-    apart =
-      for {name, _calculation} <- Reading.apart(resource, Enum.map(fields, &elem(&1, 0))),
-          do: name
-
     columns =
       Enum.map(fields, fn {field, declared} ->
         resource
         |> column(table, field, declared, pagination)
         |> arrangeable(via)
-        |> apart(field.name in apart)
       end)
 
     offered = actions!(resource, table, columns)
@@ -594,7 +589,7 @@ defmodule AshDataTable.Model do
           opts
         )
 
-      unsortable = unsortable(model, columns, partly_hidden, opts)
+      unsortable = unsortable(columns, partly_hidden)
 
       unchosen = unchosen(model, columns, opts)
 
@@ -715,50 +710,14 @@ defmodule AshDataTable.Model do
   end
 
   # The aggregate columns this person cannot sort by, though the resource
-  # lets a table sort by them. Two things Ash, or its SQL layer, cannot do:
-  #
-  #   * sort by an aggregate that a field policy hides from the person on
-  #     some records: Ash raises ("Assumption failed") where it would have to
-  #     put a hidden value in its place. A filter by such a column is fine:
-  #     there a hidden value counts as none.
-  #
-  #   * sort a page of related records by any aggregate, for a person who
-  #     sees some field of the resource on some records only (internal
-  #     ticket #35, a defect in ash_sql 0.8.1: the statement fails once it
-  #     holds both the aggregate and the calculation Ash adds for such a
-  #     field, and a page of related records is a subquery).
-  defp unsortable(model, columns, partly_hidden, opts) do
-    aggregates = for %{kind: :aggregate, sortable?: true, name: name} <- columns, do: name
-
-    cond do
-      aggregates == [] ->
-        []
-
-      match?(
-        %{via: %Relationship{}, pagination: %{strategy: strategy}} when strategy != :none,
-        model
-      ) and
-          sees_some_field_in_part?(model, opts) ->
-        aggregates
-
-      true ->
-        Enum.filter(aggregates, &(&1 in partly_hidden))
-    end
-  end
-
-  # Whether a field policy hides some field of the resource from the person
-  # on some records: one of its attributes, which a read selects whether the
-  # table shows them or not, or one of the table's own columns.
-  defp sees_some_field_in_part?(model, opts) do
-    fields =
-      Enum.uniq(
-        Enum.map(Info.attributes(model.resource), & &1.name) ++
-          for(%{kind: kind, field: field} <- model.columns, kind != :reference, do: field)
-      )
-
-    seen = fields -- Access.hidden_fields(model.resource, model.read_action, fields, opts)
-
-    Access.partly_hidden_fields(model.resource, model.read_action, seen, opts) != []
+  # lets a table sort by them: those that a field policy hides from the
+  # person on some records. Ash raises ("Assumption failed") where it would
+  # have to put a hidden value in its place. A filter by such a column is
+  # fine: there a hidden value counts as none.
+  defp unsortable(columns, partly_hidden) do
+    for %{kind: :aggregate, sortable?: true, name: name} <- columns,
+        name in partly_hidden,
+        do: name
   end
 
   # The editable reference columns in which this person has nothing to
@@ -903,9 +862,9 @@ defmodule AshDataTable.Model do
   @doc """
   What the table's columns show that is not on a record unless asked for,
   and that is read with the records: its calculations, by name and with the
-  arguments their columns give them, and for each
+  arguments their columns give them, its aggregates, and for each
   reference column the relationship with the query that reads the related
-  record's label. The aggregates are read after them: see `aggregates/1`.
+  record's label.
 
   The label is read as Ash loads the relationship, as the person asking: the
   destination's policies say whether there is a related record for them, and
@@ -937,7 +896,10 @@ defmodule AshDataTable.Model do
            )}
         ]
 
-      _attribute_or_aggregate ->
+      %{kind: :aggregate, name: name} ->
+        [name]
+
+      _attribute ->
         []
     end)
   end
@@ -951,33 +913,6 @@ defmodule AshDataTable.Model do
   @spec summarised(%__MODULE__{}) :: [Column.t()]
   def summarised(%__MODULE__{columns: columns}),
     do: Enum.reject(columns, &is_nil(&1.summary))
-
-  @doc """
-  The aggregates of the table's columns, which are put onto the records of
-  a page in a step of their own, after the page is read.
-
-  Internal ticket #35, a defect in ash_sql 0.8.1: a statement that selects
-  an aggregate beside a calculation Ash adds by itself, as it does for a
-  field that a field policy hides on some records, fails once it is wrapped
-  in a subquery, which a page of a table can be. Loaded onto records that
-  are already read, by their keys, nothing is wrapped.
-
-  Not among them are the aggregates read `apart/1`.
-  """
-  @spec aggregates(t) :: [atom]
-  def aggregates(%__MODULE__{columns: columns}) do
-    for %{kind: :aggregate, apart?: false, name: name} <- columns, do: name
-  end
-
-  @doc """
-  The aggregates of the table's columns that are read apart from everything
-  else: in a step that holds nothing but them. See
-  `AshDataTable.Resource.Reading.apart/2`.
-  """
-  @spec apart(t) :: [atom]
-  def apart(%__MODULE__{columns: columns}) do
-    for %{kind: :aggregate, apart?: true, name: name} <- columns, do: name
-  end
 
   @doc """
   The columns a record of the table's resource can be called by, the best
@@ -1342,12 +1277,6 @@ defmodule AshDataTable.Model do
     do:
       "it declares the relationship `#{name}`, but the resource has no public relationship " <>
         "of that name"
-
-  # An aggregate that is read apart from the row is never in the statement
-  # that reads the page, so the page is neither sorted nor filtered by it
-  # (internal ticket #32: see `AshDataTable.Resource.Reading.apart/2`).
-  defp apart(column, false), do: column
-  defp apart(column, true), do: %{column | apart?: true, sortable?: false, operators: []}
 
   # A nested table of one record, or of a manual relationship, has no sort
   # and no filters.

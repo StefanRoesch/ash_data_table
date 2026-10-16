@@ -943,7 +943,7 @@ defmodule DemoWeb.Tables.PrivateActionTest do
   end
 
   describe "a table whose resource has a private primary read action reads through its own" do
-    test "the page, and what is loaded onto its records in a second step", %{conn: conn} do
+    test "the page, and what is loaded onto its records", %{conn: conn} do
       {:ok, _view, html} = live(conn, "/support/dossiers")
 
       assert column(html, "dossier", "name") == ["Open dossier"]

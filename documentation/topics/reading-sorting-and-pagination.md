@@ -48,19 +48,10 @@ runs it:
 - the sort the person chose, with `Ash.Query.sort_input/2`;
 - the filters the person set, with `Ash.Query.filter_input/2`;
 - the calculations among the columns, each with the arguments its column
-  gives it, and the related records of its
+  gives it, the aggregates, and the related records of its
   [reference cells](columns-and-defaults.md#reference-cells), as loads;
 - the page, as the `page` option of the read;
 - the actor, the tenant and `authorize?`.
-
-The aggregates among the columns are loaded onto the records of the page in
-a statement of their own, after the page is read, as the same person
-(`Ash.load/3`). Sorting and filtering by an aggregate are part of the
-query all the same. The extra statement is there for a defect in the SQL
-layer (tracked as #35): a statement that selects an aggregate beside a field
-that a field policy hides on some records can fail as a page. On the demo's
-`/tasks`, which has one aggregate column, it costs a statement of about a
-millisecond and a half per read.
 
 `sort_input` and `filter_input` are the functions Ash has for input from
 outside, the ones the API extensions use. They accept public fields only.

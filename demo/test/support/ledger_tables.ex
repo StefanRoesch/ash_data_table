@@ -1,11 +1,11 @@
 defmodule Demo.Support.Ledger do
   @moduledoc """
-  A domain for the tests of what a table does about aggregate and
-  calculation columns where Ash, or its SQL layer, does less than a table
-  needs (the library's internal tickets #32, #34 and #35).
+  A domain for the tests of aggregate and calculation columns where Ash's
+  SQL layer reads them, and of what a table does where Ash does less than a
+  table needs (the library's internal ticket #34).
 
   Its resources exist for the tests only. They read the demo's own tables in
-  Postgres, where those things happen, under policies of their own: a
+  Postgres under policies of their own: a
   person reads the people of their own organization only, and sees some
   fields on some records only.
 
@@ -115,12 +115,7 @@ defmodule Demo.Support.Ledger.Job do
     column :assignee
     # reaches through the relationship that the aggregate below is over
     column :assignee_role
-
-    # read apart from the row for that, and neither sorted nor filtered by
-    column :assignee_name do
-      sortable? false
-      filterable? false
-    end
+    column :assignee_name
 
     relationship :remarks
     relationship :remarks_by_keyset

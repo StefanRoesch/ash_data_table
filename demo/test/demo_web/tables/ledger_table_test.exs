@@ -1,7 +1,7 @@
 defmodule DemoWeb.Tables.LedgerTableTest do
   @moduledoc """
-  Aggregate and calculation columns where Ash, or its SQL layer, does less
-  than a table needs, on Postgres, where that happens.
+  Aggregate and calculation columns on Postgres, read by Ash's SQL layer
+  for people from whom policies hide records and fields.
 
   The tables are of resources that exist for the tests only
   (`test/support/ledger_tables.ex`): the demo's tasks, comments, labels and
@@ -12,12 +12,12 @@ defmodule DemoWeb.Tables.LedgerTableTest do
 
   Three things are pinned here (the library's internal tickets):
 
-    * #32: such a `first` aggregate returns the name of a person the reader
-      may not read when it is read in one statement with that calculation.
-      The table reads it apart.
+    * #32: such a `first` aggregate, read in one statement with that
+      calculation, shows nothing of a person the reader may not read
+      (fixed in ash_sql 0.8.2).
     * #35: a statement with an aggregate beside a field that a field policy
-      hides on some records fails where it is wrapped in a subquery. The
-      table reads aggregates in a step of their own.
+      hides on some records is read, also where it is wrapped in a subquery
+      (fixed in ash_sql 0.8.2).
     * #34: Ash cannot sort by an aggregate that a field policy hides on some
       records. The table does not offer that sort.
   """
@@ -215,6 +215,23 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert column(html, "errand", "title") == []
       refute html =~ world.outsider.name
     end
+
+    test "nor when the page is sorted or filtered by the aggregate", %{conn: conn, world: world} do
+      {view, _html} = jobs(conn, world.member)
+
+      view |> element("#job-head-assignee_name") |> render_click()
+      html = render_async(view)
+
+      assert text(html, "#job-error") == nil
+      assert attribute(html, "#job-head-assignee_name", "aria-sort") == ["ascending"]
+      assert Enum.sort(titles(html)) == ["A own", "B other", "C abroad", "D free"]
+      refute html =~ world.outsider.name
+
+      # the name of the person the member may not read matches nothing
+      html = filter(view, "job", "assignee_name", v: world.outsider.name)
+      assert text(html, "#job-error") == nil
+      assert titles(html) == []
+    end
   end
 
   describe "aggregate columns, for a person from whom a field policy hides a field on some records (#35)" do
@@ -351,7 +368,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       end
     end
 
-    test "cannot be sorted by in a nested table that is read in pages, where the statement would fail",
+    test "can be sorted by in a nested table that is read in pages",
          %{conn: conn, world: world, other: other} do
       {view, _html} = jobs(conn, world.member)
       expand(view, "job", other.id)
@@ -359,18 +376,14 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       html = toggle(view, "job", other.id, "remarks")
       id = nested("job", other.id, "remarks")
 
-      assert attribute(html, "[id='#{id}-head-tagging_count']", "data-sort") == []
-      assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == []
-      # the other columns sort, a calculation over the aggregate among them
-      assert attribute(html, "[id='#{id}-head-inserted_at']", "data-sort") == [""]
+      assert attribute(html, "[id='#{id}-head-tagging_count']", "data-sort") == [""]
       assert attribute(html, "[id='#{id}-head-tagged?']", "data-sort") == [""]
 
-      # asked for all the same, nothing happens: no sort, and no failed read
-      forge(view, id, "sort", %{"column" => "tagging_count"})
-
+      click(view, "[id='#{id}-head-tagging_count']")
       html = render_async(view)
       assert text(html, "[id='#{id}-error']") == nil
-      assert length(column(html, id, "body")) == 3
+      assert attribute(html, "[id='#{id}-head-tagging_count']", "aria-sort") == ["ascending"]
+      assert column(html, id, "body") == ["Not available", "Remark 2", "Not available"]
 
       click(view, "[id='#{id}-head-tagged?']")
       html = render_async(view)
@@ -379,7 +392,7 @@ defmodule DemoWeb.Tables.LedgerTableTest do
       assert length(column(html, id, "body")) == 3
     end
 
-    test "can be sorted by there by a person who sees every field on every record", %{
+    test "and by a person who sees every field on every record", %{
       conn: conn,
       world: world,
       other: other

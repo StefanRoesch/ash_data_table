@@ -95,9 +95,6 @@ defmodule AshDataTable.Model.Column do
   #     `AshDataTable.Resource.Presenting`.
   #   * `confirm` is the question asked before an edit of this column is saved,
   #     or `nil` when none is.
-  #   * `apart?` is `true` for an aggregate that is read in a step of its
-  #     own, apart from everything else a row shows, and is then neither
-  #     sorted nor filtered by: see `AshDataTable.Resource.Reading.apart/2`.
   #   * `sensitive?` is `true` for a column of a field the resource declares
   #     `sensitive?`: an attribute, a calculation or an aggregate. Its cells
   #     show a mask, the same for every value, and the value of one cell
@@ -138,7 +135,6 @@ defmodule AshDataTable.Model.Column do
     :summary,
     editable?: false,
     required?: false,
-    apart?: false,
     partly_hidden?: false,
     sensitive?: false,
     max_lines: 1,
@@ -183,7 +179,6 @@ defmodule AshDataTable.Model.Column do
             }
             | nil,
           summary: AshDataTable.Resource.Summarising.kind() | nil,
-          apart?: boolean,
           partly_hidden?: boolean,
           sensitive?: boolean,
           max_lines: pos_integer
