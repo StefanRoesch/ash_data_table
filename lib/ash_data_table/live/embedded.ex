@@ -18,21 +18,8 @@ defmodule AshDataTable.Live.Embedded do
   @impl true
   def mount(socket), do: Core.mount(socket)
 
-  # A table that is a page of its own and whose first read is refused is
-  # not there (`gone?`, `on_forbidden :not_found`). While the page is
-  # mounted, an exception is how a LiveView says "not found": Phoenix
-  # answers the request with 404, and over a live connection the browser is
-  # told to ask for the page afresh, which gets that answer.
   @impl true
-  def update(assigns, socket) do
-    first? = is_nil(socket.assigns.table.entry.read)
-    {:ok, socket} = Core.update(assigns, socket)
-
-    if first? and socket.assigns.table.options.mounted? and socket.assigns.table.entry.gone?,
-      do: raise(AshDataTable.NotFoundError)
-
-    {:ok, socket}
-  end
+  def update(assigns, socket), do: Core.update(assigns, socket)
 
   @impl true
   def handle_event(event, params, socket), do: Core.handle_event(event, params, socket)

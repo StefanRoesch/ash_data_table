@@ -247,42 +247,64 @@ defmodule AshDataTable.Live.Page do
   use Phoenix.LiveView
 
   @impl true
-  def mount(_params, _session, socket) do
-    {:ok, assign(socket, table: nil, url: nil)}
-  end
+  def mount(_params, _session, socket), do: {:ok, assign(socket, table: nil, route: nil)}
 
+  # The table is attached in the first `handle_params/3`: `mount/3` has no
+  # URL, and the route is found by it (D7). The hook of the URL that
+  # `AshDataTable.attach/4` attaches runs from the next call on; in this one
+  # the table is told the URL here, which is its first read, in place. A
+  # page whose first read is refused is not there (`gone?`, `on_forbidden
+  # :not_found`): while the page is mounted, an exception is how a LiveView
+  # says "not found". Phoenix answers the request with 404, and over a live
+  # connection the browser is told to ask for the page afresh, which gets
+  # that answer.
   @impl true
   def handle_params(_params, url, socket) do
-    table = route_table!(socket, url)
+    route = route_table!(socket, url)
 
-    {:noreply,
-     assign(socket, table: table, url: url, page_title: AshDataTable.label(table.resource))}
+    if route == socket.assigns.route do
+      {:noreply, socket}
+    else
+      # another route of this LiveView, reached by a patch: its table
+      socket = if socket.assigns.route, do: AshDataTable.detach(socket, :table), else: socket
+      label = AshDataTable.label(route.resource)
+
+      socket =
+        socket
+        |> assign(route: route, page_title: label)
+        |> AshDataTable.attach(
+          :table,
+          route.resource,
+          [
+            id: route.id,
+            table: route.table,
+            url: true,
+            label: label,
+            heading: 1,
+            authorize?: route.authorize?,
+            live?: route.live?,
+            mounted?: true,
+            time_zone: time_zone(route.resource, socket.assigns)
+          ] ++ reader(route.resource, socket.assigns)
+        )
+        |> AshDataTable.Live.Hooks.told_url(url)
+
+      if socket.assigns.table.entry.gone?, do: raise(AshDataTable.NotFoundError)
+
+      {:noreply, socket}
+    end
   end
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, :layout, layout(assigns.table))
+    assigns = assign(assigns, :layout, layout(assigns.route))
 
     ~H"""
     <.in_layout layout={@layout} {layout_assigns(assigns)}>
-      <div id={"#{@table.id}-page"}>
+      <div id={"#{@route.id}-page"}>
         <%!-- the page's heading is the first line of the table: its name, and
         its create button at the other end --%>
-        <.live_component
-          module={AshDataTable.Live.Embedded}
-          id={@table.id}
-          resource={@table.resource}
-          table={@table.table}
-          url={@url}
-          label={@page_title}
-          heading={1}
-          authorize?={@table.authorize?}
-          live?={@table.live?}
-          mounted?={true}
-          page_assigns={page_assigns(assigns)}
-          time_zone={time_zone(@table.resource, assigns)}
-          {reader(@table.resource, assigns)}
-        />
+        <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
       </div>
     </.in_layout>
     """
@@ -297,7 +319,7 @@ defmodule AshDataTable.Live.Page do
   # conventional ones. An assign the socket does not have is not passed,
   # except `current_scope`, which the layout of a new Phoenix app expects.
   defp layout_assigns(assigns) do
-    resource = assigns.table.resource
+    resource = assigns.route.resource
     names = resource |> AshDataTable.Domain.Info.assign_names() |> Map.values()
     zone = AshDataTable.Domain.Info.time_zone_assign(resource)
 
@@ -316,13 +338,6 @@ defmodule AshDataTable.Live.Page do
     """
   end
 
-  # The assigns of the page, as a default of an asked argument is given
-  # them (`ask :currency, default: &MyApp.Defaults.currency/1`): what the
-  # host's `on_mount` hooks have assigned, without what is LiveView's own
-  # and this page's.
-  defp page_assigns(assigns),
-    do: Map.drop(assigns, [:__changed__, :socket, :flash, :live_action, :table, :url, :layout])
-
   # The zone of the page, from the assign the resource's domain names.
   defp time_zone(resource, assigns) do
     name = AshDataTable.Domain.Info.time_zone_assign(resource)
@@ -337,8 +352,8 @@ defmodule AshDataTable.Live.Page do
   # Who is asking, from the assigns the resource's domain names.
   defp reader(resource, assigns) do
     case AshDataTable.Domain.Info.reader(resource, assigns) do
-      %{scope: scope} -> %{scope: scope, actor: nil, tenant: nil}
-      %{actor: actor, tenant: tenant} -> %{scope: nil, actor: actor, tenant: tenant}
+      %{scope: scope} -> [scope: scope]
+      %{actor: actor, tenant: tenant} -> [actor: actor, tenant: tenant]
     end
   end
 

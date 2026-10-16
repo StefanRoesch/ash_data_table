@@ -46,11 +46,12 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
     )
   end
 
-  # The `AshDataTable.Table` the component of the table on the page holds
-  # between two callbacks (`Phoenix.LiveView.Debug`).
+  # The `AshDataTable.Table` the page holds between two callbacks
+  # (`Phoenix.LiveView.Debug`): it is attached to the page, under `table`.
   defp table(view) do
-    {:ok, components} = Phoenix.LiveView.Debug.live_components(view.pid)
-    [table] = for %{assigns: %{table: %AshDataTable.Table{} = table}} <- components, do: table
+    {:ok, %{assigns: %{table: %AshDataTable.Table{} = table}}} =
+      Phoenix.LiveView.Debug.socket(view.pid)
+
     table
   end
 
