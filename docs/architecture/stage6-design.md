@@ -1,6 +1,6 @@
 # Stage 6: design note (events, commands, page values, veto, selection, controlled mode)
 
-Status: **for the owner to decide.** Nothing is built. Code references are of `4fe1001`. LiveView references are of the installed `phoenix_live_view` 1.2.12 under `demo/deps/phoenix_live_view/` (written `LV lib/…`); Ash 3.36.1 and AshPhoenix 2.3.25 under `demo/deps/` (`Ash lib/…`, `AshPhoenix lib/…`). Names follow [target.md](target.md); words follow `CONTEXT.md`. The model for this note is [stage4-design.md](stage4-design.md).
+Status: **accepted by the owner, 2026-10-16, all as recommended (D1–D19).** Code references are of `4fe1001`. LiveView references are of the installed `phoenix_live_view` 1.2.12 under `demo/deps/phoenix_live_view/` (written `LV lib/…`); Ash 3.36.1 and AshPhoenix 2.3.25 under `demo/deps/` (`Ash lib/…`, `AshPhoenix lib/…`). Names follow [target.md](target.md); words follow `CONTEXT.md`. The model for this note is [stage4-design.md](stage4-design.md).
 
 Stage 6 adds the first new abilities of the refactor. Until now every stage was a move. This one gives the host a way to hear what the table did (events), to tell it things (commands), to add server values to every Ash call (page values), to say no before a write (veto), and to draw what opens itself (controlled mode). It also moves the selection to the server (RQ1).
 
