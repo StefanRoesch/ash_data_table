@@ -81,6 +81,17 @@ defmodule DemoWeb.Tables.AttachTest do
     assert titles(html) == ["Plain", "Kept back"]
   end
 
+  test "a LiveView without handle_params/3: sorting patches the URL, and the table reads it",
+       %{conn: conn} do
+    {:ok, view, html} = live(conn, "/support/attached/paramless?bulletin[sort]=-title")
+    assert titles(html) == ["Plain", "Kept back"]
+
+    view |> element("#bulletin-head-title") |> render_click()
+    assert_patch(view, "/support/attached/paramless")
+    assert titles(render_async(view)) == ["Kept back", "Plain"]
+    assert Process.alive?(view.pid)
+  end
+
   test "two attached tables have a stream each, named after them, and their own events",
        %{conn: conn, scan: scan} do
     {:ok, view, _html} = live(conn, "/support/attached")

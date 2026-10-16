@@ -103,6 +103,33 @@ defmodule DemoWeb.Support.AttachedLive do
   end
 end
 
+defmodule DemoWeb.Support.ParamlessLive do
+  @moduledoc """
+  A LiveView of a host's own without `handle_params/3`, whose table keeps
+  its state in the URL (`url: true`): the table's hook is all that hears a
+  patch.
+  """
+  use Phoenix.LiveView
+
+  alias Demo.Support.Live.Bulletin
+
+  @impl true
+  def mount(_params, _session, socket),
+    do:
+      {:ok,
+       AshDataTable.attach(socket, :bulletins, Bulletin,
+         actor: socket.assigns[:reader],
+         url: true
+       )}
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <AshDataTable.attached table={@bulletins} streams={@streams} />
+    """
+  end
+end
+
 defmodule DemoWeb.Support.Switch do
   @moduledoc """
   An `on_mount` hook for the tests: on the message `{:switch, assigns}` it

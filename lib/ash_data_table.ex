@@ -270,12 +270,11 @@ defmodule AshDataTable do
   `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading` and
   `time_zone`. Besides, `url: true` keeps sort, filters and page in the
   page's URL, under the table's id. That needs a LiveView mounted by the
-  router and not inside another, with a `handle_params/3` of its own
-  (LiveView calls it on every patch; it may do nothing). Call `attach/4`
-  in `mount/3`: the table then reads in the first `handle_params/3`,
-  before the first render. Attached later, it reads at the next
-  `handle_params/3`, or at once, with the URL of the last one, where a
-  table with `url: true` was attached to the LiveView before.
+  router and not inside another; it needs no `handle_params/3` of its own.
+  Call `attach/4` in `mount/3`: the table then reads when LiveView first
+  hands the LiveView its URL, before the first render. Attached later, it
+  reads at the next patch, or at once, with the URL of the last one, where
+  a table with `url: true` was attached to the LiveView before.
   A default of an asked argument that is a function is given the
   LiveView's assigns.
 

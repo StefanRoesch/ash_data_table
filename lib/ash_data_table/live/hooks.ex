@@ -270,9 +270,16 @@ defmodule AshDataTable.Live.Hooks do
   defp info(_message, socket), do: {:cont, socket}
 
   # Every table whose state is in the URL is told it; the LiveView's own
-  # `handle_params/3` runs after (D6). A table reads only when its own
-  # parameters changed.
-  defp params(_params, url, socket), do: {:cont, told_url(socket, url)}
+  # `handle_params/3` runs after (D6), where it has one: LiveView calls it on
+  # a patch whether the module defines it or not, so for a LiveView without
+  # one the hook halts. A table reads only when its own parameters changed.
+  defp params(_params, url, socket) do
+    socket = told_url(socket, url)
+
+    if function_exported?(socket.view, :handle_params, 3),
+      do: {:cont, socket},
+      else: {:halt, socket}
+  end
 
   @doc """
   Tells every table whose state is in the URL the URL: what the hook of
