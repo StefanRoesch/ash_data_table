@@ -29,6 +29,13 @@ function fileInput(table: Table) {
   return table.panel.locator('input[type="file"]')
 }
 
+/** The labels a table shows, as [name, colour], down the page. */
+async function labelList(table: Table): Promise<[string, string][]> {
+  const names = await table.columnTexts("name")
+  const colours = await table.columnTexts("colour")
+  return names.map((name, i) => [name.trim(), colours[i].trim()])
+}
+
 async function openImport(table: Table): Promise<void> {
   await table.tableAction("import").click()
   await expect(table.panel).toBeVisible()
@@ -257,6 +264,7 @@ test.describe("in a nested table", () => {
   // "the labels under a task have the action on their line…", whose
   // LiveView test cannot reach a file input inside a portal.)
   test("its panel has the upload of the nested table, which sends the file to the action", async ({ page }) => {
+    const before = await labelList(labels)
     const tasks = new Table(page, "task", "/tasks")
     await tasks.open()
     const nested = await tasks.openLine(SEED.task.second, "labels")
@@ -272,7 +280,9 @@ test.describe("in a nested table", () => {
     await expect(nested.panel).toHaveCount(0)
     await expect(nested.result).toHaveText("Import: 1")
 
+    // every label as it was, and the new one with the default colour
     await labels.open()
-    expect(await labels.columnTexts("name")).toEqual(expect.arrayContaining(["idea"]))
+    const expected = [...before, ["idea", "#64748b"] as [string, string]].sort(([a], [b]) => a.localeCompare(b))
+    expect(await labelList(labels)).toEqual(expected)
   })
 })
