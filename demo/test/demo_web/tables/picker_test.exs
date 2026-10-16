@@ -316,8 +316,10 @@ defmodule DemoWeb.Tables.PickerTest do
       now = stored!(task)
       assert now.assignee_id == grace.id
 
-      assert Map.drop(now, [:assignee_id, :updated_at, :__meta__, :__metadata__]) ==
-               Map.drop(before, [:assignee_id, :updated_at, :__meta__, :__metadata__])
+      others =
+        Enum.map(Ash.Resource.Info.attributes(Task), & &1.name) -- [:assignee_id, :updated_at]
+
+      assert Map.take(now, others) == Map.take(before, others)
     end
 
     test "the record the cell points at already calls nothing", %{

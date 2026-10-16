@@ -905,6 +905,6 @@ defmodule AshDataTable.Query do
 
   defp more(_result, _start, _direction, _cursor), do: nil
 
-  defp keyset(%{__metadata__: %{keyset: keyset}}), do: keyset
-  defp keyset(_none), do: nil
+  defp keyset(nil), do: nil
+  defp keyset(record), do: Ash.Resource.get_metadata(record, :keyset)
 end
