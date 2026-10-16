@@ -857,12 +857,12 @@ defmodule AshDataTable.Query do
   # offers, and the read action's own for anything else.
   defp page_opts(%{pagination: %{strategy: :none}}, _state), do: false
 
-  defp page_opts(%{pagination: %{strategy: :offset} = pagination} = model, state) do
+  defp page_opts(%{pagination: %{strategy: :offset} = pagination}, state) do
     size = Pagination.size(pagination, state.per)
-    [limit: size, offset: (state.page - 1) * size, count: count?(model, state)]
+    [limit: size, offset: (state.page - 1) * size, count: pagination.countable?]
   end
 
-  defp page_opts(%{pagination: %{strategy: :keyset} = pagination} = model, state) do
+  defp page_opts(%{pagination: %{strategy: :keyset} = pagination}, state) do
     position =
       cond do
         state.after -> [after: state.after]
@@ -872,28 +872,7 @@ defmodule AshDataTable.Query do
 
     # Ash counts for a keyset page as it does for an offset one, when the
     # action is countable.
-    [limit: Pagination.size(pagination, state.per), count: count?(model, state)] ++ position
-  end
-
-  # Whether the read asks for the total: when the action counts, and for a
-  # nested table only while that gives nothing away. The count of a page of
-  # related records is taken with the person's filter as it is written,
-  # without the field policies (ash 3.34.4): filtering by a column they see
-  # on some records only, they would be told how many records match among
-  # those whose value they may not see. So no total is asked for then, and
-  # the table shows none, as on an action that does not count. A table of
-  # its own counts through the read itself, which applies them. Internal
-  # ticket #30: this goes when Ash applies field policies to that count.
-  defp count?(%{pagination: %{countable?: false}}, _state), do: false
-  defp count?(%{via: nil}, _state), do: true
-
-  # Only a filter on a column the person sees on every record leaves the
-  # count alone. A filter on anything else, were one ever in the state, would
-  # leave no total either: there is none to ask for that is safe.
-  defp count?(model, state) do
-    Enum.all?(state.filters, fn {name, _filter} ->
-      match?(%{partly_hidden?: false}, Enum.find(model.columns, &(&1.name == name)))
-    end)
+    [limit: Pagination.size(pagination, state.per), count: pagination.countable?] ++ position
   end
 
   defp page(records, _model, _state) when is_list(records) do

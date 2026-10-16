@@ -164,9 +164,9 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
     end
   end
 
-  # Ash counts a page of related records with the person's filter as it is
-  # written, without the field policies (see `NestedTableGuardTest`). Here
-  # for a nested table with keyset pages, whose total stands alone.
+  # The count of a page of related records counts only what the person's
+  # rows show (see `NestedTableGuardTest`). Here for a nested table with
+  # keyset pages, whose total stands alone.
   describe "the total of a nested table with keyset pages" do
     setup %{conn: conn, binder: binder} do
       # eight slips whose amount max sees, eight whose amount is hidden from max
@@ -204,33 +204,27 @@ defmodule DemoWeb.Tables.NestedTableStatesTest do
           {"at least", %{"o" => "at_least", "v" => "20"}},
           {"is empty", %{"o" => "is_empty"}}
         ] do
-      test "is not shown or announced while the amount is filtered by #{name}: only previous and next",
+      test "counts the slips max is shown while the amount is filtered by #{name}: 8, not 16",
            %{view: view, id: id} do
         forge(view, id, "filter", %{"filter" => %{"amount" => unquote(Macro.escape(entry))}})
 
         html = render_async(view)
 
         assert length(column(html, id, "title")) == 5
-        # no "8 records", and not the 16 or the 8 that a count without the policies gives
-        assert text(html, "[id='#{id}-range']") == ""
-        assert text(html, "[id='#{id}-status']") == "Results updated"
-        assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["-1"]
-
-        assert attribute(html, "[id='#{id}-pagination'] button", "id") ==
-                 ["#{id}-previous", "#{id}-next"]
-
-        assert attribute(html, "[id='#{id}-next']", "disabled") == []
+        assert text(html, "[id='#{id}-range']") == "8 records"
+        assert text(html, "[id='#{id}-status']") == "8 results"
+        assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["10"]
 
         click(view, "[id='#{id}-next']")
         html = render_async(view)
 
         assert length(column(html, id, "title")) == 3
-        assert text(html, "[id='#{id}-range']") == ""
+        assert text(html, "[id='#{id}-range']") == "8 records"
         assert attribute(html, "[id='#{id}-next']", "disabled") == [""]
       end
     end
 
-    test "is back when the filter is gone", %{view: view, id: id} do
+    test "is all of them again when the filter is gone", %{view: view, id: id} do
       forge(view, id, "filter", %{"filter" => %{"amount" => %{"o" => "at_least", "v" => "20"}}})
 
       render_async(view)

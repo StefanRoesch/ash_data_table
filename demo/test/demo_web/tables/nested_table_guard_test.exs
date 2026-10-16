@@ -3,17 +3,14 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
   What must never get from a person into the query of a table, nested or
   not, and what a nested table must never tell.
 
-  Two things Ash does not guard (ash 3.34.4):
+  A filter on a column the person never sees never reaches the query, and
+  the count of a page of related records counts only what the person's rows
+  show.
 
-    * The count of a page of related records is taken with the person's
-      filter as it is written, without the field policies. So a nested table
-      asks for no count while a filter is set on a column the person sees on
-      some records only, and a filter on a column they never see never
-      reaches the query at all.
-
-    * `Ash.Query.sort_input/2` takes the path through a relationship
-      ("assignee.name") and applies no policy of the related resource. So a
-      sort is only ever by one of the table's own sortable columns.
+  Ash does not guard one thing (ash 3.36.1): `Ash.Query.sort_input/2` takes
+  the path through a relationship ("assignee.name") and applies no policy of
+  the related resource. So a sort is only ever by one of the table's own
+  sortable columns.
 
   Driven by the events the hook and the filter row's form send, with names
   and shapes the table never offers.
@@ -43,8 +40,8 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
   # A project with 30 tasks whose estimate the member sees (their own) and 30
   # whose estimate is hidden from them. Every estimate is 20, every external
-  # reference starts with "EXT-": a count that ignores the field policies
-  # says 60 where the member's rows say 30, or none.
+  # reference starts with "EXT-": a count that ignored the field policies
+  # would say 60 where the member's rows say 30.
   defp world_of_estimates(_context) do
     world = world(tasks: 0)
 
@@ -80,18 +77,6 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
   defp send_sort(view, id, column) do
     forge(view, id, "sort", %{"column" => column})
     render_async(view)
-  end
-
-  # Everything a table shows that comes from a count.
-  defp nothing_counted(html, id) do
-    assert text(html, "[id='#{id}-range']") in [nil, ""] or
-             not String.contains?(text(html, "[id='#{id}-range']"), "of")
-
-    refute text(html, "[id='#{id}-range']") =~ ~r/record/
-    assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["-1"]
-    refute text(html, "[id='#{id}-status']") =~ ~r/\d/
-    # no page but the one that is shown: no last page, no page to jump to
-    assert length(attribute(html, "[id='#{id}-pagination'] button[id*='-page-']", "id")) <= 1
   end
 
   describe "a filter on a column the person never sees, in a nested table" do
@@ -148,45 +133,42 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
   describe "a filter on a column the person sees on some records only, in a nested table with offset pages" do
     setup :world_of_estimates
 
-    for {name, entry, visible} <- [
-          {"the default operator", %{"v" => "20"}, 30},
-          {"equals", %{"o" => "equals", "v" => "20"}, 30},
-          {"greater than", %{"o" => "greater_than", "v" => "10"}, 30},
-          {"at least", %{"o" => "at_least", "v" => "20"}, 30},
-          {"less than", %{"o" => "less_than", "v" => "30"}, 30},
-          {"at most", %{"o" => "at_most", "v" => "20"}, 30},
+    for {name, entry} <- [
+          {"the default operator", %{"v" => "20"}},
+          {"equals", %{"o" => "equals", "v" => "20"}},
+          {"greater than", %{"o" => "greater_than", "v" => "10"}},
+          {"at least", %{"o" => "at_least", "v" => "20"}},
+          {"less than", %{"o" => "less_than", "v" => "30"}},
+          {"at most", %{"o" => "at_most", "v" => "20"}},
           # the hidden ones look empty to the member: all 30 of them
-          {"is empty", %{"o" => "is_empty"}, 30}
+          {"is empty", %{"o" => "is_empty"}}
         ] do
-      test "with #{name}: no total, no announced count, no page numbers, only previous and next",
+      test "with #{name}: the total counts the rows the person is shown, 30 and not 60",
            %{conn: conn, world: world, project: project, id: id} do
         {view, _html} = open_tasks(conn, world.member, project)
 
         html = send_filter(view, id, %{"estimate_hours" => unquote(Macro.escape(entry))})
 
         assert length(column(html, id, "title")) == 25
-        assert text(html, "[id='#{id}-range']") == "1–25"
-        assert text(html, "[id='#{id}-status']") == "Results updated"
-        nothing_counted(html, id)
-        # more rows are there: next is offered, from what the page itself says
-        assert attribute(html, "[id='#{id}-pagination'] button[id*='-page-']", "id") == [
-                 "#{id}-page-1"
-               ]
+        assert text(html, "[id='#{id}-range']") == "1–25 of 30"
+        assert text(html, "[id='#{id}-status']") == "30 results"
+        assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["33"]
 
-        assert attribute(html, "[id='#{id}-next']", "disabled") == []
+        assert attribute(html, "[id='#{id}-pagination'] button[id*='-page-']", "id") == [
+                 "#{id}-page-1",
+                 "#{id}-page-2"
+               ]
 
         click(view, "[id='#{id}-next']")
         html = render_async(view)
 
-        assert length(column(html, id, "title")) == unquote(visible) - 25
-        assert text(html, "[id='#{id}-range']") == "26–30"
-        nothing_counted(html, id)
+        assert length(column(html, id, "title")) == 5
+        assert text(html, "[id='#{id}-range']") == "26–30 of 30"
         assert attribute(html, "[id='#{id}-next']", "disabled") == [""]
-        assert attribute(html, "[id='#{id}-previous']", "disabled") == []
       end
     end
 
-    test "beside a filter on an ordinary column, and gone again when it alone is taken away",
+    test "beside a filter on an ordinary column, and when it alone is taken away",
          %{conn: conn, world: world, project: project, id: id} do
       {view, _html} = open_tasks(conn, world.member, project)
 
@@ -198,8 +180,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
       # "Own 01" to "Own 09", 10, 20 and 30: 12 of the member's; 24 with the hidden ones
       assert length(column(html, id, "title")) == 12
-      assert text(html, "[id='#{id}-range']") == "1–12"
-      nothing_counted(html, id)
+      assert text(html, "[id='#{id}-range']") == "1–12 of 12"
 
       html = send_filter(view, id, %{"title" => %{"v" => "0"}})
 
@@ -232,8 +213,7 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
       html = send_filter(view, id, %{"estimate_hours" => %{"o" => "greater_than", "v" => "10"}})
 
-      assert text(html, "[id='#{id}-range']") == "1–25"
-      nothing_counted(html, id)
+      assert text(html, "[id='#{id}-range']") == "1–25 of 30"
     end
 
     test "under a table placed in a page of the host's", %{
@@ -249,11 +229,10 @@ defmodule DemoWeb.Tables.NestedTableGuardTest do
 
       html = send_filter(view, id, %{"estimate_hours" => %{"o" => "is_empty"}})
 
-      assert text(html, "[id='#{id}-range']") == "1–25"
-      nothing_counted(html, id)
+      assert text(html, "[id='#{id}-range']") == "1–25 of 30"
     end
 
-    test "a sort by such a column keeps the total: only a filter can be counted",
+    test "a sort by such a column keeps the total",
          %{conn: conn, world: world, project: project, id: id} do
       {view, _html} = open_tasks(conn, world.member, project)
 

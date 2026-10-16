@@ -1244,10 +1244,8 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert text(html, "[id='#{id}-status']") == "3 results"
     end
 
-    # Ash counts a page of related records with the filter as it is written,
-    # without the field policies: 4 tasks have an estimate above 10, and the
-    # member may know that of one.
-    test "is not shown or announced while a filter is set on a column the person sees on some records only",
+    # 4 tasks have an estimate above 10, and the member may know that of one.
+    test "counts only the rows the person is shown while a filter is set on a column they see on some records only",
          %{conn: conn, world: world, project: project, id: id} do
       {:ok, view, _html} = conn |> log_in(world.member) |> live("/projects")
       expand(view, "project", project.id)
@@ -1256,13 +1254,12 @@ defmodule DemoWeb.Tables.NestedTableTest do
       html = filter(view, id, "estimate_hours", o: "greater_than", v: "10")
 
       assert column(html, id, "title") == ["The member's own"]
-      assert text(html, "[id='#{id}-range']") == "1–1"
-      assert text(html, "[id='#{id}-status']") == "Results updated"
-      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["-1"]
+      assert text(html, "[id='#{id}-range']") == "1–1 of 1"
+      assert text(html, "[id='#{id}-status']") == "1 result"
+      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["4"]
       refute html =~ "of 4"
       refute html =~ "4 results"
 
-      # with the filter gone, the total is back
       click(view, "[id='#{id}-filter-estimate_hours-clear']")
       html = render_async(view)
 
