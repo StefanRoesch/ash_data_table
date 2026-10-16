@@ -27,8 +27,9 @@ defmodule AshDataTable.Live.Page do
   authorization" in `AshDataTable.Router.ash_data_table/3`). The route wins over the
   domain either way. Nothing a browser sends has a say in it: not the URL,
   not the session, not an event.
-  The table follows the person who mounted the page: a host that changes who
-  is logged in mounts the page again, as a login or logout does.
+  The table follows the assigns as they change while the page is open: when
+  a host's hook assigns another person, the table reads again as them, and
+  the layout is given the new assigns.
 
   ## Time zone
 
@@ -247,7 +248,8 @@ defmodule AshDataTable.Live.Page do
   use Phoenix.LiveView
 
   @impl true
-  def mount(_params, _session, socket), do: {:ok, assign(socket, table: nil, route: nil)}
+  def mount(_params, _session, socket),
+    do: {:ok, assign(socket, table: nil, route: nil, layout_assigns: nil)}
 
   # The table is attached in the first `handle_params/3`: `mount/3` has no
   # URL, and the route is found by it (D7). The hook of the URL that
@@ -266,30 +268,17 @@ defmodule AshDataTable.Live.Page do
       {:noreply, socket}
     else
       # another route of this LiveView, reached by a patch: its table
-      socket = if socket.assigns.route, do: AshDataTable.detach(socket, :table), else: socket
+      socket =
+        if socket.assigns.route,
+          do: AshDataTable.detach(socket, :table),
+          else: attach_hook(socket, :ash_data_table_page, :after_render, &asked/1)
+
       label = AshDataTable.label(route.resource)
 
-      # what the layout is given, but the flash, which changes: made once,
-      # so that a change of the table does not render the layout again
       socket =
         socket
         |> assign(route: route, page_title: label)
-        |> assign(layout_assigns: layout_assigns(route, socket.assigns))
-        |> AshDataTable.attach(
-          :table,
-          route.resource,
-          [
-            id: route.id,
-            table: route.table,
-            url: true,
-            label: label,
-            heading: 1,
-            authorize?: route.authorize?,
-            live?: route.live?,
-            mounted?: true,
-            time_zone: time_zone(route.resource, socket.assigns)
-          ] ++ reader(route.resource, socket.assigns)
-        )
+        |> attached()
         |> AshDataTable.Live.Hooks.told_url(url)
 
       if socket.assigns.table.entry.gone?, do: raise(AshDataTable.NotFoundError)
@@ -297,6 +286,55 @@ defmodule AshDataTable.Live.Page do
       {:noreply, socket}
     end
   end
+
+  # Who is asking may change while the page is open: a host's `on_mount`
+  # hook may assign another `current_scope` (or whichever assigns the
+  # domain names), in any callback, and its hook may halt it. So after
+  # every render the page looks whether what it gave the table and the
+  # layout is still what the socket holds, and if not, it gives them what
+  # it holds now, in a callback of its own: the table is attached again
+  # under `:table`, which reads anew as the person asking now.
+  defp asked(socket) do
+    if socket.assigns.route && given(socket) != socket.assigns.layout_assigns,
+      do: send(self(), :ash_data_table_asked)
+
+    socket
+  end
+
+  @impl true
+  def handle_info(:ash_data_table_asked, socket) do
+    if given(socket) == socket.assigns.layout_assigns,
+      do: {:noreply, socket},
+      else: {:noreply, attached(socket)}
+  end
+
+  def handle_info(_message, socket), do: {:noreply, socket}
+
+  # The table of the route, attached as the socket's assigns say who is
+  # asking and in which zone; attached again where it is, which tells it.
+  # What the layout is given is made here too, but the flash, which
+  # changes: so that a change of the table does not render the layout again.
+  defp attached(%{assigns: %{route: route} = assigns} = socket) do
+    socket
+    |> assign(layout_assigns: given(socket))
+    |> AshDataTable.attach(
+      :table,
+      route.resource,
+      [
+        id: route.id,
+        table: route.table,
+        url: true,
+        label: assigns.page_title,
+        heading: 1,
+        authorize?: route.authorize?,
+        live?: route.live?,
+        mounted?: true,
+        time_zone: time_zone(route.resource, assigns)
+      ] ++ reader(route.resource, assigns)
+    )
+  end
+
+  defp given(socket), do: layout_assigns(socket.assigns.route, socket.assigns)
 
   @impl true
   def render(assigns) do
@@ -331,16 +369,16 @@ defmodule AshDataTable.Live.Page do
   # The layout is given its assigns as one attribute, not spread: LiveView
   # renders a component that is given spread attributes whole on every
   # change, the layout's flash group with it, and every event of the table
-  # is a change of this page. They are made once (`handle_params/3`).
+  # is a change of this page. They are made when the table is attached
+  # (`attached/1`). Put into the layout's assigns with `assign/2` when they
+  # changed, which marks them so; else as they were, unchanged.
   defp in_layout(%{layout: {module, function}, given: given} = assigns) do
-    assigns = assigns |> Map.drop([:layout, :given]) |> Map.merge(given)
-
     assigns =
-      if match?(%{__changed__: %{given: _}}, assigns),
-        do: Map.put(assigns, :__changed__, nil),
-        else: assigns
+      if changed?(assigns, :given),
+        do: assign(assigns, given),
+        else: Map.merge(assigns, given)
 
-    apply(module, function, [assigns])
+    apply(module, function, [Map.drop(assigns, [:layout, :given])])
   end
 
   defp in_layout(assigns) do
