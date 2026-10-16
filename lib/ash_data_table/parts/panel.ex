@@ -167,7 +167,7 @@ defmodule AshDataTable.Parts.Panel do
       )
 
     ~H"""
-    <div class="fieldset mb-2" data-field={Enum.join(@inside.path, ".")}>
+    <div class="fieldset mb-2" {Attrs.field(@inside.path)}>
       <%!-- an unchecked box sends nothing: this says "false" for it --%>
       <input :if={@input.editor == :boolean} type="hidden" name={@name} value="false" />
       <label
@@ -263,7 +263,7 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="button"
             id={"#{@id}-r-#{position - 1}"}
-            data-unpick={Attrs.held([Atom.to_string(@input.name), key])}
+            {Attrs.unpick(@input.name, key)}
             aria-label={
               if called,
                 do: Text.t(:remove_group, column: called),
@@ -441,7 +441,7 @@ defmodule AshDataTable.Parts.Panel do
             else: Text.t(:clear_value, column: @input.label)
         }
         aria-describedby={@clear == :asked && "#{@id}-cleared"}
-        data-clear-field={@input.name}
+        {Attrs.clear_field(@input.name)}
       >
         {if @clear == :asked, do: Text.t(:keep), else: Text.t(:clear)}
       </button>
@@ -548,7 +548,7 @@ defmodule AshDataTable.Parts.Panel do
           :if={is_map(@held) and not @field.required?}
           type="button"
           id={"#{@id}-remove"}
-          data-remove-group={Attrs.held(@inside.path)}
+          {Attrs.remove_group(@inside.path)}
           aria-label={Text.t(:remove_group, column: @field.label)}
           class="btn btn-ghost btn-xs mb-1"
         >
@@ -572,7 +572,7 @@ defmodule AshDataTable.Parts.Panel do
         :if={not is_map(@held)}
         type="button"
         id={"#{@id}-add"}
-        data-add-group={Attrs.held(@inside.path)}
+        {Attrs.add_group(@inside.path)}
         class="btn btn-sm"
       >
         {Text.t(:add_value)}
@@ -632,7 +632,7 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="button"
             id={"#{@id}-#{key}-remove"}
-            data-remove-group={Attrs.held(@inside.path ++ [key])}
+            {Attrs.remove_group(@inside.path ++ [key])}
             aria-label={Text.t(:remove_value, column: @field.label, position: index + 1)}
             class="btn btn-ghost btn-xs mb-1"
           >
@@ -660,7 +660,7 @@ defmodule AshDataTable.Parts.Panel do
       <button
         type="button"
         id={"#{@id}-add"}
-        data-add-group={Attrs.held(@inside.path)}
+        {Attrs.add_group(@inside.path)}
         class="btn btn-sm"
       >
         {Text.t(:add_value)}
@@ -740,7 +740,7 @@ defmodule AshDataTable.Parts.Panel do
       </div>
       <div class="ps-4">
         <input type="hidden" name={"#{@name}[_of]"} value={@kind} />
-        <div class="fieldset mb-2" data-field={Enum.join(@inside.path ++ ["_union_type"], ".")}>
+        <div class="fieldset mb-2" {Attrs.field(@inside.path ++ ["_union_type"])}>
           <label for={"#{@id}-kind"} class="label mb-1 text-base-content">
             <span data-label>{Text.t(:kind)}</span>
           </label>

@@ -15,7 +15,7 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
-import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
+import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
 
 export default {
   mounted() {
@@ -121,7 +121,7 @@ export default {
       e.preventDefault()
       e.stopPropagation()
       const submitter = e.submitter
-      this.grid.ask(question, dialog.dataset.destructive !== undefined).then(confirmed => {
+      this.grid.ask(question, dialog.matches(DESTRUCTIVE)).then(confirmed => {
         if (!confirmed || !dialog.isConnected) return
         this.confirmed = true
         e.target.requestSubmit(submitter)

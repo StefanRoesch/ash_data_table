@@ -67,6 +67,10 @@ export const OPEN = "[data-open]"
 export const ACTION = "[data-action]"
 export const CREATE = "[data-create]"
 export const TABLE_ACTION = "[data-table-action]"
+// an action that destroys: a row action's button, an action on the
+// selected rows, the action panel, and the confirm of the question
+// dialog while it asks about one (the hook sets it there)
+export const DESTRUCTIVE = "[data-destructive]"
 // a sensitive cell: the button that asks for the value, the mask, what
 // a screen reader is told, and where the value goes
 export const REVEAL = "[data-reveal]"
@@ -83,7 +87,8 @@ export const CHOICES = "[data-choices]"
 
 // the control of an editor that the table gave its attributes
 export const CONTROL = "[data-control]"
-// the "Clear" of a sensitive cell's editor
+// the "Clear" of a sensitive cell's editor, and "Clear selection" in the
+// line above the grid
 export const CLEAR = "[data-clear]"
 // the counter of a text
 export const COUNT = "[data-count]"
@@ -102,6 +107,10 @@ export const OWN = "[data-own]"
 
 // the line above the grid with what is selected
 export const SELECTION = "[data-selection]"
+// its "Select all" the records the filters match, and the button of an
+// action on the selected rows
+export const SELECT_ALL = "[data-select-all]"
+export const BULK = "[data-bulk]"
 // the argument line's form
 export const ARGUMENTS = "[data-arguments]"
 

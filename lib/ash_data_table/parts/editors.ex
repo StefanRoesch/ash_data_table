@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Editors do
   # component's assigns.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Model.Limits
   alias AshDataTable.Text
 
@@ -46,11 +47,7 @@ defmodule AshDataTable.Parts.Editors do
     <span
       id={@id}
       popover={@floats? && "manual"}
-      data-count={@counted.unit}
-      data-max={@counted.max}
-      data-trim={@counted.trim?}
-      data-casing={@counted.casing}
-      data-over={@over?}
+      {Attrs.count(@counted, @over?)}
       class={[
         "text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold",
         if(@floats?,
@@ -104,8 +101,7 @@ defmodule AshDataTable.Parts.Editors do
     <div
       id={@id}
       data-list
-      data-value-label={Text.t(:value_position, column: @label, position: "{n}")}
-      data-remove-label={Text.t(:remove_value, column: @label, position: "{n}")}
+      {Attrs.list(@label)}
       class={[
         "flex flex-col gap-1",
         if(@place == :grid, do: "items-start py-0.5", else: "items-stretch")

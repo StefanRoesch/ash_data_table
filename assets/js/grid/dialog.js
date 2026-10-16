@@ -3,6 +3,9 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
+import {DESTRUCTIVE} from "../markers.js"
+import {ATTRIBUTE} from "./shared.js"
+
 export default {
   // Asks a question in the table's dialog and resolves to whether it
   // was confirmed. Escape closes the dialog as Cancel does. When it
@@ -14,7 +17,7 @@ export default {
     // the answer that deletes says so (`data-destructive`), which
     // its look follows
     const confirm = dialog.querySelector("button[value='confirm']")
-    confirm.toggleAttribute("data-destructive", !!destructive)
+    confirm.toggleAttribute(ATTRIBUTE(DESTRUCTIVE), !!destructive)
     dialog.returnValue = ""
     return new Promise(resolve => {
       dialog.addEventListener("close", () => resolve(dialog.returnValue === "confirm"), {once: true})

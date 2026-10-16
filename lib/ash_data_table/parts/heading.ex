@@ -6,7 +6,7 @@ defmodule AshDataTable.Parts.Heading do
   # component's assigns.
   use Phoenix.Component
 
-  alias AshDataTable.Parts
+  alias AshDataTable.Attrs
 
   # The create button of a table: it opens the action panel with the inputs
   # of the table's create action.
@@ -16,13 +16,7 @@ defmodule AshDataTable.Parts.Heading do
 
   def create(assigns) do
     ~H"""
-    <button
-      type="button"
-      id={"#{@id}-create"}
-      class="btn btn-sm"
-      phx-click={Parts.Common.event(@id, "create")}
-      phx-target={@target}
-    >
+    <button type="button" {Attrs.create(@id, @target)} class="btn btn-sm">
       {@action.label}
     </button>
     """
@@ -40,12 +34,8 @@ defmodule AshDataTable.Parts.Heading do
     <button
       :for={action <- @actions}
       type="button"
-      id={"#{@id}-do-#{action.name}"}
+      {Attrs.table_action(@id, action, @target)}
       class="btn btn-sm"
-      data-table-action={action.name}
-      phx-click={Parts.Common.event(@id, "table_act")}
-      phx-value-action={action.name}
-      phx-target={@target}
     >
       {action.label}
     </button>

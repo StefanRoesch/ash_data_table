@@ -8,6 +8,7 @@ defmodule AshDataTable.Parts.Arguments do
 
   import AshDataTable.Parts.Common, only: [said: 1]
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -237,12 +238,7 @@ defmodule AshDataTable.Parts.Arguments do
     held back, by the hook (`UNREADABLE`). --%>
     <form
       :if={@model.arguments != []}
-      id={"#{@id}-arguments"}
-      phx-change={Parts.Common.event(@id, "arguments")}
-      phx-submit={Parts.Common.event(@id, "arguments")}
-      phx-target={@myself}
-      novalidate
-      data-arguments
+      {Attrs.arguments(@id, @myself)}
       class={[
         "flex flex-wrap items-start gap-x-4 gap-y-2",
         if(@nested?, do: "px-4 py-2", else: "mb-2")

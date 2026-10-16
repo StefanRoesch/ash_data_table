@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {DETAIL, ROWGROUP} from "../markers.js"
+import {DESTRUCTIVE, DETAIL, ROWGROUP} from "../markers.js"
 import {cellsOf, firstRow, is, place} from "./shared.js"
 
 export default {
@@ -34,7 +34,7 @@ export default {
     const question = button.dataset.question
     if (!question) return run()
     // Cancel, and Escape: the browser puts focus back on the button
-    this.ask(question, button.dataset.destructive !== undefined).then(confirmed => { if (confirmed) run() })
+    this.ask(question, is(button, DESTRUCTIVE)).then(confirmed => { if (confirmed) run() })
   },
 
   // Uses the page's "Open" of a row: the server is told the row, and

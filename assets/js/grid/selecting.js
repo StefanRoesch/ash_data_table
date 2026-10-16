@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {CURRENT, DETAIL, ROWGROUP, SELECTION, SELECTOR, TABLE} from "../markers.js"
+import {BULK, CLEAR, CURRENT, DESTRUCTIVE, DETAIL, ROWGROUP, SELECT_ALL, SELECTION, SELECTOR, TABLE} from "../markers.js"
 import {LISTED, cellsOf, firstRow, groupsOf, is, place} from "./shared.js"
 
 export default {
@@ -263,9 +263,9 @@ export default {
     if (!line || line !== this.line()) return
     const button = e.target.closest("button")
     if (!button) return
-    if (button.dataset.selectAll !== undefined) this.select(new Map(), true)
-    else if (button.dataset.clear !== undefined) this.select(new Map(), false)
-    else if (button.dataset.bulk !== undefined) this.bulk(button)
+    if (is(button, SELECT_ALL)) this.select(new Map(), true)
+    else if (is(button, CLEAR)) this.select(new Map(), false)
+    else if (is(button, BULK)) this.bulk(button)
   },
 
   // Uses the button of an action on the selected rows. The server
@@ -285,7 +285,7 @@ export default {
     this.transport.push("bulk", payload).then(reply => {
       if (!reply || !reply.ask) { this.asking = false; return }
       // Cancel, and Escape: the browser puts focus back on the button
-      this.ask(reply.ask, button.dataset.destructive !== undefined).then(confirmed => {
+      this.ask(reply.ask, is(button, DESTRUCTIVE)).then(confirmed => {
         this.asking = false
         if (confirmed) this.transport.push("bulk_run", payload)
       })

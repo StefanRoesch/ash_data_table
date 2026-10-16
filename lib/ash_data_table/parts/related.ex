@@ -42,7 +42,7 @@ defmodule AshDataTable.Parts.Related do
           colspan={@colspan}
           aria-colindex="1"
           tabindex="-1"
-          data-line={relationship.name}
+          {Attrs.line(relationship)}
           class="px-0 py-1"
         >
           <%!-- What the line holds stays at the left edge of the table's
@@ -86,7 +86,7 @@ defmodule AshDataTable.Parts.Related do
               type="button"
               id={"#{@row_id}-l-#{relationship.name}-do-#{action.name}"}
               tabindex="-1"
-              data-table-action={action.name}
+              {Attrs.line_action(action)}
               phx-click={Parts.Common.event("#{@row_id}-t-#{relationship.name}", "table_act")}
               phx-value-action={action.name}
               phx-target={@myself}

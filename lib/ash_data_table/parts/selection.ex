@@ -61,31 +61,14 @@ defmodule AshDataTable.Parts.Selection do
       {Attrs.selection(@id, @more?, @total)}
       class="flex flex-wrap items-center gap-2"
     >
-      <p id={"#{@id}-selected"} role="status" phx-update="ignore" class="text-sm"></p>
-      <div
-        id={"#{@id}-selection-controls"}
-        hidden
-        phx-mounted={JS.ignore_attributes(["hidden"])}
-        class="flex flex-wrap items-center gap-2"
-      >
-        <button
-          type="button"
-          id={"#{@id}-select-all"}
-          hidden
-          phx-mounted={JS.ignore_attributes(["hidden"])}
-          data-select-all
-          class="btn btn-sm"
-        >
+      <p {Attrs.selected(@id)} class="text-sm"></p>
+      <div {Attrs.selection_controls(@id)} class="flex flex-wrap items-center gap-2">
+        <button type="button" {Attrs.select_all(@id)} class="btn btn-sm">
           {if @total,
             do: Text.t(:select_all, count: @total),
             else: Text.t(:select_all_uncounted)}
         </button>
-        <button
-          type="button"
-          id={"#{@id}-clear-selection"}
-          data-clear
-          class="btn btn-sm"
-        >
+        <button type="button" {Attrs.clear_selection(@id)} class="btn btn-sm">
           {Text.t(:clear_selection)}
         </button>
         <%!-- While an action runs the buttons are not to be used, and say so
@@ -93,10 +76,7 @@ defmodule AshDataTable.Parts.Selection do
         <button
           :for={action <- @bulk}
           type="button"
-          id={"#{@id}-bulk-#{action.name}"}
-          aria-disabled={@running? && "true"}
-          data-bulk={action.name}
-          data-destructive={action.type == :destroy}
+          {Attrs.bulk(@id, action, @running?)}
           class={["btn btn-sm", @running? && "btn-disabled"]}
         >
           {action.label}

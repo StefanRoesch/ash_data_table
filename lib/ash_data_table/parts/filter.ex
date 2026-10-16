@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Filter do
   # component's assigns.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Parts
   alias AshDataTable.State
   alias AshDataTable.Text
@@ -247,13 +248,7 @@ defmodule AshDataTable.Parts.Filter do
     ~H"""
     <%!-- The form of the filter row. A form cannot sit inside a table around
     its cells, so the controls name it instead. --%>
-    <form
-      id={"#{@id}-filters"}
-      phx-change={Parts.Common.event(@id, "filter")}
-      phx-submit={Parts.Common.event(@id, "filter")}
-      phx-target={@myself}
-    >
-    </form>
+    <form {Attrs.filters(@id, @myself)}></form>
     """
   end
 end

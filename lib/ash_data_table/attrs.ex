@@ -29,12 +29,12 @@ defmodule AshDataTable.Attrs do
     [colspan] [data-selector] [data-select-page] [data-expander] [data-line] [data-nested]
     [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
     [data-current] [data-summaries]
-    [data-resize] [data-open] [data-action] [data-create] [data-table-action]
+    [data-resize] [data-open] [data-action] [data-create] [data-table-action] [data-destructive]
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen]
     [data-choices-button] [data-choices]
     [data-control] [data-clear] [data-count] [data-value-text] [data-list] [data-item] [data-add]
     [data-remove] [data-own]
-    [data-selection] [data-arguments]
+    [data-selection] [data-select-all] [data-bulk] [data-arguments]
     [data-field] [data-cancel] [data-add-group] [data-remove-group] [data-unpick] [data-clear-field]
     [data-none] [data-take] [aria-current=page]
   )
@@ -347,6 +347,38 @@ defmodule AshDataTable.Attrs do
     %{"data-question" => asks? && action.confirm, "data-destructive" => action.type == :destroy}
   end
 
+  # A line under an expanded row: `data-line` names its relationship, on
+  # the line's cell (the part writes its id, role, place and `tabindex`,
+  # D3 b), and `data-table-action` the table action of a nested table that
+  # a button on the line runs.
+  def line(relationship), do: %{"data-line" => relationship.name}
+  def line_action(action), do: %{"data-table-action" => action.name}
+
+  # The counter of a text with a most it can be long: the unit it counts in
+  # (`data-count`), the most (`data-max`), whether the text is trimmed and
+  # its case folded first, as Ash does (`data-trim`, `data-casing`), and
+  # `data-over` while it is too long. The hook counts again as it is typed.
+  def count(counted, over?) do
+    %{
+      "data-count" => counted.unit,
+      "data-max" => counted.max,
+      "data-trim" => counted.trim?,
+      "data-casing" => counted.casing,
+      "data-over" => over?
+    }
+  end
+
+  # The list editor of an array (`data-list`, which the part writes, as
+  # `data-item`, `data-add` and `data-remove` in it): what the hook calls a
+  # value it adds and its button that takes it away, with `{n}` where the
+  # value's place goes.
+  def list(label) do
+    %{
+      "data-value-label" => Text.t(:value_position, column: label, position: "{n}"),
+      "data-remove-label" => Text.t(:remove_value, column: label, position: "{n}")
+    }
+  end
+
   # The kind of an editable column's editor, on the template the hook
   # copies into the cell being edited (`data-editor`): `secret` for a
   # sensitive column.
@@ -396,6 +428,48 @@ defmodule AshDataTable.Attrs do
   # save fails.
   def status(id), do: %{"id" => "#{id}-status", "role" => "status", "aria-live" => "polite"}
 
+  # The create button of a table, in its heading or above the grid of a
+  # table limited to related records: it opens the action panel of the
+  # table's create action.
+  def create(id, target) do
+    %{"id" => "#{id}-create", "phx-click" => Common.event(id, "create"), "phx-target" => target}
+  end
+
+  # A table action's button beside it: `data-table-action` names the action.
+  def table_action(id, action, target) do
+    %{
+      "id" => "#{id}-do-#{action.name}",
+      "data-table-action" => action.name,
+      "phx-click" => Common.event(id, "table_act"),
+      "phx-value-action" => action.name,
+      "phx-target" => target
+    }
+  end
+
+  # The argument line's form (`data-arguments`). `novalidate`: Ash is given
+  # what was typed and says what is wrong with it; the hook holds back only
+  # what the browser cannot read as a value at all.
+  def arguments(id, target) do
+    %{
+      "id" => "#{id}-arguments",
+      "phx-change" => Common.event(id, "arguments"),
+      "phx-submit" => Common.event(id, "arguments"),
+      "phx-target" => target,
+      "novalidate" => true,
+      "data-arguments" => true
+    }
+  end
+
+  # The form of the filter row, which its controls name (`form`).
+  def filters(id, target) do
+    %{
+      "id" => "#{id}-filters",
+      "phx-change" => Common.event(id, "filter"),
+      "phx-submit" => Common.event(id, "filter"),
+      "phx-target" => target
+    }
+  end
+
   # The line above the grid with what is selected: `data-more` where there
   # are more records than the page, and the texts the hook says, with `{n}`
   # where it puts the count.
@@ -411,6 +485,37 @@ defmodule AshDataTable.Attrs do
         if(total, do: Text.t(:all_selected, count: total), else: Text.t(:all_selected_uncounted))
     }
   end
+
+  # What the line above the grid says is selected, which the hook writes.
+  def selected(id), do: %{"id" => "#{id}-selected", "role" => "status", "phx-update" => "ignore"}
+
+  # The buttons of the line, hidden while nothing is selected: the hook
+  # shows them, so a patch leaves `hidden` alone.
+  def selection_controls(id), do: shown_by_hook("#{id}-selection-controls")
+
+  # "Select all" the records the filters match (`data-select-all`), shown by
+  # the hook where there are more than the page.
+  def select_all(id),
+    do: Map.put(shown_by_hook("#{id}-select-all"), "data-select-all", true)
+
+  # "Clear selection" (`data-clear`).
+  def clear_selection(id), do: %{"id" => "#{id}-clear-selection", "data-clear" => true}
+
+  # The button of an action on the selected rows: `data-bulk` names the
+  # action, `data-destructive` is on one that destroys. While an action
+  # runs it is not to be used, and says so without being `disabled`, which
+  # would drop the focus.
+  def bulk(id, action, running?) do
+    %{
+      "id" => "#{id}-bulk-#{action.name}",
+      "aria-disabled" => running? && "true",
+      "data-bulk" => action.name,
+      "data-destructive" => action.type == :destroy
+    }
+  end
+
+  defp shown_by_hook(id),
+    do: %{"id" => id, "hidden" => true, "phx-mounted" => JS.ignore_attributes(["hidden"])}
 
   # The popover with the whole text of a cell whose text is cut off, for the
   # eye alone; the hook writes it.
@@ -476,6 +581,24 @@ defmodule AshDataTable.Attrs do
       "aria-labelledby" => "#{id}-picker-title"
     }
   end
+
+  # A field of the panel: `data-field` its way among the fields, joined
+  # with dots. The part writes the rest of a field, as it does of every
+  # element drawn per field or group below (D3 b).
+  def field(path), do: %{"data-field" => Enum.join(path, ".")}
+
+  # The button that takes a chosen record out of a field (`data-unpick`:
+  # the field's name and the record's key, as JSON).
+  def unpick(name, key), do: %{"data-unpick" => held([Atom.to_string(name), key])}
+
+  # The button that clears a field, or keeps its value (`data-clear-field`:
+  # the field's name).
+  def clear_field(name), do: %{"data-clear-field" => name}
+
+  # The buttons that add a group of fields and take one away
+  # (`data-add-group`, `data-remove-group`: the way to the group, as JSON).
+  def add_group(path), do: %{"data-add-group" => held(path)}
+  def remove_group(path), do: %{"data-remove-group" => held(path)}
 
   # Cancel, in the panel and in the picker.
   def cancel(id), do: %{"id" => id, "data-cancel" => true}
