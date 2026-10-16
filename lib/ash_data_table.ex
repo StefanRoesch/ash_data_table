@@ -358,8 +358,33 @@ defmodule AshDataTable do
   The first three are a map, or a function of the LiveView's assigns, or
   of them and which table asks (`%{table: id, path: path, resource:
   resource}`); `before_action` is a function of the request, or of it and
-  the assigns. They are called in the LiveView's process before every read
-  and write. A new value of theirs reads nothing again by itself.
+  the assigns. They are called in the LiveView's process before the reads
+  and writes of a callback, once in it for each table that asks. A new
+  value of theirs reads nothing again by itself.
+
+  ## What the page draws itself
+
+  `controlled: [:confirm, :panel]` (either, or both) has the table hold
+  what it would open, for the LiveView to draw: `:confirm` the question
+  before a row action, a table action or an action on the selection,
+  `:panel` the action panel of a row action, a table action, a create or
+  an action on the selection. The table tells the LiveView `:requested`
+  (with `notify`), `request/1` says what is held, and the LiveView answers
+  with `confirm_request/3`, `validate_request/4`, `submit_request/4` or
+  `cancel_request/3`; each goes the way the person's own answer would,
+  with the table's checks, the veto and the record read again. One request
+  at a time: a new one ends the one before, whose `ref` is answered no
+  more. A panel with a file, a group of fields, a union or records chosen
+  in the picker cannot be handed to the page in this version: `attach/4`
+  raises, and names the action.
+
+  Left out in this version, and drawn by the table as ever: a column's
+  question before a save, a reference cell's question, a map cell's panel,
+  the picker, and everything of a nested table or a picker's table. A
+  question is no safety check: an event the browser forges runs a table
+  action or an action on the selection without the confirm (`table_run`,
+  `bulk_run`), as it would without the table's own question. What must
+  not run is for Ash's policies and for `before_action` to refuse.
 
   Names and ids are unique on a page: two tables of one resource need an
   `id` each, and no id may begin with another's and `-row-` or `-pick-`

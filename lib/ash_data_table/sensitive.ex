@@ -24,10 +24,17 @@ defmodule AshDataTable.Sensitive do
   alias AshDataTable.Resource.Exposing
 
   defmodule Masked do
-    @moduledoc false
-    # What stands in a record for a sensitive value that is there.
+    @moduledoc """
+    What stands in a record a table hands the page for a `sensitive?`
+    value that is there: in the record or result of an event
+    (`AshDataTable.Event`) and in `AshDataTable.selected_records/2`. It
+    holds nothing of the value: a page that needs it reads the record
+    itself. A value that is not there, or that Ash hid from the person,
+    is left as it is.
+    """
     defstruct []
 
+    @typedoc "A sensitive value, masked."
     @type t :: %__MODULE__{}
   end
 
