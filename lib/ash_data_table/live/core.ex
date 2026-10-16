@@ -42,32 +42,34 @@ defmodule AshDataTable.Live.Core do
       |> put_private(:ash_data_table, %{current: :table})
       |> assign(table: Table.new())
 
-    socket = put(socket, target: socket.assigns.myself, router: socket.router)
-
-    # its stream: a nested table is rendered before its first read has
-    # come back
-    {stream, socket} = Registry.take_stream(socket)
-    {:ok, put(socket, stream: stream)}
+    {:ok, put(socket, target: socket.assigns.myself, router: socket.router)}
   end
 
   # What a listener hands over (`AshDataTable.Listener`): a batch of what was
   # announced, each the action's type and the record's primary key, for the
   # table whose listener it is. It is looked at once this update is done
   # (`tidy/1`). A batch for a table that is no longer shown is dropped.
-  def update(%{live: {:heard, id, batch}}, socket) do
+  def update(%{live: {:heard, id, batch}}, socket), do: {:ok, heard(socket, id, batch)}
+
+  def update(assigns, socket), do: {:ok, tell(socket, assigns)}
+
+  # The same for a table attached to a LiveView (`AshDataTable.Live.Hooks`),
+  # whose listener sends it the batch as a message.
+  def heard(socket, id, batch) do
     if Registry.known?(socket, id) do
-      {:ok,
-       socket
-       |> Registry.within(id, &put(&1, waiting: table(&1).entry.waiting ++ batch))
-       |> tidy()}
+      socket
+      |> Registry.within(id, &put(&1, waiting: table(&1).entry.waiting ++ batch))
+      |> tidy()
     else
-      {:ok, socket}
+      socket
     end
   end
 
-  def update(assigns, socket) do
-    {:ok, socket} = told(assigns, socket)
-    {:ok, tidy(socket)}
+  # What the table on the page is told, by the tag's attributes or by
+  # `AshDataTable.attach/4`, and all that follows from it.
+  def tell(socket, given) do
+    {:ok, socket} = told(given, socket)
+    tidy(socket)
   end
 
   # Every event is parsed first (`AshDataTable.Intent`): what it asks for,
@@ -94,7 +96,7 @@ defmodule AshDataTable.Live.Core do
   # `ash_data_table:ID:event`, split at the first and the last `:`. The
   # table's id, a claim that is looked up among the tables shown (nil for
   # an event without it), and the event's own name.
-  defp addressed(event) do
+  def addressed(event) do
     case String.split(event, ":") do
       ["ash_data_table" | [_, _ | _] = rest] ->
         {ids, [plain]} = Enum.split(rest, -1)
@@ -104,6 +106,10 @@ defmodule AshDataTable.Live.Core do
         {nil, event}
     end
   end
+
+  # An event named for a table that is not attached, or no longer: the
+  # answer of an event of another shape (`AshDataTable.Live.Hooks`).
+  def unknown(event, socket), do: malformed(event |> addressed() |> elem(1), socket)
 
   # The module of an intent's topic.
   defp topic(intent) when is_tuple(intent), do: topic(elem(intent, 0))
@@ -175,6 +181,16 @@ defmodule AshDataTable.Live.Core do
         )
       )
 
+    # its stream, named after the table on the page: a nested table is
+    # rendered before its first read has come back
+    socket =
+      if table(socket).entry.stream do
+        socket
+      else
+        {stream, socket} = Registry.take_stream(socket)
+        put(socket, stream: stream)
+      end
+
     # where it is: under the tables it was told it is rendered in
     socket = put(socket, path: Map.get(assigns, :path, []) ++ [table(socket).entry.id])
 
@@ -220,7 +236,7 @@ defmodule AshDataTable.Live.Core do
       |> Model.for_actor(reader(table(socket)))
       |> Model.zoned(table(socket).caller.time_zone)
       |> in_words()
-      |> Model.defaults(table(socket).options.page_assigns)
+      |> Model.defaults(page_assigns(socket))
 
     # What the person chose for the arguments is given to Ash to look at,
     # here and before every read: the model then holds what the read action
@@ -534,6 +550,21 @@ defmodule AshDataTable.Live.Core do
         do: Registry.within(socket, id, fun),
         else: socket
     end)
+  end
+
+  # What a default of an asked argument is given (D9): the assigns the tag
+  # was given, or for a table attached to a LiveView its assigns as they are
+  # now, without LiveView's own and without any table.
+  def page_assigns(socket) do
+    case table(socket).options.page_assigns do
+      :socket ->
+        socket.assigns
+        |> Map.drop([:__changed__, :flash, :live_action, :streams, :uploads])
+        |> Map.reject(fn {_name, value} -> is_struct(value, Table) end)
+
+      assigns ->
+        assigns
+    end
   end
 
   # Puts a text into the live region, to be read out.

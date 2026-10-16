@@ -51,7 +51,13 @@ defmodule AshDataTable.Live.Core.Updates do
                 "cannot follow the changes of #{inspect(resource)}: " <> Listening.message(reason)
       end
 
-    relay = fn batch -> Phoenix.LiveView.send_update(view, target, live: {:heard, id, batch}) end
+    # to the component that draws the table (the tag), or to the LiveView
+    # it is attached to, whose hook takes it (`AshDataTable.Live.Hooks`, D8)
+    relay =
+      case target do
+        nil -> fn batch -> send(view, {:ash_data_table_heard, id, batch}) end
+        cid -> fn batch -> Phoenix.LiveView.send_update(view, cid, live: {:heard, id, batch}) end
+      end
 
     case Listener.start(pub_sub, topic, relay) do
       {:ok, pid} ->

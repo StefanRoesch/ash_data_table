@@ -31,7 +31,8 @@ defmodule AshDataTable.Table do
   # `entries` are the other tables the table on the page shows, by id: its
   # nested tables at every depth and the tables of open pickers
   # (`AshDataTable.Live.Registry`). `pool` holds the names of the streams of
-  # the entries: those no open table uses, and the number of the next one.
+  # the entries: those no open table uses, the number of the next one, and
+  # what they are named after, the id of the table on the page.
 
   alias AshDataTable.Caller
   alias AshDataTable.Live.Entry
@@ -55,10 +56,14 @@ defmodule AshDataTable.Table do
           caller: Caller.t(),
           entry: Entry.t(),
           entries: %{String.t() => Entry.t()},
-          pool: %{free: [String.t()], next: non_neg_integer}
+          pool: %{free: [String.t()], next: non_neg_integer, prefix: String.t() | nil}
         }
 
-  defstruct options: @options, caller: nil, entry: nil, entries: %{}, pool: %{free: [], next: 0}
+  defstruct options: @options,
+            caller: nil,
+            entry: nil,
+            entries: %{},
+            pool: %{free: [], next: 0, prefix: nil}
 
   @doc "A table that was told nothing yet."
   @spec new() :: t

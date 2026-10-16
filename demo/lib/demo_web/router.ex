@@ -204,6 +204,8 @@ defmodule DemoWeb.Router do
         live "/switch", DemoWeb.Support.SwitchLive
         live "/held-dockets", DemoWeb.Support.DocketsLive
         live "/two-scans", DemoWeb.Support.ScansLive
+        # tables attached to a LiveView of the host's (`attached_tables.ex`)
+        live "/attached", DemoWeb.Support.AttachedLive
 
         # A route that names a table its resource does not have: the router
         # does not look, and the page says so when it is opened.

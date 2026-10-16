@@ -248,6 +248,95 @@ defmodule AshDataTable do
   end
 
   @doc """
+  Attaches a table of a resource to a LiveView, under the assign `name`,
+  and reads it. Draw it with `attached/1`:
+
+      def mount(_params, _session, socket) do
+        {:ok, AshDataTable.attach(socket, :tasks, MyApp.Tracker.Task, scope: socket.assigns.current_scope)}
+      end
+
+      <AshDataTable.attached table={@tasks} streams={@streams} uploads={assigns[:uploads]} />
+
+  The table is the one `table/1` places, without a live component: its
+  events, async results and live updates reach it through hooks of the
+  LiveView (`Phoenix.LiveView.attach_hook/4`), which halt what is the
+  table's and let everything else through to the LiveView's own
+  callbacks. The assign holds an `AshDataTable.Table`, which only the table
+  changes.
+
+  The options are the attributes of `table/1`: `id`, `table`, `scope`,
+  `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading` and
+  `time_zone`. Besides, `url: true` keeps sort, filters and page in the
+  page's URL, under the table's id; that needs a LiveView mounted by the
+  router and not inside another, and `attach/4` called in `mount/3`: the
+  table then reads in the first `handle_params/3`, before the first render.
+  A default of an asked argument that is a function is given the
+  LiveView's assigns.
+
+  Names and ids are unique on a page: two tables of one resource need an
+  `id` each. Attaching again under the same name tells the table again,
+  which reads anew when who is asking has changed (`scope`, `actor`,
+  `tenant`, `authorize?`); another resource, table or id under that name
+  raises: detach it first.
+  """
+  @spec attach(Phoenix.LiveView.Socket.t(), atom, Ash.Resource.t(), keyword) ::
+          Phoenix.LiveView.Socket.t()
+  def attach(socket, name, resource, opts \\ []) when is_atom(name) and is_atom(resource) do
+    opts =
+      Keyword.validate!(
+        opts,
+        [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
+          [heading: true, url: false, mounted?: false]
+      )
+
+    table = opts[:table] || :default
+
+    if AshDataTable.Resource.Relating.table?(resource) and
+         AshDataTable.Resource.Info.table(resource, table) == :error do
+      raise ArgumentError,
+            "AshDataTable.attach/4 was given `table: #{inspect(table)}`, but " <>
+              AshDataTable.Resource.Info.no_table(resource, table)
+    end
+
+    if opts[:heading] not in [true, false, 1, 2, 3, 4, 5, 6] do
+      raise ArgumentError,
+            "the `heading` of AshDataTable.attach/4 is `true`, `false` or a heading level " <>
+              "from 1 to 6, got: #{inspect(opts[:heading])}"
+    end
+
+    given = %{
+      id: opts[:id] || Routes.default_id(resource, table),
+      resource: resource,
+      table: table,
+      scope: opts[:scope],
+      actor: opts[:actor],
+      tenant: opts[:tenant],
+      authorize?: opts[:authorize?],
+      live?: opts[:live?],
+      url: nil,
+      label: opts[:label] || label(resource),
+      heading: opts[:heading],
+      mounted?: opts[:mounted?],
+      # a default of an asked argument is given the LiveView's assigns as
+      # they are when it is called (`AshDataTable.Live.Core.page_assigns/1`)
+      page_assigns: :socket,
+      time_zone:
+        AshDataTable.Zone.check!(opts[:time_zone], "The `time_zone` of AshDataTable.attach/4"),
+      select: nil
+    }
+
+    AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
+  end
+
+  @doc """
+  Takes the table under the assign `name` off the LiveView: every table it
+  shows closes, with what it listens to, reads and uploads, and the assign
+  becomes nil. A table of the same id can be attached again.
+  """
+  @spec detach(Phoenix.LiveView.Socket.t(), atom) :: Phoenix.LiveView.Socket.t()
+  def detach(socket, name) when is_atom(name), do: AshDataTable.Live.Hooks.detach(socket, name)
+
+  @doc """
   Draws a table that `attach/4` put on the socket, with its streams and
   uploads:
 
@@ -900,6 +989,22 @@ defmodule AshDataTable do
     """
   end
 
+  # The uploads of the panel's file fields. A function component sees only
+  # what it is given, and LiveView's uploads are not the table's to assign
+  # (D5): a page that draws a table whose panel takes a file must give them.
+  defp files!(entry, nil) do
+    if Files.file_inputs(entry.panel) != [] do
+      raise ArgumentError,
+            "the action panel of the table #{inspect(entry.id)} takes a file, and " <>
+              "AshDataTable.attached/1 was given no uploads: pass " <>
+              "`uploads={assigns[:uploads]}` to `AshDataTable.attached`."
+    end
+
+    Files.panel_files(entry, nil)
+  end
+
+  defp files!(entry, uploads), do: Files.panel_files(entry, uploads)
+
   # The nested tables, parents first, each with the items of its stream:
   # a portal is rendered again only when its table or its stream changed.
   defp portals(table, streams),
@@ -1044,7 +1149,7 @@ defmodule AshDataTable do
       :if={@entry.panel}
       id={@entry.id}
       panel={Present.panel(@entry.panel, Files.files_said(@entry, @uploads))}
-      files={Files.panel_files(@entry, @uploads)}
+      files={files!(@entry, @uploads)}
       target={@myself}
     />
     <%!-- After the panel, and so on top of it when both are open: a picker

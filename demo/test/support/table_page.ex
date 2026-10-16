@@ -1126,8 +1126,8 @@ defmodule DemoWeb.TablePage do
   # `Phoenix.LiveViewTest` sees that element. A nested table is drawn by
   # the component of the table on the page and moved into its row by a
   # portal, where `element/2` does not look: its event goes to that
-  # component (the element's `phx-target`), which finds the table by the
-  # event's name.
+  # component (the element's `phx-target`), or to the LiveView a table
+  # attached to it has none, which finds the table by the event's name.
   defp send_event(view, id, event, payload, on \\ nil) do
     plain = event |> String.split(":") |> List.last()
     AshDataTable.Test.send_event(view, id, event, payload, from: on || hook_of(plain))
@@ -1184,7 +1184,7 @@ defmodule DemoWeb.TablePage do
   @doc """
   Uses the element of the page that `selector` finds, as a click does: the
   event of its `phx-click` (a name, or the `push` of a `JS` command), with
-  its `phx-value-*`, sent to the table it is for (its `phx-target`).
+  its `phx-value-*`, sent to the table its name is for.
   Returns the page.
 
   It finds the element where a person sees it: in a portal's content, too
@@ -1225,10 +1225,11 @@ defmodule DemoWeb.TablePage do
       end
 
     # the table is the one the event's name says: every table of a page is
-    # drawn by the component of the table on the page
+    # drawn by the component of the table on the page, or by the LiveView
+    # it is attached to
     Enum.reduce(pushes, nil, fn push, _html ->
-      if is_nil(push["target"] || attribute_of(attributes, "phx-target")),
-        do: raise(ArgumentError, "#{inspect(selector)} is no table's: it has no phx-target")
+      if not String.starts_with?(push["event"], "ash_data_table:"),
+        do: raise(ArgumentError, "#{inspect(selector)} is no table's: its event names no table")
 
       payload = Map.merge(values, push["value"] || %{})
       send_event(view, AshDataTable.Test.table_named(push["event"]), push["event"], payload)

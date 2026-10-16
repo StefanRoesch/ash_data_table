@@ -84,13 +84,18 @@ defmodule AshDataTable.Live.Registry do
   def take_stream(socket) do
     %{pool: pool} = table = Core.table(socket)
 
+    # named after the table on the page, which takes the first (D4): the
+    # streams of two tables of one LiveView, and the host's own, never clash
+    prefix = Map.get(pool, :prefix) || Core.table(socket).entry.id
+    pool = Map.put(pool, :prefix, prefix)
+
     {name, socket, pool} =
       case pool do
         %{free: [name | free]} ->
           {name, socket, %{pool | free: free}}
 
         %{next: next} ->
-          name = if next == 0, do: "rows", else: "rows_#{next}"
+          name = if next == 0, do: "#{prefix}:rows", else: "#{prefix}:rows_#{next}"
           {name, stream_configure(socket, name, dom_id: & &1.dom_id), %{pool | next: next + 1}}
       end
 
@@ -131,40 +136,60 @@ defmodule AshDataTable.Live.Registry do
   too (`reconcile`): a table is never left without the one it is in.
   """
   def close(socket, id) do
-    socket =
-      within(socket, id, fn socket ->
-        %{live: live, uploads: uploads} = Core.table(socket).entry
-
-        if live, do: AshDataTable.Listener.stop(live.pid)
-
-        socket =
-          [:read, :summary, :bulk]
-          |> Enum.reduce(socket, &cancel_async(&2, async(&2, &1)))
-          |> AshDataTable.Live.Core.Files.drop_copies()
-
-        # an upload with entries cannot be given up: they are cancelled
-        # first. One that is being sent is only told to stop, and is there
-        # until it has: LiveView refuses to give up its upload till then.
-        Enum.reduce(uploads, socket, fn name, socket ->
-          case socket.assigns[:uploads] do
-            %{^name => %{entries: entries}} ->
-              socket = Enum.reduce(entries, socket, &cancel_upload(&2, name, &1.ref))
-
-              if socket.assigns.uploads[name].entries == [],
-                do: disallow_upload(socket, name),
-                else: socket
-
-            _gone ->
-              socket
-          end
-        end)
-      end)
+    socket = within(socket, id, &shut/1)
 
     %{entries: %{^id => %{stream: stream}} = entries} = table = Core.table(socket)
 
     socket
     |> Core.put(%{table | entries: Map.delete(entries, id)})
     |> give_back(stream)
+  end
+
+  @doc """
+  Closes every table, the one on the page too (`AshDataTable.detach/2`):
+  each as `close/2` closes one, the table on the page last. Its stream is
+  emptied and back in the pool, which keeps every name it configured.
+  """
+  def close_all(socket) do
+    socket =
+      Core.table(socket).entries
+      |> Map.keys()
+      |> Enum.reduce(socket, fn id, socket ->
+        if is_map_key(Core.table(socket).entries, id), do: close(socket, id), else: socket
+      end)
+      |> shut()
+
+    give_back(socket, Core.table(socket).entry.stream)
+  end
+
+  # What closes with a table: its listener, its tasks, the copies of a
+  # run's files, its uploads.
+  defp shut(socket) do
+    %{live: live, uploads: uploads} = Core.table(socket).entry
+
+    if live, do: AshDataTable.Listener.stop(live.pid)
+
+    socket =
+      [:read, :summary, :bulk]
+      |> Enum.reduce(socket, &cancel_async(&2, async(&2, &1)))
+      |> AshDataTable.Live.Core.Files.drop_copies()
+
+    # an upload with entries cannot be given up: they are cancelled
+    # first. One that is being sent is only told to stop, and is there
+    # until it has: LiveView refuses to give up its upload till then.
+    Enum.reduce(uploads, socket, fn name, socket ->
+      case socket.assigns[:uploads] do
+        %{^name => %{entries: entries}} ->
+          socket = Enum.reduce(entries, socket, &cancel_upload(&2, name, &1.ref))
+
+          if socket.assigns.uploads[name].entries == [],
+            do: disallow_upload(socket, name),
+            else: socket
+
+        _gone ->
+          socket
+      end
+    end)
   end
 
   @doc """

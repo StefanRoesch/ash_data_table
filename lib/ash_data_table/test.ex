@@ -130,7 +130,8 @@ defmodule AshDataTable.Test do
   `:picker`). Returns what `Phoenix.LiveViewTest.render_hook/3` returns.
 
   A table inside a portal (a nested table, or a picker opened in one) is
-  reached through the component that draws it, which finds it by the name.
+  reached through the component that draws it, or the LiveView it is
+  attached to, which finds it by the name.
   An element that is on no page raises, as `Phoenix.LiveViewTest.element/2`
   does.
   """
@@ -149,9 +150,16 @@ defmodule AshDataTable.Test do
       &(&1
         |> Phoenix.LiveViewTest.element(selector)
         |> Phoenix.LiveViewTest.render_hook(named, payload)),
-      &(view
-        |> Phoenix.LiveViewTest.with_target(&1)
-        |> Phoenix.LiveViewTest.render_hook(named, payload))
+      fn
+        # a table attached to the LiveView: its events go to the view
+        nil ->
+          Phoenix.LiveViewTest.render_hook(view, named, payload)
+
+        cid ->
+          view
+          |> Phoenix.LiveViewTest.with_target(cid)
+          |> Phoenix.LiveViewTest.render_hook(named, payload)
+      end
     )
   end
 
@@ -200,20 +208,23 @@ defmodule AshDataTable.Test do
 
   # Runs `seen` where LiveViewTest sees the element `selector` finds; where
   # only a person does, in a portal's content, `portal` with the component
-  # it is for. Where neither does, what `element/2` says of it is raised.
+  # it is for, nil for a table attached to the LiveView (no `phx-target`).
+  # Where neither does, what `element/2` says of it is raised.
   defp reached(view, selector, seen, portal) do
     seen.(view)
   rescue
     error in ArgumentError ->
       with true <- error.message =~ "but got none",
-           [cid] <-
+           [element] <-
              view
              |> Phoenix.LiveViewTest.render()
              |> page()
              |> LazyHTML.query(selector)
-             |> Enum.take(1)
-             |> Enum.flat_map(&LazyHTML.attribute(&1, "phx-target")) do
-        portal.(String.to_integer(cid))
+             |> Enum.take(1) do
+        case LazyHTML.attribute(element, "phx-target") do
+          [cid] -> portal.(String.to_integer(cid))
+          [] -> portal.(nil)
+        end
       else
         _ -> reraise error, __STACKTRACE__
       end

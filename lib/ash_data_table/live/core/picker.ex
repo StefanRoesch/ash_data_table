@@ -160,7 +160,7 @@ defmodule AshDataTable.Live.Core.Picker do
     %{model: model, panel: panel} = Core.table(socket).entry
     named = picked.row
     # what the picker's read action is given: what its argument line holds
-    arguments = picked_with(Core.table(socket), picker.reference, picked.arguments)
+    arguments = picked_with(socket, picker.reference, picked.arguments)
 
     case picker.for do
       {:cell, key, name} ->
@@ -433,7 +433,8 @@ defmodule AshDataTable.Live.Core.Picker do
   # says its argument line holds: the line's form, as a form sends it. It
   # comes from the browser, and is taken as the form's event is: by the
   # arguments the picker's table has for this person, and as Ash takes it.
-  defp picked_with(table, reference, sent) when is_binary(sent) do
+  defp picked_with(socket, reference, sent) when is_binary(sent) do
+    table = Core.table(socket)
     reader = Pick.reader(reference, chooser(table))
 
     model =
@@ -441,7 +442,7 @@ defmodule AshDataTable.Live.Core.Picker do
       |> Model.build(choose: reference.choose_action)
       |> Model.for_actor(reader)
       |> Model.zoned(table.caller.time_zone)
-      |> Model.defaults(table.options.page_assigns)
+      |> Model.defaults(Core.page_assigns(socket))
 
     form =
       case decoded(sent) do
@@ -455,7 +456,7 @@ defmodule AshDataTable.Live.Core.Picker do
     model.read_arguments
   end
 
-  defp picked_with(_table, _reference, _sent), do: %{}
+  defp picked_with(_socket, _reference, _sent), do: %{}
 
   defp decoded(sent) do
     Plug.Conn.Query.decode(sent)
