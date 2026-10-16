@@ -24,14 +24,21 @@ export default {
   // The rows of records of the page, top to bottom: not what is
   // open under a row.
   records() {
-    return groupsOf(this.table()).filter(body => !is(body, DETAIL) && firstRow(body))
+    return groupsOf(this.table()).filter(body => this.isRecord(body) && firstRow(body))
+  },
+
+  // Whether a row group is a record's: not the grid's header or footer
+  // (`ID-head`, `ID-foot`, which a kit may make row groups too), nor the
+  // detail under a record (`DETAIL`).
+  isRecord(group) {
+    return !!group && is(group, ROWGROUP) && group !== this.part("head") && group !== this.part("foot") && !is(group, DETAIL)
   },
 
   // The row of records a cell is in, if it is in one: not the header
   // or the footer, nor the lines of a detail.
   record(cell) {
     const body = cell.closest(ROWGROUP)
-    return body && body.closest(TABLE) === cell.closest(TABLE) && !is(body, DETAIL) ? body : null
+    return body && body.closest(TABLE) === cell.closest(TABLE) && this.isRecord(body) ? body : null
   },
 
   keyOf(body) { return body.id.slice(this.id.length + 5) },

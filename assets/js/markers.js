@@ -18,7 +18,8 @@
 // ---- the structure, by ARIA role
 
 // the grid, its row groups (a record and the detail under it each have
-// one), its rows, and its cells
+// one; the header `ID-head` and the footer `ID-foot` may be row groups
+// too, and are no record's, as a detail is none), its rows, and its cells
 export const TABLE = "[role=grid]"
 export const ROWGROUP = "[role=rowgroup]"
 export const ROW = "[role=row]"

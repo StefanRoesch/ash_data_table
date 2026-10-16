@@ -48,7 +48,9 @@ export const place = cell => Number(cell.getAttribute("aria-colindex")) - 1
 // nested in it, which stand in one of its cells.
 export const rowsOf = table => table ? Array.from(table.querySelectorAll(ROW)).filter(row => row.closest(TABLE) === table) : []
 
-// the row groups of a grid's records and details, in their order
+// the row groups of a grid, in their order: its records' and details', and
+// its header and footer where a kit makes them row groups too (a record's
+// is told apart by `isRecord` of the hook)
 export const groupsOf = table => table ? Array.from(table.querySelectorAll(ROWGROUP)).filter(group => group.closest(TABLE) === table) : []
 
 // the first row of a row group: a record's own row, or the first line

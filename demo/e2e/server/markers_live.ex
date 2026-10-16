@@ -9,6 +9,9 @@ defmodule DemoWeb.E2E.MarkersLive do
   a save is kept and drawn, a selection is heard. If the hook relied on a
   tag, it would fail here.
 
+  The header of each grid is a row group too, as a kit may draw it: the
+  hook must not take it for a record.
+
   `?missing=colindex` draws one cell without its place (`aria-colindex`),
   for the development check of the hook (D13). Compiled and routed in the
   e2e environment only; stage 7b replaces it with a kit of the demo's.
@@ -127,7 +130,7 @@ defmodule DemoWeb.E2E.MarkersLive do
             aria-colcount="4"
             aria-multiselectable="true"
           >
-            <div id="kit-head">
+            <div id="kit-head" role="rowgroup">
               <div id="kit-head-row" role="row" aria-rowindex="1">
                 <span
                   id="kit-select-head"
@@ -241,7 +244,7 @@ defmodule DemoWeb.E2E.MarkersLive do
                         aria-label="Parts"
                         aria-colcount="1"
                       >
-                        <div id={"kit-row-#{key}-t-parts-head"}>
+                        <div id={"kit-row-#{key}-t-parts-head"} role="rowgroup">
                           <div
                             id={"kit-row-#{key}-t-parts-head-row"}
                             role="row"

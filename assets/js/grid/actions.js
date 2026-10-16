@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {DESTRUCTIVE, DETAIL, ROWGROUP} from "../markers.js"
+import {DESTRUCTIVE, ROWGROUP} from "../markers.js"
 import {cellsOf, firstRow, is, place} from "./shared.js"
 
 export default {
@@ -48,7 +48,7 @@ export default {
   note(cell, button) {
     const row = step => {
       let body = cell.closest(ROWGROUP)
-      do { body = step(body) } while (body && (!is(body, ROWGROUP) || is(body, DETAIL)))
+      do { body = step(body) } while (body && !this.isRecord(body))
       return body ? body.id : null
     }
     this.acted = {

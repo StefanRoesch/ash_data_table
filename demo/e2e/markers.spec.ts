@@ -106,6 +106,15 @@ test.describe("a grid drawn with other elements than a table's", () => {
     await expect(page.locator('[id="kit-row-b-s"] input')).toBeChecked()
   })
 
+  test("the box of the page selects its records, and not the header, which is a row group too", async ({ page }) => {
+    await expect(page.locator('[id="kit-head"]')).toHaveAttribute("role", "rowgroup")
+    await page.locator('[id="kit-select-head"]').focus()
+    await page.keyboard.press(" ")
+    for (const key of ["a", "b", "c"]) await expect(row(page, key)).toHaveAttribute("aria-selected", "true")
+    await expect(page.locator('[id="kit-head-row"]')).not.toHaveAttribute("aria-selected")
+    await expect(page.locator('[id="kit-filter-row"]')).not.toHaveAttribute("aria-selected")
+  })
+
   test("a column is made wider with its handle, its cells with it", async ({ page }) => {
     const head = page.locator('[id="kit-head-name"]')
     const before = (await cell(page, "a", "name").boundingBox())!.width
@@ -161,7 +170,8 @@ test.describe("the development check of the hooks", () => {
   test("says nothing of a table that has all its markers, nor while the debug is off", async ({ page, tasks }) => {
     // the console stays free of errors: every test ends with that
     await debugging(page, "/tasks")
-    await expect(tasks.grid).toBeAttached()
+    // connected, and its hook has run: its rows are there
+    await tasks.ready()
     await tasks.expand(await tasks.rowKey(1))
 
     await page.evaluate(() => (window as any).liveSocket.disableDebug())

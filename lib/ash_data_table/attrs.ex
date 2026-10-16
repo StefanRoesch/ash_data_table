@@ -190,7 +190,9 @@ defmodule AshDataTable.Attrs do
   def most_width, do: 1000
 
   # An item of the stream: a record's row group, or the detail under it (a
-  # map that says `detail?`). `data-detail` and `data-row` on a detail,
+  # map that says `detail?`). The hooks take a `role=rowgroup` of the grid
+  # for a record's unless it is the header (`ID-head`), the footer
+  # (`ID-foot`) or a detail. `data-detail` and `data-row` on a detail,
   # which is hidden while it holds no line; `data-key` what the server is
   # told of a record that is selected, where rows can be; `data-current` on
   # the record that is chosen now, in a table to choose from.
