@@ -5,6 +5,11 @@
 //
 //   node baseline.mjs
 //   PERF_PORT=4490 PERF_REPS=15 node baseline.mjs
+//   PERF_PAGE=/support/modes/embedded/tasks node baseline.mjs
+//
+// `PERF_PAGE` is the page measured, /tasks unless it is given: the same
+// table placed by the tag in a LiveView of the host's is
+// /support/modes/embedded/tasks (stage 4).
 //
 // For each thing: the time in the page from the key or click to the patch
 // that shows the answer, the bytes of the WebSocket frames the server sent
@@ -21,6 +26,7 @@ import { BASE, sleep, startServer, versions } from "./lib/server.mjs"
 import { logIn, open, Table } from "./lib/table.mjs"
 
 const REPS = Number(process.env.PERF_REPS ?? 15)
+const PAGE = process.env.PERF_PAGE ?? "/tasks"
 const log = (...words) => console.log(new Date().toISOString().slice(11, 19), ...words)
 
 const sum = (entries) => entries.reduce((total, entry) => total + entry.us, 0)
@@ -31,6 +37,7 @@ function onServer(events) {
   const callbacks = named(
     events,
     "live_view.handle_event",
+    "live_view.handle_params",
     "live_component.handle_event",
     "live_component.update",
   )
@@ -140,6 +147,7 @@ const results = {
     load_average_at_start: os.loadavg(),
   },
   base: BASE,
+  page: PAGE,
 }
 
 const browser = await chromium.launch()
@@ -150,7 +158,7 @@ try {
   results.versions = await versions()
   const context = await browser.newContext({ viewport: { width: 1600, height: 900 } })
   await logIn(context)
-  const tasks = await open(context, "/tasks", "task")
+  const tasks = await open(context, PAGE, "task")
   const page = tasks.page
   const keys = await tasks.rowKeys()
   const key = (i) => keys[(i + keys.length) % keys.length]

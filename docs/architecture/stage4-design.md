@@ -385,3 +385,58 @@ For the drift check and your yes; target.md is not changed by this note.
 5. §4.6 says `Live.Page` "uses `attach` itself" with no word on how it learns its table: `mount/3` has no URL and `live/4` no per-route session (D7).
 6. §4.4 gives `Live.Core` `init`, `handle_info` and `handle_params` "for a table under a given assign". The code has `mount/1`, `update/2`, `handle_event/3`, `handle_async/3`, bound to the assign `table` (D1).
 7. `Caller` in §1.4 and §4.3 keeps "what the top was told"; the code's `Caller.authorize?` is written and never used (D10).
+
+## 11. As built
+
+Commits on `main` after `stage4-start`: `fced57a` (step 0), `a012cef` (step 1), `52a10ba` (step 2), `ea3af50` (step 3), `8f53d8f` (step 4), `6431433` (step 5), `4d68ff7` (step 6), `d1d4fac` (step 7), and this section.
+
+**The shape.** As sections 1–2, with these details:
+
+- `Core.table/1` and `Core.put/2` (a `Table` whole, or fields) under the name in `socket.private.ash_data_table.current`. A function head of the core says what it is for with the guards of `AshDataTable.Live.Current` (`when is_map(Current.entry(socket, :panel))`), a macro-only module, so that no compile edge reaches the core (the dependency test refused `require Core`).
+- `AshDataTable.Live.Hooks` (`live/hooks.ex`, 2b) holds the socket's private data (`current`, `tables` with what each was told and `url?`, the stream names per id, the `url` of the last `handle_params`, the `hooks`), `attach/4`, `detach/2`, `told_url/2` and the four hooks: the only `attach_hook` calls in `lib/`.
+- Stream names are `ID:rows`, `ID:rows_N`, the pool's `prefix` being the id of the table on the page; the top takes its stream when it is first told (the tag's too). `Registry.close_all/1` is `detach`'s close.
+- `attach` with `url: true` after the first `handle_params` (as `Live.Page` and "attach again after detach" do) tells the table the last URL at once.
+- `Live.Page` attaches in its first `handle_params`, and runs the params step by hand with `Live.Hooks.told_url/2`; a patch to another route of the page detaches and attaches anew.
+- `attached/1` raises the message of D5 where a panel with a file field is drawn without uploads.
+
+**Found on the way.** LiveView 1.2.12 calls a LiveView's own `handle_params/3` on a patch from an event whether the module defines one or not (`channel.ex:1066-1072`; only mount checks `exported?`): the process crashes. So `attach(…, url: true)` raises in a LiveView without `handle_params/3`, with a message that says what to write; `attach/4`'s doc says so. A candidate for an upstream report.
+
+**Tests that changed.** Group L: `AshDataTable.Test.send_event/5` (an element without `phx-target` goes to the view), `DemoWeb.TablePage.click/2` (a table's element is one whose event names a table), `table_page_test.exs` (a second case without `phx-target`), `nested_registry_test.exs` (`Debug.socket/1`), the snapshot normaliser (drops `phx-target`, and the target of a `JS.push`: two snapshots carried `"target":1` in a `phx-click`), `test/registry_test.exs` (its hand-made socket gets the private data). D16: the snapshots written twice, reviewed: the first time only `phx-target` attributes went (340 lines in 16 files), the second only the two `JS.push` targets. D15: the use line of the snapshot test and 17 files. No assertion weakened or removed.
+
+New: `attach_test.exs` (group M, 11 tests, `/support/attached`), `demo/e2e/attached.spec.ts` (group O, `/e2e/attached`), `DemoWeb.ModeCase` and `DemoWeb.Support.ModesLive`, `AttachedDashboardLive` (group N).
+
+**The three-way runs (D15).** A mode is a host of its own (`embedded.example.com`, `attached.example.com`), whose routes (test environment only) place the table of a path's router line in a host LiveView: so a test's paths, and the URL its table patches, are the same in every mode, which a path prefix (`/support/modes/…`) would have broken for every `assert_patch`. Swapped for another of their group: `live_updates_test` (its `/named` tests are of a host page) for `live_updates_elsewhere_test`, and `argument_line_test` (404s and host pages) for `task_arguments_test`. Snapshot 10 runs on the dashboard in the first two modes and on its attached twin in the third.
+
+**Performance (D19).** `demo/perf/baseline.mjs` (now with `PERF_PAGE`; the probe also counts the view's `handle_params`) on `/tasks` and on the tag page `/support/modes/embedded/tasks`, `stage4-start` in a worktree and the end, back to back on the standard seed, 15 runs each. Load at the start of each run: 3.7 (start, `/tasks`), 0.9 (end, `/tasks`), 2.5 and 1.6 (tag page, start and end); the machine was shared with another project's jobs, which kept it at 15–34 for most of the day.
+
+`/tasks` (`attach` through the page at the end):
+
+| Action | Median ms, start → end | Bytes, start → end | Callbacks ms | Ash reads, statements |
+| --- | --- | --- | --- | --- |
+| Cell save | 40.1 → 36.3 (−9 %) | 7,282 → 7,302 | 24.0 → 22.0 | 4, 7 |
+| Expanding a row | 10.3 → 9.7 (−6 %) | 3,284 → 3,294 | 0.1 → 0.1 | 0, 0 |
+| Opening a nested table | 43.6 → 37.5 (−14 %) | 37,315 → 37,090 | 4.6 → 4.7 | 2, 2 |
+| Opening the picker | 36.6 → 33.7 (−8 %) | 31,835 → 31,915 | 10.5 → 10.3 | 2, 4 |
+| Cell save in a nested table | 25.1 → 21.9 (−13 %) | 3,476 → 3,484 | 8.0 → 8.4 | 1, 2 |
+| Cell save with a nested table open | 33.2 → 33.2 (0 %) | 7,517 → 7,537 | 18.6 → 20.1 | 4, 7 |
+| Page change | 71.6 → 65.4 (−9 %) | 153,510 → 149,601 | 4.7 → 5.1 | 4, 7 |
+
+The tag page:
+
+| Action | Median ms, start → end | Bytes, start → end | Callbacks ms | Ash reads, statements |
+| --- | --- | --- | --- | --- |
+| Cell save | 36.2 → 34.4 (−5 %) | 7,282 → 7,306 | 22.9 → 22.6 | 4, 7 |
+| Expanding a row | 9.9 → 9.6 (−3 %) | 3,284 → 3,296 | 0.1 → 0.1 | 0, 0 |
+| Opening a nested table | 38.5 → 40.4 (+5 %) | 37,315 → 37,281 | 4.7 → 4.6 | 2, 2 |
+| Opening the picker | 38.6 → 36.6 (−5 %) | 31,835 → 31,787 | 11.4 → 11.2 | 2, 4 |
+| Cell save in a nested table | 22.6 → 23.0 (+2 %) | 3,476 → 3,488 | 8.5 → 8.5 | 1, 2 |
+| Cell save with a nested table open | 35.2 → 38.0 (+8 %) | 7,517 → 7,541 | 20.1 → 19.9 | 4, 7 |
+| Page change | 78.2 → 71.6 (−8 %) | 153,545 → 153,581 | 5.1 → 4.6 | 4, 7 |
+
+Times within 20 %, reads and statements the same, bytes the same within 30 (the stream names are longer, `task:rows`). The callbacks of `/tasks` at the end leave out what LiveView emits no telemetry for: `handle_async` and `handle_info` of a view (the read after a page change and a batch of live updates); a component's `update` was counted at the start. So "Callbacks ms" of the page change is not the same sum at the start and the end.
+
+**Found by the measurement.** The first end run of `/tasks` sent about twice the bytes of the start for the small actions (a cell save 14,668, expanding a row 6,977): every event re-sent the app layout's flash group. `Live.Page` called its layout with spread attributes (`{layout_assigns(assigns)}`), which LiveView renders whole on every change; before, the table's events went to its component and the page itself rarely rendered again. The page now makes the layout's assigns once, in its first `handle_params`, and gives them as one attribute; the table above is with that fix. `DemoWeb.Support.ModesLive` (test support) still spreads them; it only draws.
+
+**The gate (D17).** The ten-runs set (the stage-5 specs and `attached.spec.ts`, 1,806 tests): 1,802 passed; four failed at the same moment on different workers (tests 300–304), while the machine's load was at 34 from another project: `scrolling.spec.ts:139` (known flaky), `scrolling.spec.ts:179`, `hiding.spec.ts:752` and `nesting.spec.ts:645`, each a table not ready within 5 s with LiveView reconnecting; the server logged no error, and the same kind of timeout had shown in step 1, before attach existed. The three files run ten times again: 916 passed. The whole suite once: 972 passed, `scrolling.spec.ts:65` (known flaky) failed. After the layout fix above, the root suite (1,209), the demo suite (2,805, the subset three times inside) and the whole browser suite (973) once more, all passed. No fallback.
+
+**Not done as written.** Steps 3 and 4 were tested together: one root, demo and browser run for both commits. `docs/agents/architecture.md` was brought up to date in step 7, not after every step. Target §9 is left to the drift check, as in stage 5. The modes of D15 are hosts, not path prefixes (above). The perf environment's tag page is `/support/modes/embedded/tasks`, `DemoWeb.Support.ModesLive` compiled into it from `test/support/`.
