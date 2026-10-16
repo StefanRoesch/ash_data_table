@@ -872,22 +872,27 @@ defmodule AshDataTable.Parts.Panel do
   # the name its value is sent under, and what says that it is required or
   # has an error. The label, the mark and the messages around it stay the
   # table's.
-  defp field_editor(%{input: %{component: component} = input} = assigns) do
-    component.module.editor(%{
-      __changed__: nil,
-      value: assigns.value,
-      label: input.label,
-      column: component.column,
-      place: :panel,
-      control: %{
-        "id" => assigns.id,
-        "name" => assigns.name,
-        "aria-required" => input.required? && "true",
-        "aria-invalid" => assigns.errors != [] && "true",
-        "aria-describedby" => assigns.described,
-        "data-control" => true
+  defp field_editor(assigns) do
+    ~H"""
+    <Parts.Common.dynamic_component
+      module={@input.component.module}
+      function={:editor}
+      value={@value}
+      label={@input.label}
+      column={@input.component.column}
+      place={:panel}
+      control={
+        %{
+          "id" => @id,
+          "name" => @name,
+          "aria-required" => @input.required? && "true",
+          "aria-invalid" => @errors != [] && "true",
+          "aria-describedby" => @described,
+          "data-control" => true
+        }
       }
-    })
+    />
+    """
   end
 
   defp field_type(:plain), do: "text"

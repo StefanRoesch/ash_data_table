@@ -35,6 +35,8 @@ defmodule AshDataTable.Query do
   # related records is read bare, with everything loaded afterwards. Sorting
   # and filtering by a column stay in the statement.
 
+  require Ash.Query
+
   alias AshDataTable.Errors
   alias AshDataTable.Model
   alias AshDataTable.Model.Argument
@@ -488,10 +490,10 @@ defmodule AshDataTable.Query do
 
   # Limited to the records with these primary keys: one of them, whichever.
   defp by_keys(query, %Model{primary_key: [field]}, keys),
-    do: Ash.Query.do_filter(query, [{field, [in: Enum.map(keys, &Map.fetch!(&1, field))]}])
+    do: Ash.Query.filter(query, ^[{field, [in: Enum.map(keys, &Map.fetch!(&1, field))]}])
 
   defp by_keys(query, %Model{primary_key: fields}, keys),
-    do: Ash.Query.do_filter(query, or: Enum.map(keys, &Map.to_list(Map.take(&1, fields))))
+    do: Ash.Query.filter(query, ^[or: Enum.map(keys, &Map.to_list(Map.take(&1, fields)))])
 
   # What Ash put at the relationship: the records, as a page, a list, one
   # record or none; or its refusal.
@@ -578,7 +580,7 @@ defmodule AshDataTable.Query do
       when is_atom(action) and is_map(key) and is_map(arguments) do
     resource
     |> Ash.Query.new()
-    |> Ash.Query.do_filter(Map.to_list(key))
+    |> Ash.Query.filter(^Map.to_list(key))
     |> Ash.Query.for_read(action, arguments, Keyword.delete(opts, :load))
     |> Ash.read_one([not_found_error?: false] ++ opts)
   end

@@ -314,13 +314,8 @@ defmodule AshDataTable.Resource.Reading do
       expression(related, aggregate.filter, seen)
   end
 
-  defp reads(
-         resource,
-         %Ash.Resource.Calculation{calculation: {Ash.Resource.Calculation.Expression, opts}},
-         _from,
-         seen
-       ),
-       do: expression(resource, opts[:expr], seen)
+  defp reads(resource, %Ash.Resource.Calculation{} = calculation, _from, seen),
+    do: expression(resource, AshDataTable.Resource.Exposing.expression(calculation), seen)
 
   defp reads(_resource, _attribute_or_computed_in_elixir, _from, _seen), do: []
 

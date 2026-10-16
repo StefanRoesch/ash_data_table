@@ -33,16 +33,14 @@ defmodule AshDataTable.Test do
   the browser shows it; `send_event/5` sends a table its event by its name,
   whichever table it is; `send_form/5` sends a form of a nested table as
   the browser does. They read the page with `LazyHTML`, which
-  `Phoenix.LiveViewTest` needs too. `send_form/5` builds what a form sends
-  with internals of `Phoenix.LiveViewTest` (`DOM.collect_form_values/2`
-  and `DOM.all_value_inputs/2`), and is tested against LiveView 1.2.12.
+  `Phoenix.LiveViewTest` needs too.
 
       html = render(view)
       AshDataTable.Test.page(html) |> LazyHTML.query("[id='task-row-1-t-comments-table']")
       AshDataTable.Test.send_event(view, "task-row-1-t-comments", "sort", %{"column" => "body"})
   """
 
-  @compile {:no_warn_undefined, [LazyHTML, Phoenix.LiveViewTest.DOM]}
+  @compile {:no_warn_undefined, [LazyHTML]}
 
   @doc """
   Hands every table of a LiveView what was announced to it so far, and
@@ -105,18 +103,18 @@ defmodule AshDataTable.Test do
 
   @doc """
   The page as a person sees it in the browser, as a `LazyHTML`: the content
-  of each `<.portal>` at the end of the element its target finds, as
-  LiveView's client puts it there (a portal in the content of another once
-  that one is in place), without the portal's wrapper, which takes no part
-  in the layout. `html` is what `Phoenix.LiveViewTest.render/1` gives.
+  of each portal of a table (a nested table) at the end of the cell it goes
+  into, as LiveView's client puts it there, parents first. The content says
+  which cell that is (`data-ash-data-table-portal`). `html` is what
+  `Phoenix.LiveViewTest.render/1` gives.
   """
   @spec page(String.t()) :: struct
   def page(html) when is_binary(html) do
-    if String.contains?(html, "data-phx-portal") do
-      html
-      |> LazyHTML.from_fragment()
-      |> LazyHTML.to_tree()
-      |> teleport(1)
+    if String.contains?(html, "data-ash-data-table-portal") do
+      {tree, moved} = html |> LazyHTML.from_fragment() |> LazyHTML.to_tree() |> take_moved()
+
+      moved
+      |> Enum.reduce(tree, fn {target, node}, tree -> put_into!(tree, target, node) end)
       |> LazyHTML.from_tree()
     else
       LazyHTML.from_fragment(html)
@@ -200,7 +198,7 @@ defmodule AshDataTable.Test do
 
       if check?, do: check_names(form, page, selector, values)
 
-      params = deep_merge(Phoenix.LiveViewTest.DOM.collect_form_values(form, page), values)
+      params = deep_merge(form_values(form, page), values)
       event = attribute(attributes, "phx-#{kind}")
       send_event(view, table_named(event), event, params)
     end)
@@ -248,10 +246,8 @@ defmodule AshDataTable.Test do
   # Each name `values` gives must be a control of the form.
   defp check_names(form, page, selector, values) do
     names =
-      for {_tag, attributes, _children} <-
-            Phoenix.LiveViewTest.DOM.all_value_inputs(form, page),
+      for {_tag, attributes, _children} <- controls(form, page),
           name = attribute(attributes, "name"),
-          is_nil(attribute(attributes, "disabled")),
           into: MapSet.new(),
           do: name
 
@@ -262,6 +258,106 @@ defmodule AshDataTable.Test do
     end
 
     :ok
+  end
+
+  # The controls of a form that are not disabled, in the order of the page:
+  # those in it, then those elsewhere that name it (`form="ID"`).
+  defp controls({"form", attributes, _children} = form, page) do
+    named =
+      case attribute(attributes, "id") do
+        nil -> []
+        id -> page |> LazyHTML.query(~s<[form="#{id}"]>) |> LazyHTML.to_tree() |> enabled()
+      end
+
+    (enabled([form]) -- named) ++ named
+  end
+
+  defp enabled(nodes) do
+    Enum.flat_map(nodes, fn
+      {tag, attributes, children} = node when is_binary(tag) ->
+        if tag in ~w(input textarea select) and is_nil(attribute(attributes, "disabled")),
+          do: [node | enabled(children)],
+          else: enabled(children)
+
+      _other ->
+        []
+    end)
+  end
+
+  # What a form sends, as the browser collects it: each named control's
+  # value (a box or a radio button only when checked, the selected options
+  # of a select), decoded as Plug decodes a form's body.
+  defp form_values(form, page) do
+    form
+    |> controls(page)
+    |> Enum.flat_map(&sent/1)
+    |> Enum.map_join("&", fn {name, value} ->
+      URI.encode_www_form(name) <> "=" <> URI.encode_www_form(value)
+    end)
+    |> Plug.Conn.Query.decode()
+  end
+
+  defp sent({tag, attributes, children}) do
+    case attribute(attributes, "name") do
+      nil -> []
+      name -> for value <- sent(tag, attributes, children), do: {name, value}
+    end
+  end
+
+  defp sent("select", attributes, children) do
+    options = options(children)
+
+    if attribute(attributes, "multiple") do
+      for {option, children} <- options,
+          attribute(option, "selected"),
+          do: value_of(option) || text_of(children)
+    else
+      chosen =
+        Enum.find(Enum.reverse(options), fn {option, _} -> attribute(option, "selected") end) ||
+          Enum.find(options, fn {option, _} -> is_nil(attribute(option, "disabled")) end)
+
+      case chosen do
+        {option, children} -> [value_of(option) || text_of(children)]
+        nil -> []
+      end
+    end
+  end
+
+  defp sent("textarea", _attributes, children),
+    do: [children |> text_of() |> String.replace_prefix("\n", "")]
+
+  defp sent("input", attributes, _children) do
+    type = attribute(attributes, "type") || "text"
+    value = attribute(attributes, "value")
+
+    cond do
+      type in ["radio", "checkbox"] ->
+        if attribute(attributes, "checked"), do: [value || "on"], else: []
+
+      type in ["image", "submit"] ->
+        []
+
+      true ->
+        [value || ""]
+    end
+  end
+
+  defp options(nodes) do
+    Enum.flat_map(nodes, fn
+      {"option", attributes, children} -> [{attributes, children}]
+      {tag, _attributes, children} when is_binary(tag) -> options(children)
+      _other -> []
+    end)
+  end
+
+  defp value_of(attributes), do: attribute(attributes, "value")
+
+  defp text_of(nodes) do
+    Enum.map_join(nodes, fn
+      text when is_binary(text) -> text
+      {tag, _attributes, children} when is_binary(tag) -> text_of(children)
+      _other -> ""
+    end)
   end
 
   defp names_of(%{} = values, prefix) do
@@ -289,63 +385,31 @@ defmodule AshDataTable.Test do
 
   defp attribute(attributes, name), do: :proplists.get_value(name, attributes, nil)
 
-  # LiveView's client moves the portals of one patch in the order of the
-  # page, and those inside a portal's content once that content is in
-  # place: up to five rounds.
-  defp teleport(tree, round) do
-    case take_portals(tree) do
-      {tree, []} ->
-        tree
+  # Takes out every element that names the cell it goes into, in the order
+  # of the page, and says where each goes.
+  defp take_moved(nodes) when is_list(nodes) do
+    {kept, moved} =
+      Enum.reduce(nodes, {[], []}, fn
+        {tag, attributes, children}, {kept, moved} when is_binary(tag) ->
+          {children, inner} = take_moved(children)
+          node = {tag, attributes, children}
 
-      {_tree, _moved} when round > 5 ->
-        raise "portals in portals more than five deep"
+          case attribute(attributes, "data-ash-data-table-portal") do
+            nil -> {[node | kept], Enum.reverse(inner, moved)}
+            target -> {kept, Enum.reverse(inner, [{target, node} | moved])}
+          end
 
-      {tree, moved} ->
-        moved
-        |> Enum.reduce(tree, fn {target, content}, tree ->
-          put_into(tree, target_id(tree, target), content)
-        end)
-        |> teleport(round + 1)
-    end
+        other, {kept, moved} ->
+          {[other | kept], moved}
+      end)
+
+    {Enum.reverse(kept), Enum.reverse(moved)}
   end
 
-  # Empties every portal's template, and says what was in it and where it
-  # goes, in the order of the page. Other templates are left as they are.
-  defp take_portals(nodes) when is_list(nodes), do: Enum.map_reduce(nodes, [], &take_portal/2)
-
-  defp take_portal({"template", attributes, children} = node, moved) do
-    with target when is_binary(target) <- attribute(attributes, "data-phx-portal"),
-         {_tag, wrapper, inner} = element <-
-           Enum.find(children, &(is_tuple(&1) and tuple_size(&1) == 3)) do
-      content =
-        case attribute(wrapper, "id") do
-          "_lv_portal_wrap_" <> _ -> inner
-          _other -> [element]
-        end
-
-      {{"template", attributes, []}, moved ++ [{target, content}]}
-    else
-      _ -> {node, moved}
-    end
-  end
-
-  defp take_portal({tag, attributes, children}, moved) do
-    {children, inner} = take_portals(children)
-    {{tag, attributes, children}, moved ++ inner}
-  end
-
-  defp take_portal(other, moved), do: {other, moved}
-
-  defp target_id(tree, target) do
-    case tree |> LazyHTML.from_tree() |> LazyHTML.query(target) |> Enum.take(1) do
-      [element] ->
-        case LazyHTML.attribute(element, "id") do
-          [id] -> id
-          [] -> raise "the target of a portal, #{inspect(target)}, has no id"
-        end
-
-      [] ->
-        raise "the target of a portal, #{inspect(target)}, is not in the page"
+  defp put_into!(tree, id, node) do
+    case put_into(tree, id, [node]) do
+      ^tree -> raise "the cell #{inspect(id)} a nested table goes into is not in the page"
+      tree -> tree
     end
   end
 

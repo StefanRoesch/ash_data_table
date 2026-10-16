@@ -184,7 +184,7 @@ defmodule AshDataTable.Related do
   defp domains(endpoint) do
     case endpoint.config(:otp_app) do
       nil -> []
-      otp_app -> Ash.Info.domains(otp_app)
+      otp_app -> Application.get_env(otp_app, :ash_domains, [])
     end
   end
 

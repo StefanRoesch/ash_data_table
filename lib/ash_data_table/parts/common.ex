@@ -8,6 +8,18 @@ defmodule AshDataTable.Parts.Common do
   alias AshDataTable.Present
   alias AshDataTable.Text
 
+  # A function of a column's component (`AshDataTable.Component`), which
+  # is known at runtime only: called as LiveView's `Phoenix.Component` docs
+  # say under "Dynamic Component Rendering", by a function component that
+  # hands its assigns on with `apply/3`, so that LiveView tracks what
+  # changes in them.
+  def dynamic_component(assigns) do
+    {module, assigns} = Map.pop(assigns, :module)
+    {function, assigns} = Map.pop(assigns, :function)
+
+    apply(module, function, [assigns])
+  end
+
   # The columns after the last data column: the actions, when the rows have
   # them.
   def trail(true), do: 1

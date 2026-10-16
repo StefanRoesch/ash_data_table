@@ -53,14 +53,8 @@ defmodule AshDataTable.Resource.Exposing do
     of_field ++ of_filter
   end
 
-  defp reached(
-         %Ash.Resource.Calculation{
-           name: name,
-           calculation: {Ash.Resource.Calculation.Expression, opts}
-         },
-         resource
-       ) do
-    for {path, field} <- references(resource, opts[:expr]),
+  defp reached(%Ash.Resource.Calculation{name: name} = calculation, resource) do
+    for {path, field} <- references(resource, expression(calculation)),
         {path, field} != {[], name},
         related = Info.related(resource, path),
         not is_nil(related),
@@ -68,7 +62,28 @@ defmodule AshDataTable.Resource.Exposing do
         do: %{resource: related, field: field, through: path}
   end
 
-  defp reached(_computed_in_elixir, _resource), do: []
+  defp reached(_attribute, _resource), do: []
+
+  @doc """
+  The expression of a calculation that has one (`has_expression?/0` of its
+  module, `Ash.Resource.Calculation`), as its module gives it for nobody
+  in particular; nil for one computed in Elixir, or whose expression
+  cannot be had without who asks.
+  """
+  @spec expression(Ash.Resource.Calculation.t()) :: term
+  def expression(%Ash.Resource.Calculation{calculation: {module, opts}} = calculation) do
+    if module.has_expression?() do
+      module.expression(opts, %Ash.Resource.Calculation.Context{
+        type: calculation.type,
+        constraints: calculation.constraints,
+        arguments: %{}
+      })
+    end
+  rescue
+    _needs_more -> nil
+  end
+
+  def expression(_calculation), do: nil
 
   @doc """
   Whether a field policy of the resource protects the field: one that names
@@ -80,7 +95,8 @@ defmodule AshDataTable.Resource.Exposing do
   def protected?(resource, field) do
     Ash.Policy.Authorizer in Info.authorizers(resource) and
       resource
-      |> Ash.Policy.Info.field_policies()
+      |> Ash.Policy.Info.field_policies_for_field(field)
+      |> List.wrap()
       |> Enum.any?(&(field in List.wrap(&1.fields) and not trivial?(&1)))
   end
 

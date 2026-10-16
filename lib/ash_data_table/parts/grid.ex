@@ -181,19 +181,24 @@ defmodule AshDataTable.Parts.Grid do
   attr :allow_nil?, :boolean, required: true
 
   # A column whose component edits: the editor is the component's.
-  defp editor(%{column: %{editor: :component, component: component} = column}) do
-    component.module.editor(%{
-      __changed__: nil,
-      value: "",
-      label: column.label,
-      column: component.column,
-      place: :grid,
-      control: %{
-        "aria-label" => column.label,
-        "aria-required" => column.required? && "true",
-        "data-control" => true
+  defp editor(%{column: %{editor: :component}} = assigns) do
+    ~H"""
+    <Parts.Common.dynamic_component
+      module={@column.component.module}
+      function={:editor}
+      value=""
+      label={@column.label}
+      column={@column.component.column}
+      place={:grid}
+      control={
+        %{
+          "aria-label" => @column.label,
+          "aria-required" => @column.required? && "true",
+          "data-control" => true
+        }
       }
-    })
+    />
+    """
   end
 
   # A sensitive column, which is text or a number: a password input, so that
@@ -584,12 +589,22 @@ defmodule AshDataTable.Parts.Grid do
   # Only for a value: a value that is hidden from the person never reaches
   # a component, and neither does the lack of one.
   defp cell(%{component: %{cell?: true} = component} = column, value, zone) do
-    component.module.cell(%{
-      __changed__: nil,
+    assigns = %{
+      module: component.module,
       value: value,
       text: Format.format(column, value, zone),
       column: component.column
-    })
+    }
+
+    ~H"""
+    <Parts.Common.dynamic_component
+      module={@module}
+      function={:cell}
+      value={@value}
+      text={@text}
+      column={@column}
+    />
+    """
   end
 
   # A union shows the value it holds, as a cell of its kind's type shows
