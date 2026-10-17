@@ -113,7 +113,8 @@ column headed "State", with a box for each value. The boxes that apply are
 ticked. Tick the values and press "Apply": the filter applies then, once,
 the panel goes, and the button says what is chosen: "Any" while nothing
 is, the value's label for one, "2 selected" for more, with the labels as
-its tooltip.
+its tooltip. "Apply" with no box ticked takes that column's filter away;
+the other columns' filters stay.
 
 Ticking alone changes nothing, as typing into a text filter changes nothing
 before Enter. Cancel, or Escape, closes the panel and filters nothing: what

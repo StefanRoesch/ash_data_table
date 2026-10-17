@@ -204,6 +204,18 @@ defmodule DemoWeb.Tables.FilterValuesTest do
       assert_patch(view, "/tasks")
     end
 
+    test "Apply with nothing ticked takes that column's filter away, and leaves the others",
+         %{view: view} do
+      any_of(view, "priority", ["low"], "none_of")
+      assert titles(any_of(view, "status", ["in_progress"])) == ["Beta"]
+
+      html = choose_values(view, "task", "status", "any_of", [])
+
+      assert titles(html) == ["Beta", "Delta"]
+      assert ticked(html, "status") == []
+      assert ticked(html, "priority") == ["low"]
+    end
+
     test "is none of shows the rows with none of them", %{view: view} do
       html = any_of(view, "status", ["todo", "done"], "none_of")
 
