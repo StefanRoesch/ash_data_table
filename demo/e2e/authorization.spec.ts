@@ -26,8 +26,8 @@ const EDITABLE = [
 ]
 
 // `editors` counts the two reference cells that are edited in the picker,
-// "Project" and "Assignee", and "Repeats", which is edited in the side
-// panel, with the eleven columns edited in the cell.
+// "Project" and "Assignee", and "Repeats", "Tags" and "Checks", which are
+// edited in the side panel, with the nine columns edited in the cell.
 // `actions` says whether the grid has the column of the row actions: the
 // person can run one of them on some record (actions.spec.ts).
 const TASKS: Record<Actor, { columns: number; editors: number; actions: boolean; range: string | null }> = {

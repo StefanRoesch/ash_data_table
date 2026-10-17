@@ -17,7 +17,7 @@ test.beforeEach(async ({ tasks }) => {
   await tasks.open()
 })
 
-/** The height of a row, which editing and a failed save must not change. */
+/** The height of a row: it grows while the cell's editor shows a counter, and while a cell shows why its save failed. */
 async function rowHeight(tasks: Table, key: string): Promise<number> {
   const box = await tasks.row(key).getByRole("row").boundingBox()
   return box!.height
@@ -57,9 +57,9 @@ test.describe("which cells can be edited", () => {
     for (const column of ["title", "status", "priority", "progress", "estimate_hours", "tags", "checks"]) {
       await expect(tasks.cell(FIRST, column)).not.toHaveAttribute("aria-readonly")
     }
-    // eleven columns with an editor in the cell, two reference cells that
-    // are edited in the picker (picker.spec.ts), and a map that is edited
-    // in the side panel (maps.spec.ts)
+    // nine columns with an editor in the cell, two arrays and a map that are
+    // edited in the side panel (arrays.spec.ts, maps.spec.ts), and two
+    // reference cells that are edited in the picker (picker.spec.ts)
     await expect(tasks.editorTemplates).toHaveCount(14)
 
     const headline = tasks.cell(FIRST, "headline")
@@ -90,7 +90,9 @@ test.describe("starting and giving up an edit", () => {
     await expect(editor).toBeFocused()
     await expect(editor).toHaveValue("Rename the onboarding email")
     await expect(editor).toHaveAccessibleName("Title")
-    expect(await rowHeight(tasks, FIRST), "the row keeps its height").toBeCloseTo(height, 0)
+    // a title has a most it can be long: its counter stands under the text, and the row grows to it
+    await expect(title.locator("[data-count]")).toBeVisible()
+    expect(await rowHeight(tasks, FIRST), "the row grows to the counter").toBeGreaterThan(height)
     expect(await tasks.tabStops(), "the grid is one tab stop: the editor").toEqual(["TEXTAREA"])
 
     // the keys that move through the grid are the editor's now
@@ -103,6 +105,7 @@ test.describe("starting and giving up an edit", () => {
     await expect(title).toBeFocused()
     await expect(tasks.openEditors).toHaveCount(0)
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-title`])
+    expect(await rowHeight(tasks, FIRST), "the row is as high as before").toBeCloseTo(height, 0)
     expect(await pushed.all(), "the server heard nothing of it").toEqual([])
   })
 
@@ -699,21 +702,25 @@ test.describe("a save that fails", () => {
     await expect(title).toHaveAccessibleDescription(TOO_SHORT)
     await expect(tasks.status, "it is read out").toHaveText(`Title was not saved: ${TOO_SHORT}`)
 
-    // the message shows while the cell has focus or the pointer, and the row never grows
+    // the message stands in the cell, under what it shows, whether or not
+    // the cell has the focus or the pointer; the row grows to it
     await page.mouse.move(5, 5)
-    await expect(message).toBeHidden()
-    expect(await rowHeight(tasks, SECOND)).toBeCloseTo(height, 0)
+    await expect(message).toBeVisible()
+    expect(await message.evaluate((node) => node.hasAttribute("popover"))).toBe(false)
+    const cell = (await title.boundingBox())!
+    const at = (await message.boundingBox())!
+    expect(at.x).toBeGreaterThanOrEqual(cell.x)
+    expect(at.x + at.width).toBeLessThanOrEqual(cell.x + cell.width + 1)
+    expect(at.y).toBeGreaterThanOrEqual(cell.y)
+    expect(at.y + at.height).toBeLessThanOrEqual(cell.y + cell.height + 1)
+    expect(await rowHeight(tasks, SECOND)).toBeGreaterThan(height)
 
     await title.focus()
     await expect(message).toBeVisible()
-    expect(await rowHeight(tasks, SECOND)).toBeCloseTo(height, 0)
     await tasks.press("ArrowDown")
-    await expect(message).toBeHidden()
-
+    await expect(message).toBeVisible()
     await title.hover()
     await expect(message).toBeVisible()
-    await page.mouse.move(5, 5)
-    await expect(message).toBeHidden()
 
     // nothing was saved
     await page.reload()

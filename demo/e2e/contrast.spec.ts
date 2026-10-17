@@ -219,14 +219,17 @@ for (const theme of ["light", "dark"] as const) {
       test("at rest: a ring with enough contrast, and a mark that is not a colour", async ({ page, tasks }) => {
         const title = await failTitle(page, tasks)
         await tasks.press("ArrowDown")
-        await expect(tasks.failure(title)).toBeHidden()
+        // its message stands in the cell, with the focus elsewhere too
+        await expect(tasks.failure(title)).toBeVisible()
 
         await expectFailedRing(title)
         expect(await contrastOf(title, "border", "::before")).toBeGreaterThanOrEqual(MARK)
         await expectFailedMark(title)
         expect(await contrastOf(title, "text", "::after")).toBeGreaterThanOrEqual(TEXT)
-        // the mark is for the eye: the cell is announced through `aria-invalid`
-        await expect(title).toHaveAccessibleName("ab")
+        // the mark is for the eye: the cell is announced through `aria-invalid`.
+        // Its name is its text, then the message in it.
+        await expect(title).toHaveAccessibleName(/^ab\b/)
+        await expect(title).not.toHaveAccessibleName(/!/)
       })
 
       test("the ring and the mark move nothing: the cell, its row and its text stay where they are", async ({
@@ -295,7 +298,15 @@ for (const theme of ["light", "dark"] as const) {
         expect(await contrastOf(cell, "border", "::before")).toBeGreaterThanOrEqual(MARK)
         await expectFailedMark(cell)
         expect(await contrastOf(cell, "text", "::after")).toBeGreaterThanOrEqual(TEXT)
-        expect(await placeOf(cell)).toEqual(before)
+        // the buttons keep their place across; the row grows by the message under them
+        const after = await placeOf(cell)
+        expect({ ...after, cellHeight: 0, rowHeight: 0, contentTop: 0 }).toEqual({
+          ...before,
+          cellHeight: 0,
+          rowHeight: 0,
+          contentTop: 0
+        })
+        expect(after.rowHeight).toBeGreaterThan(before.rowHeight)
 
         // the buttons under the ring are still clicked, not the ring
         await tasks.acts(FIRST, () => tasks.action(FIRST, "archive").click())

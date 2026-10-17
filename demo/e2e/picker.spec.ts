@@ -16,8 +16,6 @@ import { Table } from "./support/table"
 const FIRST = SEED.task.first
 const SECOND = SEED.task.second
 
-const GONE = "This record is no longer available."
-
 /** The key of the row of a table whose cell of a column reads `text`. */
 async function keyOf(table: Table, column: string, text: string): Promise<string> {
   const keys = await table.rowKeys()
@@ -181,11 +179,19 @@ test.describe("opening the picker", () => {
     await expect(people.cell(await people.rowKey(1), "name")).toBeFocused()
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "true")
 
-    // used all the same, it sends nothing
+    // used all the same, it asks the server, which holds no selected row
+    // and takes nothing: the picker stays, and nothing is saved
     await pushed.clear()
     await tasks.pickerChoose.click({ force: true })
+    const sent = (await pushed.all()).filter((one) => one.event === "picked")
+    expect(sent).toHaveLength(1)
+    expect(sent[0].params, "it names no row: the server takes what it holds as selected").toMatchObject({ none: false })
+    expect(sent[0].params).not.toHaveProperty("row")
     await expect(tasks.picker).toBeVisible()
-    expect(await pushed.count("picked")).toBe(0)
+    await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "true")
+    await expect(tasks.cell(unassigned, "assignee")).not.toHaveAttribute("aria-busy")
+    await expect(tasks.cell(unassigned, "assignee")).toHaveText("")
+    expect(await pushed.count("save")).toBe(0)
 
     // `aria-disabled` is what its look follows: once a row is selected it
     // looks otherwise
@@ -194,6 +200,8 @@ test.describe("opening the picker", () => {
         const style = getComputedStyle(node)
         return [style.backgroundColor, style.color, style.opacity, style.pointerEvents].join(" ")
       })
+    // the pointer away from the button, whose look it would change
+    await tasks.page.mouse.move(0, 0)
     const unusable = await look()
     await people.cell(await people.rowKey(1), "name").focus()
     await tasks.press(" ")
@@ -400,7 +408,11 @@ test.describe("choosing", () => {
     await expect(cell).toHaveText("Max Member")
     await expect(cell).not.toHaveAttribute("aria-invalid")
     await expect(cell).toBeFocused()
-    expect(await pushed.count("picked")).toBe(1)
+    // "Choose" names no row: the server takes the one the picker's table told it is selected
+    const sent = (await pushed.all()).filter((one) => one.event === "picked")
+    expect(sent).toHaveLength(1)
+    expect(sent[0].params).toMatchObject({ none: false })
+    expect(sent[0].params).not.toHaveProperty("row")
     expect(await pushed.count("save")).toBe(0)
     expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-c-assignee`])
 
@@ -461,12 +473,16 @@ test.describe("choosing", () => {
     await expect(cell).toBeFocused()
   })
 
-  test("\"None\" empties the cell", async ({ tasks }) => {
+  test("\"None\" empties the cell", async ({ tasks, pushed }) => {
     const cell = tasks.cell(FIRST, "assignee")
     await openPicker(tasks, FIRST, "assignee")
+    await pushed.clear()
 
+    // the record the cell points at is selected in the picker: "None" takes no record all the same
     await tasks.saves(cell, () => tasks.pickerNone.click())
     await expect(tasks.picker).toHaveCount(0)
+    const sent = (await pushed.all()).filter((one) => one.event === "picked")
+    expect(sent.map((one) => one.params.none)).toEqual([true])
     await expect(cell).toHaveText("")
     await expect(cell).toBeFocused()
 
@@ -962,7 +978,7 @@ test("the radio button of a row has an edge of enough contrast, in both themes",
   await page.evaluate(() => localStorage.removeItem("phx:theme"))
 })
 
-test("a row that names no record this person may read is not taken: nothing is saved, and the picker says so", async ({
+test("a row that is no row of the picker's table is not taken: Choose has nothing to take, nothing is saved, and the picker stays", async ({
   page,
   tasks,
   pushed,
@@ -977,13 +993,19 @@ test("a row that names no record this person may read is not taken: nothing is s
     row.id = `${id}-row-4f0e6f66-0000-4000-8000-000000000000`
   }, people.id)
   await page.locator(`[id="${people.id}-row-4f0e6f66-0000-4000-8000-000000000000"] input[type=radio]`).click()
+  // the hook says that row is selected; the server holds no such row of
+  // the picker's table, and has nothing for "Choose" to take
+  await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "true")
   await pushed.clear()
-  await tasks.pickerChoose.click()
+  await tasks.pickerChoose.click({ force: true })
 
-  await expect(tasks.pickerError).toHaveText(GONE)
-  await expect(tasks.pickerError).toHaveRole("alert")
-  await expect(tasks.picker).toBeVisible()
   expect(await pushed.count("picked")).toBe(1)
+  await expect(tasks.picker).toBeVisible()
+  // nothing is said of a record the person may not have: the server tells
+  // "no longer available" only of a row of its table whose record is gone
+  // meanwhile (picker_test.exs), which this page cannot bring about
+  await expect(tasks.pickerError).toHaveCount(0)
+  await expect(cell).not.toHaveAttribute("aria-busy")
   await expectNoAxeViolations(page)
 
   await tasks.press("Escape")

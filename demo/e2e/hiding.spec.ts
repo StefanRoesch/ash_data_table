@@ -78,13 +78,16 @@ test.describe("the button and its list", () => {
   }) => {
     await pushed.clear()
     await expect(tasks.columnsButton).toHaveText("Columns")
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "false")
-    await expect(tasks.columnsButton).toHaveAttribute("aria-controls", "task-columns")
+    // the list is the browser's popover, which the button opens: the browser
+    // says whether it is open, and what the button controls
+    await expect(tasks.columnsButton).toHaveAttribute("popovertarget", "task-columns")
+    await expect(tasks.columnsList).toHaveAttribute("popover", "auto")
     await expect(tasks.columnsList).toBeHidden()
+    expect(await tasks.columnsOpen()).toBe(false)
 
     await tasks.columnsButton.click()
     await expect(tasks.columnsList).toBeVisible()
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "true")
+    expect(await tasks.columnsOpen()).toBe(true)
     await expect(page.getByRole("group", { name: "Columns" })).toBeVisible()
     await expect(page.getByRole("checkbox", { name: "State", exact: true })).toBeChecked()
     for (const column of HIDEABLE) await expect(tasks.columnBox(column)).toBeChecked()
@@ -168,7 +171,7 @@ test.describe("the button and its list", () => {
     await expect(tasks.columnBox("status")).toBeFocused()
     await page.keyboard.press("Escape")
     await expect(tasks.columnsList).toBeHidden()
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "false")
+    await expect.poll(() => tasks.columnsOpen()).toBe(false)
     await expect(tasks.columnsButton).toBeFocused()
     // what was hidden stays hidden
     await expect(tasks.header("status")).toBeHidden()
@@ -185,13 +188,13 @@ test.describe("the button and its list", () => {
     await expect(tasks.columnsList).toBeVisible()
     await tasks.columnsButton.click()
     await expect(tasks.columnsList).toBeHidden()
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "false")
+    await expect.poll(() => tasks.columnsOpen()).toBe(false)
 
     // a click on a cell: the list closes, and the cell has the focus
     await tasks.columnsButton.click()
     await tasks.cell(SECOND, "title").click()
     await expect(tasks.columnsList).toBeHidden()
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "false")
+    await expect.poll(() => tasks.columnsOpen()).toBe(false)
     await expect(tasks.cell(SECOND, "title")).toBeFocused()
 
     // a click on nothing in particular
@@ -229,7 +232,7 @@ test.describe("the button and its list", () => {
     await tasks.columnBox("reporter").focus()
     await page.keyboard.press("Tab")
     await expect(tasks.columnsList).toBeHidden()
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "false")
+    await expect.poll(() => tasks.columnsOpen()).toBe(false)
     expect(await tasks.hasFocus()).toBe(true)
 
     // and at its start
@@ -551,7 +554,7 @@ test.describe("what is hidden outlives what the server sends", () => {
     )
     await expect(tasks.header("title")).toHaveAttribute("aria-sort", "ascending")
     await expect(tasks.columnsList).toBeVisible()
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "true")
+    expect(await tasks.columnsOpen()).toBe(true)
     await expect(tasks.columnBox("status")).toBeFocused()
     expect(await tasks.columnsList.boundingBox()).toEqual(place)
     await same("after a sort with the list open")
@@ -586,7 +589,7 @@ test.describe("what is hidden outlives what the server sends", () => {
     await expect(tasks.columnBox("progress")).not.toBeChecked()
     await expect(tasks.columnBox("priority")).toBeChecked()
     await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
-    await expect(tasks.columnsButton).toHaveAttribute("aria-expanded", "true")
+    expect(await tasks.columnsOpen()).toBe(true)
     await expect(tasks.header("status")).toBeHidden()
   })
 
@@ -885,7 +888,7 @@ test.describe("what is open in a column when it is hidden", () => {
     await expect(cell).toHaveText("A text of a third kind")
   })
 
-  test("the counter of an editor in another column follows its cell when the columns move", async ({ page }) => {
+  test("the counter of an editor in another column stays in its cell when the columns move", async ({ page }) => {
     const labels = new Table(page, "label", "/labels")
     await labels.open()
     const name = labels.cell(await labels.rowKey(1), "name")
@@ -902,8 +905,11 @@ test.describe("what is open in a column when it is hidden", () => {
     // the table fills its place: the cell is another width now, or elsewhere
     const cell = (await name.boundingBox())!
     expect([cell.x, cell.width]).not.toEqual([before.x, before.width])
+    // the counter is in the cell, under the editor
     const box = (await count.boundingBox())!
-    expect(Math.round(box.x + box.width)).toBe(Math.round(cell.x + cell.width))
+    expect(box.x).toBeGreaterThanOrEqual(cell.x - 0.5)
+    expect(box.x + box.width).toBeLessThanOrEqual(cell.x + cell.width + 0.5)
+    expect(box.y + box.height).toBeLessThanOrEqual(cell.y + cell.height + 0.5)
     await expect(labels.editor(name)).toBeFocused()
     await labels.press("Escape")
   })
@@ -940,27 +946,25 @@ test.describe("what is open in a column when it is hidden", () => {
     await specimens.editor(cell).fill("5000")
     await specimens.saves(cell, () => specimens.press("Enter"))
     await expect(cell).toHaveAttribute("aria-invalid", "true")
+    // the message is in the cell, under what it shows, and always there to be seen
     await expect(specimens.failure(cell)).toBeVisible()
+    await expect(cell).toHaveAttribute("aria-describedby", /-error$/)
 
-    // with the pointer on the cell as well, which shows the message too
     await specimens.openColumns()
-    await cell.hover()
     await cell.focus()
-    await expect(specimens.failure(cell)).toBeVisible()
     await toggleInPlace(specimens, "an_integer")
     await expect(cell).toBeHidden()
     await expect(specimens.failure(cell)).toBeHidden()
 
-    // the cell is marked still, and says why when a person comes to it
+    // the cell is marked still, and says why, without a person coming to it
     await specimens.unhide("an_integer")
     await expect(cell).toHaveAttribute("aria-invalid", "true")
-    await page.keyboard.press("Escape")
-    await cell.focus()
     await expect(specimens.failure(cell)).toBeVisible()
     await expect(specimens.failure(cell)).toHaveText("must be less than or equal to 1000")
+    await page.keyboard.press("Escape")
+    await cell.focus()
 
-    // and the message follows its cell when a column before it goes; the
-    // pointer is elsewhere, so that nothing but the hiding moves it
+    // and the message goes with its cell when a column before it goes
     await page.mouse.move(1, 1)
     await expect(specimens.failure(cell)).toBeVisible()
     const columns = await specimens.columns()
@@ -970,7 +974,10 @@ test.describe("what is open in a column when it is hidden", () => {
     const after = (await cell.boundingBox())!
     expect(after.x).toBeLessThan(before.x)
     await expect(cell).toBeFocused()
-    expect(Math.round((await specimens.failure(cell).boundingBox())!.x)).toBe(Math.round(after.x))
+    const message = (await specimens.failure(cell).boundingBox())!
+    expect(message.x, "inside its cell").toBeGreaterThanOrEqual(after.x - 0.5)
+    expect(message.x + message.width, "inside its cell").toBeLessThanOrEqual(after.x + after.width + 0.5)
+    expect(message.y + message.height, "inside its cell").toBeLessThanOrEqual(after.y + after.height + 0.5)
   })
 
   test("the action panel has the fields of hidden columns, and rows are selected as before", async ({ tasks }) => {
@@ -1154,7 +1161,7 @@ test.describe("each table on its own", () => {
     // the other table's button closes this one's list
     await tasks.columnsButton.click()
     await expect(projects.columnsList).toBeHidden()
-    await expect(projects.columnsButton).toHaveAttribute("aria-expanded", "false")
+    await expect.poll(() => projects.columnsOpen()).toBe(false)
     await expect(tasks.columnsList).toBeVisible()
     await tasks.columnBox("priority").uncheck()
     await expect(tasks.header("priority")).toBeHidden()

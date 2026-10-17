@@ -38,16 +38,26 @@ defmodule AshDataTable.Parts.Editors do
 
   def count(assigns) do
     length = Limits.count(assigns.value, assigns.counted)
-    assigns = assign(assigns, length: length, over?: length > assigns.counted.max)
+
+    assigns =
+      assign(assigns,
+        length: length,
+        over?: length > assigns.counted.max,
+        classes:
+          Enum.join(
+            [
+              "shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100"
+              | List.wrap(assigns.class)
+            ],
+            " "
+          )
+      )
 
     ~H"""
     <span
       id={@id}
       {Attrs.count(@counted, @over?)}
-      class={[
-        "shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100",
-        @class
-      ]}
+      class={@classes}
     >{@length}/{@counted.max}</span>
     """
   end

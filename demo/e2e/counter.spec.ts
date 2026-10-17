@@ -91,7 +91,7 @@ test.describe("in the editor of a cell", () => {
     expect(await count.evaluate((node) => !!node.closest("[aria-live], [role=status], [role=alert]"))).toBe(false)
   })
 
-  test("floats under the cell, at its end, without moving the grid: the row is as high and the column as wide as before", async () => {
+  test("stands under the text, in the cell, at its end: the row grows while the editor is open, the column is as wide as before", async () => {
     const row = labels.row(key)
     const before = { row: (await row.boundingBox())!, cell: (await cell.boundingBox())! }
 
@@ -100,48 +100,42 @@ test.describe("in the editor of a cell", () => {
     await expect(count).toBeVisible()
     const during = { row: (await row.boundingBox())!, cell: (await cell.boundingBox())! }
 
-    expect(during.row.height).toBe(before.row.height)
+    expect(during.row.height).toBeGreaterThan(before.row.height)
     expect(during.cell.width).toBe(before.cell.width)
     expect(during.cell.x).toBe(before.cell.x)
-    // the text has all the room it had: the editor is as wide as the cell's text was
+
+    // under the text, inside the cell's box, its text at the end
     const textarea = (await editor.boundingBox())!
-    expect(textarea.height).toBeLessThanOrEqual(during.cell.height)
-
-    // under the cell, its end at the cell's end, on top of the page
     const at = (await count.boundingBox())!
-    expect(at.y).toBeGreaterThanOrEqual(during.cell.y + during.cell.height)
-    expect(at.y).toBeLessThanOrEqual(during.cell.y + during.cell.height + 4)
-    expect(Math.abs(at.x + at.width - (during.cell.x + during.cell.width))).toBeLessThanOrEqual(1)
-    expect(await count.evaluate((node) => node.matches(":popover-open"))).toBe(true)
+    expect(at.y).toBeGreaterThanOrEqual(textarea.y + textarea.height - 1)
+    expect(at.y + at.height).toBeLessThanOrEqual(during.cell.y + during.cell.height + 1)
+    expect(at.x).toBeGreaterThanOrEqual(during.cell.x)
+    expect(at.x + at.width).toBeLessThanOrEqual(during.cell.x + during.cell.width + 1)
+    expect(await count.evaluate((node) => getComputedStyle(node).textAlign)).toBe("end")
+    // nothing floats: it is no popover
+    expect(await count.evaluate((node) => node.hasAttribute("popover"))).toBe(false)
 
-    // it follows the cell when the page scrolls, and goes with the editor
-    await labels.page.mouse.wheel(0, 60)
-    await expect
-      .poll(async () => {
-        const moved = (await count.boundingBox())!
-        const where = (await cell.boundingBox())!
-        return Math.round(moved.y - (where.y + where.height))
-      })
-      .toBeLessThanOrEqual(4)
+    // it goes with the editor, and the row is as high as before
     await labels.press("Escape")
-    await expect(labels.page.locator("[data-count]:popover-open")).toHaveCount(0)
+    await expect(cell.locator("[data-count]")).toHaveCount(0)
+    expect((await row.boundingBox())!.height).toBe(before.row.height)
   })
 
-  test("a text that fills its column keeps its one line: the counter takes no room from it", async ({
-    tasks,
-  }) => {
+  test("a text that fills its column keeps its width: the counter takes no room beside it", async ({ tasks }) => {
     // "Title" on /tasks is as wide as its longest title
     await tasks.open()
     const title = tasks.cell(SEED.task.first, "title")
-    const row = tasks.row(SEED.task.first)
-    const before = { row: (await row.boundingBox())!, cell: (await title.boundingBox())! }
+    const before = (await title.boundingBox())!
 
     const editor = await edit(tasks, title)
-    await expect(title.locator("[data-count]")).toHaveText(`${(await editor.inputValue()).length}/120`)
+    const count = title.locator("[data-count]")
+    await expect(count).toHaveText(`${(await editor.inputValue()).length}/120`)
 
-    const during = { row: (await row.boundingBox())!, cell: (await title.boundingBox())! }
-    expect(during.row.height).toBe(before.row.height)
-    expect(during.cell.width).toBe(before.cell.width)
+    const during = (await title.boundingBox())!
+    expect(during.width).toBe(before.width)
+    // the text is as wide as the cell holds, and the counter is under it
+    const textarea = (await editor.boundingBox())!
+    expect((await count.boundingBox())!.y).toBeGreaterThanOrEqual(textarea.y + textarea.height - 1)
   })
 
   test("a click on the counter leaves the focus in the text, and saves nothing", async ({ pushed }) => {
@@ -251,7 +245,9 @@ test.describe("counts as Ash counts", () => {
   }
 })
 
-test.describe("in the editor of an array of text", () => {
+// A cell of an array of text has no editor of its own: Enter opens the
+// table's side panel with that one field, a control per value.
+test.describe("at the values of an array of text, opened from its cell", () => {
   test("each value has its own, named by the value's place, and a value that is added starts at nothing", async ({
     page,
     tasks,
@@ -260,9 +256,11 @@ test.describe("in the editor of an array of text", () => {
     const cell = tasks.cell(TASK, "tags")
     await cell.focus()
     await tasks.press("Enter")
+    await expect(tasks.panel).toBeVisible()
 
-    const values = cell.locator("[data-item] textarea")
-    const counts = cell.locator("[data-item] [data-count]")
+    const tags = tasks.panel.locator('[data-field="tags"]')
+    const values = tags.locator("[data-item] textarea")
+    const counts = tags.locator("[data-item] [data-count]")
     const held = await values.count()
     expect(await counts.count()).toBe(held)
 
@@ -272,9 +270,10 @@ test.describe("in the editor of an array of text", () => {
       await expect(values.nth(at)).toHaveAccessibleDescription(`${value.length}/20`)
     }
 
-    await cell.getByRole("button", { name: "Add value" }).click()
+    await tags.getByRole("button", { name: "Add value" }).click()
     await expect(counts).toHaveCount(held + 1)
     await expect(counts.nth(held)).toHaveText("0/20")
+    await expect(values.nth(held)).toBeFocused()
     await page.keyboard.type("backend")
     await expect(counts.nth(held)).toHaveText("7/20")
     await expect(values.nth(held)).toHaveAccessibleDescription("7/20")
@@ -282,6 +281,8 @@ test.describe("in the editor of an array of text", () => {
     const ids = await counts.evaluateAll((nodes) => nodes.map((node) => node.id))
     expect(new Set(ids).size).toBe(ids.length)
     expect(ids.every((id) => id !== "")).toBe(true)
+    // nothing of it is in the cell
+    await expect(cell.locator("[data-count]")).toHaveCount(0)
   })
 })
 

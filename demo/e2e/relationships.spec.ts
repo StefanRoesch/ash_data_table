@@ -120,7 +120,11 @@ test.describe("the field of an argument that holds several related records", () 
 
     await tasks.pickerChoose.click()
     await expect(tasks.picker).toHaveCount(0)
-    expect(await pushed.count("picked")).toBe(1)
+    // "Choose" names no rows: the server takes what the picker's table told it is selected
+    const sent = (await pushed.all()).filter((one) => one.event === "picked")
+    expect(sent).toHaveLength(1)
+    expect(sent[0].params).toMatchObject({ none: false })
+    expect(sent[0].params).not.toHaveProperty("rows")
     await expect(tasks.fieldChoose("labels")).toBeFocused()
     await expect(tasks.fieldChosenItems("labels")).toHaveText([...held, added.name])
 
@@ -147,12 +151,15 @@ test.describe("the field of an argument that holds several related records", () 
     }
     await pushed.clear()
 
-    // from the keyboard: the button is a button
+    // from the keyboard: the button is a button, and sends the field and the record it takes out
     await tasks.fieldRemove("labels", 0).focus()
     await tasks.press("Enter")
     await expect(tasks.fieldChosenItems("labels")).toHaveText(held.slice(1))
-    expect(await pushed.count("panel_unpick")).toBe(1)
-    // the label that stood after it stands in its place
+    const unpicked = (await pushed.all()).filter((one) => one.event === "panel_unpick")
+    expect(unpicked).toHaveLength(1)
+    expect(unpicked[0].params).toMatchObject({ input: "labels" })
+    expect(typeof unpicked[0].params.key).toBe("string")
+    // the server says where focus goes: the label that stood after it stands in its place
     await expect(tasks.fieldRemove("labels", 0)).toBeFocused()
     await expect(tasks.fieldRemove("labels", 0)).toHaveAccessibleName(`Remove ${held[1]}`)
 
@@ -526,6 +533,8 @@ test("a row that names no label this person may read is not taken: nothing is ch
     row.id = `${id}-row-4f0e6f66-0000-4000-8000-000000000000`
   }, labels.id)
   await page.locator(`[id="${labels.id}-row-4f0e6f66-0000-4000-8000-000000000000"] input[type=checkbox]`).click()
+  // where several are chosen, what the hook told the server is selected is
+  // taken, each read again as the person: that one is not there for them
   await pushed.clear()
   await tasks.pickerChoose.click()
 

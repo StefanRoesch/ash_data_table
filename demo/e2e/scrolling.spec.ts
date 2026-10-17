@@ -77,13 +77,16 @@ test.describe("every table scrolls sideways in an area of its own", () => {
     expect(inner.left).toBe(outer.left)
     expect(inner.all).toBeGreaterThan(inner.seen)
 
-    // the line that opened it has its mark still: a triangle, turned
-    expect(
-      await tasks.line(FIRST, "comments").evaluate((button) => {
-        const mark = getComputedStyle(button, "::before")
-        return [mark.borderInlineStartWidth !== "0px", mark.rotate]
-      }),
-    ).toEqual([true, "90deg"])
+    // the line that opened it has its mark still: a triangle, turned (once
+    // its turn, a transition, is done)
+    await expect
+      .poll(() =>
+        tasks.line(FIRST, "comments").evaluate((button) => {
+          const mark = getComputedStyle(button, "::before")
+          return [mark.borderInlineStartWidth !== "0px", mark.rotate]
+        }),
+      )
+      .toEqual([true, "90deg"])
 
     // the nested table scrolls, and the table around it stays
     await comments.scrollTo(200)

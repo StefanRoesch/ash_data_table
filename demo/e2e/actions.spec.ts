@@ -550,30 +550,27 @@ test.describe("an action that failed", () => {
       await expect(tasks.actions(FIRST)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
       expect(await pushed.count("act")).toBe(1)
 
-      // the message shows while the cell, or a button in it, has focus or the
-      // pointer, and the row never grows
+      // the message is in the cell, under its buttons, and always shows: the
+      // row grows for it
       await page.mouse.move(5, 5)
       await expect(message, "a button of the cell has the focus").toBeVisible()
-      expect(await rowHeight(tasks, FIRST)).toBeCloseTo(height, 0)
-      // under the cell, and in the window
+      await expect.poll(() => rowHeight(tasks, FIRST)).toBeGreaterThan(height)
+      // inside the cell, under its buttons, and in the window
       const below = (await message.boundingBox())!
       const box = (await cell.boundingBox())!
-      expect(below.y).toBeGreaterThanOrEqual(box.y + box.height)
+      const button = (await archive.boundingBox())!
+      expect(below.y).toBeGreaterThanOrEqual(button.y + button.height - 1)
+      expect(below.y + below.height).toBeLessThanOrEqual(box.y + box.height + 1)
+      expect(below.x).toBeGreaterThanOrEqual(box.x - 1)
+      expect(below.x + below.width).toBeLessThanOrEqual(box.x + box.width + 1)
       expect(below.x + below.width).toBeLessThanOrEqual(page.viewportSize()!.width)
 
       await tasks.press("Escape")
       await expect(cell).toBeFocused()
       await expect(message, "the cell itself has it").toBeVisible()
       await tasks.press("ArrowDown")
-      await expect(message).toBeHidden()
-
-      await cell.hover()
-      await expect(message).toBeVisible()
-      await page.mouse.move(5, 5)
-      await expect(message).toBeHidden()
-      await archive.hover()
-      await expect(message, "the pointer on a button is the pointer on the cell").toBeVisible()
-      await page.mouse.move(5, 5)
+      await expect(message, "without focus or pointer").toBeVisible()
+      await expect(cell).toHaveAttribute("aria-invalid", "true")
     })
 
     test("Escape on a button goes back to the cell, and Escape on the cell gives the failure up", async ({
@@ -614,7 +611,7 @@ test.describe("an action that failed", () => {
       await expect(tasks.action(own, "archive")).toBeFocused()
       // the other row's failure is that row's, and stays
       await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
-      await expect(tasks.failure(tasks.actionsCell(FIRST)), "without focus or pointer").toBeHidden()
+      await expect(tasks.failure(tasks.actionsCell(FIRST)), "without focus or pointer").toBeVisible()
     })
 
     test("a destroy that is refused leaves the row, with the refusal on its actions cell", async ({
@@ -651,10 +648,11 @@ test.describe("an action that failed", () => {
       await expect(cell).toHaveAccessibleDescription(GONE)
       await expect(tasks.status).toHaveText(`Archive failed: ${GONE}`)
       await expect(tasks.action(key, "archive")).toBeFocused()
-      // the row is as it was: there was nothing to show it from
+      // the row is as it was, there was nothing to show it from; it grows
+      // by the message in its actions cell only
       await expect(tasks.rows).toHaveCount(25)
       await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
-      expect(await rowHeight(tasks, key)).toBeCloseTo(height, 0)
+      await expect.poll(() => rowHeight(tasks, key)).toBeGreaterThan(height)
 
       await pushed.clear()
       await tasks.press("Escape", "Escape")
@@ -663,6 +661,7 @@ test.describe("an action that failed", () => {
       await expect(tasks.failure(cell)).toHaveCount(0)
       await expect(cell).toBeFocused()
       await expect(tasks.actions(key)).toHaveText(["Archive", "Reassign", "Set progress", "Destroy", "Set labels"])
+      await expect.poll(() => rowHeight(tasks, key), "the row is as high as before").toBeCloseTo(height, 0)
       expect(await pushed.all(), "the mark was the hook's: the server is not asked").toEqual([])
     })
 

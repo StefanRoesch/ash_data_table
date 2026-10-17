@@ -104,6 +104,8 @@ test.describe("\"Merge\" at /labels: a table action with a key and a list of key
     await expect(labels.fieldChosenItems("labels")).toHaveText([second.name, third.name])
     await labels.fieldRemove("labels", 0).click()
     await expect(labels.fieldChosenItems("labels")).toHaveText([third.name])
+    // the server says where focus goes: to the button of the label that stands in its place
+    await expect(labels.fieldRemove("labels", 0)).toBeFocused()
   })
 
   test("\"Run\" merges what was chosen, and the table says what the action returned", async () => {

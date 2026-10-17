@@ -17,7 +17,7 @@ test.beforeEach(async ({ tasks }) => {
   await tasks.open()
 })
 
-/** The height of a row, which a component, its editor and a save must not change. */
+/** The height of a row, which a component, its editor and a save must not change; a failed save's message makes it grow. */
 async function rowHeight(tasks: Table, key: string): Promise<number> {
   const box = await tasks.rowLine(key).boundingBox()
   return box!.height
@@ -277,7 +277,8 @@ test.describe("a save through the slider that fails", () => {
     await expect(tasks.failure(progress)).toHaveText(NOT_DONE)
     await expect(tasks.failure(progress)).toBeVisible()
     await expect(tasks.status).toHaveText(`Progress was not saved: ${NOT_DONE}`)
-    expect(await rowHeight(tasks, key), "the row keeps its height").toBeCloseTo(height, 0)
+    // the message stands in the cell, under the value: the row grows to it
+    expect(await rowHeight(tasks, key), "the row grows to the message").toBeGreaterThan(height)
     expect(await tasks.tabStops()).toEqual([`task-row-${key}-c-progress`])
 
     // the slider of a failed cell holds what was chosen

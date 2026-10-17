@@ -12,9 +12,11 @@ import { Table } from "./support/table"
 // selection looks like from the question to the result.
 //
 // /tasks as the admin, who may run every action on every task, unless a
-// test says otherwise. Which rows are selected is known to the table's hook
-// alone: the server renders the boxes and learns of a selection when a
-// button of the line is used. The tests that run an action change the data.
+// test says otherwise. The table's hook paints the rows and their boxes at
+// once, and tells the server of every change (`select`); the line above the
+// grid is the server's, drawn from what it holds: its count, its buttons and
+// "all that match" come one round trip after a box is used, which the tests
+// wait for. The tests that run an action change the data.
 
 const FIRST = SEED.task.first
 const SECOND = SEED.task.second
@@ -88,6 +90,7 @@ test.describe("the boxes", () => {
 
     // nothing is selected: the line holds no text and shows no button
     await expect(tasks.selectionLine).toHaveRole("group")
+    await expect(tasks.page.locator("#task-selection-controls")).toBeHidden()
     await expect(tasks.selectionLine).toHaveAccessibleName("Selected rows")
     await expect(tasks.selectedCount).toHaveText("")
     await expect(tasks.clearSelection).toBeHidden()
@@ -394,8 +397,11 @@ test.describe("selecting from the keyboard", () => {
     tasks,
   }) => {
     await tasks.cell(FIRST, "title").focus()
+    await tasks.press("Space")
+    // the server draws the buttons once it is told of the selection
+    await expect(tasks.clearSelection).toBeVisible()
     // "Columns" (hiding.spec.ts) stands between the line's buttons and the grid
-    await tasks.press("Space", "Shift+Tab")
+    await tasks.press("Shift+Tab")
     expect(await tasks.focused()).toBe("task-columns-button")
     await tasks.press("Shift+Tab")
     expect(await tasks.focused()).toBe("task-bulk-set_labels")
@@ -496,9 +502,10 @@ test.describe("all that match", () => {
     await expect(tasks.selectAll).toHaveText(`Select all ${SEED.tasks.acme} that match`)
 
     await tasks.selectAll.click()
+    // the button goes: focus is on the one beside it at once, before the server answers
+    expect(await tasks.focused()).toBe("task-clear-selection")
     await expect(tasks.selectedCount).toHaveText(`All ${SEED.tasks.acme} that match are selected`)
     await expect(tasks.selectAll).toBeHidden()
-    // the button is gone: focus is on the one beside it
     expect(await tasks.focused()).toBe("task-clear-selection")
 
     await tasks.reads(() => tasks.next.click())
@@ -583,7 +590,8 @@ test.describe("the line above the grid", () => {
 
     await tasks.press("Space", "ArrowDown", "Space", "ArrowDown", "ArrowDown", "Space", "Space")
 
-    expect(await page.evaluate(() => (window as any).__said)).toEqual([
+    // the server says each count as it is told of each change
+    await expect.poll(() => page.evaluate(() => (window as any).__said)).toEqual([
       "1 selected",
       "2 selected",
       "3 selected",
@@ -615,6 +623,7 @@ test.describe("the line above the grid", () => {
       await page.keyboard.press("Enter")
     })
     await tasks.box((await tasks.rowKeys())[0]).click()
+    await expect(tasks.clearSelection).toBeVisible()
     const clear = (await tasks.clearSelection.boundingBox())!
     const filters = (await tasks.clearFilters.boundingBox())!
     expect(clear.x).toBeLessThan(filters.x)
@@ -630,7 +639,10 @@ test.describe("the line above the grid", () => {
 
     await tasks.clearSelection.click()
 
+    // the hook sends focus to the grid at once; the server then takes the buttons away
+    expect(await tasks.hasFocus()).toBe(true)
     await expect(tasks.selectedCount).toHaveText("")
+    await expect(tasks.clearSelection).toBeHidden()
     expect(await tasks.selectedKeys()).toEqual([])
     expect(await tasks.hasFocus()).toBe(true)
 
@@ -689,8 +701,8 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.selectedCount).toHaveText("")
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.bulk("archive")).toBeHidden()
-    // the buttons are gone: focus is in the grid
-    expect(await tasks.hasFocus()).toBe(true)
+    // the server took the buttons away: the hook sends focus on to the grid
+    await expect.poll(() => tasks.hasFocus()).toBe(true)
 
     expect(await pushed.count("bulk")).toBe(1)
     expect(await pushed.count("bulk_run")).toBe(1)
@@ -946,6 +958,7 @@ test.describe("a nested table", () => {
     await page.keyboard.press("Space")
     expect(await comments.selectedKeys()).toEqual([comment])
     expect(await tasks.selectedKeys()).toEqual([])
+    await expect(comments.clearSelection).toBeVisible()
 
     // its "Columns" button (hiding.spec.ts) stands between them and its grid
     await page.keyboard.press("Shift+Tab")
@@ -1028,6 +1041,7 @@ test.describe("in German", () => {
     await expect(tasks.clearSelection).toHaveText("Auswahl aufheben")
 
     await tasks.pageBox.click()
+    await expect(tasks.selectAll).toBeVisible()
     await expect(tasks.selectAll).toHaveText(`Alle ${SEED.tasks.acme} passenden auswählen`)
     await tasks.pageBox.click()
     await tasks.box(FIRST).click()

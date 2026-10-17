@@ -10,8 +10,9 @@ defmodule DemoWeb.E2E.MarkersLive do
   tag, it would fail here.
 
   The note of the first record shows two lines of its text (`data-lines`,
-  its paragraph `data-paragraph`) and has the whole text in the popover
-  `kit-whole`; under the first record is the line of its parts, which
+  its paragraph `data-paragraph`) and shows its whole text in place by the
+  button the hook puts into it (`data-whole`, its texts on the grid's
+  element); under the first record is the line of its parts, which
   opens and closes the nested table (`toggle`).
 
   The header of each grid is a row group too, as a kit may draw it: the
@@ -100,6 +101,8 @@ defmodule DemoWeb.E2E.MarkersLive do
         :where(#kit [role=row]) { display: table-row }
         :where(#kit [role=gridcell], #kit [role=columnheader]) { display: table-cell; padding: 2px 8px; border: 1px solid; position: relative }
         :where(#kit [data-lines] > [data-paragraph]) { margin: 0; max-width: 16rem; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden }
+        :where(#kit [role=gridcell]:has(> [data-whole][aria-expanded=true]) > [data-paragraph]) { display: block; -webkit-line-clamp: unset }
+        :where(#kit [data-whole])::before { content: attr(data-whole) }
         :where(#kit [data-resize]) { position: absolute; top: 0; bottom: 0; right: 0; width: 8px; cursor: col-resize }
         :where(#kit-grid) { overflow-x: auto }
       </style>
@@ -108,16 +111,13 @@ defmodule DemoWeb.E2E.MarkersLive do
           <button
             type="button"
             id="kit-columns-button"
-            aria-expanded="false"
-            aria-controls="kit-columns"
+            popovertarget="kit-columns"
             data-columns-button
             data-text="Columns"
             data-text-with="Columns ({details})"
-            data-text-hidden="{n} hidden"
-            data-text-filtered="{n} filtered"
-            data-text-sorted="{n} sorted"
-            data-say-hidden="{column} hidden"
-            data-say-shown="{column} shown"
+            data-text-hidden={Jason.encode!(for n <- 1..3, do: "#{n} hidden")}
+            data-text-filtered={Jason.encode!(for n <- 1..3, do: "#{n} filtered")}
+            data-text-sorted={Jason.encode!(for n <- 1..3, do: "#{n} sorted")}
           >
             <span id="kit-columns-text" phx-update="ignore">Columns</span>
           </button>
@@ -125,8 +125,7 @@ defmodule DemoWeb.E2E.MarkersLive do
             id="kit-columns"
             role="group"
             aria-label="Columns"
-            popover="manual"
-            phx-mounted={JS.ignore_attributes(["style"])}
+            popover="auto"
             data-columns-list
           >
             <label :for={{name, label} <- @columns} id={"kit-column-#{name}-entry"}>
@@ -135,7 +134,8 @@ defmodule DemoWeb.E2E.MarkersLive do
                 id={"kit-column-#{name}"}
                 checked
                 data-head={"kit-head-#{name}"}
-                data-label={label}
+                data-say-hidden={"#{label} hidden"}
+                data-say-shown={"#{label} shown"}
               />
               <span>{label}</span>
             </label>
@@ -150,6 +150,8 @@ defmodule DemoWeb.E2E.MarkersLive do
           data-table="kit"
           data-lead="1"
           data-select="multi"
+          data-show-whole="Show all"
+          data-show-less="Show less"
           tabindex="-1"
         >
           <div
@@ -341,14 +343,6 @@ defmodule DemoWeb.E2E.MarkersLive do
           >
             <textarea rows="1" aria-label="Name"></textarea>
           </template>
-        </div>
-        <div
-          id="kit-whole"
-          popover="manual"
-          phx-update="ignore"
-          aria-hidden="true"
-          data-whole
-        >
         </div>
         <%!-- an action panel in the page whose action asks before it
         runs; with `?missing=grid` it names a table whose grid is not on

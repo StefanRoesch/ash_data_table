@@ -146,7 +146,7 @@ One thing is allowed and does not make a module impure:
 | Sort, filters, arguments, page, page size | The registry entry; and in the URL when the top table is told so (today `url` attr, `lib/ash_table.ex:166`) | Events, commands, `handle_params` |
 | Nested tables' sort, filters, page | Their registry entries only, never the URL (today `lib/ash_table/live/page.ex:209-211`) | Events |
 | Rows | The stream, that is the browser. The server keeps the keys of the page and the failed edits (today `rows`, `failed`) | Reads, writes, live updates |
-| Selection | The registry entry holds the selected keys, as claims: read again before use. The browser mirrors them (RQ1). The entry gets the field in stage 2; it is used from stage 6. Today the hook keeps the keys (`assets/js/grid/selecting.js`) and the server only the mode (`selecting/2`, `:792`) | The person; commands |
+| Selection | The registry entry holds the selected keys, as claims: read again before use. The browser mirrors them in the rows (RQ1); the line above the grid (the count, its plural form, its buttons) and a picker's "Choose" are drawn by the server from them (owner, 2026-10-17: browser-side simplification). The entry gets the field in stage 2; it is used from stage 6 | The person; commands |
 | Column widths, hidden columns, scroll | The browser only | The person |
 | Open action panel (`AshPhoenix.Form`), open picker | The registry entry. The form stays in the entry; the drawing gets `Present`'s field map (F1) | Events |
 | Uploads in flight | The LiveView socket (`allow_upload`) | LiveView |
@@ -371,20 +371,20 @@ where a part needs a declaration fact), LV. Must not depend on 2b, 4. Pure
 | `AshDataTable.Parts.Grid` | The grid skeleton: scroll area, `table`, header row, filter row, body rows, cells, footer, editor templates; the root that carries the `.Grid` hook. Gets `Model.hideable/1` with the markup that uses it (F3, stage 1) | internal component; parts through the kit | `render/1` `4511-5204` (grid `4686-4981`, editors `5075-5094`, scrollbar `5100`); `columns` `10916`; `resizer` `10828`; `editor` `11382`; view helpers `11607-11991`; `hideable/1` `model.ex:1011` |
 | `Parts.Heading` | The line of the table's name; create; table actions | kit part `heading` | `4520-4548`; `create` `10626`; `table_actions` `10647` |
 | `Parts.Arguments` | The argument line | kit part `argument_line` | `4567-4605`; `argument` `9119` |
-| `Parts.Filter` | One column's filter control; values of "is any of" | kit part `filter` | filter form `4606`; `filter` `11013`; `choices` `11161` |
-| `Parts.Selection` | The selection line and bulk buttons | kit part `selection_line` | `4615-4674`; `selection` `10537` |
+| `Parts.Filter` | One column's filter control; "is any of" a button that opens the side panel with a box per value (owner, 2026-10-17: multiple values are edited in the side panel) | kit part `filter` | filter form `4606`; `filter` `11013`; `choices` `11161` |
+| `Parts.Selection` | The selection line and bulk buttons, drawn from what the server holds as selected | kit part `selection_line` | `4615-4674`; `selection` `10537` |
 | `Parts.Pagination` | Pages, "Rows per page" | kit part `pagination` | `pagination` `10702`; `pages` `10726` |
 | `Parts.Panel` | The action panel, fields, groups, unions, chosen records; draws from `Present`'s field map, never from an `AshPhoenix.Form` (F1) | kit parts `panel`, `field`, `control` | `panel` `9308`; `field` `9587`; `group` `10008`; `groups` `10077`; `union` `10175`; `members` `10277` |
 | `Parts.Picker` | The picker dialog around a registry entry | kit part `picker` | `picker` `9405` (`picker_reader` stays in the live layer: it builds who is asking — Caller / `Live.Core.Nesting`; stage 1 drift check F6) |
 | `Parts.Related` | Relationship lines, the empty target cell of each open nested table (the wiring draws the portals), the full-view link | kit part `line` | `lines` `8977` (stage 1 drift check F5); `related` `10472`; `4549`, `5051-5074` (`nested_reader` stays in the live layer, as `picker_reader`; F6) |
 | `Parts.Summary` | The footer summaries row | kit part `footer` | `summary` `10859`; `4982-5038` |
-| `Parts.Messages` | Status live region, notice of changes, fill, error, loading, confirm dialog, failure popover, whole-text popover | kit parts `message`, `confirm` | `4633-4651`, `4675-4685`, `5095-5099`, `5116-5153`, `5164-5193` |
-| `Parts.Editors` | Built-in editors: text counter, list editor | kit parts `cell`, `editor` | `count` `11427`; `list` `11488`; `list_item` `11538` |
+| `Parts.Messages` | Status live region, notice of changes, fill, error, loading, confirm dialog (and its place inside a modal panel or picker); no floating part (owner, 2026-10-17: a failed cell's message and a cell's whole text are shown in the cell) | kit parts `message`, `confirm` | `4633-4651`, `4675-4685`, `5095-5099`, `5116-5153`, `5164-5193` |
+| `Parts.Editors` | Built-in editors: text counter (under its control), the panel's field of a list (owner, 2026-10-17: a cell of an array is edited in the side panel) | kit parts `count`, `list` | `count` `11427`; `list` `11488`; `list_item` `11538` |
 | `AshDataTable.Attrs` | Attribute bundles for every element (S5) | public: a kit's parts call it; its moduledoc and docs are the contract (owner, 2026-10-17) | New, stage 7. Today written inline in HEEx |
 | `AshDataTable.Kit` | Behaviour and `use` macro, contract version, `class/2`; new parts get defaults (F13) | public | New, stage 7 |
 | `AshDataTable.Kit.Default` | The daisyUI kit | public module | New, stage 7, from today's markup |
 | `AshDataTable.Kit.Words` | What each part is given of its texts and values, one clause per part; passed as attributes where a part is drawn (stage 7 D23, drift fixes of 7c) | public | New, stage 7c |
-| `AshDataTable.Parts.Common` | The helpers several parts draw with: the root element, the failure popover, the event names, the places in the grid; in a cycle of two with `Attrs` | internal | New, stage 1 |
+| `AshDataTable.Parts.Common` | The helpers several parts draw with: the root element, a failure's message in its cell, the event names, the places in the grid; in a cycle of two with `Attrs` | internal | New, stage 1 |
 | `AshDataTable.Component`, `.Component.Column` (3c) | The column component contract | public (exists) | `lib/ash_table/component.ex`, `component/column.ex` |
 | `AshDataTable.Components.Badge`, `.Image`, `.Progress`, `.Slider` | Shipped column components | public | `lib/ash_table/components/*.ex` |
 | Hooks: `Grid`, `Panel`, `Picker`, `Pagination`, `Sender` (stage 7a D19); `assets/js/check.js` (the development check, D13) | Browser behaviour, on markers only (D-headless) | the event names and markers of S5, S6 | `5205-8956`; shipped per Q15, below |
@@ -422,15 +422,15 @@ Today's sections and their target files:
 | the widths of the columns (6689) | `grid/widths.js` |
 | hiding columns (6934) | `grid/hiding.js` |
 | scrolling sideways (7172) | `grid/scrolling.js` |
-| several values of a filter (7399) | `grid/choices.js` |
+| several values of a filter (7399) | gone (owner, 2026-10-17): the filter's button opens the side panel, a form of its own |
 | selecting (7497) | `grid/selecting.js` |
 | row actions (7783) | `grid/actions.js` |
 | editing (7843) | `grid/editing.js` |
-| the values of an array (8178) | `grid/arrays.js` |
+| the values of an array (8178) | `grid/saving.js` (the editor of a component and saving a cell); the list editor's rows are `panel.js`'s, as an array is edited in the side panel (owner, 2026-10-17) |
 | sensitive cells (8596) | `grid/sensitive.js` |
 | the dialog (8711) | `grid/dialog.js` |
-| the message of a failed cell (8732) | `grid/failure.js` |
-| the whole text of a cell (8760) | `grid/whole_text.js` |
+| the message of a failed cell (8732) | gone (owner, 2026-10-17): the message stands in its cell |
+| the whole text of a cell (8760) | `grid/whole_text.js` (shown in place in the cell, owner, 2026-10-17) |
 | `.Panel` (5272), `.Picker` (5465), `.Pagination` (5205) | `panel.js`, `picker.js`, `pagination.js` |
 | (new) | `transport/live_view.js`; `markers.js` (the names of S5 in one place: started in stage 1b with `GRID` and `HANDLE`, filled in stage 7); `grid/shared.js` (constants, `PLACE`, page-wide state `page`; it keeps the grid's sections free of circular imports). The "shared-state object" is the merged hook `this`, plus `page` for what is shared across tables (stage 1b drift check, findings 5–6) |
 

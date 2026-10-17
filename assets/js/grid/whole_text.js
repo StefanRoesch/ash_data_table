@@ -84,14 +84,15 @@ export default {
       if (!this.owns(cell) || offered.includes(cell)) continue
       if (button.getAttribute("aria-expanded") !== "true") button.remove()
     }
-    for (const cell of offered) if (!this.wholeOf(cell)) this.wholeButton(cell, false)
-    // expanded before a patch brought the cell again
+    // expanded before a patch brought the cell again: first, so that the
+    // cell is expanded again rather than offered
     for (const id of Array.from(this.expanded)) {
       const cell = document.getElementById(id)
       if (!cell || !this.owns(cell)) this.expanded.delete(id)
       else if (!this.wholeOf(cell) && this.cutIn(cell)) this.wholeButton(cell, true)
       else if (!this.wholeOf(cell)) this.expanded.delete(id)
     }
+    for (const cell of offered) if (!this.wholeOf(cell)) this.wholeButton(cell, false)
   },
 
   // Puts the button into a cell, saying whether the whole text shows.
@@ -99,16 +100,18 @@ export default {
     const button = document.createElement("button")
     button.type = "button"
     button.tabIndex = -1
-    button.setAttribute(ATTRIBUTE(WHOLE), "")
     button.setAttribute("aria-hidden", "true")
     cell.append(button)
     this.showWhole(cell, button, open)
     return button
   },
 
+  // What the button says is its marker's value, which the root's rules
+  // show (`content: attr(data-whole)`): no text of its own, so the cell's
+  // text stays its own to whoever reads it.
   showWhole(cell, button, open) {
     button.setAttribute("aria-expanded", String(open))
-    button.textContent = open ? this.el.dataset.showLess : this.el.dataset.showWhole
+    button.setAttribute(ATTRIBUTE(WHOLE), (open ? this.el.dataset.showLess : this.el.dataset.showWhole) || "")
     if (open) this.expanded.add(cell.id)
     else this.expanded.delete(cell.id)
   },

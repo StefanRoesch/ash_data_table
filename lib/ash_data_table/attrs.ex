@@ -992,7 +992,7 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The list editor of an array (`data-list`, which the part writes, as
+  The panel's field of an array, value by value (`data-list`, which the part writes, as
   `data-item`, `data-add` and `data-remove` in it): what the hook calls a
   value it adds and its button that takes it away, with `{n}` where the
   value's place goes: the `list` part's `texts.value_label` and

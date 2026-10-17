@@ -165,19 +165,21 @@ test.describe("the question in the page, asked from a panel over it", () => {
     await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
     await panel.locator('[data-field="place.city"] :is(input, textarea)').fill("Thun")
     const submit = page.locator('[id="kit-panel-submit"]')
-    const question = panel.locator('[id="kit-dialog-in"]')
+    // the place the server draws for it inside the panel
+    const question = panel.locator('[id="kit-dialog-in-panel"]')
+    await expect(question).toBeHidden()
     for (const answer of ["Escape", "cancel"]) {
       await submit.click()
       await expect(question).toBeVisible()
       await expect(question).toHaveAttribute("role", "region")
       await expect(question).toHaveAttribute("data-presentation", "inline")
-      await expect(question.locator('[id="kit-dialog-question-in"]')).toHaveText("Change the place?")
+      await expect(question.locator('[id="kit-dialog-question-in-panel"]')).toHaveText("Change the place?")
       await expect(question.locator("button[value='cancel']")).toBeFocused()
       if (answer === "Escape") {
         await expectNoAxeViolations(page)
         await page.keyboard.press("Escape")
       } else await question.locator("button[value='cancel']").click()
-      await expect(question).toHaveCount(0)
+      await expect(question).toBeHidden()
       // the panel stays open, and focus is back on its button
       await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
       await expect(submit).toBeFocused()
@@ -244,7 +246,7 @@ test.describe("the question in the page, asked from a panel over it, answered th
     await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
     await panel.locator('[data-field="place.city"] :is(input, textarea)').fill("Thun")
     await page.locator('[id="kit-panel-submit"]').click()
-    const copy = panel.locator('[id="kit-dialog-in"]')
+    const copy = panel.locator('[id="kit-dialog-in-panel"]')
     await expect(copy).toBeVisible()
     return { anchor, panel, copy }
   }
@@ -257,17 +259,75 @@ test.describe("the question in the page, asked from a panel over it, answered th
     await expect(cell(page, anchor, "place")).toBeFocused()
   })
 
-  test("a patch that takes the question away answers it as Cancel: nothing is saved", async ({ page, pushed }) => {
+  test("a patch of the panel leaves the question as it is, and the panel that goes while it asks answers it as Cancel: nothing is saved", async ({
+    page,
+    pushed,
+  }) => {
     const { anchor, panel, copy } = await asked(page)
     await pushed.clear()
-    // the server draws the panel again, which takes the question it does not know away
+    // the server draws the panel again; the question's place is the hook's
     await new Table(page, "kit", "/e2e/kit").forge("panel_validate", { panel: { place: { city: "Thun", zip: "3000" } } })
-    await expect(copy).toHaveCount(0)
-    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await expect.poll(() => pushed.count("panel_validate")).toBe(1)
+    await expect(copy).toBeVisible()
+    await expect(copy.locator('[id="kit-dialog-question-in-panel"]')).toHaveText("Change the place?")
     expect(await pushed.count("panel_submit")).toBe(0)
+    // the panel's own Cancel takes the panel, and the question in it, away
     await page.locator('[id="kit-panel-cancel"]').click()
     await expect(panel).toHaveCount(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
     await expect(cell(page, anchor, "place")).toContainText("Bern")
+    // the question of the page itself was not shown
+    await expect(page.locator('[id="kit-dialog"]')).toBeHidden()
+  })
+})
+
+test.describe("the question in the page, asked from a picker over it", () => {
+  async function asked(page: Page) {
+    const anchor = await opened(page, "?presentation=mixed")
+    const owner = cell(page, anchor, "owner")
+    await expect(owner).toContainText("Ann")
+    await owner.focus()
+    await page.keyboard.press("Enter")
+    const picker = page.locator('dialog[id="kit-picker"]')
+    await expect.poll(() => picker.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await expect.poll(() => focusIn(page, "kit-pick-owner-table")).toBe(true)
+    // the place the server draws for it inside the picker
+    const question = picker.locator('[id="kit-dialog-in-picker"]')
+    await expect(question).toBeHidden()
+    await picker.locator("[role=rowgroup]").filter({ hasText: "Bob" }).locator("[data-selector] input").click()
+    const choose = page.locator('[id="kit-picker-choose"]')
+    // the server draws Choose from what the picker's table selected
+    await expect(choose).not.toHaveAttribute("aria-disabled", "true")
+    await choose.click()
+    await expect(question).toBeVisible()
+    return { anchor, owner, picker, question }
+  }
+
+  test("is shown inside the picker, takes the focus, and Escape gives it up there", async ({ page, pushed }) => {
+    const { owner, picker, question } = await asked(page)
+    await expect(question).toHaveAttribute("role", "region")
+    await expect(question).toHaveAttribute("data-presentation", "inline")
+    await expect(question.locator('[id="kit-dialog-question-in-picker"]')).toHaveText("Change the owner?")
+    await expect(question.locator("button[value='cancel']")).toBeFocused()
+    await expectNoAxeViolations(page)
+    await pushed.clear()
+    await page.keyboard.press("Escape")
+    await expect(question).toBeHidden()
+    // the picker stays open, focus is in it, and nothing was chosen
+    await expect.poll(() => picker.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await expect.poll(() => focusIn(page, "kit-picker")).toBe(true)
+    expect(await pushed.count("picked")).toBe(0)
+    await expect(owner).toContainText("Ann")
+    // the question of the page itself was not shown
+    await expect(page.locator('[id="kit-dialog"]')).toBeHidden()
+  })
+
+  test("Confirm inside the picker chooses, and the picker goes", async ({ page }) => {
+    const { owner, picker, question } = await asked(page)
+    await question.locator("button[value='confirm']").click()
+    await expect(picker).toHaveCount(0)
+    await expect(owner).toContainText("Bob")
+    await expect(owner).toBeFocused()
   })
 })
 

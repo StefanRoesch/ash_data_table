@@ -134,19 +134,54 @@ test.describe("a grid drawn with other elements than a table's", () => {
       .toBe(Math.round((await cell(page, "b", "name").boundingBox())!.width))
   })
 
-  test("a cell that cuts its text off after its lines shows the whole text while it has the focus", async ({ page }) => {
+  test("a cell that cuts its text off after its lines offers its whole text in place while it has the focus", async ({ page }) => {
     const note = cell(page, "a", "note")
-    const whole = page.locator('[id="kit-whole"]')
+    // the button the hook puts into the cell (`data-whole`)
+    const whole = note.locator(":scope > [data-whole]")
     expect(await note.evaluate((node) => {
       const paragraph = node.querySelector(":scope > [data-paragraph]")!
       return paragraph.scrollHeight > paragraph.clientHeight
     })).toBe(true)
+    // the whole text is in the cell, for a screen reader, before any button
+    await expect(note.locator(":scope > [data-paragraph]")).toHaveText(/where it is kept$/)
+    await expect(whole).toHaveCount(0)
+
     await note.focus()
     await expect(whole).toBeVisible()
-    await expect(whole).toHaveText(/where it is kept$/)
-    await page.keyboard.press("Escape")
-    await expect(whole).toBeHidden()
+    await expect(whole).toHaveAttribute("data-whole", "Show all")
+    await expect(whole).toHaveAttribute("aria-expanded", "false")
+    await expect(whole).toHaveAttribute("aria-hidden", "true")
+    await expect(whole).toHaveAttribute("tabindex", "-1")
+
+    // Shift+Enter shows it all, and Escape cuts it off again; focus stays
+    await page.keyboard.press("Shift+Enter")
+    await expect(whole).toHaveAttribute("aria-expanded", "true")
+    await expect(whole).toHaveAttribute("data-whole", "Show less")
     await expect(note).toBeFocused()
+    await page.keyboard.press("Escape")
+    await expect(whole).toHaveAttribute("aria-expanded", "false")
+    await expect(whole).toHaveAttribute("data-whole", "Show all")
+    await expect(note).toBeFocused()
+
+    // the button does the same with the pointer, and an expanded cell
+    // keeps its button when focus moves on
+    await whole.click()
+    await expect(whole).toHaveAttribute("aria-expanded", "true")
+    await expect(note).toBeFocused()
+    await page.mouse.move(1, 1)
+    await page.keyboard.press("ArrowDown")
+    await expect(note).not.toBeFocused()
+    await expect(whole).toHaveAttribute("aria-expanded", "true")
+    // cut off again, the button goes once the cell has neither focus nor pointer
+    await whole.click()
+    await expect(whole).toHaveAttribute("aria-expanded", "false")
+    await page.mouse.move(1, 1)
+    await cell(page, "b", "name").focus()
+    await expect(whole).toHaveCount(0)
+
+    // a cell whose text is all shown gets no button
+    await cell(page, "b", "note").focus()
+    await expect(cell(page, "b", "note").locator(":scope > [data-whole]")).toHaveCount(0)
   })
 
   test("Enter on a line closes the nested table under it, and opens it again", async ({ page, pushed }) => {

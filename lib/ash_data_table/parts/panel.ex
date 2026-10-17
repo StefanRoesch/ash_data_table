@@ -593,8 +593,9 @@ defmodule AshDataTable.Parts.Panel do
   # A value that is not there has a button that adds it, and one that may
   # be left out a button that takes it away: no group is no value, and a
   # group is the value as its fields say it, empty fields included. The
-  # server renders it either way, and the panel's hook asks it to
-  # (`data-add-group`, `data-remove-group`: the way to the group, as JSON).
+  # server renders it either way, and the buttons ask it to with
+  # `phx-click` (`Attrs.add_group/3`, `Attrs.remove_group/3`: the way to
+  # the group).
   #
   # `held` is what the field holds, as its form sends it
   # (`AshDataTable.Act.sent/2`), nil for no value. `inside` says what the panel

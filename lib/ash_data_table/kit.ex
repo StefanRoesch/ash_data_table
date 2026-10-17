@@ -201,8 +201,10 @@ defmodule AshDataTable.Kit do
       `applied?`, `rejected?`, `target`: `role="gridcell"`, `aria-colindex`,
       `tabindex="-1"`, `data-filter` where the column filters; draws the
       column's `filter`.
-    * `filter` - one column's filter (`data-choices-button` and
-      `data-choices` for several values): `id`, `column`, `filter`, `form`,
+    * `filter` - one column's filter (for several values a button with
+      `Attrs.filter_values/4`, which opens the side panel, and the values
+      that apply as hidden inputs `filter[FIELD][in][]` of the filter
+      row's form): `id`, `column`, `filter`, `form`,
       `table`, `applied?`, `rejected?`, `target`.
     * `row` - a record's row: `id`, `dom_id`, `row` (`Present.Row`),
       `columns`, `lead`, `selecting`, `expandable?`, `editing?`, `acting?`,
@@ -255,9 +257,10 @@ defmodule AshDataTable.Kit do
       (`data-list`, `data-value-label`, `data-remove-label`, `data-item`,
       `data-add`, `data-remove`): `id`, `rest` (attributes for its
       element), `label`, `item`, `limits`, `counted`, `values`, `name`.
-    * `field` - a field of the panel (`data-field`, `data-add-group`,
-      `data-remove-group`, `data-unpick`, `data-clear-field`,
-      `data-invalid`): `id`, `input`, `name`, `value`, `errors`, `places`,
+    * `field` - a field of the panel (`data-field`; its buttons
+      `Attrs.add_group/3`, `Attrs.remove_group/3` (`data-remove-group`),
+      `Attrs.unpick/4`, `Attrs.clear_field/3`, which send their events
+      with `phx-click`; `data-invalid`): `id`, `input`, `name`, `value`, `errors`, `places`,
       `chosen`, `clear`, `upload`, `inside`, `target`.
     * `control` - a field's control: `id`, `input`, `name`, `value`,
       `secret?`, `invalid?`, `described`, `limits`.
@@ -352,7 +355,7 @@ defmodule AshDataTable.Kit do
 
   Besides these, a part is given plain values: `bulk` and `offered`
   (`AshDataTable.Model.Action`s), `lines` (by an argument's key, the values
-  of the list editor typed so far), `refused` (an argument's text the
+  of a list argument typed so far), `refused` (an argument's text the
   read action refused, with its messages), `selecting` (`:single`,
   `:multi` or nil), `summary` (by column `{:ok, value}` or
   `:unavailable`), `result` (a run's `summary` and `failures`, messages),

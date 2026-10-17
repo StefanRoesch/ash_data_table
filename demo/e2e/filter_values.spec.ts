@@ -6,8 +6,9 @@ import { Table } from "./support/table"
 import { params } from "./support/url"
 
 // The filters that take more than one value, at /tasks as the admin: "is
-// any of" for the state, which opens a list of boxes, and "between" for the
-// due date, which has two inputs. What is ticked or typed applies as a typed
+// any of" for the state, whose button opens the table's side panel with a
+// box per value, which filters on "Apply" and on nothing else; and
+// "between" for the due date, which has two inputs, and applies as a typed
 // filter does: on Enter, and when the control is left.
 
 /** The total the pagination shows: the "320" of "1–25 of 320". */
@@ -28,9 +29,17 @@ function several(tasks: Table, column: string) {
   const list = tasks.filterChoices(column)
   return {
     button: tasks.filterValue(column),
+    /** The panel's field: a box per value. */
     list,
     box: (label: string) => list.getByRole("checkbox", { name: label, exact: true }),
+    /** What is ticked in the panel. */
     ticked: () => list.locator("input:checked").evaluateAll((boxes) => boxes.map((box) => (box as HTMLInputElement).value)),
+    /** What applies: the inputs of the filter row's form, which are not shown. */
+    applied: () =>
+      tasks
+        .filterCell(column)
+        .locator(`input[type=hidden][name="filter[${column}][in][]"]`)
+        .evaluateAll((inputs) => inputs.map((input) => (input as HTMLInputElement).value)),
   }
 }
 
@@ -39,7 +48,7 @@ test.beforeEach(async ({ tasks }) => {
 })
 
 test.describe("is any of", () => {
-  test("by mouse: the list opens under its button, and what is ticked applies when it is left", async ({
+  test("by mouse: the button opens the side panel, and what is ticked applies on \"Apply\" alone", async ({
     page,
     tasks,
     pushed,
@@ -49,52 +58,62 @@ test.describe("is any of", () => {
     // the operator alone filters nothing, and brings the button
     await tasks.filterOperator("status").selectOption("is any of")
     await expect(state.button).toHaveText("Any")
-    await expect(state.button).toHaveAttribute("aria-expanded", "false")
-    await expect(state.list).toBeHidden()
+    await expect(state.button).toHaveAttribute("aria-haspopup", "dialog")
+    await expect(state.button).toHaveAccessibleName("Filter State: Any")
+    await expect(tasks.panel).toHaveCount(0)
     expect(params(page)).toEqual({})
 
     await state.button.click()
-    await expect(state.list).toBeVisible()
-    await expect(state.button).toHaveAttribute("aria-expanded", "true")
-    await expect(page.getByRole("group", { name: "Filter State" })).toHaveId("task-filter-status-values")
-    const button = (await state.button.boundingBox())!
-    const list = (await state.list.boundingBox())!
-    expect(list.y, "under the button").toBeGreaterThanOrEqual(button.y + button.height)
+    await expect(tasks.panel).toBeVisible()
+    await expect(page.getByRole("dialog", { name: "Filter State" })).toHaveId("task-panel")
+    await expect(tasks.panel.getByRole("group", { name: "State", exact: true })).toHaveId("task-panel-f-status")
+    await expect(state.list.locator("label")).toHaveText(["Backlog", "To do", "In progress", "In review", "Done", "Archived"])
+    await expect(tasks.panelSubmit).toHaveText("Apply")
+    expect(await state.ticked()).toEqual([])
 
     await pushed.clear()
     await state.list.getByText("To do", { exact: true }).click()
     await state.list.getByText("Done", { exact: true }).click()
     await expect(state.box("To do")).toBeChecked()
-    await expect(state.list, "ticking leaves the list open").toBeVisible()
-    expect(await pushed.all(), "ticking asks the server nothing").toEqual([])
+    await expect(state.box("Done")).toBeChecked()
+    await expect(tasks.panel, "ticking leaves the panel open").toBeVisible()
+    expect(await pushed.count("filter"), "ticking filters nothing").toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
     expect(params(page)).toEqual({})
+    expect(await state.applied()).toEqual([])
 
-    // a click anywhere else closes the list and applies
-    await tasks.reads(() => tasks.range.click())
-    await expect(state.list).toBeHidden()
-    await expect(state.button).toHaveAttribute("aria-expanded", "false")
+    // "Apply" filters, and the panel goes
+    await tasks.reads(() => tasks.panelSubmit.click())
+    await expect(tasks.panel).toHaveCount(0)
     await expect(state.button).toHaveText("2 selected")
+    await expect(state.button).toHaveAccessibleName("Filter State: 2 selected")
+    await expect(state.button).toHaveAttribute("title", "To do, Done")
     expect(all(page, STATES)).toEqual(["todo", "done"])
+    expect(await state.applied()).toEqual(["todo", "done"])
     for (const text of await tasks.columnTexts("status")) expect(["To do", "Done"]).toContain(text)
     await expect(tasks.filterClear("status")).toBeVisible()
 
-    // the button closes it as well; with nothing changed, nothing is read
+    // opened again, it has what applies ticked; Cancel filters nothing
     await state.button.click()
-    await expect(state.list).toBeVisible()
+    await expect(tasks.panel).toBeVisible()
+    expect(await state.ticked()).toEqual(["todo", "done"])
     await pushed.clear()
-    await state.button.click()
-    await expect(state.list).toBeHidden()
+    await state.box("Backlog").check()
+    await tasks.panelCancel.click()
+    await expect(tasks.panel).toHaveCount(0)
     expect(await pushed.count("filter")).toBe(0)
+    expect(await pushed.count("panel_submit")).toBe(0)
+    await expect(state.button).toHaveText("2 selected")
+    expect(all(page, STATES)).toEqual(["todo", "done"])
+    expect(await state.applied()).toEqual(["todo", "done"])
 
     // one value less, and the button names the one that is left
-    await state.button.click()
-    await state.box("To do").uncheck()
-    await tasks.reads(() => state.button.click())
+    await tasks.chooseValues("status", ["Done"])
     await expect(state.button).toHaveText("Done")
     expect(all(page, STATES)).toEqual(["done"])
   })
 
-  test("by keyboard: Enter opens the list and applies it, Escape gives up what was ticked", async ({
+  test("by keyboard: Enter opens the panel, \"Apply\" applies, Escape gives up what was ticked", async ({
     page,
     tasks,
   }) => {
@@ -112,58 +131,61 @@ test.describe("is any of", () => {
     await tasks.press("Tab")
     await expect(state.button).toBeFocused()
     await tasks.press("Enter")
-    await expect(state.list).toBeVisible()
-    await expect(state.box("Backlog"), "focus goes into the list").toBeFocused()
+    await expect(tasks.panel).toBeVisible()
+    await expect(state.box("Backlog"), "focus goes into the panel").toBeFocused()
 
-    await tasks.press("ArrowDown")
+    await tasks.press("Tab")
     await expect(state.box("To do")).toBeFocused()
-    await tasks.press("Space", "ArrowDown", "ArrowDown", "ArrowDown")
+    await tasks.press("Space", "Tab", "Tab", "Tab")
     await expect(state.box("Done")).toBeFocused()
     await tasks.press("Space")
     expect(await state.ticked()).toEqual(["todo", "done"])
     expect(params(page)).toEqual({})
 
+    // past the last box, Cancel and "Apply"
+    await tasks.press("Tab")
+    await expect(state.box("Archived")).toBeFocused()
+    await tasks.press("Tab")
+    await expect(tasks.panelCancel).toBeFocused()
+    await tasks.press("Tab")
+    await expect(tasks.panelSubmit).toBeFocused()
     await tasks.reads(() => tasks.press("Enter"))
-    await expect(state.list).toBeHidden()
-    await expect(state.button).toBeFocused()
+    await expect(tasks.panel).toHaveCount(0)
+    await expect(state.button, "focus is back on the button").toBeFocused()
     await expect(state.button).toHaveText("2 selected")
     expect(all(page, STATES)).toEqual(["todo", "done"])
     expect(await tasks.tabStops(), "the grid is still one tab stop").toHaveLength(1)
 
-    // Escape: the list closes, and is as it was
-    await tasks.press("ArrowDown")
+    // Escape: the panel goes, and nothing of what was ticked applies
+    await tasks.press("Enter")
+    await expect(tasks.panel).toBeVisible()
     await expect(state.box("Backlog")).toBeFocused()
     await tasks.press("Space")
     expect(await state.ticked()).toEqual(["backlog", "todo", "done"])
     await tasks.press("Escape")
-    await expect(state.list).toBeHidden()
+    await expect(tasks.panel).toHaveCount(0)
     await expect(state.button).toBeFocused()
-    expect(await state.ticked()).toEqual(["todo", "done"])
+    expect(await state.applied()).toEqual(["todo", "done"])
     expect(all(page, STATES)).toEqual(["todo", "done"])
+
+    // opened again, it is as it was
+    await tasks.press("Enter")
+    await expect(tasks.panel).toBeVisible()
+    expect(await state.ticked()).toEqual(["todo", "done"])
+    await tasks.press("Escape")
+    await expect(tasks.panel).toHaveCount(0)
+    await expect(state.button).toBeFocused()
 
     // and once more, back to the cell
     await tasks.press("Escape")
     await expect(tasks.filterCell("status")).toBeFocused()
-
-    // Tab from the list goes on through the filter's controls, which applies
-    await tasks.press("Enter", "Enter")
-    await expect(state.box("Backlog")).toBeFocused()
-    await tasks.press("Space")
-    for (let box = 0; box < 5; box++) await tasks.press("Tab")
-    await expect(state.box("Archived")).toBeFocused()
-    await tasks.reads(() => tasks.press("Tab"))
-    await expect(state.list).toBeHidden()
-    expect(all(page, STATES)).toEqual(["backlog", "todo", "done"])
+    // The old list applied what was ticked when Tab left it; the panel is a
+    // modal dialog, which focus does not leave, and applies on "Apply" alone.
   })
 
   test("is none of leaves the chosen values out", async ({ page, tasks }) => {
-    const state = several(tasks, "status")
-
     await tasks.filterOperator("status").selectOption("is none of")
-    await state.button.click()
-    await state.box("Done").check()
-    await state.box("Archived").check()
-    await tasks.reads(() => page.keyboard.press("Enter"))
+    await tasks.chooseValues("status", ["Done", "Archived"])
 
     expect(all(page, "task[f][status][none_of][]")).toEqual(["done", "archived"])
     for (const text of await tasks.columnTexts("status")) expect(["Done", "Archived"]).not.toContain(text)
@@ -257,16 +279,13 @@ test.describe("in the URL", () => {
     const state = several(tasks, "status")
 
     await tasks.filterOperator("status").selectOption("is any of")
-    await state.button.click()
-    await state.box("In review").check()
-    await state.box("To do").check()
-    await tasks.reads(() => page.keyboard.press("Enter"))
+    await tasks.chooseValues("status", ["In review", "To do"])
     await tasks.filterOperator("progress").selectOption("between")
     await expect(tasks.filterTo("progress")).toBeVisible()
     await tasks.filterValue("progress").fill("20")
     await tasks.reads(() => tasks.filterValue("progress").press("Enter"))
 
-    // the values in the order the column has them, whatever the order they were ticked in
+    // the values in the order the column has them
     expect(all(page, STATES)).toEqual(["todo", "in_review"])
     expect(params(page)["task[f][progress][between][from]"]).toBe("20")
     const rows = await tasks.rowKeys()
@@ -278,7 +297,12 @@ test.describe("in the URL", () => {
     expect(await total(tasks)).toBe(found)
     await expect(tasks.filterOperator("status")).toHaveValue("any_of")
     await expect(state.button).toHaveText("2 selected")
+    expect(await state.applied()).toEqual(["todo", "in_review"])
+    await state.button.click()
+    await expect(tasks.panel).toBeVisible()
     expect(await state.ticked()).toEqual(["todo", "in_review"])
+    await tasks.panelCancel.click()
+    await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.filterOperator("progress")).toHaveValue("between")
     await expect(tasks.filterValue("progress")).toHaveValue("20")
     await expect(tasks.filterTo("progress")).toHaveValue("")
@@ -293,14 +317,14 @@ test.describe("in the URL", () => {
     expect(await total(tasks)).toBe(SEED.tasks.acme)
     await expect(tasks.filterOperator("status")).toHaveValue("is")
     await expect(tasks.filterValue("status")).toHaveValue("")
-    await expect(state.list).toHaveCount(0)
+    expect(await state.applied()).toEqual([])
     await expect(tasks.filterOperator("progress")).toHaveValue("equals")
     await expect(tasks.filterTo("progress")).toHaveCount(0)
   })
 })
 
 test.describe("in a narrow column", () => {
-  test("the controls stay inside their cell, and the list is not cut off", async ({ tasks }) => {
+  test("the controls stay inside their cell, and the panel shows every value whole", async ({ tasks }) => {
     const state = several(tasks, "status")
     await tasks.filterOperator("status").selectOption("is any of")
     await expect(state.button).toBeVisible()
@@ -315,7 +339,7 @@ test.describe("in a narrow column", () => {
       expect(await tasks.width(column), column).toBeCloseTo(width - 40, 0)
       const cell = (await tasks.filterCell(column).boundingBox())!
       expect(cell.width, column).toBe(await tasks.width(column))
-      for (const control of await tasks.filterCell(column).locator("select, input:not([type=checkbox]), button").all()) {
+      for (const control of await tasks.filterCell(column).locator("select, input:not([type=checkbox], [type=hidden]), button").all()) {
         const box = (await control.boundingBox())!
         expect(box.x, column).toBeGreaterThanOrEqual(cell.x)
         expect(box.x + box.width, column).toBeLessThanOrEqual(cell.x + cell.width + 0.5)
@@ -329,19 +353,23 @@ test.describe("in a narrow column", () => {
     }
     await tasks.drag("status", 60)
 
-    // the list is as wide as its values need, whatever the column
+    // the values are in the side panel, as wide as it is, whatever the column
     await state.button.click()
-    await expect(state.list).toBeVisible()
-    const list = (await state.list.boundingBox())!
-    const last = (await state.list.getByText("In progress", { exact: true }).boundingBox())!
-    expect(last.x + last.width).toBeLessThanOrEqual(list.x + list.width)
-    expect(list.width).toBeGreaterThan(120)
+    await expect(tasks.panel).toBeVisible()
+    const panel = (await tasks.panel.boundingBox())!
+    for (const label of ["In progress", "In review"]) {
+      const text = (await state.list.getByText(label, { exact: true }).boundingBox())!
+      expect(text.x, label).toBeGreaterThanOrEqual(panel.x)
+      expect(text.x + text.width, label).toBeLessThanOrEqual(panel.x + panel.width)
+    }
+    await tasks.panelCancel.click()
+    await expect(tasks.panel).toHaveCount(0)
   })
 })
 
 for (const theme of ["light", "dark"] as const) {
   test.describe(`axe, in the ${theme} theme`, () => {
-    test("finds nothing with the list open and a range typed", async ({ page, tasks }) => {
+    test("finds nothing with the panel of values open and a range typed", async ({ page, tasks }) => {
       await page.addInitScript((theme) => localStorage.setItem("phx:theme", theme), theme)
       await tasks.open()
       await expect(page.locator("html")).toHaveAttribute("data-theme", theme)
@@ -353,8 +381,9 @@ for (const theme of ["light", "dark"] as const) {
       await tasks.reads(() => tasks.filterValue("progress").press("Enter"))
       await tasks.filterOperator("status").selectOption("is any of")
       await state.button.click()
+      await expect(tasks.panel).toBeVisible()
       await state.box("Done").check()
-      await expect(state.list).toBeVisible()
+      await expect(state.box("Done")).toBeChecked()
 
       await expectNoAxeViolations(page)
     })

@@ -74,9 +74,11 @@ test.describe("row actions and the action panel", () => {
         await expectNoAxeViolations(page)
       })
 
-      test("a cell whose action was refused, without focus: marked only", async ({ page, tasks }) => {
+      test("a cell whose action was refused, without focus: its message still showing in the cell", async ({ page, tasks }) => {
         await tasks.press("Escape", "ArrowDown")
-        await expect(tasks.failure(tasks.actionsCell(FIRST))).toBeHidden()
+        await expect(tasks.actionsCell(FIRST)).not.toBeFocused()
+        await expect(tasks.failure(tasks.actionsCell(FIRST))).toBeVisible()
+        await expect(tasks.actionsCell(FIRST)).toHaveAttribute("aria-invalid", "true")
         await expectNoAxeViolations(page)
       })
     })

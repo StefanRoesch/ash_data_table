@@ -61,14 +61,19 @@ test.describe("editing states", () => {
       await page.mouse.move(5, 5)
     })
 
-    test("with focus: its message showing", async ({ page, tasks }) => {
-      await expect(tasks.failure(tasks.cell(SECOND, "title"))).toBeVisible()
+    test("with focus: its message showing, in the cell", async ({ page, tasks }) => {
+      const title = tasks.cell(SECOND, "title")
+      await expect(tasks.failure(title)).toBeVisible()
+      await expect(title).toHaveAccessibleDescription(await tasks.failure(title).innerText())
       await expectNoAxeViolations(page)
     })
 
-    test("without focus: marked only", async ({ page, tasks }) => {
+    test("without focus: its message still showing in the cell", async ({ page, tasks }) => {
       await tasks.press("ArrowDown")
-      await expect(tasks.failure(tasks.cell(SECOND, "title"))).toBeHidden()
+      const title = tasks.cell(SECOND, "title")
+      await expect(title).not.toBeFocused()
+      await expect(tasks.failure(title)).toBeVisible()
+      await expect(title).toHaveAttribute("aria-invalid", "true")
       await expectNoAxeViolations(page)
     })
 

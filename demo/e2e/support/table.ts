@@ -204,7 +204,7 @@ export class Table {
     return this.byId(`${this.id}-columns-button`)
   }
 
-  /** The list it opens: a box for every column that can be hidden. */
+  /** The list it opens, the browser's popover: a box for every column that can be hidden. */
   get columnsList(): Locator {
     return this.byId(`${this.id}-columns`)
   }
@@ -237,9 +237,14 @@ export class Table {
       .evaluateAll((boxes, prefix) => boxes.map((box) => box.id.slice(prefix.length)), prefix)
   }
 
+  /** Whether the list of the columns is open: the browser's popover state. */
+  async columnsOpen(): Promise<boolean> {
+    return this.columnsList.evaluate((list) => list.matches(":popover-open"))
+  }
+
   /** Opens the list of the columns, if it is not open. */
   async openColumns(): Promise<void> {
-    if ((await this.columnsButton.getAttribute("aria-expanded")) !== "true") await this.columnsButton.click()
+    if (!(await this.columnsOpen())) await this.columnsButton.click()
     await expect(this.columnsList).toBeVisible()
   }
 
@@ -361,9 +366,31 @@ export class Table {
     return this.byId(`${this.id}-filter-${column}-to`)
   }
 
-  /** The list of boxes of a filter for several values, which `filterValue` opens. */
+  /**
+   * The field of the side panel that the button of a filter for several
+   * values (`filterValue`) opens: a box per value of the column.
+   */
   filterChoices(column: string): Locator {
-    return this.byId(`${this.id}-filter-${column}-values`)
+    return this.field(column)
+  }
+
+  /**
+   * Filters by several of a column's values with the pointer: the filter's
+   * button opens the side panel, the boxes of `labels` are ticked and the
+   * others not, and "Apply" filters. The operator ("is any of", "is none
+   * of") is chosen first.
+   */
+  async chooseValues(column: string, labels: string[]): Promise<void> {
+    await this.filterValue(column).click()
+    await expect(this.panel).toBeVisible()
+    const boxes = this.filterChoices(column).locator("input[type=checkbox]")
+    for (const box of await boxes.all()) {
+      const label = (await box.locator("xpath=..").innerText()).trim()
+      if (labels.includes(label)) await box.check()
+      else await box.uncheck()
+    }
+    await this.reads(() => this.panelSubmit.click())
+    await expect(this.panel).toHaveCount(0)
   }
 
   /** The menu of a filter's operators. */
@@ -488,9 +515,21 @@ export class Table {
     return this.byId(`${this.id}-dialog`)
   }
 
-  /** The message of a cell whose save failed: what its `aria-describedby` names. */
+  /**
+   * The message of a cell whose save failed: what its `aria-describedby`
+   * names, in the cell under what it shows.
+   */
   failure(cell: Locator): Locator {
-    return cell.locator("[popover]")
+    return cell.locator(":scope > [id$='-error']")
+  }
+
+  /**
+   * The button the hook puts into a cell that cuts some of its text off,
+   * while the cell has the pointer or the focus: it shows all of the text
+   * in place (`aria-expanded`), and cuts it off again.
+   */
+  whole(cell: Locator): Locator {
+    return cell.locator(":scope > [data-whole]")
   }
 
   // ---- the line of the table's name, and creating ---------------------------
@@ -679,7 +718,10 @@ export class Table {
     return this.byId(`${this.id}-picker-none`)
   }
 
-  /** "Choose": takes the selected row. */
+  /**
+   * "Choose": takes the selected row, as the server holds it; says
+   * `aria-disabled` while there is none.
+   */
   get pickerChoose(): Locator {
     return this.byId(`${this.id}-picker-choose`)
   }
