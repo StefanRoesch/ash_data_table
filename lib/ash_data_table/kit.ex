@@ -101,8 +101,9 @@ defmodule AshDataTable.Kit do
       `ID-selection-controls`, `ID-select-all`, `ID-clear-selection`, a
       `data-bulk` button per action), the notice of changes, "Clear
       filters", and the `columns` list: `id`, `bulk`, `choose`, `model`,
-      `notice?`, `page`, `row_count`, `running`, `selecting`, `state`,
-      `nested?`, `myself`.
+      `notice?`, `page`, `row_count`, `running` (the `Model.Action` running
+      on the selection now, nil for none; never who started it),
+      `selecting`, `state`, `nested?`, `myself`.
     * `columns` - "Columns" (`ID-columns-button` with `data-say-hidden`,
       `data-say-shown`; `ID-columns`, `data-columns-list`, a box per column
       with `data-head`, `data-label`, `data-filtered`, `data-sorted`;
@@ -121,7 +122,7 @@ defmodule AshDataTable.Kit do
       `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
       `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
       `creates`, `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
-      `busy?`, `running`, `row_count`, `full_view`, `summarised?`,
+      `busy?`, `running` (as `selection_line`'s), `row_count`, `full_view`, `summarised?`,
       `summary`, `summing?`, `time_zone`, `nested?`, `myself`. It draws a
       `header_cell` and a `filter_cell` per column, a `row` or a `detail`
       per item, and an `editor` per template.

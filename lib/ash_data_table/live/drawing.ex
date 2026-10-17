@@ -193,7 +193,7 @@ defmodule AshDataTable.Live.Drawing do
         notice?={@entry.notice?}
         page={@entry.page}
         row_count={@entry.row_count}
-        running={@entry.running}
+        running={@entry.running && @entry.running.action}
         selecting={@entry.selecting}
         state={@entry.state}
         texts={Words.texts(:selection_line, %{page: @entry.page})}
@@ -236,7 +236,7 @@ defmodule AshDataTable.Live.Drawing do
         pages?={Parts.Pagination.pages?(@entry.page, @entry.model)}
         row_count={@entry.row_count}
         rows={@rows}
-        running={@entry.running}
+        running={@entry.running && @entry.running.action}
         selecting={@entry.selecting}
         state={@entry.state}
         summarised?={@entry.summarised?}
