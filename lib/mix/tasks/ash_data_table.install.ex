@@ -419,7 +419,8 @@ else
           mix igniter.install ash_data_table
 
       or add `{:igniter, "~> 0.6", only: [:dev, :test]}` to your dependencies. \
-      The manual steps are in the README: https://hexdocs.pm/ash_data_table
+      The manual steps are in the guide "Installation":
+      https://hexdocs.pm/ash_data_table/installation.html
 
       For more information, see: https://hexdocs.pm/igniter
       """)
