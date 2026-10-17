@@ -406,7 +406,7 @@ defmodule AshDataTable do
       before the record chosen for a reference cell is saved;
     * `:panel` - every action panel: of a row action, a table action, a
       create, an action on the selection and a map cell, with its files
-      (the page draws `live_file_input/1` of the upload `request/1`
+      (the page draws `live_file_input/1` of the upload `requests/1`
       names), its groups of fields and unions (`add_group_request/4`,
       `remove_group_request/4`) and the records chosen for a field (their
       keys in the params);
@@ -813,7 +813,7 @@ defmodule AshDataTable do
   @doc """
   What the page's form of request `ref` holds now, `params` as the panel's
   form sends them (by field name, as typed): the action says what it makes
-  of it, as `request/1` then shows. Nothing runs.
+  of it, as `requests/1` then shows. Nothing runs.
   """
   @spec validate_request(Phoenix.LiveView.Socket.t(), atom, String.t(), map) ::
           Phoenix.LiveView.Socket.t()
