@@ -95,5 +95,10 @@ defmodule AshDataTable.MessagesTest do
   end
 
   defp fill(text, bindings),
-    do: Enum.reduce(bindings, text, &String.replace(&2, "%{#{elem(&1, 0)}}", to_string(elem(&1, 1))))
+    do:
+      Enum.reduce(
+        bindings,
+        text,
+        &String.replace(&2, "%{#{elem(&1, 0)}}", to_string(elem(&1, 1)))
+      )
 end

@@ -106,6 +106,34 @@ defmodule AshDataTable.Test.Sensitive do
       validate match(:token, ~r/^[a-z0-9-]*$/) do
         message "must be lower case"
       end
+
+      # a message that names what was typed (`%{value}`): of the token,
+      # sensitive, and of the name, which is not
+      validate fn changeset, _context ->
+        token = Ash.Changeset.get_attribute(changeset, :token)
+        name = Ash.Changeset.get_attribute(changeset, :name)
+
+        cond do
+          is_binary(token) and String.starts_with?(token, "taken-") ->
+            {:error,
+             Ash.Error.Changes.InvalidAttribute.exception(
+               field: :token,
+               message: "%{value} is taken",
+               vars: [value: token]
+             )}
+
+          name == "Taken" ->
+            {:error,
+             Ash.Error.Changes.InvalidAttribute.exception(
+               field: :name,
+               message: "%{value} is taken",
+               vars: [value: name]
+             )}
+
+          true ->
+            :ok
+        end
+      end
     end
 
     # an action that takes the token, and not without a value
@@ -125,9 +153,21 @@ defmodule AshDataTable.Test.Sensitive do
       argument :note, :string
 
       validate fn changeset, _context ->
-        if Ash.Changeset.get_argument(changeset, :passphrase) == "wrong",
-          do: {:error, field: :passphrase, message: "is not the passphrase"},
-          else: :ok
+        case Ash.Changeset.get_argument(changeset, :passphrase) do
+          "wrong" ->
+            {:error, field: :passphrase, message: "is not the passphrase"}
+
+          "wrong-" <> _rest = typed ->
+            {:error,
+             Ash.Error.Changes.InvalidArgument.exception(
+               field: :passphrase,
+               message: "%{value} is not the passphrase",
+               vars: [value: typed]
+             )}
+
+          _other ->
+            :ok
+        end
       end
     end
 

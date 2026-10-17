@@ -20,6 +20,7 @@ defmodule AshDataTable.Errors do
   # drawing side makes the words, in the LiveView's process.
 
   alias AshDataTable.Model
+  alias AshDataTable.Present
 
   @typedoc """
   What the data layer says to a person, as a term: a text of the table's own
@@ -49,18 +50,41 @@ defmodule AshDataTable.Errors do
   message names, and `count`, which a translation's plural form is chosen
   by. What else Ash gives (`field`, `index`, a custom validation's own,
   which may hold what was typed) goes no further.
+
+  The message of a `sensitive?` field keeps none of its values: each is
+  what is shown in place of a sensitive value (`AshDataTable.Present.mask/0`),
+  as a variable may hold what was typed (`%{value}`). Only a whole number
+  `count` stays, which chooses the plural form.
   """
-  @spec ash({String.t(), keyword | map}) :: message
-  def ash({message, vars}) when is_binary(message) do
+  @spec ash({String.t(), keyword | map}, boolean) :: message
+  def ash({message, vars}, sensitive? \\ false) when is_binary(message) do
     named = for [_, name] <- Regex.scan(~r/%\{(\w+)\}/, message), into: MapSet.new(), do: name
 
     kept =
       for {name, value} <- List.wrap(if(is_map(vars), do: Map.to_list(vars), else: vars)),
           is_atom(name) or is_binary(name),
           to_string(name) in named or to_string(name) == "count",
-          do: {name, value}
+          do: {name, if(sensitive? and not count?(name, value), do: Present.mask(), else: value)}
 
     {:ash, message, kept}
+  end
+
+  defp count?(name, value), do: to_string(name) == "count" and is_integer(value)
+
+  # Whether an error about `field` is of a sensitive one: a column's or an
+  # attribute's that says so, and one the table does not know (an argument
+  # it shows no input for), which it cannot tell apart.
+  defp sensitive?(%Model{columns: columns, resource: resource}, field) do
+    case Enum.find(columns, &(&1.name == field)) do
+      %{sensitive?: sensitive?} ->
+        sensitive?
+
+      nil ->
+        case is_atom(field) && Ash.Resource.Info.field(resource, field) do
+          %{} = known -> AshDataTable.Resource.Exposing.sensitive?(known)
+          _unknown -> true
+        end
+    end
   end
 
   @doc """
@@ -70,7 +94,7 @@ defmodule AshDataTable.Errors do
   """
   @spec at_field(Model.t(), atom | nil, term, {String.t(), keyword}) :: message
   def at_field(%Model{} = model, cell, field, {_message, _vars} = error) do
-    message = ash(error)
+    message = ash(error, sensitive?(model, field))
 
     case Enum.find(model.columns, &(&1.name == field)) do
       # one value of an array is named with its column wherever it is shown
@@ -98,11 +122,12 @@ defmodule AshDataTable.Errors do
   def at_value(%{label: label} = field, {_message, _vars} = error) do
     case place(field, error) do
       nil ->
-        ash(error)
+        ash(error, Map.get(field, :sensitive?, false))
 
       place ->
         {:text, :error_on_field,
-         field: {:text, :value_position, column: label, position: place + 1}, message: ash(error)}
+         field: {:text, :value_position, column: label, position: place + 1},
+         message: ash(error, Map.get(field, :sensitive?, false))}
     end
   end
 

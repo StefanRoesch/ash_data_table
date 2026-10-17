@@ -362,6 +362,20 @@ defmodule AshDataTable.SensitiveTest do
       assert record.token == "tok-123"
     end
 
+    test "a message that names what was typed keeps nothing of it, where the field is sensitive",
+         %{key: key} do
+      assert {:error, _record, message, []} =
+               Edit.save(model(), column(:token), key, "taken-secret", actor: @admin)
+
+      assert message == {:ash, "%{value} is taken", [value: AshDataTable.Present.mask()]}
+      refute inspect(message) =~ "secret"
+      assert AshDataTable.Text.say(message) == "•••••• is taken"
+
+      # a field that is not sensitive keeps it
+      assert {:error, _record, {:ash, "%{value} is taken", [value: "Taken"]}, []} =
+               Edit.save(model(), column(:name), key, "Taken", actor: @admin)
+    end
+
     test "is refused where the field is hidden from the person on the record", %{key: key} do
       assert {:error, _record, {:text, :edit_not_allowed, []}, []} =
                Edit.save(model(), column(:pin), key, "1", actor: @member)
@@ -488,6 +502,23 @@ defmodule AshDataTable.SensitiveTest do
       # the sensitive arguments of `rotate` are not among what it offers
       rotate = action(:rotate)
       refute :passphrase in Act.clearable(rotate, rotate.inputs, record)
+    end
+
+    test "a message at a sensitive input that names what was typed keeps nothing of it", %{
+      key: key
+    } do
+      rotate = action(:rotate)
+
+      assert {:error, form} =
+               run(rotate, key, %{"passphrase" => "wrong-SECRET", "note" => "n"}, [])
+
+      errors = Act.errors(form, model(), rotate.inputs)
+
+      assert errors[:passphrase] == [
+               {:ash, "%{value} is not the passphrase", [value: AshDataTable.Present.mask()]}
+             ]
+
+      refute inspect(errors) =~ "SECRET"
     end
 
     test "gives the action the attribute without a value, when it was asked for", %{key: key} do
