@@ -233,11 +233,20 @@ defmodule DemoWeb.Tables.UnionTableTest do
 
       assert %{control: "group", value: false} = field(html, "content._union_value.lid")
 
-      assert attribute(html, "[id='gift-panel-f-content-f-lid-add']", "data-add-group") ==
-               [~s(["content","_union_value","lid"])]
+      assert [push] = attribute(html, "[id='gift-panel-f-content-f-lid-add']", "phx-click")
+
+      assert [
+               [
+                 "push",
+                 %{"event" => "ash_data_table:gift:panel_add", "value" => %{"path" => path}}
+               ]
+             ] =
+               Jason.decode!(push)
+
+      assert path == ["content", "_union_value", "lid"]
 
       html = add_group(view, "gift", ["content", "_union_value", "lid"])
-      assert_reply view, %{focus: "gift-panel-f-content-f-lid"}
+      assert_push_event view, "ash_data_table:focus", %{cell: "gift-panel-f-content-f-lid"}
 
       assert %{control: "group", value: true} = field(html, "content._union_value.lid")
 
@@ -248,7 +257,7 @@ defmodule DemoWeb.Tables.UnionTableTest do
       assert %{value: "Crate"} = field(html, "content._union_value.label")
 
       html = remove_group(view, "gift", ["content", "_union_value", "lid"])
-      assert_reply view, %{focus: "gift-panel-f-content-f-lid-add"}
+      assert_push_event view, "ash_data_table:focus", %{cell: "gift-panel-f-content-f-lid-add"}
       assert %{value: false} = field(html, "content._union_value.lid")
     end
 
@@ -291,9 +300,9 @@ defmodule DemoWeb.Tables.UnionTableTest do
             ["content", "_union_value", "label"]
           ] do
         add_group(view, "gift", path)
-        assert_reply view, %{}
+        refute_push_event view, "ash_data_table:focus", %{}
         remove_group(view, "gift", path)
-        assert_reply view, %{}
+        refute_push_event view, "ash_data_table:focus", %{}
       end
 
       assert names(render(view)) == names(html)

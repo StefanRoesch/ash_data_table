@@ -111,17 +111,17 @@ defmodule DemoWeb.Tables.LongTextTableTest do
     end
   end
 
-  describe "what the whole text of a cell is shown in" do
-    test "is rendered empty, for the hook to fill from the cell: no text of any cell is in it, and no sensitive value in the page",
+  describe "the whole text of a cell" do
+    test "is the cell's own, shown in place by the hook: nothing of it is rendered for it, and no sensitive value is in the page",
          %{conn: conn, essay: essay} do
       {:ok, _view, html} = live(as(conn, :admin), "/support/essays")
 
-      assert [{"div", attributes, []}] = html |> query("#essay-whole") |> LazyHTML.to_tree()
-      assert {"popover", "manual"} in attributes
-      assert {"aria-hidden", "true"} in attributes
-      assert {"phx-update", "ignore"} in attributes
-      # empty to the last character: not even a line break, which it would show
-      assert html =~ ~r/<div [^>]*\bid="essay-whole"[^>]*><\/div>/
+      # nothing floats: no element is rendered for it, and the grid says
+      # what the button the hook puts into a cell says
+      assert attribute(html, "#essay-whole", "id") == []
+      assert attribute(html, "#essay-grid", "data-show-whole") == ["Show all"]
+      assert attribute(html, "#essay-grid", "data-show-less") == ["Show less"]
+      assert attribute(html, "#essay-table [data-whole]", "id") == []
 
       # the sensitive value is nowhere; no cell has a `title`
       refute html =~ @token
@@ -146,7 +146,6 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       assert shown_lines(html, closed.id, "draft") == ["2"]
       # the draft of another essay is theirs to read
       assert inner(html, essay.id, "draft") == [{"p", [{"data-paragraph", ""}], [@draft]}]
-      assert [{"div", _attributes, []}] = html |> query("#essay-whole") |> LazyHTML.to_tree()
     end
   end
 
@@ -186,7 +185,7 @@ defmodule DemoWeb.Tables.LongTextTableTest do
       html = render_async(view)
       nested = nested("task_board", task.id, "comments")
       assert attribute(html, cell(nested, comment.id, "body"), "data-lines") == ["3"]
-      assert attribute(html, "[id='#{nested}-whole']", "popover") == ["manual"]
+      assert attribute(html, "[id='#{nested}-grid']", "data-show-whole") == ["Show all"]
     end
   end
 end

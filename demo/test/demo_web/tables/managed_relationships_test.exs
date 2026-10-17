@@ -280,10 +280,12 @@ defmodule DemoWeb.Tables.ManagedRelationshipsTest do
       html = argue(view, @skills, a: %{"retired_too" => "true"})
       assert text(html, "##{@skills}-range") == "1–2 of 6"
 
-      # as the picker's hook sends it: the rows, and the line's form
+      # as the picker's hook sends it, the rows selected in its table: the
+      # line's form
+      select(view, @skills, [skills["Alpha"].id, skills["Old"].id])
+
       html =
         forge(view, "gig", "picked", %{
-          "rows" => [skills["Alpha"].id, skills["Old"].id],
           "arguments" =>
             "arguments%5Ba%5D%5Bretired_too%5D=false&arguments%5Ba%5D%5Bretired_too%5D=true"
         })
@@ -421,6 +423,8 @@ defmodule DemoWeb.Tables.ManagedRelationshipsTest do
 
       act(view, "gig", gig.id, "focus")
       pick_input(view, "gig", "skill")
+      # on the picker's page
+      filter(view, "gig-pick-skill", "name", v: "Gamma")
       html = picked(view, "gig", skills["Gamma"].id)
       assert %{chosen: "Gamma"} = field(html, "skill")
 

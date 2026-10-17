@@ -2,12 +2,14 @@
 // action panel is, modal or inline as it says, and a modal one on
 // top of the panel when a field of the panel opened it. Focus moves into its table, to
 // the row of the record that is chosen now when that is on the
-// page. The person selects a row there, which is the table's own
-// hook's to know and to say (`ash_data_table:selection`), and "Choose"
-// sends it; Enter on a row and a double click choose that row at
-// once (`ash_data_table:choose`). Escape and Cancel ask the server to
-// take the picker away; when it is gone, focus goes back to the
-// cell, or to the button of the panel, that opened it.
+// page. The person selects a row there, which the table's own hook
+// tells the server (`select`), and "Choose" sends `picked`: the
+// server takes what is selected; Enter on a row and a double click
+// choose that row at once (`ash_data_table:choose`). "Choose" says
+// whether there is a row to take as the server draws it. Escape and
+// Cancel ask the server to take the picker away; when it is gone,
+// focus goes back to the cell, or to the button of the panel, that
+// opened it.
 import {cellsOf} from "./grid/shared.js"
 import {ARGUMENTS, CANCEL, GRID, GRIDCELL, HEADER, NONE, OF, TAKE} from "./markers.js"
 import {opened} from "./panel.js"
@@ -22,20 +24,17 @@ export default {
     const active = document.activeElement
     this.opener = active && active !== document.body ? active : null
     this.openerId = this.opener && this.opener.id
-    // the rows that are selected in the picker's table: one at
-    // most, unless several records are chosen (`data-several`)
-    this.rows = []
-    this.several = dialog.dataset.several !== undefined
     this.busy = false
     opened(dialog, () => this.cancel())
     dialog.addEventListener("click", e => {
       if (!e.target.closest) return
       if (e.target.closest(CANCEL)) this.cancel()
-      else if (e.target.closest(NONE)) this.choose(null)
-      else if (e.target.closest(TAKE)) this.chooseSelected()
+      else if (e.target.closest(NONE)) this.choose(true)
+      // the server knows what is selected, and takes nothing where nothing is
+      else if (e.target.closest(TAKE)) this.choose(false)
     })
-    dialog.addEventListener("ash_data_table:selection", e => this.heard(e.detail))
-    dialog.addEventListener("ash_data_table:choose", e => { this.heard(e.detail); this.chooseSelected() })
+    // after the table's hook has told the server of the row it selected
+    dialog.addEventListener("ash_data_table:choose", () => this.choose(false))
     // once the table's own hook is there
     setTimeout(() => this.enter())
   },
@@ -52,38 +51,19 @@ export default {
   enter() {
     const table = this.table()
     if (!table || !this.el.isConnected) return
-    this.heard(table.selected())
     const current = table.rows().find(row => row.getAttribute("aria-selected") === "true")
     const cells = current ? cellsOf(current) : []
     const cell = current ? cells[Math.min(table.lead(), cells.length - 1)] : table.cellAt(table.pos.r, table.pos.c)
     if (cell) cell.focus()
   },
 
-  // What is selected in the table. "Choose" is for a selected row;
-  // where several records are chosen it takes whatever is
-  // selected, no row among it.
-  heard(detail) {
-    this.rows = detail && detail.rows ? detail.rows : []
-    const button = this.el.querySelector(TAKE)
-    if (!button || this.several) return
-    const none = this.rows.length === 0
-    // its look follows
-    button.setAttribute("aria-disabled", String(none))
-  },
-
-  chooseSelected() {
-    if (this.several) this.choose(this.rows)
-    else if (this.rows.length > 0) this.choose(this.rows[0])
-  },
-
-  // Sends the choice: a row as the table's hook names it, or null
-  // for no record; where several records are chosen, the list of
-  // the rows. The server reads that record as the person, and
-  // answers with the question of a column that has one when the
-  // choice would change the row; Confirm sends it again. What
-  // comes of it is the server's to show: it takes the picker away,
-  // or says in it why nothing was chosen.
-  choose(row, confirmed) {
+  // Sends the choice: what is selected in the picker's table, which
+  // the server holds, or no record (`none`). The server reads that
+  // record as the person, and answers with the question of a column
+  // that has one when the choice would change the row; Confirm sends
+  // it again. What comes of it is the server's to show: it takes the
+  // picker away, or says in it why nothing was chosen.
+  choose(none, confirmed) {
     if (this.busy) return
     this.busy = true
     const cell = this.cell()
@@ -93,8 +73,7 @@ export default {
     const line = this.el.querySelector(`form${ARGUMENTS}`)
     // @ts-expect-error: a FormData is what URLSearchParams takes; TypeScript's DOM types say otherwise
     const held = line ? new URLSearchParams(new FormData(line)).toString() : null
-    const payload = this.several ? {rows: row, arguments: held} : {row, confirmed: !!confirmed, arguments: held}
-    this.transport.push("picked", payload).then(reply => {
+    this.transport.push("picked", {none, confirmed: !!confirmed, arguments: held}).then(reply => {
       this.busy = false
       // the column's question is the host's to ask (controlled mode): the
       // cell waits, busy, until it is answered; nothing in it changed, so
@@ -106,7 +85,7 @@ export default {
       if (cell) cell.removeAttribute("aria-busy")
       if (reply && reply.ask && this.grid) {
         // Cancel, and Escape: the browser puts focus back in the picker
-        this.grid.ask(reply.ask, false, this.el).then(yes => { if (yes === true && this.el.isConnected) this.choose(row, true) })
+        this.grid.ask(reply.ask, false, this.el).then(yes => { if (yes === true && this.el.isConnected) this.choose(none, true) })
         return
       }
       // the row's record is gone: there is no row to send, so the cell is marked here
@@ -125,6 +104,8 @@ export default {
   // Once the patch is done, and only while focus is nowhere, as the
   // action panel does.
   destroyed() {
+    // a question it asked in it is answered as Cancel
+    if (this.grid) this.grid.goneWith(this.el)
     const failed = this.failed
     setTimeout(() => {
       const active = document.activeElement

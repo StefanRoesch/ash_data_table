@@ -140,11 +140,12 @@ defmodule DemoWeb.Tables.PickerKeysTest do
             ["DE", "nine"],
             "DE-1"
           ] do
-        html =
-          forge(view, "stop", "picked", %{"row" => row, "confirmed" => true})
+        # selected in the picker's table by hand: no row of it, not taken
+        forge(view, chooser_table(view, "stop"), "select", %{"rows" => [row]})
+        html = forge(view, "stop", "picked", %{"row" => row, "confirmed" => true})
+        assert_reply view, %{ok: false}
 
-        assert picker(html, "stop").error == "This record is no longer available.",
-               inspect(row)
+        assert picker(html, "stop").error == nil, inspect(row)
 
         refute html =~ "Closed"
       end
@@ -214,11 +215,13 @@ defmodule DemoWeb.Tables.PickerKeysTest do
       pick(view, "stop", stop.id, "bay")
 
       # bay three is taken: no record of the relationship, though anybody may read it
+      # selected in the picker's table by hand: no row of it, not taken
       for row <- ["3", 3, "three", "99"] do
-        html =
-          forge(view, "stop", "picked", %{"row" => row, "confirmed" => true})
+        forge(view, chooser_table(view, "stop"), "select", %{"rows" => [row]})
+        html = forge(view, "stop", "picked", %{"row" => row, "confirmed" => true})
+        assert_reply view, %{ok: false}
 
-        assert picker(html, "stop").error == "This record is no longer available."
+        assert picker(html, "stop").error == nil
       end
 
       assert stored!(stop).bay_number == 1
@@ -295,7 +298,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
 
       html = picked(view, "stop", "2")
       assert_reply view, %{ok: false}
-      assert picker(html, "stop").error == "This record is no longer available."
+      assert picker(html, "stop").error == nil
       assert stored!(stop).bay_number == 1
     end
 
@@ -419,7 +422,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
       html = picked(view, "stop", south.id)
       assert_reply view, %{ok: false}
 
-      assert picker(html, "stop").error == "This record is no longer available."
+      assert picker(html, "stop").error == nil
       assert stored!(stop).dock_id == nil
     end
 
@@ -438,7 +441,7 @@ defmodule DemoWeb.Tables.PickerKeysTest do
       # a hand-made choice in the panel's picker puts nothing into the field
       pick_input(view, "stop", "dock_id")
       html = picked(view, "stop", south.id)
-      assert picker(html, "stop").error == "This record is no longer available."
+      assert picker(html, "stop").error == nil
       assert %{value: "", chosen: nil} = field(html, "dock_id")
 
       cancel_picker(view, "stop")

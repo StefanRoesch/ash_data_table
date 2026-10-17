@@ -262,7 +262,38 @@ defmodule AshDataTable.Present do
   file fields, by name: the texts shown at each.
   """
   @spec panel(map, map) :: Panel.t()
-  def panel(panel, upload_errors \\ %{}) do
+  def panel(panel, upload_errors \\ %{})
+
+  # The panel of a filter for several values: one field, a box per value,
+  # ticked as what is chosen; no action, no question, no errors.
+  def panel(%{kind: :filter, inputs: [input]} = panel, _upload_errors) do
+    %Panel{
+      title: panel.title,
+      kind: :filter,
+      question: nil,
+      submit: panel.submit,
+      method: "post",
+      destructive?: false,
+      errors: nil,
+      fields: [
+        %Field{
+          name: input.name,
+          path: [Atom.to_string(input.name)],
+          form_name: "panel[#{input.name}]",
+          input: input,
+          value: panel.values
+        }
+      ],
+      inside: %{
+        errors: %{},
+        touched: MapSet.new(),
+        submitted?: false,
+        time_zone: panel.time_zone
+      }
+    }
+  end
+
+  def panel(panel, upload_errors) do
     form = panel.form
 
     %Panel{

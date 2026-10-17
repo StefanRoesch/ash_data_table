@@ -76,8 +76,6 @@ defmodule AshDataTable.Kit.Default do
   @impl true
   defdelegate failure(assigns), to: Parts.Common
   @impl true
-  defdelegate whole_text(assigns), to: Parts.Messages
-  @impl true
   defdelegate message(assigns), to: Parts.Messages
   @impl true
   defdelegate pagination(assigns), to: Parts.Pagination
@@ -104,10 +102,6 @@ defmodule AshDataTable.Kit.Default do
   def class(:status, _state), do: "sr-only"
   def class(:grid, %{nested?: true}), do: "overflow-x-auto outline-none overscroll-x-contain"
   def class(:grid, %{nested?: false}), do: "overflow-x-auto outline-none"
-
-  def class(:whole_text, _state),
-    do:
-      "inset-auto m-0 max-h-60 max-w-md overflow-y-auto rounded border border-base-content/40 bg-base-100 px-2 py-1 text-sm break-words whitespace-pre-line text-base-content shadow"
 
   # Styled here and not with daisyUI's `modal`: that one fades in, and a
   # dialog that is not visible yet when it opens cannot take the focus. Its

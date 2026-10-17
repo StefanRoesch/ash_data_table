@@ -154,15 +154,17 @@ defmodule AshDataTable.Kit do
       `summary`, `summing?`, `time_zone`, `nested?`, `myself`. It draws a
       `header_cell` and a `filter_cell` per column, a `row` or a `detail`
       per item, and an `editor` per template.
-    * `whole_text` - the popover `ID-whole` (`data-whole`): `id`.
-    * `confirm` - the question `ID-dialog` (`Attrs.confirm/2`,
+    * `confirm` - the question `ID-dialog` (`Attrs.confirm/3`,
       `data-presentation`): a `<dialog>` when it is modal, an element with
       `role=region` when it is inline (hidden until the hook asks), with
       `ID-dialog-question` and the buttons `value="cancel"` (the safe
       answer, which has the focus) and `value="confirm"`: `id`, `model`,
-      `bulk`, `presentation`. Inline, and asked from a panel or a picker
-      that is modal (or from what is drawn inside one), the hook shows a
-      copy of it inside that panel or picker.
+      `bulk`, `presentation`, `place`. Inline, the table draws it once
+      more inside a panel or picker that is modal (`place`: `:panel` or
+      `:picker`, nil for the table's own; `Attrs.confirm/3`, its ids ending
+      in `Attrs.asked_in/1`, the question `ID-dialog-question-in-panel`),
+      in its `inner_block`; a question asked from that panel or picker (or
+      from what is drawn inside one) is shown there.
     * `panel` - the action panel (`Attrs.panel/5`, `data-presentation`,
       `data-question`, `data-ask`): a `<dialog>` when it is modal, an
       element with `role=region` when it is inline; its form
@@ -170,11 +172,15 @@ defmodule AshDataTable.Kit do
       `ID-panel-submit`: `id`, `panel` (`Present.Panel`), `files`,
       `presentation`, `target`, and `inner_block`, what opens inside it (the
       picker a field opened, where the panel is modal and the picker
-      inline), drawn after the form.
+      inline; the question's copy, where the panel is modal and the
+      question inline), drawn after the form.
     * `picker` - the picker (`Attrs.picker/5`, `data-presentation`,
       `data-several`), as the panel, with `data-cancel`, `data-none`,
-      `data-take`: `id`, `picker` (`Present.Picker`), `presentation`,
-      `target`; the picker's table is its `inner_block`.
+      `data-take` (`Attrs.take/3`): `id`, `picker` (`Present.Picker`),
+      `presentation`, `target`, `takes?` (a row of its table is selected:
+      "Choose" can be used); the picker's table is its `inner_block`, with the
+      question's copy after it where the picker is modal and the question
+      inline.
     * `message` - `kind` (`:error`, `:loading`, `:fill`, `:empty`), `text`,
       `id`, `nested?`; the element `ID-KIND`.
     * `pagination` - `ID-pagination` with `data-table`, the buttons
@@ -244,7 +250,7 @@ defmodule AshDataTable.Kit do
       reference in the picker): one control, `data-control` where there
       are more: `id`, `column`.
     * `count` - the counter of a text (`data-count`, `data-max`): `id`,
-      `counted`, `value`, `floats?`, `class`.
+      `counted`, `value`, `class`.
     * `list` - the field of an array in the panel, value by value
       (`data-list`, `data-value-label`, `data-remove-label`, `data-item`,
       `data-add`, `data-remove`): `id`, `rest` (attributes for its
@@ -255,8 +261,8 @@ defmodule AshDataTable.Kit do
       `chosen`, `clear`, `upload`, `inside`, `target`.
     * `control` - a field's control: `id`, `input`, `name`, `value`,
       `secret?`, `invalid?`, `described`, `limits`.
-    * `failure` - the message of a failed cell: a popover with `id`,
-      `message`.
+    * `failure` - the message of a failed cell or row, drawn in the cell
+      after what it shows (the row grows to it): `id`, `message`.
 
   ## Texts and values
 
@@ -305,7 +311,8 @@ defmodule AshDataTable.Kit do
       of `columns`), `column_hidden`, `column_shown` and `flags` (one per
       column; a flag nil for none);
     * `status` - `announcement`, `summary` and `failures` of a run's result;
-    * `grid` - `select_page`, `select_row`, `related_records`, `actions`;
+    * `grid` - `select_page`, `select_row`, `related_records`, `actions`,
+      `show_whole`, `show_less` (for `Attrs.grid/6`);
     * `row` - `select_row`, `related_records`;
     * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
       `show_value`, `hide_value`; forbidden, and of a union:
@@ -619,7 +626,6 @@ defmodule AshDataTable.Kit do
     :picker,
     :confirm,
     :failure,
-    :whole_text,
     :message,
     :pagination
   ]
@@ -657,14 +663,13 @@ defmodule AshDataTable.Kit do
   @callback picker(assigns :: map) :: Phoenix.LiveView.Rendered.t()
   @callback confirm(assigns :: map) :: Phoenix.LiveView.Rendered.t()
   @callback failure(assigns :: map) :: Phoenix.LiveView.Rendered.t()
-  @callback whole_text(assigns :: map) :: Phoenix.LiveView.Rendered.t()
   @callback message(assigns :: map) :: Phoenix.LiveView.Rendered.t()
   @callback pagination(assigns :: map) :: Phoenix.LiveView.Rendered.t()
 
   @doc """
   The class of a part drawn once per table (`:root`, `:heading`,
   `:related`, `:argument_line`, `:selection_line`, `:status`, `:grid`,
-  `:whole_text`, `:confirm`, `:panel`, `:picker`, `:pagination`,
+  `:confirm`, `:panel`, `:picker`, `:pagination`,
   `:message`), and of the element LiveView moves a nested table in
   (`:portal`, the `class` of `Phoenix.Component.portal/1`'s wrapper;
   `display: contents` in `Kit.Default`), or nil. The two elements inside

@@ -52,6 +52,9 @@ defmodule AshDataTable.Messages do
     # the two inputs of a range: what stands before each, and its name
     range_from: {[], dgettext_noop("ash_data_table", "from")},
     range_to: {[], dgettext_noop("ash_data_table", "to")},
+    # the button of the side panel of a filter for several values, which
+    # filters by what is ticked
+    apply: {[], dgettext_noop("ash_data_table", "Apply")},
     # what the button of a filter for several values says of more than one
     values_chosen:
       {[:count], dngettext_noop("ash_data_table", "1 selected", "%{count} selected")},
@@ -95,6 +98,10 @@ defmodule AshDataTable.Messages do
       {[:record, :relationship], dgettext_noop("ash_data_table", "%{record}: %{relationship}")},
     # the control that takes the limit away
     show_all_records: {[], dgettext_noop("ash_data_table", "Show all records")},
+    # On a cell that cuts off some of its text: the button that shows all of
+    # it in place, and the one that cuts it off again.
+    show_whole: {[], dgettext_noop("ash_data_table", "Show all")},
+    show_less: {[], dgettext_noop("ash_data_table", "Show less")},
     # the header of the column that holds the row actions
     actions: {[], dgettext_noop("ash_data_table", "Actions")},
     # the create button, and the heading of its panel: "New task"

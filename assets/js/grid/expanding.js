@@ -75,6 +75,12 @@ export default {
       return
     }
     if (e.key !== "Shift") this.selection.range = null
+    // Shift+Enter on a cell that cuts its text off shows all of it,
+    // and cuts it off again
+    if (e.key === "Enter" && e.shiftKey && this.toggleWhole(cell)) {
+      e.preventDefault()
+      return
+    }
     // Shift+Enter on a sensitive cell shows its value, and hides
     // it again; Enter alone is the cell's editor, as everywhere
     if (e.key === "Enter" && e.shiftKey && this.secretOf(cell)) {
@@ -138,6 +144,7 @@ export default {
       case "Escape":
         // first of all, a value that is shown is hidden again
         if (this.revealed && this.revealed.cell === cell) this.hide()
+        else if (this.lessWhole(cell)) break
         else if (cell.hasAttribute("aria-invalid")) this.discard(cell)
         else if (this.holder()) this.holder().focus()
         else handled = false

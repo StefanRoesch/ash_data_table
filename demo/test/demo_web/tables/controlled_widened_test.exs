@@ -169,9 +169,10 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
          %{view: view, tenant: tenant, key: key} do
       event(view, "pick", %{"row" => key, "column" => "owner"})
 
-      event(view, "picked", %{"row" => "Bob Ray", "confirmed" => false, "arguments" => nil},
-        from: :picker
-      )
+      # the row selected in the picker's table, which its hook tells it
+      Phoenix.LiveViewTest.render_async(view)
+      AshDataTable.Test.send_event(view, "kit-pick-owner", "select", %{"rows" => [["Bob Ray"]]})
+      event(view, "picked", %{"confirmed" => false, "arguments" => nil}, from: :picker)
 
       assert_reply view, %{held: true}
       {ref, :confirm} = requested()
@@ -187,12 +188,14 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
          %{view: view, tenant: tenant, key: key} do
       event(view, "pick", %{"row" => key, "column" => "owner"})
 
-      event(view, "picked", %{"row" => "Bob Ray", "confirmed" => false, "arguments" => nil},
-        from: :picker
-      )
+      # the row selected in the picker's table, which its hook tells it
+      Phoenix.LiveViewTest.render_async(view)
+      AshDataTable.Test.send_event(view, "kit-pick-owner", "select", %{"rows" => [["Bob Ray"]]})
+      event(view, "picked", %{"confirmed" => false, "arguments" => nil}, from: :picker)
 
       {ref, :confirm} = requested()
-      assert %{column: :owner, value: "Bob Ray", question: "Change the owner?"} = request(view)
+      # the row as the picker's table names it: the values of its key
+      assert %{column: :owner, value: ["Bob Ray"], question: "Change the owner?"} = request(view)
 
       answer(view, &AshDataTable.confirm_request(&1, :table, ref))
       assert_received {:asked, %AshDataTable.Request{column: :owner}}
@@ -353,6 +356,33 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       assert_received {:asked, %AshDataTable.Request{column: :place}}
       assert record(tenant, key).place == %{city: "Thun", zip: "3600"}
       assert request(view) == nil
+    end
+
+    @tag controlled: [:panel]
+    test "a filter's of several values is the host's: no action, a box per value, and what is sent filters",
+         %{view: view} do
+      event(view, "filter", %{"filter" => %{"tier" => %{"o" => "any_of"}}})
+      html = event(view, "filter_values", %{"column" => "tier", "operator" => "any_of"})
+      {ref, :panel} = requested()
+      refute html =~ ~s(id="kit-panel")
+
+      assert %{
+               action: nil,
+               column: :tier,
+               question: nil,
+               fields: [%{name: :tier, editor: :choices, value: [], values: [_ | _]}]
+             } = request(view)
+
+      answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"tier" => ["", "low"]}))
+      assert request(view) == nil
+
+      html = Phoenix.LiveViewTest.render_async(view)
+
+      # the filter that applies, in the filter row's form
+      assert html
+             |> AshDataTable.Test.page()
+             |> LazyHTML.query("[id='kit-filter-tier'] input[type=hidden]")
+             |> LazyHTML.attribute("value") == ["low"]
     end
 
     @tag controlled: [:panel]

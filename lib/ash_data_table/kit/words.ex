@@ -221,7 +221,9 @@ defmodule AshDataTable.Kit.Words do
       select_page: t(:select_page),
       select_row: t(:select_row),
       related_records: t(:related_records),
-      actions: t(:actions)
+      actions: t(:actions),
+      show_whole: t(:show_whole),
+      show_less: t(:show_less)
     ]
   end
 

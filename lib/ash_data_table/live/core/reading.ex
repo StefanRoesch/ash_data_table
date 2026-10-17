@@ -15,6 +15,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
+  alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -684,6 +685,45 @@ defmodule AshDataTable.Live.Core.Reading do
     {:noreply, socket |> Core.put(rejected: rejected, pending: pending) |> Url.refilter(filtered)}
   end
 
+  # Sent by the button of a filter for several of a column's values ("is
+  # any of", "is none of"): the side panel opens with a box per value of the
+  # column, ticked as the filter applies, as a form of its own; nothing is
+  # filtered until it is sent (`filtered/2`). The column and the operator
+  # are claims: one of the column's operators, which takes several values.
+  def on({:filter_values, name, operator}, socket) do
+    %{model: model, state: state} = Core.table(socket).entry
+
+    with %{} = column <-
+           Enum.find(model.columns, &(Atom.to_string(&1.name) == name and &1.operators != [])),
+         %{} = takes <- column.takes,
+         op when not is_nil(op) <- Enum.find(column.operators, &(Atom.to_string(&1) == operator)),
+         :many <- Map.get(takes, op) do
+      chosen =
+        case state.filters[column.name] do
+          {^op, values} when is_list(values) -> Enum.map(values, &to_string/1)
+          _none -> []
+        end
+
+      panel =
+        Panel.panel(socket, fn _input -> nil end, %{
+          kind: :filter,
+          action: nil,
+          key: nil,
+          column: column.name,
+          operator: op,
+          form: nil,
+          inputs: [Model.filter_input(column)],
+          values: chosen,
+          title: {:text, :filter, column: column.label},
+          submit: {:text, :apply, []}
+        })
+
+      {:noreply, Core.put(socket, panel: panel)}
+    else
+      _none -> {:noreply, socket}
+    end
+  end
+
   def on({:clear_filter, name}, socket) do
     %{state: state, pending: pending} = Core.table(socket).entry
     cleared = State.clear_filter(state, name)
@@ -718,6 +758,40 @@ defmodule AshDataTable.Live.Core.Reading do
   def on({:page_size, size}, socket) do
     %{state: state, model: model} = Core.table(socket).entry
     {:noreply, Url.go(socket, State.resize(state, model, size))}
+  end
+
+  @doc """
+  The side panel of a filter for several values was sent: the column is
+  filtered by the values that were ticked, with the panel's operator, and
+  the panel goes. The other filters stay as they are. A value that is none
+  of the column's is no filter (`AshDataTable.State.filter_column/4`).
+  """
+  def filtered(socket, typed) do
+    %{panel: panel, state: state, model: model, pending: pending} = Core.table(socket).entry
+    name = Atom.to_string(panel.column)
+
+    values =
+      case typed do
+        %{^name => [_own | values]} -> Enum.filter(values, &is_binary/1)
+        _none -> []
+      end
+
+    entry = %{"o" => Atom.to_string(panel.operator), "in" => values}
+    filtered = State.filter_column(state, model, name, entry)
+
+    # the filter row shows the operator still, with no value ticked
+    pending = %{
+      controls:
+        pending.controls
+        |> Map.delete(panel.column)
+        |> Map.merge(State.pending(model, %{name => entry})),
+      among: [state.filters, filtered.filters]
+    }
+
+    {:noreply,
+     socket
+     |> Core.put(panel: nil, pending: pending)
+     |> Url.refilter(filtered)}
   end
 
   defp target(%{page: %{previous: %State{} = state}}, "previous"), do: state

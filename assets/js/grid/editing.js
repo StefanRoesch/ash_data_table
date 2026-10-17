@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {CLEAR, COUNT, EXPANDER, GRIDCELL, ROWGROUP} from "../markers.js"
+import {CLEAR, EXPANDER, GRIDCELL, ROWGROUP} from "../markers.js"
 import {CONTROL_IN, is} from "./shared.js"
 
 export default {
@@ -38,7 +38,7 @@ export default {
     // put into its cell, or kept of it
     this.hide()
     // and the cell's whole text is not shown beside its editor
-    this.quitWhole()
+    this.quitWhole(cell)
     const template = this.editorOf(cell)
     const type = template.dataset.editor
     // a boolean has no edit mode: Enter and F2 toggle it, typing does nothing
@@ -136,12 +136,10 @@ export default {
       if (root !== input) root.addEventListener("mousedown", e => { if (e.target !== input) e.preventDefault() })
       // typing replaces the text; the character itself is typed by the browser
       if (key !== null) { input.value = ""; handled = false }
-      ed.count = root.querySelector(`${COUNT}[popover]`)
       this.recountIn(root)
       this.fit(input)
       input.focus()
       if (key === null) input.select()
-      this.placeCount()
     } else if (type === "number") {
       input.focus()
       if (key === null) input.select()

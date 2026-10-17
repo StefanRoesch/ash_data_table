@@ -183,7 +183,7 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
 
       # the last one too: focus is sent to the field's "Choose"
       html = unpick(view, "labels", urgent.id)
-      assert_reply view, %{focus: "task-panel-f-labels-choose"}
+      assert_push_event view, "ash_data_table:focus", %{cell: "task-panel-f-labels-choose"}
       assert %{value: [], chosen: []} = field(html)
     end
 
@@ -193,19 +193,27 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
       [first, second] = field(html).value
 
       unpick(view, "labels", first)
-      assert_reply view, %{focus: "task-panel-f-labels-r-0"}
+
+      assert_push_event view, "ash_data_table:focus", %{
+        table: "task",
+        cell: "task-panel-f-labels-r-0"
+      }
 
       unpick(view, "labels", second)
-      assert_reply view, %{focus: "task-panel-f-labels-choose"}
+
+      assert_push_event view, "ash_data_table:focus", %{
+        table: "task",
+        cell: "task-panel-f-labels-choose"
+      }
     end
 
-    test "answers nothing for a key the field does not hold, and for another field",
+    test "changes nothing for a key the field does not hold, and for another field",
          %{view: view, task: task, docs: docs} do
       before = field(act(view, task.id, "set_labels"))
 
       for {input, key} <- [{"labels", docs.id}, {"labels", "nothing"}, {"title", docs.id}] do
         html = unpick(view, input, key)
-        assert_reply view, %{}
+        refute_push_event view, "ash_data_table:focus", %{}
         assert field(html) == before
       end
     end
@@ -339,9 +347,10 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
         assert field(html) == before
       end
 
-      # anything that is no list of rows
-      html =
-        forge(view, "task", "picked", %{"rows" => "everything", "row" => docs.id})
+      # what the event names is nothing: the rows selected in the picker's
+      # table are what is chosen, read again as the person
+      select(view, chooser_table(view), [abroad.id])
+      html = forge(view, "task", "picked", %{"rows" => [docs.id], "row" => docs.id})
 
       assert_reply view, %{ok: false}
       assert %{error: "This record is no longer available."} = picker(html)

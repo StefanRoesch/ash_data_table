@@ -332,8 +332,22 @@ defmodule AshDataTable.KitCase do
   defp drive(_kit, view, :filtered, _key) do
     sorted = event(view, "sort", %{"column" => "size"})
     chosen = event(view, "filter", %{"filter" => %{"tier" => %{"o" => "any_of"}}})
-    event(view, "filter", %{"filter" => %{"tier" => %{"o" => "any_of", "in" => ["low"]}}})
-    [{sorted, {:way, :filtered}}, {chosen, {:way, :filtered}}, {async(view), :filtered}]
+    opened = event(view, "filter_values", %{"column" => "tier", "operator" => "any_of"})
+
+    AshDataTable.Test.send_form(
+      view,
+      "[id='kit-panel-form']",
+      :submit,
+      %{"panel" => %{"tier" => ["", "low"]}},
+      check: false
+    )
+
+    [
+      {sorted, {:way, :filtered}},
+      {chosen, {:way, :filtered}},
+      {opened, :filter_panel},
+      {async(view), :filtered}
+    ]
   end
 
   defp drive(_kit, view, :loading, key) do
@@ -530,7 +544,11 @@ defmodule AshDataTable.KitCase do
         need(page, "[id='kit-arguments'] [data-argument='near']", "the argument near") ++
         need(page, "[id='kit-do-greet'][data-table-action='greet']", "the table action") ++
         need(page, "[id='kit-create']", "the create button") ++
-        need(page, "[id='kit-whole'][data-whole][popover]", "the whole-text popover") ++
+        need(
+          page,
+          "[id='kit-grid'][data-show-whole][data-show-less]",
+          "what the button says that shows a cell's whole text"
+        ) ++
         need(page, "[id='kit-status'][role=status]", "the live region") ++
         need(page, "[id='kit-dialog'] [id='kit-dialog-question']", "where it asks") ++
         need(page, "[id='kit-dialog'] button[value='cancel']", "its Cancel, the safe answer") ++
@@ -736,8 +754,16 @@ defmodule AshDataTable.KitCase do
 
   defp special(page, :filtered, _key, _presentation),
     do:
-      need(page, "[id='kit-filter-tier'] [data-choices-button]", "the button of its values") ++
-        need(page, "[id='kit-filter-tier'] [data-choices]", "the list of its values") ++
+      need(
+        page,
+        "[id='kit-filter-tier'] [id='kit-filter-tier-value'][phx-click][phx-value-column='tier'][phx-value-operator='any_of']",
+        "the button that opens the panel of its values"
+      ) ++
+        need(
+          page,
+          "[id='kit-filter-tier'] input[type=hidden][name='filter[tier][in][]'][value='low'][form='kit-filters']",
+          "the value that applies, in the filter row's form"
+        ) ++
         need(page, "[id='kit-columns'] input[data-filtered]", "the column that filters") ++
         need(page, "[id='kit-columns'] input[data-sorted]", "the column that sorts")
 
@@ -783,7 +809,7 @@ defmodule AshDataTable.KitCase do
       "[id='#{cell}'][aria-invalid][aria-describedby='#{cell}-error'][data-value][data-saved]",
       "the failed cell, with what was typed and what is saved"
     ) ++
-      need(page, "[id='#{cell}'] [id='#{cell}-error'][popover]", "its message")
+      need(page, "[id='#{cell}'] [id='#{cell}-error']", "its message, in the cell")
   end
 
   defp special(page, :secret_failed, key, _presentation) do
@@ -794,7 +820,7 @@ defmodule AshDataTable.KitCase do
       "[id='#{cell}'][aria-invalid][aria-describedby='#{cell}-error']",
       "the failed cell"
     ) ++
-      need(page, "[id='#{cell}'] [id='#{cell}-error'][popover]", "its message")
+      need(page, "[id='#{cell}'] [id='#{cell}-error']", "its message, in the cell")
   end
 
   defp special(page, :panel, _key, presentation),
@@ -806,7 +832,11 @@ defmodule AshDataTable.KitCase do
     do:
       panel(page, presentation) ++
         need(page, "[id='kit-panel'] [data-field='secret']", "the sensitive field") ++
-        need(page, "[id='kit-panel'] [data-clear-field='secret']", "its button that empties it") ++
+        need(
+          page,
+          "[id='kit-panel'] button[phx-click='ash_data_table:kit:panel_clear'][phx-value-input='secret']",
+          "its button that empties it"
+        ) ++
         need(
           page,
           "[id='kit-panel'] [data-field='tags'] [id$='-count-2'][data-count]",
@@ -818,12 +848,27 @@ defmodule AshDataTable.KitCase do
       panel(page, presentation) ++
         need(page, "[id='kit-panel'] [data-field='secret']", "the sensitive field") ++
         need(page, "[id='kit-panel'] [data-field='tags'] [data-list]", "the list of tags") ++
-        need(page, "[id='kit-panel'] [data-add-group]", "the button that adds a stop")
+        need(
+          page,
+          "[id='kit-panel'] button[id$='-add'][phx-click*='panel_add']",
+          "the button that adds a stop"
+        )
 
   defp special(page, :create_failed, _key, presentation),
     do:
       panel(page, presentation) ++
         need(page, "[id='kit-panel'] [data-invalid]", "the places of the values refused")
+
+  # the panel of a filter for several values, over the filter row: a box
+  # per value, as a form of its own
+  defp special(page, :filter_panel, _key, presentation),
+    do:
+      panel(page, presentation) ++
+        need(
+          page,
+          "[id='kit-panel'] [data-field='tier'] input[type=checkbox][name='panel[tier][]']",
+          "a box per value of the filter"
+        )
 
   defp special(page, :list_panel, _key, presentation),
     do:
@@ -845,14 +890,22 @@ defmodule AshDataTable.KitCase do
   defp special(page, :groups_panel, _key, presentation),
     do:
       panel(page, presentation) ++
-        need(page, "[id='kit-panel'] [data-add-group]", "the button that adds a stop") ++
+        need(
+          page,
+          "[id='kit-panel'] button[id$='-add'][phx-click*='panel_add']",
+          "the button that adds a stop"
+        ) ++
         need(page, "[id='kit-panel'] [data-remove-group]", "the button that takes one away")
 
   defp special(page, :staff, _key, presentation),
     do:
       panel(page, presentation) ++
         need(page, "[id='kit-panel'] [data-field='helpers']", "the field of the helpers") ++
-        need(page, "[id='kit-panel'] [data-unpick]", "the button that takes a helper out")
+        need(
+          page,
+          "[id='kit-panel'] button[phx-click='ash_data_table:kit:panel_unpick'][phx-value-input='helpers'][phx-value-key]",
+          "the button that takes a helper out"
+        )
 
   defp special(page, :staff_picker, _key, presentation) do
     picker = picker(page, presentation)
@@ -928,7 +981,8 @@ defmodule AshDataTable.KitCase do
       opened(page, "kit-panel", Keyword.fetch!(@presentations, presentation)[:panel]) ++
         need(page, "[id='kit-panel'] form[id='kit-panel-form']", "the panel's form") ++
         need(page, "[id='kit-panel'] [data-cancel]", "its Cancel") ++
-        need(page, "[id='kit-panel'] [id='kit-panel-submit'][type=submit]", "its submit")
+        need(page, "[id='kit-panel'] [id='kit-panel-submit'][type=submit]", "its submit") ++
+        asked_in(page, "kit-panel", presentation, :panel)
 
   defp picker(page, presentation),
     do:
@@ -939,7 +993,41 @@ defmodule AshDataTable.KitCase do
           page,
           "[id='kit-picker'] [id^='kit-pick-'][id$='-grid'][data-ash-data-table]",
           "its table"
+        ) ++
+        asked_in(page, "kit-picker", presentation, :picker)
+
+  # The question once more inside what opens over the page, where it is
+  # asked in the page: hidden, with the ids of its place, and left alone by
+  # patches.
+  defp asked_in(page, id, presentation, thing) do
+    presentations = Keyword.fetch!(@presentations, presentation)
+    suffix = AshDataTable.Attrs.asked_in(thing)
+
+    if presentations[thing] == :modal and presentations[:confirm] == :inline,
+      do:
+        need(
+          page,
+          "[id='#{id}'] [id='kit-dialogs#{suffix}'][phx-update='ignore']",
+          "the question's place in #{id}"
+        ) ++
+          need(
+            page,
+            "[id='#{id}'] [id='kit-dialog#{suffix}'][role=region][data-presentation='inline'][aria-labelledby='kit-dialog-question#{suffix}'][hidden]",
+            "the question in #{id}, hidden"
+          ) ++
+          need(
+            page,
+            "[id='kit-dialog#{suffix}'] [id='kit-dialog-question#{suffix}']",
+            "where it asks"
+          ) ++
+          need(page, "[id='kit-dialog#{suffix}'] button[value='confirm']", "its Confirm"),
+      else:
+        none(
+          page,
+          "[id='#{id}'] [id^='kit-dialog-in']",
+          "copy of the question in #{id}, which is not over the page"
         )
+  end
 
   # What opens: a `<dialog>` over the page, or a region in it.
   defp opened(page, id, :modal),

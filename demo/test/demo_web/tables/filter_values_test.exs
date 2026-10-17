@@ -52,10 +52,11 @@ defmodule DemoWeb.Tables.FilterValuesTest do
     render_async(view, 10_000)
   end
 
-  # Picks the operator, which brings its controls, and then gives it values.
+  # Picks the operator, which brings its button, and then gives it values in
+  # the side panel the button opens.
   defp any_of(view, field, values, operator \\ "any_of") do
     filter(view, "task", field, o: operator)
-    filter(view, "task", field, o: operator, in: values)
+    choose_values(view, "task", field, operator, values)
   end
 
   defp between(view, id \\ "task", field, from, to) do
@@ -63,8 +64,14 @@ defmodule DemoWeb.Tables.FilterValuesTest do
     filter(view, id, field, o: "between", from: from, to: to)
   end
 
+  # the values that apply, which the filter row's form holds
   defp ticked(html, field),
-    do: attribute(html, "#task-filter-#{field}-values input[checked]", "value")
+    do:
+      attribute(
+        html,
+        "#task-filter-#{field} input[type=hidden][name='filter[#{field}][in][]']",
+        "value"
+      )
 
   setup %{conn: conn} do
     world = world(tasks: 0, other_tasks: 0)
@@ -117,7 +124,7 @@ defmodule DemoWeb.Tables.FilterValuesTest do
       %{view: view}
     end
 
-    test "once picked, has a button and a list of the column's values, and filters nothing yet",
+    test "once picked, has a button that opens the side panel with a box per value, and filters nothing yet",
          %{view: view} do
       html = filter(view, "task", "status", o: "any_of")
 
@@ -125,22 +132,38 @@ defmodule DemoWeb.Tables.FilterValuesTest do
       refute_filtered(view)
 
       assert text(html, "#task-filter-status-value") == "Any"
-      assert attribute(html, "#task-filter-status-value", "aria-expanded") == ["false"]
-
-      assert attribute(html, "#task-filter-status-value", "aria-controls") ==
-               ["task-filter-status-values"]
-
+      assert attribute(html, "#task-filter-status-value", "aria-haspopup") == ["dialog"]
       assert attribute(html, "#task-filter-status-value", "aria-label") == ["Filter State: Any"]
-      assert attribute(html, "#task-filter-status-values", "role") == ["group"]
-      assert attribute(html, "#task-filter-status-values", "aria-label") == ["Filter State"]
 
-      assert html |> texts("#task-filter-status-values label") ==
+      assert attribute(html, "#task-filter-status-value", "phx-click") ==
+               ["ash_data_table:task:filter_values"]
+
+      assert attribute(html, "#task-filter-status-value", "phx-value-column") == ["status"]
+      assert attribute(html, "#task-filter-status-value", "phx-value-operator") == ["any_of"]
+      assert ticked(html, "status") == []
+
+      # the panel: a form of its own, with a box per value of the column
+      html = open_values(view, "task", "status")
+
+      assert %{
+               heading: "Filter State",
+               submit: "Apply",
+               errors: [],
+               fields: [%{name: "status", label: "State", control: "choices", value: []}]
+             } = panel(html)
+
+      assert html |> texts("#task-panel-f-status > label") ==
                ["Backlog", "To do", "In progress", "In review", "Done", "Archived"]
 
-      assert attribute(html, "#task-filter-status-values input", "value") ==
+      assert attribute(html, "#task-panel-f-status input[type=checkbox]", "value") ==
                ~w(backlog todo in_progress in_review done archived)
 
-      assert ticked(html, "status") == []
+      # nothing is filtered while the panel is open, nor once it is given up
+      assert titles(html) == ["Alpha", "Beta", "Delta", "Gamma"]
+      html = cancel_panel(view)
+      assert panel(html) == nil
+      refute_filtered(view)
+
       # nothing to clear, and "Clear filters" is not offered
       assert attribute(html, "#task-filter-status-clear", "id") == []
       assert attribute(html, "#task-clear-filters", "id") == []
@@ -160,15 +183,21 @@ defmodule DemoWeb.Tables.FilterValuesTest do
 
       assert attribute(html, "#task-filter-status-value", "title") == ["To do, Done"]
       assert text(html, "#task-status") == "2 results"
+      assert panel(html) == nil
 
-      html = filter(view, "task", "status", o: "any_of", in: ["in_review"])
+      # the panel opens with what applies ticked
+      html = open_values(view, "task", "status")
+      assert [%{value: ["todo", "done"]}] = panel(html).fields
+      cancel_panel(view)
+
+      html = choose_values(view, "task", "status", "any_of", ["in_review"])
       assert titles(html) == ["Delta"]
       assert text(html, "#task-filter-status-value") == "In review"
     end
 
     test "with nothing ticked any more is no filter", %{view: view} do
       any_of(view, "status", ["todo"])
-      html = filter(view, "task", "status", o: "any_of", in: [])
+      html = choose_values(view, "task", "status", "any_of", [])
 
       assert titles(html) == ["Alpha", "Beta", "Delta", "Gamma"]
       assert text(html, "#task-filter-status-value") == "Any"
@@ -223,7 +252,37 @@ defmodule DemoWeb.Tables.FilterValuesTest do
       assert_patch(view, "/tasks")
       # the controls are as on a page opened afresh
       assert filter_controls(html, "task", "progress").input == "number"
-      assert attribute(html, "#task-filter-status-values", "id") == []
+      assert ticked(html, "status") == []
+    end
+
+    test "the panel's column, operator and values are claims", %{view: view} do
+      filter(view, "task", "status", o: "any_of")
+
+      # a column without such a filter, an operator it does not take, one of one value
+      for {column, operator} <- [
+            {"title", "any_of"},
+            {"status", "between"},
+            {"status", "is"},
+            {"progress", "any_of"},
+            {"internal_note", "any_of"}
+          ] do
+        html = forge(view, "task", "filter_values", %{"column" => column, "operator" => operator})
+        assert panel(html) == nil, inspect({column, operator})
+      end
+
+      # a value the column does not have is not applied
+      open_values(view, "task", "status")
+      send_panel(view, "task", %{"panel" => %{"status" => ["", "todo", "closed"]}})
+      assert titles(render_async(view, 10_000)) == ["Alpha", "Beta", "Delta", "Gamma"]
+      refute_filtered(view)
+    end
+
+    test "the panel keeps the other filters as they are", %{view: view} do
+      filter(view, "task", "title", o: "contains", v: "a")
+      html = any_of(view, "status", ["todo", "done"])
+
+      assert titles(html) == ["Alpha", "Gamma"]
+      assert attribute(html, "#task-filter-title-value", "value") == ["a"]
     end
 
     test "marks a hidden column as filtered in the list of columns", %{view: view} do
@@ -685,13 +744,13 @@ defmodule DemoWeb.Tables.FilterValuesTest do
     test "an Ash.Type.Enum and an atom limited to values take several values", %{view: view} do
       filter(view, "specimen", "a_shade", o: "any_of")
 
-      assert labels(filter(view, "specimen", "a_shade", o: "any_of", in: ["light", "dark"])) ==
+      assert labels(choose_values(view, "specimen", "a_shade", "any_of", ["light", "dark"])) ==
                ["One", "Three"]
 
       view |> element("#specimen-clear-filters") |> render_click()
       filter(view, "specimen", "an_atom", o: "none_of")
 
-      assert labels(filter(view, "specimen", "an_atom", o: "none_of", in: ["red"])) == ["Two"]
+      assert labels(choose_values(view, "specimen", "an_atom", "none_of", ["red"])) == ["Two"]
       assert_patch(view, "/specimens?specimen[f][an_atom][none_of][]=red")
     end
   end

@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ACTION, ACTIONS, CHOICES, CHOICES_BUTTON, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE} from "../markers.js"
+import {ACTION, ACTIONS, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE, WHOLE} from "../markers.js"
 import {AROUND, CELL, SPANNING, cellsOf, firstRow, is, page, place, rowsOf} from "./shared.js"
 
 export default {
@@ -179,10 +179,8 @@ export default {
     if (tree.hadFocus && !top.contains(document.activeElement)) {
       cell.focus({preventScroll: true})
     }
-    // a patch may have brought, replaced or taken away a message
-    this.showMessage()
-    // or the text of the cell whose whole text is showing
-    this.freshWhole()
+    // a patch may have brought a cell whose whole text showed, or cut off
+    this.offerWhole()
   },
 
   move(r, c) {
@@ -221,8 +219,7 @@ export default {
     tree.hadFocus = true
     if (!this.spans(cell)) this.col = place(cell)
     this.setActive(cell)
-    this.showMessage()
-    this.focusedWhole(e.target === cell ? cell : null)
+    this.offerWhole()
     if (page.tabbing) this.intoView(cell)
   },
 
@@ -232,12 +229,6 @@ export default {
     // focus leaves the cell whose value is shown: it is hidden again
     const shown = this.revealed && this.revealed.cell
     if (shown && shown.contains(e.target) && !(e.relatedTarget && shown.contains(e.relatedTarget))) this.hide()
-    // focus goes on from the list of a filter for several values:
-    // the list closes, and what was ticked applies. A click on the
-    // name of a box takes focus to the cell on its way to the box.
-    const now = this.choosing
-    if (now && e.relatedTarget && e.relatedTarget !== now.cell &&
-        !now.list.contains(e.relatedTarget) && e.relatedTarget !== now.button) this.closeChoices(true, false)
     if (e.relatedTarget) {
       if (!top.contains(e.relatedTarget)) tree.hadFocus = false
     } else {
@@ -248,8 +239,7 @@ export default {
         if (target.isConnected && !top.contains(document.activeElement)) tree.hadFocus = false
       }, 0)
     }
-    setTimeout(() => this.showMessage(), 0)
-    this.focusedWhole(null)
+    setTimeout(() => this.offerWhole(), 0)
   },
 
   onClick(e) {
@@ -289,6 +279,13 @@ export default {
       const button = e.target.closest(ACTION)
       if (button) return this.act(button)
     }
+    // the button of a cell that cuts its text off: shows all of it, or
+    // cuts it off again, with focus on the cell
+    if (e.target.closest(WHOLE)) {
+      this.toggleWhole(cell)
+      if (document.activeElement !== cell) cell.focus()
+      return
+    }
     // the button of a sensitive cell: shows the value, or hides it
     // again, with focus on the cell, which the value is shown for
     // as long as it has
@@ -297,11 +294,6 @@ export default {
       this.reveal(cell)
       return
     }
-    // the button of a filter for several values opens its list, and
-    // closes it again, which applies what was ticked
-    const chooser = e.target.closest(CHOICES_BUTTON)
-    if (chooser) return this.choosing ? this.closeChoices(true, false) : this.openChoices(chooser)
-    if (e.target.closest(CHOICES)) return
     // a click on a filter's control or in an editor leaves focus there
     if (this.controlOf(e.target)) return
     if (this.editing && this.editing.cell === cell) return
@@ -365,7 +357,6 @@ export default {
   onControlKeydown(e, control) {
     const cell = this.cellOf(control)
     const input = control.tagName === "INPUT"
-    if (this.onChoicesKeydown(e, control)) return
     switch (e.key) {
       // back to the cell, giving up what was typed and not applied
       case "Escape":

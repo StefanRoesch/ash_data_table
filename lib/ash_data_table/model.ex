@@ -1936,6 +1936,25 @@ defmodule AshDataTable.Model do
     }
   end
 
+  @doc """
+  The input of the side panel of a filter for several of `column`'s
+  values: one box per value of the column (`:choices`), none of them
+  required. It is no input of an action: the panel's form filters.
+  """
+  @spec filter_input(Column.t()) :: Input.t()
+  def filter_input(%Column{} = column) do
+    %Input{
+      name: column.name,
+      kind: :attribute,
+      label: column.label,
+      type: column.type,
+      cell_type: column.cell_type,
+      values: column.values,
+      editor: :choices,
+      required?: false
+    }
+  end
+
   # Whether an edit of a column can leave its cell empty: as the attribute
   # and the action the edit runs say, which is how a field of the action
   # panel is told (`AshDataTable.Resource.Acting.required?/2`).

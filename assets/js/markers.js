@@ -91,9 +91,9 @@ export const MASKED = "[data-masked]"
 export const SECRET = "[data-secret]"
 // what a screen reader alone is told, not seen
 export const UNSEEN = "[data-unseen]"
-// a filter for several values: its button and its list
-export const CHOICES_BUTTON = "[data-choices-button]"
-export const CHOICES = "[data-choices]"
+// the button the hook puts into a cell that cuts some of its text off,
+// which shows all of it, and cuts it off again
+export const WHOLE = "[data-whole]"
 
 // ---- editors
 
@@ -130,10 +130,7 @@ export const ARGUMENTS = "[data-arguments]"
 
 export const FIELD = "[data-field]"
 export const CANCEL = "[data-cancel]"
-export const ADD_GROUP = "[data-add-group]"
 export const REMOVE_GROUP = "[data-remove-group]"
-export const UNPICK = "[data-unpick]"
-export const CLEAR_FIELD = "[data-clear-field]"
 export const NONE = "[data-none]"
 export const TAKE = "[data-take]"
 // the page shown now, in the pagination

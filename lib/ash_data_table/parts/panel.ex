@@ -289,7 +289,7 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="button"
             id={Ids.unpick(@id, at)}
-            {Attrs.unpick(@input.name, key)}
+            {Attrs.unpick(@inside.table, @input.name, key, @target)}
             aria-label={remove}
             class="btn btn-ghost btn-xs"
           >
@@ -476,7 +476,7 @@ defmodule AshDataTable.Parts.Panel do
             else: @texts.clear_value
         }
         aria-describedby={@clear == :asked && "#{@id}-cleared"}
-        {Attrs.clear_field(@input.name)}
+        {Attrs.clear_field(@inside.table, @input.name, @target)}
       >
         {if @clear == :asked, do: @texts.keep, else: @texts.clear}
       </button>
@@ -489,7 +489,6 @@ defmodule AshDataTable.Parts.Panel do
         id={"#{@id}-count"}
         counted={@counted}
         value={@value}
-        floats?={false}
         class="justify-self-end"
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
@@ -632,7 +631,7 @@ defmodule AshDataTable.Parts.Panel do
           :if={is_map(@held) and not @field.required?}
           type="button"
           id={"#{@id}-remove"}
-          {Attrs.remove_group(@inside.path)}
+          {Attrs.remove_group(@inside.table, @inside.path, @target)}
           aria-label={@texts.remove_group}
           class="btn btn-ghost btn-xs mb-1"
         >
@@ -657,7 +656,7 @@ defmodule AshDataTable.Parts.Panel do
         :if={not is_map(@held)}
         type="button"
         id={"#{@id}-add"}
-        {Attrs.add_group(@inside.path)}
+        {Attrs.add_group(@inside.table, @inside.path, @target)}
         class="btn btn-sm"
       >
         {@texts.add_value}
@@ -719,7 +718,7 @@ defmodule AshDataTable.Parts.Panel do
           <button
             type="button"
             id={"#{@id}-#{key}-remove"}
-            {Attrs.remove_group(@inside.path ++ [key])}
+            {Attrs.remove_group(@inside.table, @inside.path ++ [key], @target)}
             aria-label={Enum.at(@texts.remove_value, index)}
             class="btn btn-ghost btn-xs mb-1"
           >
@@ -748,7 +747,7 @@ defmodule AshDataTable.Parts.Panel do
       <button
         type="button"
         id={"#{@id}-add"}
-        {Attrs.add_group(@inside.path)}
+        {Attrs.add_group(@inside.table, @inside.path, @target)}
         class="btn btn-sm"
       >
         {@texts.add_value}

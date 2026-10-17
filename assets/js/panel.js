@@ -17,7 +17,7 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
-import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
+import {ADD, CANCEL, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, VALUE_TEXT} from "./markers.js"
 
 // The field of an array that is given value by value (`LIST`): its rows,
 // one per value (`ITEM`), each with the control that holds the value.
@@ -161,36 +161,17 @@ export default {
       hold(item)
       changed(item.closest(LIST))
     }))
-    // A field made of groups (an embedded resource, a map, an array
-    // of either): the server adds a group and takes one away, and
-    // says where focus goes then: into the group that was added,
-    // or to what stands where the one that is gone stood.
-    dialog.addEventListener("click", own(e => {
-      const button = e.target.closest && e.target.closest(`${ADD_GROUP},${REMOVE_GROUP}`)
-      if (!button) return
-      const add = button.dataset.addGroup !== undefined
-      let path = null
-      try { path = JSON.parse(add ? button.dataset.addGroup : button.dataset.removeGroup) } catch (_error) { return }
-      this.transport.push(add ? "panel_add" : "panel_remove", {path}).then(reply => this.into(reply && reply.focus))
-    }))
-    // A field that holds several related records: the server takes
-    // one out, and says where focus goes then: to the button of the
-    // record that stands where it stood, or to the field's "Choose".
-    dialog.addEventListener("click", own(e => {
-      const button = e.target.closest && e.target.closest(UNPICK)
-      if (!button) return
-      let named = null
-      try { named = JSON.parse(button.dataset.unpick) } catch (_error) { return }
-      this.transport.push("panel_unpick", {input: named[0], key: named[1]}).then(reply => this.into(reply && reply.focus))
-    }))
-    // A sensitive field that can be emptied: its button asks the
-    // server to note it, or to take it back, and has the focus
-    // again once the field is rendered anew.
-    dialog.addEventListener("click", own(e => {
-      const button = e.target.closest && e.target.closest(CLEAR_FIELD)
-      if (!button) return
-      this.transport.push("panel_clear", {input: button.dataset.clearField}).then(reply => this.into(reply && reply.focus))
-    }))
+    // The buttons of a field made of groups (an embedded resource, a
+    // map, an array of either), of one that holds several related
+    // records, and of a sensitive one that can be emptied, send their
+    // events themselves (`phx-click`). The server says where focus goes
+    // then: into the group that was added, to what stands where the one
+    // that is gone stood, back to the button.
+    this.transport.on("ash_data_table:focus", ({table, cell}) => {
+      if (table !== dialog.getAttribute(OF)) return
+      const target = document.getElementById(cell)
+      if (target && dialog.contains(target)) this.into(cell)
+    })
     // The panel of a cell asks the column's question only when
     // something was changed: what its form holds as it opens is
     // what the record has.
@@ -275,6 +256,8 @@ export default {
   // which takes focus back to its tab stop when the panel goes: the
   // cell the opener is in. That is nowhere yet, too.
   destroyed() {
+    // a question it asked in it is answered as Cancel
+    if (this.grid) this.grid.goneWith(this.el)
     setTimeout(() => {
       const active = document.activeElement
       const opener = this.opener && this.opener.isConnected

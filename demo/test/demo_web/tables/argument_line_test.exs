@@ -810,11 +810,11 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
     } do
       pick(view, "stock", apple.id, "shelf")
       argue(view, id, a: %{"closed_too?" => "true"})
+      select(view, id, [basement.id])
 
-      # as the picker's hook sends it: the row, and the line's form
+      # as the picker's hook sends it: the line's form
       html =
         forge(view, "stock", "picked", %{
-          "row" => basement.id,
           "confirmed" => false,
           "arguments" =>
             "arguments%5Ba%5D%5Bclosed_too%3F%5D=false&arguments%5Ba%5D%5Bclosed_too%3F%5D=true&arguments%5Ba%5D%5Bterm%5D="
@@ -833,18 +833,24 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
     } do
       pick(view, "stock", apple.id, "shelf")
 
-      # the line holds its defaults: a closed shelf is not offered
+      # the line holds its defaults: a closed shelf is not offered, and is
+      # not there to be taken
       html = picked(view, "stock", basement.id)
 
       assert_reply view, %{ok: false}
-      assert picker(html, "stock").error == "This record is no longer available."
       assert stored!(apple).shelf_id == attic.id
 
-      # nor with a form that is none
+      # offered once the line asks for it, and taken as the line holds it:
+      # with what it holds then, which says closed shelves too, it is
+      # found; with defaults, or a form that is none, it is not
+      argue(view, "stock-pick-shelf", a: %{"closed_too?" => "true"})
+      select(view, "stock-pick-shelf", [basement.id])
+
       for sent <- ["%zz", "nonsense", "arguments=x"] do
-        forge(view, "stock", "picked", %{"row" => basement.id, "arguments" => sent})
+        html = forge(view, "stock", "picked", %{"arguments" => sent})
 
         assert_reply view, %{ok: false}
+        assert picker(html, "stock").error == "This record is no longer available."
       end
 
       assert stored!(apple).shelf_id == attic.id
@@ -867,8 +873,8 @@ defmodule DemoWeb.Tables.ArgumentLineTest do
       html = argue(view, id, a: %{"closed_too?" => "true"})
       assert column(html, id, "name") == ["Attic", "Basement"]
 
-      html =
-        forge(view, "stock", "picked", %{"row" => basement.id, "arguments" => @closed_too})
+      select(view, id, [basement.id])
+      html = forge(view, "stock", "picked", %{"arguments" => @closed_too})
 
       assert_reply view, %{ok: true}
       assert [%{name: "shelf_id", chosen: "Basement"}] = panel(html, "stock").fields

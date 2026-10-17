@@ -94,72 +94,22 @@ export default {
     return list ? Array.from(list.querySelectorAll("input[type=checkbox]")) : []
   },
 
-  // Whether the list is open.
-  columnsOpen() {
-    const list = this.part("columns")
-    return !!list && list.matches(":popover-open")
-  },
-
-  // What happens at "Columns" and in its list, which are outside
-  // this element. Those of a table nested in this one are inside
-  // this table's element too, and are that table's.
+  // What happens in the list of "Columns", which is outside this
+  // element: a box that is used. The browser opens and closes the
+  // list (a popover its button names, `popovertarget`), closes it on a
+  // click elsewhere and on Escape, and says whether it is open; focus
+  // that goes on to somewhere else closes it here. Those of a table
+  // nested in this one are inside this table's element too, and are
+  // that table's.
   onColumnsEvent(e) {
     const target = e.target
     const control = this.part("columns-control")
     if (!control || !target || !target.closest || !control.contains(target)) return
-    const button = this.part("columns-button")
-    switch (e.type) {
-      case "click":
-        if (button.contains(target)) this.columnsOpen() ? this.closeColumns(false) : this.openColumns()
-        break
-      case "change":
-        if (target.dataset.head !== undefined) this.onColumnChange(target)
-        break
-      // Escape closes the list, and nothing else: not the dialog
-      // the table is in, which the browser closes for a key that
-      // nobody has dealt with
-      case "keydown":
-        if (e.key !== "Escape" || !this.columnsOpen()) return
-        e.preventDefault()
-        this.closeColumns(true)
-        break
-      // so does focus that goes on to somewhere else
-      case "focusout":
-        if (e.relatedTarget && !control.contains(e.relatedTarget)) this.closeColumns(false)
-        break
+    if (e.type === "change" && target.dataset.head !== undefined) this.onColumnChange(target)
+    if (e.type === "focusout" && e.relatedTarget && !control.contains(e.relatedTarget)) {
+      const list = this.part("columns")
+      if (list && list.matches(":popover-open")) list.hidePopover()
     }
-  },
-
-  openColumns() {
-    const list = this.part("columns")
-    const button = this.part("columns-button")
-    if (!list || !button || !list.showPopover) return
-    list.showPopover()
-    button.setAttribute("aria-expanded", "true")
-    this.placeColumns()
-    document.addEventListener("pointerdown", this.onOutside, true)
-  },
-
-  // Closes the list. `refocus` puts focus on the button, for
-  // Escape; after a click elsewhere it is left where the person
-  // has put it.
-  closeColumns(refocus) {
-    const list = this.part("columns")
-    const button = this.part("columns-button")
-    document.removeEventListener("pointerdown", this.onOutside, true)
-    if (!list || !button || !this.columnsOpen()) return
-    list.hidePopover()
-    button.setAttribute("aria-expanded", "false")
-    if (refocus) button.focus()
-  },
-
-  // The list is shown under its button, and stays in the window.
-  placeColumns() {
-    if (!this.columnsOpen()) return
-    const list = this.part("columns")
-    const box = this.part("columns-button").getBoundingClientRect()
-    list.style.top = `${box.bottom + 2}px`
-    list.style.left = `${Math.max(0, Math.min(box.left, window.innerWidth - list.offsetWidth - 8))}px`
   },
 
   // A box of the list was used: its column is hidden, or shown
@@ -182,8 +132,6 @@ export default {
     this.restyle()
     this.leaveHidden(focused)
     this.fitColumns()
-    this.showMessage()
-    this.placeCount()
   },
 
   // Says in the list which columns are shown, and on the button

@@ -16,23 +16,6 @@ export default {
       const counter = id && document.getElementById(id)
       if (counter && counter.dataset.count !== undefined) this.recount(counter, control)
     }
-    // the editor may be higher now, and its counter another width
-    this.placeCount()
-  },
-
-  // The counter of the text a cell's editor holds is a popover, as
-  // the message of a failed cell is: shown under the cell, at its
-  // end, for as long as the editor is open, without taking room
-  // from the text or making the row higher. It goes with the
-  // editor, which it is part of.
-  placeCount() {
-    const ed = this.editing
-    const count = ed && ed.count
-    if (!count || !count.isConnected || !count.showPopover) return
-    if (!count.matches(":popover-open")) count.showPopover()
-    const box = ed.cell.getBoundingClientRect()
-    count.style.top = `${box.bottom + 2}px`
-    count.style.left = `${Math.max(0, box.right - count.offsetWidth)}px`
   },
 
   // Writes how long the text of `control` is into its counter, and

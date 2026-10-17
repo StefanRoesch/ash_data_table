@@ -469,7 +469,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     end
 
     test "runs on all that match, and on rows that are named", %{conn: conn} do
-      {:ok, view, html} = live(conn, "/support/crates")
+      {:ok, view, _html} = live(conn, "/support/crates")
 
       assert %{offered?: true, buttons: ["Select all 7 that match" | _]} =
                selection(select_page(view, "crate"), "crate")

@@ -1,7 +1,7 @@
 defmodule AshDataTable.Parts.Common do
   @moduledoc false
   # The small helpers that several parts draw with: the place of a column
-  # and of a row in the grid, a table's root element and the popover of a
+  # and of a row in the grid, a table's root element and the message of a
   # failure (`Kit.Default`'s parts `root` and `failure`). It calls no other
   # part by name, so that the parts do not call each other in a circle. It
   # spreads `Attrs`' bundles, and `Attrs` names events and counts places
@@ -66,9 +66,9 @@ defmodule AshDataTable.Parts.Common do
   def event(id, name), do: "ash_data_table:" <> id <> ":" <> name
 
   # The message of a cell whose save failed, or of a row whose action
-  # failed: a popover the hook opens while the cell has the focus or the
-  # pointer, so that the row keeps its height; in the text colour on the
-  # page's background, as the error colour is too faint for small text.
+  # failed: in the cell, under what it shows, and the row as high as it
+  # needs; in the text colour, as the error colour is too faint for small
+  # text. The cell's ring and its mark say "failed" besides.
   # `id` is what the cell names in `aria-describedby`; nil in the template
   # the hook copies (`ID-failure`). Without whitespace: the hook copies it.
   attr :id, :string, default: nil
@@ -78,8 +78,7 @@ defmodule AshDataTable.Parts.Common do
     ~H"""
     <span
       id={@id}
-      {Attrs.failure()}
-      class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow"
+      class="mt-0.5 block max-w-xs text-xs whitespace-normal break-words text-base-content"
       phx-no-format
     >{@text}</span>
     """

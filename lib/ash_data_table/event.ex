@@ -217,7 +217,7 @@ defmodule AshDataTable.Event do
     held
     |> located(ref, :panel)
     |> Map.merge(%{
-      action: panel.action.name,
+      action: panel.action && panel.action.name,
       column: Map.get(panel, :column),
       question: shown.question,
       title: shown.title,

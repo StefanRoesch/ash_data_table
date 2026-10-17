@@ -84,7 +84,7 @@
 // is the same for every grid through ./shared.js. No two sections may
 // name a method alike: that is checked as the object is put together.
 
-import {CHOICES, COUNT, OF} from "../markers.js"
+import {COUNT, OF} from "../markers.js"
 import {KEPT, PLACE} from "./shared.js"
 import counter from "./counter.js"
 import tree from "./tree.js"
@@ -92,14 +92,12 @@ import expanding from "./expanding.js"
 import widths from "./widths.js"
 import hiding from "./hiding.js"
 import scrolling from "./scrolling.js"
-import choices from "./choices.js"
 import selecting from "./selecting.js"
 import actions from "./actions.js"
 import editing from "./editing.js"
 import saving from "./saving.js"
 import sensitive from "./sensitive.js"
 import dialog from "./dialog.js"
-import failure from "./failure.js"
 import wholeText from "./whole_text.js"
 
 const core = {
@@ -123,23 +121,10 @@ const core = {
     this.revealed = null
     // cells this hook has marked as failed itself, with what they showed before
     this.marked = new WeakMap()
-    // the cell under the pointer, and the message that is showing
+    // the cell under the pointer, and the cells whose whole text shows,
+    // by id (see "the whole text of a cell")
     this.pointed = null
-    this.message = null
-    // the cell whose whole text is showing: {cell, by, text,
-    // watch}; the cell it was dismissed for with Escape; and what
-    // is on its way (see "the whole text of a cell")
-    this.whole = null
-    this.wholeOff = null
-    this.wholeTimers = {}
-    this.onWholeKey = e => this.onWholeKeydown(e)
-    this.onWholeIn = () => this.holdWhole()
-    this.onWholeOut = () => this.leaveWhole()
-    const whole = this.part("whole")
-    if (whole) {
-      whole.addEventListener("mouseenter", this.onWholeIn)
-      whole.addEventListener("mouseleave", this.onWholeOut)
-    }
+    this.expanded = new Set()
     // the row action that was used last: where its cell stood, for
     // when its row is gone
     this.acted = null
@@ -184,20 +169,8 @@ const core = {
     if (this.root) this.root.addEventListener("input", this.onTyped)
     // and so is "Columns", with its list
     this.onColumns = e => this.onColumnsEvent(e)
-    for (const type of ["click", "change", "keydown", "focusout"]) {
+    for (const type of ["change", "focusout"]) {
       if (this.root) this.root.addEventListener(type, this.onColumns)
-    }
-    // a click anywhere else closes the list
-    this.onOutside = e => {
-      const control = this.part("columns-control")
-      if (!control || !control.contains(e.target)) this.closeColumns(false)
-    }
-    // and so does a click anywhere but in the list of a filter for
-    // several values, which applies what was ticked
-    this.choosing = null
-    this.onOutsideChoices = e => {
-      const now = this.choosing
-      if (now && !now.list.contains(e.target) && !now.button.contains(e.target)) this.closeChoices(true, false)
     }
     // A patch of the argument line brings its counters as the
     // server counted them, from what it had heard by then, which
@@ -263,14 +236,11 @@ const core = {
     this.el.addEventListener("mousedown", own(e => this.onMousedown(e)))
     this.el.addEventListener("dblclick", own(e => this.onDblclick(e)))
     this.el.addEventListener("pointerdown", own(e => this.onResizeStart(e)))
-    // a box of a filter for several values is ticked: the filter
-    // row's form does not hear of it before the list is closed
-    for (const type of ["change", "input"]) {
-      this.el.addEventListener(type, own(e => { if (e.target.closest(CHOICES)) e.stopPropagation() }))
-    }
     this.el.addEventListener("mouseover", e => this.onPointer(this.cellOf(e.target)))
     this.el.addEventListener("mouseleave", () => this.onPointer(null))
-    this.onScroll = e => { this.showMessage(); this.placeCount(); this.placeColumns(); this.placeChoices(); this.scrolledWhole(e); PLACE() }
+    // The window scrolls, or is another size: the scrollbar at its
+    // bottom edge follows (`PLACE`). Nothing else is placed by hand.
+    this.onScroll = () => PLACE()
     window.addEventListener("scroll", this.onScroll, true)
     window.addEventListener("resize", this.onScroll)
     // The grid scrolls sideways: its scrollbar at the bottom edge
@@ -295,7 +265,12 @@ const core = {
     //
     // A patch of a row also takes away what this hook has said of
     // it: that it is selected. So that is watched for as well.
-    this.observer = new MutationObserver(records => this.sync(records))
+    // (Not for the button of a cell's whole text alone, which this hook
+    // puts in and takes out itself.)
+    this.observer = new MutationObserver(records => {
+      const patched = records.filter(record => !this.ofWhole(record))
+      if (patched.length > 0) this.sync(patched)
+    })
     this.observer.observe(this.el, {
       subtree: true,
       childList: true,
@@ -327,9 +302,7 @@ const core = {
     this.observer && this.observer.disconnect()
     this.counted && this.counted.disconnect()
     this.listed && this.listed.disconnect()
-    document.removeEventListener("pointerdown", this.onOutside, true)
-    document.removeEventListener("pointerdown", this.onOutsideChoices, true)
-    for (const type of ["click", "change", "keydown", "focusout"]) {
+    for (const type of ["change", "focusout"]) {
       if (this.root) this.root.removeEventListener(type, this.onColumns)
     }
     if (this.root) this.root.removeEventListener("input", this.onTyped)
@@ -342,7 +315,7 @@ const core = {
 }
 
 const grid = {}
-for (const part of [core, counter, tree, expanding, widths, hiding, scrolling, choices, selecting, actions, editing, saving, sensitive, dialog, failure, wholeText]) {
+for (const part of [core, counter, tree, expanding, widths, hiding, scrolling, selecting, actions, editing, saving, sensitive, dialog, wholeText]) {
   for (const key of Object.keys(part)) {
     if (Object.hasOwn(grid, key)) throw new Error(`ash_data_table: the grid's hook has two methods named ${key}`)
     grid[key] = part[key]

@@ -95,7 +95,6 @@ export default {
     cell.append(error)
     cell.setAttribute("aria-invalid", "true")
     cell.setAttribute("aria-describedby", error.id)
-    this.showMessage()
   },
 
   // Gives up the edit of a failed cell: the server puts the row back
@@ -111,7 +110,6 @@ export default {
       delete cell.dataset.value
       delete cell.dataset.saved
       restore()
-      this.showMessage()
     } else if (is(cell, ACTIONS)) {
       // the message of a row action that failed is given up
       this.transport.push("dismiss", {row: this.rowKey(cell)})

@@ -25,7 +25,7 @@ defmodule DemoWeb.DivKit do
     <form {Attrs.filters(@id, @myself)}></form>
     <div {Attrs.sender(@id)}></div>
     <div
-      {Attrs.grid(@id, @myself, @lead, @selecting, @choose)}
+      {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <div

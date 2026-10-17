@@ -168,6 +168,15 @@ defmodule AshDataTable.Live.Core.Selection do
     end)
   end
 
+  @doc """
+  What is selected of the rows of the page, as the hook names them: in a
+  table to choose one record from, the record a person can take.
+  """
+  def in_view(%{rows: rows, selected: selected, model: model}) do
+    shown = MapSet.new(rows, fn {key, row} -> Reading.names(model, row.pk, key) || key end)
+    Enum.filter(selected, &MapSet.member?(shown, &1))
+  end
+
   @doc "A primary key as the hook names its row: what `select` sends for it."
   def named(model, pk) do
     row_key = Reading.row_key(model, pk, 0)

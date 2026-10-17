@@ -40,7 +40,7 @@ export default {
   //
   // `from` is the panel or picker that asks, when one does: a question
   // in the page asked from inside one that is open over the page is
-  // shown in it (see `askInline`).
+  // shown in it (see `placeOf`).
   //
   // A table without its dialog (`ID-dialog`: a `<dialog>`, or one in
   // the page, `data-presentation="inline"`), its question
@@ -51,17 +51,34 @@ export default {
   ask(question, destructive, from) {
     this.giveUp()
     const dialog = document.getElementById(`${this.id}-dialog`)
-    const text = document.getElementById(`${this.id}-dialog-question`)
-    const confirm = dialog && dialog.querySelector("button[value='confirm']")
-    if (!dialog || !text || !confirm || (!inline(dialog) && typeof dialog.showModal !== "function")) {
-      if (this.transport.debug()) console.error(`ash_data_table: the grid ${this.el.id} has no question dialog (a <dialog> with the id ${this.id}-dialog, ${this.id}-dialog-question in it and a button value="confirm"): nothing runs of what it would ask "${question}"`)
+    // in the page, the question's place: the table's own, or its place
+    // inside the panel or picker over the page that asks (`placeOf`)
+    const shown = dialog && (inline(dialog) ? this.placeOf(dialog, from) : dialog)
+    const text = shown && shown.querySelector(`[id^="${CSS.escape(this.id)}-dialog-question"]`)
+    const confirm = shown && shown.querySelector("button[value='confirm']")
+    if (!shown || !text || !confirm || (!inline(dialog) && typeof dialog.showModal !== "function")) {
+      if (this.transport.debug()) console.error(`ash_data_table: the grid ${this.el.id} has no question dialog (a <dialog> with the id ${this.id}-dialog, ${this.id}-dialog-question in it and a button value="confirm"; inside a panel or picker over the page that asks, ${this.id}-dialog-in-panel or -in-picker): nothing runs of what it would ask "${question}"`)
       return Promise.resolve(false)
     }
     text.textContent = question
     // the answer that deletes says so (`data-destructive`), which
     // its look follows
     confirm.toggleAttribute(ATTRIBUTE(DESTRUCTIVE), !!destructive)
-    return inline(dialog) ? this.askInline(dialog, from) : this.askModal(dialog)
+    return inline(dialog) ? this.askInline(shown) : this.askModal(dialog)
+  },
+
+  // Where a question in the page is asked: in the table's own place, or,
+  // asked from a panel or a picker that is open over the page (or from
+  // what is drawn inside one), whose page under it is inert, in the place
+  // the server draws for it inside that panel or picker
+  // (`ID-dialog-in-panel`, `ID-dialog-in-picker`).
+  // Which one asks is `from`, else the dialog that is open over the page
+  // now (`:modal`). Null where that one has no such place.
+  placeOf(dialog, from) {
+    const over = overPage(from) || document.querySelector(":modal")
+    if (!over || over.contains(dialog)) return dialog
+    const place = over.querySelector(`[id^="${CSS.escape(this.id)}-dialog-in-"][data-presentation]`)
+    return place && place.id.slice(this.id.length).match(/^-dialog-in-(panel|picker)$/) ? place : null
   },
 
   // Gives up the question that is open, if one is: it resolves to
@@ -100,26 +117,11 @@ export default {
   // The question in the page (stage 7b): shown, focus on Cancel, the
   // safe answer; a button answers, Escape inside it is Cancel; then it
   // is hidden and focus goes back to what had it, if focus is in the
-  // question or nowhere. Nothing else is inert, and Tab leaves it.
-  //
-  // Asked from a panel or a picker that is open over the page (modal),
-  // or from what is drawn inside one, the page under it is inert: the
-  // question is shown inside that panel or picker, as a copy with ids of
-  // its own (`-in`), which goes again when it is answered. A patch that
-  // takes the copy away, or the panel or picker it is in, answers it as
-  // Cancel does. Which one asks is `from`, else the dialog that is open
-  // over the page now (`:modal`).
-  askInline(dialog, from) {
+  // question or nowhere. Nothing else is inert, and Tab leaves it. A
+  // panel or picker that goes while it asks in it answers it as Cancel
+  // (`goneWith`).
+  askInline(shown) {
     const opener = document.activeElement && document.activeElement !== document.body ? document.activeElement : null
-    const over = overPage(from) || document.querySelector(":modal")
-    const modal = over && !over.contains(dialog) ? over : null
-    let shown = dialog
-    if (modal) {
-      shown = /** @type {HTMLElement} */ (dialog.cloneNode(true))
-      for (const node of [shown, ...shown.querySelectorAll("[id]")]) node.id = `${node.id}-in`
-      shown.setAttribute("aria-labelledby", `${dialog.getAttribute("aria-labelledby")}-in`)
-      modal.append(shown)
-    }
     return new Promise(resolve => {
       const onClick = e => {
         const button = e.target.closest && e.target.closest("button[value]")
@@ -133,25 +135,28 @@ export default {
         e.stopPropagation()
         answer(false)
       }
-      // the copy, or the panel or picker it is in, taken away by a patch
-      const gone = new MutationObserver(() => { if (!shown.isConnected) answer(false) })
       const answer = value => {
         if (this.answer === answer) this.answer = null
-        gone.disconnect()
+        this.asked = null
         shown.removeEventListener("click", onClick)
         shown.removeEventListener("keydown", onKeydown)
         const back = value !== GIVEN_UP && (shown.contains(document.activeElement) || document.activeElement === document.body)
-        if (modal) shown.remove()
-        else shown.hidden = true
+        shown.hidden = true
         if (back && opener && opener.isConnected) opener.focus({preventScroll: true})
         resolve(value)
       }
       this.answer = answer
+      this.asked = shown
       shown.addEventListener("click", onClick)
       shown.addEventListener("keydown", onKeydown)
-      if (modal) gone.observe(document.body, {childList: true, subtree: true})
       shown.hidden = false
       toSafe(shown)
     })
+  },
+
+  // A panel or picker went (`el`, its hook's element): the question it
+  // asks in it, if one is open, is answered as Cancel.
+  goneWith(el) {
+    if (this.answer && this.asked && el.contains(this.asked)) this.answer(false)
   },
 }

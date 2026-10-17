@@ -23,6 +23,8 @@ defmodule AshDataTable.Parts.Picker do
   attr :target, :any, required: true
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
+  # whether "Choose" can be used: a row of the picker's table is selected
+  attr :takes?, :boolean, required: true
   attr :kit, :atom, required: true
   attr :texts, :map, required: true
   slot :inner_block, required: true
@@ -58,13 +60,13 @@ defmodule AshDataTable.Parts.Picker do
           {@texts.choose_none}
         </button>
         <%!-- Not to be used while no row is selected, and says so without
-        being `disabled`, as the buttons above a grid do. Which rows are
-        selected is the hook's, so this is too: a patch leaves it alone.
-        Where several records are chosen it is always to be used: no row
-        selected is a choice too, of no record. --%>
+        being `disabled`, as the buttons above a grid do. The picker's table
+        tells the server what is selected. Where several records are chosen
+        it is always to be used: no row selected is a choice too, of no
+        record. --%>
         <button
           type="button"
-          {Attrs.take(@id, @picker.several?)}
+          {Attrs.take(@id, @picker.several?, @takes?)}
           class="btn btn-primary aria-disabled:btn-disabled"
         >
           {@texts.choose}

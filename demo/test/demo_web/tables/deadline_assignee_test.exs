@@ -140,7 +140,7 @@ defmodule DemoWeb.Tables.DeadlineAssigneeTest do
       assert stored!(task).assignee_id == nil
     end
 
-    test "of a row that names nobody this person may read saves nothing, and the picker says so",
+    test "of a row that names nobody this person may read saves nothing: it is no row of the picker's table",
          %{conn: conn, world: world, task: task, ada: ada} do
       abroad = person(world, "Abroad", world.other_organization)
       {view, _html} = deadlines(conn, world.admin)
@@ -149,7 +149,7 @@ defmodule DemoWeb.Tables.DeadlineAssigneeTest do
       for row <- [abroad.id, Ash.UUID.generate(), "nothing"] do
         html = picked(view, "deadline", row)
         assert_reply view, %{ok: false}
-        assert %{error: "This record is no longer available."} = picker(html, "deadline")
+        assert %{error: nil} = picker(html, "deadline")
       end
 
       assert stored!(task).assignee_id == ada.id

@@ -158,12 +158,3 @@ window.addEventListener("keydown", e => {
 // and how much of a grid has to be seen above it
 export const BAR = 12
 export const SEEN = 48
-
-// How long a cell has the focus, and how long the pointer, before
-// the whole of its text is shown (see "the whole text of a cell"),
-// and how long the pointer may take from the cell to that text, in
-// milliseconds. Long enough that going through cells with the arrow
-// keys, or across them with the pointer, shows nothing.
-export const WHOLE_FOCUS = 400
-export const WHOLE_POINTER = 500
-export const WHOLE_LEAVE = 200

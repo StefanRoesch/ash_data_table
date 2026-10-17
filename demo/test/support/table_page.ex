@@ -25,6 +25,27 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc """
+  Filters the table `id` by several of a column's values, as a person does
+  in the side panel the button of such a filter opens: one
+  `filter_values` event with the column and the operator (`"any_of"`,
+  `"none_of"`), then the panel's form with the values ticked. Returns the
+  page once the rows have been read again.
+
+      choose_values(view, "task", "status", "any_of", ["todo", "done"])
+  """
+  def choose_values(view, id, field, _operator, values) do
+    open_values(view, id, field)
+    send_panel(view, id, %{"panel" => %{field => ["" | values]}})
+    render_async(view, 10_000)
+  end
+
+  @doc """
+  Uses the button of a column's filter for several values, which opens the
+  side panel with a box per value. Returns the page.
+  """
+  def open_values(view, id, field), do: click(view, "[id='#{id}-filter-#{field}-value']")
+
+  @doc """
   Chooses in the "Rows per page" menu of the table `id`, as the menu sends
   it: the size as text, whether or not the menu offers it. Returns the page
   once the rows have been read again.
@@ -187,9 +208,13 @@ defmodule DemoWeb.TablePage do
   """
   def clear_in_panel(view, id \\ "task", name) do
     # the button is there, and says which field it is of
-    true = has?(view, "[id='#{id}-panel-f-#{name}-clear'][data-clear-field='#{name}']")
+    true =
+      has?(
+        view,
+        "[id='#{id}-panel-f-#{name}-clear'][phx-click='ash_data_table:#{id}:panel_clear'][phx-value-input='#{name}']"
+      )
 
-    send_event(view, id, "panel_clear", %{"input" => name})
+    click(view, "[id='#{id}-panel-f-#{name}-clear']")
   end
 
   @doc """
@@ -258,10 +283,12 @@ defmodule DemoWeb.TablePage do
   end
 
   @doc """
-  Chooses in the open picker as its hook does: one `picked` event with the
-  row the person selected, as the hook of the picker's table names it (its
-  primary key; for a key of several attributes the list of its values), or
-  nil for "None". Returns the page.
+  Chooses in the open picker as a person does: the row is selected in the
+  picker's table, as its hook tells the table (`select`, the row named as
+  the hook names it: its primary key; for a key of several attributes the
+  list of its values), and the picker's hook sends `picked`, the server
+  taking what is selected; nil for "None", which selects nothing. Returns
+  the page.
 
       picked(view, user.id)
       picked(view, nil)
@@ -285,14 +312,27 @@ defmodule DemoWeb.TablePage do
   """
   def picked_rows(view, id \\ "task", rows) do
     rows = Enum.map(rows, &if(is_list(&1) or is_map(&1), do: &1, else: to_string(&1)))
+    select(view, chooser_table(view, id), rows)
+    send_event(view, id, "picked", %{})
+  end
 
-    send_event(view, id, "picked", %{"rows" => rows})
+  @doc """
+  The id of the table of the open picker of the table `id`: what a row is
+  selected in (`select/3`).
+  """
+  def chooser_table(view, id \\ "task") do
+    [table | _] =
+      view
+      |> Phoenix.LiveViewTest.render()
+      |> attribute("[id='#{id}-picker'] [id^='#{id}-pick-'][data-ash-data-table]", "data-table")
+
+    table
   end
 
   @doc """
   Uses the button of a field of the open action panel that takes one of the
-  records it holds out again, as the panel's hook does: one `panel_unpick`
-  event with the field and the record's key. Returns the page.
+  records it holds out again: one `panel_unpick` event with the field and
+  the record's key, as its `phx-click` sends it. Returns the page.
   """
   def unpick(view, id \\ "task", name, key) do
     send_event(view, id, "panel_unpick", %{"input" => name, "key" => to_string(key)})
@@ -310,10 +350,13 @@ defmodule DemoWeb.TablePage do
     end
   end
 
-  defp send_picked(view, id, row, confirmed?) do
-    row = if is_nil(row) or is_list(row) or is_map(row), do: row, else: to_string(row)
+  defp send_picked(view, id, nil, confirmed?),
+    do: send_event(view, id, "picked", %{"none" => true, "confirmed" => confirmed?})
 
-    send_event(view, id, "picked", %{"row" => row, "confirmed" => confirmed?})
+  defp send_picked(view, id, row, confirmed?) do
+    row = if is_list(row) or is_map(row), do: row, else: to_string(row)
+    select(view, chooser_table(view, id), [row])
+    send_event(view, id, "picked", %{"confirmed" => confirmed?})
   end
 
   @doc "Closes the open picker as Cancel and Escape do. Returns the page."

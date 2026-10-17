@@ -2,7 +2,7 @@ defmodule AshDataTable.Parts.Messages do
   @moduledoc false
   # What the table says: the live region and the result of a run (the
   # part `status`), the notice of changes, the question dialog (`confirm`),
-  # the whole text of a cell (`whole_text`), and the error, loading, fill
+  # and the error, loading, fill
   # and empty messages (`message`), of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
@@ -70,50 +70,38 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  attr :id, :any, required: true
-  attr :kit, :atom, required: true
-
-  def whole_text(assigns) do
-    ~H"""
-    <%!-- The whole text of a cell whose text is cut off: the hook puts it in,
-    from what the cell itself holds, and shows it under the cell while the cell
-    has the focus or the pointer (see "the whole text of a cell"). The server
-    renders it empty (`phx-no-format`: not even a line break, which the
-    popover would show) and never writes to it. For the eye alone: a screen
-    reader has the whole text in the cell. With the edge and the ground of the
-    table's other popovers; as wide and as high as it may be, it scrolls. --%>
-    <div
-      phx-no-format
-      {Attrs.whole(@id)}
-      class={@kit.class(:whole_text, %{})}
-    ></div>
-    """
-  end
-
   attr :bulk, :any, required: true
   attr :id, :any, required: true
   attr :model, :any, required: true
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
+  # the question's place inside the panel or the picker open over the
+  # page (`:panel`, `:picker`), nil for the table's own
+  attr :place, :atom, required: true
   attr :kit, :atom, required: true
 
   def confirm(assigns) do
+    assigns = assign(assigns, suffix: Attrs.asked_in(assigns.place))
+
     ~H"""
     <%!-- The one dialog of the table: it asks the question of a column with
     `confirm` before the cell is saved, that of a row action, and the one that
     comes before every action on the selected rows. The hook opens it and puts
-    the question in, so patches leave it alone. --%>
-    <div :if={asks?(@model, @bulk)} id={"#{@id}-dialogs"} phx-update="ignore">
+    the question in, so patches leave it alone. Drawn once more inside a panel
+    or picker that is open over the page, where the question is asked in the
+    page (`place`, its ids ending in `-in-panel` or `-in-picker`): what is under
+    such a panel is inert. --%>
+    <div :if={asks?(@model, @bulk)} id={"#{@id}-dialogs#{@suffix}"} phx-update="ignore">
       <%!-- Styled here and not with daisyUI's `modal`: that one fades in, and
         a dialog that is not visible yet when it opens cannot take the focus. Its
         edge is its shadow, which forced colours take away: there it has a border. --%>
       <.dynamic_tag
         tag_name={if @presentation == :modal, do: "dialog", else: "section"}
-        {Attrs.confirm(@id, @presentation)}
+        {Attrs.confirm(@id, @presentation, @place)}
         class={@kit.class(:confirm, %{presentation: @presentation})}
       >
         <form method="dialog">
-          <p id={"#{@id}-dialog-question"}></p>
+          <p id={"#{@id}-dialog-question#{@suffix}"}></p>
           <div class="mt-6 flex justify-end gap-2">
             <button value="cancel" class="btn">{@texts.cancel}</button>
             <button value="confirm" class="btn btn-primary data-destructive:btn-error">

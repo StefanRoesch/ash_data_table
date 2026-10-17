@@ -807,3 +807,12 @@ msgstr "Verfasst von"
 
 msgid "Colour"
 msgstr "Farbe"
+
+msgid "Show all"
+msgstr "Alles zeigen"
+
+msgid "Show less"
+msgstr "Weniger zeigen"
+
+msgid "Apply"
+msgstr "Anwenden"

@@ -3,31 +3,29 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, ROW, SECRET, SELECTOR, PARAGRAPH, UNSEEN} from "../markers.js"
-import {ATTRIBUTE, is, WHOLE_FOCUS, WHOLE_POINTER, WHOLE_LEAVE} from "./shared.js"
+import {ACTIONS, EXPANDER, GRIDCELL, MASK, REVEAL, SECRET, SELECTOR, PARAGRAPH, WHOLE} from "../markers.js"
+import {ATTRIBUTE, is} from "./shared.js"
 
 export default {
   // A cell shows one line of its text, or as many as its column
-  // says (`data-lines`), and cuts off the rest. The whole text of
-  // a cell that cuts some off is shown under the cell, in the
-  // table's popover for it (`ID-whole`), while the cell has the
-  // focus or the pointer has rested on it: after a moment, so
-  // that going through cells shows nothing, and gone at once when
-  // the focus moves on. Above the cell where there is no room
-  // under it.
+  // says (`data-lines`), and cuts off the rest. A cell that cuts some
+  // off shows all of it in place, its row as high as it needs: the
+  // hook puts a button into the cell (`WHOLE`) while the cell has the
+  // pointer or the focus, and the button, or Shift+Enter on the cell,
+  // shows the whole text and cuts it off again; so does Escape. The
+  // root's rules do the rest, by the button's `aria-expanded`.
   //
-  // The text is taken from the cell, here: the server sends
-  // nothing for it, and so nothing that the cell does not show.
-  // A sensitive cell has none, masked or shown; nor has a cell
-  // that is being edited, whose editor holds the whole text, or
-  // one whose save failed, which has its message there.
+  // Nothing of it is the server's, and nothing floats: the text is the
+  // cell's own. A screen reader reads the whole text in the cell
+  // whatever the eye is shown, so the button is for the eye
+  // (`aria-hidden`), and no tab stop. A sensitive cell has no whole
+  // text, masked or shown; nor has a cell that is being edited, whose
+  // editor holds the whole text, or one whose save failed or is on
+  // its way.
   //
-  // It is for the eye: a screen reader reads the whole text in
-  // the cell, and is told nothing of this (`aria-hidden`). It
-  // never takes the focus. Escape takes it away and nothing else
-  // (the focus stays, and the key does nothing more); the pointer
-  // can go onto it, and it stays for as long as the pointer is on
-  // it or on its cell; scrolling anything but itself takes it away.
+  // A patch of a row brings its cells as the server renders them,
+  // without the button: those that were expanded are expanded again
+  // (`offerWhole`, after every patch), as far as they still cut text.
 
   // What in a cell holds its text, when some of it is cut off:
   // the paragraph of a cell with several lines, else the cell.
@@ -46,17 +44,6 @@ export default {
     return cut ? text : null
   },
 
-  // The text an element shows to the eye: not what is there for a
-  // screen reader alone, and not what a control or a message says.
-  seenIn(node) {
-    let text = ""
-    for (const child of node.childNodes) {
-      if (child.nodeType === 3) text += child.nodeValue
-      else if (child.nodeType === 1 && !child.matches(`[popover],[hidden],${UNSEEN},button,input,select,textarea,template`)) text += this.seenIn(child)
-    }
-    return text
-  },
-
   // What a cell with several lines shows of a text that the hook
   // puts into it: the paragraph the server would render, with its
   // marker (`PARAGRAPH`), which the rules of the table's look cut off
@@ -69,136 +56,96 @@ export default {
     return [paragraph]
   },
 
-  // The focus is on a cell (not in a control of it), or on none
-  // of this grid.
-  focusedWhole(cell) {
-    clearTimeout(this.wholeTimers.focus)
-    if (cell !== this.wholeOff) this.wholeOff = null
-    if (this.whole && (this.whole.by === "focus" || cell) && this.whole.cell !== cell) this.hideWhole()
-    if (!cell) return
-    this.wholeTimers.focus = setTimeout(() => {
-      if (document.activeElement === cell) this.showWhole(cell, "focus")
-    }, WHOLE_FOCUS)
+  // The button of a cell, if it has one.
+  wholeOf(cell) {
+    return cell ? Array.from(cell.children).find(child => is(child, WHOLE)) || null : null
+  },
+
+  expandedIn(cell) {
+    const button = this.wholeOf(cell)
+    return !!button && button.getAttribute("aria-expanded") === "true"
   },
 
   // The pointer is on a cell, or on none of this grid.
-  pointedWhole(cell) {
-    clearTimeout(this.wholeTimers.pointer)
-    clearTimeout(this.wholeTimers.leave)
-    if (cell && cell !== this.wholeOff) this.wholeOff = null
-    const shown = this.whole
-    if (shown && shown.by === "pointer" && shown.cell !== cell) {
-      // on its way to the text, perhaps
-      this.wholeTimers.leave = setTimeout(() => this.hideWhole(), WHOLE_LEAVE)
+  onPointer(cell) {
+    if (cell === this.pointed) return
+    this.pointed = cell
+    this.offerWhole()
+  },
+
+  // The cells that are offered their whole text: the one that has the
+  // pointer and the one that has the focus, where they cut some off,
+  // and every one that shows it. The button goes from any other.
+  offerWhole() {
+    const focused = this.cellOf(document.activeElement)
+    const offered = [this.pointed, focused].filter(cell => cell && this.owns(cell) && this.cutIn(cell))
+    for (const button of Array.from(this.el.querySelectorAll(WHOLE))) {
+      const cell = button.parentElement
+      if (!this.owns(cell) || offered.includes(cell)) continue
+      if (button.getAttribute("aria-expanded") !== "true") button.remove()
     }
-    if (!cell || (shown && shown.cell === cell)) return
-    this.wholeTimers.pointer = setTimeout(() => {
-      if (this.pointed === cell) this.showWhole(cell, "pointer")
-    }, WHOLE_POINTER)
-  },
-
-  // The pointer is on the text: it stays for as long, also when
-  // the cell loses the focus by a click on the text.
-  holdWhole() {
-    clearTimeout(this.wholeTimers.leave)
-    if (this.whole) this.whole.by = "pointer"
-  },
-
-  leaveWhole() {
-    clearTimeout(this.wholeTimers.leave)
-    if (!this.whole || this.pointed === this.whole.cell) return
-    this.wholeTimers.leave = setTimeout(() => this.hideWhole(), WHOLE_LEAVE)
-  },
-
-  // Escape, wherever the focus is: the text goes, and the key
-  // does nothing else. It does not come back for this cell until
-  // the focus or the pointer has been somewhere else.
-  onWholeKeydown(e) {
-    if (e.key !== "Escape" || !this.whole) return
-    e.preventDefault()
-    e.stopPropagation()
-    this.wholeOff = this.whole.cell
-    this.hideWhole()
-  },
-
-  // Something scrolled, or the window is another size: the text
-  // is no longer where its cell is. Not when it is the text
-  // itself that scrolled.
-  scrolledWhole(e) {
-    if (!this.whole) return
-    const whole = this.part("whole")
-    if (e && whole && e.target === whole) return
-    this.hideWhole()
-  },
-
-  showWhole(cell, by) {
-    const whole = this.part("whole")
-    if (!whole || !whole.showPopover || cell === this.wholeOff) return
-    const within = this.cutIn(cell)
-    const text = within ? this.seenIn(within) : ""
-    if (text.trim() === "") return
-    if (this.whole && this.whole.cell !== cell) this.hideWhole()
-    clearTimeout(this.wholeTimers.leave)
-    if (whole.textContent !== text) whole.textContent = text
-    if (!whole.matches(":popover-open")) whole.showPopover()
-    if (!this.whole) {
-      whole.scrollTop = 0
-      // the row of the cell is watched for as long: a live update
-      // may bring another text
-      const watch = new MutationObserver(() => this.freshWhole())
-      watch.observe(cell.closest(ROW), {subtree: true, childList: true, characterData: true})
-      this.whole = {cell, by, text, watch}
-      document.addEventListener("keydown", this.onWholeKey, true)
+    for (const cell of offered) if (!this.wholeOf(cell)) this.wholeButton(cell, false)
+    // expanded before a patch brought the cell again
+    for (const id of Array.from(this.expanded)) {
+      const cell = document.getElementById(id)
+      if (!cell || !this.owns(cell)) this.expanded.delete(id)
+      else if (!this.wholeOf(cell) && this.cutIn(cell)) this.wholeButton(cell, true)
+      else if (!this.wholeOf(cell)) this.expanded.delete(id)
     }
-    this.whole.text = text
-    this.placeWhole()
   },
 
-  // Under the cell, at its start; above it where there is more
-  // room; and within the window. As wide as its text asks, up to
-  // what its style says, or up to the cell where that is wider.
-  placeWhole() {
-    const whole = this.part("whole")
-    if (!this.whole || !whole) return
-    const box = this.whole.cell.getBoundingClientRect()
-    whole.style.maxWidth = ""
-    if (box.width > parseFloat(getComputedStyle(whole).maxWidth)) whole.style.maxWidth = `${box.width}px`
-    const height = whole.offsetHeight
-    const below = window.innerHeight - box.bottom - 2
-    const above = box.top - 2
-    const top = height <= below || below >= above ? box.bottom + 2 : box.top - 2 - height
-    const most = document.documentElement.clientWidth - whole.offsetWidth
-    whole.style.top = `${Math.max(0, top)}px`
-    whole.style.left = `${Math.max(0, Math.min(box.left, most))}px`
+  // Puts the button into a cell, saying whether the whole text shows.
+  wholeButton(cell, open) {
+    const button = document.createElement("button")
+    button.type = "button"
+    button.tabIndex = -1
+    button.setAttribute(ATTRIBUTE(WHOLE), "")
+    button.setAttribute("aria-hidden", "true")
+    cell.append(button)
+    this.showWhole(cell, button, open)
+    return button
   },
 
-  // After a patch: the cell is gone, or shows all of its text
-  // now, and the text goes; or it holds another text, which is
-  // shown in place of the old one.
-  freshWhole() {
-    const shown = this.whole
-    if (!shown) return
-    const within = this.cutIn(shown.cell)
-    const text = within ? this.seenIn(within) : ""
-    if (text.trim() === "") return this.hideWhole()
-    if (text !== shown.text) this.showWhole(shown.cell, shown.by)
+  showWhole(cell, button, open) {
+    button.setAttribute("aria-expanded", String(open))
+    button.textContent = open ? this.el.dataset.showLess : this.el.dataset.showWhole
+    if (open) this.expanded.add(cell.id)
+    else this.expanded.delete(cell.id)
   },
 
-  hideWhole() {
-    const shown = this.whole
-    if (!shown) return
-    this.whole = null
-    shown.watch.disconnect()
-    document.removeEventListener("keydown", this.onWholeKey, true)
-    const whole = this.part("whole")
-    if (!whole) return
-    if (whole.matches(":popover-open")) whole.hidePopover()
-    whole.textContent = ""
+  // Shows the whole text of a cell, or cuts it off again: the button,
+  // and Shift+Enter on the cell. Whether there was anything to do.
+  toggleWhole(cell) {
+    const button = this.wholeOf(cell) || (this.cutIn(cell) ? this.wholeButton(cell, false) : null)
+    if (!button) return false
+    this.showWhole(cell, button, button.getAttribute("aria-expanded") !== "true")
+    return true
   },
 
-  // Nothing is shown, and nothing is on its way.
-  quitWhole() {
-    for (const timer of Object.values(this.wholeTimers || {})) clearTimeout(timer)
-    this.hideWhole()
+  // Escape on a cell whose whole text shows: it is cut off again.
+  // Whether there was one.
+  lessWhole(cell) {
+    if (!this.expandedIn(cell)) return false
+    this.showWhole(cell, this.wholeOf(cell), false)
+    return true
+  },
+
+  // Nothing is shown: before an editor is put into a cell, and when the
+  // hook goes.
+  quitWhole(cell) {
+    const buttons = cell ? [this.wholeOf(cell)].filter(Boolean) : Array.from(this.el.querySelectorAll(WHOLE))
+    for (const button of buttons) {
+      if (cell || this.owns(button)) {
+        this.expanded.delete(button.parentElement.id)
+        button.remove()
+      }
+    }
+  },
+
+  // Whether all that changed in the grid was the button of a cell.
+  ofWhole(record) {
+    if (record.type !== "childList") return false
+    const nodes = [...record.addedNodes, ...record.removedNodes]
+    return nodes.length > 0 && nodes.every(node => node.nodeType === 1 && is(node, WHOLE))
   }
 }

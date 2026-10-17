@@ -265,7 +265,6 @@ defmodule AshDataTable.Live.Drawing do
         texts={Words.texts(:grid)}
         messages={Words.messages(:grid)}
       />
-      <Kit.part part={:whole_text} kit={@options.kit} id={@entry.id} />
       <Kit.part
         :for={
           {kind, message} <-
@@ -317,6 +316,7 @@ defmodule AshDataTable.Live.Drawing do
           id={@entry.id}
           model={@entry.model}
           presentation={presentation(@options, :confirm)}
+          place={nil}
           texts={Words.texts(:confirm)}
           messages={Words.messages(:confirm)}
         />
@@ -342,6 +342,12 @@ defmodule AshDataTable.Live.Drawing do
             myself={@myself}
             uploads={@uploads}
             router={@router}
+          />
+          <.asked_in
+            :if={asked_in?(@options, :panel)}
+            entry={@entry}
+            options={@options}
+            place={:panel}
           />
         </Kit.part>
         <%!-- After the panel, and so on top of it when both are open: a picker
@@ -381,6 +387,7 @@ defmodule AshDataTable.Live.Drawing do
       picker={Present.picker(@entry.picker)}
       target={@myself}
       presentation={presentation(@options, :picker)}
+      takes?={!!@chooser and !@chooser.gone? and Selection.in_view(@chooser) != []}
       texts={Words.texts(:picker, %{picker: Present.picker(@entry.picker)})}
       messages={Words.messages(:picker, %{picker: Present.picker(@entry.picker)})}
     >
@@ -397,9 +404,45 @@ defmodule AshDataTable.Live.Drawing do
         router={@router}
       />
       <div :if={@chooser && @chooser.gone?} id={@chooser.id} hidden></div>
+      <.asked_in
+        :if={asked_in?(@options, :picker)}
+        entry={@entry}
+        options={@options}
+        place={:picker}
+      />
     </Kit.part>
     """
   end
+
+  # The question once more inside a panel or picker that is open over the
+  # page, where the question is asked in the page: the page under it is
+  # inert, so a question it asks is shown in it (`place`, ids ending in
+  # `-in-panel`, `-in-picker`). The hook asks there; the server leaves it
+  # alone.
+  attr :entry, :any, required: true
+  attr :options, :any, required: true
+  attr :place, :atom, required: true
+
+  defp asked_in(assigns) do
+    ~H"""
+    <Kit.part
+      part={:confirm}
+      kit={@options.kit}
+      bulk={@entry.bulk}
+      id={@entry.id}
+      model={@entry.model}
+      presentation={:inline}
+      place={@place}
+      texts={Words.texts(:confirm)}
+      messages={Words.messages(:confirm)}
+    />
+    """
+  end
+
+  # Whether `thing`, open over the page, holds a copy of the question, which
+  # is asked in the page.
+  defp asked_in?(options, thing),
+    do: presentation(options, thing) == :modal and presentation(options, :confirm) == :inline
 
   # Whether the table draws the action panel: it is open, and not a
   # request the host draws (controlled mode).

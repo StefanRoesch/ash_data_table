@@ -132,7 +132,8 @@ defmodule AshDataTable.Live.Core do
   defp topic(intent) when is_tuple(intent), do: topic(elem(intent, 0))
 
   defp topic(event)
-       when event in [:sort, :filter, :clear_filter, :clear_filters, :page, :page_size],
+       when event in [:sort, :filter, :clear_filter, :clear_filters, :filter_values, :page] or
+              event == :page_size,
        do: Reading
 
   defp topic(event) when event in [:arguments, :argument_add, :argument_remove], do: Url
@@ -740,7 +741,7 @@ defmodule AshDataTable.Live.Core do
        do: {:reply, %{}, socket}
 
   defp malformed(event, socket)
-       when event in ~w(sort filter clear_filter clear_filters arguments argument_add
+       when event in ~w(sort filter clear_filter clear_filters filter_values arguments argument_add
                         argument_remove page page_size toggle table_act table_run bulk_run
                         bulk_seen select panel_validate panel_submit panel_cancel pick_input
                         picker_cancel create open discard dismiss left read_again),

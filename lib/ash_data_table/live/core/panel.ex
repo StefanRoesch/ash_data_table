@@ -109,6 +109,27 @@ defmodule AshDataTable.Live.Core.Panel do
   # Sent by the panel's form as the person types: what its fields hold. The
   # action is given it, as `AshPhoenix.Form.validate/3` does, and says what
   # it makes of it; nothing runs.
+  # The side panel of a filter for several values: what is ticked is kept
+  # as it is typed, and filters once it is sent (`Reading.filtered/2`).
+  # Nothing of an action is run or asked.
+  def on({:panel_validate, typed}, socket)
+      when :erlang.map_get(:kind, Current.entry(socket, :panel)) == :filter do
+    panel = Core.table(socket).entry.panel
+    name = Atom.to_string(panel.column)
+
+    values =
+      case typed do
+        %{^name => [_own | values]} -> Enum.filter(values, &is_binary/1)
+        _none -> panel.values
+      end
+
+    {:noreply, Core.put(socket, panel: %{panel | values: values, typed: typed})}
+  end
+
+  def on({:panel_submit, typed}, socket)
+      when :erlang.map_get(:kind, Current.entry(socket, :panel)) == :filter,
+      do: Reading.filtered(socket, typed)
+
   def on({:panel_validate, typed}, socket) when is_map(Current.entry(socket, :panel)) do
     panel = Core.table(socket).entry.panel
 
@@ -137,11 +158,11 @@ defmodule AshDataTable.Live.Core.Panel do
       else: {:noreply, failed_panel(socket, sent(%{panel | typed: typed}, typed), nil)}
   end
 
-  # Sent by the panel's hook when a person uses the button that adds a
-  # value to a field made of groups, or the one that takes a value away:
-  # the way to the group, as the names it is sent under. The panel is
-  # rendered again with the group, or without it, and the action is told as
-  # it is of anything typed. The answer says where focus goes.
+  # Sent by the button that adds a value to a field made of groups, or the
+  # one that takes a value away: the way to the group, as the names it is
+  # sent under. The panel is rendered again with the group, or without it,
+  # and the action is told as it is of anything typed. The panel's hook is
+  # told where focus goes (`ash_data_table:focus`).
   def on({event, [name | rest]}, socket)
       when event in [:panel_add, :panel_remove] and is_map(Current.entry(socket, :panel)) do
     panel = Core.table(socket).entry.panel
@@ -158,30 +179,32 @@ defmodule AshDataTable.Live.Core.Panel do
       form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
       used = MapSet.put(panel.used, name)
       panel = %{panel | form: form, typed: typed, groups: groups, used: used}
-      focus = Ids.field(Core.table(socket).entry.id, [name | focus])
+      %{id: id, model: model} = Core.table(socket).entry
 
-      {:reply, %{focus: focus},
-       Core.put(socket, panel: errors(panel, Core.table(socket).entry.model))}
+      {:noreply,
+       socket
+       |> Core.put(panel: errors(panel, model))
+       |> focus(Ids.field(id, [name | focus]))}
     else
-      _ -> {:reply, %{}, socket}
+      _ -> {:noreply, socket}
     end
   end
 
   def on({event, _path}, socket) when event in [:panel_add, :panel_remove],
-    do: {:reply, %{}, socket}
+    do: {:noreply, socket}
 
-  # Sent by the panel's hook for the button beside a sensitive field of a
-  # row action's panel: "Clear", and "Keep", which takes it back. The panel
-  # notes it, and the action is given the field without a value when it
-  # runs. Only for a field the panel offers it for
-  # (`AshDataTable.Act.clearable/3`). The answer says where focus goes: back to
-  # the button.
+  # Sent by the button beside a sensitive field of a row action's panel:
+  # "Clear", and "Keep", which takes it back. The panel notes it, and the
+  # action is given the field without a value when it runs. Only for a
+  # field the panel offers it for (`AshDataTable.Act.clearable/3`). Focus
+  # goes back to the button (`ash_data_table:focus`), which a patch that
+  # changes what stands before it takes off.
   def on({:panel_clear, name}, socket) when is_map(Current.entry(socket, :panel)) do
     %{clearable: clearable, cleared: cleared} = panel = Core.table(socket).entry.panel
 
     case Enum.find(clearable, &(Atom.to_string(&1) == name)) do
       nil ->
-        {:reply, %{}, socket}
+        {:noreply, socket}
 
       input ->
         cleared =
@@ -189,12 +212,14 @@ defmodule AshDataTable.Live.Core.Panel do
             do: MapSet.delete(cleared, input),
             else: MapSet.put(cleared, input)
 
-        {:reply, %{focus: Ids.clear(Ids.field(Core.table(socket).entry.id, [name]))},
-         Core.put(socket, panel: %{panel | cleared: cleared})}
+        {:noreply,
+         socket
+         |> Core.put(panel: %{panel | cleared: cleared})
+         |> focus(Ids.clear(Ids.field(Core.table(socket).entry.id, [name])))}
     end
   end
 
-  def on({:panel_clear, _name}, socket), do: {:reply, %{}, socket}
+  def on({:panel_clear, _name}, socket), do: {:noreply, socket}
 
   # Sent by the panel's hook for Cancel and Escape.
   def on(:panel_cancel, socket),
@@ -551,6 +576,15 @@ defmodule AshDataTable.Live.Core.Panel do
         into: MapSet.new(),
         do: name
   end
+
+  @doc """
+  Tells the panel's hook where focus goes after a button of the panel was
+  used (`ash_data_table:focus`): the element of `id`, or the first field in
+  it.
+  """
+  def focus(socket, id),
+    do:
+      push_event(socket, "ash_data_table:focus", %{table: Core.table(socket).entry.id, cell: id})
 
   # What the table itself gives the action of a panel.
   def given(panel), do: Map.get(panel, :given, %{})

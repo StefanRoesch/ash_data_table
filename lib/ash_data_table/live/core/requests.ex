@@ -144,7 +144,7 @@ defmodule AshDataTable.Live.Core.Requests do
 
   # What a panel the host draws is made for; nil for none.
   defp handed(%{kind: kind, action: action, key: key} = panel),
-    do: {:panel, {kind, action.name, key, Map.get(panel, :column)}}
+    do: {:panel, {kind, action && action.name, key, Map.get(panel, :column)}}
 
   defp handed(_none), do: nil
 

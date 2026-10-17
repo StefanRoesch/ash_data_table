@@ -33,6 +33,7 @@ defmodule AshDataTable.Intent do
           {:sort, String.t()}
           | {:filter, map}
           | {:clear_filter, String.t()}
+          | {:filter_values, String.t(), String.t()}
           | :clear_filters
           | {:page, String.t()}
           | {:page_size, String.t()}
@@ -78,8 +79,7 @@ defmodule AshDataTable.Intent do
   says nothing of it). All of it claims.
   """
   @type picked :: %{
-          row: term,
-          rows: term,
+          none?: boolean,
           confirmed?: boolean,
           arguments: String.t() | nil
         }
@@ -96,6 +96,12 @@ defmodule AshDataTable.Intent do
     do: {:ok, {:clear_filter, column}}
 
   def parse("clear_filters", _params), do: {:ok, :clear_filters}
+
+  # The button of a filter for several values: the column and the operator.
+  def parse("filter_values", %{"column" => column, "operator" => operator})
+      when is_binary(column) and is_binary(operator),
+      do: {:ok, {:filter_values, column, operator}}
+
   def parse("page", %{"to" => to}) when is_binary(to), do: {:ok, {:page, to}}
   def parse("page_size", %{"size" => size}) when is_binary(size), do: {:ok, {:page_size, size}}
 
@@ -183,12 +189,13 @@ defmodule AshDataTable.Intent do
   def parse("pick_input", %{"input" => input}) when is_binary(input),
     do: {:ok, {:pick_input, input}}
 
+  # The record is the one selected in the picker's table, which the server
+  # holds: the event names none (`none` for "None").
   def parse("picked", %{} = params) do
     {:ok,
      {:picked,
       %{
-        row: params["row"],
-        rows: params["rows"],
+        none?: params["none"] == true,
         confirmed?: params["confirmed"] == true,
         arguments: if(is_binary(params["arguments"]), do: params["arguments"])
       }}}

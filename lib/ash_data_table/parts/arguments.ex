@@ -121,7 +121,6 @@ defmodule AshDataTable.Parts.Arguments do
           id={"#{@id}-count"}
           counted={@counted}
           value={@value}
-          floats?={false}
           class={nil}
         />
         <%!-- An array has several controls, and its label is for none of them
@@ -182,7 +181,6 @@ defmodule AshDataTable.Parts.Arguments do
               id={"#{@id}-#{at}-count"}
               counted={@counted}
               value={value}
-              floats?={false}
               class={nil}
             />
             <button

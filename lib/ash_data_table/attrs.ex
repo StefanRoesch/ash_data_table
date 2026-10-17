@@ -8,7 +8,7 @@ defmodule AshDataTable.Attrs do
   its id, its ARIA role and states, the `data-*` markers, `phx-*` and
   `phx-hook`. A part spreads the bundle on whatever element it draws:
 
-      <div {AshDataTable.Attrs.grid(@id, @myself, @lead, @selecting, @choose)} class="my-grid">
+      <div {AshDataTable.Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)} class="my-grid">
 
   and is called with the values a part is given, as `AshDataTable.Kit.Default`'s
   parts call them. Where a part is drawn per row, cell or column, the bundle
@@ -65,7 +65,7 @@ defmodule AshDataTable.Attrs do
   #     `ID-head-FIELD` for a header cell, `ID-filter-FIELD` for a filter cell
   #     (its controls end in `-operator`, `-value` and `-clear`; a range has
   #     `-value` and `-to`, and a filter for several values the button
-  #     `-value`, the list `-values` and a box `-value-VALUE` for each),
+  #     `-value`, which opens the side panel with a box per value),
   #     `ID-row-KEY` for a row's `<tbody>` and `ID-row-KEY-c-FIELD` for a cell;
   #   * the header cell of a column ends in the handle that changes the
   #     column's width, `ID-resize-FIELD` (`resizer/1`). The widths are the
@@ -125,7 +125,7 @@ defmodule AshDataTable.Attrs do
   #     table `data-nested`;
   #   * a failed cell, and a failed actions cell: `aria-invalid` and
   #     `aria-describedby`, which names the message, a child of the cell
-  #     (`[popover]`); what the cell shows are its other children;
+  #     after what it shows, `ID-…-error`;
   #   * a sensitive cell: `button[data-reveal]`, `[data-mask]`,
   #     `[data-masked]`, `[data-secret]`;
   #   * the editor of a column: `template` `ID-editor-FIELD` (`data-editor`,
@@ -155,10 +155,10 @@ defmodule AshDataTable.Attrs do
   #     ends in `-label` and holds the word "required" as `.sr-only` where
   #     it is required; its messages are `[data-error]` in a `div` that ends
   #     in `-error`. A value made of fields says `data-group` (its add and
-  #     remove buttons `data-add-group`, `data-remove-group`), an array of them
+  #     remove buttons `ID-…-add`, `ID-…-remove`, `data-remove-group`), an array of them
   #     `data-groups` with `data-group-item`s, a union `data-union`, an array
   #     `[data-list] > [data-item]`, a field emptied on purpose
-  #     `data-cleared` (its button `ID-panel-f-NAME-clear`, `data-clear-field`).
+  #     `data-cleared` (its button `ID-panel-f-NAME-clear`).
   #     A field of a related record holds its key in `input[data-key]` and
   #     says what it is called in `ID-panel-f-NAME-chosen` (`data-chosen`),
   #     beside `ID-panel-f-NAME-choose`; one of several records says
@@ -209,17 +209,19 @@ defmodule AshDataTable.Attrs do
   #     nothing runs and the result says so;
   #   * `bulk_seen` `{}`, `table_run` `{action}`: no answer.
   #
-  # From the panel's hook, on `ID-panel`: `panel_add` and `panel_remove`
-  # `{path}`, `panel_unpick` `{input, key}` and `panel_clear` `{input}`,
-  # each answered with `{focus}` (the id that gets the focus) or `{}`;
-  # `panel_cancel` `{}`, no answer.
+  # From the panel's hook, on `ID-panel`: `panel_cancel` `{}`, no answer.
+  # From its buttons (`phx-click`): `panel_add` and `panel_remove` `{path}`,
+  # `panel_unpick` `{input, key}` and `panel_clear` `{input}`, no answer:
+  # the server says where focus goes (`ash_data_table:focus`).
   #
-  # From the picker's hook, on `ID-picker`: `picked` `{row, confirmed,
-  # arguments}` (`row` nil for "None"), or `{rows, arguments}` where several
-  # are chosen, `arguments` what the argument line of its table holds, as
-  # a query string, or nil: answered `{ok: true}`, `{ok: false}`,
-  # `{ok: false, error}` or `{ask}` (the column's question, after which it
-  # is sent again with `confirmed: true`); `picker_cancel` `{}`, no answer.
+  # From the picker's hook, on `ID-picker`: `picked` `{confirmed, arguments}`
+  # (`none: true` for "None"): the record chosen is the row selected in the
+  # picker's table, as the server holds it (`select`), the selected rows
+  # where several are chosen; `arguments` what the argument line of its
+  # table holds, as a query string, or nil. Answered `{ok: true}`,
+  # `{ok: false}`, `{ok: false, error}` or `{ask}` (the column's question,
+  # after which it is sent again with `confirmed: true`); `picker_cancel`
+  # `{}`, no answer.
   # The pagination's hook sends nothing.
   #
   # From the markup: `sort` `{column}` (a header's button), `filter` (the
@@ -233,7 +235,7 @@ defmodule AshDataTable.Attrs do
   # The server tells a grid's hook with `push_event`, each with `table`,
   # the id of the table it is for (every hook of the page hears it, and
   # only that table's acts): `ash_data_table:focus` `{table, cell}` (the id to
-  # focus), `ash_data_table:ask` `{table, action, question}` (answered with
+  # focus: in the grid, the argument line or the panel, whose hook hears it too), `ash_data_table:ask` `{table, action, question}` (answered with
   # `table_run`), `ash_data_table:select` `{table, all, rows}` (what is
   # selected, where the server decided it: each row `[key, named]`, as the
   # hook keeps it), `ash_data_table:leaving` `{table, row}` (answered with
@@ -538,11 +540,13 @@ defmodule AshDataTable.Attrs do
   # An empty cell holds nothing, and the cell of a field the person may not
   # see holds what it holds in every column.
   #
-  # `ID-whole` is a popover the hook fills with the whole text of a cell
-  # that cuts some off, and shows under that cell while it has the focus or
-  # the pointer (see "the whole text of a cell" in the hook). The server
-  # renders it empty and never writes to it; it is for the eye alone
-  # (`aria-hidden`). A sensitive cell has no such text, masked or shown.
+  # A cell that cuts some of its text off shows all of it in place, the
+  # row as high as it needs: the hook puts a button into the cell
+  # (`data-whole`, `aria-expanded`) while the cell has the focus or the
+  # pointer, and Shift+Enter on the cell does the same (see "the whole
+  # text of a cell" in the hook). The root's rules show the whole text of
+  # a cell whose button says it is expanded. The server renders no part of
+  # it. A sensitive cell has no such text, masked or shown.
   #
   # ## The full view
   #
@@ -606,12 +610,11 @@ defmodule AshDataTable.Attrs do
     [data-current] [data-summaries]
     [data-resize] [data-open] [data-action] [data-create] [data-table-action] [data-destructive]
     [data-question] [data-confirm]
-    [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen]
-    [data-choices-button] [data-choices]
+    [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen] [data-whole]
     [data-control] [data-clear] [data-count] [data-value-text] [data-list] [data-item] [data-add]
     [data-remove] [data-own]
     [data-selection] [data-select-all] [data-bulk] [data-arguments]
-    [data-field] [data-cancel] [data-add-group] [data-remove-group] [data-unpick] [data-clear-field]
+    [data-field] [data-cancel] [data-remove-group]
     [data-none] [data-take] [aria-current=page] [role=region] [data-presentation]
   )
 
@@ -627,10 +630,13 @@ defmodule AshDataTable.Attrs do
   column; `data-select` whether rows can be selected, and how many at a
   time; `data-choose` that the table is one to choose a record from, and
   `data-chosen-rows`, where several are chosen, which rows are selected as
-  it opens. No tab stop (`tabindex`), which a browser may make of an
-  element that scrolls: the tab stop of a grid is one of its cells.
+  it opens; `data-show-whole` and `data-show-less` what the button says
+  that shows a cell's whole text and cuts it off again (the `grid` part's
+  `texts.show_whole` and `texts.show_less`). No tab stop (`tabindex`),
+  which a browser may make of an element that scrolls: the tab stop of a
+  grid is one of its cells.
   """
-  def grid(id, myself, lead, selecting, choose) do
+  def grid(id, myself, lead, selecting, choose, texts) do
     %{
       "id" => "#{id}-grid",
       "phx-hook" => "AshDataTable.Grid",
@@ -641,6 +647,8 @@ defmodule AshDataTable.Attrs do
       "data-select" => selecting,
       "data-choose" => not is_nil(choose),
       "data-chosen-rows" => choose && selecting == :multi && held(chosen_rows(choose)),
+      "data-show-whole" => texts.show_whole,
+      "data-show-less" => texts.show_less,
       "tabindex" => "-1"
     }
   end
@@ -1058,12 +1066,6 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  @doc """
-  The message of a failed cell or row: a popover, which the hook shows
-  while the cell has the focus or the pointer.
-  """
-  def failure, do: %{"popover" => "manual"}
-
   # ---- the table and what is around its grid ---------------------------------
 
   @doc """
@@ -1118,6 +1120,21 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
+  The button of a filter for several of a column's values: it opens the
+  table's side panel with a box per value (`filter_values`, with the
+  column and the operator, `"any_of"` or `"none_of"`). `table` is the
+  table's id, `target` the `phx-target` of its events.
+  """
+  def filter_values(table, column, operator, target) do
+    %{
+      "phx-click" => Common.event(table, "filter_values"),
+      "phx-value-column" => column.name,
+      "phx-value-operator" => operator,
+      "phx-target" => target
+    }
+  end
+
+  @doc """
   The form of the filter row, which its controls name (`form`).
   """
   def filters(id, target) do
@@ -1126,6 +1143,44 @@ defmodule AshDataTable.Attrs do
       "phx-change" => Common.event(id, "filter"),
       "phx-submit" => Common.event(id, "filter"),
       "phx-target" => target
+    }
+  end
+
+  @doc """
+  The "Columns" button: it opens and closes the list of the columns, the
+  browser's popover (`popovertarget`), and says what the hook writes on it
+  of the hidden columns: its text (`data-text`), the text the parts are
+  put into (`data-text-with`, with `{details}`), and the parts for every
+  number from 1 to the number of columns (`data-text-hidden`,
+  `data-text-filtered`, `data-text-sorted`, each a JSON list): the
+  `columns` part's `texts`.
+  """
+  def columns_button(id, texts) do
+    %{
+      "id" => "#{id}-columns-button",
+      "popovertarget" => "#{id}-columns",
+      "data-columns-button" => true,
+      "data-text" => texts.columns,
+      "data-text-with" => texts.columns_with,
+      "data-text-hidden" => held(texts.columns_hidden),
+      "data-text-filtered" => held(texts.columns_filtered),
+      "data-text-sorted" => held(texts.columns_sorted)
+    }
+  end
+
+  @doc """
+  The list of the columns, a box each: a popover the button opens
+  (`popover="auto"`: a click elsewhere and Escape close it), a group named
+  by `texts.columns`; `data-keeps-one` where one column has to stay shown.
+  """
+  def columns(id, keeps_one?, texts) do
+    %{
+      "id" => "#{id}-columns",
+      "role" => "group",
+      "aria-label" => texts.columns,
+      "popover" => "auto",
+      "data-columns-list" => true,
+      "data-keeps-one" => keeps_one?
     }
   end
 
@@ -1183,20 +1238,6 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The popover with the whole text of a cell whose text is cut off, for the
-  eye alone; the hook writes it.
-  """
-  def whole(id) do
-    %{
-      "id" => "#{id}-whole",
-      "popover" => "manual",
-      "phx-update" => "ignore",
-      "aria-hidden" => "true",
-      "data-whole" => true
-    }
-  end
-
-  @doc """
   The pagination, and its hook. Under a table on the page a navigation
   landmark; in a nested table a group in its last row. `label` is what it
   is called: the `pagination` part's `texts.label`.
@@ -1218,15 +1259,29 @@ defmodule AshDataTable.Attrs do
 
   Modal, a `<dialog>` the hook opens with `showModal()`; inline, a region
   of the page the hook shows (`hidden` until it asks), named by its
-  question: not an `alertdialog`, which ARIA has be modal.
+  question: not an `alertdialog`, which ARIA has be modal. `place` for its
+  place inside the panel or the picker that is open over the page
+  (`:panel`, `:picker`; inline, its ids ending in `asked_in/1`), where the
+  hook asks a question in the page that one of them asks: the page under
+  it is inert. Nil for the table's own.
   """
-  def confirm(id, presentation) do
+  def confirm(id, presentation, place) do
+    suffix = asked_in(place)
+
     Map.merge(opened(presentation), %{
-      "id" => "#{id}-dialog",
-      "aria-labelledby" => "#{id}-dialog-question",
+      "id" => "#{id}-dialog#{suffix}",
+      "aria-labelledby" => "#{id}-dialog-question#{suffix}",
       "hidden" => presentation == :inline
     })
   end
+
+  @doc """
+  What the ids of the question's place inside the panel or the picker end
+  in (`-in-panel`, `-in-picker`): `ID-dialog-in-panel`,
+  `ID-dialog-question-in-panel`; nothing for the table's own.
+  """
+  def asked_in(nil), do: ""
+  def asked_in(place) when place in [:panel, :picker], do: "-in-#{place}"
 
   # What opens is modal (a `<dialog>`, `role=dialog`, which the hook opens
   # with `showModal()`) or inline (`role=region`, a part of the page);
@@ -1281,25 +1336,57 @@ defmodule AshDataTable.Attrs do
   def field(path), do: %{"data-field" => Enum.join(path, ".")}
 
   @doc """
-  The button that takes a chosen record out of a field (`data-unpick`:
-  the field's name and the record's key, as JSON).
+  The button that takes a chosen record out of a field of the panel of the
+  table `table`: `panel_unpick` with the field's name and the record's key
+  (`phx-value-input`, `phx-value-key`). The server says where focus goes
+  then (`ash_data_table:focus`).
   """
-  def unpick(name, key), do: %{"data-unpick" => held([Atom.to_string(name), key])}
+  def unpick(table, name, key, target) do
+    %{
+      "phx-click" => Common.event(table, "panel_unpick"),
+      "phx-value-input" => name,
+      "phx-value-key" => key,
+      "phx-target" => target
+    }
+  end
 
   @doc """
-  The button that clears a field, or keeps its value (`data-clear-field`:
-  the field's name).
+  The button that clears a sensitive field, or keeps its value:
+  `panel_clear` with the field's name (`phx-value-input`). Focus goes back
+  to it (`ash_data_table:focus`).
   """
-  def clear_field(name), do: %{"data-clear-field" => name}
+  def clear_field(table, name, target) do
+    %{
+      "phx-click" => Common.event(table, "panel_clear"),
+      "phx-value-input" => name,
+      "phx-target" => target
+    }
+  end
 
   @doc """
-  The buttons that add a group of fields and take one away
-  (`data-add-group`, `data-remove-group`: the way to the group, as JSON).
+  The button that adds a group of fields: `panel_add` with the way to it,
+  the names it is sent under (`path`, a list, which a `phx-value-*` cannot
+  hold: `JS.push/2` with it as its value). The server says where focus
+  goes then (`ash_data_table:focus`).
   """
-  def add_group(path), do: %{"data-add-group" => held(path)}
+  def add_group(table, path, target),
+    do: %{
+      "phx-click" =>
+        JS.push(Common.event(table, "panel_add"), value: %{path: path}, target: target)
+    }
 
-  @doc "The button that takes a group of fields away (`data-remove-group`)."
-  def remove_group(path), do: %{"data-remove-group" => held(path)}
+  @doc """
+  The button that takes a group of fields away (`data-remove-group`, by
+  which the panel's hook does not open on it): `panel_remove` with the way
+  to it, as `add_group/3`.
+  """
+  def remove_group(table, path, target) do
+    %{
+      "phx-click" =>
+        JS.push(Common.event(table, "panel_remove"), value: %{path: path}, target: target),
+      "data-remove-group" => true
+    }
+  end
 
   @doc """
   Cancel, in the panel and in the picker.
@@ -1312,15 +1399,15 @@ defmodule AshDataTable.Attrs do
   def none(id), do: %{"id" => "#{id}-picker-none", "data-none" => true}
 
   @doc """
-  "Choose": not to be used while no row is selected, and says so without
-  being `disabled`. Which rows are selected is the hook's, so this is too:
-  a patch leaves it alone.
+  "Choose": not to be used while no row of the picker's table is selected
+  (`takes?`, which the server knows: the table tells it what is selected),
+  and says so without being `disabled`. Where several records are chosen
+  it is always to be used.
   """
-  def take(id, several?) do
+  def take(id, several?, takes?) do
     %{
       "id" => "#{id}-picker-choose",
-      "aria-disabled" => to_string(not several?),
-      "phx-mounted" => JS.ignore_attributes(["aria-disabled"]),
+      "aria-disabled" => to_string(not (several? or takes?)),
       "data-take" => true
     }
   end

@@ -712,8 +712,10 @@ defmodule AshDataTable do
     * `:confirm`, a question: `action`, and for a cell's question `column`
       and `value`, the value the cell is to be given (nil for a sensitive
       column, and for an action's question);
-    * `:panel`, an action panel: `action`, `column` (of a map cell's panel,
-      else nil), `title`, `errors` (what is said that is about none of its
+    * `:panel`, an action panel: `action` (nil for the panel of a filter
+      for several values, which filters by what is sent and runs nothing),
+      `column` (of a cell's panel and a filter's, else nil), `title`,
+      `errors` (what is said that is about none of its
       fields) and `fields`, each with `name`, `label`, `type`, `editor`
       (its control), `required?`, `value` (what it holds as its form sends
       it; nil for a sensitive field), `values` (the choices of an enum,

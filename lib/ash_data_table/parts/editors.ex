@@ -28,13 +28,12 @@ defmodule AshDataTable.Parts.Editors do
   # screen reader reads it when the control gets the focus. It is no live
   # region: it is not read out at every key.
   #
-  # Beside a control it stands in the page as text. In the editor of a cell
-  # it floats (`floats?`): a popover, as the message of a failed cell is,
-  # with that message's edge and ground, which the hook shows and places.
+  # It stands in the page as text, beside or under its control; in the
+  # editor of a cell under the text, and the row grows to it while the
+  # editor is open.
   attr :id, :string, required: true
   attr :counted, :map, required: true
   attr :value, :any, required: true
-  attr :floats?, :boolean, required: true
   attr :class, :string, required: true
 
   def count(assigns) do
@@ -44,15 +43,9 @@ defmodule AshDataTable.Parts.Editors do
     ~H"""
     <span
       id={@id}
-      popover={@floats? && "manual"}
       {Attrs.count(@counted, @over?)}
       class={[
-        "text-xs whitespace-nowrap tabular-nums data-[over]:font-semibold",
-        if(@floats?,
-          do:
-            "inset-auto m-0 rounded border border-base-content/40 bg-base-100 px-1.5 py-0.5 text-base-content/70 shadow data-[over]:text-base-content",
-          else: "shrink-0 opacity-70 data-[over]:opacity-100"
-        ),
+        "shrink-0 text-xs whitespace-nowrap tabular-nums opacity-70 data-[over]:font-semibold data-[over]:opacity-100",
         @class
       ]}
     >{@length}/{@counted.max}</span>
@@ -183,7 +176,6 @@ defmodule AshDataTable.Parts.Editors do
         id={@count_id}
         counted={@counted}
         value={@value}
-        floats?={false}
         class={nil}
       />
       <input

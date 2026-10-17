@@ -6,9 +6,9 @@ defmodule AshDataTable.Parts.Filter do
   # component's assigns.
   use Phoenix.Component
 
+  alias AshDataTable.Attrs
   alias AshDataTable.Parts
   alias AshDataTable.State
-  alias Phoenix.LiveView.JS
 
   # What a column's filter shows: what was typed and rejected; else what
   # the row was last sent, an operator without its value among it, while the
@@ -27,8 +27,8 @@ defmodule AshDataTable.Parts.Filter do
   # What the value is given with follows from the operator, as the column
   # says (`takes`): one control for one value; for a range two inputs,
   # one above the other, so that the column needs no more room than for one;
-  # for several values a button that opens the list of the column's values,
-  # a box for each (`choices/1`).
+  # for several values a button that opens the side panel with a box for
+  # each of the column's values (`choices/1`).
   def filter(assigns) do
     {operator, value} = assigns.filter || {nil, nil}
     takes = if(operator, do: Map.fetch!(assigns.column.takes, operator), else: :one)
@@ -100,8 +100,11 @@ defmodule AshDataTable.Parts.Filter do
         :if={@takes == :many}
         id={@id}
         form={@form}
+        table={@table}
         column={@column}
-        chosen={@value}
+        operator={@operator}
+        chosen={@value || []}
+        target={@target}
         texts={@texts}
       />
       <%!-- an operator such as "is empty" is complete without a value --%>
@@ -175,22 +178,23 @@ defmodule AshDataTable.Parts.Filter do
   end
 
   # The control of a filter for several of a column's values: a button that
-  # says what is chosen, and the list it opens, a box for each value. Built
-  # as "Columns" is (`columns/1`): a disclosure, not a menu, and the list a
-  # popover, so that nothing around the table cuts it off.
+  # says what is chosen and opens the table's side panel, with a box per
+  # value, as a form of its own (`filter_values`): a choice of several
+  # values is made where every value of several is edited. Nothing is
+  # filtered until the panel is sent.
   #
   # The values are the column's own, from its type. Nothing is read for
-  # them, so the list says nothing of the records.
+  # them, so the panel says nothing of the records.
   #
-  # The boxes belong to the form of the filter row, and are sent with it
-  # whether the list is open or not. Ticking one changes no filter: the hook
-  # keeps the change from the form, and submits the form when the list is
-  # closed (`.Grid`, "several values of a filter"). Until then the button
-  # says what applies.
+  # The values that apply belong to the filter row's form, as inputs that
+  # are not shown, so that a change of another filter sends them with it.
   attr :id, :string, required: true
   attr :form, :string, required: true
+  attr :table, :string, required: true
   attr :column, :map, required: true
+  attr :operator, :atom, required: true
   attr :chosen, :list, required: true
+  attr :target, :any, required: true
   attr :texts, :map, required: true
 
   defp choices(assigns) do
@@ -204,12 +208,10 @@ defmodule AshDataTable.Parts.Filter do
       type="button"
       id={"#{@id}-value"}
       tabindex="-1"
-      aria-expanded="false"
-      aria-controls={"#{@id}-values"}
+      aria-haspopup="dialog"
       aria-label={"#{@texts.filter}: #{@says}"}
       title={@labels != [] && Enum.join(@labels, ", ")}
-      phx-mounted={JS.ignore_attributes(["aria-expanded"])}
-      data-choices-button
+      {Attrs.filter_values(@table, @column, @operator, @target)}
       class={[
         "select select-xs w-32 min-w-0 justify-start text-start",
         Parts.Editors.control_edge()
@@ -217,32 +219,13 @@ defmodule AshDataTable.Parts.Filter do
     >
       <span class="truncate">{@says}</span>
     </button>
-    <div
-      id={"#{@id}-values"}
-      role="group"
-      aria-label={@texts.filter}
-      popover="manual"
-      phx-mounted={JS.ignore_attributes(["style"])}
-      data-choices
-      class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm font-normal text-base-content shadow"
-    >
-      <label
-        :for={{value, label} <- @column.values}
-        class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
-      >
-        <input
-          type="checkbox"
-          id={"#{@id}-value-#{value}"}
-          name={"filter[#{@column.name}][in][]"}
-          value={value}
-          form={@form}
-          checked={to_string(value) in @chosen}
-          tabindex="-1"
-          class={["checkbox checkbox-xs", Parts.Editors.box_edge()]}
-        />
-        <span>{label}</span>
-      </label>
-    </div>
+    <input
+      :for={value <- @chosen}
+      type="hidden"
+      name={"filter[#{@column.name}][in][]"}
+      value={value}
+      form={@form}
+    />
     """
   end
 end

@@ -201,6 +201,21 @@ defmodule AshDataTable.State do
   end
 
   @doc """
+  The state after the filter of one column, `name`, was given in a form of
+  its own (the side panel of a filter for several values): `entry` is what
+  `filter/3` takes for that column. The other columns keep their filters;
+  a change returns to the first page. A value that is not one of the
+  column's is no filter.
+  """
+  @spec filter_column(t, Model.t(), String.t(), map) :: t
+  def filter_column(%__MODULE__{} = state, %Model{} = model, name, entry)
+      when is_binary(name) and is_map(entry) do
+    {own, _rejected} = filter(%{state | filters: %{}}, model, %{name => entry})
+    others = Map.reject(state.filters, fn {column, _filter} -> Atom.to_string(column) == name end)
+    put_filters(state, Map.merge(others, own.filters))
+  end
+
+  @doc """
   What the filter row shows after `form`, by column name: for every column
   the operator that was chosen for it, with its value as far as the form
   holds one, and without where it does not: "starts with" before a text is

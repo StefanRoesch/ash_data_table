@@ -488,12 +488,12 @@ defmodule DemoWeb.Tables.PickerTest do
       before = stored!(task)
       pick(view, task.id, "assignee")
 
+      # no row of the picker's table: not there to be taken
       html = picked(view, world.outsider.id)
       assert_reply view, %{ok: false}
 
-      # the picker stays, and says that the record is not there for them
-      assert picker(html).error == "This record is no longer available."
-      assert announcement(html) == "This record is no longer available."
+      # the picker stays, and nothing is said of the record
+      assert %{error: nil} = picker(html)
       refute html =~ world.outsider.name
 
       assert stored!(task).assignee_id == ada.id
@@ -510,11 +510,12 @@ defmodule DemoWeb.Tables.PickerTest do
       before = stored!(task)
       pick(view, task.id, "project")
 
+      # a row that is no row of the picker's table is not there to be taken
       for choose <- [&picked/2, &confirm_picked/2] do
         html = choose.(view, foreign.id)
         assert_reply view, %{ok: false}
 
-        assert picker(html).error == "This record is no longer available."
+        assert %{error: nil} = picker(html)
         refute html =~ "Foreign"
       end
 
@@ -524,7 +525,11 @@ defmodule DemoWeb.Tables.PickerTest do
 
     test "that names no record at all changes nothing", %{view: view, task: task, ada: ada} do
       pick(view, task.id, "assignee")
+      render_async(view)
+      table = chooser_table(view)
 
+      # the row selected in the picker's table is what is chosen: what the
+      # event names is nothing, and a row that is none is not there to take
       for row <- [
             Ash.UUID.generate(),
             "not a key",
@@ -534,10 +539,10 @@ defmodule DemoWeb.Tables.PickerTest do
             42,
             true
           ] do
-        html =
-          forge(view, "task", "picked", %{"row" => row, "confirmed" => true})
-
-        assert picker(html).error == "This record is no longer available."
+        forge(view, table, "select", %{"rows" => [row]})
+        html = forge(view, "task", "picked", %{"row" => ada.id, "confirmed" => true})
+        assert_reply view, %{ok: false}
+        assert picker(html).error == nil
       end
 
       assert stored!(task).assignee_id == ada.id
@@ -551,9 +556,11 @@ defmodule DemoWeb.Tables.PickerTest do
     } do
       other = task(world, "Another task")
       pick(view, task.id, "assignee")
+      render_async(view)
+      select(view, chooser_table(view), [world.member.id])
 
       forge(view, "task", "picked", %{
-        "row" => world.member.id,
+        "row" => world.admin.id,
         "for" => other.id,
         "column" => "reporter",
         "key" => other.id
@@ -677,7 +684,7 @@ defmodule DemoWeb.Tables.PickerTest do
       # a hand-made choice of somebody they may not read changes nothing here either
       pick(view, tasks, task.id, "assignee")
       html = picked(view, tasks, world.outsider.id)
-      assert picker(html, tasks).error == "This record is no longer available."
+      assert picker(html, tasks).error == nil
       assert stored!(task).assignee_id == grace.id
     end
 

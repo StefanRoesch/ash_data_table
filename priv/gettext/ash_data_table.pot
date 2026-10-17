@@ -552,3 +552,15 @@ msgid "1 sorted"
 msgid_plural "%{count} sorted"
 msgstr[0] ""
 msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "Apply"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show all"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Show less"
+msgstr ""

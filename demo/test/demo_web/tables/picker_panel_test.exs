@@ -358,7 +358,7 @@ defmodule DemoWeb.Tables.PickerPanelTest do
       html = picked(view, world.outsider.id)
       assert_reply view, %{ok: false}
 
-      assert picker(html).error == "This record is no longer available."
+      assert picker(html).error == nil
       assert %{value: value, chosen: "Ada Lovelace"} = field(html, "assignee_id")
       assert value == ada.id
       refute html =~ world.outsider.name

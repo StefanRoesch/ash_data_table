@@ -161,7 +161,6 @@ export default {
     if (reply && reply.error) this.mark(cell, value, old, reply.error, () => cell.replaceChildren(...ed.saved))
     if (this.tree().activeId === cell.id) cell.tabIndex = 0
     if (focused) cell.focus()
-    this.showMessage()
   },
 
   onEditorBlur(ed) {

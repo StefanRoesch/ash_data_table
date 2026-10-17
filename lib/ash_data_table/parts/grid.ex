@@ -19,7 +19,6 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
   alias AshDataTable.Present
-  alias Phoenix.LiveView.JS
 
   # The handle at the end of a column's header, with which a person makes
   # the column wider or narrower: dragged, or moved with the arrow keys once
@@ -67,10 +66,15 @@ defmodule AshDataTable.Parts.Grid do
   # the list is open and where it stands alone; a box they tick again, which
   # the hook sees and puts right before anything is drawn.
   #
-  # It is a disclosure, not a menu: a button that says whether the list is
-  # open (`aria-expanded`), and a group of labelled boxes. The list is a
-  # popover, so that nothing around the table cuts it off: not the grid
-  # that scrolls sideways around a nested table, and not a dialog.
+  # It is a disclosure, not a menu: a button and a group of labelled boxes.
+  # The list is the browser's own popover (`popover="auto"`), which the
+  # button opens and closes (`popovertarget`): it stands in the top layer,
+  # so that nothing around the table cuts it off (not the grid that
+  # scrolls sideways around a nested table, not a dialog), a click
+  # elsewhere and Escape close it, and the button says whether it is open.
+  # It is placed under the button by CSS anchor positioning (the button's
+  # `anchor-name`, the list's `position-anchor` and `position-area`);
+  # where a browser has none, it opens in the middle of the window.
   #
   # `columns` are the columns that can be hidden (`hideable/1`).
   # A column that is filtered or sorted by says so at its box, in text, for
@@ -102,30 +106,16 @@ defmodule AshDataTable.Parts.Grid do
     <div id={"#{@id}-columns-control"} class={@class}>
       <button
         type="button"
-        id={"#{@id}-columns-button"}
-        aria-expanded="false"
-        aria-controls={"#{@id}-columns"}
-        phx-mounted={JS.ignore_attributes(["aria-expanded"])}
-        data-columns-button
-        data-text={@texts.columns}
-        data-text-with={@texts.columns_with}
-        data-text-hidden={Attrs.held(@texts.columns_hidden)}
-        data-text-filtered={Attrs.held(@texts.columns_filtered)}
-        data-text-sorted={Attrs.held(@texts.columns_sorted)}
+        {Attrs.columns_button(@id, @texts)}
+        style={"anchor-name: #{anchor(@id)}"}
         class="btn btn-sm"
       >
         <span id={"#{@id}-columns-text"} phx-update="ignore">{@texts.columns}</span>
       </button>
-      <%!-- with the edge and the ground of the table's other popovers --%>
       <div
-        id={"#{@id}-columns"}
-        role="group"
-        aria-label={@texts.columns}
-        popover="manual"
-        phx-mounted={JS.ignore_attributes(["style"])}
-        data-columns-list
-        data-keeps-one={@keeps_one?}
-        class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow"
+        {Attrs.columns(@id, @keeps_one?, @texts)}
+        style={"position-anchor: #{anchor(@id)}"}
+        class="max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
         <label
           :for={
@@ -218,13 +208,10 @@ defmodule AshDataTable.Parts.Grid do
   # Text is edited in a textarea, so that text of several lines keeps its
   # lines. It is one line high until the text needs more.
   #
-  # A text with a most it can be long has its counter with it. The textarea
-  # takes the place of the cell's text as before, to the last pixel: a
-  # counter beside it would take room from the text, and a text that fills
-  # its column would break into another line. So the counter is a popover,
-  # which the hook shows under the cell at its end while the editor is
-  # open, as it shows the message of a failed cell: neither the row nor the
-  # column moves. The two are the editor; the textarea is its control.
+  # A text with a most it can be long has its counter with it, under the
+  # textarea at its end: the row grows by a line while the editor is open,
+  # and the column keeps its width. The two are the editor; the textarea is
+  # its control.
   def editor(%{column: %{editor: :text}} = assigns) do
     assigns = assign(assigns, counted: Limits.counted(assigns.column))
 
@@ -248,8 +235,7 @@ defmodule AshDataTable.Parts.Grid do
         id={"#{@id}-count"}
         counted={@counted}
         value=""
-        floats?={true}
-        class={nil}
+        class="block text-end"
       />
     </div>
     """
@@ -708,11 +694,11 @@ defmodule AshDataTable.Parts.Grid do
     sideways in its own, a nested table as the table on the page (see
     "scrolling sideways" in the hook). A nested table that is scrolled to
     its end does not go on to scroll the table around it. Its attributes are
-    `AshDataTable.Attrs.grid/5`'s. Before it the sender of its events,
+    `AshDataTable.Attrs.grid/6`'s. Before it the sender of its events,
     which LiveView locks while one is on its way, in place of the grid. --%>
     <div {Attrs.sender(@id)}></div>
     <div
-      {Attrs.grid(@id, @myself, @lead, @selecting, @choose)}
+      {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <table
@@ -947,6 +933,13 @@ defmodule AshDataTable.Parts.Grid do
             # cut off after that many lines (`data-lines` on the cell). The row is
             # as high as its highest cell. A word longer than the column breaks.
             "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]]:whitespace-normal [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:min-w-40 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:break-words [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines]>[data-paragraph]]:whitespace-pre-line",
+            # A cell that cuts some of its text off shows all of it while the
+            # button the hook puts into it says so (`data-whole`,
+            # `aria-expanded`): the text wraps, keeps its line breaks and
+            # is not cut off, and the row grows. The button stands at the
+            # cell's end, over the end of the text that is cut off.
+            "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole])]:relative [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])]:whitespace-pre-line [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])]:break-words [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])]:pe-16 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell]:has(>[data-whole][aria-expanded=true])>[data-paragraph]]:line-clamp-none",
+            "[&_[data-whole]]:absolute [&_[data-whole]]:end-1 [&_[data-whole]]:top-1 [&_[data-whole]]:cursor-pointer [&_[data-whole]]:rounded [&_[data-whole]]:bg-base-100 [&_[data-whole]]:px-1 [&_[data-whole]]:text-xs [&_[data-whole]]:leading-tight [&_[data-whole]]:underline",
             "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='2']>[data-paragraph]]:line-clamp-2 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='3']>[data-paragraph]]:line-clamp-3 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='4']>[data-paragraph]]:line-clamp-4 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='5']>[data-paragraph]]:line-clamp-5 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='6']>[data-paragraph]]:line-clamp-6 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='7']>[data-paragraph]]:line-clamp-7 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='8']>[data-paragraph]]:line-clamp-8 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='9']>[data-paragraph]]:line-clamp-9 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-lines='10']>[data-paragraph]]:line-clamp-10",
             # the expander of a row and the button of a line (which is in the
             # element of its cell that stays in view). Their mark is a
@@ -990,4 +983,8 @@ defmodule AshDataTable.Parts.Grid do
       label -> List.delete(columns, label)
     end
   end
+
+  # The name the "Columns" button is anchored by (`anchor-name`), the
+  # table's own: a page has a list per table.
+  defp anchor(id), do: "--ash-data-table-columns-" <> String.replace(id, ~r/[^A-Za-z0-9_-]/, "_")
 end

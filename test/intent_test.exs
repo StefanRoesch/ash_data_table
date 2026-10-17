@@ -32,6 +32,14 @@ defmodule AshDataTable.IntentTest do
 
     assert parse("clear_filter", %{"column" => "title"}) == {:ok, {:clear_filter, "title"}}
     assert parse("clear_filters", %{}) == {:ok, :clear_filters}
+
+    # the button of a filter for several values: its column and its operator
+    assert parse("filter_values", %{"column" => "status", "operator" => "any_of"}) ==
+             {:ok, {:filter_values, "status", "any_of"}}
+
+    assert parse("filter_values", %{"column" => "status"}) == :malformed
+    assert parse("filter_values", %{"column" => ["status"], "operator" => "any_of"}) == :malformed
+
     assert parse("page", %{"to" => "next"}) == {:ok, {:page, "next"}}
     assert parse("page_size", %{"size" => "25"}) == {:ok, {:page_size, "25"}}
   end
@@ -136,11 +144,15 @@ defmodule AshDataTable.IntentTest do
   test "the picker: what was chosen stays a claim" do
     assert parse("pick_input", %{"input" => "owner"}) == {:ok, {:pick_input, "owner"}}
 
+    # the record is what the picker's table holds as selected: no row is named
     assert parse("picked", %{"row" => ["1", "2"], "confirmed" => true, "arguments" => "a=1"}) ==
-             {:ok, {:picked, %{row: ["1", "2"], rows: nil, confirmed?: true, arguments: "a=1"}}}
+             {:ok, {:picked, %{none?: false, confirmed?: true, arguments: "a=1"}}}
 
     assert parse("picked", %{"rows" => ["1"], "confirmed" => "yes", "arguments" => %{}}) ==
-             {:ok, {:picked, %{row: nil, rows: ["1"], confirmed?: false, arguments: nil}}}
+             {:ok, {:picked, %{none?: false, confirmed?: false, arguments: nil}}}
+
+    assert parse("picked", %{"none" => true}) ==
+             {:ok, {:picked, %{none?: true, confirmed?: false, arguments: nil}}}
 
     assert parse("picker_cancel", %{}) == {:ok, :picker_cancel}
     assert parse("read_again", %{}) == {:ok, :read_again}

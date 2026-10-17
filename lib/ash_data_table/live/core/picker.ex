@@ -10,6 +10,7 @@ defmodule AshDataTable.Live.Core.Picker do
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Live.Core.Requests
+  alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Pick
@@ -42,16 +43,16 @@ defmodule AshDataTable.Live.Core.Picker do
           true -> Ids.choose(field)
         end
 
-      {:reply, %{focus: focus},
-       Core.put(socket,
-         panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model)
-       )}
+      {:noreply,
+       socket
+       |> Core.put(panel: Panel.errors(hold(panel, input, keys), Core.table(socket).entry.model))
+       |> Panel.focus(focus)}
     else
-      _ -> {:reply, %{}, socket}
+      _ -> {:noreply, socket}
     end
   end
 
-  def on({:panel_unpick, _name, _key}, socket), do: {:reply, %{}, socket}
+  def on({:panel_unpick, _name, _key}, socket), do: {:noreply, socket}
 
   # Sent by the hook when a person opens the editor of a reference cell: the
   # row by the key in its DOM id, and the column. The picker opens; nothing
@@ -156,8 +157,33 @@ defmodule AshDataTable.Live.Core.Picker do
   #
   # The row is a claim. Which cell or field it is chosen for is the
   # server's to say, from what the picker was opened for.
-  def on({:picked, picked}, socket) when is_map(Current.entry(socket, :picker)),
-    do: picked(socket, picked, :hook)
+  # Sent by the picker's hook for "Choose", Enter or a double click on a row
+  # of its table, and "None": the record chosen is the row selected in the
+  # picker's table, as that table holds it (the hook tells it every change,
+  # `select`), and where several are chosen every row selected; for one, a
+  # row of the page only. Each is a claim still, read again as the person.
+  def on({:picked, picked}, socket) when is_map(Current.entry(socket, :picker)) do
+    %{id: id, picker: picker} = Core.table(socket).entry
+    chooser = Core.table(socket).entries["#{id}-pick-#{picker.name}"]
+
+    cond do
+      picked.none? ->
+        picked(socket, Map.merge(picked, %{row: nil, rows: []}), :hook)
+
+      picker.several? ->
+        picked(
+          socket,
+          Map.merge(picked, %{row: nil, rows: (chooser && chooser.selected) || []}),
+          :hook
+        )
+
+      (row = chooser && List.first(Selection.in_view(chooser))) != nil ->
+        picked(socket, Map.merge(picked, %{row: row, rows: nil}), :hook)
+
+      true ->
+        {:reply, %{ok: false}, socket}
+    end
+  end
 
   def on({:picked, _picked}, socket), do: {:reply, %{ok: false}, socket}
 
@@ -185,6 +211,8 @@ defmodule AshDataTable.Live.Core.Picker do
               arguments: nil
             },
             else: %{row: named.(keys), rows: nil, confirmed?: false, arguments: nil}
+
+        picked = Map.put(picked, :none?, false)
 
         picked(socket, picked, :host)
 
