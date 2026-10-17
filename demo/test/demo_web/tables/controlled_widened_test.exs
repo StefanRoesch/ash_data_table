@@ -364,12 +364,12 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       assert map_size(Map.delete(held, "_present")) == 2
 
       answer(view, &AshDataTable.add_group_request(&1, :table, "r0", ["stops"]))
-      answer(view, &AshDataTable.add_group_request(&1, :table, ref, ["stops"]))
+      answer(view, &AshDataTable.add_group_request(&1, :table, ref, [:stops]))
       assert %{fields: [%{value: held}]} = request(view)
       assert map_size(Map.delete(held, "_present")) == 3
 
       [first | _] = held |> Map.delete("_present") |> Map.keys() |> Enum.sort()
-      answer(view, &AshDataTable.remove_group_request(&1, :table, ref, ["stops", first]))
+      answer(view, &AshDataTable.remove_group_request(&1, :table, ref, [:stops, first]))
       assert %{fields: [%{value: held}]} = request(view)
       assert map_size(Map.delete(held, "_present")) == 2
 
@@ -386,7 +386,14 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       held = request(view)
 
       # no field of the panel; a field that is no group; a value of none
-      for path <- [["place"], ["nothing"], ["helpers"], ["helpers", "0"], ["stops", "7"]] do
+      for path <- [
+            ["place"],
+            ["nothing"],
+            ["helpers"],
+            [:helpers],
+            ["helpers", "0"],
+            ["stops", "7"]
+          ] do
         answer(view, &AshDataTable.add_group_request(&1, :table, ref, path))
         answer(view, &AshDataTable.remove_group_request(&1, :table, ref, path))
       end
@@ -395,7 +402,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
 
       test = self()
 
-      for path <- ["helpers", [], [:helpers], ["helpers", 0]] do
+      for path <- ["helpers", [], [nil], ["helpers", 0]] do
         answer(view, fn socket ->
           try do
             AshDataTable.add_group_request(socket, :table, ref, path)

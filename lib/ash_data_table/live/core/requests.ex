@@ -271,17 +271,22 @@ defmodule AshDataTable.Live.Core.Requests do
   Adds a value to a field made of groups of the panel the host draws, or
   takes one away (`{:panel_add, path}`, `{:panel_remove, path}`): `path`
   is the field's name and, inside it, the way to the value, as the panel's
-  own buttons name it.
+  own buttons name it. A name is an atom, as the request's fields have it,
+  or a string; a value of a list is the key it is sent under.
   """
   def group(socket, change, path) when change in [:panel_add, :panel_remove] do
-    if not (is_list(path) and path != [] and Enum.all?(path, &is_binary/1)) do
+    if not (is_list(path) and path != [] and Enum.all?(path, &name?/1)) do
       raise ArgumentError,
             "the path of a group is a list of names, the field's first, got: " <>
               inspect(path, limit: 5)
     end
 
-    panel(socket, {change, path})
+    panel(socket, {change, Enum.map(path, &to_string/1)})
   end
+
+  defp name?(name) when is_binary(name), do: true
+  defp name?(name) when is_atom(name), do: name not in [nil, true, false]
+  defp name?(_other), do: false
 
   @doc """
   What the host may read of the requests held by the tables of `table`,

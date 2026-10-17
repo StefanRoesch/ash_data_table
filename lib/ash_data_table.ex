@@ -864,10 +864,12 @@ defmodule AshDataTable do
   Adds a value to a field made of groups of the panel of request `ref`: a
   value of fields where it has none, one more to a list of them, as the
   panel's own button does. `path` is the field's name, and the way to a
-  value inside it: `["place"]`, `["stops"]`. Nothing runs; `request/1`
-  then shows the value, empty.
+  value inside it, each name an atom as the request's fields have it, or a
+  string: `[:place]`, `[:stops]`. Nothing runs; `requests/1` then shows
+  the value, empty. A path that names no group of the panel changes
+  nothing; one that is no list of names raises `ArgumentError`.
   """
-  @spec add_group_request(Phoenix.LiveView.Socket.t(), atom, String.t(), [String.t()]) ::
+  @spec add_group_request(Phoenix.LiveView.Socket.t(), atom, String.t(), [atom | String.t()]) ::
           Phoenix.LiveView.Socket.t()
   def add_group_request(socket, name, ref, path),
     do:
@@ -879,10 +881,11 @@ defmodule AshDataTable do
   @doc """
   Takes a value away from a field made of groups of the panel of request
   `ref`, as the panel's own button does: `path` is the field's name and the
-  way to the value, `["place"]`, or a value of a list by the key it is
-  sent under, `["stops", "1"]`. Nothing runs.
+  way to the value, `[:place]`, or a value of a list by the key it is
+  sent under (as the field's `value` holds it), `[:stops, "1"]`. Nothing
+  runs.
   """
-  @spec remove_group_request(Phoenix.LiveView.Socket.t(), atom, String.t(), [String.t()]) ::
+  @spec remove_group_request(Phoenix.LiveView.Socket.t(), atom, String.t(), [atom | String.t()]) ::
           Phoenix.LiveView.Socket.t()
   def remove_group_request(socket, name, ref, path),
     do:
