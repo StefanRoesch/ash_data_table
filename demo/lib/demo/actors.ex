@@ -76,13 +76,17 @@ defmodule Demo.Actors do
   @doc """
   Loads the user a session's actor id points to. Returns `nil` for no id, an
   id that is not a UUID, or an id of no user: all of them mean nobody.
+
+  A read that fails is not nobody: it raises, and the page is mounted again
+  (LiveView joins once more), instead of being shown as an anonymous
+  visitor would see it. In the browser tests a read of the session's user
+  may wait for the one connection of its test's transaction, and under load
+  give up; the page then said "You are not allowed to see these records."
   """
   def fetch(id) when is_binary(id) do
-    with {:ok, uuid} <- Ecto.UUID.cast(id),
-         {:ok, %User{} = user} <- Ash.get(User, uuid, authorize?: false, not_found_error?: false) do
-      user
-    else
-      _ -> nil
+    case Ecto.UUID.cast(id) do
+      {:ok, uuid} -> Ash.get!(User, uuid, authorize?: false, not_found_error?: false)
+      :error -> nil
     end
   end
 
