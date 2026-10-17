@@ -1,18 +1,17 @@
 {
- "date": "2026-10-17T01:39:33.319Z",
+ "date": "2026-10-14T09:26:36.986Z",
  "repetitions": 15,
  "machine": {
   "cpu": "12th Gen Intel(R) Core(TM) i7-1255U",
   "cores": 12,
   "memory_gb": 39,
   "load_average_at_start": [
-   10.21,
-   16.27,
-   13.55
+   5.78,
+   4.44,
+   5.05
   ]
  },
  "base": "http://127.0.0.1:4490",
- "page": "/tasks",
  "versions": {
   "otp": "28",
   "schedulers": 12,
@@ -24,10 +23,10 @@
   "mix_env": "perf",
   "packages": {
    "phoenix_live_view": "1.2.12",
-   "ash_data_table": "0.1.0",
+   "ash_table": "0.1.0",
    "ash_phoenix": "2.3.25",
-   "ash_postgres": "2.14.5",
-   "ash": "3.36.1",
+   "ash_postgres": "2.14.2",
+   "ash": "3.34.4",
    "phoenix": "1.8.15",
    "ecto_sql": "3.14.0",
    "postgrex": "0.22.4",
@@ -36,30 +35,20 @@
  },
  "cell_save": {
   "runs": 15,
-  "median_ms": 34.6,
-  "min_ms": 26.4,
-  "max_ms": 58.5,
-  "median_bytes_received": 8277,
+  "median_ms": 36.5,
+  "min_ms": 32.4,
+  "max_ms": 55.3,
+  "median_bytes_received": 7218,
   "bytes_received": [
-   8277,
-   8279
+   7218,
+   7220
   ],
   "frames_received": [
    2
   ],
-  "median_wire_bytes_received": 120,
-  "wire_bytes_received": [
-   113,
-   117,
-   118,
-   119,
-   120,
-   121,
-   122
-  ],
-  "median_callbacks_ms": 24.1,
-  "median_ash_reads_ms": 11.1,
-  "median_database_ms": 19.4,
+  "median_callbacks_ms": 23.8,
+  "median_ash_reads_ms": 11.8,
+  "median_database_ms": 15.9,
   "ash_reads": [
    4
   ],
@@ -67,34 +56,22 @@
    7
   ],
   "callbacks": [
-   "live_view.handle_event:ash_data_table:task:save"
+   "live_component.handle_event:save"
   ]
  },
  "expand_row": {
   "runs": 15,
-  "median_ms": 7.4,
-  "min_ms": 6.4,
-  "max_ms": 19.4,
-  "median_bytes_received": 3345,
+  "median_ms": 10.4,
+  "min_ms": 9.1,
+  "max_ms": 23.8,
+  "median_bytes_received": 3258,
   "bytes_received": [
-   3345
+   3258
   ],
   "frames_received": [
    1
   ],
-  "median_wire_bytes_received": 171,
-  "wire_bytes_received": [
-   140,
-   169,
-   170,
-   171,
-   172,
-   173,
-   176,
-   180,
-   181
-  ],
-  "median_callbacks_ms": 0.1,
+  "median_callbacks_ms": 0,
   "median_ash_reads_ms": 0,
   "median_database_ms": 0,
   "ash_reads": [
@@ -104,50 +81,35 @@
    0
   ],
   "callbacks": [
-   "live_view.handle_event:ash_data_table:task:expand"
+   "live_component.handle_event:expand"
   ]
  },
  "open_nested": {
   "runs": 15,
-  "median_ms": 58.4,
-  "min_ms": 52.8,
-  "max_ms": 68.6,
-  "median_bytes_received": 33752,
+  "median_ms": 36.5,
+  "min_ms": 26.2,
+  "max_ms": 48.2,
+  "median_bytes_received": 29693,
   "bytes_received": [
-   30237,
-   30238,
-   33745,
-   33746,
-   33752,
-   36561,
-   36562,
-   36568,
-   37943,
-   39370,
-   45001
+   26461,
+   26477,
+   29676,
+   29684,
+   29693,
+   32379,
+   32380,
+   32394,
+   32401,
+   33761,
+   35091,
+   40480
   ],
   "frames_received": [
    2
   ],
-  "median_wire_bytes_received": 4838,
-  "wire_bytes_received": [
-   4200,
-   4248,
-   4265,
-   4266,
-   4728,
-   4758,
-   4838,
-   4863,
-   4903,
-   4939,
-   5093,
-   5346,
-   5449
-  ],
-  "median_callbacks_ms": 4.7,
-  "median_ash_reads_ms": 11.1,
-  "median_database_ms": 4.4,
+  "median_callbacks_ms": 4.8,
+  "median_ash_reads_ms": 10.6,
+  "median_database_ms": 3.9,
   "ash_reads": [
    2
   ],
@@ -155,40 +117,25 @@
    2
   ],
   "callbacks": [
-   "live_view.handle_event:ash_data_table:task:toggle"
+   "live_component.handle_event:toggle, live_component.update"
   ]
  },
  "open_picker": {
   "runs": 15,
-  "median_ms": 36.3,
-  "min_ms": 32,
-  "max_ms": 55.7,
-  "median_bytes_received": 35616,
+  "median_ms": 42.7,
+  "min_ms": 38.1,
+  "max_ms": 84.2,
+  "median_bytes_received": 27078,
   "bytes_received": [
-   28547,
-   35616
+   27065,
+   27078
   ],
   "frames_received": [
-   2,
    1
-  ],
-  "median_wire_bytes_received": 3507,
-  "wire_bytes_received": [
-   787,
-   788,
-   789,
-   3073,
-   3097,
-   3099,
-   3507,
-   3508,
-   3509,
-   3511,
-   3513
   ],
   "median_callbacks_ms": 11.4,
-  "median_ash_reads_ms": 6.2,
-  "median_database_ms": 7.6,
+  "median_ash_reads_ms": 5.8,
+  "median_database_ms": 7.9,
   "ash_reads": [
    2
   ],
@@ -196,241 +143,25 @@
    4
   ],
   "callbacks": [
-   "live_view.handle_event:ash_data_table:task:pick, live_view.handle_event:ash_data_table:task-pick-assignee:select",
-   "live_view.handle_event:ash_data_table:task:pick"
-  ]
- },
- "open_panel": {
-  "runs": 15,
-  "median_ms": 22,
-  "min_ms": 18.2,
-  "max_ms": 32.7,
-  "median_bytes_received": 4299,
-  "bytes_received": [
-   4080,
-   4085,
-   4088,
-   4282,
-   4297,
-   4298,
-   4299,
-   4300,
-   4301,
-   4303,
-   4304
-  ],
-  "frames_received": [
-   1
-  ],
-  "median_wire_bytes_received": 86,
-  "wire_bytes_received": [
-   74,
-   77,
-   81,
-   82,
-   84,
-   85,
-   86,
-   87,
-   97,
-   105,
-   116,
-   126,
-   208
-  ],
-  "median_callbacks_ms": 7.5,
-  "median_ash_reads_ms": 6.2,
-  "median_database_ms": 3.8,
-  "ash_reads": [
-   2,
-   1
-  ],
-  "queries": [
-   2,
-   1
-  ],
-  "callbacks": [
-   "live_view.handle_event:ash_data_table:task:act"
-  ]
- },
- "open_panel_inline": {
-  "runs": 15,
-  "median_ms": 14.9,
-  "min_ms": 12.6,
-  "max_ms": 20.3,
-  "median_bytes_received": 4240,
-  "bytes_received": [
-   4021,
-   4026,
-   4029,
-   4223,
-   4238,
-   4239,
-   4240,
-   4241,
-   4242,
-   4244,
-   4245
-  ],
-  "frames_received": [
-   1
-  ],
-  "median_wire_bytes_received": 88,
-  "wire_bytes_received": [
-   72,
-   77,
-   79,
-   81,
-   82,
-   83,
-   84,
-   88,
-   95,
-   103,
-   112,
-   113,
-   114,
-   123,
-   241
-  ],
-  "median_callbacks_ms": 5.4,
-  "median_ash_reads_ms": 4.6,
-  "median_database_ms": 2.6,
-  "ash_reads": [
-   2,
-   1
-  ],
-  "queries": [
-   2,
-   1
-  ],
-  "callbacks": [
-   "live_view.handle_event:ash_data_table:task:act"
-  ]
- },
- "cell_save_nested": {
-  "runs": 15,
-  "median_ms": 19,
-  "min_ms": 15.5,
-  "max_ms": 30.2,
-  "median_bytes_received": 3710,
-  "bytes_received": [
-   3710,
-   3711
-  ],
-  "frames_received": [
-   1
-  ],
-  "median_wire_bytes_received": 51,
-  "wire_bytes_received": [
-   50,
-   51,
-   52,
-   53,
-   54
-  ],
-  "median_callbacks_ms": 8.5,
-  "median_ash_reads_ms": 2.5,
-  "median_database_ms": 5.5,
-  "ash_reads": [
-   1
-  ],
-  "queries": [
-   2
-  ],
-  "callbacks": [
-   "live_view.handle_event:ash_data_table:task-row-3f649715-4294-4816-9e2a-02c24949cef5-t-comments:save"
-  ]
- },
- "cell_save_nested_open": {
-  "runs": 15,
-  "median_ms": 33.2,
-  "min_ms": 28,
-  "max_ms": 47.3,
-  "median_bytes_received": 8534,
-  "bytes_received": [
-   8534,
-   8536
-  ],
-  "frames_received": [
-   2
-  ],
-  "median_wire_bytes_received": 123,
-  "wire_bytes_received": [
-   115,
-   120,
-   121,
-   123,
-   124,
-   125,
-   126
-  ],
-  "median_callbacks_ms": 21.1,
-  "median_ash_reads_ms": 9.8,
-  "median_database_ms": 12.9,
-  "ash_reads": [
-   4
-  ],
-  "queries": [
-   7
-  ],
-  "callbacks": [
-   "live_view.handle_event:ash_data_table:task:save"
-  ]
- },
- "select_row": {
-  "runs": 15,
-  "median_ms": 3,
-  "min_ms": 2.1,
-  "max_ms": 5.4,
-  "median_bytes_received": 215,
-  "bytes_received": [
-   215
-  ],
-  "frames_received": [
-   1
-  ],
-  "median_wire_bytes_received": 10,
-  "wire_bytes_received": [
-   10,
-   13
-  ],
-  "median_callbacks_ms": 0.1,
-  "median_ash_reads_ms": 0,
-  "median_database_ms": 0,
-  "ash_reads": [
-   0
-  ],
-  "queries": [
-   0
-  ],
-  "callbacks": [
-   "live_view.handle_event:ash_data_table:task:select"
+   "live_component.handle_event:pick, live_component.update"
   ]
  },
  "page_change": {
   "runs": 15,
-  "median_ms": 67.9,
-  "min_ms": 58,
-  "max_ms": 108.1,
-  "median_bytes_received": 153625,
+  "median_ms": 82.6,
+  "min_ms": 71.9,
+  "max_ms": 120.3,
+  "median_bytes_received": 152695,
   "bytes_received": [
-   153201,
-   153625
+   152165,
+   152695
   ],
   "frames_received": [
    4
   ],
-  "median_wire_bytes_received": 11895,
-  "wire_bytes_received": [
-   11892,
-   11893,
-   11895,
-   11896
-  ],
-  "median_callbacks_ms": 4.5,
-  "median_ash_reads_ms": 20.1,
-  "median_database_ms": 14.6,
+  "median_callbacks_ms": 5.1,
+  "median_ash_reads_ms": 19.2,
+  "median_database_ms": 14.5,
   "ash_reads": [
    4
   ],
@@ -438,10 +169,7 @@
    7
   ],
   "callbacks": [
-   "live_view.handle_event:ash_data_table:task:page, live_view.handle_params"
+   "live_component.handle_event:page, live_component.update"
   ]
- },
- "wire": {
-  "permessage_deflate": true
  }
 }
