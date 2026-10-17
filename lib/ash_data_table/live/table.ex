@@ -75,13 +75,13 @@ defmodule AshDataTable.Table do
             [:context, :private_arguments, :page_arguments, :before_action, :notify]
 
   @typedoc "A table attached to a LiveView."
-  @type t :: %__MODULE__{
-          options: map,
-          caller: Caller.t(),
-          entry: Entry.t(),
-          entries: %{String.t() => Entry.t()},
-          pool: %{free: [String.t()], next: non_neg_integer, prefix: String.t() | nil}
-        }
+  @opaque t :: %__MODULE__{
+            options: map,
+            caller: Caller.t(),
+            entry: Entry.t(),
+            entries: %{String.t() => Entry.t()},
+            pool: %{free: [String.t()], next: non_neg_integer, prefix: String.t() | nil}
+          }
 
   defstruct options: @options,
             caller: nil,
