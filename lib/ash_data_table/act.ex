@@ -953,13 +953,17 @@ defmodule AshDataTable.Act do
     # panel has it, by the way to it
     nested =
       for {path, field, error} <- Errors.nested(form),
-          sensitive? = nested_sensitive?(inputs, path, field),
           placed =
             (case place(inputs, path, field, error) do
-               {:field, place} -> {place, Errors.ash(error, sensitive?)}
+               {:field, place} ->
+                 {place, Errors.ash(error, nested_sensitive?(inputs, path, field))}
+
                # at the group, which says which of its fields is meant
-               {:group, place} -> {single(place), named(field, error, sensitive?)}
-               nil -> {nil, Errors.nested_text(model, path, field, error)}
+               {:group, place} ->
+                 {single(place), named(field, error, nested_sensitive?(inputs, path, field))}
+
+               nil ->
+                 {nil, Errors.nested_text(model, path, field, error)}
              end),
           not is_nil(elem(placed, 1)),
           do: placed
