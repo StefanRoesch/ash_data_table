@@ -13,13 +13,17 @@ defmodule AshDataTable.MessagesTest do
   @made [:label, :join, :words]
 
   test "every key has a text, and its values are the names the list gives" do
-    for {key, names} <- Messages.keys(), key not in @made do
+    for {key, %{values: names, msgid: msgid, msgid_plural: plural}} <- Messages.all(),
+        key not in @made do
+      assert is_binary(msgid), "#{inspect(key)} has no English text"
       bindings = for name <- names, do: {name, if(name == :count, do: 2, else: "<#{name}>")}
 
       said =
-        if key in Messages.plurals(),
+        if plural,
           do: Text.n(key, 2, Keyword.delete(bindings, :count)),
           else: Text.t(key, bindings)
+
+      assert said == if(plural, do: plural, else: msgid) |> fill(bindings)
 
       refute said =~ "%{", "#{inspect(key)} has a value the list does not name: #{said}"
 
@@ -27,6 +31,22 @@ defmodule AshDataTable.MessagesTest do
         assert said =~ to_string(value),
                "#{inspect(key)} names `#{name}`, which its text does not say: #{said}"
       end
+    end
+  end
+
+  test "a key with a form per number has `count` among its values" do
+    plurals = for {key, %{msgid_plural: plural}} <- Messages.all(), plural, do: key
+    assert :records in plurals
+
+    for key <- plurals do
+      assert :count in Messages.all()[key].values, "#{inspect(key)} has no `count`"
+    end
+  end
+
+  test "the three made keys have no text of their own" do
+    for key <- @made do
+      assert %{msgid: nil, msgid_plural: nil} = Messages.all()[key]
+      assert_raise ArgumentError, fn -> Text.t(key) end
     end
   end
 
@@ -64,4 +84,16 @@ defmodule AshDataTable.MessagesTest do
     assert Messages.of({:once, ", ", [{:text, :yes, []}, {:text, :yes, []}]}) ==
              {:join, %{separator: ", ", messages: [{:yes, %{}}]}}
   end
+
+  test "each text once: a message and the words it says are one, given and said" do
+    once = {:once, ", ", [{:text, :yes, []}, "Yes", {:text, :no, []}]}
+
+    assert Text.say(once) == "Yes, No"
+
+    assert Messages.of(once) ==
+             {:join, %{separator: ", ", messages: [{:yes, %{}}, {:no, %{}}]}}
+  end
+
+  defp fill(text, bindings),
+    do: Enum.reduce(bindings, text, &String.replace(&2, "%{#{elem(&1, 0)}}", to_string(elem(&1, 1))))
 end
