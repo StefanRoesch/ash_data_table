@@ -83,8 +83,11 @@ defmodule Demo.Perf.Probe do
   The LiveView processes that are alive, with what each one holds, measured
   after a garbage collection of that process: `memory` is
   `:erlang.process_info(pid, :memory)`, the process's own heap, stack and
-  mailbox; `binaries` is the size of the binaries outside its heap that it
-  refers to, which other processes may refer to as well.
+  mailbox, which is the heap block the collection left: a step of the
+  VM's sequence of heap sizes, often twice what is in use; `live` is the
+  part of the heap in use after the collection (the data the process
+  holds, in bytes); `binaries` is the size of the binaries outside its heap
+  that it refers to, which other processes may refer to as well.
   """
   def live_views do
     for %{pid: pid} <- Phoenix.LiveView.Debug.list_liveviews(), view = view(pid) do
@@ -97,6 +100,7 @@ defmodule Demo.Perf.Probe do
         url: view.url,
         memory_before_gc: before,
         memory: memory(pid),
+        live: live(pid),
         binaries: binaries(pid),
         message_queue_len: info(pid, :message_queue_len)
       }
@@ -116,6 +120,17 @@ defmodule Demo.Perf.Probe do
   end
 
   defp memory(pid), do: info(pid, :memory)
+
+  # the words of the young and the old heap in use, after the collection
+  defp live(pid) do
+    case info(pid, :garbage_collection_info) do
+      gc when is_list(gc) ->
+        (gc[:heap_size] + gc[:old_heap_size]) * :erlang.system_info(:wordsize)
+
+      _gone ->
+        nil
+    end
+  end
 
   defp binaries(pid) do
     case info(pid, :binary) do

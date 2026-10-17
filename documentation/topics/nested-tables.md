@@ -549,17 +549,18 @@ has the run in a browser that the times are from):
 
 | Read | Statements | From click to rows |
 | --- | --- | --- |
-| `/tasks` → Comments (has-many, keyset, counted) | 2: the parent with the count, the page | 38 ms |
+| `/tasks` → Comments (has-many, keyset, counted) | 2: the parent with the count, the page | 37 ms |
 | `/tasks` → Labels (many-to-many, in full) | 2 | 38 ms |
-| `/tasks` → Project (belongs-to) | 2 | 38 ms |
-| `/tasks` → Newest comment (has-one of many) | 2 | 38 ms |
-| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 9 | 93 ms |
+| `/tasks` → Project (belongs-to) | 2 | 36 ms |
+| `/tasks` → Newest comment (has-one of many) | 2 | 35 ms |
+| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 9 | 77 ms |
 
-The page's LiveView process holds about 60 KiB more for each open nested
-table, after a garbage collection: 1.5 MiB with 10 open under one page of
-`/tasks`, 3.9 MiB with 50. Opening one more gets slower as they add up,
-from about 40 ms for the first to about 190 ms with fifty open. Rendering
-and scrolling with fifty grids in one page were not measured.
+The page's LiveView process holds about 20 KiB more for each open nested
+table, in use after a garbage collection: 0.3 MiB with 10 open under one
+page of `/tasks`, 1.1 MiB with 50. The nested tables of one relationship
+share one table model. Opening one more gets a little slower as they add
+up, from about 40 ms for the first to about 90 ms with fifty open.
+Rendering and scrolling with fifty grids in one page were not measured.
 
 ## The reference cell
 

@@ -4,8 +4,8 @@ A short measurement of nested tables, beside `RESULTS.md` (which
 `npm run measure` writes, and which this run did not touch). Written by hand
 from `nested-results.json`, the output of `node nested.mjs`.
 
-- **Date:** 2026-10-17 19:09 UTC, on `main` after the docs pass of the architecture refactor
-- **Machine:** 12th Gen Intel Core i7-1255U, 12 logical cores; load average 1.8, 1.4, 1.5 when the run began, so read the times as orders of magnitude
+- **Date:** 2026-10-17 22:05 UTC, on `main` at `1329ea4`: each portal drawn from values of its own, one table model per kind for the page
+- **Machine:** 12th Gen Intel Core i7-1255U, 12 logical cores; load average 3.1, 7.6, 6.5 when the run began (the machine was busy), so read the times as orders of magnitude
 - **Server:** `MIX_ENV=perf PERF_DB=demo_perf_standard`, started by the script on port 4490; ash 3.36.1, ash_postgres 2.14.5, phoenix_live_view 1.2.12, Elixir 1.19.4, OTP 28
 - **Data:** the standard seed (400 tasks), as the admin
 - **Browser:** Chromium (headless), Playwright; localhost, no network
@@ -24,11 +24,11 @@ server recorded for it (`[:demo, :repo, :query]`).
 
 | Line | Rows | Statements | Database | Click to rows |
 | --- | --- | --- | --- | --- |
-| `/tasks` → Comments (has-many, keyset, counted) | 0 to 5 | 2 | 4.0 ms | 38.0 ms (27.6 to 58.0) |
-| `/tasks` → Labels (many-to-many, not paginated) | 0 to 3 | 2 | 4.1 ms | 37.7 ms (27.7 to 57.9) |
-| `/tasks` → Project (belongs-to) | 1 | 2 | 3.6 ms | 37.7 ms (27.8 to 42.4) |
-| `/tasks` → Newest comment (has-one of many) | 0 or 1 | 2 | 3.5 ms | 38.1 ms (25.1 to 54.0) |
-| `/projects` → Tasks (has-many, offset page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 25 | 9 | 24.5 ms | 92.6 ms (73.3 to 123.2) |
+| `/tasks` → Comments (has-many, keyset, counted) | 0 to 5 | 2 | 4.4 ms | 37.4 ms (26.8 to 58.0) |
+| `/tasks` → Labels (many-to-many, not paginated) | 0 to 3 | 2 | 4.7 ms | 38.0 ms (28.5 to 60.4) |
+| `/tasks` → Project (belongs-to) | 1 | 2 | 3.3 ms | 36.4 ms (28.1 to 55.1) |
+| `/tasks` → Newest comment (has-one of many) | 0 or 1 | 2 | 3.6 ms | 34.8 ms (25.9 to 63.2) |
+| `/projects` → Tasks (has-many, offset page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 25 | 9 | 21.1 ms | 77.4 ms (66.6 to 106.1) |
 
 A nested table is read in two statements: the row it belongs to, read again
 as the person, with the count, and the page. The page of tasks under a
@@ -41,23 +41,37 @@ nothing.
 ## What the server holds with many open
 
 One page of `/tasks` (25 rows), with the comments of its rows opened one
-after the other and then the project of each: `:erlang.process_info(pid,
-:memory)` of the page's LiveView process after a garbage collection, and as
-it was found before it.
+after the other and then the project of each. Measured in the page's
+LiveView process after a garbage collection: **live**, the part of its heap
+in use (`garbage_collection_info`), which is what it holds; and the
+**heap block**, `:erlang.process_info(pid, :memory)`, which is a step of
+the VM's sequence of heap sizes, often twice what is in use, so a count of
+it per table jumps. Compare per table on the live bytes.
 
-| Nested tables open | After a collection | As found |
-| --- | --- | --- |
-| 0 | 364.0 KiB | 1,765.8 KiB |
-| 1 | 588.2 KiB | 1,104.0 KiB |
-| 10 | 1,538.3 KiB | 1,781.5 KiB |
-| 50 | 4,025.2 KiB | 9,385.4 KiB |
+| Nested tables open | Live | Heap block | Heap block as found |
+| --- | --- | --- | --- |
+| 0 | 126.9 KiB | 364.0 KiB | 1,765.8 KiB |
+| 1 | 162.8 KiB | 364.1 KiB | 1,179.9 KiB |
+| 10 | 306.0 KiB | 951.5 KiB | 1,176.9 KiB |
+| 50 | 1,141.4 KiB | 2,488.9 KiB | 7,473.2 KiB |
 
 Every nested table is an entry of the one table value in the page's
-LiveView process, with its state, its table model and the keys of its page;
-the rows are in its stream, in the browser. From 10 to 50 open, each one
-more holds about 62 KiB after a collection.
+LiveView process, with its state and the keys of its page; the rows are in
+its stream, in the browser. Its table model is made for the person from
+the one the page keeps for every table of its kind (`models` of the
+table): about 20 KiB live for each one more open, of which about 10 KiB is
+LiveView's own change tracking of the nested grid. LiveView keeps the rows
+a nested table was last sent with in its change tracking until the next
+render; the table itself stores no rows.
 
-Opening one more gets slower as they add up: the first five lines took 37 to
-80 ms each from click to rows, and the last five of the fifty 177 to 214 ms
-(`open_ms_by_number_open` in the results of a run). Rendering, scrolling and
-layout with fifty grids in one page were not measured.
+Before this, at `85798e7` on the same machine an hour earlier, every nested
+table built its own models and every event drew every portal again: 45 KiB
+live each (2,387.2 KiB with 50 open, a heap block of 4,025.2 KiB).
+
+Opening one more still gets slower as they add up, much less than before:
+the first five lines took 33 to 45 ms each from click to rows, the last
+five of the fifty 87 to 94 ms (at `85798e7`: 177 to 371 ms;
+`open_ms_by_number_open` in the results of a run). An event of one nested
+table sends and patches that table's portal only; what still grows is the
+page around them. Rendering, scrolling and layout with fifty grids in one
+page were not measured.

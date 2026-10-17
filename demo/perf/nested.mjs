@@ -69,7 +69,11 @@ async function closeLine(page, id, key, relationship) {
   await page.locator(`[id="${nestedId(id, key, relationship)}"]`).waitFor({ state: "detached" })
 }
 
-/** What the page's LiveView process holds, as the server reports it after a garbage collection. */
+/**
+ * What the page's LiveView process holds, as the server reports it after a
+ * garbage collection: `live_bytes` the heap in use, `memory_bytes` the heap
+ * block (a step of the VM's heap sizes, so compare live bytes per table).
+ */
 async function memory(pathname) {
   await sleep(500)
   const { live_views } = await liveViews()
@@ -79,7 +83,12 @@ async function memory(pathname) {
     view.url ? new URL(view.url).pathname === pathname : view.view === "AshDataTable.Live.Page",
   )
   if (!view || others.length > 0) throw new Error(`expected one page on ${pathname}`)
-  return { memory_bytes: view.memory, memory_before_gc_bytes: view.memory_before_gc, binaries_bytes: view.binaries }
+  return {
+    live_bytes: view.live,
+    memory_bytes: view.memory,
+    memory_before_gc_bytes: view.memory_before_gc,
+    binaries_bytes: view.binaries,
+  }
 }
 
 const median = (numbers) => [...numbers].sort((a, b) => a - b)[Math.floor(numbers.length / 2)]
