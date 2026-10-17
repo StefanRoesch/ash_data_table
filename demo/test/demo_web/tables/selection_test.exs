@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.SelectionTest do
   @moduledoc """
-  What is selected, on the server (stage 6, group R): the table holds what
+  What is selected, on the server: the table holds what
   the hook says a person selected, runs an action on it, and decides when
   it ends or narrows, which it tells the hook (`ash_data_table:select`) and
   the page (`:selection_changed`). `DemoWeb.Support.GivenLive`.

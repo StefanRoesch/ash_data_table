@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Panel do
   @moduledoc false
-  # The action panel (stage 3c): a row action, a table action, create, the
+  # The action panel: a row action, a table action, create, the
   # panel's events and its submit, and what came of a create or a run.
 
   import Phoenix.LiveView

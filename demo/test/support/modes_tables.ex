@@ -2,7 +2,7 @@ defmodule DemoWeb.Support.ModesLive do
   @moduledoc """
   The table of a router line, placed in a LiveView of a host's own: by the
   tag (`:embedded`) or by `AshDataTable.attach/4` (`:attached`), for the
-  tests that run three ways (`DemoWeb.ModeCase`, stage 4 D15). It finds the
+  tests that run three ways (`DemoWeb.ModeCase`). It finds the
   route of the path it is reached by (`/*path`) as `AshDataTable.Live.Page`
   does (under the `"prefix"` of its live session), and places that table
   with what the page gives it: the same id,
@@ -137,7 +137,7 @@ defmodule DemoWeb.Support.AttachedDashboardLive do
   @moduledoc """
   The demo's dashboard (`DemoWeb.DashboardLive`) with its two tables
   attached to it (`AshDataTable.attach/4`) in place of the tag: the same
-  markup, for the snapshot that runs three ways (stage 4 D15).
+  markup, for the snapshot that runs three ways.
   """
   use DemoWeb, :live_view
 

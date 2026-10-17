@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Notify do
   @moduledoc false
-  # Events to the host (stage 6 D1-D4, `AshDataTable.Event`): sent to the
+  # Events to the host (`AshDataTable.Event`): sent to the
   # LiveView's own process as `{:ash_data_table, id, {event, details}}`,
   # `id` the id of the table on the page, for the events the page asked for
   # with `notify` (`true` for all). A component runs in its LiveView's

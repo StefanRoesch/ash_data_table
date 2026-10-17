@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Nesting do
   @moduledoc false
-  # Nested tables (stage 3c): the model of the table and of its nested
+  # Nested tables: the model of the table and of its nested
   # tables, what makes it one of related records, expanding a row and
   # opening a line, and what a nested table and a picker's table are given.
 
@@ -277,7 +277,7 @@ defmodule AshDataTable.Live.Core.Nesting do
     }
   end
 
-  # ---- the tables a table shows (stage 5) -----------------------------
+  # ---- the tables a table shows -----------------------------------------
   #
   # What is rendered decides which tables stay (target F11). A table renders
   # the nested table of each open line of each of its rows that is still on

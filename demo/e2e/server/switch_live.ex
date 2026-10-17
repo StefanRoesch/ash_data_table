@@ -1,7 +1,7 @@
 defmodule DemoWeb.E2E.SwitchLive do
   @moduledoc """
   A page for the browser test of what happens to the nested tables when
-  who is asking changes while the page is open (stage 5): the tasks, given
+  who is asking changes while the page is open: the tasks, given
   the actor of the actor switcher, until "Become the viewer" gives them the
   viewer. The page is not left. It is compiled and routed in the e2e
   environment only.

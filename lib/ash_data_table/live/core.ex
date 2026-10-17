@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core do
   @moduledoc false
-  # The live core of a table (target.md 4.4, stage 3c): socket in, socket
+  # The live core of a table (target.md 4.4): socket in, socket
   # out. What the table component's callbacks were: `mount/1`, `update/2`
   # (what the table is told), `handle_event/3` (each event parsed once by
   # `AshDataTable.Intent` and handed to the module of its topic) and
@@ -614,7 +614,7 @@ defmodule AshDataTable.Live.Core do
   end
 
   # What a default of an asked argument and a function of the page are
-  # given (stage 4 D9, stage 6 D5): the assigns the tag was given, or for a
+  # given: the assigns the tag was given, or for a
   # table attached to a LiveView its assigns as they are now, as LiveView
   # gives them (`socket.assigns`, a field of `Phoenix.LiveView.Socket.t`).
   def page_assigns(socket) do
@@ -625,7 +625,7 @@ defmodule AshDataTable.Live.Core do
   end
 
   # What the page gives every call to Ash for the table the callback works
-  # on, as its functions say now (stage 6 D5): `context`, `private_arguments`
+  # on, as its functions say now: `context`, `private_arguments`
   # and `page_arguments`, each a map, or a function of the page's assigns and
   # of which table asks (`%{table: id, path: path, resource: resource}`).
   # Called in the LiveView's process, before any read or write starts; a
@@ -691,7 +691,7 @@ defmodule AshDataTable.Live.Core do
               __STACKTRACE__
   end
 
-  # The page's veto, as `AshDataTable.Operation` asks it (stage 6 D9): a
+  # The page's veto, as `AshDataTable.Operation` asks it: a
   # function of the request, which holds the page's assigns as they are now
   # and says which table asks. It answers `:cont` or `{:halt, message}`;
   # any other answer raises, as a veto that answers `:ok` would otherwise

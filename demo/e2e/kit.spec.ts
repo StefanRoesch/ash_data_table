@@ -3,7 +3,7 @@ import { expectNoAxeViolations } from "./support/a11y"
 import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
-// A kit of one's own (the design note of stage 7, test groups AA and Y):
+// A kit of one's own:
 // /e2e/kit draws a table of `AshDataTable.Test.Resource` with the demo's
 // kit of `div`s (`DemoWeb.DivKit`), whose action panel and picker open in
 // the page (`data-presentation="inline"`), or over it with

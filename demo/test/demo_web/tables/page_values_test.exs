@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.PageValuesTest do
   @moduledoc """
-  What a page gives a table (stage 6, groups P and Q), through the live
+  What a page gives a table, through the live
   layer: the page's functions are called with its assigns and told which
   table asks, the table on the page, a nested table and a picker's table
   alike; the veto is asked before a write from the browser, with the

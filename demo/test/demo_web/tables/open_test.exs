@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.OpenTest do
   @moduledoc """
-  "Open" offered by the page (stage 6, group U): a button first in the
+  "Open" offered by the page: a button first in the
   actions cell of every row of the table on the page, which tells the page
   the row's key, whatever `notify` says, and reads and writes nothing.
   `DemoWeb.Support.GivenLive`.

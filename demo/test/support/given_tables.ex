@@ -1,7 +1,7 @@
 defmodule Demo.Support.Given do
   @moduledoc """
   A domain for the tests of what a page gives a table and hears of it
-  (stage 6): its resources tell the test whose pid the page's `context`
+  its resources tell the test whose pid the page's `context`
   holds (`test`) what each read and write was given, as messages:
 
     * `{:read, resource, ref, secret}` from a read, `ref` being the

@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Reading do
   @moduledoc false
-  # Reading (stage 3c): the read in place or beside the process, what it
+  # Reading: the read in place or beside the process, what it
   # shows, a row put into the stream or taken out of it, the fill and error
   # messages, the footer summaries beside the read; sort, filter, page and
   # page size.

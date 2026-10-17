@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Current do
   @moduledoc false
-  # Guards over the table a callback works on (stage 4): the
+  # Guards over the table a callback works on: the
   # `AshDataTable.Table` under the assign whose name the socket's private
   # data holds (`AshDataTable.Live.Core.table/1`). A function head of the
   # live core says what it is for with them:

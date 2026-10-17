@@ -1,7 +1,7 @@
 defmodule DemoWeb.E2E.AttachedLive do
   @moduledoc """
   A page for the browser tests of tables attached to a LiveView
-  (`AshDataTable.attach/4`, stage 4): the labels with their import, whose
+  (`AshDataTable.attach/4`): the labels with their import, whose
   sort, filters and page are in the URL, under a label its tasks and under
   a task its labels, with their import too; and the tasks, which keep their
   state themselves. Beside them a stream of the page's own with a button

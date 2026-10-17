@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.RouterLineTest do
   @moduledoc """
-  What a route gives its table and hears of it (stage 6, group W):
+  What a route gives its table and hears of it:
   `/support/heard/cards` names `notify`, `open`, `context`,
   `private_arguments`, `page_arguments` and `before_action`, functions as
   `{module, function}`; the host's `on_mount` hook (`DemoWeb.Support.Heard`)

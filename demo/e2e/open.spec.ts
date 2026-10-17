@@ -2,7 +2,7 @@ import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
-// "Open" offered by the page (stage 6): /e2e/opened attaches the tasks with
+// "Open" offered by the page: /e2e/opened attaches the tasks with
 // `open: "Open"`, and shows the key of the row it was told was opened.
 
 const FIRST = SEED.task.first

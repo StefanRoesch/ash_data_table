@@ -71,7 +71,7 @@ export default {
     // LiveView leaves an element marked like this alone, so a patch of
     // the row, after another cell's save, does not take the editor away.
     //
-    // Owner-kept exception (owner, 2026-10-17; stage 7 note §11): LiveView
+    // Owner-kept exception (owner, 2026-10-17): LiveView
     // documents `phx-update="ignore"` as rendered by the server on a
     // container with an id, not as switched by a hook. It is switched here,
     // on the one cell whose single value is being edited, and nowhere else.
@@ -79,7 +79,8 @@ export default {
     // an id in every editable cell, measured on /tasks with PERF_WIRE=1
     // (the demo's socket compresses): a page change 155,550 → 183,412 bytes
     // of payload (+18 %) and 11,796 → 13,901 on the wire (+18 %), against
-    // D3's 5 %; a cell save 8,500 → 9,674 (+14 %), 116 → 130 on the wire.
+    // the 5 % a page change may grow; a cell save 8,500 → 9,674 (+14 %),
+    // 116 → 130 on the wire.
     // And the cell's own content and the attributes the hook sets on it
     // would still be patched under the editor. It relies on LiveView
     // 1.2.12 deciding "ignored" from the live element: re-check it on every

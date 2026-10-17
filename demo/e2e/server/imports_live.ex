@@ -1,7 +1,7 @@
 defmodule DemoWeb.E2E.ImportsLive do
   @moduledoc """
   A page for the browser tests of uploads in two tables of one page, one
-  nested in the other (stage 5): the labels with their import
+  nested in the other: the labels with their import
   (`Demo.Tracker.Label`, table `:imports`), each label's tasks under it,
   and under a task its labels, with their own import. It is compiled and
   routed in the e2e environment only.

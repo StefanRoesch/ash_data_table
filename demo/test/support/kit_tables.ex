@@ -1,7 +1,7 @@
 defmodule DemoWeb.Support.MarkedKit do
   @moduledoc """
-  A kit for the tests of the kit's part `cell/1` (the design note of stage
-  7, D10): it draws what the default kit draws, inside an element that
+  A kit for the tests of the kit's part `cell/1`: it draws what the
+  default kit draws, inside an element that
   says what the part was given: the cell's state, and whether it was given
   a value.
   """
@@ -70,7 +70,7 @@ defmodule DemoWeb.Support.ControlledKitLive do
   The table `AshDataTable.KitCase` draws, attached with what the session
   says the page draws itself (`"controlled"`) and how what opens is
   presented (`"presentation"`), in the session's tenant: for the tests of
-  controlled mode widened (the design note of stage 7, D17). It tells the
+  controlled mode widened. It tells the
   test (`"test"`) what it hears and what its veto was asked
   (`{:asked, request}`), and answers the veto as the assign `answer` says;
   `{:run, fun}` runs a command of the test's here.

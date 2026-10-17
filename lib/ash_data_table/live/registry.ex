@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Registry do
   @moduledoc false
-  # The tables one `AshDataTable.Table` shows (target.md 4.4, stage 5): the
+  # The tables one `AshDataTable.Table` shows (target.md 4.4): the
   # table on the page, its `entry`, and every other in `entries`, by id. One
   # id names all that LiveView keeps of a table on the socket: its stream
   # (a name from the pool), its async tasks (`async/2`), its uploads
@@ -107,7 +107,7 @@ defmodule AshDataTable.Live.Registry do
   def take_stream(socket) do
     %{pool: pool} = table = Core.table(socket)
 
-    # named after the table on the page, which takes the first (D4): the
+    # named after the table on the page, which takes the first: the
     # streams of two tables of one LiveView, and the host's own, never clash
     prefix = Map.get(pool, :prefix) || Core.table(socket).entry.id
     pool = Map.put(pool, :prefix, prefix)

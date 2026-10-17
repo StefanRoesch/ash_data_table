@@ -38,7 +38,7 @@ defmodule AshDataTable.Parts.Summary do
   # The cell of a column in the footer row: what varies of it is
   # `AshDataTable.Attrs.summary/2`'s; its id, place, role and `tabindex` are
   # written here, as the row is sent again while its summaries are on their
-  # way and once more when they are there (D3 b).
+  # way and once more when they are there.
   attr :id, :string, required: true
   attr :column, :map, required: true
   attr :colindex, :integer, required: true

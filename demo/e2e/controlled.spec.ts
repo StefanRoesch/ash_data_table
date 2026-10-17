@@ -2,7 +2,7 @@ import type { Page } from "@playwright/test"
 import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
-// Controlled mode (stage 6): /e2e/controlled attaches memos with
+// Controlled mode: /e2e/controlled attaches memos with
 // `controlled: [:panel]`, and draws the panel of "Rename" as a form of its
 // own, from what the table holds of the request.
 
@@ -28,7 +28,7 @@ test("the page draws the panel of a row action, and its form runs the action thr
   await expect(memos.cell(key, "title")).toHaveText("Buy oat milk")
 })
 
-// Controlled mode widened (stage 7c, test group AB): /e2e/controlled/kit
+// Controlled mode widened: /e2e/controlled/kit
 // attaches a table of `AshDataTable.Test.Resource` with `controlled:
 // [:confirm, :picker]`, and draws the questions and the owner's picker
 // itself.

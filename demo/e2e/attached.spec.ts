@@ -3,8 +3,8 @@ import { SEED } from "./support/data"
 import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
-// Tables attached to a LiveView of the page's own (`AshDataTable.attach/4`,
-// stage 4): /e2e/attached. The labels with their import keep their state in
+// Tables attached to a LiveView of the page's own (`AshDataTable.attach/4`):
+// /e2e/attached. The labels with their import keep their state in
 // the URL, and nest their tasks, and under a task its labels; the tasks keep
 // their state themselves. No live component draws them: their events go
 // to the LiveView, and its hooks hand them to the tables. Beside them the

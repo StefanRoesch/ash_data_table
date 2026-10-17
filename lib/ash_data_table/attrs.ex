@@ -27,7 +27,7 @@ defmodule AshDataTable.Attrs do
   # (`<td {Attrs.cell(…)}>`) and writes only its class and its content.
   #
   # A marker is an ARIA role where the element has one, else a `data-*`
-  # attribute (the design note of stage 7, D2). The hooks find the table's
+  # attribute. The hooks find the table's
   # elements by these markers only; `markers/0` names them, as
   # `assets/js/markers.js` does on the hooks' side, and a test compares the
   # two lists. A marker added here and not read there, or read there and
@@ -36,7 +36,7 @@ defmodule AshDataTable.Attrs do
   # What the bundles hold is the contract of a kit's parts, which
   # `AshDataTable.Kit`'s moduledoc documents part by part. Below, the markup
   # contract feature by feature: what the hooks, the live core and the
-  # tests rely on (stage 7b moved it here from `lib/ash_data_table.ex`).
+  # tests rely on.
   #
   # The table itself: a grid whose rows live in a LiveView stream.
   #
@@ -760,8 +760,8 @@ defmodule AshDataTable.Attrs do
   @doc """
   The header of a column, beside its id, place, role, name and
   `tabindex`, which the part writes, as it does for every element drawn
-  once per column (D3 b: an opened nested table sends them once per
-  column). `data-label` where it stays in view as the grid scrolls
+  once per column (an opened nested table sends them once per column).
+  `data-label` where it stays in view as the grid scrolls
   sideways (`sticky_label?`), `data-sort` where it sorts; a click sorts
   by it.
   """
@@ -808,8 +808,8 @@ defmodule AshDataTable.Attrs do
 
   The rows of the records hold what varies only: their id, `role` and
   `tabindex`, the same on every row, are written by the part, as every
-  byte of a row is sent again whenever the row is (the design note of
-  stage 7, D3 b: with them in the bundle "Page change" sent 11 % more).
+  byte of a row is sent again whenever the row is (with them in the
+  bundle "Page change" sent 11 % more).
   So do the row of a record, its cells and its actions cell below.
   """
   def rowgroup(row, selecting) do
@@ -854,7 +854,7 @@ defmodule AshDataTable.Attrs do
   edited and what failed in it (`Present.Cell`).
 
   `id` is the cell's id; the part writes it with the cell's place and
-  role (D3 b, above).
+  role, as above.
   """
   def cell(id, column, editing?, row, zone) do
     Map.new([
@@ -948,7 +948,7 @@ defmodule AshDataTable.Attrs do
 
   The cells of the row, as the cells of a record, write their id, place,
   role and `tabindex` themselves, as the row is sent again while its
-  summaries are on their way and once more when they are there (D3 b).
+  summaries are on their way and once more when they are there.
   """
   def summary(column, summing?) do
     %{"aria-busy" => column.summary && summing? && "true", "data-summary" => column.summary}
@@ -956,7 +956,7 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   A row action's button, beside its id, `tabindex` and `data-action`,
-  which the part writes (D3 b): `data-question` the question the hook asks
+  which the part writes: `data-question` the question the hook asks
   first (none in controlled mode, where the host asks), `data-destructive`
   on an action that destroys.
   """
@@ -966,8 +966,8 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   A line under an expanded row: `data-line` names its relationship, on
-  the line's cell (the part writes its id, role, place and `tabindex`,
-  D3 b), and `data-table-action` the table action of a nested table that
+  the line's cell (the part writes its id, role, place and `tabindex`),
+  and `data-table-action` the table action of a nested table that
   a button on the line runs.
   """
   def line(relationship), do: %{"data-line" => relationship.name}
@@ -1285,8 +1285,7 @@ defmodule AshDataTable.Attrs do
 
   # What opens is modal (a `<dialog>`, `role=dialog`, which the hook opens
   # with `showModal()`) or inline (`role=region`, a part of the page);
-  # `data-presentation` says which, and the hook follows it (the design
-  # note of stage 7, D11).
+  # `data-presentation` says which, and the hook follows it.
   defp opened(:modal), do: %{"role" => "dialog", "data-presentation" => "modal"}
   defp opened(:inline), do: %{"role" => "region", "data-presentation" => "inline"}
 
@@ -1332,7 +1331,7 @@ defmodule AshDataTable.Attrs do
   @doc """
   A field of the panel: `data-field` its way among the fields, joined
   with dots. The part writes the rest of a field, as it does of every
-  element drawn per field or group below (D3 b).
+  element drawn per field or group below.
   """
   def field(path), do: %{"data-field" => Enum.join(path, ".")}
 

@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.EventsTest do
   @moduledoc """
-  What a table tells the page it is on (stage 6, group S): one message per
+  What a table tells the page it is on: one message per
   event, `{:ash_data_table, id, {event, details}}`, to the LiveView's own
   process, for the events the page asks for with `notify`, and none
   without it. `DemoWeb.Support.GivenLive` hands every message it hears to

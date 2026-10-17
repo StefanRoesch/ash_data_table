@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.ControlledTest do
   @moduledoc """
-  Controlled mode (stage 6, group V): a table attached with `controlled:`
+  Controlled mode: a table attached with `controlled:`
   holds the question before an action and the action panel as a request,
   which the page draws (`AshDataTable.requests/1`) and answers with
   commands; every answer goes through the table's checks, the veto and

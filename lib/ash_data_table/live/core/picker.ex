@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Picker do
   @moduledoc false
-  # The picker (stage 3c): open, choose, cancel, and the fields of the
+  # The picker: open, choose, cancel, and the fields of the
   # action panel given by choosing related records.
 
   alias AshDataTable.Act

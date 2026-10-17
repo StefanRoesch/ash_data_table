@@ -1,7 +1,7 @@
 defmodule AshDataTable.Kit.Words do
   @moduledoc """
-  What each part of a kit is given of the texts and values it shows (the
-  design note of stage 7, D23): the one place that says it. Whoever draws
+  What each part of a kit is given of the texts and values it shows: the
+  one place that says it. Whoever draws
   a part passes them as the part's attributes, made here of the part's
   other attributes, so that LiveView sends a text again only when what it
   is made of changed:

@@ -1,13 +1,13 @@
 import type { Page } from "@playwright/test"
 import { expect, test } from "./support/fixtures"
 
-// The grid's hook finds the table's elements by their markers alone (the
-// design note of stage 7, D4; test group Y): /e2e/markers draws a grid with
+// The grid's hook finds the table's elements by their markers alone:
+// /e2e/markers draws a grid with
 // `div`s and `span`s, no `table`, `tr` or `td`, that carries the markers
 // (`DemoWeb.E2E.MarkersLive`), with a table nested in a cell. If the hook
 // relied on a tag, these would fail.
 //
-// And the development check of the hooks (D13): while LiveView's client
+// And the development check of the hooks: while LiveView's client
 // debug is on, a part that lacks a marker is named on the console.
 
 const cell = (page: Page, key: string, column: string) => page.locator(`[id="kit-row-${key}-c-${column}"]`)

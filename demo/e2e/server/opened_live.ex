@@ -1,6 +1,6 @@
 defmodule DemoWeb.E2E.OpenedLive do
   @moduledoc """
-  A page for the browser tests of "Open" (stage 6): the tasks attached
+  A page for the browser tests of "Open": the tasks attached
   with `open: "Open"`, and beside them what the page was told last, the
   key of the row opened. It is compiled and routed in the e2e environment
   only.

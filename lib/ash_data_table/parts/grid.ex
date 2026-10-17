@@ -291,8 +291,7 @@ defmodule AshDataTable.Parts.Grid do
   # The header of a column: its label, the mark of the sort, the handle
   # that resizes it (the kit's `resizer/1`). `attrs` is what varies
   # (`AshDataTable.Attrs.column_header/5`); its id, place, role, name and
-  # `tabindex` are written here, as of every element drawn once per column
-  # (the design note of stage 7, D3 b).
+  # `tabindex` are written here, as of every element drawn once per column.
   attr :id, :string, required: true
   attr :column, :map, required: true
   attr :colindex, :integer, required: true
@@ -365,7 +364,7 @@ defmodule AshDataTable.Parts.Grid do
   # column and the actions cell (the kit's `actions_cell/1`). Written without whitespace on purpose: every byte of a
   # row is sent again whenever the row is, and a cell's text must not be
   # padded. The constant attributes of the row and its cells are written
-  # here; what varies is `AshDataTable.Attrs.cell/5`'s (D3 b). What a cell
+  # here; what varies is `AshDataTable.Attrs.cell/5`'s. What a cell
   # holds is the column's component's, else the kit's `cell/1`'s
   # (`component?/2`).
   attr :dom_id, :string, required: true
@@ -454,7 +453,7 @@ defmodule AshDataTable.Parts.Grid do
         do: {column, Common.colindex(index, lead), row.cells[column.name]}
   end
 
-  # What a cell of a record holds (the design note of stage 7, D10): the
+  # What a cell of a record holds: the
   # column's component draws a value that is there and that the person may
   # see; anything else is the kit's `cell/1`'s (`AshDataTable.Kit.cell/1`
   # for a kit's own row; written out here, as a component of its own would
@@ -510,7 +509,7 @@ defmodule AshDataTable.Parts.Grid do
   # The cell of a record's actions: "Open" where the page offers it, a
   # button per row action, and the message of an action that failed (the
   # kit's `failure/1`). `id` is the cell's; what varies of it is
-  # `AshDataTable.Attrs.actions/2`'s, of a button `Attrs.action/2`'s (D3 b).
+  # `AshDataTable.Attrs.actions/2`'s, of a button `Attrs.action/2`'s.
   attr :id, :string, required: true
   attr :colindex, :integer, required: true
   attr :row, :any, required: true
@@ -852,7 +851,7 @@ defmodule AshDataTable.Parts.Grid do
         reference column has an empty one: its cells are edited in the picker,
         which the hook asks for. So has the column of an array, a map cell or
         a union, which is edited in the side panel. A column whose component edits has the
-        component's editor (the design note of stage 7, D10); every other the
+        component's editor; every other the
         kit's. --%>
       <template
         :for={column <- @model.columns}
@@ -894,8 +893,8 @@ defmodule AshDataTable.Parts.Grid do
   # pickers' tables' too, which are drawn inside this root: written once
   # here, on the grid's markers (`role=grid`, `role=rowgroup`, `role=row`,
   # `role=gridcell`, `data-lines`, `aria-invalid`, …), not on every grid,
-  # so that an opened nested table or picker sends none of it (the design
-  # note of stage 7, D6). A rule about a grid's own cells reaches them
+  # so that an opened nested table or picker sends none of it. A rule
+  # about a grid's own cells reaches them
   # through its row groups and rows (`>`), so that a nested table, which
   # stands in a cell, is not one of them. Written out in full, as Tailwind
   # finds a class only as it is written in the source.

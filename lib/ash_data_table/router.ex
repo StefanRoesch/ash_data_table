@@ -212,7 +212,7 @@ defmodule AshDataTable.Router do
     ]
   end
 
-  # What the page gives its table and hears of it (stage 6), as a route can
+  # What the page gives its table and hears of it, as a route can
   # hold it: a literal, or `{module, function}` for a function, which the
   # page calls as `attach/4` calls its own.
   defp page!(:notify, notify) when notify == true or is_list(notify) do

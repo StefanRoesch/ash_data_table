@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Files do
   @moduledoc false
-  # Files (stage 3c): the uploads of the panel's fields that take a file,
+  # Files: the uploads of the panel's fields that take a file,
   # what is said of them, and the action run while LiveView holds them.
 
   import Phoenix.LiveView

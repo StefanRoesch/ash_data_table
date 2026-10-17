@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Requests do
   @moduledoc false
-  # Controlled mode (stage 6 D14, widened in stage 7c, D17): what the
+  # Controlled mode: what the
   # table would open, the host draws. A table attached with `controlled:`
   # holds a request in place of what it would draw (`entry.request`, with a
   # `ref` of its own), tells the page (`:requested`), and the host answers
@@ -22,7 +22,7 @@ defmodule AshDataTable.Live.Core.Requests do
   #     groups, unions and chosen records;
   #   * `:picker` - the picker: `AshDataTable.pick_request/4` chooses.
   #
-  # The question is no safety check (target §1.5, final review S1): the
+  # The question is no safety check (target §1.5): the
   # hook sends no `table_run`, `bulk_run`, `picked` with `confirmed` or
   # `panel_submit` for what the host holds, but the browser can, and the
   # write then runs without it, through the checks, the veto, the re-read

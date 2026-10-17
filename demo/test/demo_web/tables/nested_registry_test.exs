@@ -1,7 +1,7 @@
 defmodule DemoWeb.Tables.NestedRegistryTest do
   @moduledoc """
   What the one component of a page holds while nested tables are open, as
-  real events and reads go through it (stage 5): after each, every nested
+  real events and reads go through it: after each, every nested
   table is drawn into a line that its parent's row holds on the page, and
   the table on the page is the one `table.entry` names.
 

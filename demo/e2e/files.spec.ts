@@ -275,8 +275,8 @@ test.describe("in German", () => {
 
 test.describe("in a nested table", () => {
   // The labels under a task: "Import" is on their line, and the panel it
-  // opens is the nested table's, drawn into the task's row by a portal
-  // (stage 5). Its file input is that table's upload: the file reaches the
+  // opens is the nested table's, drawn into the task's row by a portal.
+  // Its file input is that table's upload: the file reaches the
   // action, and a label is made of it. (Moved here from the demo test
   // "the labels under a task have the action on their line…", whose
   // LiveView test cannot reach a file input inside a portal.)
@@ -307,7 +307,7 @@ test.describe("in a nested table", () => {
 test.describe("in two tables of one page, one nested in the other", () => {
   // /e2e/imports: the labels with their import, under a label its tasks,
   // and under a task its labels, with their import. Every table of a page
-  // is drawn by one component, whose uploads they share (stage 5): each
+  // is drawn by one component, whose uploads they share: each
   // table gives up and cancels only its own. The nested panel is opened
   // with the top one still open, which a person cannot do behind a modal
   // dialog, so it is sent by hand (`forge`); its own controls are used as a

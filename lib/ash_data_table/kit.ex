@@ -798,8 +798,8 @@ defmodule AshDataTable.Kit do
     """
   end
 
-  # Whether the column's component draws a cell (the design note of stage
-  # 7, D10): a value that is there and that the person may see.
+  # Whether the column's component draws a cell: a value that is there and
+  # that the person may see.
   @doc false
   def component?(%{component: %{cell?: true}}, %{state: :value, failure: nil}), do: true
   def component?(_column, _cell), do: false

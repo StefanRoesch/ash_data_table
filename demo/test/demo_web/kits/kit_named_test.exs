@@ -1,7 +1,7 @@
 defmodule DemoWeb.Kits.KitNamedTest do
   @moduledoc """
-  Where a kit is named (the design note of stage 7, D9), and what the kit's
-  `cell/1` is given (D10; test group Z): the configuration, the tag,
+  Where a kit is named, and what the kit's `cell/1` is given: the
+  configuration, the tag,
   `attach/4` and the router line; the tables a table shows, nested and in a
   picker, are drawn with its kit; a cell is the column's component's before
   it is the kit's, and the kit is never given the value of a sensitive cell.

@@ -266,7 +266,7 @@ defmodule AshDataTable.Live.Page do
     do: {:ok, assign(socket, table: nil, route: nil, layout_assigns: nil)}
 
   # The table is attached in the first `handle_params/3`: `mount/3` has no
-  # URL, and the route is found by it (D7). The hook of the URL that
+  # URL, and the route is found by it. The hook of the URL that
   # `AshDataTable.attach/4` attaches runs from the next call on; in this one
   # the table is told the URL here, which is its first read, in place. A
   # page whose first read is refused is not there (`gone?`, `on_forbidden
@@ -372,7 +372,7 @@ defmodule AshDataTable.Live.Page do
   defp given(%Phoenix.LiveView.Socket{} = socket),
     do: layout_assigns(socket.assigns.route, socket.assigns)
 
-  # What the route gives the table and hears of it (stage 6), as
+  # What the route gives the table and hears of it, as
   # `AshDataTable.attach/4` takes it: a `{module, function}` as a function.
   defp given(route) do
     for name <-

@@ -1,7 +1,7 @@
 defmodule AshDataTable.Intent do
   @moduledoc false
   # What a person asks a table for, parsed once from an event of the
-  # browser (stage 3a of the refactor, docs/architecture/target.md 4.3):
+  # browser (docs/architecture/target.md 4.3):
   # one tagged value per event of the "Events" list of
   # `docs/agents/architecture.md`.
   #

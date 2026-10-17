@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Url do
   @moduledoc false
-  # The URL (stage 3c): the arguments of the line, and a change of the state,
+  # The URL: the arguments of the line, and a change of the state,
   # which is a patch where the state is in the URL.
 
   import Phoenix.LiveView

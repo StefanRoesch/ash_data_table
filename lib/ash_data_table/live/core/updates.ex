@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Updates do
   @moduledoc false
-  # Live updates (stage 3c): the listener, what was announced, the rows read
+  # Live updates: the listener, what was announced, the rows read
   # again, held back, or on their way out, and the notice.
 
   import Phoenix.LiveView
@@ -53,7 +53,7 @@ defmodule AshDataTable.Live.Core.Updates do
       end
 
     # to the component that draws the table (the tag), or to the LiveView
-    # it is attached to, whose hook takes it (`AshDataTable.Live.Hooks`, D8)
+    # it is attached to, whose hook takes it (`AshDataTable.Live.Hooks`)
     relay =
       case target do
         nil -> fn batch -> send(view, {:ash_data_table_heard, id, batch}) end

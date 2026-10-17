@@ -1,7 +1,7 @@
 defmodule DemoWeb.TablePageTest do
   # The helpers read a page where a person sees it: what the table marks
   # with the id of the element it goes into (`data-ash-data-table-portal`),
-  # a portal's content, is read there (stage 5 of the refactor).
+  # a portal's content, is read there.
   use ExUnit.Case, async: true
   import DemoWeb.TablePage
 

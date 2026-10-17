@@ -1,8 +1,8 @@
 defmodule AshDataTable.Live.Drawing do
   @moduledoc false
   # What `AshDataTable.attached/1` draws (part 4): every table of one
-  # `AshDataTable.Table`, through its kit (`AshDataTable.Kit`, the design
-  # note of stage 7, D8). It turns what the core holds into the values each
+  # `AshDataTable.Table`, through its kit (`AshDataTable.Kit`). It turns
+  # what the core holds into the values each
   # part is given (`AshDataTable.Present`, the uploads of the panel, the
   # links), and calls the kit's parts in their order; the markup is the
   # kit's. The table on the page, its nested tables (each in a portal) and
@@ -84,7 +84,7 @@ defmodule AshDataTable.Live.Drawing do
 
   # The uploads of the panel's file fields. A function component sees only
   # what it is given, and LiveView's uploads are not the table's to assign
-  # (D5): a page that draws a table whose panel takes a file must give them.
+  # a page that draws a table whose panel takes a file must give them.
   defp files!(entry, nil) do
     if Files.file_inputs(entry.panel) != [] do
       raise ArgumentError,
@@ -465,7 +465,7 @@ defmodule AshDataTable.Live.Drawing do
     do: entry.picker != nil and not AshDataTable.Live.Core.Requests.host?(options, entry, :picker)
 
   # Whether `thing` opens over the page or in it: as the table was told,
-  # else as its kit says (the design note of stage 7, D11).
+  # else as its kit says.
   defp presentation(options, thing),
     do: Keyword.get(options.presentation, thing) || options.kit.presentation(thing)
 

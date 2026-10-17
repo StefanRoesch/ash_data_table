@@ -1,6 +1,6 @@
 defmodule DemoWeb.E2E.Controlled do
   @moduledoc """
-  A domain for the browser test of controlled mode (stage 6): memos kept in
+  A domain for the browser test of controlled mode: memos kept in
   memory, whose one row action ("Rename") has text fields only, so that the
   page's own form can draw each as a plain input. Compiled in the e2e
   environment only.

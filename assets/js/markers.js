@@ -4,7 +4,7 @@
 // a test compares the two).
 //
 // A marker is an ARIA role where the element has one, else a `data-*`
-// attribute the table writes (the design note of stage 7, D2). Ids are
+// attribute the table writes. Ids are
 // markers too: every id of a table starts with the table's own (`ID`,
 // which the element of each hook says in `data-table`), and the hooks
 // find a part of their table by it (`ID-whole`, `ID-dialog`, …).

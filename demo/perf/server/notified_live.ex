@@ -1,7 +1,7 @@
 defmodule DemoWeb.Perf.NotifiedLive do
   @moduledoc """
   The tasks of /tasks attached to a LiveView of the host's with what a
-  page gives a table and hears of it (stage 6): every event (`notify:
+  page gives a table and hears of it: every event (`notify:
   true`), a `context` function, and a veto that lets everything through.
   For the performance scripts, in the perf environment only.
   """

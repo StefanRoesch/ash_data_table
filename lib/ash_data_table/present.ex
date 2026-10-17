@@ -1,7 +1,7 @@
 defmodule AshDataTable.Present do
   @moduledoc false
-  # What a part draws, made of what the core holds (stage 3a of the
-  # refactor, docs/architecture/target.md 4.3). The core keeps keys and the
+  # What a part draws, made of what the core holds
+  # (docs/architecture/target.md 4.3). The core keeps keys and the
   # panel's form; this turns them into the rows of the stream, the fields of
   # the action panel and the picker, and a part draws from these and from
   # nothing else: it is never given a record, an `AshPhoenix.Form` or a

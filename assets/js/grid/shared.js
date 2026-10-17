@@ -30,8 +30,8 @@ export const AROUND = (node, what) => {
   return found && found.matches(what) ? found : null
 }
 
-// The grid's structure, by its markers alone (the design note of
-// stage 7, D4): whatever elements a kit draws it with, a grid
+// The grid's structure, by its markers alone: whatever elements a kit
+// draws it with, a grid
 // (`role=grid`) holds rows, each record's in a row group of its own,
 // and a row holds cells, a column's header or a grid cell. A cell
 // says where it stands among the columns (`aria-colindex`, from 1).

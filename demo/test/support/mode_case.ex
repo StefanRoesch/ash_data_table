@@ -1,6 +1,6 @@
 defmodule DemoWeb.ModeCase do
   @moduledoc """
-  A test case for the tests that run three ways (stage 4 D15): each test of
+  A test case for the tests that run three ways: each test of
   a module that uses it runs once per mode, on the same paths.
 
     * `:mounted` - the router line's page (`AshDataTable.Live.Page`);

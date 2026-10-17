@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Bulk do
   @moduledoc false
-  # Actions on the selected rows (stage 3c): the question, the panel, and
+  # Actions on the selected rows: the question, the panel, and
   # the run beside the process, with its outcome.
 
   require Logger

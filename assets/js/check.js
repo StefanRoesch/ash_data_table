@@ -1,4 +1,4 @@
-// The development check of the hooks (the design note of stage 7, D13).
+// The development check of the hooks.
 //
 // While LiveView's client debug is on (`liveSocket.enableDebug()`), each
 // hook looks, once mounted and after every patch, for the markers it

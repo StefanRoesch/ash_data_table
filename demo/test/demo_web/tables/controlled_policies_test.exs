@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.ControlledPoliciesTest do
   @moduledoc """
-  Controlled mode against a resource with policies (test group AB): the
+  Controlled mode against a resource with policies: the
   demo's tasks, whose people of another organization are not the actor's
   to read, and whose viewer edits nothing. What the host answers is a
   claim, checked as the person's own: a key of a person the actor may not

@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.ControlledWidenedTest do
   @moduledoc """
-  Controlled mode widened (the design note of stage 7, D17; test group AB):
+  Controlled mode widened:
   the questions of a column and of a reference cell, the picker, and every
   panel (a map cell's, with files, groups, unions and chosen records) are
   held for the page, and every answer goes through `AshDataTable.Operation`:

@@ -225,7 +225,7 @@ defmodule DemoWeb.Router do
           layout: false,
           authorize?: false
 
-        # a table drawn with a kit of its own (stage 7b): on the router line,
+        # a table drawn with a kit of its own: on the router line,
         # and placed by the tag (`kit_tables.ex`)
         ash_data_table "/kit/memos", Demo.Support.Plain.Memo,
           layout: false,
@@ -261,7 +261,7 @@ defmodule DemoWeb.Router do
       end
 
       # The router page of the cards, with what a route gives a table and
-      # hears of it (stage 6), heard and commanded by an `on_mount` hook.
+      # hears of it, heard and commanded by an `on_mount` hook.
       live_session :heard, on_mount: [DemoWeb.Support.Heard] do
         ash_data_table "/heard/cards", Demo.Support.Given.Card,
           layout: false,
@@ -293,9 +293,9 @@ defmodule DemoWeb.Router do
   # it is open; one whose tables nested in each other take files; one
   # whose tables are attached to it; one that offers "Open"; one that
   # draws a panel of its table itself; a grid of `div`s that carries the
-  # table's markers and the grid's hook (stage 7a); one whose saves wait
+  # table's markers and the grid's hook; one whose saves wait
   # until the test lets them go; a table drawn with the demo's kit of
-  # `div`s (stage 7b); and /tasks with what opens in the page.
+  # `div`s; and /tasks with what opens in the page.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -348,8 +348,8 @@ defmodule DemoWeb.Router do
 
   # For the performance scripts (`perf/`), in the perf environment only: the
   # table of /tasks once more, in pages of 100, placed by the tag, and
-  # attached with what a page gives and hears (stage 6), and with its panel
-  # in the page (stage 7b); and what the server measured.
+  # attached with what a page gives and hears, and with its panel
+  # in the page; and what the server measured.
   if Application.compile_env(:demo, :perf_routes, false) do
     scope "/perf" do
       pipe_through :browser
@@ -357,7 +357,7 @@ defmodule DemoWeb.Router do
       live_session :perf, on_mount: [DemoWeb.Actor] do
         ash_data_table "/tasks100", Demo.Perf.Task
         live "/notified", DemoWeb.Perf.NotifiedLive
-        # /tasks with its action panel in the page (stage 7b)
+        # /tasks with its action panel in the page
         ash_data_table "/inline/tasks", Demo.Tracker.Task, presentation: [panel: :inline]
       end
     end

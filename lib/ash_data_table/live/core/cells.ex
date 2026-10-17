@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Core.Cells do
   @moduledoc false
-  # Cells (stage 3c): save, clear, reveal, the choice for a reference
+  # Cells: save, clear, reveal, the choice for a reference
   # cell, discard, dismiss, and the panel of a map cell.
 
   alias AshDataTable.Edit

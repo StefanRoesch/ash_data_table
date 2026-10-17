@@ -1,7 +1,7 @@
 defmodule DemoWeb.E2E.ControlledKitLive do
   @moduledoc """
-  A page for the browser tests of controlled mode widened (the design note
-  of stage 7, D17, test group AB): a table of `AshDataTable.Test.Resource`
+  A page for the browser tests of controlled mode widened: a table of
+  `AshDataTable.Test.Resource`
   attached with `controlled: [:confirm, :picker]`. The page draws the
   questions (of a column before a save, of a reference cell before a
   choice) and the picker of the owner's cell itself, of the table and of

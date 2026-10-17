@@ -3,7 +3,7 @@ defmodule AshDataTable.Messages do
   # English text, the msgid of the Gettext domain `ash_data_table` (and the
   # plural msgid of a key with a form per number). The one list
   # `AshDataTable.Text` takes keys and msgids from, and what a kit is told a
-  # part shows (`AshDataTable.Kit`, the design note of stage 7, D23).
+  # part shows (`AshDataTable.Kit`).
   #
   # The `*_noop` macros mark the msgids for `mix gettext.extract`, which
   # writes them into `priv/gettext/ash_data_table.pot`. Nothing is looked up

@@ -1,9 +1,7 @@
 defmodule AshDataTable.Parts.Filter do
   @moduledoc false
   # The filter row's form and one column's filter control.
-  # Moved out of `AshDataTable.Live.TableComponent` in stage 1 of the
-  # refactor (docs/architecture/target.md); it still draws from the
-  # component's assigns.
+  # It draws from the assigns of the table's component.
   use Phoenix.Component
 
   alias AshDataTable.Attrs

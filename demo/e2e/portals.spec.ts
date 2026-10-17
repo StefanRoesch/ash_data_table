@@ -5,7 +5,7 @@ import { expect, test } from "./support/fixtures"
 import { ownedSheets, Table } from "./support/table"
 
 // Nested tables drawn by the table on the page and moved into their rows by
-// LiveView's `<.portal>` (stage 5 of the refactor): the cell of a row of a
+// LiveView's `<.portal>`: the cell of a row of a
 // stream is the portal's target, and the nested table has a stream of its
 // own. Upstream has no test of that combination; these are ours.
 //
@@ -352,7 +352,7 @@ test.describe("the table of a picker leaves with its picker", () => {
   })
 })
 
-// Stage 5 found that LiveView locks the element of a hook while the hook's
+// LiveView locks the element of a hook while the hook's
 // event is answered, and keeps aside what comes for it meanwhile: a nested
 // table's cell inside a locked grid was not there when its portal moved. So
 // the grid's events are pushed by its sender, an element beside the grid
@@ -362,7 +362,7 @@ test.describe("the table of a picker leaves with its picker", () => {
 // saved; then it lets them through in their order: the line's answer, with
 // the cell the nested table goes into, comes while the grid's own save is
 // still on its way. The nested table must arrive in its cell, and the save
-// as well (the design note of stage 7, D19).
+// as well.
 test.describe("a grid is never locked while one of its own events is on its way", () => {
   test("a nested table opened just before a save arrives while the save is still to be answered", async ({
     page,

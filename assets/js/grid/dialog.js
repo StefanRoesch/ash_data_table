@@ -114,7 +114,7 @@ export default {
     })
   },
 
-  // The question in the page (stage 7b): shown, focus on Cancel, the
+  // The question in the page: shown, focus on Cancel, the
   // safe answer; a button answers, Escape inside it is Cancel; then it
   // is hidden and focus goes back to what had it, if focus is in the
   // question or nowhere. Nothing else is inert, and Tab leaves it. A

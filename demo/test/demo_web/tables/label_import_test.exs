@@ -278,7 +278,6 @@ defmodule DemoWeb.Tables.LabelImportTest do
 
       # the upload of the panel, which a file input inside a portal is, is
       # used in the browser test "in a nested table" of `files.spec.ts`
-      # (group K of stage 5)
     end
   end
 end

@@ -1,7 +1,7 @@
 defmodule DemoWeb.E2E.KitLive do
   @moduledoc """
-  A page for the browser tests of a kit of one's own (the design note of
-  stage 7, test groups Y and AA): a table of `AshDataTable.Test.Resource`
+  A page for the browser tests of a kit of one's own: a table of
+  `AshDataTable.Test.Resource`
   drawn with the demo's kit of `div`s (`DemoWeb.DivKit`), whose action
   panel, picker and question open in the page. `?presentation=modal` opens
   them over it, as the default kit does; `?presentation=mixed` the panel

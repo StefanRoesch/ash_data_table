@@ -1,6 +1,6 @@
 defmodule DemoWeb.Tables.CommandsTest do
   @moduledoc """
-  What a host tells an attached table (stage 6, group T): read again, take
+  What a host tells an attached table: read again, take
   a state, clear the selection, give the selected records, and what it may
   read of the table (`AshDataTable.status/1`). The test hands the host's
   LiveView a function to run in its process (`{:run, fun}`):

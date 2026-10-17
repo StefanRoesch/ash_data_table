@@ -1,6 +1,6 @@
 defmodule AshDataTable.Live.Hooks do
   @moduledoc false
-  # A table attached to a LiveView (stage 4, `AshDataTable.attach/4`): what
+  # A table attached to a LiveView (`AshDataTable.attach/4`): what
   # the socket keeps of its tables, and the four hooks through which their
   # events, async results, batches of live updates and URLs reach them.
   #
@@ -13,14 +13,14 @@ defmodule AshDataTable.Live.Hooks do
   #     and whether its state is in the URL (`url?`);
   #   * `streams`: by a table's id, the stream names it has configured and
   #     that are free: given back to a table of that id that is attached
-  #     again, as LiveView cannot undo `stream_configure/3` (D4);
+  #     again, as LiveView cannot undo `stream_configure/3`;
   #   * `url`: the URL the last `handle_params/3` was given, for a table
   #     that keeps its state there and is attached after it;
   #   * `hooks`: the stages whose hooks are attached. They stay for the life
-  #     of the socket (D13): a late event, result or batch of a table that
+  #     of the socket: a late event, result or batch of a table that
   #     is gone is answered or dropped here, and never reaches the host.
   #
-  # One set of hooks for all the tables of a socket (D3). Each finds the
+  # One set of hooks for all the tables of a socket. Each finds the
   # table by the id an event's name, an async key or a batch says; what
   # names a table no one knows is the table's all the same, and halted.
 
@@ -33,8 +33,8 @@ defmodule AshDataTable.Live.Hooks do
 
   @doc """
   Attaches the table `given` describes under the assign `name`, or tells
-  the table attached there again (D2). With `url?` the first read waits for
-  the first `handle_params` (D6); else it is done here, in place.
+  the table attached there again. With `url?` the first read waits for
+  the first `handle_params`; else it is done here, in place.
   """
   def attach(socket, name, given, url?) do
     if url? and is_nil(socket.router) do
@@ -114,8 +114,8 @@ defmodule AshDataTable.Live.Hooks do
       |> put_table(name, %{given: given, url?: url?})
       |> hooks(url?)
 
-    # with its state in the URL it reads in the first `handle_params/3`
-    # (D6), or at once where that has run, with the URL it was given
+    # with its state in the URL it reads in the first `handle_params/3`,
+    # or at once where that has run, with the URL it was given
     case {url?, private(socket).url} do
       {false, _url} -> within(socket, name, &Core.tell(&1, given))
       {true, nil} -> socket
@@ -126,8 +126,8 @@ defmodule AshDataTable.Live.Hooks do
   @doc """
   Closes the table under `name`: every table it shows, and its own
   listener, tasks, uploads and stream, and sets the assign to nil. The
-  names of its streams are kept for a table of the same id (D4); the hooks
-  stay (D13).
+  names of its streams are kept for a table of the same id; the hooks
+  stay.
   """
   def detach(socket, name) do
     private = private(socket)
@@ -189,7 +189,7 @@ defmodule AshDataTable.Live.Hooks do
     })
   end
 
-  # The hooks, each attached once (D3): those of events, results and
+  # The hooks, each attached once: those of events, results and
   # batches with the first table, the one of the URL with the first table
   # that keeps its state there.
   defp hooks(socket, url?) do
@@ -277,7 +277,7 @@ defmodule AshDataTable.Live.Hooks do
 
   defp async(_key, _result, socket), do: {:cont, socket}
 
-  # What a listener hands over (`AshDataTable.Listener`, D8); a batch of a
+  # What a listener hands over (`AshDataTable.Listener`); a batch of a
   # table that is gone is dropped.
   defp info({:ash_data_table_heard, id, batch}, socket) do
     case named(socket, id) do
@@ -289,7 +289,7 @@ defmodule AshDataTable.Live.Hooks do
   defp info(_message, socket), do: {:cont, socket}
 
   # Every table whose state is in the URL is told it; the LiveView's own
-  # `handle_params/3` runs after (D6), where it has one: LiveView calls it on
+  # `handle_params/3` runs after, where it has one: LiveView calls it on
   # a patch whether the module defines it or not, so for a LiveView without
   # one the hook halts. A table reads only when its own parameters changed.
   defp params(_params, url, socket) do
