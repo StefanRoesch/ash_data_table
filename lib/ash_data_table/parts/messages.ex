@@ -74,7 +74,7 @@ defmodule AshDataTable.Parts.Messages do
   attr :id, :any, required: true
   attr :kit, :atom, required: true
 
-  def whole(assigns) do
+  def whole_text(assigns) do
     ~H"""
     <%!-- The whole text of a cell whose text is cut off: the hook puts it in,
     from what the cell itself holds, and shows it under the cell while the cell
@@ -98,7 +98,7 @@ defmodule AshDataTable.Parts.Messages do
   attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
 
-  def dialog(assigns) do
+  def confirm(assigns) do
     ~H"""
     <%!-- The one dialog of the table: it asks the question of a column with
     `confirm` before the cell is saved, that of a row action, and the one that

@@ -317,13 +317,12 @@ defmodule AshDataTable.Kit do
   `editor/1`; none for a column edited in the picker or the panel.
 
       <template :for={column <- @model.columns} :if={column.editable?} …>
-        <AshDataTable.Kit.editor kit={@kit} id={"\#{@id}-editor-\#{column.name}"} column={column} resource={@model.resource} />
+        <AshDataTable.Kit.editor kit={@kit} id={"\#{@id}-editor-\#{column.name}"} column={column} />
       </template>
   """
   attr :kit, :atom, required: true
   attr :id, :string, required: true
   attr :column, :map, required: true
-  attr :resource, :atom, required: true
 
   def editor(assigns) do
     ~H"""
@@ -342,7 +341,6 @@ defmodule AshDataTable.Kit do
       kit={@kit}
       id={@id}
       column={@column}
-      allow_nil?={Ash.Resource.Info.attribute(@resource, @column.name).allow_nil?}
     />
     """
   end
@@ -354,8 +352,9 @@ defmodule AshDataTable.Kit do
   def component?(_column, _cell), do: false
 
   @doc """
-  Whether `module` is a kit: it says it implements this behaviour. Raises
-  with what to do otherwise; `where` names what was given it.
+  Whether `module` is a kit: it says it implements this behaviour, and its
+  `presentation/1` answers `:modal` or `:inline` for each thing that opens.
+  Raises with what to do otherwise; `where` names what was given it.
   """
   @spec check!(module, String.t()) :: module
   def check!(module, where) do
@@ -368,6 +367,12 @@ defmodule AshDataTable.Kit do
       raise ArgumentError,
             "#{where} was given `kit: #{inspect(module)}`, which is no kit: a kit is a module " <>
               "that says `use AshDataTable.Kit, contract: #{@contract}` (see AshDataTable.Kit)"
+    end
+
+    if not function_exported?(module, :presentation, 1) do
+      raise ArgumentError,
+            "#{where} was given `kit: #{inspect(module)}`, which has no `presentation/1`: " <>
+              "a kit says whether each thing that opens is `:modal` or `:inline`"
     end
 
     for thing <- [:panel, :picker, :confirm],

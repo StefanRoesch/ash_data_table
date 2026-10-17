@@ -89,6 +89,74 @@ defmodule AshDataTable.KitTest do
     assert_raise ArgumentError, ~r/which is no kit/, fn -> Kit.check!(:nowhere, "a test") end
   end
 
+  test "a kit whose presentation is neither, or that has none of one argument, is refused" do
+    sideways =
+      compile("""
+      defmodule AshDataTable.KitTest.Sideways do
+        use AshDataTable.Kit, contract: 1
+
+        def presentation(:picker), do: :sideways
+        def presentation(thing), do: super(thing)
+      end
+      """)
+
+    assert_raise ArgumentError,
+                 ~r/whose `presentation\(:picker\)` is :sideways: it is `:modal` or `:inline`/,
+                 fn -> Kit.check!(sideways, "a test") end
+
+    # a kit written without `use`, whose `presentation` takes two (the
+    # compiler warns of the callbacks it lacks)
+    {two, _warned} =
+      ExUnit.CaptureIO.with_io(:stderr, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.Two do
+          @behaviour AshDataTable.Kit
+          def presentation(_thing, _table), do: :modal
+        end
+        """)
+      end)
+
+    assert_raise ArgumentError, ~r/which has no `presentation\/1`/, fn ->
+      Kit.check!(two, "a test")
+    end
+  end
+
+  test "attach refuses a kit that is none, and a presentation of another shape" do
+    attach = fn opts ->
+      AshDataTable.Test.LiveHost.run(
+        &AshDataTable.attach(
+          &1,
+          :table,
+          AshDataTable.Test.Resource,
+          [tenant: "kit-attach"] ++ opts
+        )
+      )
+    end
+
+    assert_raise ArgumentError,
+                 ~r/AshDataTable.attach\/4 was given `kit: String`, which is no kit/,
+                 fn ->
+                   attach.(kit: String)
+                 end
+
+    for presentation <- [:inline, [panel: :sideways], [panes: :inline], [{"panel", :inline}]] do
+      assert_raise ArgumentError,
+                   ~r/the `presentation` of AshDataTable.attach\/4 is a list of `panel:`, `picker:` and `confirm:`/,
+                   fn -> attach.(presentation: presentation) end
+    end
+  end
+
+  test "the router line refuses a kit that is no module, and a presentation that is no list" do
+    for {name, value, shape} <- [
+          {:kit, "MyKit", "a module that uses AshDataTable.Kit"},
+          {:presentation, :inline, "a list such as \\[panel: :inline\\]"}
+        ] do
+      assert_raise ArgumentError, ~r/the :#{name} of ash_data_table must be #{shape}/, fn ->
+        AshDataTable.Router.__live_opts__(AshDataTable.Test.Resource, [{name, value}])
+      end
+    end
+  end
+
   test "the default kit is a kit, of every part" do
     assert Kit.check!(Kit.Default, "a test") == Kit.Default
     for part <- Kit.parts(), do: assert(function_exported?(Kit.Default, part, 1), "#{part}/1")

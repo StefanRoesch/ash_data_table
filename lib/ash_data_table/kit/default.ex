@@ -72,11 +72,11 @@ defmodule AshDataTable.Kit.Default do
   @impl true
   defdelegate picker(assigns), to: Parts.Picker
   @impl true
-  def confirm(assigns), do: Parts.Messages.dialog(assigns)
+  defdelegate confirm(assigns), to: Parts.Messages
   @impl true
   defdelegate failure(assigns), to: Parts.Common
   @impl true
-  def whole_text(assigns), do: Parts.Messages.whole(assigns)
+  defdelegate whole_text(assigns), to: Parts.Messages
   @impl true
   defdelegate message(assigns), to: Parts.Messages
   @impl true

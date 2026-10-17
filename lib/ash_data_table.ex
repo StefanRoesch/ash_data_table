@@ -302,7 +302,7 @@ defmodule AshDataTable do
       before_action={@before_action}
       notify={@notify}
       open={@open}
-      kit={kit!(@kit, "<AshDataTable.table>")}
+      kit={@kit}
       presentation={presentation!(@presentation, "<AshDataTable.table>")}
     />
     """
@@ -527,15 +527,22 @@ defmodule AshDataTable do
   end
 
   # The kit a table is drawn with: the one it is given, else the one of the
-  # configuration, else the default.
-  defp kit!(nil, _where) do
-    case Application.get_env(:ash_data_table, :kit) do
-      nil -> AshDataTable.Kit.Default
-      kit -> AshDataTable.Kit.check!(kit, "`config :ash_data_table`")
-    end
-  end
+  # configuration, else the default. Checked as a kit unless it is `held`,
+  # the kit the table has already: the tag is given its kit on every render,
+  # and checks it only when another is named (`AshDataTable.Live.Embedded`).
+  @doc false
+  def kit!(given, where, held \\ nil) do
+    {kit, where} =
+      case {given, Application.get_env(:ash_data_table, :kit)} do
+        {nil, nil} -> {AshDataTable.Kit.Default, where}
+        {nil, configured} -> {configured, "`config :ash_data_table`"}
+        {given, _configured} -> {given, where}
+      end
 
-  defp kit!(kit, where), do: AshDataTable.Kit.check!(kit, where)
+    if kit == held or kit == AshDataTable.Kit.Default,
+      do: kit,
+      else: AshDataTable.Kit.check!(kit, where)
+  end
 
   # What opens in the page, or over it, as the table is told: the panel and
   # the picker, each `:modal` or `:inline`.

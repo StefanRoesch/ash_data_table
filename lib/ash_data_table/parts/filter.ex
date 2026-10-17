@@ -6,7 +6,6 @@ defmodule AshDataTable.Parts.Filter do
   # component's assigns.
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
   alias AshDataTable.Parts
   alias AshDataTable.State
   alias AshDataTable.Text
@@ -240,15 +239,4 @@ defmodule AshDataTable.Parts.Filter do
   end
 
   defp operator_text(operator), do: Text.t(String.to_existing_atom("operator_#{operator}"))
-
-  attr :id, :any, required: true
-  attr :myself, :any, required: true
-
-  def filter_form(assigns) do
-    ~H"""
-    <%!-- The form of the filter row. A form cannot sit inside a table around
-    its cells, so the controls name it instead. --%>
-    <form {Attrs.filters(@id, @myself)}></form>
-    """
-  end
 end

@@ -195,7 +195,8 @@ defmodule AshDataTable.ArchitectureTest do
   end
 
   # The presentation hints (stage 7, D14): a key `component:` (in a pattern
-  # or a map), `.max_lines`, `.sticky_label?`, in a file of 2a or 2b but
+  # or a map), `.component`, `.max_lines`, `.sticky_label?`, in a file of
+  # 2a or 2b but
   # the model's own (`model.ex`, `model/`), which makes them from the
   # declaration, and but `Live.Core.in_words/1`.
   test "no module of the internals reads a presentation hint" do
@@ -207,7 +208,7 @@ defmodule AshDataTable.ArchitectureTest do
           {number, line} <- named_in(file),
           is_integer(number),
           number not in words,
-          line =~ ~r/\bcomponent:|\.max_lines\b|\.sticky_label\?/,
+          line =~ ~r/\bcomponent:|\.component\b|\.max_lines\b|\.sticky_label\?/,
           do: "#{file}:#{number}: #{String.trim(line)}"
 
     assert found == []

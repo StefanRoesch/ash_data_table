@@ -176,7 +176,6 @@ defmodule AshDataTable.Parts.Grid do
   # (`grid/1`); the kit's `editor/1` draws the others.
   attr :id, :string, required: true
   attr :column, :map, required: true
-  attr :allow_nil?, :boolean, required: true
   attr :kit, :atom, required: true
 
   # A sensitive column, which is text or a number: a password input, so that
@@ -276,7 +275,7 @@ defmodule AshDataTable.Parts.Grid do
       aria-required={@column.required? && "true"}
       class="block h-5 w-full bg-transparent p-0 text-sm outline-none"
     >
-      <option :if={@allow_nil?} value=""></option>
+      <option :if={not @column.required?} value=""></option>
       <option :for={{choice, label} <- @column.values} value={choice}>{label}</option>
     </select>
     """
@@ -933,7 +932,6 @@ defmodule AshDataTable.Parts.Grid do
           kit={@kit}
           id={"#{@id}-editor-#{column.name}"}
           column={column}
-          resource={@model.resource}
         />
       </template>
       <%!-- The message of a cell whose save failed, for the one case in which

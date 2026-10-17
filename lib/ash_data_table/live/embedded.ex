@@ -20,7 +20,16 @@ defmodule AshDataTable.Live.Embedded do
   def mount(socket), do: Core.mount(socket)
 
   @impl true
-  def update(assigns, socket), do: Core.update(assigns, socket)
+  def update(assigns, socket), do: Core.update(kit(assigns, socket), socket)
+
+  # The kit the tag names, checked as it is first given and again only when
+  # another is named, not on every render of the page.
+  defp kit(%{kit: given} = assigns, socket) do
+    held = socket.assigns.table.options.kit
+    %{assigns | kit: AshDataTable.kit!(given, "<AshDataTable.table>", held)}
+  end
+
+  defp kit(assigns, _socket), do: assigns
 
   @impl true
   def handle_event(event, params, socket), do: Core.handle_event(event, params, socket)
