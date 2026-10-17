@@ -277,14 +277,15 @@ defmodule AshDataTable.Live.Core do
       socket
       |> put(nested?: table(socket).entry.depth > 0)
       |> Nesting.relate()
-      |> Nesting.build()
+
+    {built, socket} = Nesting.built(socket)
 
     # The table as the person asking meets it: without the columns they can
     # never see, and with the columns they can never edit read-only. Ash is
     # asked again on every update, which for a table with its state in the
     # URL is every sort, filter and page change; it costs no query.
     model =
-      table(socket).entry.built.model
+      built
       |> Model.for_actor(reader(socket))
       |> Model.zoned(table(socket).caller.time_zone)
       |> in_words()

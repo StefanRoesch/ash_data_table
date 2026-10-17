@@ -52,6 +52,17 @@ defmodule AshDataTable.Table do
   # (`AshDataTable.Live.Registry`). `pool` holds the names of the streams of
   # the entries: those no open table uses, the number of the next one, and
   # what they are named after, the id of the table on the page.
+  #
+  # `models` are the models as the resources and their blocks say them
+  # (`AshDataTable.Model.build/2`), which are the same for everybody, by all
+  # they are built of: the resource, the table, the relationship it is
+  # reached through, the read action of a table to choose from, and what the
+  # table was told of live updates. Each is built once for the whole tree
+  # and kept for as long as the table is: every nested table of one
+  # relationship shares the one its parent built for its lines
+  # (`AshDataTable.Live.Core.Nesting.built/1`). What depends on the person
+  # is never here: each table makes its own model of it on every update
+  # (`AshDataTable.Model.for_actor/2`).
 
   alias AshDataTable.Caller
   alias AshDataTable.Live.Entry
@@ -80,14 +91,16 @@ defmodule AshDataTable.Table do
             caller: Caller.t(),
             entry: Entry.t(),
             entries: %{String.t() => Entry.t()},
-            pool: %{free: [String.t()], next: non_neg_integer, prefix: String.t() | nil}
+            pool: %{free: [String.t()], next: non_neg_integer, prefix: String.t() | nil},
+            models: %{optional(tuple) => AshDataTable.Model.t()}
           }
 
   defstruct options: @options,
             caller: nil,
             entry: nil,
             entries: %{},
-            pool: %{free: [], next: 0, prefix: nil}
+            pool: %{free: [], next: 0, prefix: nil},
+            models: %{}
 
   @doc false
   @spec new() :: t

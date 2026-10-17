@@ -123,15 +123,14 @@ defmodule AshDataTable.Live.Entry do
     related: nil,
     related_title: nil,
     full_view: nil,
-    # What the resources and their blocks say, the same for everybody, built
-    # once for as long as the component lives: the table's model, and that
-    # of a nested table by its relationship. See `build/1` of the component.
-    built: nil,
     # The table as the person asking meets it, made on every update from
-    # `built`; and what the component derives from it there: whether a
-    # column can be edited, whether the rows have an actions cell, the table
-    # actions offered, whether rows expand, the column that stays in view,
-    # and what the nested tables let the person create (`creates/1`).
+    # the model its resource and block say, which the `AshDataTable.Table`
+    # keeps for the whole tree (`models`,
+    # `AshDataTable.Live.Core.Nesting.built/1`); and what the component
+    # derives from it there: whether a column can be edited, whether the
+    # rows have an actions cell, the table actions offered, whether rows
+    # expand, the column that stays in view, and what the nested tables let
+    # the person create (`creates/1`).
     model: nil,
     editing?: false,
     acting?: false,

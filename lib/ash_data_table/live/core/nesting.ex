@@ -73,10 +73,9 @@ defmodule AshDataTable.Live.Core.Nesting do
   defp relate(socket, _table), do: socket
 
   # The table's model as its resource and block say it, which is the same
-  # whoever asks, and so is built once and kept for as long as the component
-  # lives and shows the same table: the same table of the same resource,
-  # reached through the same relationship. Nothing of it depends on who is asking; what
-  # does is asked of Ash on every update, and never kept.
+  # whoever asks: kept in the `AshDataTable.Table` (`models`), by all it is
+  # built of, for every table of the tree. Nothing of it depends on who is
+  # asking; what does is asked of Ash on every update, and never kept.
   #
   # It is kept in the assigns and nowhere else, so that it goes with the
   # page (ADR 0001: a model that outlives a recompile is stale without a
@@ -86,53 +85,39 @@ defmodule AshDataTable.Live.Core.Nesting do
   # be what the block says now.
   #
   # A table to choose from is built for the read action it is told.
-  def build(socket) do
-    %{resource: resource, table: table, via: via, built: built} = Core.table(socket).entry
-    read = Core.table(socket).entry.choose && Core.table(socket).entry.choose.read_action
-    live = Core.table(socket).entry.live_given
+  def built(socket) do
+    %{resource: resource, table: table, via: via, choose: choose, live_given: live} =
+      Core.table(socket).entry
 
-    if match?(%{resource: ^resource, table: ^table, via: ^via, choose: ^read, live: ^live}, built) and
-         not reloading?(socket) do
-      socket
-    else
-      model = Model.build(resource, table: table, via: via, choose: read, live?: live)
+    model(socket, {resource, table, via, choose && choose.read_action, live})
+  end
 
-      Core.put(socket,
-        built: %{
-          resource: resource,
-          table: table,
-          via: via,
-          choose: read,
-          live: live,
-          model: model,
-          nested: %{}
-        }
-      )
+  # The model of the nested table of a relationship, as far as it is the
+  # same for everybody: the one the nested table itself is built with, where
+  # it was told nothing of live updates.
+  defp nested_model(socket, relationship),
+    do: model(socket, {relationship.destination, relationship.table, relationship, nil, nil})
+
+  defp model(socket, {resource, table, via, choose, live} = key) do
+    build = fn -> Model.build(resource, table: table, via: via, choose: choose, live?: live) end
+
+    if reloading?(socket), do: {build.(), socket}, else: cached(socket, key, build)
+  end
+
+  defp cached(socket, key, build) do
+    case Core.table(socket) do
+      %{models: %{^key => model}} ->
+        {model, socket}
+
+      table ->
+        model = build.()
+        {model, Core.put(socket, %{table | models: Map.put(table.models, key, model)})}
     end
   end
 
   defp reloading?(%{endpoint: nil}), do: false
 
   defp reloading?(%{endpoint: endpoint}), do: endpoint.config(:code_reloader) == true
-
-  # The model of the nested table of a relationship, as far as it is the
-  # same for everybody: built when it is first asked for, and kept with the
-  # table's own.
-  defp nested_model(socket, relationship) do
-    %{built: built} = Core.table(socket).entry
-
-    case built.nested do
-      %{^relationship => model} ->
-        {model, socket}
-
-      _not_yet ->
-        model =
-          Model.build(relationship.destination, table: relationship.table, via: relationship)
-
-        nested = Map.put(built.nested, relationship, model)
-        {model, Core.put(socket, built: %{built | nested: nested})}
-    end
-  end
 
   # What the nested tables of this table's rows let the person create, and
   # which table actions they offer: by relationship, what the create button

@@ -209,4 +209,35 @@ defmodule DemoWeb.Tables.NestedRegistryTest do
     expand(view, task.id)
     assert holds!(view) == []
   end
+
+  # The model as the resource and block say it is the same for everybody:
+  # the table keeps one of each kind for its whole tree, which the nested
+  # tables of one relationship share with the line their parent draws.
+  test "the nested tables of one relationship share one model", %{conn: conn} do
+    world = world(tasks: 0)
+    tasks = for minute <- 1..3, do: task(world, "Task #{minute}", minute)
+    for task <- tasks, do: comment(world, task, "On #{task.title}", 1)
+    {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
+    [first | others] = tasks
+
+    expand(view, first.id)
+    toggle(view, first.id, "comments")
+    render_async(view, 10_000)
+    once = map_size(table(view).models)
+
+    for task <- others do
+      expand(view, task.id)
+      toggle(view, task.id, "comments")
+    end
+
+    render_async(view, 10_000)
+    %{models: models, entries: entries} = table(view)
+    assert map_size(entries) == 3
+
+    # two more of the same kind build nothing more
+    assert map_size(models) == once
+
+    # and each nested table's model is made of it, for this person
+    assert entries |> Map.values() |> Enum.map(& &1.model.resource) |> Enum.uniq() == [Comment]
+  end
 end
