@@ -156,7 +156,82 @@ defmodule AshDataTable.KitCase do
             "the part #{inspect(part)} is given `texts` and `messages` of other names"
     end
 
+    for {name, message} <- Map.get(assigns, :messages, %{}) do
+      shape!(part, name, message, Map.get(assigns.texts, name))
+    end
+
+    if part in [:message, :failure], do: shape!(part, :message, assigns.message, assigns.text)
+
     :ok
+  end
+
+  # A message as `AshDataTable.Messages` documents it, and its text beside
+  # it: a key of the list with exactly the values it names (a value may be
+  # a message), an action's message with its variables, or nil; a list of
+  # them where the text is a list.
+  defp shape!(_part, _name, nil, text) when is_nil(text) or is_binary(text), do: :ok
+
+  defp shape!(part, name, messages, texts) when is_list(messages) do
+    if not is_list(texts) or length(texts) != length(messages) do
+      raise ArgumentError,
+            "the part #{inspect(part)} is given the messages `#{name}` as a list, " <>
+              "and its texts not as a list of as many: #{inspect(texts, limit: 5)}"
+    end
+
+    Enum.zip_with(messages, texts, &shape!(part, name, &1, &2))
+  end
+
+  defp shape!(part, name, {key, values} = message, text) when is_atom(key) and is_map(values) do
+    case AshDataTable.Messages.all() do
+      %{^key => %{values: names}} ->
+        if Enum.sort(Map.keys(values)) != Enum.sort(names) do
+          raise ArgumentError,
+                "the part #{inspect(part)} is given the message `#{name}` " <>
+                  "#{inspect(message, limit: 5)}, whose values are not the ones " <>
+                  "AshDataTable.Messages names for #{inspect(key)}: #{inspect(names)}"
+        end
+
+        for {_value, value} <- values,
+            inner <- if(is_list(value), do: value, else: [value]),
+            inner_message?(inner),
+            do: shape!(part, name, inner, nil)
+
+      _unknown ->
+        raise ArgumentError,
+              "the part #{inspect(part)} is given the message `#{name}` of the key " <>
+                "#{inspect(key)}, which is no key of AshDataTable.Messages"
+    end
+
+    text!(part, name, text)
+  end
+
+  defp shape!(part, name, {message, vars}, text) when is_binary(message) and is_list(vars) do
+    if not Keyword.keyword?(vars) do
+      raise ArgumentError,
+            "the part #{inspect(part)} is given an action's message `#{name}` whose " <>
+              "variables are no keyword list: #{inspect(vars, limit: 5)}"
+    end
+
+    text!(part, name, text)
+  end
+
+  defp shape!(part, name, other, _text) do
+    raise ArgumentError,
+          "the part #{inspect(part)} is given `#{name}` as #{inspect(other, limit: 5)}, " <>
+            "which is no message of AshDataTable.Messages"
+  end
+
+  # a message inside another: a value of it, or one of those it joins
+  defp inner_message?({key, values}) when is_atom(key) and is_map(values), do: true
+  defp inner_message?({message, vars}) when is_binary(message) and is_list(vars), do: true
+  defp inner_message?(_value), do: false
+
+  defp text!(_part, _name, text) when is_nil(text) or is_binary(text), do: :ok
+
+  defp text!(part, name, text) do
+    raise ArgumentError,
+          "the part #{inspect(part)} is given the text `#{name}` as #{inspect(text, limit: 5)}, " <>
+            "not as words"
   end
 
   # ---- the records -------------------------------------------------------
@@ -364,7 +439,9 @@ defmodule AshDataTable.KitCase do
         clear: "/kit",
         create: nil,
         actions: [],
-        target: nil
+        target: nil,
+        texts: AshDataTable.Kit.Words.texts(:related, %{via: parts, title: "Anchor"}),
+        messages: AshDataTable.Kit.Words.messages(:related, %{via: parts, title: "Anchor"})
       })
 
     # a row of the grid: parsed inside one
@@ -377,7 +454,9 @@ defmodule AshDataTable.KitCase do
         id: nested,
         label: "Parts",
         lead: 0,
-        model: AshDataTable.Model.build(Resource.Part, [])
+        model: AshDataTable.Model.build(Resource.Part, []),
+        texts: AshDataTable.Kit.Words.texts(:full_view, %{label: "Parts"}),
+        messages: AshDataTable.Kit.Words.messages(:full_view, %{label: "Parts"})
       })
 
     [{related, :related}, {"<table>#{full_view}</table>", :full_view}]

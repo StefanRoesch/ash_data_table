@@ -23,7 +23,8 @@ end
 defmodule Demo.Support.Zones.Booking do
   @moduledoc """
   A task under another name: its title, and when it was completed, which a
-  cell and the panel of the row action `reschedule` change.
+  cell and the panel of the row action `reschedule` change. The table
+  `:summed` shows the latest completion in its footer.
   """
   use Ash.Resource,
     domain: Demo.Support.Zones,
@@ -45,6 +46,18 @@ defmodule Demo.Support.Zones.Booking do
     action :reschedule
   end
 
+  # the latest completion in the footer: a summary whose words depend on
+  # the zone of the page
+  tables do
+    table :summed do
+      column :title
+
+      column :completed_at do
+        summary :max
+      end
+    end
+  end
+
   actions do
     defaults [:read]
 
@@ -57,5 +70,34 @@ defmodule Demo.Support.Zones.Booking do
     uuid_primary_key :id
     attribute :title, :string, public?: true, allow_nil?: false
     attribute :completed_at, :utc_datetime, public?: true
+  end
+end
+
+defmodule DemoWeb.Support.ZonedSumLive do
+  @moduledoc """
+  The bookings' table `:summed` attached in the zone the session names,
+  and attached again in the zone an event names (`"zone"`): what the
+  footer says of a datetime follows the zone.
+  """
+  use Phoenix.LiveView
+
+  @impl true
+  def mount(_params, %{"zone" => zone}, socket), do: {:ok, zoned(socket, zone)}
+
+  @impl true
+  def handle_event("zone", %{"zone" => zone}, socket), do: {:noreply, zoned(socket, zone)}
+
+  defp zoned(socket, zone),
+    do:
+      AshDataTable.attach(socket, :bookings, Demo.Support.Zones.Booking,
+        table: :summed,
+        time_zone: zone
+      )
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <AshDataTable.attached table={@bookings} streams={@streams} />
+    """
   end
 end

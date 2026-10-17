@@ -1,43 +1,97 @@
 defmodule AshDataTable.Kit.Words do
-  @moduledoc false
-  # What each part of a kit is given of the texts and values it shows (the
-  # design note of stage 7, D23): the one place that says it. `Kit.part/1`,
-  # through which every part is drawn, puts it into the part's assigns:
-  #
-  #   * `messages` - by name, the message each text is made of, as
-  #     `AshDataTable.Messages` documents it (a name may hold a list, and a
-  #     message may be nil where the part shows nothing there);
-  #   * `texts` - the same names, each message said in the locale of the
-  #     LiveView's process (`AshDataTable.Text`);
-  #   * for a part of one text (`message`, `failure`): `message` and `text`;
-  #   * for a part that shows a value (`cell`, `summary_cell`, `field`):
-  #     `locale`, and the value's `text` beside its `value`.
-  #
-  # The core makes keys and values; the words are made here, as the part is
-  # drawn. They are given as changed only when an assign they are made of
-  # changed (`Phoenix.Component.changed?/2`), so that a part sends a text
-  # again only with what it is made of; else they are there all the same,
-  # for what a part draws anew.
+  @moduledoc """
+  What each part of a kit is given of the texts and values it shows (the
+  design note of stage 7, D23): the one place that says it. Whoever draws
+  a part passes them as the part's attributes, made here of the part's
+  other attributes, so that LiveView sends a text again only when what it
+  is made of changed:
+
+      <AshDataTable.Kit.part
+        part={:resizer}
+        kit={@kit}
+        id={@id}
+        column={@column}
+        texts={AshDataTable.Kit.Words.texts(:resizer, %{column: @column})}
+        messages={AshDataTable.Kit.Words.messages(:resizer, %{column: @column})}
+      />
+
+  A kit's own part that draws a part of the table through the kit passes
+  them the same way. What each part is given, and of which values, is in
+  `AshDataTable.Kit`'s moduledoc ("Texts and values"); `names/1` is the
+  list of a part's assigns (`AshDataTable.KitCase` checks them):
+
+    * `texts/2` - by name, each text said in the locale of the LiveView's
+      process (`AshDataTable.Messages`); a name may hold a list, and nil
+      where the part shows nothing there;
+    * `messages/2` - the same names, each the message the text is made of;
+    * for a part of one text (`message`, `failure`): `text/2` and
+      `message/2`;
+    * for a part that shows a value: `locale/0`, and for a summary cell
+      `value/2` and `text/2`, the value as the default kit shows it.
+
+  The table's core makes keys and values; the words are made here, in the
+  LiveView's process.
+  """
 
   alias AshDataTable.Format
   alias AshDataTable.Messages
   alias AshDataTable.Parts
   alias AshDataTable.Text
 
-  @doc """
-  The assigns of `part` with what it is given of its texts and values.
-  """
-  def given(part, assigns) do
-    case words(part, assigns) do
-      nil ->
-        assigns
+  @doc "What `part` shows, by name, in words: of `values`, the part's assigns they are made of."
+  @spec texts(atom, map) :: %{atom => String.t() | [String.t()] | nil}
+  def texts(part, values \\ %{}),
+    do: Map.new(words(part, values), fn {name, message} -> {name, each(message, &say/1)} end)
 
-      {inputs, words} ->
-        if Enum.any?(inputs, &Phoenix.Component.changed?(assigns, &1)),
-          do: Phoenix.Component.assign(assigns, words),
-          else: Map.merge(assigns, words)
-    end
-  end
+  @doc "What `part` shows, by name, as the messages `texts/2` says."
+  @spec messages(atom, map) :: %{atom => Messages.t() | [Messages.t()] | nil}
+  def messages(part, values \\ %{}),
+    do:
+      Map.new(words(part, values), fn {name, message} ->
+        {name, each(message, &Messages.of/1)}
+      end)
+
+  @doc """
+  The one text of a part: of `:message` and `:failure` their `message`
+  (`%{message: …}`), said; of `:summary_cell` the value of its `summary`
+  as the default kit shows it (`%{column: …, summary: …, time_zone: …}`);
+  of `:cell` the value of its `cell` (a `Present.Cell`) as the default kit
+  shows it (`%{column: …, cell: …, time_zone: …}`). Nil for none.
+  """
+  @spec text(atom, map) :: String.t() | nil
+  def text(part, %{message: message}) when part in [:message, :failure],
+    do: Text.say(message || "")
+
+  def text(:summary_cell, %{column: column, summary: {:ok, value}, time_zone: zone}),
+    do: Format.summary(column, value, zone)
+
+  def text(:summary_cell, _values), do: nil
+
+  def text(:cell, %{column: column, cell: %{state: :value, value: value}, time_zone: zone}),
+    do: Format.format(column, value, zone)
+
+  def text(:cell, _values), do: nil
+
+  @doc "The one message of `:message` and `:failure`: their `message` as `messages/2` gives it."
+  @spec message(atom, map) :: Messages.t() | nil
+  def message(part, %{message: message}) when part in [:message, :failure],
+    do: Messages.of(message)
+
+  @doc """
+  The value a part shows besides its texts: of `:summary_cell` the raw
+  value of its `summary` (`%{summary: …}`), nil for none; of `:pagination`
+  the numbers of the pages it offers (`%{page: …, state: …}`), as `pages`.
+  """
+  @spec value(atom, map) :: term
+  def value(:summary_cell, %{summary: {:ok, value}}), do: value
+  def value(:summary_cell, _values), do: nil
+
+  def value(:pagination, %{page: page, state: state}),
+    do: Parts.Pagination.page_numbers(page, state)
+
+  @doc "The locale the texts are said in: Gettext's, of the table's backend."
+  @spec locale() :: String.t()
+  def locale, do: Text.locale()
 
   @worded [
     :related,
@@ -62,287 +116,299 @@ defmodule AshDataTable.Kit.Words do
   What `part` is given of its words, by assign: the names a kit can rely on
   (`AshDataTable.KitCase` checks them).
   """
+  @spec names(atom) :: [atom]
   def names(part) when part in [:message, :failure], do: [:text, :message]
-  def names(part) when part in [:cell, :summary_cell], do: [:texts, :messages, :locale]
+  def names(:cell), do: [:texts, :messages, :locale]
+  def names(:summary_cell), do: [:texts, :messages, :locale, :value, :text]
   def names(:field), do: [:texts, :messages, :locale]
+  def names(:pagination), do: [:texts, :messages, :pages]
   def names(part) when part in @worded, do: [:texts, :messages]
   def names(_part), do: []
 
   # ---- the parts ---------------------------------------------------------
 
-  defp words(:related, a) do
-    label = {:label, a.via.label}
+  # By part, its messages by name, made of the values it is given.
+  defp words(:related, %{via: via, title: title}) do
+    label = {:label, via.label}
+    {before, behind} = around_record(title, label)
 
-    {[:via, :title],
-     said(
-       relationship: label,
-       heading: a.title && t(:related_heading, record: a.title, relationship: label),
-       show_all_records: t(:show_all_records)
-     )}
+    [
+      relationship: label,
+      heading: title && t(:related_heading, record: title, relationship: label),
+      heading_before: before,
+      heading_after: behind,
+      show_all_records: t(:show_all_records)
+    ]
   end
 
-  defp words(:full_view, a),
-    do: {[:label], said(full_view: t(:full_view), full_view_of: t(:full_view_of, table: a.label))}
+  defp words(:full_view, %{label: label}),
+    do: [full_view: t(:full_view), full_view_of: t(:full_view_of, table: label)]
 
-  defp words(:argument, a) do
-    values = if a.argument.editor == :list and is_list(a.value), do: a.value, else: []
-    label = a.argument.label
+  defp words(:argument, %{argument: argument, value: value, errors: errors}) do
+    values = if argument.editor == :list and is_list(value), do: value, else: []
+    label = argument.label
 
-    {[:argument, :value, :errors],
-     said(
-       add_value: t(:add_value),
-       errors: a.errors,
-       value_position:
-         for(
-           {_value, at} <- Enum.with_index(values, 1),
-           do: t(:value_position, column: label, position: at)
-         ),
-       remove_value:
-         for(
-           {_value, at} <- Enum.with_index(values, 1),
-           do: t(:remove_value, column: label, position: at)
-         )
-     )}
+    [add_value: t(:add_value), errors: errors] ++ positions(label, values)
   end
 
-  defp words(:filter, a) do
-    column = a.column.label
-    {_operator, value} = a.filter || {nil, nil}
+  defp words(:filter, %{column: column, filter: filter}) do
+    label = column.label
+    {_operator, value} = filter || {nil, nil}
 
-    {[:column, :filter],
-     said(
-       filter: t(:filter, column: column),
-       filter_operator: t(:filter_operator, column: column),
-       any: t(:any),
-       operators: Enum.map(a.column.operators, &operator(a.column, &1)),
-       range_from: t(:range_from),
-       range_to: t(:range_to),
-       filter_from: t(:filter_from, column: column),
-       filter_to: t(:filter_to, column: column),
-       clear_filter: t(:clear_filter, column: column),
-       invalid_filter: t(:invalid_filter),
-       chosen: chosen(a.column, value)
-     )}
+    [
+      filter: t(:filter, column: label),
+      filter_operator: t(:filter_operator, column: label),
+      any: t(:any),
+      operators: Enum.map(column.operators, &operator(column, &1)),
+      range_from: t(:range_from),
+      range_to: t(:range_to),
+      filter_from: t(:filter_from, column: label),
+      filter_to: t(:filter_to, column: label),
+      clear_filter: t(:clear_filter, column: label),
+      invalid_filter: t(:invalid_filter),
+      chosen: chosen(column, value)
+    ]
   end
 
-  defp words(:selection_line, a) do
-    total = a.page && a.page.total
+  defp words(:selection_line, %{page: page}) do
+    total = page && page.total
 
-    {[:page, :row_count],
-     said(
-       select_all: if(total, do: t(:select_all, count: total), else: t(:select_all_uncounted)),
-       selected_rows: t(:selected_rows),
-       selected: t(:selected, count: "{n}"),
-       all_selected:
-         if(total, do: t(:all_selected, count: total), else: t(:all_selected_uncounted)),
-       clear_selection: t(:clear_selection),
-       clear_filters: t(:clear_filters),
-       changed_records: t(:changed_records),
-       read_again: t(:read_again)
-     )}
+    [
+      select_all: if(total, do: t(:select_all, count: total), else: t(:select_all_uncounted)),
+      selected_rows: t(:selected_rows),
+      selected: t(:selected, count: "{n}"),
+      all_selected:
+        if(total, do: t(:all_selected, count: total), else: t(:all_selected_uncounted)),
+      clear_selection: t(:clear_selection),
+      clear_filters: t(:clear_filters),
+      changed_records: t(:changed_records),
+      read_again: t(:read_again)
+    ]
   end
 
-  defp words(:columns, a) do
-    {[:columns, :state],
-     said(
-       columns: t(:columns),
-       columns_with: t(:columns_with, details: "{details}"),
-       columns_hidden: t(:columns_hidden, count: "{n}"),
-       columns_filtered: t(:columns_filtered, count: "{n}"),
-       columns_sorted: t(:columns_sorted, count: "{n}"),
-       column_hidden: t(:column_hidden, column: "{column}"),
-       column_shown: t(:column_shown, column: "{column}"),
-       flags: Enum.map(a.columns, &flag(a.state, &1))
-     )}
+  defp words(:columns, %{columns: columns, state: state}) do
+    [
+      columns: t(:columns),
+      columns_with: t(:columns_with, details: "{details}"),
+      columns_hidden: t(:columns_hidden, count: "{n}"),
+      columns_filtered: t(:columns_filtered, count: "{n}"),
+      columns_sorted: t(:columns_sorted, count: "{n}"),
+      column_hidden: t(:column_hidden, column: "{column}"),
+      column_shown: t(:column_shown, column: "{column}"),
+      flags: Enum.map(columns, &flag(state, &1))
+    ]
   end
 
-  defp words(:status, a) do
-    {[:announcement, :result],
-     said(
-       announcement: a.announcement,
-       summary: a.result && a.result.summary,
-       failures: (a.result && a.result.failures) || []
-     )}
+  defp words(:status, %{announcement: announcement, result: result}) do
+    [
+      announcement: announcement,
+      summary: result && result.summary,
+      failures: (result && result.failures) || []
+    ]
   end
 
-  defp words(:grid, _a) do
-    {[:kit],
-     said(
-       select_page: t(:select_page),
-       select_row: t(:select_row),
-       related_records: t(:related_records),
-       actions: t(:actions)
-     )}
+  defp words(:grid, _values) do
+    [
+      select_page: t(:select_page),
+      select_row: t(:select_row),
+      related_records: t(:related_records),
+      actions: t(:actions)
+    ]
   end
 
-  defp words(:row, _a),
-    do: {[:kit], said(select_row: t(:select_row), related_records: t(:related_records))}
+  defp words(:row, _values),
+    do: [select_row: t(:select_row), related_records: t(:related_records)]
 
-  defp words(:cell, a) do
-    column = a.column.label
+  defp words(:cell, %{column: column, cell: %{state: state, failure: failure}}) do
+    label = column.label
 
-    messages =
-      case a.state do
-        :masked ->
-          [
-            hidden_value: t(:hidden_value),
-            show: t(:show),
-            hide: t(:hide),
-            show_value: t(:show_value, column: column),
-            hide_value: t(:hide_value, column: column)
-          ]
+    case state do
+      :masked ->
+        [
+          hidden_value: t(:hidden_value),
+          show: t(:show),
+          hide: t(:hide),
+          show_value: t(:show_value, column: label),
+          hide_value: t(:hide_value, column: label)
+        ]
 
-        :forbidden ->
-          [not_available: t(:not_available)]
+      :forbidden ->
+        [not_available: t(:not_available)]
 
-        _value_or_empty ->
-          []
-      end
+      # a value a union holds may be one the person may not see
+      _value_or_empty when column.cell_type == :union ->
+        [not_available: t(:not_available)]
 
-    {[:state, :column, :value], Map.put(said(messages), :locale, Text.locale())}
+      _value_or_empty ->
+        []
+    end ++ typed(column, failure)
   end
 
-  defp words(:summary_cell, a) do
-    {value, text} =
-      case a.summary do
-        {:ok, value} -> {value, Format.summary(a.column, value, a.time_zone)}
-        _none -> {nil, nil}
-      end
-
-    words =
-      said(
-        kind: a.column.summary && t(summary_key(a.column.summary)),
-        not_available: t(:not_available)
-      )
-
-    {[:column, :summary], Map.merge(words, %{value: value, text: text, locale: Text.locale()})}
+  defp words(:summary_cell, %{column: column}) do
+    [
+      kind: column.summary && t(summary_key(column.summary)),
+      not_available: t(:not_available)
+    ]
   end
 
-  defp words(:resizer, a),
-    do: {[:column], said(resize_column: t(:resize_column, column: a.column.label))}
+  defp words(:resizer, %{column: column}),
+    do: [resize_column: t(:resize_column, column: column.label)]
 
-  defp words(:editor, a) do
-    {[:column],
-     said(
-       clear: t(:clear),
-       clear_value: t(:clear_value, column: a.column.label)
-     )}
+  defp words(:editor, %{column: column}),
+    do: [clear: t(:clear), clear_value: t(:clear_value, column: column.label)]
+
+  defp words(:list, %{label: label, values: values}) do
+    [
+      add_value: t(:add_value),
+      value_label: t(:value_position, column: label, position: "{n}"),
+      remove_label: t(:remove_value, column: label, position: "{n}")
+    ] ++ positions(label, values)
   end
 
-  defp words(:list, a) do
-    positions = Enum.with_index(a.values, 1)
-
-    {[:label, :values],
-     said(
-       add_value: t(:add_value),
-       value_label: t(:value_position, column: a.label, position: "{n}"),
-       remove_label: t(:remove_value, column: a.label, position: "{n}"),
-       value_position:
-         for({_v, at} <- positions, do: t(:value_position, column: a.label, position: at)),
-       remove_value:
-         for({_v, at} <- positions, do: t(:remove_value, column: a.label, position: at))
-     )}
+  defp words(:panel, %{panel: panel}) do
+    [
+      title: panel.title,
+      submit: panel.submit,
+      question: panel.question,
+      errors: panel.errors || [],
+      cancel: t(:cancel)
+    ]
   end
 
-  defp words(:panel, a) do
-    panel = a.panel
+  defp words(:field, %{input: input, errors: errors} = values) do
+    label = input.label
+    chosen = chosen_records(values)
 
-    {[:panel],
-     said(
-       title: panel.title,
-       submit: panel.submit,
-       question: panel.question,
-       errors: panel.errors || [],
-       cancel: t(:cancel)
-     )}
+    [
+      required: t(:required),
+      choose: t(:choose),
+      add_value: t(:add_value),
+      kind: t(:kind),
+      remove_group: t(:remove_group, column: label),
+      will_be_cleared: t(:will_be_cleared),
+      keep: t(:keep),
+      clear: t(:clear),
+      keep_value: t(:keep_value, column: label),
+      clear_value: t(:clear_value, column: label),
+      errors: errors,
+      chosen: Enum.map(chosen, fn {_key, called, _at} -> chosen_said(called) end),
+      remove_chosen:
+        Enum.map(chosen, fn
+          {_key, nil, at} -> t(:remove_value, column: label, position: at)
+          {_key, called, _at} -> t(:remove_group, column: called)
+        end)
+    ] ++ group_items(input, values)
   end
 
-  defp words(:field, a) do
-    label = a.input.label
-    chosen = chosen_records(a)
-
-    words =
-      said(
-        required: t(:required),
-        choose: t(:choose),
-        add_value: t(:add_value),
-        kind: t(:kind),
-        remove_group: t(:remove_group, column: label),
-        will_be_cleared: t(:will_be_cleared),
-        keep: t(:keep),
-        clear: t(:clear),
-        keep_value: t(:keep_value, column: label),
-        clear_value: t(:clear_value, column: label),
-        errors: a.errors,
-        chosen: Enum.map(chosen, fn {_key, called, _at} -> chosen_said(called) end),
-        remove_chosen:
-          Enum.map(chosen, fn
-            {_key, nil, at} -> t(:remove_value, column: label, position: at)
-            {_key, called, _at} -> t(:remove_group, column: called)
-          end)
-      )
-
-    {[:input, :value, :errors, :chosen, :clear], Map.put(words, :locale, Text.locale())}
+  defp words(:picker, %{picker: picker}) do
+    [
+      title: picker.title,
+      question: picker.question,
+      error: picker.error,
+      cancel: t(:cancel),
+      choose_none: t(:choose_none),
+      choose: t(:choose)
+    ]
   end
 
-  defp words(:picker, a) do
-    picker = a.picker
+  defp words(:confirm, _values), do: [cancel: t(:cancel), confirm: t(:confirm)]
 
-    {[:picker],
-     said(
-       title: picker.title,
-       question: picker.question,
-       error: picker.error,
-       cancel: t(:cancel),
-       choose_none: t(:choose_none),
-       choose: t(:choose)
-     )}
+  defp words(:pagination, %{page: page, row_count: row_count, state: state, label: label}) do
+    [
+      label: t(:pagination, table: label),
+      range: range(page, row_count, state),
+      previous: t(:previous),
+      next: t(:next),
+      rows_per_page: t(:rows_per_page),
+      go_to_page:
+        Enum.map(
+          AshDataTable.Parts.Pagination.page_numbers(page, state),
+          &t(:go_to_page, page: &1)
+        )
+    ]
   end
-
-  defp words(:confirm, _a), do: {[:kit], said(cancel: t(:cancel), confirm: t(:confirm))}
-
-  defp words(part, a) when part in [:message, :failure] do
-    {[:message], %{message: Messages.of(a.message), text: Text.say(a.message || "")}}
-  end
-
-  defp words(:pagination, a) do
-    numbers = Parts.Pagination.page_numbers(a.page, a.state)
-
-    words =
-      said(
-        label: t(:pagination, table: a.label),
-        range: range(a.page, a.row_count, a.state),
-        previous: t(:previous),
-        next: t(:next),
-        rows_per_page: t(:rows_per_page),
-        go_to_page: Enum.map(numbers, &t(:go_to_page, page: &1))
-      )
-
-    {[:page, :row_count, :state, :label], Map.put(words, :pages, numbers)}
-  end
-
-  defp words(_part, _assigns), do: nil
 
   # ---- the words ---------------------------------------------------------
 
   defp t(key, bindings \\ []), do: {:text, key, bindings}
-
-  # `texts` and `messages` of the messages by name: each said, a list each
-  # one, and nil where nothing is shown.
-  defp said(named) do
-    named = Map.new(named)
-
-    %{
-      messages: Map.new(named, fn {name, message} -> {name, each(message, &Messages.of/1)} end),
-      texts: Map.new(named, fn {name, message} -> {name, each(message, &say/1)} end)
-    }
-  end
 
   defp each(messages, fun) when is_list(messages), do: Enum.map(messages, &each(&1, fun))
   defp each(message, fun), do: fun.(message)
 
   defp say(nil), do: nil
   defp say(message), do: Text.say(message)
+
+  # What each value of a list is called, and the button that takes it
+  # away, by its place, counted from 1.
+  defp positions(label, values) do
+    places = 1..length(values)//1
+
+    [
+      value_position: Enum.map(places, &t(:value_position, column: label, position: &1)),
+      remove_value: Enum.map(places, &t(:remove_value, column: label, position: &1))
+    ]
+  end
+
+  # Of a field that is a list of groups: what each value of it is called,
+  # the button that takes it away, and what is said of it as a whole, by
+  # its place (`AshDataTable.Act.items/1`, as the panel draws them).
+  defp group_items(%{editor: :groups, label: label}, %{value: held, inside: inside}) do
+    items = AshDataTable.Act.items(held)
+
+    positions(label, items) ++
+      [
+        item_errors:
+          for(
+            {_item, index} <- Enum.with_index(items),
+            do: Parts.Panel.item_errors(inside, index)
+          )
+      ]
+  end
+
+  defp group_items(_input, _values), do: []
+
+  # What a cell whose save failed shows of what was typed, as the cell
+  # would show it had it been saved: a yes or no, an enum's label, the
+  # values of an array. Nothing of a sensitive cell, which shows its mask.
+  defp typed(%{sensitive?: true}, _failure), do: []
+  defp typed(_column, nil), do: []
+  defp typed(column, %{typed: typed}), do: [typed: typed_text(typed, column)]
+
+  defp typed_text(typed, %{editor: :boolean}) when typed in ["true", "false"],
+    do: t(String.to_existing_atom(if(typed == "true", do: "yes", else: "no")))
+
+  defp typed_text(typed, %{editor: :enum, values: values}),
+    do:
+      Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
+
+  defp typed_text(typed, %{cell_type: {:array, item}} = column) when is_list(typed) do
+    {:join, ", ", Enum.map(typed, &typed_item(&1, item, column))}
+  end
+
+  defp typed_text(typed, _column), do: typed
+
+  defp typed_item("true", :boolean, _column), do: t(:yes)
+  defp typed_item("false", :boolean, _column), do: t(:no)
+
+  defp typed_item(typed, :enum, %{values: values}),
+    do:
+      Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
+
+  defp typed_item(typed, _item, _column), do: typed
+
+  # The heading of a table of related records in words, before and after
+  # the record it names, where a part draws the record as a link: nil and
+  # nil without a title, or where the words do not name the record.
+  defp around_record(nil, _relationship), do: {nil, nil}
+
+  defp around_record(_title, relationship) do
+    case :related_heading
+         |> Text.t(record: "\0", relationship: Text.say(relationship))
+         |> String.split("\0", parts: 2) do
+      [before, behind] -> {before, behind}
+      _not_named -> {nil, nil}
+    end
+  end
 
   # What an operator of a column's filter is called: a boolean's are its
   # two values.

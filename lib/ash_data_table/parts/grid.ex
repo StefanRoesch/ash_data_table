@@ -11,14 +11,13 @@ defmodule AshDataTable.Parts.Grid do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Edit
-  alias AshDataTable.Format
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
   alias AshDataTable.Present
-  alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
   # The handle at the end of a column's header, with which a person makes
@@ -307,6 +306,8 @@ defmodule AshDataTable.Parts.Grid do
       place={:grid}
       values={[]}
       name={nil}
+      texts={Words.texts(:list, %{label: @column.label, values: []})}
+      messages={Words.messages(:list, %{label: @column.label, values: []})}
     />
     """
   end
@@ -362,7 +363,7 @@ defmodule AshDataTable.Parts.Grid do
         @column.sortable? && "cursor-pointer select-none"
       ]}
       phx-no-format
-    >{@column.label}<span :if={@column.sortable?} aria-hidden="true">{sort_mark(@sort, @column)}</span><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} /></th>
+    >{@column.label}<span :if={@column.sortable?} aria-hidden="true">{sort_mark(@sort, @column)}</span><Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></th>
     """
   end
 
@@ -400,6 +401,8 @@ defmodule AshDataTable.Parts.Grid do
         rejected?={@rejected?}
         applied?={@applied?}
         target={@target}
+        texts={Words.texts(:filter, %{column: @column, filter: @filter})}
+        messages={Words.messages(:filter, %{column: @column, filter: @filter})}
       />
     </td>
     """
@@ -461,7 +464,7 @@ defmodule AshDataTable.Parts.Grid do
       module={column.component.module}
       function={:cell}
       value={cell.value}
-      text={Format.format(column, cell.value, @time_zone)}
+      text={Words.text(:cell, %{column: column, cell: cell, time_zone: @time_zone})}
       column={column.component.column}
     /><Kit.part
       :if={!component?(column, cell)}
@@ -471,9 +474,12 @@ defmodule AshDataTable.Parts.Grid do
       column={column}
       state={cell.state}
       value={cell.value}
-      text={cell.state == :value && Format.format(column, cell.value, @time_zone)}
+      text={Words.text(:cell, %{column: column, cell: cell, time_zone: @time_zone})}
       failure={cell.failure}
       time_zone={@time_zone}
+      texts={Words.texts(:cell, %{column: column, cell: cell})}
+      messages={Words.messages(:cell, %{column: column, cell: cell})}
+      locale={Words.locale()}
     /></td><Kit.part
       :if={@acting?}
       part={:actions_cell}
@@ -520,28 +526,30 @@ defmodule AshDataTable.Parts.Grid do
 
   def cell(%{failure: nil} = assigns) do
     ~H"""
-    {shown(@column, @state, @value, @text, @time_zone, @texts)}
+    {shown(@column, @state, @value, @text, @texts)}
     """
   end
 
   def cell(%{column: %{sensitive?: true}} = assigns) do
     ~H"""
-    {shown(@column, @state, nil, nil, @time_zone, @texts)}<Kit.part
+    {shown(@column, @state, nil, nil, @texts)}<Kit.part
       part={:failure}
       kit={@kit}
       id={"#{@id}-error"}
-      message={@failure.message}
+      message={Words.message(:failure, @failure)}
+      text={Words.text(:failure, @failure)}
     />
     """
   end
 
   def cell(assigns) do
     ~H"""
-    {@failure.typed |> typed(@column, @time_zone) |> paragraph(@column)}<Kit.part
+    {@failure.typed |> typed(@column, @texts) |> paragraph(@column)}<Kit.part
       part={:failure}
       kit={@kit}
       id={"#{@id}-error"}
-      message={@failure.message}
+      message={Words.message(:failure, @failure)}
+      text={Words.text(:failure, @failure)}
     />
     """
   end
@@ -583,7 +591,7 @@ defmodule AshDataTable.Parts.Grid do
       data-action={action.name}
       {Attrs.action(action, @asks?)}
       class="btn btn-xs -my-1 me-1"
-    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={@row.action_failure} /></td>
+    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={Words.message(:failure, %{message: @row.action_failure})} text={Words.text(:failure, %{message: @row.action_failure})} /></td>
     """
   end
 
@@ -600,39 +608,24 @@ defmodule AshDataTable.Parts.Grid do
       else: {:safe, [~s(<p data-paragraph>), shown, "</p>"]}
   end
 
-  # What was typed into an editor, as its cell shows it.
-  defp typed("true", %{editor: :boolean} = column, zone), do: value(column, true, nil, zone)
-  defp typed("false", %{editor: :boolean} = column, zone), do: value(column, false, nil, zone)
+  # What was typed into an editor, as its cell shows it (`texts.typed`): a
+  # yes or no with its mark, as a boolean's cell shows it.
+  defp typed(typed, %{editor: :boolean} = column, texts) when typed in ["true", "false"],
+    do: value(column, typed == "true", texts.typed, texts)
 
-  defp typed(typed, %{editor: :enum, values: values}, _zone) do
-    Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
-  end
+  defp typed(_typed, _column, texts), do: texts.typed
 
-  # the values of an array, each as its cell shows it
-  defp typed(typed, %{cell_type: {:array, item}} = column, _zone) when is_list(typed),
-    do: Enum.map_join(typed, ", ", &typed_value(&1, item, column))
-
-  defp typed(typed, _column, _zone), do: typed
-
-  defp typed_value("true", :boolean, _column), do: Text.t(:yes)
-  defp typed_value("false", :boolean, _column), do: Text.t(:no)
-
-  defp typed_value(typed, :enum, %{values: values}) do
-    Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
-  end
-
-  defp typed_value(typed, _item, _column), do: typed
-
-  # What a cell shows, by what it holds (`AshDataTable.Present.Cell`).
+  # What a cell shows, by what it holds (`AshDataTable.Present.Cell`), in
+  # the words it is given (`text`, `texts`).
   #
   # A field the actor may not see on this row looks empty and is announced.
-  defp shown(_column, :forbidden, _value, _text, _zone, texts) do
+  defp shown(_column, :forbidden, _value, _text, texts) do
     {:safe, [~s(<span class="sr-only" data-unseen>), escape(texts.not_available), "</span>"]}
   end
 
   # A record that has no value has an empty cell, whatever its column: what
   # "empty" looks like is the table's to say, in one way for all columns.
-  defp shown(_column, :empty, _value, _text, _zone, _texts), do: ""
+  defp shown(_column, :empty, _value, _text, _texts), do: ""
 
   # A sensitive value is not shown: the cell holds a mask, the same for
   # every value and for the eye only, what a screen reader says in its
@@ -643,7 +636,7 @@ defmodule AshDataTable.Parts.Grid do
   #
   # What is rendered is the same whatever the value is; the value itself is
   # not in what a row is rendered from (`AshDataTable.Present`).
-  defp shown(_column, :masked, _value, _text, _zone, texts) do
+  defp shown(_column, :masked, _value, _text, texts) do
     {:safe,
      [
        ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
@@ -667,38 +660,30 @@ defmodule AshDataTable.Parts.Grid do
      ]}
   end
 
-  defp shown(column, :value, value, text, zone, _texts),
-    do: column |> value(value, text, zone) |> paragraph(column)
+  defp shown(column, :value, value, text, texts),
+    do: column |> value(value, text, texts) |> paragraph(column)
 
-  # A value as a cell of its column shows it. The kind of a union is no
-  # sensitive field: what it holds is shown as a cell of its own type
-  # shows it.
-  defp value(_column, %Ash.ForbiddenField{}, _text, zone),
-    do: shown(nil, :forbidden, nil, nil, zone, %{not_available: Text.t(:not_available)})
+  # A value as a cell of its column shows it, `text` the words of it. The
+  # kind of a union is no sensitive field: what it holds is shown as a cell
+  # of its own type shows it, in the same words.
+  defp value(_column, %Ash.ForbiddenField{}, _text, texts),
+    do: shown(nil, :forbidden, nil, nil, texts)
 
-  defp value(_column, nil, _text, _zone), do: ""
-  defp value(_column, %Ash.NotLoaded{}, _text, _zone), do: ""
+  defp value(_column, nil, _text, _texts), do: ""
+  defp value(_column, %Ash.NotLoaded{}, _text, _texts), do: ""
 
   # A union shows the value it holds, as a cell of its kind's type shows
   # it: a yes or no among its kinds is the check indicator a boolean has.
-  defp value(
-         %{cell_type: :union, members: [_ | _] = members} = column,
-         %Ash.Union{} = union,
-         text,
-         zone
-       ) do
+  defp value(%{cell_type: :union, members: [_ | _] = members}, %Ash.Union{} = union, text, texts) do
     case Enum.find(members, &(&1.name == union.type)) do
-      nil -> text || Format.format(column, union, zone)
-      kind -> value(kind, union.value, nil, zone)
+      nil -> text
+      kind -> value(kind, union.value, text, texts)
     end
   end
 
   # A boolean is a check indicator with its accessible text beside it.
-  defp value(%{cell_type: :boolean} = column, value, text, zone) when is_boolean(value) do
-    assigns = %{
-      mark: if(value, do: "✓", else: "–"),
-      text: text || Format.format(column, value, zone)
-    }
+  defp value(%{cell_type: :boolean}, value, text, _texts) when is_boolean(value) do
+    assigns = %{mark: if(value, do: "✓", else: "–"), text: text}
 
     ~H"""
     <span aria-hidden="true">{@mark}</span><span class="sr-only" data-unseen>{@text}</span>
@@ -706,7 +691,7 @@ defmodule AshDataTable.Parts.Grid do
   end
 
   # everything else is plain text
-  defp value(column, value, text, zone), do: text || Format.format(column, value, zone)
+  defp value(_column, _value, text, _texts), do: text || ""
 
   defp escape(text), do: text |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
 
@@ -882,6 +867,8 @@ defmodule AshDataTable.Parts.Grid do
               open={@open}
               asks?={@asks?}
               time_zone={@time_zone}
+              texts={Words.texts(:row)}
+              messages={Words.messages(:row)}
             /></tbody>
         <Kit.part
           :if={@nested? or @summarised?}
@@ -917,10 +904,7 @@ defmodule AshDataTable.Parts.Grid do
       <template
         :for={column <- @model.columns}
         :if={column.editable?}
-        id={"#{@id}-editor-#{column.name}"}
-        data-editor={Attrs.editor_kind(column)}
-        data-commit={column.editor == :component && column.component.commit}
-        data-confirm={@asks? && column.confirm}
+        {Attrs.editor_template(@id, column, @asks?)}
       >
         <Kit.editor
           kit={@kit}
@@ -931,7 +915,7 @@ defmodule AshDataTable.Parts.Grid do
       <%!-- The message of a cell whose save failed, for the one case in which
       the hook has to mark the cell itself: the record is gone, so there is
       no row to send. --%>
-      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message="" /></template>
+      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
     </div>
     <%!-- The scrollbar of the grid once more, for when the grid's own is
     below the window: the hook shows it at the bottom edge of the window, as

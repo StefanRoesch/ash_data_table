@@ -6,6 +6,7 @@ defmodule AshDataTable.Parts.Arguments do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -256,18 +257,24 @@ defmodule AshDataTable.Parts.Arguments do
         named={Model.Argument.argument_id(argument)}
         name={argument_name(argument)}
         argument={argument}
-        value={
-          Map.get(@lines, Model.Argument.key(argument)) ||
-            Model.Argument.shown(argument, @state, @refused)
-        }
-        errors={
-          case @refused[Model.Argument.key(argument)] do
-            nil -> []
-            %{messages: messages} -> messages
-          end
-        }
+        value={argument_value(argument, @lines, @state, @refused)}
+        errors={argument_errors(argument, @refused)}
         target={@myself}
         table={@id}
+        texts={
+          Words.texts(:argument, %{
+            argument: argument,
+            value: argument_value(argument, @lines, @state, @refused),
+            errors: argument_errors(argument, @refused)
+          })
+        }
+        messages={
+          Words.messages(:argument, %{
+            argument: argument,
+            value: argument_value(argument, @lines, @state, @refused),
+            errors: argument_errors(argument, @refused)
+          })
+        }
       />
     </form>
     """
@@ -276,4 +283,19 @@ defmodule AshDataTable.Parts.Arguments do
   # What an argument's control is sent under.
   defp argument_name(%{column: nil, name: name}), do: "arguments[a][#{name}]"
   defp argument_name(%{column: column, name: name}), do: "arguments[c][#{column}][#{name}]"
+
+  # What an argument's input holds: what its line was sent, else what the
+  # state gives it.
+  defp argument_value(argument, lines, state, refused),
+    do:
+      Map.get(lines, Model.Argument.key(argument)) ||
+        Model.Argument.shown(argument, state, refused)
+
+  # What is said at an argument whose value was refused.
+  defp argument_errors(argument, refused) do
+    case refused[Model.Argument.key(argument)] do
+      nil -> []
+      %{messages: messages} -> messages
+    end
+  end
 end

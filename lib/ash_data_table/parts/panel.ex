@@ -6,16 +6,14 @@ defmodule AshDataTable.Parts.Panel do
   # (`Parts.Common.part/1`).
   use Phoenix.Component
 
-  import AshDataTable.Parts.Common, only: [said: 1]
-
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Act
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
   alias AshDataTable.Present
-  alias AshDataTable.Text
 
   # The action panel: where a person gives the inputs of a row action, or of
   # the create action, before it runs. A modal dialog at the right edge of
@@ -80,8 +78,27 @@ defmodule AshDataTable.Parts.Panel do
           chosen={field.chosen}
           clear={field.clear}
           upload={@files[field.name][:upload]}
-          inside={Map.merge(@panel.inside, %{place: [field.name], path: field.path, table: @id})}
+          inside={top_inside(@panel, field, @id)}
           target={@target}
+          texts={
+            Words.texts(:field, %{
+              input: field.input,
+              value: field.value,
+              errors: field.errors,
+              chosen: field.chosen,
+              inside: top_inside(@panel, field, @id)
+            })
+          }
+          messages={
+            Words.messages(:field, %{
+              input: field.input,
+              value: field.value,
+              errors: field.errors,
+              chosen: field.chosen,
+              inside: top_inside(@panel, field, @id)
+            })
+          }
+          locale={Words.locale()}
         />
         <div class="mt-6 flex justify-end gap-2">
           <button type="button" {Attrs.cancel("#{@id}-panel-cancel")} class="btn">
@@ -345,6 +362,8 @@ defmodule AshDataTable.Parts.Panel do
           place={:panel}
           values={@value}
           name={@name <> "[]"}
+          texts={Words.texts(:list, %{label: @input.label, values: @value})}
+          messages={Words.messages(:list, %{label: @input.label, values: @value})}
         />
       </div>
 
@@ -359,6 +378,7 @@ defmodule AshDataTable.Parts.Panel do
         inside={@inside}
         target={@target}
         kit={@kit}
+        texts={@texts}
       />
       <.groups
         :if={@input.editor == :groups}
@@ -370,6 +390,7 @@ defmodule AshDataTable.Parts.Panel do
         inside={@inside}
         target={@target}
         kit={@kit}
+        texts={@texts}
       />
       <%!-- a union: the choice of its kind, and under it that kind's value --%>
       <.union
@@ -382,6 +403,7 @@ defmodule AshDataTable.Parts.Panel do
         inside={@inside}
         target={@target}
         kit={@kit}
+        texts={@texts}
       />
       <%!-- An argument that takes a file: LiveView's own file input, which
       shows the name of the file that was chosen, as a browser does. Its id
@@ -589,6 +611,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :inside, :map, required: true
   attr :target, :any, default: nil
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   defp group(assigns) do
     ~H"""
@@ -603,21 +626,21 @@ defmodule AshDataTable.Parts.Panel do
         <span id={"#{@id}-label"} class="label mb-1 text-base-content">
           <span data-label>{@field.label}</span>
           <span :if={@field.required?} aria-hidden="true">*</span>
-          <span :if={@field.required?} class="sr-only">{Text.t(:required)}</span>
+          <span :if={@field.required?} class="sr-only">{@texts.required}</span>
         </span>
         <button
           :if={is_map(@held) and not @field.required?}
           type="button"
           id={"#{@id}-remove"}
           {Attrs.remove_group(@inside.path)}
-          aria-label={Text.t(:remove_group, column: @field.label)}
+          aria-label={@texts.remove_group}
           class="btn btn-ghost btn-xs mb-1"
         >
           <span aria-hidden="true">✕</span>
         </button>
       </div>
       <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
-        <p :for={message <- @errors} data-error>{said(message)}</p>
+        <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
       <div :if={is_map(@held)} class="ps-4">
         <.members
@@ -637,7 +660,7 @@ defmodule AshDataTable.Parts.Panel do
         {Attrs.add_group(@inside.path)}
         class="btn btn-sm"
       >
-        {Text.t(:add_value)}
+        {@texts.add_value}
       </button>
     </div>
     """
@@ -660,6 +683,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :inside, :map, required: true
   attr :target, :any, default: nil
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   defp groups(assigns) do
     assigns = assign(assigns, items: Enum.with_index(Act.items(assigns.held)))
@@ -676,7 +700,7 @@ defmodule AshDataTable.Parts.Panel do
         <span data-label>{@field.label}</span>
       </span>
       <div :if={@errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
-        <p :for={message <- @errors} data-error>{said(message)}</p>
+        <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
       <input type="hidden" name={"#{@name}[_present]"} value="" />
       <div
@@ -684,30 +708,30 @@ defmodule AshDataTable.Parts.Panel do
         id={"#{@id}-#{key}"}
         role="group"
         aria-labelledby={"#{@id}-#{key}-label"}
-        aria-describedby={item_errors(@inside, index) != [] && "#{@id}-#{key}-error"}
+        aria-describedby={Enum.at(@texts.item_errors, index) != [] && "#{@id}-#{key}-error"}
         data-group-item
         class="mb-2"
       >
         <div class="flex items-center gap-1">
           <span id={"#{@id}-#{key}-label"} class="label mb-1 text-base-content">
-            {Text.t(:value_position, column: @field.label, position: index + 1)}
+            {Enum.at(@texts.value_position, index)}
           </span>
           <button
             type="button"
             id={"#{@id}-#{key}-remove"}
             {Attrs.remove_group(@inside.path ++ [key])}
-            aria-label={Text.t(:remove_value, column: @field.label, position: index + 1)}
+            aria-label={Enum.at(@texts.remove_value, index)}
             class="btn btn-ghost btn-xs mb-1"
           >
             <span aria-hidden="true">✕</span>
           </button>
         </div>
         <div
-          :if={item_errors(@inside, index) != []}
+          :if={Enum.at(@texts.item_errors, index) != []}
           id={"#{@id}-#{key}-error"}
           class="mb-1 text-sm"
         >
-          <p :for={message <- item_errors(@inside, index)} data-error>{said(message)}</p>
+          <p :for={message <- Enum.at(@texts.item_errors, index)} data-error>{message}</p>
         </div>
         <div class="ps-4">
           <.members
@@ -727,7 +751,7 @@ defmodule AshDataTable.Parts.Panel do
         {Attrs.add_group(@inside.path)}
         class="btn btn-sm"
       >
-        {Text.t(:add_value)}
+        {@texts.add_value}
       </button>
     </div>
     """
@@ -760,6 +784,7 @@ defmodule AshDataTable.Parts.Panel do
   attr :inside, :map, required: true
   attr :target, :any, default: nil
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   defp union(assigns) do
     {member, held} =
@@ -782,7 +807,7 @@ defmodule AshDataTable.Parts.Panel do
         value: held,
         kind: if(member, do: Atom.to_string(member.name), else: ""),
         single?: single?,
-        own_errors: if(single?, do: [], else: assigns.errors),
+        own_errors: if(single?, do: [], else: assigns.texts.errors),
         value_errors: if(single?, do: assigns.errors, else: []),
         within: %{assigns.inside | path: assigns.inside.path ++ ["_union_value"]}
       )
@@ -798,16 +823,16 @@ defmodule AshDataTable.Parts.Panel do
       <span id={"#{@id}-label"} class="label mb-1 text-base-content">
         <span data-label>{@field.label}</span>
         <span :if={@field.required?} aria-hidden="true">*</span>
-        <span :if={@field.required?} class="sr-only">{Text.t(:required)}</span>
+        <span :if={@field.required?} class="sr-only">{@texts.required}</span>
       </span>
       <div :if={@own_errors != []} id={"#{@id}-error"} class="mb-1 text-sm">
-        <p :for={message <- @own_errors} data-error>{said(message)}</p>
+        <p :for={message <- @own_errors} data-error>{message}</p>
       </div>
       <div class="ps-4">
         <input type="hidden" name={"#{@name}[_of]"} value={@kind} />
         <div class="fieldset mb-2" {Attrs.field(@inside.path ++ ["_union_type"])}>
           <label for={"#{@id}-kind"} class="label mb-1 text-base-content">
-            <span data-label>{Text.t(:kind)}</span>
+            <span data-label>{@texts.kind}</span>
           </label>
           <select
             id={"#{@id}-kind"}
@@ -840,6 +865,25 @@ defmodule AshDataTable.Parts.Panel do
           upload={nil}
           inside={@within}
           target={@target}
+          texts={
+            Words.texts(:field, %{
+              input: @member,
+              value: member_value(@member, @value),
+              errors: @value_errors,
+              chosen: nil,
+              inside: @within
+            })
+          }
+          messages={
+            Words.messages(:field, %{
+              input: @member,
+              value: member_value(@member, @value),
+              errors: @value_errors,
+              chosen: nil,
+              inside: @within
+            })
+          }
+          locale={Words.locale()}
         />
         <.members
           :if={@member && not @single?}
@@ -894,14 +938,27 @@ defmodule AshDataTable.Parts.Panel do
       name={"#{@name}[#{inner.name}]"}
       value={member_value(inner, @held[Atom.to_string(inner.name)])}
       errors={member_errors(@inside, inner)}
-      inside={
-        %{
-          @inside
-          | place: @inside.place ++ [inner.name],
-            path: @inside.path ++ [Atom.to_string(inner.name)]
-        }
-      }
+      inside={inner_inside(@inside, inner)}
       target={@target}
+      texts={
+        Words.texts(:field, %{
+          input: inner,
+          value: member_value(inner, @held[Atom.to_string(inner.name)]),
+          errors: member_errors(@inside, inner),
+          chosen: nil,
+          inside: inner_inside(@inside, inner)
+        })
+      }
+      messages={
+        Words.messages(:field, %{
+          input: inner,
+          value: member_value(inner, @held[Atom.to_string(inner.name)]),
+          errors: member_errors(@inside, inner),
+          chosen: nil,
+          inside: inner_inside(@inside, inner)
+        })
+      }
+      locale={Words.locale()}
     />
     """
   end
@@ -931,8 +988,22 @@ defmodule AshDataTable.Parts.Panel do
       else: []
   end
 
-  # The errors about one value of an array of map cells as a whole.
-  defp item_errors(inside, index) do
+  # Where a field of the panel is, as `inside` says it of its fields: its
+  # place among the action's errors, the names it is sent under.
+  defp top_inside(panel, field, id),
+    do: Map.merge(panel.inside, %{place: [field.name], path: field.path, table: id})
+
+  defp inner_inside(inside, inner),
+    do: %{
+      inside
+      | place: inside.place ++ [inner.name],
+        path: inside.path ++ [Atom.to_string(inner.name)]
+    }
+
+  @doc false
+  # The errors about one value of an array of map cells as a whole, by its
+  # place (`AshDataTable.Kit.Words` says them).
+  def item_errors(inside, index) do
     if inside.submitted? or inside.path in inside.touched,
       do: Map.get(inside.errors, inside.place ++ [index], []),
       else: []

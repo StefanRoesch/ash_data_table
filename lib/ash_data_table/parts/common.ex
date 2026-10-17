@@ -9,7 +9,6 @@ defmodule AshDataTable.Parts.Common do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Present
-  alias AshDataTable.Text
 
   # A function of a column's component (`AshDataTable.Component`), which
   # is known at runtime only: called as LiveView's `Phoenix.Component` docs
@@ -57,13 +56,6 @@ defmodule AshDataTable.Parts.Common do
   events of its own table.
   """
   def event(id, name), do: "ash_data_table:" <> id <> ":" <> name
-
-  @doc """
-  What a message says (`AshDataTable.Text.say/1`): a part makes the words of
-  the messages it is given as it draws them. Nil for no message.
-  """
-  def said(nil), do: nil
-  def said(message), do: Text.say(message)
 
   # The message of a cell whose save failed, or of a row whose action
   # failed: a popover the hook opens while the cell has the focus or the

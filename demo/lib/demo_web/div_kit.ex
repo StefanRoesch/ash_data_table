@@ -15,6 +15,7 @@ defmodule DemoWeb.DivKit do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
 
   def presentation(_thing), do: :inline
 
@@ -146,6 +147,8 @@ defmodule DemoWeb.DivKit do
               open={@open}
               asks?={@asks?}
               time_zone={@time_zone}
+              texts={Words.texts(:row)}
+              messages={Words.messages(:row)}
             /></div>
         <Kit.part
           :if={@nested? or @summarised?}
@@ -175,10 +178,7 @@ defmodule DemoWeb.DivKit do
       <template
         :for={column <- @model.columns}
         :if={column.editable?}
-        id={"#{@id}-editor-#{column.name}"}
-        data-editor={Attrs.editor_kind(column)}
-        data-commit={column.editor == :component && column.component.commit}
-        data-confirm={@asks? && column.confirm}
+        {Attrs.editor_template(@id, column, @asks?)}
       >
         <Kit.editor
           kit={@kit}
@@ -186,7 +186,7 @@ defmodule DemoWeb.DivKit do
           column={column}
         />
       </template>
-      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message="" /></template>
+      <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message={Words.message(:failure, %{message: ""})} text={Words.text(:failure, %{message: ""})} /></template>
     </div>
     <div {Attrs.scrollbar(@id)} class="fixed z-10 overflow-x-scroll overflow-y-hidden">
       <div class="h-px"></div>
@@ -205,7 +205,7 @@ defmodule DemoWeb.DivKit do
       {@attrs}
       class="relative table-cell px-2 py-1 text-start whitespace-nowrap"
       phx-no-format
-    >{@column.label}<Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} /></div>
+    >{@column.label}<Kit.part part={:resizer} kit={@kit} id={@resizer} column={@column} texts={Words.texts(:resizer, %{column: @column})} messages={Words.messages(:resizer, %{column: @column})} /></div>
     """
   end
 
@@ -231,6 +231,8 @@ defmodule DemoWeb.DivKit do
         rejected?={@rejected?}
         applied?={@applied?}
         target={@target}
+        texts={Words.texts(:filter, %{column: @column, filter: @filter})}
+        messages={Words.messages(:filter, %{column: @column, filter: @filter})}
       />
     </div>
     """
@@ -302,7 +304,7 @@ defmodule DemoWeb.DivKit do
       data-action={action.name}
       {Attrs.action(action, @asks?)}
       class="btn btn-xs me-1"
-    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={@row.action_failure} /></div>
+    >{action.label}</button><Kit.part :if={@row.action_failure} part={:failure} kit={@kit} id={"#{@id}-error"} message={Words.message(:failure, %{message: @row.action_failure})} text={Words.text(:failure, %{message: @row.action_failure})} /></div>
     """
   end
 
@@ -407,6 +409,17 @@ defmodule DemoWeb.DivKit do
           summary={@summary && @summary[column.name]}
           summing?={@summing?}
           time_zone={@time_zone}
+          texts={Words.texts(:summary_cell, %{column: column})}
+          messages={Words.messages(:summary_cell, %{column: column})}
+          value={Words.value(:summary_cell, %{summary: @summary && @summary[column.name]})}
+          text={
+            Words.text(:summary_cell, %{
+              column: column,
+              summary: @summary && @summary[column.name],
+              time_zone: @time_zone
+            })
+          }
+          locale={Words.locale()}
         />
         <div
           :if={@acting?}
@@ -438,6 +451,23 @@ defmodule DemoWeb.DivKit do
             row_count={@row_count}
             label={@label}
             target={@myself}
+            pages={Words.value(:pagination, %{page: @page, state: @state})}
+            texts={
+              Words.texts(:pagination, %{
+                page: @page,
+                row_count: @row_count,
+                state: @state,
+                label: @label
+              })
+            }
+            messages={
+              Words.messages(:pagination, %{
+                page: @page,
+                row_count: @row_count,
+                state: @state,
+                label: @label
+              })
+            }
           />
         </div>
       </div>
@@ -451,6 +481,8 @@ defmodule DemoWeb.DivKit do
         label={@label}
         lead={@lead}
         model={@model}
+        texts={Words.texts(:full_view, %{label: @label})}
+        messages={Words.messages(:full_view, %{label: @label})}
       />
     </div>
     """

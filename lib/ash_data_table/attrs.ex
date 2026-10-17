@@ -1001,11 +1001,27 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The kind of an editable column's editor, on the template the hook
-  # copies into the cell being edited (`data-editor`): `secret` for a
+  @doc """
+  The template of an editable column's editor in the grid of the table
+  `id`, which the hook copies into the cell being edited: `ID-editor-FIELD`,
+  the kind of its editor (`data-editor`, `secret` for a sensitive column),
+  how a component's editor commits (`data-commit`), and the column's
+  question (`data-confirm`) where the table asks it, `asks?`; in
+  controlled mode the host asks it, and the template has none, so the
+  question is never asked twice.
+  """
+  def editor_template(id, column, asks?) do
+    %{
+      "id" => "#{id}-editor-#{column.name}",
+      "data-editor" => editor_kind(column),
+      "data-commit" => column.editor == :component && column.component.commit,
+      "data-confirm" => asks? && column.confirm
+    }
+  end
+
+  # The kind of an editable column's editor (`data-editor`): `secret` for a
   # sensitive column.
-  @doc "The kind of a column's editor, its template's `data-editor`."
-  def editor_kind(column), do: if(column.sensitive?, do: :secret, else: column.editor)
+  defp editor_kind(column), do: if(column.sensitive?, do: :secret, else: column.editor)
 
   @doc """
   The control of a column component's editor: what the table gives it.

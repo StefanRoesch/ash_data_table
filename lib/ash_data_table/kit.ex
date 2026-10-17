@@ -115,8 +115,9 @@ defmodule AshDataTable.Kit do
       (`data-first-row`) with `ID-head` and its two rows, the filter row's
       form `ID-filters`, a `role=rowgroup` element per item of the stream
       `rows` (with `Attrs.rowgroup/2`'s bundle), the `footer`, a
-      `<template>` per editable column (`ID-editor-FIELD`, `data-editor`,
-      `data-confirm` where `asks?`, `data-commit`) and the failure template `ID-failure`:
+      `<template>` per editable column (`Attrs.editor_template/3`:
+      `ID-editor-FIELD`, `data-editor`, `data-commit`, and `data-confirm`
+      where the table asks, `asks?`) and the failure template `ID-failure`:
       `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
       `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
       `creates`, `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
@@ -240,9 +241,17 @@ defmodule AshDataTable.Kit do
       `failure`);
     * for a value: `value` (raw), its `text` and `locale`.
 
+  They are made by `AshDataTable.Kit.Words` of the part's other assigns,
+  and passed as attributes by whoever draws the part: the table, or a
+  kit's own part that draws a part of the table through `part/1` (see
+  `AshDataTable.Kit.Words`). LiveView sends a text again only when what it
+  is made of changed.
+
   What each part is given of them (beside the assigns above):
 
     * `related` - `relationship`, `heading` (nil without a title),
+      `heading_before` and `heading_after` (its words before and after the
+      record, which a part draws as a link; nil without a title),
       `show_all_records`;
     * `full_view` - `full_view`, `full_view_of`;
     * `argument` - `add_value`, `errors`, and per value of a list
@@ -262,7 +271,9 @@ defmodule AshDataTable.Kit do
     * `grid` - `select_page`, `select_row`, `related_records`, `actions`;
     * `row` - `select_row`, `related_records`;
     * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
-      `show_value`, `hide_value`; forbidden: `not_available`;
+      `show_value`, `hide_value`; forbidden, and of a union:
+      `not_available`; after a save failed (but of a sensitive column):
+      `typed`, what was typed as the cell would show it;
     * `summary_cell` - `value`, `text`, `locale`; `kind`, `not_available`;
     * `resizer` - `resize_column`;
     * `editor` - `clear`, `clear_value`;
@@ -271,8 +282,10 @@ defmodule AshDataTable.Kit do
     * `panel` - `title`, `submit`, `question`, `errors`, `cancel`;
     * `field` - `locale`; `required`, `choose`, `add_value`, `kind`,
       `remove_group`, `will_be_cleared`, `keep`, `clear`, `keep_value`,
-      `clear_value`, `errors`, and per record it holds `chosen` (what the
-      record is called) and `remove_chosen`;
+      `clear_value`, `errors`, per record it holds `chosen` (what the
+      record is called) and `remove_chosen`, and of a list of groups per
+      value `value_position`, `remove_value` and `item_errors` (what is said
+      of that value as a whole);
     * `picker` - `title`, `question`, `error`, `cancel`, `choose_none`,
       `choose`;
     * `confirm` - `cancel`, `confirm`;
@@ -303,6 +316,8 @@ defmodule AshDataTable.Kit do
   """
 
   use Phoenix.Component
+
+  alias AshDataTable.Kit.Words
 
   @contract 1
 
@@ -405,14 +420,21 @@ defmodule AshDataTable.Kit do
 
   @doc """
   Draws the part `part` of `kit` with the other assigns, `kit` among them:
-  how a part draws the parts inside it.
+  how a part draws the parts inside it. Its texts are among the assigns,
+  made by `AshDataTable.Kit.Words` of the part's other assigns:
 
-      <AshDataTable.Kit.part part={:failure} kit={@kit} id={"\#{@id}-error"} message={@message} />
+      <AshDataTable.Kit.part
+        part={:failure}
+        kit={@kit}
+        id={"\#{@id}-error"}
+        message={AshDataTable.Kit.Words.message(:failure, %{message: @message})}
+        text={AshDataTable.Kit.Words.text(:failure, %{message: @message})}
+      />
   """
   def part(assigns) do
     {part, assigns} = Map.pop!(assigns, :part)
 
-    apply(assigns.kit, part, [AshDataTable.Kit.Words.given(part, assigns)])
+    apply(assigns.kit, part, [assigns])
   end
 
   @doc """
@@ -436,7 +458,7 @@ defmodule AshDataTable.Kit do
       module={@column.component.module}
       function={:cell}
       value={@cell.value}
-      text={AshDataTable.Format.format(@column, @cell.value, @time_zone)}
+      text={Words.text(:cell, %{column: @column, cell: @cell, time_zone: @time_zone})}
       column={@column.component.column}
     /><.part
       :if={!component?(@column, @cell)}
@@ -446,9 +468,12 @@ defmodule AshDataTable.Kit do
       column={@column}
       state={@cell.state}
       value={@cell.value}
-      text={@cell.state == :value && AshDataTable.Format.format(@column, @cell.value, @time_zone)}
+      text={Words.text(:cell, %{column: @column, cell: @cell, time_zone: @time_zone})}
       failure={@cell.failure}
       time_zone={@time_zone}
+      texts={Words.texts(:cell, %{column: @column, cell: @cell})}
+      messages={Words.messages(:cell, %{column: @column, cell: @cell})}
+      locale={Words.locale()}
     />
     """
   end
@@ -483,6 +508,8 @@ defmodule AshDataTable.Kit do
       kit={@kit}
       id={@id}
       column={@column}
+      texts={Words.texts(:editor, %{column: @column})}
+      messages={Words.messages(:editor, %{column: @column})}
     />
     """
   end

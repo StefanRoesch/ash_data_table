@@ -7,6 +7,7 @@ defmodule AshDataTable.Parts.Summary do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
 
@@ -130,6 +131,23 @@ defmodule AshDataTable.Parts.Summary do
             row_count={@row_count}
             label={@label}
             target={@myself}
+            pages={Words.value(:pagination, %{page: @page, state: @state})}
+            texts={
+              Words.texts(:pagination, %{
+                page: @page,
+                row_count: @row_count,
+                state: @state,
+                label: @label
+              })
+            }
+            messages={
+              Words.messages(:pagination, %{
+                page: @page,
+                row_count: @row_count,
+                state: @state,
+                label: @label
+              })
+            }
           />
         </td>
       </tr>
@@ -143,6 +161,8 @@ defmodule AshDataTable.Parts.Summary do
         label={@label}
         lead={@lead}
         model={@model}
+        texts={Words.texts(:full_view, %{label: @label})}
+        messages={Words.messages(:full_view, %{label: @label})}
       />
     </tfoot>
     """
@@ -198,6 +218,17 @@ defmodule AshDataTable.Parts.Summary do
         summary={@summary && @summary[column.name]}
         summing?={@summing?}
         time_zone={@time_zone}
+        texts={Words.texts(:summary_cell, %{column: column})}
+        messages={Words.messages(:summary_cell, %{column: column})}
+        value={Words.value(:summary_cell, %{summary: @summary && @summary[column.name]})}
+        text={
+          Words.text(:summary_cell, %{
+            column: column,
+            summary: @summary && @summary[column.name],
+            time_zone: @time_zone
+          })
+        }
+        locale={Words.locale()}
       />
       <td
         :if={@acting?}

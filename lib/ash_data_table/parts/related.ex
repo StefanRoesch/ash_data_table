@@ -10,7 +10,6 @@ defmodule AshDataTable.Parts.Related do
   alias AshDataTable.Kit
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
-  alias AshDataTable.Text
 
   # What is under an expanded row: one line per relationship the person is
   # offered, and under an open line the row whose one cell holds the nested
@@ -151,7 +150,8 @@ defmodule AshDataTable.Parts.Related do
   # The heading names the relationship, as the parent's table labels it, and
   # the record once it has been read for this person: as a link to the page
   # of the record's own table where the router mounts one. The text is one
-  # message, so that a translation can put its parts in another order.
+  # message, so that a translation can put its parts in another order: the
+  # part is given its words before and after the record.
   attr :id, :string, required: true
   attr :via, :map, required: true
   attr :title, :string, default: nil
@@ -163,28 +163,14 @@ defmodule AshDataTable.Parts.Related do
   attr :kit, :atom, required: true
 
   def related(assigns) do
-    # The message with a mark where the record goes: the record is a link,
-    # put into the text where the translation has it.
-    parts =
-      :related_heading
-      |> Text.t(record: "\0", relationship: assigns.texts.relationship)
-      |> String.split("\0", parts: 2)
-
-    assigns =
-      assign(assigns,
-        label: assigns.texts.relationship,
-        parts: parts,
-        titled?: assigns.title && match?([_, _], parts)
-      )
-
     ~H"""
     <div id={"#{@id}-related"} class={@kit.class(:related, %{})}>
-      <h2 id={"#{@id}-related-heading"} class="font-semibold" phx-no-format><%= if @titled? do %>{hd(@parts)}<.link
+      <h2 id={"#{@id}-related-heading"} class="font-semibold" phx-no-format><%= if @texts.heading_before do %>{@texts.heading_before}<.link
             :if={@parent}
             id={"#{@id}-related-parent"}
             navigate={@parent.path}
             class="link"
-          >{@title}</.link><span :if={!@parent} id={"#{@id}-related-parent"}>{@title}</span>{List.last(@parts)}<% else %>{@label}<% end %></h2>
+          >{@title}</.link><span :if={!@parent} id={"#{@id}-related-parent"}>{@title}</span>{@texts.heading_after}<% else %>{@texts.relationship}<% end %></h2>
       <div class="flex items-center gap-2">
         <Parts.Heading.create :if={@create} id={@id} action={@create} target={@target} />
         <Parts.Heading.table_actions id={@id} actions={@actions} target={@target} />

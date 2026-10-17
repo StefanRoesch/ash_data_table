@@ -7,6 +7,7 @@ defmodule AshDataTable.Parts.Selection do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Model
   alias AshDataTable.Parts
   alias Phoenix.LiveView.JS
@@ -146,6 +147,8 @@ defmodule AshDataTable.Parts.Selection do
         keeps_one?={Model.keeps_one?(@model)}
         state={@state}
         class={not @nested? and @state.filters == %{} and "ms-auto"}
+        texts={Words.texts(:columns, %{columns: Parts.Grid.hideable(@model), state: @state})}
+        messages={Words.messages(:columns, %{columns: Parts.Grid.hideable(@model), state: @state})}
       />
     </div>
     """

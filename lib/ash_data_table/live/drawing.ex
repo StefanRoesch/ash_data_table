@@ -12,6 +12,7 @@ defmodule AshDataTable.Live.Drawing do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
@@ -166,6 +167,8 @@ defmodule AshDataTable.Live.Drawing do
         create={@entry.page && @entry.model.create}
         actions={if @entry.page, do: @entry.offered, else: []}
         target={@myself}
+        texts={Words.texts(:related, %{via: @entry.related.via, title: @entry.related_title})}
+        messages={Words.messages(:related, %{via: @entry.related.via, title: @entry.related_title})}
       />
       <Kit.part
         part={:argument_line}
@@ -193,6 +196,8 @@ defmodule AshDataTable.Live.Drawing do
         running={@entry.running}
         selecting={@entry.selecting}
         state={@entry.state}
+        texts={Words.texts(:selection_line, %{page: @entry.page})}
+        messages={Words.messages(:selection_line, %{page: @entry.page})}
       />
       <Kit.part
         part={:status}
@@ -201,6 +206,10 @@ defmodule AshDataTable.Live.Drawing do
         announcements={@entry.announcements}
         id={@entry.id}
         result={@entry.result}
+        texts={Words.texts(:status, %{announcement: @entry.announcement, result: @entry.result})}
+        messages={
+          Words.messages(:status, %{announcement: @entry.announcement, result: @entry.result})
+        }
       />
       <Kit.part
         part={:grid}
@@ -234,6 +243,8 @@ defmodule AshDataTable.Live.Drawing do
         summary={@entry.summary}
         summing?={@entry.summing?}
         time_zone={@time_zone}
+        texts={Words.texts(:grid)}
+        messages={Words.messages(:grid)}
       />
       <Kit.part part={:whole_text} kit={@options.kit} id={@entry.id} />
       <Kit.part
@@ -245,7 +256,8 @@ defmodule AshDataTable.Live.Drawing do
         kit={@options.kit}
         id={@entry.id}
         kind={kind}
-        message={message}
+        message={Words.message(:message, %{message: message})}
+        text={Words.text(:message, %{message: message})}
         nested?={@entry.nested?}
       />
       <Kit.part
@@ -260,6 +272,23 @@ defmodule AshDataTable.Live.Drawing do
         row_count={@entry.row_count}
         label={@entry.label}
         target={@myself}
+        pages={Words.value(:pagination, %{page: @entry.page, state: @entry.state})}
+        texts={
+          Words.texts(:pagination, %{
+            page: @entry.page,
+            row_count: @entry.row_count,
+            state: @entry.state,
+            label: @entry.label
+          })
+        }
+        messages={
+          Words.messages(:pagination, %{
+            page: @entry.page,
+            row_count: @entry.row_count,
+            state: @entry.state,
+            label: @entry.label
+          })
+        }
       />
       <:opened>
         <Kit.part
@@ -269,6 +298,8 @@ defmodule AshDataTable.Live.Drawing do
           id={@entry.id}
           model={@entry.model}
           presentation={presentation(@options, :confirm)}
+          texts={Words.texts(:confirm)}
+          messages={Words.messages(:confirm)}
         />
         <Kit.part
           :if={panel?(@entry, @options)}
@@ -279,6 +310,8 @@ defmodule AshDataTable.Live.Drawing do
           files={files!(@entry, @uploads)}
           target={@myself}
           presentation={presentation(@options, :panel)}
+          texts={Words.texts(:panel, %{panel: Present.panel(@entry.panel)})}
+          messages={Words.messages(:panel, %{panel: Present.panel(@entry.panel)})}
         >
           <.picker
             :if={picker_in_panel?(@entry, @options)}
@@ -329,6 +362,8 @@ defmodule AshDataTable.Live.Drawing do
       picker={Present.picker(@entry.picker)}
       target={@myself}
       presentation={presentation(@options, :picker)}
+      texts={Words.texts(:picker, %{picker: Present.picker(@entry.picker)})}
+      messages={Words.messages(:picker, %{picker: Present.picker(@entry.picker)})}
     >
       <div
         :if={@chooser && !@chooser.gone?}

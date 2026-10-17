@@ -237,6 +237,20 @@ defmodule DemoWeb.Tables.TimeZoneTest do
     end
   end
 
+  describe "a footer summary of a datetime" do
+    test "says it in the zone of the page, and again when the zone changes", %{conn: conn} do
+      {:ok, view, _html} =
+        live_isolated(conn, DemoWeb.Support.ZonedSumLive, session: %{"zone" => "Etc/UTC"})
+
+      # the summary is computed beside the rows
+      html = render_async(view)
+      assert text(html, "[id='booking_summed-summary-completed_at']") =~ "2026-07-15T12:00:00"
+
+      html = render_hook(view, "zone", %{"zone" => @berlin})
+      assert text(html, "[id='booking_summed-summary-completed_at']") =~ "2026-07-15T14:00:00"
+    end
+  end
+
   describe "a placed table" do
     test "is in the zone it is given", %{conn: conn, world: world, task: task} do
       {:ok, view, html} = conn |> log_in(world.admin) |> in_zone(@berlin) |> live("/dashboard")
