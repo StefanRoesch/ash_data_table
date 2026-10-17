@@ -194,8 +194,8 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       event(view, "picked", %{"confirmed" => false, "arguments" => nil}, from: :picker)
 
       {ref, :confirm} = requested()
-      # the row as the picker's table names it: the values of its key
-      assert %{column: :owner, value: ["Bob Ray"], question: "Change the owner?"} = request(view)
+      # the chosen record's key, a key of one field as its value
+      assert %{column: :owner, value: "Bob Ray", question: "Change the owner?"} = request(view)
 
       answer(view, &AshDataTable.confirm_request(&1, :table, ref))
       assert_received {:asked, %AshDataTable.Request{column: :owner}}

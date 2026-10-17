@@ -305,7 +305,7 @@ defmodule AshDataTable.Live.Core.Picker do
               {:refer, key, name, named, arguments},
               column,
               rows[key].pk,
-              named
+              shown_key(column.reference.destination, named)
             )
             |> Cells.held()
 
@@ -320,6 +320,15 @@ defmodule AshDataTable.Live.Core.Picker do
         Cells.referred(result, socket, key, column)
     end
   end
+
+  # The chosen record's key as the host's request says it: the value of a
+  # key of one field (the hook names a row by the list of its key's values),
+  # the list of them for a key of several.
+  defp shown_key(destination, [value]) do
+    if match?([_one], Ash.Resource.Info.primary_key(destination)), do: value, else: [value]
+  end
+
+  defp shown_key(_destination, named), do: named
 
   # The choice of a related record for a field of the action panel: its key
   # goes into the panel's form, as if it had been typed there, with what the

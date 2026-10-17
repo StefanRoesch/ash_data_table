@@ -141,6 +141,7 @@ defmodule DemoWeb.MarkupSnapshotTest do
   def normalise(html) do
     html =
       html
+      |> without_tag_wrapper()
       |> portals()
       |> String.replace(~r/ phx-hook="[^"]*?(\.[A-Za-z]+)"/, ~s( phx-hook="\\1"))
       |> String.replace(
@@ -171,6 +172,25 @@ defmodule DemoWeb.MarkupSnapshotTest do
     |> sort_attributes()
     |> String.replace("><", ">\n<")
     |> Kernel.<>("\n")
+  end
+
+  # The tag's live component draws a plain element around the table's root
+  # (a live component's root must be static: `display: contents`); the
+  # table is drawn the same in every mode inside it, and that element is
+  # no part of the table's markup (one per tag: a page may have two).
+  defp without_tag_wrapper(html) do
+    case Regex.run(~r/<div[^>]*style="display: contents"[^>]*>/, html, return: :index) do
+      nil ->
+        html
+
+      [{at, length}] ->
+        stop = closing(html, at + length, "div", 1)
+        inner = binary_part(html, at + length, stop - 6 - (at + length))
+
+        without_tag_wrapper(
+          binary_part(html, 0, at) <> inner <> binary_part(html, stop, byte_size(html) - stop)
+        )
+    end
   end
 
   # The page as the browser makes it of a nested table's portal. The
