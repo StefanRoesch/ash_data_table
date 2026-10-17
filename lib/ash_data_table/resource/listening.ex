@@ -16,7 +16,7 @@ defmodule AshDataTable.Resource.Listening do
   @doc "Whether the resource announces its changes: its `table` block says `live? true`."
   @spec announces?(Ash.Resource.t() | Spark.Dsl.t()) :: boolean
   def announces?(resource) do
-    Info.live?(resource)
+    Info.table_live?(resource)
   rescue
     # a module that is no resource of ours
     _error -> false
@@ -27,7 +27,7 @@ defmodule AshDataTable.Resource.Listening do
   announces them, and the table does not say `live? false`.
   """
   @spec follows?(Ash.Resource.t(), Table.t()) :: boolean
-  def follows?(resource, %Table{live?: live?}), do: Info.live?(resource) and live? != false
+  def follows?(resource, %Table{live?: live?}), do: Info.table_live?(resource) and live? != false
 
   @doc """
   The `Phoenix.PubSub` server the resource announces through: the `pub_sub`

@@ -170,6 +170,16 @@ defmodule Mix.Tasks.AshDataTable.InstallTest do
       """)
     end
 
+    test "puts the table's sections first in the Spark formatter's section order" do
+      igniter = project() |> install()
+
+      config =
+        igniter.rewrite |> Rewrite.source!("config/config.exs") |> Rewrite.Source.get(:content)
+
+      assert config =~ ~r/"Ash.Resource": \[section_order: \[:table, :tables\]\]/
+      assert config =~ ~r/"Ash.Domain": \[section_order: \[:table\]\]/
+    end
+
     test "names the app layout, the Gettext backend and the error translator in the configuration" do
       project()
       |> install()

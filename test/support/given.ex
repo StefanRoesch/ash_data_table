@@ -22,7 +22,8 @@ defmodule AshDataTable.Test.Given.Note do
   use Ash.Resource,
     domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshDataTable.Resource]
+    extensions: [AshDataTable.Resource],
+    primary_read_warning?: false
 
   attributes do
     uuid_primary_key :id
@@ -116,7 +117,8 @@ defmodule AshDataTable.Test.Given.Remark do
   use Ash.Resource,
     domain: AshDataTable.Test.Domain,
     data_layer: Ash.DataLayer.Ets,
-    extensions: [AshDataTable.Resource]
+    extensions: [AshDataTable.Resource],
+    primary_read_warning?: false
 
   attributes do
     uuid_primary_key :id

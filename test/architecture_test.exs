@@ -51,8 +51,6 @@ defmodule AshDataTable.ArchitectureTest do
   """
   use ExUnit.Case, async: false
 
-  @report_only false
-
   @lib "lib/ash_data_table"
 
   # the files of the words, by name (3w)
@@ -194,11 +192,14 @@ defmodule AshDataTable.ArchitectureTest do
     ])
   end
 
-  # The presentation hints (stage 7, D14): a key `component:` (in a pattern
-  # or a map), `.component`, `.max_lines`, `.sticky_label?`, in a file of
-  # 2a or 2b but
+  # The presentation hints (stage 7, D14): a key `component:`,
+  # `max_lines:` or `sticky_label?:` (in a pattern or a map), `.component`,
+  # `.max_lines`, `.sticky_label?`, or the atom (`Map.get(c, :max_lines)`,
+  # `c[:component]`), in a file of 2a or 2b but
   # the model's own (`model.ex`, `model/`), which makes them from the
   # declaration, and but `Live.Core.in_words/1`.
+  @hint ~r/\b(component|max_lines|sticky_label\?):|\.(component|max_lines)\b|\.sticky_label\?|[^\w:]:(component|max_lines)\b|[^\w:]:sticky_label\?/
+
   test "no module of the internals reads a presentation hint" do
     found =
       for file <- Path.wildcard("lib/**/*.ex"),
@@ -208,7 +209,7 @@ defmodule AshDataTable.ArchitectureTest do
           {number, line} <- named_in(file),
           is_integer(number),
           number not in words,
-          line =~ ~r/\bcomponent:|\.component\b|\.max_lines\b|\.sticky_label\?/,
+          line =~ @hint,
           do: "#{file}:#{number}: #{String.trim(line)}"
 
     assert found == []
@@ -345,7 +346,7 @@ defmodule AshDataTable.ArchitectureTest do
     Enum.with_index(lines, &{&2 + 1, &1}) ++ multi
   end
 
-  @read ~r/\bAsh\.(read|read_one|get|load|aggregate|count|exists|stream|page|calculate)!?\??\(/
+  @read ~r/\bAsh\.(read|read_one|read_first|get|load|aggregate|count|exists|stream|page|calculate)!?\??\(/
 
   defp reads do
     for file <- Path.wildcard("lib/**/*.ex"),
@@ -367,8 +368,6 @@ defmodule AshDataTable.ArchitectureTest do
       IO.puts("\nThe dependency rules of docs/architecture/target.md, section 5:\n" <> text)
     end
 
-    unless @report_only do
-      assert found == []
-    end
+    assert found == []
   end
 end

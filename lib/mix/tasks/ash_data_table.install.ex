@@ -24,6 +24,9 @@ if Code.ensure_loaded?(Igniter) do
         the classes the table's markup uses. It points at the dependency
         where it really is, which for a path dependency is that checkout.
       * `.formatter.exs`: adds `:ash_data_table` to `import_deps`, for the DSL.
+      * `config/config.exs`: puts the extension's sections first in Spark's
+        section order (`config :spark, formatter:`), `table` and `tables` of
+        a resource and `table` of a domain, as the other Ash extensions do.
       * `config/config.exs`: sets `config :ash_data_table` to the application's
         own app layout (`MyAppWeb.Layouts.app/1`), Gettext backend
         (`MyAppWeb.Gettext`) and error translator
@@ -51,6 +54,8 @@ if Code.ensure_loaded?(Igniter) do
     def igniter(igniter) do
       igniter
       |> Igniter.Project.Formatter.import_dep(:ash_data_table)
+      |> Spark.Igniter.prepend_to_section_order(:"Ash.Resource", [:table, :tables])
+      |> Spark.Igniter.prepend_to_section_order(:"Ash.Domain", [:table])
       |> add_hook()
       |> add_tailwind_source()
       |> configure()

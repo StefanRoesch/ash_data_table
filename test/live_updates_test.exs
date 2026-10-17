@@ -186,10 +186,10 @@ defmodule AshDataTable.LiveUpdatesTest do
 
   describe "`live? true` in the `table` block" do
     test "is read through Info, and is false where it is not said" do
-      assert Info.live?(Note)
       assert Info.table_live?(Note)
-      refute Info.live?(Still)
-      refute Info.live?(AshDataTable.Test.Domain)
+      assert Info.table_live?(Note)
+      refute Info.table_live?(Still)
+      refute Info.table_live?(AshDataTable.Test.Domain)
     end
 
     test "adds the table's notifier to the resource, beside the host's own" do
