@@ -379,6 +379,39 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
     end
 
     @tag controlled: [:panel]
+    test "a group's path that names no group of the panel changes nothing, and one of no names raises",
+         %{view: view, key: key} do
+      event(view, "act", %{"row" => key, "action" => "staff"})
+      {ref, :panel} = requested()
+      held = request(view)
+
+      # no field of the panel; a field that is no group; a value of none
+      for path <- [["place"], ["nothing"], ["helpers"], ["helpers", "0"], ["stops", "7"]] do
+        answer(view, &AshDataTable.add_group_request(&1, :table, ref, path))
+        answer(view, &AshDataTable.remove_group_request(&1, :table, ref, path))
+      end
+
+      assert request(view) == held
+
+      test = self()
+
+      for path <- ["helpers", [], [:helpers], ["helpers", 0]] do
+        answer(view, fn socket ->
+          try do
+            AshDataTable.add_group_request(socket, :table, ref, path)
+          rescue
+            error in ArgumentError -> send(test, {:raised, Exception.message(error)})
+          end
+
+          socket
+        end)
+
+        assert_received {:raised, message}
+        assert message =~ "the path of a group is a list of names"
+      end
+    end
+
+    @tag controlled: [:panel]
     test "a union's kinds are described, and its value saved", %{
       view: view,
       tenant: tenant,
