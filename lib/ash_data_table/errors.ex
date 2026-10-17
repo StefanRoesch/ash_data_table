@@ -71,19 +71,29 @@ defmodule AshDataTable.Errors do
 
   defp count?(name, value), do: to_string(name) == "count" and is_integer(value)
 
-  # Whether an error about `field` is of a sensitive one: a column's or an
-  # attribute's that says so, and one the table does not know (an argument
-  # it shows no input for), which it cannot tell apart.
+  # Whether an error about `field` is of a sensitive one: a column's, an
+  # attribute's or a calculation's that says so, else an argument's of that
+  # name that says so in any action of the resource (the error does not say
+  # which action it is of).
   defp sensitive?(%Model{columns: columns, resource: resource}, field) do
     case Enum.find(columns, &(&1.name == field)) do
       %{sensitive?: sensitive?} ->
         sensitive?
 
-      nil ->
-        case is_atom(field) && Ash.Resource.Info.field(resource, field) do
-          %{} = known -> AshDataTable.Resource.Exposing.sensitive?(known)
-          _unknown -> true
+      nil when is_atom(field) ->
+        case Ash.Resource.Info.field(resource, field) do
+          %{} = known ->
+            AshDataTable.Resource.Exposing.sensitive?(known)
+
+          nil ->
+            resource
+            |> Ash.Resource.Info.actions()
+            |> Enum.flat_map(&Map.get(&1, :arguments, []))
+            |> Enum.any?(&(&1.name == field and AshDataTable.Resource.Exposing.sensitive?(&1)))
         end
+
+      nil ->
+        false
     end
   end
 
