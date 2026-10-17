@@ -413,16 +413,12 @@ defmodule AshDataTable.Live.Page do
   # renders a component that is given spread attributes whole on every
   # change, the layout's flash group with it, and every event of the table
   # is a change of this page. They are made when the table is attached
-  # (`attached/1`). Put into the layout's assigns with `assign/2` when they
-  # changed, which marks them so; else as they were, unchanged.
-  defp in_layout(%{layout: {module, function}, given: given} = assigns) do
-    assigns =
-      if changed?(assigns, :given),
-        do: assign(assigns, given),
-        else: Map.merge(assigns, given)
-
-    apply(module, function, [Map.drop(assigns, [:layout, :given])])
-  end
+  # (`attached/1`), and put into the layout's assigns with `assign/2`, which
+  # marks only those whose value changed. The layout is called without
+  # `layout` and `given`, as LiveView's "Dynamic Component Rendering" pops
+  # what is not the component's.
+  defp in_layout(%{layout: {module, function}, given: given} = assigns),
+    do: apply(module, function, [assigns |> assign(given) |> Map.drop([:layout, :given])])
 
   defp in_layout(assigns) do
     ~H"""

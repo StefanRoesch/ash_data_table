@@ -100,15 +100,9 @@ defmodule DemoWeb.Support.ModesLive do
   end
 
   # as the page does: given as one attribute, put into the layout's
-  # assigns marked as changed only when they changed
-  defp in_layout(%{layout: {module, function}, given: given} = assigns) do
-    assigns =
-      if changed?(assigns, :given),
-        do: assign(assigns, given),
-        else: Map.merge(assigns, given)
-
-    apply(module, function, [Map.drop(assigns, [:layout, :given])])
-  end
+  # assigns with `assign/2`, called without `layout` and `given`
+  defp in_layout(%{layout: {module, function}, given: given} = assigns),
+    do: apply(module, function, [assigns |> assign(given) |> Map.drop([:layout, :given])])
 
   defp in_layout(assigns) do
     ~H"""
