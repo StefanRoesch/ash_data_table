@@ -220,7 +220,7 @@ The table is one assign (`AshDataTable.Table`): `table` in the tag's component a
 - `state`: the `%AshDataTable.State{}`. `read`: what the last read was of; a read runs only when this changes.
 - `page`, `row_count`, `busy?`, `loading?`, `error`, `gone?`. Every message the entry holds is a message term (`error`, `fill`, `announcement`, a failed cell's or row's message in `failed`, the panel's `title`, `submit`, `question` and `errors`, the picker's `title` and `error`, a run's `result`): the parts say it as they draw it.
 - `rows`: by the key in a row's DOM id, the primary key and row index. An event names a row by that key, and it is looked up here.
-- `failed`: edits that failed, by row. `open`: expanded rows.
+- `failed`: edits that failed, by row: what was typed and the message, never the record; Escape on a failed cell (`discard`) or actions cell (`dismiss`) reads the row again as the person (`Reading.put_read/2`, through `Query.rows/4`). `open`: expanded rows.
 - `missing`, `fill`, `refused`, `lines`: the argument line.
 - `rejected`, `pending`: what the filter row shows beside the filters of the state: a value that was typed and is none, and the operators that were chosen without a value yet (`shown_filter/4`).
 - `panel`, `picker`: the open action panel and picker, or nil. `request`: in controlled mode, the question or panel the host draws (`ref`, `kind`, `for`: what it was made for), nil for none (`Core.Requests`).

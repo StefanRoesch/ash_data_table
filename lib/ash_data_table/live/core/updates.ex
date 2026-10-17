@@ -227,18 +227,7 @@ defmodule AshDataTable.Live.Core.Updates do
 
   # A row with its record as it was read again. What has failed in the row
   # is still shown, on the record as it is now.
-  defp put_fresh(socket, key, record) do
-    socket =
-      case Core.table(socket).entry.failed[key] do
-        %{} = failures ->
-          Reading.put_failed(socket, key, record, Map.take(failures, [:cells, :action]))
-
-        nil ->
-          socket
-      end
-
-    Reading.put_row(socket, key, record)
-  end
+  defp put_fresh(socket, key, record), do: Reading.put_row(socket, key, record)
 
   # Says that there are new or changed records, when at least one of these
   # is a record the person would be shown; nothing otherwise, and nothing

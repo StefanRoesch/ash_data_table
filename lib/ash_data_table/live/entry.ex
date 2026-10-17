@@ -79,8 +79,9 @@ defmodule AshDataTable.Live.Entry do
     # and row index. What an edit event names is looked up here.
     rows: %{},
     # The edits that failed, by row key: what was typed into each cell with
-    # the action's message, and the record, as a failed row is rendered more
-    # than once. A new read forgets them.
+    # the action's message, and a row action's message. No record: a failed
+    # row that is put back is read again for it
+    # (`AshDataTable.Live.Core.Reading.put_read/2`). A new read forgets them.
     failed: %{},
     # What the live region says, and how often it has spoken. `announce?` is
     # set by a filter change and answered by the read that follows it.

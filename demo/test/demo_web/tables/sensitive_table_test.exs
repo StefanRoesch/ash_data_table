@@ -198,6 +198,27 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
       assert stored(main).token == @token
     end
 
+    # The table keeps no record of a failed row: given up, the row is read
+    # again as the person, and drawn as any row is, its sensitive values
+    # masked.
+    test "a failed cell given up shows its row as it is read now, and nothing of a value",
+         %{view: view, main: main} do
+      save(view, "safe", main.id, "token", "UPPER-9Z8Y7X")
+      Ash.Seed.update!(main, %{name: "main, renamed"})
+
+      wire =
+        wire(view, fn ->
+          html = discard(view, "safe", main.id, "token")
+
+          assert failure(html, "safe", main.id, "token") == nil
+          assert text(html, cell("safe", main.id, "name")) == "main, renamed"
+          assert text(html, cell("safe", main.id, "token")) =~ "••••••"
+          refute_secrets(html)
+        end)
+
+      refute_secrets(wire)
+    end
+
     test "a save of a column that is not edited saves nothing", %{view: view, main: main} do
       save(view, "safe", main.id, "locked", "true")
       assert_reply view, %{ok: false}
@@ -644,6 +665,21 @@ defmodule DemoWeb.Tables.SensitiveTableTest do
       assert headers(html, "safe") ==
                ["Name", "Token", "Pin", "Locked", "Token length", "Combination"]
 
+      refute_secrets(html)
+    end
+
+    # given up, a failed row is read again as the person: what a field
+    # policy hides from them stays hidden
+    test "a failed cell given up keeps a hidden field \"Not available\"",
+         %{view: view, main: main} do
+      html = save(view, "safe", main.id, "token", "UPPER-9Z8Y7X")
+      assert failure(html, "safe", main.id, "token").message == "must be lower case"
+
+      html = discard(view, "safe", main.id, "token")
+
+      assert failure(html, "safe", main.id, "token") == nil
+      assert text(html, cell("safe", main.id, "pin")) == "Not available"
+      assert masked(html, "safe", main.id, "pin") == nil
       refute_secrets(html)
     end
 

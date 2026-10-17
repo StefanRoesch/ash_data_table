@@ -851,7 +851,7 @@ defmodule AshDataTable.Live.Core.Panel do
   defp ran({:ok, %Operation.Outcome{record: %_{} = record} = outcome}, socket, key, action) do
     {:reply, %{ok: true},
      socket
-     |> Reading.put_action_failure(key, record, nil)
+     |> Reading.put_action_failure(key, nil)
      |> Reading.put_row(key, record)
      |> Core.say({:text, :action_done, action: action.label})
      |> Notify.told(outcome.event)}
@@ -880,7 +880,7 @@ defmodule AshDataTable.Live.Core.Panel do
        ) do
     {:reply, %{ok: false},
      socket
-     |> Reading.put_action_failure(key, record, message)
+     |> Reading.put_action_failure(key, message)
      |> Reading.put_row(key, record)
      |> Core.say({:text, :action_not_done, action: action.label, message: message})}
   end

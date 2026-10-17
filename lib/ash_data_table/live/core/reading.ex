@@ -24,7 +24,6 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Pick
   alias AshDataTable.Present
   alias AshDataTable.Query
-  alias AshDataTable.Sensitive
   alias AshDataTable.State
   alias AshDataTable.Text
 
@@ -504,33 +503,48 @@ defmodule AshDataTable.Live.Core.Reading do
   end
 
   # Notes that the save of a cell has failed, or with `nil` that it no longer
-  # has. The record is kept with the failures of its row, and only then.
-  def put_failure(socket, key, record, name, failure) do
+  # has. What was typed is kept with the action's message, and no record: a
+  # failed row that is put back again is read again for it (`put_read/2`).
+  def put_failure(socket, key, name, failure) do
     row = Core.table(socket).entry.failed[key] || %{}
     cells = Map.get(row, :cells, %{})
     cells = if failure, do: Map.put(cells, name, failure), else: Map.delete(cells, name)
 
-    put_failed(socket, key, record, %{cells: cells, action: Map.get(row, :action)})
+    put_failed(socket, key, %{cells: cells, action: Map.get(row, :action)})
   end
 
   # Notes that a row action has failed, with the action's message, or with
   # `nil` that the row's actions cell has nothing to say any more.
-  def put_action_failure(socket, key, record, message) do
+  def put_action_failure(socket, key, message) do
     row = Core.table(socket).entry.failed[key] || %{}
 
-    put_failed(socket, key, record, %{cells: Map.get(row, :cells, %{}), action: message})
+    put_failed(socket, key, %{cells: Map.get(row, :cells, %{}), action: message})
   end
 
-  def put_failed(socket, key, _record, %{cells: cells, action: nil}) when cells == %{},
+  def put_failed(socket, key, %{cells: cells, action: nil}) when cells == %{},
     do: Core.put(socket, failed: Map.delete(Core.table(socket).entry.failed, key))
 
-  # the record is kept as a row holds it: without its sensitive values
-  def put_failed(socket, key, record, failures) do
-    record = Sensitive.scrub(record, Core.table(socket).entry.model.columns)
+  def put_failed(socket, key, failures),
+    do: Core.put(socket, failed: Map.put(Core.table(socket).entry.failed, key, failures))
 
-    Core.put(socket,
-      failed: Map.put(Core.table(socket).entry.failed, key, Map.put(failures, :record, record))
-    )
+  # Puts a row of the page back with its record read again as the person,
+  # as a live update reads one (`Query.rows/4`): through the table's read
+  # action, and for a nested table through its parent. A record that does
+  # not come back is no row of the page any more.
+  def put_read(socket, key) do
+    %{model: model, parent_key: parent, rows: rows} = Core.table(socket).entry
+
+    case rows do
+      %{^key => %{pk: pk}} ->
+        case Query.rows(model, parent, [pk], read_opts(socket)) do
+          {:ok, [record]} -> put_row(socket, key, record)
+          {:ok, []} -> remove_row(socket, key)
+          {:error, _error} -> reread(socket)
+        end
+
+      _not_on_the_page ->
+        socket
+    end
   end
 
   # Takes a row out of the page, with its detail and so with everything that

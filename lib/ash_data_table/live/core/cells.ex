@@ -131,11 +131,11 @@ defmodule AshDataTable.Live.Core.Cells do
   # failed: the edit is given up, and the cell shows its record's value again.
   def on({:discard, key, name}, socket) do
     with %{} = column <- Operation.column(Core.table(socket).entry.model, name),
-         %{record: record, cells: %{}} <- Core.table(socket).entry.failed[key] do
+         %{cells: %{}} <- Core.table(socket).entry.failed[key] do
       {:noreply,
        socket
-       |> Reading.put_failure(key, record, column.name, nil)
-       |> Reading.put_row(key, record)}
+       |> Reading.put_failure(key, column.name, nil)
+       |> Reading.put_read(key)}
     else
       _ -> {:noreply, socket}
     end
@@ -145,9 +145,8 @@ defmodule AshDataTable.Live.Core.Cells do
   # that shows the message of an action that failed: the message is given up.
   def on({:dismiss, key}, socket) do
     case Core.table(socket).entry.failed[key] do
-      %{record: record, action: message} when not is_nil(message) ->
-        {:noreply,
-         socket |> Reading.put_action_failure(key, record, nil) |> Reading.put_row(key, record)}
+      %{action: message} when not is_nil(message) ->
+        {:noreply, socket |> Reading.put_action_failure(key, nil) |> Reading.put_read(key)}
 
       _none ->
         {:noreply, socket}
@@ -219,7 +218,7 @@ defmodule AshDataTable.Live.Core.Cells do
       {:ok, %Operation.Outcome{record: record} = outcome} ->
         {:reply, %{ok: true},
          socket
-         |> Reading.put_failure(key, record, column.name, nil)
+         |> Reading.put_failure(key, column.name, nil)
          |> Reading.put_row(key, record)
          |> Notify.told(outcome.event)}
 
@@ -229,7 +228,7 @@ defmodule AshDataTable.Live.Core.Cells do
 
         {:reply, %{ok: false},
          socket
-         |> Reading.put_failure(key, record, column.name, {typed, message})
+         |> Reading.put_failure(key, column.name, {typed, message})
          |> Reading.put_row(key, record)
          |> Core.say({:text, :not_saved, column: column.label, message: message})}
 
@@ -262,7 +261,7 @@ defmodule AshDataTable.Live.Core.Cells do
         {:reply, %{ok: true},
          socket
          |> Core.put(picker: nil)
-         |> Reading.put_failure(key, record, column.name, nil)
+         |> Reading.put_failure(key, column.name, nil)
          |> Reading.put_row(key, record)
          |> Notify.told(outcome.event)}
 
@@ -272,7 +271,6 @@ defmodule AshDataTable.Live.Core.Cells do
          |> Core.put(picker: nil)
          |> Reading.put_failure(
            key,
-           record,
            column.name,
            {chosen_text(column, chosen, Core.table(socket).caller.time_zone), message}
          )
