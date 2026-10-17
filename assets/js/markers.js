@@ -27,10 +27,11 @@ export const GRIDCELL = "[role=gridcell]"
 export const HEADER = "[role=columnheader]"
 // what opens over the page: the action panel, the picker, the question
 export const DIALOG = "[role=dialog]"
-// what opens in the page: the action panel or the picker, inline
+// what opens in the page: the action panel, the picker or the question,
+// inline
 export const REGION = "[role=region]"
-// what opens, over the page or in it: the action panel and the picker
-// say which (`modal`, `inline`), and the hooks follow
+// what opens, over the page or in it: the action panel, the picker and the
+// question say which (`modal`, `inline`), and the hooks follow
 export const OPENED = "[data-presentation]"
 
 // ---- the elements of the hooks

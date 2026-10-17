@@ -611,14 +611,16 @@ defmodule AshDataTable.Attrs do
 
   # ---- the grid ------------------------------------------------------------
 
-  # The element of a grid's hook. `data-ash-data-table` marks it, for the
-  # hooks of the tables nested in it and around it; `data-table` is the
-  # table's id; `data-lead` the number of columns before the first data
-  # column; `data-select` whether rows can be selected, and how many at a
-  # time; `data-choose` that the table is one to choose a record from, and
-  # `data-chosen-rows`, where several are chosen, which rows are selected as
-  # it opens. No tab stop (`tabindex`), which a browser may make of an
-  # element that scrolls: the tab stop of a grid is one of its cells.
+  @doc """
+  The element of a grid's hook. `data-ash-data-table` marks it, for the
+  hooks of the tables nested in it and around it; `data-table` is the
+  table's id; `data-lead` the number of columns before the first data
+  column; `data-select` whether rows can be selected, and how many at a
+  time; `data-choose` that the table is one to choose a record from, and
+  `data-chosen-rows`, where several are chosen, which rows are selected as
+  it opens. No tab stop (`tabindex`), which a browser may make of an
+  element that scrolls: the tab stop of a grid is one of its cells.
+  """
   def grid(id, myself, lead, selecting, choose) do
     %{
       "id" => "#{id}-grid",
@@ -634,10 +636,12 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The sender of the grid's events: an empty element beside the grid whose
-  # hook pushes the events the grid's hook sends, so that LiveView locks it,
-  # not the grid, while an event is on its way (see
-  # `assets/js/transport/live_view.js`). `data-table` names the table.
+  @doc """
+  The sender of the grid's events: an empty element beside the grid whose
+  hook pushes the events the grid's hook sends, so that LiveView locks it,
+  not the grid, while an event is on its way (see
+  `assets/js/transport/live_view.js`). `data-table` names the table.
+  """
   def sender(id) do
     %{
       "id" => "#{id}-sender",
@@ -654,7 +658,9 @@ defmodule AshDataTable.Attrs do
     for {row_key, names} <- Map.get(choose, :chosen) || [], do: [row_key, names]
   end
 
-  # The grid itself, whose rows are a stream.
+  @doc """
+  The grid itself, whose rows are a stream.
+  """
   def table(id, label, labelledby, page, summarised?, colcount, selecting, busy?) do
     %{
       "id" => "#{id}-table",
@@ -682,12 +688,16 @@ defmodule AshDataTable.Attrs do
   @doc "How many columns the grid has."
   def colcount(model, lead, acting?), do: length(model.columns) + lead + Common.trail(acting?)
 
-  # A row of the grid that is no record's: the header row, the filter row,
-  # the footer rows.
+  @doc """
+  A row of the grid that is no record's: the header row, the filter row,
+  the footer rows.
+  """
   def row(id, rowindex \\ nil), do: %{"id" => id, "role" => "row", "aria-rowindex" => rowindex}
 
-  # A cell that is no record's, and no column header: of the filter row, of
-  # the footer row of the summaries. `colindex` is where it stands.
+  @doc """
+  A cell that is no record's, and no column header: of the filter row, of
+  the footer row of the summaries. `colindex` is where it stands.
+  """
   def gridcell(id, colindex, more \\ %{}) do
     Map.merge(
       %{"id" => id, "role" => "gridcell", "aria-colindex" => colindex, "tabindex" => "-1"},
@@ -695,8 +705,10 @@ defmodule AshDataTable.Attrs do
     )
   end
 
-  # A cell that spans the grid: a line, the cell a nested table is in, the
-  # pages of a nested table, its link to the full view.
+  @doc """
+  A cell that spans the grid: a line, the cell a nested table is in, the
+  pages of a nested table, its link to the full view.
+  """
   def spanning(id, colspan, more) do
     Map.merge(
       %{
@@ -710,9 +722,11 @@ defmodule AshDataTable.Attrs do
     )
   end
 
-  # A header that is no column's: of the boxes that select rows (where one
-  # stands for the rows of the page, `data-select-page`), of the expanders,
-  # of the actions.
+  @doc """
+  A header that is no column's: of the boxes that select rows (where one
+  stands for the rows of the page, `data-select-page`), of the expanders,
+  of the actions.
+  """
   def header(id, colindex, more \\ %{}) do
     Map.merge(
       %{
@@ -726,12 +740,14 @@ defmodule AshDataTable.Attrs do
     )
   end
 
-  # The header of a column, beside its id, place, role, name and
-  # `tabindex`, which the part writes, as it does for every element drawn
-  # once per column (D3 b: an opened nested table sends them once per
-  # column). `data-label` where it stays in view as the grid scrolls
-  # sideways (`sticky_label?`), `data-sort` where it sorts; a click sorts
-  # by it.
+  @doc """
+  The header of a column, beside its id, place, role, name and
+  `tabindex`, which the part writes, as it does for every element drawn
+  once per column (D3 b: an opened nested table sends them once per
+  column). `data-label` where it stays in view as the grid scrolls
+  sideways (`sticky_label?`), `data-sort` where it sorts; a click sorts
+  by it.
+  """
   def column_header(id, column, sort, label?, myself) do
     sortable? = column.sortable?
 
@@ -745,33 +761,40 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  @doc false
+  @doc "What a column's header says of the sort (`aria-sort`): `ascending`, `descending` or `none`."
   def aria_sort({name, :asc}, %{name: name}), do: "ascending"
   def aria_sort({name, :desc}, %{name: name}), do: "descending"
   def aria_sort(_sort, _column), do: "none"
 
-  # The narrowest and the widest a person can make a column, in pixels.
-  # Narrower than this a column is its padding and little else; the widest
-  # is there because a separator says where it stands between two ends.
-  # The handle at the end of a column's header, with which a person makes
-  # the column wider or narrower, says so (`aria-valuemin`, `aria-valuemax`).
-  @doc false
+  @doc """
+  The narrowest a column can be made, in pixels: narrower than this it is
+  its padding and little else. The handle at the end of a column's header,
+  with which a person makes it wider or narrower, says so
+  (`aria-valuemin`).
+  """
   def least_width, do: 48
+
+  @doc """
+  The widest a column can be made, in pixels (`aria-valuemax` of its
+  handle): a separator says where it stands between two ends.
+  """
   def most_width, do: 1000
 
-  # An item of the stream: a record's row group, or the detail under it (a
-  # map that says `detail?`). The hooks take a `role=rowgroup` of the grid
-  # for a record's unless it is the header (`ID-head`), the footer
-  # (`ID-foot`) or a detail. `data-detail` and `data-row` on a detail,
-  # which is hidden while it holds no line; `data-key` what the server is
-  # told of a record that is selected, where rows can be; `data-current` on
-  # the record that is chosen now, in a table to choose from.
-  #
-  # The rows of the records hold what varies only: their id, `role` and
-  # `tabindex`, the same on every row, are written by the part, as every
-  # byte of a row is sent again whenever the row is (the design note of
-  # stage 7, D3 b: with them in the bundle "Page change" sent 11 % more).
-  # So do the row of a record, its cells and its actions cell below.
+  @doc """
+  An item of the stream: a record's row group, or the detail under it (a
+  map that says `detail?`). The hooks take a `role=rowgroup` of the grid
+  for a record's unless it is the header (`ID-head`), the footer
+  (`ID-foot`) or a detail. `data-detail` and `data-row` on a detail,
+  which is hidden while it holds no line; `data-key` what the server is
+  told of a record that is selected, where rows can be; `data-current` on
+  the record that is chosen now, in a table to choose from.
+
+  The rows of the records hold what varies only: their id, `role` and
+  `tabindex`, the same on every row, are written by the part, as every
+  byte of a row is sent again whenever the row is (the design note of
+  stage 7, D3 b: with them in the bundle "Page change" sent 11 % more).
+  So do the row of a record, its cells and its actions cell below.
+  """
   def rowgroup(row, selecting) do
     detail? = detail?(row)
 
@@ -793,30 +816,32 @@ defmodule AshDataTable.Attrs do
   defp current?(%{current?: current?}), do: current?
   defp current?(_detail), do: nil
 
-  # The cell of a record under a column. What it says about editing, for
-  # people and for the hook:
-  #
-  #   * `aria-readonly` on a cell that cannot be edited, when the table
-  #     offers editing at all;
-  #   * `data-value` where the editor's value is not the text the cell shows:
-  #     a choice and a boolean, a cell whose content is a component's, and a
-  #     cell whose save failed, which shows what was typed;
-  #   * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
-  #     naming the action's message, and `data-saved`, the value the record
-  #     still has, which the hook compares with what is typed next; and
-  #     where the action said which values of an array it refused,
-  #     `data-invalid`, their places counted from 0, as JSON. The hook marks
-  #     the controls of those values when the cell's editor is opened again.
-  #
-  # A cell of a sensitive column says that its editor holds nothing
-  # (`data-value=""`), and nothing else: what was typed into it is never
-  # sent back. `data-lines` where the column shows more than one line.
-  #
-  # `row` is a `AshDataTable.Present.Row`: each cell says whether it can be
-  # edited and what failed in it (`AshDataTable.Present.Cell`).
-  #
-  # `id` is the cell's id; the part writes it with the cell's place and
-  # role (D3 b, above).
+  @doc """
+  The cell of a record under a column. What it says about editing, for
+  people and for the hook:
+
+    * `aria-readonly` on a cell that cannot be edited, when the table
+      offers editing at all;
+    * `data-value` where the editor's value is not the text the cell shows:
+      a choice and a boolean, a cell whose content is a component's, and a
+      cell whose save failed, which shows what was typed;
+    * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
+      naming the action's message, and `data-saved`, the value the record
+      still has, which the hook compares with what is typed next; and
+      where the action said which values of an array it refused,
+      `data-invalid`, their places counted from 0, as JSON. The hook marks
+      the controls of those values when the cell's editor is opened again.
+
+  A cell of a sensitive column says that its editor holds nothing
+  (`data-value=""`), and nothing else: what was typed into it is never
+  sent back. `data-lines` where the column shows more than one line.
+
+  `row` is a `Present.Row`: each cell says whether it can be
+  edited and what failed in it (`Present.Cell`).
+
+  `id` is the cell's id; the part writes it with the cell's place and
+  role (D3 b, above).
+  """
   def cell(id, column, editing?, row, zone) do
     Map.new([
       {"data-lines", column.max_lines > 1 && column.max_lines}
@@ -871,7 +896,7 @@ defmodule AshDataTable.Attrs do
 
   # What an editor holds, as a cell says it: the text, and for an array the
   # texts of its values, as JSON.
-  @doc false
+  @doc "What an attribute holds of a list (as JSON) or a text (as it is)."
   def held(texts) when is_list(texts), do: Phoenix.json_library().encode!(texts)
   def held(text), do: text
 
@@ -889,9 +914,11 @@ defmodule AshDataTable.Attrs do
   defp own_value?(%{component: %{cell?: true}}), do: true
   defp own_value?(_column), do: false
 
-  # The actions cell of a record. What it says about an action that failed:
-  # as a cell whose save failed, `aria-invalid` and `aria-describedby`
-  # naming the action's message. `id` is the cell's id.
+  @doc """
+  The actions cell of a record. What it says about an action that failed:
+  as a cell whose save failed, `aria-invalid` and `aria-describedby`
+  naming the action's message. `id` is the cell's id.
+  """
   def actions(id, row) do
     %{
       "aria-invalid" => row.action_failure && "true",
@@ -899,39 +926,51 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The footer row of the summaries, the last of all rows, and the summary
-  # of a column in it.
+  @doc """
+  The footer row of the summaries, the last of all rows, and the summary
+  of a column in it.
+  """
   def summaries(id, page) do
     Map.put(row("#{id}-summaries", Common.summary_rowindex(page)), "data-summaries", true)
   end
 
-  #
-  # The cells of the row, as the cells of a record, write their id, place,
-  # role and `tabindex` themselves, as the row is sent again while its
-  # summaries are on their way and once more when they are there (D3 b).
+  @doc """
+
+  The cells of the row, as the cells of a record, write their id, place,
+  role and `tabindex` themselves, as the row is sent again while its
+  summaries are on their way and once more when they are there (D3 b).
+  """
   def summary(column, summing?) do
     %{"aria-busy" => column.summary && summing? && "true", "data-summary" => column.summary}
   end
 
-  # A row action's button, beside its id, `tabindex` and `data-action`,
-  # which the part writes (D3 b): `data-question` the question the hook asks
-  # first (none in controlled mode, where the host asks), `data-destructive`
-  # on an action that destroys.
+  @doc """
+  A row action's button, beside its id, `tabindex` and `data-action`,
+  which the part writes (D3 b): `data-question` the question the hook asks
+  first (none in controlled mode, where the host asks), `data-destructive`
+  on an action that destroys.
+  """
   def action(action, asks?) do
     %{"data-question" => asks? && action.confirm, "data-destructive" => action.type == :destroy}
   end
 
-  # A line under an expanded row: `data-line` names its relationship, on
-  # the line's cell (the part writes its id, role, place and `tabindex`,
-  # D3 b), and `data-table-action` the table action of a nested table that
-  # a button on the line runs.
+  @doc """
+  A line under an expanded row: `data-line` names its relationship, on
+  the line's cell (the part writes its id, role, place and `tabindex`,
+  D3 b), and `data-table-action` the table action of a nested table that
+  a button on the line runs.
+  """
   def line(relationship), do: %{"data-line" => relationship.name}
+
+  @doc "The button on a line that runs a nested table's table action (`data-table-action`)."
   def line_action(action), do: %{"data-table-action" => action.name}
 
-  # The counter of a text with a most it can be long: the unit it counts in
-  # (`data-count`), the most (`data-max`), whether the text is trimmed and
-  # its case folded first, as Ash does (`data-trim`, `data-casing`), and
-  # `data-over` while it is too long. The hook counts again as it is typed.
+  @doc """
+  The counter of a text with a most it can be long: the unit it counts in
+  (`data-count`), the most (`data-max`), whether the text is trimmed and
+  its case folded first, as Ash does (`data-trim`, `data-casing`), and
+  `data-over` while it is too long. The hook counts again as it is typed.
+  """
   def count(counted, over?) do
     %{
       "data-count" => counted.unit,
@@ -942,10 +981,12 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The list editor of an array (`data-list`, which the part writes, as
-  # `data-item`, `data-add` and `data-remove` in it): what the hook calls a
-  # value it adds and its button that takes it away, with `{n}` where the
-  # value's place goes.
+  @doc """
+  The list editor of an array (`data-list`, which the part writes, as
+  `data-item`, `data-add` and `data-remove` in it): what the hook calls a
+  value it adds and its button that takes it away, with `{n}` where the
+  value's place goes.
+  """
   def list(label) do
     %{
       "data-value-label" => Text.t(:value_position, column: label, position: "{n}"),
@@ -959,7 +1000,9 @@ defmodule AshDataTable.Attrs do
   @doc "The kind of a column's editor, its template's `data-editor`."
   def editor_kind(column), do: if(column.sensitive?, do: :secret, else: column.editor)
 
-  # The control of a column component's editor: what the table gives it.
+  @doc """
+  The control of a column component's editor: what the table gives it.
+  """
   def component_control(column) do
     %{
       "aria-label" => column.label,
@@ -968,8 +1011,10 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The control of a built-in editor whose column has a most it can be
-  # long (`Limits.counted/1`): the counter is its description.
+  @doc """
+  The control of a built-in editor whose column has a most it can be
+  long (`Limits.counted/1`): the counter is its description.
+  """
   def counted_control(id, column) do
     %{
       "data-control" => true,
@@ -979,8 +1024,10 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The scrollbar of the grid once more, at the bottom edge of the window:
-  # for the pointer alone, which patches leave as the hook has it.
+  @doc """
+  The scrollbar of the grid once more, at the bottom edge of the window:
+  for the pointer alone, which patches leave as the hook has it.
+  """
   def scrollbar(id) do
     %{
       "id" => "#{id}-scrollbar",
@@ -992,29 +1039,39 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The message of a failed cell or row: a popover, which the hook shows
-  # while the cell has the focus or the pointer.
+  @doc """
+  The message of a failed cell or row: a popover, which the hook shows
+  while the cell has the focus or the pointer.
+  """
   def failure, do: %{"popover" => "manual"}
 
   # ---- the table and what is around its grid ---------------------------------
 
-  # The root of a table: the table on the page's (where `AshDataTable`'s
-  # wiring draws it), a nested table's in its portal, a picker's table in
-  # its dialog. `data-read` once its first read has been shown.
+  @doc """
+  The root of a table: the table on the page's (where `AshDataTable`'s
+  wiring draws it), a nested table's in its portal, a picker's table in
+  its dialog. `data-read` once its first read has been shown.
+  """
   def root(id, page), do: %{"id" => id, "data-read" => not is_nil(page)}
 
-  # The live region of the table, read out after a filter change and when a
-  # save fails.
+  @doc """
+  The live region of the table, read out after a filter change and when a
+  save fails.
+  """
   def status(id), do: %{"id" => "#{id}-status", "role" => "status", "aria-live" => "polite"}
 
-  # The create button of a table, in its heading or above the grid of a
-  # table limited to related records: it opens the action panel of the
-  # table's create action.
+  @doc """
+  The create button of a table, in its heading or above the grid of a
+  table limited to related records: it opens the action panel of the
+  table's create action.
+  """
   def create(id, target) do
     %{"id" => "#{id}-create", "phx-click" => Common.event(id, "create"), "phx-target" => target}
   end
 
-  # A table action's button beside it: `data-table-action` names the action.
+  @doc """
+  A table action's button beside it: `data-table-action` names the action.
+  """
   def table_action(id, action, target) do
     %{
       "id" => "#{id}-do-#{action.name}",
@@ -1025,9 +1082,11 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The argument line's form (`data-arguments`). `novalidate`: Ash is given
-  # what was typed and says what is wrong with it; the hook holds back only
-  # what the browser cannot read as a value at all.
+  @doc """
+  The argument line's form (`data-arguments`). `novalidate`: Ash is given
+  what was typed and says what is wrong with it; the hook holds back only
+  what the browser cannot read as a value at all.
+  """
   def arguments(id, target) do
     %{
       "id" => "#{id}-arguments",
@@ -1039,7 +1098,9 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The form of the filter row, which its controls name (`form`).
+  @doc """
+  The form of the filter row, which its controls name (`form`).
+  """
   def filters(id, target) do
     %{
       "id" => "#{id}-filters",
@@ -1049,9 +1110,11 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The line above the grid with what is selected: `data-more` where there
-  # are more records than the page, and the texts the hook says, with `{n}`
-  # where it puts the count.
+  @doc """
+  The line above the grid with what is selected: `data-more` where there
+  are more records than the page, and the texts the hook says, with `{n}`
+  where it puts the count.
+  """
   def selection(id, more?, total) do
     %{
       "id" => "#{id}-selection",
@@ -1065,25 +1128,35 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # What the line above the grid says is selected, which the hook writes.
+  @doc """
+  What the line above the grid says is selected, which the hook writes.
+  """
   def selected(id), do: %{"id" => "#{id}-selected", "role" => "status", "phx-update" => "ignore"}
 
-  # The buttons of the line, hidden while nothing is selected: the hook
-  # shows them, so a patch leaves `hidden` alone.
+  @doc """
+  The buttons of the line, hidden while nothing is selected: the hook
+  shows them, so a patch leaves `hidden` alone.
+  """
   def selection_controls(id), do: shown_by_hook("#{id}-selection-controls")
 
-  # "Select all" the records the filters match (`data-select-all`), shown by
-  # the hook where there are more than the page.
+  @doc """
+  "Select all" the records the filters match (`data-select-all`), shown by
+  the hook where there are more than the page.
+  """
   def select_all(id),
     do: Map.put(shown_by_hook("#{id}-select-all"), "data-select-all", true)
 
-  # "Clear selection" (`data-clear`).
+  @doc """
+  "Clear selection" (`data-clear`).
+  """
   def clear_selection(id), do: %{"id" => "#{id}-clear-selection", "data-clear" => true}
 
-  # The button of an action on the selected rows: `data-bulk` names the
-  # action, `data-destructive` is on one that destroys. While an action
-  # runs it is not to be used, and says so without being `disabled`, which
-  # would drop the focus.
+  @doc """
+  The button of an action on the selected rows: `data-bulk` names the
+  action, `data-destructive` is on one that destroys. While an action
+  runs it is not to be used, and says so without being `disabled`, which
+  would drop the focus.
+  """
   def bulk(id, action, running?) do
     %{
       "id" => "#{id}-bulk-#{action.name}",
@@ -1096,8 +1169,10 @@ defmodule AshDataTable.Attrs do
   defp shown_by_hook(id),
     do: %{"id" => id, "hidden" => true, "phx-mounted" => JS.ignore_attributes(["hidden"])}
 
-  # The popover with the whole text of a cell whose text is cut off, for the
-  # eye alone; the hook writes it.
+  @doc """
+  The popover with the whole text of a cell whose text is cut off, for the
+  eye alone; the hook writes it.
+  """
   def whole(id) do
     %{
       "id" => "#{id}-whole",
@@ -1108,8 +1183,10 @@ defmodule AshDataTable.Attrs do
     }
   end
 
-  # The pagination, and its hook. Under a table on the page a navigation
-  # landmark; in a nested table a group in its last row.
+  @doc """
+  The pagination, and its hook. Under a table on the page a navigation
+  landmark; in a nested table a group in its last row.
+  """
   def pagination(id, label, nested?) do
     %{
       "id" => "#{id}-pagination",
@@ -1122,11 +1199,13 @@ defmodule AshDataTable.Attrs do
 
   # ---- what opens over the page ------------------------------------------------
 
-  # The table's question dialog, which the grid's hook opens.
-  #
-  # Modal, a `<dialog>` the hook opens with `showModal()`; inline, a region
-  # of the page the hook shows (`hidden` until it asks), named by its
-  # question: not an `alertdialog`, which ARIA has be modal.
+  @doc """
+  The table's question dialog, which the grid's hook opens.
+
+  Modal, a `<dialog>` the hook opens with `showModal()`; inline, a region
+  of the page the hook shows (`hidden` until it asks), named by its
+  question: not an `alertdialog`, which ARIA has be modal.
+  """
   def confirm(id, presentation) do
     Map.merge(opened(presentation), %{
       "id" => "#{id}-dialog",
@@ -1142,9 +1221,11 @@ defmodule AshDataTable.Attrs do
   defp opened(:modal), do: %{"role" => "dialog", "data-presentation" => "modal"}
   defp opened(:inline), do: %{"role" => "region", "data-presentation" => "inline"}
 
-  # The action panel and its hook. `data-question` the question it asks
-  # before a submit, `data-ask` that it asks it only when something changed
-  # (a map cell's panel), `data-destructive` on an action that destroys.
+  @doc """
+  The action panel and its hook. `data-question` the question it asks
+  before a submit, `data-ask` that it asks it only when something changed
+  (a map cell's panel), `data-destructive` on an action that destroys.
+  """
   def panel(id, panel, question, target, presentation) do
     opened(presentation)
     |> Map.merge(%{
@@ -1160,8 +1241,10 @@ defmodule AshDataTable.Attrs do
     })
   end
 
-  # The picker and its hook. `data-several` where several records are
-  # chosen.
+  @doc """
+  The picker and its hook. `data-several` where several records are
+  chosen.
+  """
   def picker(id, question, several?, target, presentation) do
     opened(presentation)
     |> Map.merge(%{
@@ -1176,33 +1259,49 @@ defmodule AshDataTable.Attrs do
     })
   end
 
-  # A field of the panel: `data-field` its way among the fields, joined
-  # with dots. The part writes the rest of a field, as it does of every
-  # element drawn per field or group below (D3 b).
+  @doc """
+  A field of the panel: `data-field` its way among the fields, joined
+  with dots. The part writes the rest of a field, as it does of every
+  element drawn per field or group below (D3 b).
+  """
   def field(path), do: %{"data-field" => Enum.join(path, ".")}
 
-  # The button that takes a chosen record out of a field (`data-unpick`:
-  # the field's name and the record's key, as JSON).
+  @doc """
+  The button that takes a chosen record out of a field (`data-unpick`:
+  the field's name and the record's key, as JSON).
+  """
   def unpick(name, key), do: %{"data-unpick" => held([Atom.to_string(name), key])}
 
-  # The button that clears a field, or keeps its value (`data-clear-field`:
-  # the field's name).
+  @doc """
+  The button that clears a field, or keeps its value (`data-clear-field`:
+  the field's name).
+  """
   def clear_field(name), do: %{"data-clear-field" => name}
 
-  # The buttons that add a group of fields and take one away
-  # (`data-add-group`, `data-remove-group`: the way to the group, as JSON).
+  @doc """
+  The buttons that add a group of fields and take one away
+  (`data-add-group`, `data-remove-group`: the way to the group, as JSON).
+  """
   def add_group(path), do: %{"data-add-group" => held(path)}
+
+  @doc "The button that takes a group of fields away (`data-remove-group`)."
   def remove_group(path), do: %{"data-remove-group" => held(path)}
 
-  # Cancel, in the panel and in the picker.
+  @doc """
+  Cancel, in the panel and in the picker.
+  """
   def cancel(id), do: %{"id" => id, "data-cancel" => true}
 
-  # "No record", in a picker whose field may be empty.
+  @doc """
+  "No record", in a picker whose field may be empty.
+  """
   def none(id), do: %{"id" => "#{id}-picker-none", "data-none" => true}
 
-  # "Choose": not to be used while no row is selected, and says so without
-  # being `disabled`. Which rows are selected is the hook's, so this is too:
-  # a patch leaves it alone.
+  @doc """
+  "Choose": not to be used while no row is selected, and says so without
+  being `disabled`. Which rows are selected is the hook's, so this is too:
+  a patch leaves it alone.
+  """
   def take(id, several?) do
     %{
       "id" => "#{id}-picker-choose",

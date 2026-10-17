@@ -544,8 +544,8 @@ defmodule AshDataTable do
       else: AshDataTable.Kit.check!(kit, where)
   end
 
-  # What opens in the page, or over it, as the table is told: the panel and
-  # the picker, each `:modal` or `:inline`.
+  # What opens in the page, or over it, as the table is told: the panel, the
+  # picker and the question, each `:modal` or `:inline`.
   defp presentation!(given, where) do
     if not (is_list(given) and
               Enum.all?(

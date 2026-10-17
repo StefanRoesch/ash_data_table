@@ -24,8 +24,8 @@ defmodule AshDataTable.Parts.Common do
   end
 
   # What is inside the root element of a table, which the table draws
-  # itself: the table (`inner_block`), and after it what is open over it or
-  # beside it, the action panel and the picker (`opened`).
+  # itself: the table (`inner_block`), and after it what opens over it or
+  # in the page, the question, the action panel and the picker (`opened`).
   attr :nested?, :boolean, required: true
   slot :inner_block, required: true
   slot :opened, required: true

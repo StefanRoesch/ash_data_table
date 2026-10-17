@@ -70,77 +70,157 @@ defmodule AshDataTable.Kit do
   `AshDataTable.Kit.Default`'s parts (`lib/ash_data_table/parts/`) show how
   each is drawn.
 
+  Each part is given `kit` and the assigns named below; a part draws the
+  parts named in it through the kit. Values are what the table makes of
+  its rows, panel and picker (`Present.Row`, `Present.Panel`, …) and of its
+  model (`Model.Column`, `Model.Action`, …), never a record. `myself` and `target`
+  are the `phx-target` of the part's events (nil for an attached table);
+  `id` is the table's id, or the element's where it says so.
+
   Drawn once per table:
 
     * `root` - what is inside the table's root element: `inner_block`
-      (the table) and `opened` (the action panel and the picker, where they
-      are drawn in the page); `nested?`, `id`.
-    * `heading` - the line of the table's name: `id`, `heading`, `label`,
-      `model`, `offered`, `page`, `related`, `nested?`, `myself`.
-    * `related` - above a table limited to the records of one record: `id`,
-      `via`, `title`, `parent`, `clear`, `create`, `actions`, `target`.
-    * `argument_line` - the form of the read action's arguments (the
-      element with `data-arguments`): `id`, `lines`, `model`, `refused`,
-      `state`, `nested?`, `myself`; it draws an `argument` per argument.
-    * `selection_line` - what is selected (`data-selection`, with
-      `ID-selected`, `ID-selection-controls`, `ID-select-all`,
-      `ID-clear-selection`, a `data-bulk` button per action), the notice of
-      changes, "Clear filters", and the `columns` list.
-    * `status` - the live region `ID-status` and a run's result.
-    * `grid` - the grid's hook's element (`data-ash-data-table`), its
-      sender (`data-sender`) before it, the `role=grid` element with
-      `ID-head` and its two rows, a `role=rowgroup` element per item of the
-      stream `rows` (with `Attrs.rowgroup/2`'s bundle), the `footer`, a
-      `<template>` per editable column (`ID-editor-FIELD`, `data-editor`)
-      and the failure template `ID-failure`. It draws a `header_cell` and a
-      `filter_cell` per column, a `row` or a `detail` per item.
-    * `whole_text` - the popover `ID-whole`.
+      (the table) and `opened` (what opens: the question, the action panel
+      and the picker, where they are drawn in the page); `id`, `nested?`.
+    * `heading` - the line of the table's name, its create (`ID-create`)
+      and table actions (`data-table-action`): `id`, `heading`, `label`,
+      `model`, `offered` (the table actions), `page`, `related`, `nested?`,
+      `myself`.
+    * `related` - above a table limited to the records of one record
+      (`ID-related`, `ID-related-clear`): `id`, `via` (the relationship),
+      `title`, `parent` (`path` of its page, or nil), `clear` (the path of
+      every record), `create`, `actions`, `target`.
+    * `argument_line` - the form of the read action's arguments
+      (`ID-arguments`, `data-arguments`, `AshDataTable.Attrs.arguments/2`):
+      `id`, `lines`, `model`, `refused`, `state`, `nested?`, `myself`; it
+      draws an `argument` per argument.
+    * `argument` - one argument's input (`data-argument`): `id`,
+      `argument`, `name`, `named`, `value`, `errors`.
+    * `selection_line` - what is selected (`ID-selection`, `data-selection`
+      with `data-all`, `data-selected`, `data-more`; `ID-selected`,
+      `ID-selection-controls`, `ID-select-all`, `ID-clear-selection`, a
+      `data-bulk` button per action), the notice of changes, "Clear
+      filters", and the `columns` list: `id`, `bulk`, `choose`, `model`,
+      `notice?`, `page`, `row_count`, `running`, `selecting`, `state`,
+      `nested?`, `myself`.
+    * `columns` - "Columns" (`ID-columns-button` with `data-say-hidden`,
+      `data-say-shown`; `ID-columns`, `data-columns-list`, a box per column
+      with `data-head`, `data-label`, `data-filtered`, `data-sorted`;
+      `data-keeps-one`): `id`, `columns`, `keeps_one?`, `state`, `class`.
+    * `status` - the live region `ID-status` and a run's result
+      (`ID-result`): `id`, `announcement`, `announcements`, `result`.
+    * `grid` - the grid's hook's element (`ID-grid`, `data-ash-data-table`,
+      `data-lead`, `data-select`, `data-choose`, `data-chosen-rows`), its
+      sender (`data-sender`) before it, the `role=grid` element `ID-table`
+      (`data-first-row`) with `ID-head` and its two rows, the filter row's
+      form `ID-filters`, a `role=rowgroup` element per item of the stream
+      `rows` (with `Attrs.rowgroup/2`'s bundle), the `footer`, a
+      `<template>` per editable column (`ID-editor-FIELD`, `data-editor`,
+      `data-confirm`, `data-commit`) and the failure template `ID-failure`:
+      `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
+      `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
+      `creates`, `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
+      `busy?`, `running`, `row_count`, `full_view`, `summarised?`,
+      `summary`, `summing?`, `time_zone`, `nested?`, `myself`. It draws a
+      `header_cell` and a `filter_cell` per column, a `row` or a `detail`
+      per item, and an `editor` per template.
+    * `whole_text` - the popover `ID-whole` (`data-whole`): `id`.
     * `confirm` - the question `ID-dialog` (`Attrs.confirm/2`,
       `data-presentation`): a `<dialog>` when it is modal, an element with
       `role=region` when it is inline (hidden until the hook asks), with
-      `ID-dialog-question` and the buttons `value="cancel"` and
-      `value="confirm"`. Inline, and asked from a panel or a picker that is
-      modal, the hook shows a copy of it inside that panel or picker.
-    * `panel` - the action panel (`Attrs.panel/…`, `data-presentation`): a
-      `<dialog>` when it is modal, an element with `role=region` when it is
-      inline; its form, a `field` per field, `data-cancel` and a submit.
-    * `picker` - the picker, as the panel; the picker's table is its
-      `inner_block`.
+      `ID-dialog-question` and the buttons `value="cancel"` (the safe
+      answer, which has the focus) and `value="confirm"`: `id`, `model`,
+      `bulk`, `presentation`. Inline, and asked from a panel or a picker
+      that is modal (or from what is drawn inside one), the hook shows a
+      copy of it inside that panel or picker.
+    * `panel` - the action panel (`Attrs.panel/5`, `data-presentation`,
+      `data-question`, `data-ask`): a `<dialog>` when it is modal, an
+      element with `role=region` when it is inline; its form
+      `ID-panel-form`, a `field` per field, `data-cancel` and the submit
+      `ID-panel-submit`: `id`, `panel` (`Present.Panel`), `files`,
+      `presentation`, `target`, and `inner_block`, what opens inside it (the
+      picker a field opened, where the panel is modal and the picker
+      inline), drawn after the form.
+    * `picker` - the picker (`Attrs.picker/5`, `data-presentation`,
+      `data-several`), as the panel, with `data-cancel`, `data-none`,
+      `data-take`: `id`, `picker` (`Present.Picker`), `presentation`,
+      `target`; the picker's table is its `inner_block`.
     * `message` - `kind` (`:error`, `:loading`, `:fill`, `:empty`), `text`,
       `id`, `nested?`; the element `ID-KIND`.
     * `pagination` - `ID-pagination` with `data-table`, the buttons
-      `ID-previous`, `ID-next`, `ID-page-N`, the form `ID-page-size-form`.
+      `ID-previous`, `ID-next`, `ID-page-N`, the form `ID-page-size-form`:
+      `id`, `page`, `model`, `state`, `row_count`, `label`, `nested?`,
+      `target`.
 
   Drawn per column, row or cell, with the constant attributes the part
   writes itself:
 
-    * `header_cell` - `id`, `column`, `colindex`, `attrs`, `sort`,
-      `resizer`: writes `role="columnheader"`, `aria-colindex`, `tabindex="-1"`;
-      draws the `resizer` (`role="separator"`, `data-resize`).
-    * `filter_cell` - `role="gridcell"`, `aria-colindex`, `tabindex="-1"`,
-      `data-filter` where the column filters; draws the column's `filter`.
-    * `row` - a record's row: `role="row"`, `aria-rowindex`; its cells
-      `role="gridcell"`, `aria-colindex`, `tabindex="-1"`, the box's
-      `data-selector`, the expander's `data-expander` (a button with
-      `aria-expanded`), and per column the bundle `Attrs.cell/5`; what a cell
-      holds is the column's component's, else `cell`'s; the `actions_cell`
-      (`data-actions`, a button per action with `data-action`).
+    * `header_cell` - `id`, `column`, `colindex`, `attrs`
+      (`Attrs.column_header/5`: `data-sort`, `data-label`, …), `sort`:
+      writes `role="columnheader"`, `aria-colindex`, `tabindex="-1"`; draws
+      the `resizer`.
+    * `resizer` - a column's handle (`role="separator"`, `data-resize`):
+      `id`, `column`.
+    * `filter_cell` - `id`, `column`, `colindex`, `filter`, `form`, `table`,
+      `applied?`, `rejected?`, `target`: `role="gridcell"`, `aria-colindex`,
+      `tabindex="-1"`, `data-filter` where the column filters; draws the
+      column's `filter`.
+    * `filter` - one column's filter (`data-choices-button` and
+      `data-choices` for several values): `id`, `column`, `filter`, `form`,
+      `table`, `applied?`, `rejected?`, `target`.
+    * `row` - a record's row: `id`, `dom_id`, `row` (`Present.Row`),
+      `columns`, `lead`, `selecting`, `expandable?`, `editing?`, `acting?`,
+      `actions`, `asks?`, `open`, `time_zone`: `role="row"`,
+      `aria-rowindex`; its cells `role="gridcell"`, `aria-colindex`,
+      `tabindex="-1"`, the box's `data-selector`, the expander's
+      `data-expander` (a button with `aria-expanded`), and per column the
+      bundle `Attrs.cell/5` (`data-value`, `data-saved`, `data-lines`, …);
+      what a cell holds is `cell/1`'s; the `actions_cell`.
+    * `actions_cell` - `data-actions`, a button per action with
+      `data-action` (and `data-question`, `data-destructive`): `id`, `row`,
+      `colindex`, `actions`, `asks?`, `open`.
     * `cell` - what a cell holds: `state` (`:value`, `:empty`, `:masked`,
       `:forbidden`), `value` and `text` only in the state `:value`, `column`,
       `failure` (what was typed and the message, after a save failed: the
       kit draws `failure` with the id `ID-…-error`), `id`, `time_zone`. A
       masked cell is given no value: it draws `data-mask`, `data-masked`,
-      `data-secret` and the button `data-reveal`.
-    * `detail` - the lines under an expanded row, a `line` each
-      (`data-line`), the cell a nested table is moved into (`data-nested`).
-    * `footer` - `ID-foot`, with the row of the summaries (`data-summaries`,
-      a `summary_cell` per column), and in a nested table its pages
-      (`data-pager`) and the `full_view` (`data-view`).
+      `data-secret` and the button `data-reveal` (`data-show`,
+      `data-hide`, `data-show-label`, `data-hide-label`).
+    * `detail` - the lines under an expanded row (`data-detail`,
+      `data-row`): `id`, `row`, `model`, `colspan`, `creates`, `myself`; a
+      `line` each.
+    * `line` - a relationship's line (`data-line`) and, while it is open,
+      the cell a nested table is moved into (`data-nested`,
+      `data-line-cell`, `data-expander-cell`): `id`, `relationship`,
+      `open?`, `colspan`, `create`, `actions`, `table`, `myself`.
+    * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
+      `data-summaries`, a `summary_cell` per column), and in a nested table
+      its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
+      `state`, `lead`, `selecting`, `expandable?`, `acting?`, `pages?`,
+      `row_count`, `label`, `full_view`, `summarised?`, `summary`,
+      `summing?`, `time_zone`, `nested?`, `myself`.
+    * `summary_cell` - `id`, `column`, `colindex`, `summary` (`{:ok,
+      value}`, `:unavailable` or nil), `summing?`, `time_zone`:
+      `role="gridcell"`, `aria-colindex`, `tabindex="-1"`.
+    * `full_view` - the link to a nested table's full view (`data-view`,
+      `ID-full-view`): `id`, `full_view` (its path), `label`, `model`,
+      `lead`, `acting?`.
     * `editor` - the editor of a column in its template: one control,
-      `data-control` where there are more; `count` and `list`
-      (`data-list`, `data-item`, `data-add`, `data-remove`).
-    * `field`, `control` - a field of the panel (`data-field`), its control.
-    * `failure` - the message of a failed cell: a popover with `id`.
+      `data-control` where there are more: `id`, `column`.
+    * `count` - the counter of a text (`data-count`, `data-max`): `id`,
+      `counted`, `value`, `floats?`, `class`.
+    * `list` - the editor of a list (`data-list`, `data-value-label`,
+      `data-remove-label`, `data-item`, `data-add`, `data-remove`): `id`,
+      `rest` (attributes for its element), `label`, `item`, `limits`,
+      `counted`, `place` (`:grid` or `:panel`), `values`, `name`.
+    * `field` - a field of the panel (`data-field`, `data-add-group`,
+      `data-remove-group`, `data-unpick`, `data-clear-field`,
+      `data-invalid`): `id`, `input`, `name`, `value`, `errors`, `places`,
+      `chosen`, `clear`, `upload`, `inside`, `target`.
+    * `control` - a field's control: `id`, `input`, `name`, `value`,
+      `secret?`, `invalid?`, `described`, `limits`.
+    * `failure` - the message of a failed cell: a popover with `id`,
+      `message`.
 
   ## Presentation hints
 
@@ -244,7 +324,7 @@ defmodule AshDataTable.Kit do
   `:message`), or nil. `state` is what the table knows as it draws the
   part: `nested?` (the root, the argument line, the selection line, the
   grid, the pagination, a message), `kind` (a message), `destructive?` (the
-  panel), `presentation` (the panel, the picker). Never called per row or
+  panel), `presentation` (the panel, the picker, the question). Never called per row or
   cell: what changes there in the browser (selected, busy, invalid) is an
   attribute, which the root's style reaches.
   """
