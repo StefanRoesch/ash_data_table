@@ -811,13 +811,18 @@ defmodule AshDataTable do
 
   @doc """
   Chooses for the picker of request `ref`: a primary key of the record to
-  choose (a map, or the value of a key of one field), a list of them where
-  several are chosen, or nil for no record. Each key is a claim: the record
-  is read again as the person, through the picker's read action, and one
-  that names nothing they may read there chooses nothing (the request says
-  why in `errors`). A cell's choice then saves as the person's would, after
-  the column's question (with `:confirm`, a request of its own; else the
-  page asked it with its chooser); a field's choice is the field's.
+  choose (a map of its fields by their names as atoms, or the value of a
+  key of one field), a list of them where several are chosen, or nil for
+  no record. A map without a field of the primary key raises
+  `ArgumentError`. Each key is a claim: the record is read again as the
+  person, through the picker's read action, and one that names nothing
+  they may read there chooses nothing (the request says why in `errors`).
+
+  A cell's choice then saves as the person's would, after the column's
+  question. With `:confirm` that question is a request of its own. Without
+  it, the request's `question` is the column's question, and the page must
+  show it with its chooser: the choice is the person's answer to it, and
+  saves at once. A field's choice is the field's.
   """
   @spec pick_request(Phoenix.LiveView.Socket.t(), atom, String.t(), term) ::
           Phoenix.LiveView.Socket.t()

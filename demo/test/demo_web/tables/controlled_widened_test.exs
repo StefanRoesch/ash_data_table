@@ -235,6 +235,32 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
     end
 
     @tag controlled: [:picker]
+    test "a map without the fields of the primary key raises, and chooses nothing",
+         %{view: view, tenant: tenant, key: key} do
+      event(view, "pick", %{"row" => key, "column" => "owner"})
+      {ref, :picker} = requested()
+      test = self()
+
+      for given <- [%{"name" => "Bob Ray"}, %{id: "Bob Ray"}] do
+        answer(view, fn socket ->
+          try do
+            AshDataTable.pick_request(socket, :table, ref, given)
+          rescue
+            error in ArgumentError -> send(test, {:raised, Exception.message(error)})
+          end
+
+          socket
+        end)
+
+        assert_received {:raised, message}
+        assert message =~ "has no `:name`"
+      end
+
+      assert record(tenant, key).owner_id == "Ann Lee"
+      assert %{ref: ^ref, errors: []} = request(view)
+    end
+
+    @tag controlled: [:picker]
     test "the host's choice saves through the veto, the host having asked the question",
          %{view: view, tenant: tenant, key: key} do
       event(view, "pick", %{"row" => key, "column" => "owner"})

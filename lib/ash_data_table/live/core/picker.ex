@@ -193,13 +193,31 @@ defmodule AshDataTable.Live.Core.Picker do
   end
 
   # A key as the host gives it, as the browser names a row: the values of
-  # the primary key in its order.
+  # the primary key in its order. A map without one of them is a mistake of
+  # the host's, never "none".
   defp named_key(_destination, nil), do: nil
 
   defp named_key(destination, %{} = key) do
-    case Ash.Resource.Info.primary_key(destination) do
-      [field] -> Map.get(key, field)
-      fields -> Enum.map(fields, &Map.get(key, &1))
+    fields = Ash.Resource.Info.primary_key(destination)
+
+    values =
+      for field <- fields do
+        case Map.fetch(key, field) do
+          {:ok, value} ->
+            value
+
+          :error ->
+            raise ArgumentError,
+                  "AshDataTable.pick_request/4 was given the key #{inspect(key, limit: 5)}, " <>
+                    "which has no `#{inspect(field)}`. A key of #{inspect(destination)} is a map " <>
+                    "of the fields of its primary key, by their names as atoms " <>
+                    "(#{Enum.map_join(fields, ", ", &inspect/1)}), or the value of a key of one field."
+        end
+      end
+
+    case values do
+      [value] -> value
+      values -> values
     end
   end
 
