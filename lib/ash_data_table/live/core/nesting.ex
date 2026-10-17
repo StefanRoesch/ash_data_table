@@ -5,6 +5,7 @@ defmodule AshDataTable.Live.Core.Nesting do
   # opening a line, and what a nested table and a picker's table are given.
 
   alias AshDataTable.Event
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Reading
@@ -381,11 +382,11 @@ defmodule AshDataTable.Live.Core.Nesting do
             %{pk: pk} <- [rows[key]],
             name <- lines,
             %Relationship{} = relationship <- [Enum.find(model.relationships, &(&1.name == name))] do
-          row_id = "#{id}-row-#{key}"
+          row = Ids.row(id, key)
 
           given =
             Map.merge(reader, %{
-              id: "#{row_id}-t-#{name}",
+              id: Ids.nested_table(row, name),
               resource: relationship.destination,
               table: relationship.table,
               via: relationship,
@@ -393,15 +394,15 @@ defmodule AshDataTable.Live.Core.Nesting do
               label: relationship.label,
               labelledby:
                 Enum.join(
-                  ["#{row_id}-l-#{name}-b"] ++
-                    if(first, do: [Present.cell_id(id, key, first.name)], else: []),
+                  [Ids.line_button(row, name)] ++
+                    if(first, do: [Ids.cell(row, first.name)], else: []),
                   " "
                 ),
               url: nil,
               mounted?: false
             })
 
-          {"#{row_id}-t-#{name}", given, "#{row_id}-n-#{name}-c"}
+          {Ids.nested_table(row, name), given, Ids.nested_cell(row, name)}
         end
 
       _nothing_open ->

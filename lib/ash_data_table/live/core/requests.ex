@@ -37,6 +37,7 @@ defmodule AshDataTable.Live.Core.Requests do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias AshDataTable.Event
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
@@ -45,7 +46,6 @@ defmodule AshDataTable.Live.Core.Requests do
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Registry
-  alias AshDataTable.Present
 
   @doc "Whether the table the callback works on hands requests of `kind` to the host."
   def controlled?(socket, kind) do
@@ -193,7 +193,7 @@ defmodule AshDataTable.Live.Core.Requests do
     push_event(socket, "ash_data_table:answered", %{
       table: id,
       ref: ref,
-      cell: Present.cell_id(id, key, name),
+      cell: Ids.cell(Ids.row(id, key), name),
       saved: Map.get(reply, :ok) == true,
       error: Map.get(reply, :error)
     })

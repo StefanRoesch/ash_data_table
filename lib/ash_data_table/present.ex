@@ -189,16 +189,6 @@ defmodule AshDataTable.Present do
   def mask, do: "••••••"
 
   @doc """
-  The DOM id of the cell of column `name` in the row of `key` (the key in
-  the row's DOM id) of the table `id`: what a row's `dom_id` and the
-  column's name make.
-  """
-  @spec cell_id(String.t(), String.t(), atom | String.t()) :: String.t()
-  def cell_id(id, key, name), do: "#{row_id(id, key)}-c-#{name}"
-
-  defp row_id(id, key), do: "#{id}-row-#{key}"
-
-  @doc """
   A row of the page, for the stream. `record` is the record as it was read
   or returned; it is scrubbed here, and nothing of it but its cells' values
   is kept. `attributes`: `id` (the table's), `key`, `rowindex`, `names`,
@@ -213,7 +203,7 @@ defmodule AshDataTable.Present do
 
     %Row{
       key: attributes.key,
-      dom_id: row_id(attributes.id, attributes.key),
+      dom_id: AshDataTable.Ids.row(attributes.id, attributes.key),
       rowindex: attributes.rowindex,
       names: attributes.names,
       open?: Map.get(attributes, :open?, false),

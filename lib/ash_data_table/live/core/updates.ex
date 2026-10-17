@@ -5,6 +5,7 @@ defmodule AshDataTable.Live.Core.Updates do
 
   import Phoenix.LiveView
 
+  alias AshDataTable.Ids
   alias AshDataTable.Listener
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Reading
@@ -169,7 +170,7 @@ defmodule AshDataTable.Live.Core.Updates do
           [^id, child | _] <- [Enum.drop_while(path, &(&1 != id))],
           {key, lines} <- open,
           name <- lines,
-          child == "#{id}-row-#{key}-t-#{name}",
+          child == Ids.nested_table(Ids.row(id, key), name),
           do: key
 
     of_panel ++ of_picker ++ under

@@ -7,6 +7,7 @@ defmodule AshDataTable.Parts.Related do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
@@ -37,13 +38,13 @@ defmodule AshDataTable.Parts.Related do
       :for={relationship <- @model.relationships}
       part={:line}
       kit={@kit}
-      id={"#{@id}-row-#{@row.key}"}
+      id={Ids.row(@id, @row.key)}
       relationship={relationship}
       open?={relationship.name in @row.lines}
       colspan={@colspan}
       create={@creates[relationship.name][:create]}
       actions={@creates[relationship.name][:actions] || []}
-      table={"#{@id}-row-#{@row.key}-t-#{relationship.name}"}
+      table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
     />
     """
@@ -66,7 +67,7 @@ defmodule AshDataTable.Parts.Related do
     ~H"""
     <tr id={"#{@id}-l-#{@relationship.name}"} role="row">
       <td
-        id={"#{@id}-l-#{@relationship.name}-c"}
+        id={Ids.line_cell(@id, @relationship.name)}
         role="gridcell"
         colspan={@colspan}
         aria-colindex="1"
@@ -81,7 +82,7 @@ defmodule AshDataTable.Parts.Related do
         <div class="sticky left-0 w-fit px-4">
           <button
             type="button"
-            id={"#{@id}-l-#{@relationship.name}-b"}
+            id={Ids.line_button(@id, @relationship.name)}
             tabindex="-1"
             aria-expanded={to_string(@open?)}
             class="font-medium"
@@ -123,16 +124,16 @@ defmodule AshDataTable.Parts.Related do
         </div>
       </td>
     </tr>
-    <tr :if={@open?} id={"#{@id}-n-#{@relationship.name}"} role="row">
+    <tr :if={@open?} id={Ids.nested_row(@id, @relationship.name)} role="row">
       <td
-        id={"#{@id}-n-#{@relationship.name}-c"}
+        id={Ids.nested_cell(@id, @relationship.name)}
         role="gridcell"
         colspan={@colspan}
         aria-colindex="1"
         tabindex="-1"
         data-nested
-        data-line-cell={"#{@id}-l-#{@relationship.name}-c"}
-        data-expander-cell={"#{@id}-e"}
+        data-line-cell={Ids.line_cell(@id, @relationship.name)}
+        data-expander-cell={Ids.expander(@id)}
         class="p-0"
       >
         <%!-- The nested table is drawn by the table on the page, and the

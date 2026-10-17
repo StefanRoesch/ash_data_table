@@ -12,6 +12,7 @@ defmodule AshDataTable.Live.Core.Reading do
   alias AshDataTable.Errors
   alias AshDataTable.Event
   alias AshDataTable.Format
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Selection
@@ -457,7 +458,7 @@ defmodule AshDataTable.Live.Core.Reading do
   # expanded; `pk` is the row's primary key, which its nested tables are
   # given. No record is needed for it.
   def detail(id, key, pk, lines) do
-    %{dom_id: "#{id}-row-#{key}-x", detail?: true, key: key, pk: pk, lines: lines}
+    %{dom_id: Ids.detail(Ids.row(id, key)), detail?: true, key: key, pk: pk, lines: lines}
   end
 
   # Puts a row of the page into the stream again, in its place: with the
@@ -554,8 +555,8 @@ defmodule AshDataTable.Live.Core.Reading do
       |> Core.put(open: Map.delete(Core.table(socket).entry.open, key))
       |> Core.put(leaving: MapSet.delete(Core.table(socket).entry.leaving, key))
       |> Core.put(page: %{page | total: page.total && max(page.total - 1, 0)})
-      |> stream_delete_by_dom_id(Core.table(socket).entry.stream, "#{id}-row-#{key}")
-      |> stream_delete_by_dom_id(Core.table(socket).entry.stream, "#{id}-row-#{key}-x")
+      |> stream_delete_by_dom_id(Core.table(socket).entry.stream, Ids.row(id, key))
+      |> stream_delete_by_dom_id(Core.table(socket).entry.stream, Ids.detail(Ids.row(id, key)))
       |> Selection.gone(pk)
       |> due(:force)
 

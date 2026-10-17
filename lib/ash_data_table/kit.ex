@@ -73,9 +73,25 @@ defmodule AshDataTable.Kit do
   Each part is given `kit` and the assigns named below; a part draws the
   parts named in it through the kit. Values are what the table makes of
   its rows, panel and picker (`Present.Row`, `Present.Panel`, …) and of its
-  model (`Model.Column`, `Model.Action`, …), never a record. `myself` and `target`
+  model (`Model.Column`, `Model.Action`, …), never a record: their fields
+  are listed in "Kit contract 1" below. `myself` and `target`
   are the `phx-target` of the part's events (nil for an attached table);
   `id` is the table's id, or the element's where it says so.
+
+  Where the table names an element a part draws (focus goes to it, a
+  nested table is moved into it or named by it), the part makes its id
+  with `AshDataTable.Ids`, as the table does: a row's cells
+  (`Ids.cell/2`, `Ids.expander/1`, `Ids.actions_cell/1`, of the row's
+  `dom_id`), a line's (`Ids.line_cell/2`, `Ids.line_button/2`,
+  `Ids.nested_row/2`, `Ids.nested_cell/2`, `Ids.nested_table/2`, of
+  `Ids.row/2`), a field's (`Ids.field/2`, `Ids.clear/1`, `Ids.choose/1`,
+  `Ids.unpick/2`) and an argument's (`Ids.argument/2`,
+  `Ids.argument_value/2`). The other ids below are the table's id and a
+  suffix.
+
+  A part of one's own is called with `apply/3` (`part/1`): the defaults of
+  its `attr`s are not applied. It is given every assign named below, and
+  nothing else.
 
   Drawn once per table:
 
@@ -175,7 +191,8 @@ defmodule AshDataTable.Kit do
       `actions`, `asks?`, `open`, `time_zone`: `role="row"`,
       `aria-rowindex`; its cells `role="gridcell"`, `aria-colindex`,
       `tabindex="-1"`, the box's `data-selector`, the expander's
-      `data-expander` (a button with `aria-expanded`), and per column the
+      `data-expander` (`Ids.expander/1`, a button with `aria-expanded`),
+      and per column (`Ids.cell/2`) the
       bundle `Attrs.cell/5` (`data-value`, `data-saved`, `data-lines`, …);
       what a cell holds is `cell/1`'s; the `actions_cell`.
     * `actions_cell` - `data-actions`, a button per action with
@@ -191,10 +208,13 @@ defmodule AshDataTable.Kit do
     * `detail` - the lines under an expanded row (`data-detail`,
       `data-row`): `id`, `row`, `model`, `colspan`, `creates`, `myself`; a
       `line` each.
-    * `line` - a relationship's line (`data-line`) and, while it is open,
-      the cell a nested table is moved into (`data-nested`,
-      `data-line-cell`, `data-expander-cell`): `id`, `relationship`,
-      `open?`, `colspan`, `create`, `actions`, `table`, `myself`.
+    * `line` - a relationship's line (`data-line`, its cell
+      `Ids.line_cell/2` and its button `Ids.line_button/2`, which names the
+      nested grid) and, while it is open, the row `Ids.nested_row/2` whose
+      cell `Ids.nested_cell/2` a nested table is moved into (`data-nested`,
+      `data-line-cell`, `data-expander-cell`): `id` (the row's DOM id),
+      `relationship`, `open?`, `colspan`, `create`, `actions`, `table`
+      (the nested table's id), `myself`.
     * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
       `data-summaries`, a `summary_cell` per column), and in a nested table
       its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
@@ -297,6 +317,236 @@ defmodule AshDataTable.Kit do
 
   The names of the model's columns, values, actions, relationships and
   arguments, and the table's label, are words in the model already.
+
+  ## Kit contract 1: the values a part is given
+
+  The structs below are what the parts are given (`row`, `panel`,
+  `picker`, `model`, `column`, `state`, `page`, …). Their fields, as listed
+  here, are the kit contract of version 1: a field is not renamed, taken
+  away or given another meaning without the contract's number going up.
+  The modules themselves, and their functions, are the table's own and
+  undocumented: a kit reads the fields, and calls none of them.
+
+  Besides these, a part is given plain values: `bulk` and `offered`
+  (`AshDataTable.Model.Action`s), `lines` (by an argument's key, the values
+  of the list editor typed so far), `refused` (an argument's text the
+  read action refused, with its messages), `selecting` (`:single`,
+  `:multi` or nil), `summary` (by column `{:ok, value}` or
+  `:unavailable`), `result` (a run's `summary` and `failures`, messages),
+  `announcement`/`announcements` (messages), `creates` (by relationship,
+  a nested table's `create` and `actions`), `related` (`via` and `key` of
+  the record a table is limited to), `full_view` (a path) and `running`
+  (an `AshDataTable.Model.Action`, or nil).
+
+  ### `AshDataTable.Present.Row`
+
+  A record's row, as the stream holds it (`rows` of `grid`, `row` of `row`
+  and `detail`):
+
+    * `key` - the key in the row's DOM id, by which its events name it
+    * `dom_id` - the row's DOM id (`AshDataTable.Ids.row/2`)
+    * `rowindex` - its `aria-rowindex`, counted from 1 with the header's rows
+    * `names` - what the hook names the row by where `key` does not (a
+      primary key that is no DOM id), else nil
+    * `open?` - whether the row is expanded
+    * `current?` - in a picker's table, whether it is the record chosen now
+    * `action_failure` - the message of a row action that failed, or nil
+    * `cells` - by column name, a `AshDataTable.Present.Cell` each
+
+  The stream holds besides, under an expanded row, its detail: a map with
+  `detail?: true`, `dom_id` (`AshDataTable.Ids.detail/1`), `key`, `pk` and
+  `lines` (the names of the open relationships, nil while the row is not
+  expanded).
+
+  ### `AshDataTable.Present.Cell`
+
+    * `state` - `:value`, `:empty`, `:masked` (a sensitive value that is
+      there) or `:forbidden` (a field hidden from the person on this record)
+    * `value` - the value, in the state `:value` only (a reference cell's
+      label, a map cell's value with its sensitive fields masked)
+    * `editable?` - whether the person can edit this cell of this row
+    * `failure` - after a save failed: `typed` (`""` for a sensitive cell),
+      `message` and `places` (of an array's values it refused); else nil
+
+  ### `AshDataTable.Present.Panel`
+
+    * `title`, `submit`, `question` - messages (`question` nil for none)
+    * `kind` - `:cell`, `:row`, `:create`, `:table` or `:bulk`
+    * `destructive?` - whether its action destroys the record
+    * `errors` - what the action said of none of the fields, or nil
+    * `method` - its form's HTTP method
+    * `fields` - an `AshDataTable.Present.Field` per input
+    * `inside` - what the fields of a value made of fields are drawn with:
+      `errors` by place, `touched`, `submitted?` and `time_zone`
+
+  ### `AshDataTable.Present.Field`
+
+    * `name`, `path`, `form_name` - the input's name, the names it is sent
+      under, and its control's name
+    * `input` - the `AshDataTable.Model.Input`
+    * `value` - what its control holds, as text; for a sensitive field
+      only what was typed into it in this panel
+    * `errors`, `places` - the messages shown at it, and the places of the
+      values of an array they are about
+    * `chosen` - of a field given by choosing records: by key,
+      `%{label: {column, value, time_zone} | nil, row: …}`; else nil
+    * `clear` - of a sensitive field that can be emptied: `:offered` or
+      `:asked`; else nil
+
+  ### `AshDataTable.Present.Picker`
+
+    * `name` - the column or field it chooses for
+    * `title`, `question`, `error` - messages, or nil
+    * `several?`, `allow_none?` - whether several records are chosen, and
+      whether "None" is offered
+    * `current`, `chosen` - the key or keys held now, and the rows selected
+      as it opens (`{key, names}`)
+    * `destination`, `choose_action`, `destination_attribute`, `label` -
+      the resource chosen from, its read action, the attribute that is
+      the value, what a record is called
+
+  ### `AshDataTable.Model`
+
+  The table as it is drawn for this person (`model`):
+
+    * `resource`, `table` - the resource and the table's name
+    * `name` - what the table is called
+    * `primary_key` - the names of the primary key's fields
+    * `columns` - `AshDataTable.Model.Column`s, in their order
+    * `arguments` - the argument line, `AshDataTable.Model.Argument`s
+    * `relationships` - the lines a row offers, `AshDataTable.Model.Relationship`s
+    * `actions`, `table_actions`, `create` - the row actions, the table
+      actions, and the create action or nil (`AshDataTable.Model.Action`s)
+    * `pagination` - an `AshDataTable.Model.Pagination`
+    * `read_action`, `read_arguments` - what the table reads through
+    * `via` - of a nested table, the relationship it is nested by, or nil
+    * `max_depth` - how deep its rows expand
+    * `on_forbidden` - `:not_found` or `:message`, what a refused read is
+    * `live?` - whether it follows live updates
+    * `sticky_label?` - a presentation hint: the label column stays in view
+    * `time_zone` - the page's zone
+
+  ### `AshDataTable.Model.Column`
+
+    * `name`, `field`, `kind` - what the column is told apart by, the
+      resource's field it shows, and what that field is (`:attribute`,
+      `:calculation`, `:aggregate`, `:reference`, …)
+    * `label` - its header
+    * `type`, `cell_type`, `values` - the Ash type with its constraints,
+      what it is shown as (`:text`, `:number`, …, `{:array, item}`, `:map`,
+      `:union`, `:other`), and of an enum each value with its label
+    * `fields`, `members` - of a value made of fields its
+      `AshDataTable.Model.Field`s, of a union its kinds; else nil
+    * `sortable?`, `operators`, `takes` - whether it sorts, its filter's
+      operators (the default first), and by operator what it takes
+      (`:none`, `:one`, `:many` or `:range`)
+    * `editable?`, `editor`, `update_action`, `required?` - whether its
+      cells can be edited at all, what with (`:text`, `:number`,
+      `:boolean`, `:date`, `:datetime`, `:enum`, `:choices`, `:list`,
+      `:group`, `:groups`, `:union`, `:component`, `:reference`; nil where
+      they cannot), through which action, and whether a cell may be left
+      empty
+    * `confirm` - the question asked before a save, or nil
+    * `component` - a presentation hint: `module`, `cell?`, `editor?`,
+      `commit`, `column` (`AshDataTable.Component.Column`), or nil
+    * `max_lines` - a presentation hint: how many lines a cell shows
+    * `reference` - of a reference column: `relationship`, `destination`,
+      `label_field`, `source_attribute`, `destination_attribute`,
+      `allow_nil?`, `choose_action`, …; else nil
+    * `summary` - the kind of its footer summary, or nil
+    * `sensitive?`, `partly_hidden?` - its cells are masked; the person
+      sees the field on some records only
+    * `fixed`, `arguments` - what a calculation column is computed with
+
+  ### `AshDataTable.Model.Field`
+
+  A field of a value made of fields, or a kind of a union:
+
+    * `name`, `label`, `type`, `cell_type`, `values` - as a column's
+    * `fields`, `members` - of a value made of fields, of a union; else nil
+    * `tag` - of a union's kind, what tells it apart (`{key, value}`), or nil
+    * `input?`, `editor`, `required?`, `default` - whether a person gives
+      it, its control, whether it may be empty, what a new value starts with
+    * `key?` - a key of the value that is sent back as it came
+    * `sensitive?`
+
+  ### `AshDataTable.Model.Action`
+
+    * `name`, `type`, `label` - its name, `:update`, `:destroy`,
+      `:create` or `:action`, and what its button says
+    * `confirm` - the question asked before it runs, or nil
+    * `inputs` - what the person gives it, `AshDataTable.Model.Input`s
+    * `panel?` - whether it opens the action panel first
+    * `bulk?` - whether it is offered on the selected rows too
+    * `record_argument`, `page_arguments`, `link` - what the table gives it
+      itself (no inputs)
+    * `returns` - of a generic action that returns an enum, its cell type
+      and values; else nil
+
+  ### `AshDataTable.Model.Input`
+
+    * `name`, `kind`, `label` - its name, `:attribute` or `:argument`,
+      and what its field is called
+    * `type`, `cell_type`, `values` - as a column's
+    * `editor` - its control (a column's editors, `:file`, `:plain`,
+      `:reference`, `:references`)
+    * `fields`, `members` - of a value made of fields, of a union
+    * `upload` - of a file: `accept`, `max_file_size`
+    * `component` - of an attribute whose column has a component editor
+    * `reference` - of a key chosen in the picker: as a column's, with
+      `several?` and `related?`
+    * `required?`, `default`, `sensitive?`, `partly_hidden?`
+
+  ### `AshDataTable.Model.Relationship`
+
+    * `name`, `label`, `kind`, `cardinality` - its name, what its line
+      says, what it is on the resource, `:one` or `:many`
+    * `source`, `source_table`, `source_read_action` - the table it is a
+      line of
+    * `destination`, `table`, `read_action` - the nested table
+    * `sort` - its own sort
+    * `pageable?`, `sortable?`, `filterable?` - what the nested table offers
+    * `link` - what a record created under the row is given, or nil
+
+  ### `AshDataTable.Model.Argument`
+
+  An argument of the argument line:
+
+    * `name`, `column`, `label`, `column_label` - its name, the
+      calculation column it is asked for (or nil), what its input is
+      called, and that column's label
+    * `type`, `cell_type`, `values`, `editor`, `required?`
+    * `default`, `default_fun` - what it is while nothing is chosen
+    * `time_zone`
+
+  ### `AshDataTable.Model.Pagination`
+
+    * `strategy` - `:offset`, `:keyset` or `:none`
+    * `page_size`, `page_sizes` - the size it opens with, and the sizes on
+      offer
+    * `countable?` - whether a total is known
+
+  ### `AshDataTable.State`
+
+  What the person has chosen (`state`, and a page's `previous` and `next`):
+
+    * `sort` - `{column, :asc | :desc}` or nil
+    * `filters` - by column, `{operator, value}`
+    * `arguments` - by an argument's key, what was typed
+    * `page`, `after`, `before` - the page number (offset), the cursors
+      (keyset)
+    * `per` - the page size chosen, or nil for the one it opens with
+
+  ### `AshDataTable.Query.Page`
+
+  The page shown (`page`), nil before the first read:
+
+    * `total`, `pages` - the number of records and of pages, or nil
+    * `offset` - the number of records before it, or nil
+    * `previous`, `next` - the `AshDataTable.State` of the pages around
+      it, nil where there is none
+    * `records`, `parent` - always nil: a part is given no record
+
 
   ## Presentation hints
 

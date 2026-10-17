@@ -14,6 +14,7 @@ defmodule DemoWeb.DivKit do
   use AshDataTable.Kit, contract: 1
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
 
@@ -250,7 +251,7 @@ defmodule DemoWeb.DivKit do
       class="table-cell px-2 py-1"
     ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={@texts.select_row} class="checkbox checkbox-xs" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={@texts.select_row} class="radio radio-xs" /></div><div
       :if={@expandable?}
-      id={"#{@dom_id}-e"}
+      id={Ids.expander(@dom_id)}
       role="gridcell"
       aria-colindex={@lead}
       tabindex="-1"
@@ -258,17 +259,17 @@ defmodule DemoWeb.DivKit do
       class="table-cell px-2 py-1"
     ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={@texts.related_records}></button></div><div
       :for={{column, index} <- Enum.with_index(@columns)}
-      id={"#{@dom_id}-c-#{column.name}"}
+      id={Ids.cell(@dom_id, column.name)}
       role="gridcell"
       aria-colindex={@lead + index + 1}
       tabindex="-1"
-      {Attrs.cell("#{@dom_id}-c-#{column.name}", column, @editing?, @row, @time_zone)}
+      {Attrs.cell(Ids.cell(@dom_id, column.name), column, @editing?, @row, @time_zone)}
       class="table-cell px-2 py-1"
-    ><Kit.cell kit={@kit} id={"#{@dom_id}-c-#{column.name}"} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} /></div><Kit.part
+    ><Kit.cell kit={@kit} id={Ids.cell(@dom_id, column.name)} column={column} cell={@row.cells[column.name]} time_zone={@time_zone} /></div><Kit.part
       :if={@acting?}
       part={:actions_cell}
       kit={@kit}
-      id={"#{@dom_id}-a"}
+      id={Ids.actions_cell(@dom_id)}
       colindex={length(@columns) + @lead + 1}
       row={@row}
       actions={@actions}
@@ -314,13 +315,13 @@ defmodule DemoWeb.DivKit do
       :for={relationship <- @model.relationships}
       part={:line}
       kit={@kit}
-      id={"#{@id}-row-#{@row.key}"}
+      id={Ids.row(@id, @row.key)}
       relationship={relationship}
       open?={relationship.name in @row.lines}
       colspan={@colspan}
       create={@creates[relationship.name][:create]}
       actions={@creates[relationship.name][:actions] || []}
-      table={"#{@id}-row-#{@row.key}-t-#{relationship.name}"}
+      table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
     />
     """
@@ -333,7 +334,7 @@ defmodule DemoWeb.DivKit do
     ~H"""
     <div id={"#{@id}-l-#{@relationship.name}"} role="row" class="table-row">
       <div
-        id={"#{@id}-l-#{@relationship.name}-c"}
+        id={Ids.line_cell(@id, @relationship.name)}
         role="gridcell"
         colspan={@colspan}
         aria-colindex="1"
@@ -343,7 +344,7 @@ defmodule DemoWeb.DivKit do
       >
         <button
           type="button"
-          id={"#{@id}-l-#{@relationship.name}-b"}
+          id={Ids.line_button(@id, @relationship.name)}
           tabindex="-1"
           aria-expanded={to_string(@open?)}
           class="font-medium"
@@ -352,16 +353,16 @@ defmodule DemoWeb.DivKit do
         </button>
       </div>
     </div>
-    <div :if={@open?} id={"#{@id}-n-#{@relationship.name}"} role="row" class="table-row">
+    <div :if={@open?} id={Ids.nested_row(@id, @relationship.name)} role="row" class="table-row">
       <div
-        id={"#{@id}-n-#{@relationship.name}-c"}
+        id={Ids.nested_cell(@id, @relationship.name)}
         role="gridcell"
         colspan={@colspan}
         aria-colindex="1"
         tabindex="-1"
         data-nested
-        data-line-cell={"#{@id}-l-#{@relationship.name}-c"}
-        data-expander-cell={"#{@id}-e"}
+        data-line-cell={Ids.line_cell(@id, @relationship.name)}
+        data-expander-cell={Ids.expander(@id)}
         class="table-cell p-0"
       >
       </div>

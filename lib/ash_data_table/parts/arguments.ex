@@ -5,6 +5,7 @@ defmodule AshDataTable.Parts.Arguments do
   use Phoenix.Component
 
   alias AshDataTable.Attrs
+  alias AshDataTable.Ids
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Model
@@ -165,7 +166,7 @@ defmodule AshDataTable.Parts.Arguments do
               step={@limits.step || Parts.Editors.input_step(elem(@argument.cell_type, 1))}
               min={@limits.min}
               max={@limits.max}
-              id={"#{@id}-#{at}"}
+              id={Ids.argument_value(@id, at)}
               name={@name <> "[]"}
               value={value}
               phx-debounce="blur"
@@ -200,7 +201,7 @@ defmodule AshDataTable.Parts.Arguments do
           <button
             :if={@argument.editor == :list}
             type="button"
-            id={"#{@id}-add"}
+            id={Ids.argument_value(@id, :add)}
             class="btn btn-sm"
             phx-click={Parts.Common.event(@table, "argument_add")}
             phx-value-argument={@named}
@@ -253,7 +254,7 @@ defmodule AshDataTable.Parts.Arguments do
         :for={argument <- @model.arguments}
         part={:argument}
         kit={@kit}
-        id={"#{@id}-arg-#{Model.Argument.argument_id(argument)}"}
+        id={Ids.argument(@id, Model.Argument.argument_id(argument))}
         named={Model.Argument.argument_id(argument)}
         name={argument_name(argument)}
         argument={argument}

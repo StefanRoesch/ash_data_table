@@ -13,6 +13,7 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Edit
+  alias AshDataTable.Ids
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -447,18 +448,18 @@ defmodule AshDataTable.Parts.Grid do
       data-selector
     ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={@texts.select_row} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={@texts.select_row} class="radio radio-xs border-base-content/50" /></td><td
       :if={@expandable?}
-      id={"#{@dom_id}-e"}
+      id={Ids.expander(@dom_id)}
       role="gridcell"
       aria-colindex={@lead}
       tabindex="-1"
       data-expander
     ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={@texts.related_records}></button></td><td
       :for={{column, colindex, cell} <- cells(@columns, @lead, @row)}
-      id={"#{@dom_id}-c-#{column.name}"}
+      id={Ids.cell(@dom_id, column.name)}
       role="gridcell"
       aria-colindex={colindex}
       tabindex="-1"
-      {Attrs.cell("#{@dom_id}-c-#{column.name}", column, @editing?, @row, @time_zone)}
+      {Attrs.cell(Ids.cell(@dom_id, column.name), column, @editing?, @row, @time_zone)}
     ><Common.dynamic_component
       :if={component?(column, cell)}
       module={column.component.module}
@@ -470,7 +471,7 @@ defmodule AshDataTable.Parts.Grid do
       :if={!component?(column, cell)}
       part={:cell}
       kit={@kit}
-      id={"#{@dom_id}-c-#{column.name}"}
+      id={Ids.cell(@dom_id, column.name)}
       column={column}
       state={cell.state}
       value={cell.value}
@@ -484,7 +485,7 @@ defmodule AshDataTable.Parts.Grid do
       :if={@acting?}
       part={:actions_cell}
       kit={@kit}
-      id={"#{@dom_id}-a"}
+      id={Ids.actions_cell(@dom_id)}
       colindex={length(@columns) + @lead + 1}
       row={@row}
       actions={@actions}

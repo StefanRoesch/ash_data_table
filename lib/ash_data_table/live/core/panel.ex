@@ -8,6 +8,7 @@ defmodule AshDataTable.Live.Core.Panel do
   alias AshDataTable.Act
   alias AshDataTable.Event
   alias AshDataTable.Format
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
@@ -157,7 +158,7 @@ defmodule AshDataTable.Live.Core.Panel do
       form = Act.validate(panel.form, panel.inputs, typed, given(panel), panel.time_zone)
       used = MapSet.put(panel.used, name)
       panel = %{panel | form: form, typed: typed, groups: groups, used: used}
-      focus = Enum.join(["#{Core.table(socket).entry.id}-panel-f-#{name}" | focus], "-")
+      focus = Ids.field(Core.table(socket).entry.id, [name | focus])
 
       {:reply, %{focus: focus},
        Core.put(socket, panel: errors(panel, Core.table(socket).entry.model))}
@@ -188,7 +189,7 @@ defmodule AshDataTable.Live.Core.Panel do
             do: MapSet.delete(cleared, input),
             else: MapSet.put(cleared, input)
 
-        {:reply, %{focus: "#{Core.table(socket).entry.id}-panel-f-#{name}-clear"},
+        {:reply, %{focus: Ids.clear(Ids.field(Core.table(socket).entry.id, [name]))},
          Core.put(socket, panel: %{panel | cleared: cleared})}
     end
   end
@@ -728,9 +729,9 @@ defmodule AshDataTable.Live.Core.Panel do
   end
 
   # The first data cell of a row, where focus goes when the row was created.
-  defp first_cell(id, key, %{columns: [column | _]}), do: Present.cell_id(id, key, column.name)
+  defp first_cell(id, key, %{columns: [column | _]}), do: Ids.cell(Ids.row(id, key), column.name)
 
-  defp first_cell(id, key, _model), do: "#{id}-row-#{key}-a"
+  defp first_cell(id, key, _model), do: Ids.actions_cell(Ids.row(id, key))
 
   # The panel stays open with what the action said: at the fields, and above
   # them what is about no field of the panel. All of it is read out.

@@ -735,6 +735,11 @@ defmodule AshDataTable.KitCase do
         "the nested grid in its cell"
       ) ++
       need(page, "[id='#{nested}-table'][role=grid]", "the nested grid") ++
+      need(
+        page,
+        "[id='#{nested}-table'][aria-labelledby~='#{AshDataTable.Ids.line_button(AshDataTable.Ids.row("kit", key), :parts)}']",
+        "the nested grid named by its line's button, which is on the page"
+      ) ++
       need(page, "[id='#{nested}-head-title'][role=columnheader]", "its header") ++
       need(page, "[id='#{nested}-head-secret'][role=columnheader]", "its sensitive column") ++
       need(
@@ -876,8 +881,8 @@ defmodule AshDataTable.KitCase do
       need(page, "[id='kit-row-#{key}-l-parts-c'][role=gridcell][data-line='parts']", "the line") ++
       need(
         page,
-        "[id='kit-row-#{key}-l-parts-c'] button[aria-expanded='true']",
-        "its button, open"
+        "[id='kit-row-#{key}-l-parts-c'] button[id='#{AshDataTable.Ids.line_button(AshDataTable.Ids.row("kit", key), :parts)}'][aria-expanded='true']",
+        "its button (`AshDataTable.Ids.line_button/2`), open"
       ) ++
       need(
         page,

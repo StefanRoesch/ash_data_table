@@ -4,6 +4,7 @@ defmodule AshDataTable.Live.Core.Picker do
   # action panel given by choosing related records.
 
   alias AshDataTable.Act
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Panel
@@ -32,13 +33,13 @@ defmodule AshDataTable.Live.Core.Picker do
     with %{editor: :references} = input <- reference_input(panel, name),
          at when is_integer(at) <- Enum.find_index(panel.refs[name], &(&1 == key)) do
       keys = List.delete_at(panel.refs[name], at)
-      field = "#{Core.table(socket).entry.id}-panel-f-#{name}"
+      field = Ids.field(Core.table(socket).entry.id, [name])
 
       focus =
         cond do
-          at < length(keys) -> "#{field}-r-#{at}"
-          at > 0 -> "#{field}-r-#{at - 1}"
-          true -> "#{field}-choose"
+          at < length(keys) -> Ids.unpick(field, at)
+          at > 0 -> Ids.unpick(field, at - 1)
+          true -> Ids.choose(field)
         end
 
       {:reply, %{focus: focus},

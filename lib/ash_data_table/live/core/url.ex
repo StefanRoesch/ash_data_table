@@ -5,6 +5,7 @@ defmodule AshDataTable.Live.Core.Url do
 
   import Phoenix.LiveView
 
+  alias AshDataTable.Ids
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Reading
   alias AshDataTable.Model
@@ -44,7 +45,7 @@ defmodule AshDataTable.Live.Core.Url do
          |> Core.put(lines: Map.put(lines, key, rows ++ [""]))
          |> push_event("ash_data_table:focus", %{
            table: id,
-           cell: "#{id}-arg-#{named}-#{length(rows)}"
+           cell: Ids.argument_value(Ids.argument(id, named), length(rows))
          })}
     end
   end
@@ -58,13 +59,16 @@ defmodule AshDataTable.Live.Core.Url do
     with {key, rows} <- listed(Core.table(socket).entry, named),
          true <- at < length(rows) do
       rows = List.delete_at(rows, at)
-      focus = if rows == [], do: "add", else: min(at, length(rows) - 1)
+      focus = if rows == [], do: :add, else: min(at, length(rows) - 1)
 
       {:noreply,
        socket
        |> Core.put(lines: Map.put(lines, key, rows))
        |> reargue(State.put_argument(state, model, key, rows))
-       |> push_event("ash_data_table:focus", %{table: id, cell: "#{id}-arg-#{named}-#{focus}"})}
+       |> push_event("ash_data_table:focus", %{
+         table: id,
+         cell: Ids.argument_value(Ids.argument(id, named), focus)
+       })}
     else
       _ -> {:noreply, socket}
     end

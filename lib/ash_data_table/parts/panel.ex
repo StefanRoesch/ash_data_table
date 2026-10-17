@@ -10,6 +10,7 @@ defmodule AshDataTable.Parts.Panel do
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Act
+  alias AshDataTable.Ids
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -69,7 +70,7 @@ defmodule AshDataTable.Parts.Panel do
           :for={field <- @panel.fields}
           part={:field}
           kit={@kit}
-          id={"#{@id}-panel-f-#{field.name}"}
+          id={Ids.field(@id, [field.name])}
           input={field.input}
           name={field.form_name}
           value={field.value}
@@ -248,7 +249,7 @@ defmodule AshDataTable.Parts.Panel do
         <span :if={@called} id={"#{@id}-chosen"} class="text-sm" data-chosen>{@called}</span>
         <button
           type="button"
-          id={"#{@id}-choose"}
+          id={Ids.choose(@id)}
           class="btn btn-sm"
           aria-describedby={@called && "#{@id}-chosen"}
           phx-click={Parts.Common.event(@inside.table, "pick_input")}
@@ -287,7 +288,7 @@ defmodule AshDataTable.Parts.Panel do
           </span>
           <button
             type="button"
-            id={"#{@id}-r-#{at}"}
+            id={Ids.unpick(@id, at)}
             {Attrs.unpick(@input.name, key)}
             aria-label={remove}
             class="btn btn-ghost btn-xs"
@@ -297,7 +298,7 @@ defmodule AshDataTable.Parts.Panel do
         </div>
         <button
           type="button"
-          id={"#{@id}-choose"}
+          id={Ids.choose(@id)}
           class="btn btn-sm self-start"
           phx-click={Parts.Common.event(@inside.table, "pick_input")}
           phx-value-input={@input.name}
@@ -468,7 +469,7 @@ defmodule AshDataTable.Parts.Panel do
       <button
         :if={@clear}
         type="button"
-        id={"#{@id}-clear"}
+        id={Ids.clear(@id)}
         class="btn btn-sm justify-self-start"
         aria-label={
           if @clear == :asked,
