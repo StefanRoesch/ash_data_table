@@ -35,7 +35,6 @@ defmodule AshDataTable.Kit.Words do
 
   alias AshDataTable.Format
   alias AshDataTable.Messages
-  alias AshDataTable.Parts
   alias AshDataTable.Text
 
   @doc "What `part` shows, by name, in words: of `values`, the part's assigns they are made of."
@@ -87,7 +86,7 @@ defmodule AshDataTable.Kit.Words do
   def value(:summary_cell, _values), do: nil
 
   def value(:pagination, %{page: page, state: state}),
-    do: Parts.Pagination.page_numbers(page, state)
+    do: page_numbers(page, state)
 
   @doc "The locale the texts are said in: Gettext's, of the table's backend."
   @spec locale() :: String.t()
@@ -322,7 +321,7 @@ defmodule AshDataTable.Kit.Words do
       rows_per_page: t(:rows_per_page),
       go_to_page:
         Enum.map(
-          AshDataTable.Parts.Pagination.page_numbers(page, state),
+          page_numbers(page, state),
           &t(:go_to_page, page: &1)
         )
     ]
@@ -360,12 +359,33 @@ defmodule AshDataTable.Kit.Words do
         item_errors:
           for(
             {_item, index} <- Enum.with_index(items),
-            do: Parts.Panel.item_errors(inside, index)
+            do: item_errors(inside, index)
           )
       ]
   end
 
   defp group_items(_input, _values), do: []
+
+  # The errors about one value of a list of groups as a whole, by its
+  # place, once the panel was sent or the list was touched.
+  defp item_errors(inside, index) do
+    if inside.submitted? or inside.path in inside.touched,
+      do: Map.get(inside.errors, inside.place ++ [index], []),
+      else: []
+  end
+
+  # The page numbers offered: the first, the last and those around the
+  # current one, of the pages there are; and the current one, also when the
+  # URL asked for a page beyond the last. Without a total only the current
+  # page is known.
+  defp page_numbers(%{pages: pages}, %{page: current}) when is_integer(pages) do
+    [1, pages | Enum.to_list((current - 2)..(current + 2)//1)]
+    |> Enum.filter(&((&1 >= 1 and &1 <= pages) or &1 == current))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp page_numbers(_page, %{page: current}), do: [current]
 
   # What a cell whose save failed shows of what was typed, as the cell
   # would show it had it been saved: a yes or no, an enum's label, the

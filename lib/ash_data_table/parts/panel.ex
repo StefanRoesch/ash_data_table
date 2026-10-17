@@ -1000,15 +1000,6 @@ defmodule AshDataTable.Parts.Panel do
         path: inside.path ++ [Atom.to_string(inner.name)]
     }
 
-  @doc false
-  # The errors about one value of an array of map cells as a whole, by its
-  # place (`AshDataTable.Kit.Words` says them).
-  def item_errors(inside, index) do
-    if inside.submitted? or inside.path in inside.touched,
-      do: Map.get(inside.errors, inside.place ++ [index], []),
-      else: []
-  end
-
   # The editor of a column's component as a field of the panel. It is given
   # what the same editor is given in a cell, with the field's value, and on
   # its control what a field of the panel has: the id its label points at,

@@ -143,17 +143,4 @@ defmodule AshDataTable.Parts.Pagination do
     </form>
     """
   end
-
-  # The page numbers offered: the first, the last and those around the
-  # current one, of the pages there are; and the current one, also when the
-  # URL asked for a page beyond the last. Without a total only the current
-  # page is known.
-  def page_numbers(%{pages: pages}, %{page: current}) when is_integer(pages) do
-    [1, pages | Enum.to_list((current - 2)..(current + 2)//1)]
-    |> Enum.filter(&((&1 >= 1 and &1 <= pages) or &1 == current))
-    |> Enum.uniq()
-    |> Enum.sort()
-  end
-
-  def page_numbers(_page, %{page: current}), do: [current]
 end
