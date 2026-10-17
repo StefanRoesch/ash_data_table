@@ -65,6 +65,16 @@ export default {
     const saved = Array.from(cell.childNodes)
     // LiveView leaves an element marked like this alone, so a patch of
     // the row, after another cell's save, does not take the editor away.
+    //
+    // Owner-kept exception (final review R3, stage 7 note §15): LiveView
+    // documents `phx-update="ignore"` as rendered by the server, not as
+    // switched by a hook. The documented way, an empty container with
+    // `phx-update="ignore"` and an id in every editable cell, would send
+    // that element with every row (about 14 × 25 more ids on a page of
+    // /tasks, some 12 % more on a page change against D3's 5 %), and the
+    // cell's own content and the attributes the hook sets on it would
+    // still be patched under the editor. Guarded by editing.spec.ts,
+    // arrays.spec.ts, filter_values.spec.ts and live_updates.spec.ts.
     cell.setAttribute("phx-update", "ignore")
     cell.replaceChildren(root)
     // What "unchanged" means: the value the record has, as this
@@ -208,6 +218,7 @@ export default {
     if (!root.querySelector(`input,${ADD}`)) return key === null
     const current = LISTED(this.valueOf(cell))
     const saved = Array.from(cell.childNodes)
+    // (the owner-kept exception of `startEdit`)
     cell.setAttribute("phx-update", "ignore")
     cell.replaceChildren(root)
     const boxes = () => Array.from(root.querySelectorAll("input[type=checkbox]"))

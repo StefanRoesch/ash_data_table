@@ -30,6 +30,7 @@ export default {
     this.closeChoices(true, false)
     const boxes = this.choiceBoxes(list)
     this.choosing = {cell, button, list, was: new Set(boxes.filter(box => box.checked).map(box => box.value))}
+    // (the owner-kept exception of `startEdit` in editing.js)
     list.setAttribute("phx-update", "ignore")
     list.showPopover()
     button.setAttribute("aria-expanded", "true")

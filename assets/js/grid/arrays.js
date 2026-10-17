@@ -327,6 +327,7 @@ export default {
       else cell.setAttribute(name, value)
     }
     this.editing = null
+    // (the owner-kept exception of `startEdit` in editing.js)
     cell.removeAttribute("phx-update")
   },
 
