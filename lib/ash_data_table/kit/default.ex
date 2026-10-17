@@ -87,6 +87,7 @@ defmodule AshDataTable.Kit.Default do
   @impl true
   def class(:root, %{nested?: false}), do: Parts.Grid.root()
   def class(:root, %{nested?: true}), do: "ash-data-table"
+  def class(:portal, _state), do: "contents"
   def class(:heading, _state), do: "mb-4 flex min-h-8 items-center justify-between gap-2"
   def class(:related, _state), do: "mb-2 flex flex-wrap items-center justify-between gap-2"
 

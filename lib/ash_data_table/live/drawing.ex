@@ -10,7 +10,6 @@ defmodule AshDataTable.Live.Drawing do
   # table on the page.
   use Phoenix.Component
 
-  alias AshDataTable.Attrs
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Live.Core.Files
@@ -20,20 +19,23 @@ defmodule AshDataTable.Live.Drawing do
   alias AshDataTable.Present
   alias AshDataTable.Routes
 
-  # The table on the page, and after it, inside its root, the portals of
-  # the tables shown in its rows and in theirs: each drawn here, at the top
+  # The table on the page, and after it the portals of the tables shown in
+  # its rows and in theirs: each drawn here, at the top
   # of the template, where it follows its entry, and moved by the browser
   # into the cell of the row it belongs to (`<.portal>`), parents before
   # their children (`AshDataTable.Live.Registry.portals/1`). The two
   # elements around a nested table pin it to the left edge of the scroll
-  # area around it and make it as wide as that area: the portal itself
-  # takes no part in the layout (`display: contents`). The outer one names
-  # the cell (`data-ash-data-table-portal`): what a test reads the page
-  # by, as the markup LiveView makes of a portal is LiveView's own.
+  # area around it (`data-ash-data-table-portal`, which names the cell:
+  # what a test reads the page by, as the markup LiveView makes of a portal
+  # is LiveView's own) and make it as wide as that area
+  # (`data-ash-data-table-view`): the kit styles both by these markers (the
+  # root's rules of `Kit.Default`), and gives the portal's wrapper its
+  # class (`class(:portal, …)`, `display: contents` in `Kit.Default`).
   #
-  # The root element of every table is drawn here, with the kit's class:
-  # the root of a live component (the tag's) must be a static tag. What is
-  # in it is the kit's `root/1`'s.
+  # The root element of every table is the kit's `root/1`'s: of the table
+  # on the page, of each nested table and of each picker's table. Only the
+  # tag's live component, whose root must be a static tag, draws a plain
+  # element around it (`AshDataTable.Live.Embedded`).
   attr :table, :any, required: true
   attr :streams, :any, required: true
   attr :uploads, :any, required: true
@@ -56,27 +58,22 @@ defmodule AshDataTable.Live.Drawing do
       :key={entry.id}
       id={"#{entry.id}-portal"}
       target={"[id='#{entry.target}']"}
-      class="contents"
+      class={@table.options.kit.class(:portal, %{})}
     >
-      <div class="sticky left-0 w-0" data-pin data-ash-data-table-portal={entry.target}>
-        <div class="w-[var(--ash-data-table-view)]">
-          <div
+      <div data-ash-data-table-portal={entry.target}>
+        <div data-ash-data-table-view>
+          <.body
             :if={!entry.gone?}
-            {Attrs.root(entry.id, entry.page)}
-            class={@table.options.kit.class(:root, %{nested?: true})}
-          >
-            <.body
-              entry={entry}
-              options={%{@table.options | url: nil, heading: false, mounted?: false}}
-              time_zone={@table.caller.time_zone}
-              rows={rows}
-              chooser={chooser(@table, entry)}
-              chooser_rows={rows(@streams, chooser(@table, entry))}
-              myself={@table.options.target}
-              uploads={@uploads}
-              router={@table.options.router}
-            />
-          </div>
+            entry={entry}
+            options={%{@table.options | url: nil, heading: false, mounted?: false}}
+            time_zone={@table.caller.time_zone}
+            rows={rows}
+            chooser={chooser(@table, entry)}
+            chooser_rows={rows(@streams, chooser(@table, entry))}
+            myself={@table.options.target}
+            uploads={@uploads}
+            router={@table.options.router}
+          />
           <div :if={entry.gone?} id={entry.id} hidden></div>
         </div>
       </div>
@@ -134,7 +131,13 @@ defmodule AshDataTable.Live.Drawing do
 
   defp body(assigns) do
     ~H"""
-    <Kit.part part={:root} kit={@options.kit} id={@entry.id} nested?={@entry.nested?}>
+    <Kit.part
+      part={:root}
+      kit={@options.kit}
+      id={@entry.id}
+      nested?={length(@entry.path) > 1}
+      page={@entry.page}
+    >
       <Kit.part
         part={:heading}
         kit={@options.kit}
@@ -365,23 +368,18 @@ defmodule AshDataTable.Live.Drawing do
       texts={Words.texts(:picker, %{picker: Present.picker(@entry.picker)})}
       messages={Words.messages(:picker, %{picker: Present.picker(@entry.picker)})}
     >
-      <div
+      <.body
         :if={@chooser && !@chooser.gone?}
-        {Attrs.root(@chooser.id, @chooser.page)}
-        class={@options.kit.class(:root, %{nested?: true})}
-      >
-        <.body
-          entry={@chooser}
-          options={%{@options | url: nil, heading: false, mounted?: false}}
-          chooser={nil}
-          chooser_rows={nil}
-          time_zone={@time_zone}
-          rows={@chooser_rows}
-          myself={@myself}
-          uploads={@uploads}
-          router={@router}
-        />
-      </div>
+        entry={@chooser}
+        options={%{@options | url: nil, heading: false, mounted?: false}}
+        chooser={nil}
+        chooser_rows={nil}
+        time_zone={@time_zone}
+        rows={@chooser_rows}
+        myself={@myself}
+        uploads={@uploads}
+        router={@router}
+      />
       <div :if={@chooser && @chooser.gone?} id={@chooser.id} hidden></div>
     </Kit.part>
     """

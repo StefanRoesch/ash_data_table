@@ -62,10 +62,25 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
     comments = nested(task.id, "comments")
 
     cell = "[id='task-row-#{task.id}-n-comments-c']"
-    assert [outer] = attribute(html, "#{cell} > div", "class")
-    assert Enum.sort(String.split(outer)) == ["left-0", "sticky", "w-0"]
-    assert attribute(html, "#{cell} > div > div", "class") == ["w-[var(--ash-data-table-view)]"]
-    assert attribute(html, "#{cell} > div > div > [id='#{comments}']", "id") == [comments]
+    # the two elements around it are marked, and the root's rules of the
+    # kit pin the outer one and size the inner one
+    assert attribute(
+             html,
+             "#{cell} > [data-ash-data-table-portal] > [data-ash-data-table-view] > [id='#{comments}']",
+             "id"
+           ) == [comments]
+
+    assert [root] = attribute(html, "[id='task']", "class")
+
+    assert MapSet.subset?(
+             MapSet.new([
+               "[&_[data-ash-data-table-portal]]:sticky",
+               "[&_[data-ash-data-table-portal]]:left-0",
+               "[&_[data-ash-data-table-portal]]:w-0",
+               "[&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
+             ]),
+             MapSet.new(String.split(root))
+           )
 
     assert [class] = attribute(html, "[id='#{comments}-grid']", "class")
     assert "overflow-x-auto" in String.split(class)

@@ -1,10 +1,11 @@
 defmodule AshDataTable.Parts.Common do
   @moduledoc false
   # The small helpers that several parts draw with: the place of a column
-  # and of a row in the grid, the layout inside a table's root and the
-  # popover of a failure (`Kit.Default`'s parts `root` and `failure`). A
-  # leaf: it calls no other part by name, so that the parts do not call each
-  # other in a circle (stage 1 drift check F8).
+  # and of a row in the grid, a table's root element and the popover of a
+  # failure (`Kit.Default`'s parts `root` and `failure`). It calls no other
+  # part by name, so that the parts do not call each other in a circle. It
+  # spreads `Attrs`' bundles, and `Attrs` names events and counts places
+  # with it.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
@@ -22,16 +23,23 @@ defmodule AshDataTable.Parts.Common do
     apply(module, function, [assigns])
   end
 
-  # What is inside the root element of a table, which the table draws
-  # itself: the table (`inner_block`), and after it what opens over it or
-  # in the page, the question, the action panel and the picker (`opened`).
+  # The root element of a table (`Attrs.root/2`, with the kit's class of
+  # it): the table (`inner_block`), and after it what opens over it or in
+  # the page, the question, the action panel and the picker (`opened`).
+  # `nested?` says whether the table is shown inside another (nested in a
+  # row, or a picker's).
+  attr :id, :string, required: true
   attr :nested?, :boolean, required: true
+  attr :page, :any, required: true
+  attr :kit, :atom, required: true
   slot :inner_block, required: true
   slot :opened, required: true
 
   def root(assigns) do
     ~H"""
-    {render_slot(@inner_block)}{render_slot(@opened)}
+    <div {Attrs.root(@id, @page)} class={@kit.class(:root, %{nested?: @nested?})}>
+      {render_slot(@inner_block)}{render_slot(@opened)}
+    </div>
     """
   end
 

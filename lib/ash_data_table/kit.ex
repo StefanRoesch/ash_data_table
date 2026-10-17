@@ -95,9 +95,14 @@ defmodule AshDataTable.Kit do
 
   Drawn once per table:
 
-    * `root` - what is inside the table's root element: `inner_block`
-      (the table) and `opened` (what opens: the question, the action panel
-      and the picker, where they are drawn in the page); `id`, `nested?`.
+    * `root` - the table's root element (`Attrs.root/2`, with the kit's
+      `class(:root, …)`), of the table on the page, of a nested table and
+      of a picker's table: `inner_block` (the table) and `opened` (what
+      opens: the question, the action panel and the picker, where they are
+      drawn in the page); `id`, `nested?` (whether the table is shown
+      inside another: nested in a row, or a picker's), `page`. In
+      `AshDataTable.table/1` it is inside a plain element of the tag's own
+      (`display: contents`): a live component's root must be static.
     * `heading` - the line of the table's name, its create (`ID-create`)
       and table actions (`data-table-action`): `id`, `heading`, `label`,
       `model`, `offered` (the table actions), `page`, `related`, `nested?`,
@@ -649,8 +654,16 @@ defmodule AshDataTable.Kit do
   The class of a part drawn once per table (`:root`, `:heading`,
   `:related`, `:argument_line`, `:selection_line`, `:status`, `:grid`,
   `:whole_text`, `:confirm`, `:panel`, `:picker`, `:pagination`,
-  `:message`), or nil. `state` is what the table knows as it draws the
-  part: `nested?` (the root, the argument line, the selection line, the
+  `:message`), and of the element LiveView moves a nested table in
+  (`:portal`, the `class` of `Phoenix.Component.portal/1`'s wrapper;
+  `display: contents` in `Kit.Default`), or nil. The two elements inside
+  that wrapper are the table's, styled by their markers:
+  `data-ash-data-table-portal` keeps the nested table at the left edge of
+  the scroll area around it, `data-ash-data-table-view` makes it as wide
+  as that area (`--ash-data-table-view`, which the grid's hook sets);
+  `Kit.Default` does both in its root's rules. `state` is what the table
+  knows as it draws the part: `nested?` (the root, the argument line, the
+  selection line, the
   grid, the pagination, a message), `kind` (a message), `destructive?` (the
   panel), `presentation` (the panel, the picker, the question). Never called per row or
   cell: what changes there in the browser (selected, busy, invalid) is an

@@ -13,7 +13,6 @@ defmodule AshDataTable.Live.Embedded do
   # Use it through `AshDataTable.table/1`.
   use Phoenix.LiveComponent
 
-  alias AshDataTable.Attrs
   alias AshDataTable.Live.Core
 
   @impl true
@@ -37,25 +36,14 @@ defmodule AshDataTable.Live.Embedded do
   @impl true
   def handle_async(name, result, socket), do: Core.handle_async(name, result, socket)
 
+  # The root of a live component must be a static tag: a plain element
+  # around the table, which takes no part in the layout. The table's own
+  # root element is the kit's (`root/1`).
   @impl true
-  def render(%{table: %{entry: %{gone?: true}}} = assigns) do
-    ~H"""
-    <div id={@table.entry.id} hidden></div>
-    """
-  end
-
   def render(assigns) do
     ~H"""
-    <div
-      {Attrs.root(@table.entry.id, @table.entry.page)}
-      class={@table.options.kit.class(:root, %{nested?: false})}
-    >
-      <AshDataTable.attached
-        table={@table}
-        streams={@streams}
-        uploads={assigns[:uploads]}
-        root={false}
-      />
+    <div style="display: contents">
+      <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
     </div>
     """
   end

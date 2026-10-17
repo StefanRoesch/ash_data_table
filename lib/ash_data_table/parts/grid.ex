@@ -1002,7 +1002,11 @@ defmodule AshDataTable.Parts.Grid do
             # table actions, once the nested table under it has read: found by
             # the table's own marker of its portal, whatever LiveView wraps it in
             "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-create]]:inline-flex",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-table-action]]:inline-flex"
+            "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-table-action]]:inline-flex",
+            # a nested table stays at the left edge of the scroll area around
+            # it, and is as wide as that area (`--ash-data-table-view`, which
+            # the grid's hook sets)
+            "[&_[data-ash-data-table-portal]]:sticky [&_[data-ash-data-table-portal]]:left-0 [&_[data-ash-data-table-portal]]:w-0 [&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
           ],
           " "
         )

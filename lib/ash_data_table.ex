@@ -992,23 +992,8 @@ defmodule AshDataTable do
     default: nil,
     doc: "The page's uploads, `assigns[:uploads]`: needed where an action takes a file."
 
-  # Whether the table's root element is drawn here. A live component draws
-  # it itself (its root must be a static tag): `AshDataTable.Live.Embedded`.
-  attr :root, :boolean, default: true, doc: false
-
   def attached(%{table: nil} = assigns) do
     ~H"""
-    """
-  end
-
-  def attached(%{root: false, table: %{entry: %{gone?: true}}} = assigns) do
-    ~H"""
-    """
-  end
-
-  def attached(%{root: false} = assigns) do
-    ~H"""
-    <AshDataTable.Live.Drawing.drawn table={@table} streams={@streams} uploads={@uploads} />
     """
   end
 
@@ -1028,12 +1013,7 @@ defmodule AshDataTable do
   # (`AshDataTable.Grid`), which `AshDataTable.Attrs` writes.
   def attached(assigns) do
     ~H"""
-    <div
-      {AshDataTable.Attrs.root(@table.entry.id, @table.entry.page)}
-      class={@table.options.kit.class(:root, %{nested?: false})}
-    >
-      <AshDataTable.Live.Drawing.drawn table={@table} streams={@streams} uploads={@uploads} />
-    </div>
+    <AshDataTable.Live.Drawing.drawn table={@table} streams={@streams} uploads={@uploads} />
     <script :type={Phoenix.LiveView.ColocatedHook} name=".Pagination">
       // In the package: assets/js/pagination.js
       import {Pagination} from "../node_modules/js/index.js"
