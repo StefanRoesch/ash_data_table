@@ -22,6 +22,25 @@ function csv(name: string, text: string) {
   return { name, mimeType: "text/csv", buffer: Buffer.from(text, "utf8") }
 }
 
+/**
+ * A CSV as an export from elsewhere looks: one label, and after it notes on
+ * comment lines (`#`, which the import skips) until it is `bytes` long, each
+ * line its own, made the same way on every run. Varied as real text is: a
+ * file of one line over and over deflates far beyond what a server takes of
+ * a compressed frame.
+ */
+function exportedCsv(label: string, bytes: number): string {
+  const looks = ["amber", "brisk", "coral", "dusky", "eager", "faded", "gilded", "hazel", "ivory", "jolly", "keen"]
+  const kinds = ["heron", "otter", "lynx", "marten", "osprey", "badger", "plover", "stoat", "wren", "vole", "ibis", "tern"]
+  let text = `${label}\n`
+  for (let n = 1; text.length < bytes; n++) {
+    const colour = ((n * 2654435761) >>> 8) & 0xffffff
+    const time = `${String((n * 7) % 24).padStart(2, "0")}:${String((n * 13) % 60).padStart(2, "0")}`
+    text += `# ${n}: ${looks[n % looks.length]} ${kinds[(n * 5) % kinds.length]} at ${time}, #${colour.toString(16).padStart(6, "0")}\n`
+  }
+  return text
+}
+
 /** The file input of the open panel. */
 function fileInput(table: Table) {
   return table.panel.locator('input[type="file"]')
@@ -110,8 +129,8 @@ test.describe("Run", () => {
 
   test("a bar under the input says how far the file has come while it is sent", async ({ page }) => {
     await openImport(labels)
-    // one label, and 90 kB of empty lines after it: sent in two parts
-    await fileInput(labels).setInputFiles(csv("labels.csv", "zebra\n" + "\n".repeat(90_000)))
+    // one label, and 90 kB of notes after it: sent in two parts
+    await fileInput(labels).setInputFiles(csv("labels.csv", exportedCsv("zebra", 90_000)))
     await labels.panelSettled()
     await expect(labels.panel.locator("progress")).toHaveCount(0)
 

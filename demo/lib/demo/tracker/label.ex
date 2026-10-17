@@ -180,7 +180,8 @@ defmodule Demo.Tracker.Label do
     end
 
     # Takes a file: a CSV with a label on each line, its name and, after a
-    # comma, its colour, which may be left out. Returns how many labels it
+    # comma, its colour, which may be left out. A line that begins with `#`
+    # is a comment, and an empty one is skipped. Returns how many labels it
     # made. Nothing is made when one line is refused.
     action :import, :integer do
       description "Makes a label of each line of a CSV file."
@@ -288,7 +289,13 @@ defmodule Demo.Tracker.Label do
           {:error, invalid("is empty")}
 
         true ->
-          {:ok, for(line <- String.split(text, ~r/\R/), String.trim(line) != "", do: line)}
+          {:ok,
+           for(
+             line <- String.split(text, ~r/\R/),
+             String.trim(line) != "",
+             not String.starts_with?(String.trim_leading(line), "#"),
+             do: line
+           )}
       end
     else
       {:error, _reason} -> {:error, invalid("could not be read")}
