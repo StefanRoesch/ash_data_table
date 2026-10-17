@@ -522,9 +522,7 @@ defmodule AshDataTable.Model do
       is for what a count would give away (see `AshDataTable.Query`).
 
     * An aggregate column that Ash cannot sort by for this person is not
-      `sortable?`: one they see on some records only, and, in a paged table
-      of related records, every one when they see some field of the resource
-      on some records only.
+      `sortable?`: one they see on some records only.
 
     * A reference column whose destination the person can **never** read,
       through the action the related record is loaded through, is left out,
