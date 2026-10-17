@@ -34,6 +34,9 @@ defmodule AshDataTable.Parts.Panel do
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
+  # what opens inside the panel: the picker a field opened, where the panel
+  # is over the page and the picker in it
+  slot :inner_block, required: true
 
   def panel(assigns) do
     ~H"""
@@ -93,6 +96,7 @@ defmodule AshDataTable.Parts.Panel do
           </button>
         </div>
       </form>
+      {render_slot(@inner_block)}
     </.dynamic_tag>
     """
   end

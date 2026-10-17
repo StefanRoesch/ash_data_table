@@ -271,7 +271,7 @@ defmodule AshDataTable.Live.Drawing do
           presentation={presentation(@options, :confirm)}
         />
         <Kit.part
-          :if={@entry.panel && not match?(%{kind: :panel}, @entry.request)}
+          :if={panel?(@entry)}
           part={:panel}
           kit={@options.kit}
           id={@entry.id}
@@ -279,40 +279,91 @@ defmodule AshDataTable.Live.Drawing do
           files={files!(@entry, @uploads)}
           target={@myself}
           presentation={presentation(@options, :panel)}
-        />
+        >
+          <.picker
+            :if={picker_in_panel?(@entry, @options)}
+            entry={@entry}
+            options={@options}
+            chooser={@chooser}
+            chooser_rows={@chooser_rows}
+            time_zone={@time_zone}
+            myself={@myself}
+            uploads={@uploads}
+            router={@router}
+          />
+        </Kit.part>
         <%!-- After the panel, and so on top of it when both are open: a picker
         that a field of the panel has opened. --%>
-        <Kit.part
-          :if={@entry.picker}
-          part={:picker}
-          kit={@options.kit}
-          id={@entry.id}
-          picker={Present.picker(@entry.picker)}
-          target={@myself}
-          presentation={presentation(@options, :picker)}
-        >
-          <div
-            :if={@chooser && !@chooser.gone?}
-            {Attrs.root(@chooser.id, @chooser.page)}
-            class={@options.kit.class(:root, %{nested?: true})}
-          >
-            <.body
-              entry={@chooser}
-              options={%{@options | url: nil, heading: false, mounted?: false, controlled: []}}
-              chooser={nil}
-              chooser_rows={nil}
-              time_zone={@time_zone}
-              rows={@chooser_rows}
-              myself={@myself}
-              uploads={@uploads}
-              router={@router}
-            />
-          </div>
-          <div :if={@chooser && @chooser.gone?} id={@chooser.id} hidden></div>
-        </Kit.part>
+        <.picker
+          :if={@entry.picker && not picker_in_panel?(@entry, @options)}
+          entry={@entry}
+          options={@options}
+          chooser={@chooser}
+          chooser_rows={@chooser_rows}
+          time_zone={@time_zone}
+          myself={@myself}
+          uploads={@uploads}
+          router={@router}
+        />
       </:opened>
     </Kit.part>
     """
+  end
+
+  # The picker, with the table a record is chosen from in it.
+  attr :entry, :any, required: true
+  attr :options, :any, required: true
+  attr :chooser, :any, required: true
+  attr :chooser_rows, :any, required: true
+  attr :time_zone, :any, required: true
+  attr :myself, :any, required: true
+  attr :uploads, :any, required: true
+  attr :router, :any, required: true
+
+  defp picker(assigns) do
+    ~H"""
+    <Kit.part
+      part={:picker}
+      kit={@options.kit}
+      id={@entry.id}
+      picker={Present.picker(@entry.picker)}
+      target={@myself}
+      presentation={presentation(@options, :picker)}
+    >
+      <div
+        :if={@chooser && !@chooser.gone?}
+        {Attrs.root(@chooser.id, @chooser.page)}
+        class={@options.kit.class(:root, %{nested?: true})}
+      >
+        <.body
+          entry={@chooser}
+          options={%{@options | url: nil, heading: false, mounted?: false, controlled: []}}
+          chooser={nil}
+          chooser_rows={nil}
+          time_zone={@time_zone}
+          rows={@chooser_rows}
+          myself={@myself}
+          uploads={@uploads}
+          router={@router}
+        />
+      </div>
+      <div :if={@chooser && @chooser.gone?} id={@chooser.id} hidden></div>
+    </Kit.part>
+    """
+  end
+
+  # Whether the table draws the action panel: it is open, and not a
+  # request the host draws (controlled mode).
+  defp panel?(entry), do: entry.panel != nil and not match?(%{kind: :panel}, entry.request)
+
+  # Whether the picker is drawn inside the action panel: a field of a panel
+  # that is open over the page opened it, and it opens in the page. The page
+  # under a modal panel is inert, so the picker is drawn where it can be
+  # used. Elsewhere it is drawn after the panel, where the kit's `root/1`
+  # puts what opens.
+  defp picker_in_panel?(entry, options) do
+    entry.picker != nil and panel?(entry) and presentation(options, :panel) == :modal and
+      presentation(options, :picker) == :inline
   end
 
   # Whether `thing` opens over the page or in it: as the table was told,
