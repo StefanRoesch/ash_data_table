@@ -342,6 +342,13 @@ defmodule AshDataTable.Live.Core.Nesting do
   defp chooser(_table, %{picker: nil}), do: []
 
   defp chooser(table, %{id: id, picker: picker} = entry) do
+    # a picker the host draws (controlled mode) has no table of the table's
+    if AshDataTable.Live.Core.Requests.host?(table.options, entry, :picker),
+      do: [],
+      else: chooser(table, id, picker, entry)
+  end
+
+  defp chooser(table, id, picker, entry) do
     picker = Present.picker(picker)
 
     given =

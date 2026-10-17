@@ -295,7 +295,7 @@ defmodule AshDataTable.Live.Drawing do
         <%!-- After the panel, and so on top of it when both are open: a picker
         that a field of the panel has opened. --%>
         <.picker
-          :if={@entry.picker && not picker_in_panel?(@entry, @options)}
+          :if={picker?(@entry, @options) && not picker_in_panel?(@entry, @options)}
           entry={@entry}
           options={@options}
           chooser={@chooser}
@@ -362,9 +362,14 @@ defmodule AshDataTable.Live.Drawing do
   # used. Elsewhere it is drawn after the panel, where the kit's `root/1`
   # puts what opens.
   defp picker_in_panel?(entry, options) do
-    entry.picker != nil and panel?(entry) and presentation(options, :panel) == :modal and
+    picker?(entry, options) and panel?(entry) and presentation(options, :panel) == :modal and
       presentation(options, :picker) == :inline
   end
+
+  # Whether the table draws the picker: it is open, and not a request the
+  # host draws (controlled mode).
+  defp picker?(entry, options),
+    do: entry.picker != nil and not AshDataTable.Live.Core.Requests.host?(options, entry, :picker)
 
   # Whether `thing` opens over the page or in it: as the table was told,
   # else as its kit says (the design note of stage 7, D11).

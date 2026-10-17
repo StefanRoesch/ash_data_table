@@ -200,4 +200,108 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       assert request(view) == nil
     end
   end
+
+  describe "the picker" do
+    @tag controlled: [:picker]
+    test "is the host's: the table draws none and reads no table for it",
+         %{view: view, key: key} do
+      html = event(view, "pick", %{"row" => key, "column" => "owner"})
+      assert {ref, :picker} = requested()
+      refute html =~ ~s(id="kit-picker")
+      refute render(view) =~ ~s(id="kit-pick-owner")
+
+      assert %{
+               ref: ^ref,
+               kind: :picker,
+               column: :owner,
+               key: %{id: ^key},
+               value: "Ann Lee",
+               resource: Resource.Owner,
+               several?: false,
+               question: "Change the owner?",
+               errors: []
+             } = request(view)
+    end
+
+    @tag controlled: [:picker]
+    test "a key that names nothing the person may read chooses nothing",
+         %{view: view, tenant: tenant, key: key} do
+      event(view, "pick", %{"row" => key, "column" => "owner"})
+      {ref, :picker} = requested()
+
+      answer(view, &AshDataTable.pick_request(&1, :table, ref, %{name: "Nobody"}))
+      assert record(tenant, key).owner_id == "Ann Lee"
+      assert %{ref: ^ref, errors: ["This record is no longer available."]} = request(view)
+    end
+
+    @tag controlled: [:picker]
+    test "the host's choice saves through the veto, the host having asked the question",
+         %{view: view, tenant: tenant, key: key} do
+      event(view, "pick", %{"row" => key, "column" => "owner"})
+      {ref, :picker} = requested()
+
+      # another ref is no answer
+      answer(view, &AshDataTable.pick_request(&1, :table, "r0", "Bob Ray"))
+      assert record(tenant, key).owner_id == "Ann Lee"
+
+      answer(view, &AshDataTable.pick_request(&1, :table, ref, %{name: "Bob Ray"}))
+      assert_received {:asked, %AshDataTable.Request{column: :owner}}
+      assert record(tenant, key).owner_id == "Bob Ray"
+      assert request(view) == nil
+    end
+
+    @tag controlled: [:picker, :confirm]
+    test "the host's choice asks the column's question as a request of its own",
+         %{view: view, tenant: tenant, key: key} do
+      event(view, "pick", %{"row" => key, "column" => "owner"})
+      {picker, :picker} = requested()
+
+      answer(view, &AshDataTable.pick_request(&1, :table, picker, "Bob Ray"))
+      {question, :confirm} = requested()
+      assert %{column: :owner, value: "Bob Ray"} = request(view)
+      assert record(tenant, key).owner_id == "Ann Lee"
+
+      # the picker's request is answered: its ref does nothing more
+      answer(view, &AshDataTable.pick_request(&1, :table, picker, "Bob Ray"))
+      assert %{ref: ^question} = request(view)
+
+      answer(view, &AshDataTable.confirm_request(&1, :table, question))
+      assert record(tenant, key).owner_id == "Bob Ray"
+    end
+
+    @tag controlled: [:picker]
+    test "cancel closes it, and nothing is chosen", %{view: view, tenant: tenant, key: key} do
+      event(view, "pick", %{"row" => key, "column" => "owner"})
+      {ref, :picker} = requested()
+
+      answer(view, &AshDataTable.cancel_request(&1, :table, ref))
+      assert request(view) == nil
+      answer(view, &AshDataTable.pick_request(&1, :table, ref, "Bob Ray"))
+      assert record(tenant, key).owner_id == "Ann Lee"
+    end
+
+    @tag controlled: [:picker]
+    test "of a field of the table's panel chooses for the field, each key read again",
+         %{view: view, key: key} do
+      event(view, "act", %{"row" => key, "action" => "staff"})
+      event(view, "pick_input", %{"input" => "helpers"}, from: :panel)
+      {ref, :picker} = requested()
+
+      assert %{
+               column: :helpers,
+               several?: true,
+               value: ["Bob Ray"],
+               chosen: [%{key: "Bob Ray", label: "Bob Ray"}]
+             } = request(view)
+
+      answer(view, &AshDataTable.pick_request(&1, :table, ref, ["Bob Ray", "Nobody"]))
+      # one key names nothing: nothing is chosen, and the picker says why
+      assert %{ref: ^ref, errors: [_why]} = request(view)
+      refute render(view) =~ ~s(id="kit-panel-f-helpers-c-1")
+
+      answer(view, &AshDataTable.pick_request(&1, :table, ref, ["Bob Ray", %{name: "Ann Lee"}]))
+      assert request(view) == nil
+      assert render(view) =~ ~r/id="kit-panel-f-helpers-c-1"[^>]*>\s*Ann Lee/
+    end
+  end
 end

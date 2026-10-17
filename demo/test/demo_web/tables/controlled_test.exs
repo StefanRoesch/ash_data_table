@@ -256,6 +256,7 @@ defmodule DemoWeb.Tables.ControlledTest do
     assert refused.(:scans, Demo.Support.Files.Scan, controlled: [:panel]) =~
              "the action `create` has the field `file`"
 
-    assert refused.(:cards, Card, controlled: [:picker]) =~ "is a list of `:confirm` and `:panel`"
+    assert refused.(:cards, Card, controlled: [:nested]) =~
+             "is a list of `:confirm`, `:panel` and `:picker`"
   end
 end

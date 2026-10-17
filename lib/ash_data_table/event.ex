@@ -232,7 +232,47 @@ defmodule AshDataTable.Event do
     }
   end
 
+  def request(%{request: %{kind: :picker, ref: ref}, picker: %{} = picker} = entry) do
+    {key, name, value} =
+      case picker.for do
+        {:cell, key, name} -> {get_in(entry.rows, [key, :pk]), name, picker.current}
+        {:input, name} when picker.several? -> {nil, name, held(entry.panel, name)}
+        {:input, name} -> {nil, name, picker.current}
+      end
+
+    %{
+      ref: ref,
+      kind: :picker,
+      action: nil,
+      key: key,
+      column: name,
+      value: value,
+      question: picker.question,
+      title: picker.title,
+      errors: List.wrap(picker.error),
+      fields: [],
+      resource: picker.reference.destination,
+      several?: picker.several?,
+      none?: picker.none?,
+      chosen: chosen(entry.panel, name)
+    }
+  end
+
   def request(_entry), do: nil
+
+  # What a field of the panel holds that the picker is open for: the keys,
+  # as the field writes them.
+  defp held(%{refs: refs}, name) when is_map_key(refs, name), do: refs[name]
+  defp held(%{refs: refs}, name), do: Map.get(refs, Atom.to_string(name))
+  defp held(_panel, _name), do: nil
+
+  # What the records a field of the panel holds are called, as far as the
+  # table knows them: by key, the label value and its column, scrubbed.
+  defp chosen(%{chosen: chosen}, name) when is_map(chosen) do
+    for {key, %{label: label}} <- Map.get(chosen, name, %{}), do: %{key: key, label: label}
+  end
+
+  defp chosen(_panel, _name), do: []
 
   @doc false
   @spec opened(map) :: t
