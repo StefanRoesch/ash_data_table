@@ -78,11 +78,11 @@ defmodule AshDataTable.Test do
   def listening(resource, tenant \\ nil) do
     case AshDataTable.Resource.Listening.pub_sub(resource) do
       {:ok, pub_sub} ->
-        listeners =
-          for {pid, _value} <-
-                Registry.lookup(pub_sub, AshDataTable.Resource.Notifier.topic(resource, tenant)),
-              listener?(pid),
-              do: pid
+        # every listener says what it is subscribed to in its own process
+        # dictionary (`AshDataTable.Listener`): Phoenix.PubSub lists no
+        # subscribers, so they are found among all processes
+        topic = {pub_sub, AshDataTable.Resource.Notifier.topic(resource, tenant)}
+        listeners = for pid <- Process.list(), topic?(pid, topic), do: pid
 
         # one that was told to stop has that before it, and is gone once
         # this returns
@@ -94,10 +94,14 @@ defmodule AshDataTable.Test do
     end
   end
 
-  defp listener?(pid) do
+  defp topic?(pid, topic) do
     case Process.info(pid, :dictionary) do
-      {:dictionary, dictionary} -> List.keymember?(dictionary, AshDataTable.Listener, 0)
-      nil -> false
+      {:dictionary, dictionary} ->
+        List.keyfind(dictionary, {AshDataTable.Listener, :topic}, 0) ==
+          {{AshDataTable.Listener, :topic}, topic}
+
+      nil ->
+        false
     end
   end
 

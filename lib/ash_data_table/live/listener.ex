@@ -50,6 +50,10 @@ defmodule AshDataTable.Listener do
             error in ArgumentError -> {:error, error}
           end
 
+        # by which `AshDataTable.Test.listening/2` counts the listeners of a
+        # topic, with no more than Erlang's own process information
+        if subscribed == :ok, do: Process.put({__MODULE__, :topic}, {pub_sub, topic})
+
         send(view, {ref, subscribed})
         if subscribed == :ok, do: idle(%{watch: watch, relay: relay})
       end)
