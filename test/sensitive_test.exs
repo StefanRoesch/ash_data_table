@@ -602,6 +602,18 @@ defmodule AshDataTable.SensitiveTest do
                AshDataTable.Event.ran(Model.build(Owner), action, nil, %{}, %{value: [owner]})
 
       assert listed.badge == %Masked{}
+
+      # in a plain map and a tuple, at any depth: a generic action that
+      # returns `:map` or a term
+      assert {:action_ran, %{result: %{owner: in_map, owners: [in_list], pair: {:ok, in_tuple}}}} =
+               AshDataTable.Event.ran(Model.build(Owner), action, nil, %{}, %{
+                 value: %{owner: owner, owners: [owner], pair: {:ok, owner}}
+               })
+
+      assert in_map.badge == %Masked{}
+      assert in_list.badge == %Masked{}
+      assert in_tuple.badge == %Masked{}
+      assert in_map.name == "Ann"
     end
   end
 

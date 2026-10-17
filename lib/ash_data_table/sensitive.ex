@@ -43,7 +43,9 @@ defmodule AshDataTable.Sensitive do
   replaced by a `Masked`. That is every attribute, calculation and aggregate
   its resource declares `sensitive?`, a calculation loaded under another
   name among them; the same in every record loaded with it, and in every
-  value of an embedded resource it holds.
+  value of an embedded resource it holds. A list, a plain map or a tuple
+  is the same with each of its values scrubbed (a generic action's
+  result).
 
   Left as they are: a value that is not there (`empty?/1`), one Ash has
   hidden from the person (`Ash.ForbiddenField`), and the primary key, by
@@ -81,6 +83,12 @@ defmodule AshDataTable.Sensitive do
       record
     end
   end
+
+  def scrub(values) when is_map(values),
+    do: Map.new(values, fn {name, value} -> {name, scrub(value)} end)
+
+  def scrub(values) when is_tuple(values),
+    do: values |> Tuple.to_list() |> Enum.map(&scrub/1) |> List.to_tuple()
 
   def scrub(value), do: value
 
@@ -126,7 +134,7 @@ defmodule AshDataTable.Sensitive do
   end
 
   # only what can hold a record or an embedded value is looked into
-  defp scrubbed?(value), do: is_list(value) or is_struct(value)
+  defp scrubbed?(value), do: is_list(value) or is_map(value) or is_tuple(value)
 
   @doc """
   A sensitive value as it is kept to be drawn: a `Masked` where it holds
