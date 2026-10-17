@@ -95,6 +95,66 @@ _Avoid_: Toolbar, search bar, query form
 A module that a column names to say how its cells are shown, what they are edited with, or both. It changes presentation and the control only: what is saved, and through which action, stays the column's.
 _Avoid_: Renderer, widget, custom cell, formatter
 
+**Mounted table**:
+A table that is a page of its own, placed with one line in the router.
+_Avoid_: Admin page, generated page
+
+**Embedded table**:
+A table placed in a LiveView of the host's with the tag `<AshDataTable.table>`; it tells the page what happened, and takes no commands.
+_Avoid_: Widget, live component
+
+**Attached table**:
+A table put on a LiveView of the host's with `attach`, and drawn where the LiveView's template says; the page can give it commands and draw what it opens.
+_Avoid_: Bound table, wired table
+
+**Event**:
+What a table tells the page it is on after something happened in it: a read, a save, an action that ran, a change of the selection.
+_Avoid_: Callback, notification, hook
+
+**Command**:
+What the page tells a table to do: read again, take a state, clear the selection, hand over the selected records, or answer a request. A command never writes past the table's checks.
+_Avoid_: Instruction, API call
+
+**Page value**:
+A value the page hands to every call the table makes to Ash, which the browser never sees: the context, private arguments, and the arguments an action says the page fills.
+_Avoid_: Hidden field, server param
+
+**Veto**:
+The page's answer before every write of a table: go on, or stop with a message. It sees what is about to run, never a record or a typed value.
+_Avoid_: Guard, before hook, permission check
+
+**Question**:
+What a table asks a person before it runs a column's save or an action, with Confirm and Cancel. It guards the person against a mistake; it is no authorization.
+_Avoid_: Confirmation dialog, alert, prompt
+
+**Controlled mode**:
+A table that holds its questions, its action panels or its pickers as requests for the page to draw and answer, in place of drawing them itself. A table that draws them itself is **uncontrolled**, which is the default.
+_Avoid_: Headless mode, custom dialogs
+
+**Request**:
+In controlled mode, one question, action panel or picker a table holds for the page, until the page answers it or it ends.
+_Avoid_: Prompt, pending action, ticket
+
+**Kit**:
+A module that draws a table: one function component per part, the classes of the parts drawn once per table, and the presentation of what opens. Every table has one; the default kit draws with daisyUI's classes.
+_Avoid_: Theme, skin, template, renderer
+
+**Part**:
+One piece of a table as a kit draws it, such as the grid, a row, a cell, the action panel or the pagination; a kit may draw any part with markup of its own.
+_Avoid_: Slot, widget, sub-component
+
+**Bundle**:
+The attributes the table's behaviour in the browser needs on one element of a part (its id, role, ARIA and data attributes, its events), made by the library for the part to spread on whatever element it draws.
+_Avoid_: Props, attribute set
+
+**Marker**:
+An ARIA role or a data attribute by which the table's behaviour in the browser finds an element, so that it never depends on a tag name.
+_Avoid_: Selector, hook class
+
+**Presentation**:
+Whether the action panel, the picker or the question opens over the page, as a modal dialog, or in it, as part of the page.
+_Avoid_: Mode, display, overlay setting
+
 **Manifest**:
 Ash's own static description of an application's resources, fields, relationships and actions. A table is not built from it; it serves as a checklist of what a table must account for.
 _Avoid_: Introspection data, schema

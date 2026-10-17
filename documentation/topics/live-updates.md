@@ -52,7 +52,7 @@ sees it without a reload.
 It is three ordinary parts, and no rule of the table's own.
 
 1. **Ash announces.** `live? true` gives the resource a notifier
-   (`AshDataTable.Notifier`), as a resource with GraphQL subscriptions gets
+   (`AshDataTable.Resource.Notifier`), as a resource with GraphQL subscriptions gets
    ash_graphql's. After every create, update and destroy it sends one small
    message: the resource, the kind of action, the primary key and the
    tenant.
@@ -125,7 +125,7 @@ row, and the browser answers at once, or when the editor in the row is gone.
 ## Which tables follow
 
 Every table of a resource that says `live? true`: mounted as a page, placed
-in a LiveView, nested in a row, and in a picker. A nested table follows its
+with the tag, attached to a LiveView, nested in a row, and in a picker. A nested table follows its
 own resource, limited to its row as its reads are; a nested table of a
 resource that announces nothing does not listen.
 
@@ -142,6 +142,9 @@ end
 
 # a page, in the router
 ash_data_table "/tasks/print", MyApp.Tracker.Task, live?: false
+
+# a table attached to a LiveView of your own
+AshDataTable.attach(socket, :tasks, MyApp.Tracker.Task, live?: false)
 ```
 
 <!-- sketch -->
@@ -149,8 +152,9 @@ ash_data_table "/tasks/print", MyApp.Tracker.Task, live?: false
 <AshDataTable.table resource={MyApp.Tracker.Task} live?={false} />
 ```
 
-A page or a placed table that says no also says it for the tables nested in
-its rows and for its pickers. `live?: true` on a page or a placed table says
+A table on a page that says no also says it for the tables nested in its
+rows and for its pickers. `live?: true` on the router line, the tag or
+`attach/4` says
 that it has to follow, and is an error when the page is opened for a
 resource that announces nothing.
 
@@ -177,7 +181,8 @@ resource on the same page.
 
 - One process and one subscription per open table that follows, and none
   for a table that does not. They end with the page, and when a nested
-  table or a picker is closed.
+  table or a picker is closed. A test counts them with
+  `AshDataTable.Test.listening/2`.
 - One small message per changed record. With nobody listening that is all.
 - Announcements are gathered for 100 ms. For each batch a table does at most
   two reads, however many records were announced: one for the rows of its
@@ -202,16 +207,19 @@ resource on the same page.
   is updated.
 - **A failed edit in a row** keeps its mark and what was typed when the row
   is updated.
-- **A table in a test** (`Phoenix.LiveViewTest`) keeps the tables nested in
-  its rows in view when it is updated: it puts the open details into the
-  page again with every batch it is handed. A browser does not need that.
+- **A nested table in a test** is inside a portal, which
+  `Phoenix.LiveViewTest` does not look into: read the page with
+  `AshDataTable.Test.page/1`. See [Testing](testing.md).
 - **A selected row that goes** is no longer selected. "All that match"
   stays as it is.
 
 ## Things people trip over
 
 - **"Nothing happens."** The change was made without an action, or by a
-  bulk action without `notify?: true`. See "What is announced".
+  bulk action without `notify?: true`. See "What is announced". A page
+  that knows of such a change can tell an attached table to read again
+  with `AshDataTable.refresh/2`: see
+  [Events and commands](events-and-commands.md).
 - **"`live? true`, and the domain does not compile."** The domain has to
   name the server: `pub_sub MyApp.PubSub` in its `table` block, with
   `extensions: [AshDataTable.Domain]`.
@@ -225,7 +233,7 @@ resource on the same page.
   that is to go waits for the browser's answer, which a LiveView test gives
   itself: see `AshDataTable.Test`.
 - **A test that changes a record of a live resource behind an open page**
-  now has that page follow, a moment later. A row is updated in place; none
+  has that page follow, a moment later. A row is updated in place; none
   is taken away without the browser's answer.
 
 ## Not in the first version

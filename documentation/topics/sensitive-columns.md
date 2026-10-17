@@ -5,7 +5,7 @@ cells are masked. Each cell shows `••••••`, the same for every value
 "Show" button. The value itself is not in the page: the table asks the
 server for it when a person uses the button, for that one cell. This guide
 covers what a masked cell shows, how a value is shown and hidden again, how
-such a cell is edited and emptied, and what a table no longer does with the
+such a cell is edited and emptied, and what a table does not do with the
 column.
 
 Nothing is declared in the `table` block for this. The table follows what
@@ -95,7 +95,12 @@ Before somebody uses "Show", the value is not sent to the browser at all:
 
 - not in the rows of the page, as it is first rendered or later;
 - not in a patch after a sort, a filter, a save or an action;
-- not in the URL, in a message of the table, or in what the table logs.
+- not in the URL, in a message of the table, or in what the table logs;
+- not in what the table tells the page: a record in an event, and in
+  `AshDataTable.selected_records/2`, holds `%AshDataTable.Sensitive.Masked{}`
+  in place of each sensitive value, and the arguments of an event leave
+  sensitive ones out (see [Events and commands](events-and-commands.md)).
+  A page that needs the value reads the record itself.
 
 The server does not keep it either. A record that the table holds for a row
 has every sensitive value replaced first.
@@ -107,12 +112,15 @@ hidden.
 
 A sensitive cell is edited in place like any other, with two differences:
 
-- **The editor hides what is typed.** It is a password input.
+- **The editor hides what is typed.** In the default kit it is a password
+  input.
 - **The editor starts empty.** It never holds the current value.
 
 Enter saves what was typed. The cell shows its mask again, also while the
 save is on its way and when the save fails. What was typed is not sent back
-and not shown.
+and not shown: a failed save's message stands in the cell, under the mask,
+and the cell keeps nothing of the typed text. Enter opens the editor empty
+again.
 
 **An editor that is left empty saves nothing.** Enter on an empty editor
 changes nothing, so a value is never emptied by accident. Emptying is asked

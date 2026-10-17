@@ -23,7 +23,8 @@ defmodule AshDataTable.Request do
       action);
     * `from` - what asks: `:cell` (a cell saved), `:clear` (a sensitive
       cell emptied), `:reference` (a record chosen for a reference cell),
-      `:map_cell` (a map cell's panel), `:row` (a row action), `:table` (a
+      `:map_cell` (a cell edited in the side panel: a list, a map cell, a
+      union), `:row` (a row action), `:table` (a
       table action), `:create` or `:bulk` (an action on a selection);
     * `column` - the column, for a cell; else nil;
     * `key` - the primary key of the row, as a map; nil for a table

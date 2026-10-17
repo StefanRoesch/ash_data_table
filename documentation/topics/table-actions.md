@@ -91,6 +91,9 @@ what the action is there says what it is in the table:
 Inside an `action`, `reference` says which resource a key argument refers
 to: see
 [An argument that holds the key of a record](#an-argument-that-holds-the-key-of-a-record).
+`page_argument` names an argument the page fills, which the panel does not
+ask for: see
+[Row actions and create](row-actions-and-create.md#arguments-the-page-fills).
 
 The buttons stand in the declared order, after the create button where the
 table has one. They are the same buttons as "New label": ordinary buttons of
@@ -116,7 +119,7 @@ it runs the action, asks first, or opens the action panel.
 | The action | Using its button |
 | --- | --- |
 | Has no argument, or only arguments it runs without: optional ones, and ones with a default | Runs the action. |
-| The same, declared with `confirm` | Asks the question in the table's dialog. Confirm runs the action; Cancel and Escape run nothing and put focus back on the button. |
+| The same, declared with `confirm` | Asks the question. Confirm runs the action; Cancel and Escape run nothing and put focus back on the button. |
 | Has a required argument without a default (`allow_nil? false`) | Opens the action panel. |
 | Has an argument that takes a file, required or not | Opens the action panel: see [Files](files.md). |
 
@@ -126,7 +129,8 @@ words as its label. An argument that is a union has the choice of its kind
 and that kind's value ([Unions](unions.md#in-the-action-panel)), and one
 that takes a file a file input ([Files](files.md)). It is headed by what the button says and ends in
 "Cancel" and "Run". An action with `confirm` asks its question when "Run"
-is used, on top of the panel.
+is used, on top of the panel, or inside it where questions open in the
+page.
 
 The demo's "Recolour" has two required arguments:
 
@@ -377,6 +381,9 @@ On the server, a table action is these steps:
    the fields, and nothing else that was sent.
 3. **The table says what it returned, and reads again.**
 
+The page can hear that it ran (`:action_ran`) and stop it before it runs;
+see [Events and commands](events-and-commands.md).
+
 The table adds nothing of its own. What the action does inside is the
 resource's: the demo's read and write as the person who runs them, with the
 options Ash hands the action (`Ash.Context.to_opts/1`).
@@ -491,9 +498,9 @@ is read out when it changes. All keys of a table are in
 
 ## Edge cases
 
-- **An action that runs for long holds its table.** A table action runs in
-  the table's own process, as a row action does. Until it returns, that
-  table answers nothing else.
+- **An action that runs for long holds the page.** A table action runs in
+  the LiveView's process, as a row action does. Until it returns, the page
+  answers nothing else.
 - **An action with optional arguments only runs with their defaults.** The
   panel opens for an argument the action does not run without, as for a row
   action. Give an argument `allow_nil? false` to have it asked for.
@@ -501,8 +508,9 @@ is read out when it changes. All keys of a table are in
   at all.** Ash raises for such a check on a generic action. The table
   takes the question as answered with "never", and has no button.
 - **A question on an action is asked in the browser.** A `table_run` event
-  sent to the LiveView by other means is not asked anything. What must not
-  happen belongs in the action.
+  sent to the LiveView by other means is not asked anything, in controlled
+  mode too. What must not happen belongs in the action's policy, or in the
+  page's `before_action` (see [Events and commands](events-and-commands.md)).
 - **A new read closes the panel**, as for a row.
 - **In a table with `on_forbidden :message` that was refused**, there are
   no buttons: a table that did not read offers nothing.

@@ -112,10 +112,13 @@ line. Typing sends nothing.
 What the person gave is part of the table's state, with the sort and the
 filters:
 
-- a mounted table, and a placed one that is given `url`, keeps it in the
-  address, so the page can be reloaded, linked, and stepped back through;
-- a table that keeps its state itself (a placed table without `url`, a
-  nested table, a picker) keeps the arguments there too.
+- a table with its state in the address (the router page, a tag given
+  `url`, a table attached with `url: true`) keeps them there, so the page
+  can be reloaded, linked, and stepped back through (see
+  [State in the URL](state-in-the-url.md));
+- a table that keeps its state itself (a tag without `url`, a table
+  attached without `url: true`, a nested table, a picker) keeps the
+  arguments there too.
 
 | In the address | Example |
 | --- | --- |
@@ -270,9 +273,11 @@ The first of these that there is:
 A column never starts without a value: an asked argument that cannot be
 empty and has neither default is a mistake the compiler reports.
 
-A function is given the assigns of the page. For a mounted table those are
+A function is given the assigns of the page. On the router page those are
 the assigns of its socket, which the host's `on_mount` hooks set. A table
-placed with `<AshDataTable.table>` is given them as `assigns`. The example is
+attached with `AshDataTable.attach/4` gives it the assigns of the host's
+LiveView, as they are when it is called. A tag (`<AshDataTable.table>`) is
+given them as `assigns`. The example is
 from a domain that exists for the demo's tests
 ([`demo/test/support/argument_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/argument_tables.ex)):
 

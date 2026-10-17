@@ -1,0 +1,295 @@
+# Kits
+
+Every table is drawn by a **kit**: a module with one function component per
+**part** of the table (the grid, a row, a cell, the action panel, the
+pagination, …), the classes of the parts drawn once per table, and whether
+what opens is a modal dialog or part of the page. `AshDataTable.Kit.Default`
+is the kit a table has unless another is named; it draws with the Tailwind
+and daisyUI classes of a new Phoenix app. After reading this guide you can
+restyle a few parts, draw any part with your own markup, open the panel, the
+picker and the question in the page, and check your kit in your tests.
+
+A kit changes how the table looks, never what it does: it reads, sorts,
+filters, writes and checks the same with any kit. To change how one column's
+cells look, a [column's component](custom-components.md) is enough. To run
+the questions, panels and pickers in your own page, see
+[Controlled mode](controlled-mode.md).
+
+## A kit of your own
+
+<!-- sketch -->
+```elixir
+defmodule MyAppWeb.TableKit do
+  use AshDataTable.Kit, contract: 1
+
+  # restyle a part drawn once per table
+  def class(:panel, _state), do: "my-panel"
+  def class(part, state), do: super(part, state)
+
+  # open the action panel in the page, not over it
+  def presentation(:panel), do: :inline
+  def presentation(thing), do: super(thing)
+end
+```
+
+`use AshDataTable.Kit, contract: 1` makes every part the default kit's. A kit
+defines the parts it draws itself, and calls `super` for what the default kit
+draws. It is checked as it compiles: another contract number than this
+version's, a public function of one argument that is no part (a typo such as
+`pagniation/1`), and a `class` or `presentation` of another number of
+arguments fail to compile.
+
+Name it for every table in the configuration:
+
+<!-- sketch -->
+```elixir
+config :ash_data_table, kit: MyAppWeb.TableKit
+```
+
+or for one table, which wins: on the router line, on the tag, or for
+`attach/4`. From the demo's tests
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)
+and
+[`demo/test/support/kit_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/kit_tables.ex)):
+
+<!-- source: demo/lib/demo_web/router.ex -->
+```elixir
+ash_data_table "/kit/memos", Demo.Support.Plain.Memo,
+  layout: false,
+  id: "kitmemo",
+  kit: DemoWeb.DivKit
+```
+
+<!-- source: demo/test/support/kit_tables.ex -->
+```heex
+<AshDataTable.table
+  id="tagged"
+  resource={Demo.Support.Plain.Memo}
+  actor={assigns[:current_user]}
+  kit={DemoWeb.DivKit}
+/>
+```
+
+The tables a table shows, nested in its rows and in its pickers, are drawn
+with its kit. A module that is no kit, or whose `presentation/1` answers
+neither `:modal` nor `:inline`, raises an `ArgumentError` where it is named
+(`AshDataTable.Kit.check!/2`).
+
+## Modal or inline
+
+The action panel, the picker and the question each open in one of two
+**presentations**:
+
+| | `:modal` | `:inline` |
+| --- | --- | --- |
+| Where | Over the page, as a modal dialog | In the page, as a part of it |
+| The rest of the page | Inert while it is open | Usable: Tab leaves it |
+| Focus | Moves into it, and back to what opened it | The same |
+| Escape | Cancel | Cancel, unless what has the focus takes it |
+
+The default kit opens all three as modal dialogs. A kit says otherwise with
+`presentation/1`, and one table can say otherwise again with `presentation`,
+on the router line, the tag or `attach/4`. The demo mounts its tasks once
+more with everything in the page
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
+
+<!-- source: demo/lib/demo_web/router.ex -->
+```elixir
+ash_data_table "/inline/tasks", Demo.Tracker.Task,
+  presentation: [panel: :inline, picker: :inline, confirm: :inline]
+```
+
+They can be mixed. A question in the page that is asked from a panel or
+picker open over the page is shown inside that panel or picker, where it can
+be answered; a picker in the page that a field of a modal panel opens is
+drawn inside the panel. One question at a time per table: a question asked
+while another is still open gives the first up, as Cancel does.
+
+## Drawing a part
+
+A part is a function component of the kit, named after the part
+(`AshDataTable.Kit.parts/0` lists the 32 of contract 1). It is given values,
+never a record, an `AshPhoenix.Form`, a changeset or the actor, and never the
+value of a `sensitive?` field. The moduledoc of `AshDataTable.Kit` says, part
+by part, what each is given, which elements it must draw with which markers,
+and the fields of every value it is given ("Kit contract 1").
+
+The demo has a kit of its own, `DemoWeb.DivKit`, which draws the grid, its
+rows, cells and footer with `div`s in place of a `<table>`, and opens
+everything in the page
+([`demo/lib/demo_web/div_kit.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/div_kit.ex)):
+
+<!-- source: demo/lib/demo_web/div_kit.ex -->
+```elixir
+use AshDataTable.Kit, contract: 1
+
+alias AshDataTable.Attrs
+alias AshDataTable.Ids
+alias AshDataTable.Kit
+alias AshDataTable.Kit.Words
+
+def presentation(_thing), do: :inline
+```
+
+Its summary cell, one cell of the footer row:
+
+<!-- source: demo/lib/demo_web/div_kit.ex -->
+```elixir
+def summary_cell(assigns) do
+  ~H"""
+  <div
+    id={@id}
+    role="gridcell"
+    aria-colindex={@colindex}
+    tabindex="-1"
+    {Attrs.summary(@column, @summing?)}
+    class="table-cell whitespace-nowrap"
+  >
+    <span :if={@column.summary}>{@texts.kind}{@text && " " <> @text}</span>
+  </div>
+  """
+end
+```
+
+Four things are at work there.
+
+**Markers.** The table's behaviour in the browser (its hooks) finds the
+elements of a table by their markers, never by their tags: an ARIA role where
+the element has one (`grid`, `rowgroup`, `row`, `gridcell`, `columnheader`,
+`dialog`, `region`), else a `data-*` attribute, and the ids that begin with
+the table's id. So a part may draw any elements, as long as they carry the
+markers. `AshDataTable.Attrs.markers/0` names every marker.
+
+**Bundles.** Most markers come in bundles: the functions of
+`AshDataTable.Attrs`, maps of attributes a part spreads on its element
+(`{Attrs.summary(@column, @summing?)}`), made of the values the part is
+given. Where a part is drawn once per row, cell or column, the attributes that
+are the same on every one are written by the part itself, as `role` and
+`tabindex` above (a bundle would send them again with every row), and the
+bundle holds what varies. The `Attrs` moduledoc is the contract.
+
+**Ids.** Where the table names an element a part draws (focus goes to it, a
+nested table is moved into it), the part makes its id with
+`AshDataTable.Ids`, as the table does: `Ids.cell/2`, `Ids.line_button/2` and
+the others. Every other id is the table's id and a suffix, listed per part in
+the `AshDataTable.Kit` moduledoc.
+
+**Texts.** A part shows the texts it is given, in the person's language:
+`texts` by name (`@texts.kind`), and for a part of one text or value `text`.
+Beside them it is given `messages`, what each text is made of (a key of
+`AshDataTable.Messages` and its values), and `locale`, for a kit that
+translates or formats for itself. They are made by `AshDataTable.Kit.Words`
+and passed as attributes, so LiveView sends a text again only when what it
+is made of changed. See
+[Messages and translations](messages-and-translations.md).
+
+### A part inside a part
+
+A part draws the parts inside it through the kit, with `Kit.part/1`, never by
+calling another part's function, so that a kit that replaces one part keeps
+the others. It passes each part the assigns the `Kit` moduledoc lists, and
+its texts made with `Kit.Words`. The `DivKit`'s grid draws a header cell per
+column:
+
+<!-- source: demo/lib/demo_web/div_kit.ex -->
+```elixir
+<Kit.part
+  :for={{column, index} <- Enum.with_index(@model.columns)}
+  part={:header_cell}
+  kit={@kit}
+  id={"#{@id}-head-#{column.name}"}
+  column={column}
+  colindex={@lead + index + 1}
+  attrs={
+    Attrs.column_header(
+      @id,
+      column,
+      @state.sort,
+      @model.sticky_label? and column == @label_column,
+      @myself
+    )
+  }
+  sort={@state.sort}
+  resizer={"#{@id}-resize-#{column.name}"}
+/>
+```
+
+What a cell holds and a column's editor are drawn with `Kit.cell/1` and
+`Kit.editor/1`, which call the column's component before the kit's `cell` and
+`editor`. A part called through the kit is given every assign by its caller:
+the defaults of its own `attr`s are not applied.
+
+## The development check
+
+While LiveView's client debug is on, each hook says on the browser's console
+which marker its part lacks: `ash_data_table: the grid ID-grid has no …`.
+LiveView turns the debug on by itself on `localhost` (and `*.localhost`),
+unless it was turned off, so in a usual development setup the check runs. It
+walks every cell of every grid after every patch, which is slow on a large
+page; `liveSocket.disableDebug()` turns it off. A table whose question
+element is missing runs nothing it would ask about, and says so there.
+
+## Testing a kit
+
+`AshDataTable.KitCase` draws a table of `AshDataTable.Test.Resource`, a
+resource that ships with the library and has a column of every kind, through
+your kit, in twenty states and four presentations. It checks every marker,
+id and `data-*` value the hooks rely on, the kinds of elements they need,
+the texts each part is given, and that no page holds the test resource's
+sensitive value. The demo runs it against the default kit
+([`demo/test/demo_web/kits/default_kit_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/kits/default_kit_test.exs)):
+
+<!-- source: demo/test/demo_web/kits/default_kit_test.exs -->
+```elixir
+use AshDataTable.KitCase, kit: AshDataTable.Kit.Default, endpoint: DemoWeb.Endpoint
+```
+
+What a person does with the keyboard and hears from a screen reader is not
+checked there: that needs a browser. See [Testing](testing.md).
+
+## Contract versions
+
+A part added later comes with a default in `use AshDataTable.Kit`, and a
+marker added later is in a bundle: an existing kit keeps working, and the
+contract keeps its number. When the assigns of a part change in a way an
+existing part cannot follow, or a bundle goes away, the number goes up, and a
+kit of the old number fails to compile with a message that names what
+changed.
+
+## Edge cases
+
+- **A column's component wins in a cell.** A value the person may see is
+  drawn by the column's component, if it has one, and only otherwise by the
+  kit's `cell`. A masked or hidden cell is always the kit's.
+- **The root of every table is the kit's.** `root/1` draws the root element
+  of the table on the page, of each nested table and of each picker's table.
+  The tag keeps a plain element of its own around it (a live component's
+  root must be static).
+- **Nested tables are moved into their cells** by LiveView portals. The
+  wrapper LiveView puts around each takes the kit's `class(:portal, …)`;
+  the elements inside it are styled by their markers
+  (`data-ash-data-table-portal`, `data-ash-data-table-view`), which the
+  default kit's root rules do.
+- **`class/2` is called once per table**, never per row or cell: what
+  changes there in the browser (selected, busy, invalid) is an attribute,
+  for the root's style to reach.
+
+## Things people trip over
+
+- **The arrow keys do nothing in a kit's grid.** A marker is missing: look
+  at the browser's console with LiveView's debug on, and run `KitCase`.
+- **A part of your own gets an assign as nil.** A part called through the
+  kit is given what its caller passes, and its `attr` defaults are not
+  applied.
+- **A text that never changes.** A kit's own part that draws a part of the
+  table through `Kit.part/1` has to pass that part's `texts` and `messages`
+  made with `Kit.Words`.
+- **Reading a function of the table's structs.** A kit reads the fields
+  "Kit contract 1" lists; their modules' functions are the table's own, and
+  may change.
+
+## Not in the first version
+
+No kit for another UI technology (React or Vue in LiveView), and no kit
+other than the default and the demo's. See the
+[specification](https://github.com/StefanRoesch/ash_data_table/issues/21).

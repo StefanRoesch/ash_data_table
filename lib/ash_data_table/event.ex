@@ -25,7 +25,7 @@ defmodule AshDataTable.Event do
   | --- | --- | --- |
   | `:read` | a page of rows is shown | `state` (the URL parameters of the table's sort, filters, arguments and page), `count` (rows shown), `total` (nil where the action does not count) |
   | `:read_failed` | a read failed, or was refused | `message` (what the person reads), `forbidden?` |
-  | `:row_saved` | a cell was saved, emptied, given a chosen record, or saved from a map cell's panel | `action`, `key`, `changed` (the columns), `record` |
+  | `:row_saved` | a cell was saved, emptied, given a chosen record, or saved from the side panel (a list, a map cell, a union) | `action`, `key`, `changed` (the columns), `record` |
   | `:row_created` | a create | `action`, `key`, `arguments`, `record` |
   | `:row_destroyed` | a destroy action on a row | `action`, `key`, `arguments` |
   | `:action_ran` | an update or a generic action on a row, a table action | `action`, `key` (nil for a table action), `arguments`, `record` or `result` |

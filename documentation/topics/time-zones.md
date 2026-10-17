@@ -6,13 +6,13 @@ time that the clocks skip or repeat becomes, and what a shared link means.
 
 ## The smallest example
 
-A table is in UTC unless the page says otherwise. A table you place in a
+A table is in UTC unless the page says otherwise. A table in your own
 LiveView is given the zone as `time_zone`. The demo's dashboard gives each
 of its tables the zone of the page
 ([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
 
 <!-- source: demo/lib/demo_web/live/dashboard_live.ex -->
-```elixir
+```heex
 <AshDataTable.table
   id="dashboard-tasks"
   resource={Demo.Tracker.Task}
@@ -52,15 +52,17 @@ the browser by itself.
 
 | Where the table is | How it is given the zone |
 | --- | --- |
-| Placed with `<AshDataTable.table>` | The attribute `time_zone`. |
-| Mounted with `ash_data_table` in the router | The socket assign `time_zone`, which the host's `on_mount` hook sets. |
+| A tag, `<AshDataTable.table>` | The attribute `time_zone`. |
+| Attached with `AshDataTable.attach/4` | The option `time_zone`. |
+| The page of a router line, `ash_data_table` | The socket assign `time_zone`, which the host's `on_mount` hook sets. |
 | A nested table, a picker | The zone of the table it is in. |
 
 Nil, nothing and `"UTC"` are UTC.
 
-A mounted table finds the zone in the assign its domain names, as it finds
-who is asking. The default name is `time_zone`; a domain names another
-with `time_zone_assign`
+The router page finds the zone in the assign its domain names, as it finds
+who is asking, and follows it when a hook assigns another while the page is
+open. The default name is `time_zone`; a domain names another with
+`time_zone_assign`
 ([`demo/test/support/zone_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/zone_tables.ex)):
 
 <!-- source: demo/test/support/zone_tables.ex -->
@@ -103,7 +105,7 @@ What the browser sends is a claim. The hook takes a zone that the time zone
 database knows, and UTC for anything else. The first render, before the
 browser has connected, is in UTC.
 
-The layout of a mounted table is given the assign as well, so it can say
+The layout of the router page is given the assign as well, so it can say
 which zone the times are in. The table itself does not say it: a cell
 shows a time, not a zone.
 
@@ -159,9 +161,10 @@ The table asks Ash for exactly those instants.
 
 ## Mistakes
 
-A name that is no zone is an `ArgumentError` when the table is rendered,
-naming where it was given: the `time_zone` of `<AshDataTable.table>`, or the
-assign and the domain of a mounted table.
+A name that is no zone is an `ArgumentError`, naming where it was given:
+the `time_zone` of `<AshDataTable.table>` when the tag is rendered, the
+`time_zone` of `AshDataTable.attach/4` when it is called, or the assign and
+the domain of the router page.
 
 A zone other than UTC without a time zone database is an `ArgumentError`
 that says what to add. UTC needs no database.
@@ -182,7 +185,8 @@ that says what to add. UTC needs no database.
 ## Things people trip over
 
 - **"Every time is two hours off."** The page gives no zone, so the table
-  is in UTC. Give `time_zone`, or set the assign on the socket.
+  is in UTC. Give the tag or `attach/4` its `time_zone`, or set the assign
+  on the socket for the router page.
 - **"The first render shows UTC."** The demo learns the zone when the
   browser connects. A zone from the person's settings is there at once.
 - **`Calendar.UTCOnlyTimeZoneDatabase`** is Elixir's default: it knows UTC

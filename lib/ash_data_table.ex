@@ -402,7 +402,9 @@ defmodule AshDataTable do
       of a selection's panel) is asked with the panel: by the table, or by
       the page with `:panel`;
     * `:panel` - every action panel: of a row action, a table action, a
-      create, an action on the selection and a map cell, with its files
+      create, an action on the selection, a cell edited in the side panel
+      (a list, a map cell, a union) and a filter of several values, with
+      its files
       (the page draws `live_file_input/1` of the upload `requests/1`
       names), its groups of fields and unions (`add_group_request/4`,
       `remove_group_request/4`) and the records chosen for a field (their
@@ -522,7 +524,7 @@ defmodule AshDataTable do
   end
 
   # What the host draws itself (controlled mode): the questions, the action
-  # panels and the picker of the table on the page.
+  # panels and the pickers of the table and of every table it shows.
   defp controlled!(kinds) do
     if not (is_list(kinds) and Enum.all?(kinds, &(&1 in [:confirm, :panel, :picker]))) do
       raise ArgumentError,

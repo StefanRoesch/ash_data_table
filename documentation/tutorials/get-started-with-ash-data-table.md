@@ -23,13 +23,13 @@ You need an existing Phoenix and Ash application with at least one resource.
 | Requirement | Version |
 | --- | --- |
 | Elixir | 1.17 or later |
-| Ash | 3.34 or later |
+| Ash | 3.36.1 or later |
 | `ash_phoenix` | 2.3 or later |
 | Phoenix | 1.8 |
-| Phoenix LiveView | 1.2.10 or later |
+| Phoenix LiveView | 1.2.12 or later |
 
-The table is styled with the Tailwind 4 and daisyUI classes of a default new
-Phoenix 1.8 app, and its texts go through Gettext. The resource needs a
+The table's default kit is styled with the Tailwind 4 and daisyUI classes of
+a default new Phoenix 1.8 app, and its texts go through Gettext. The resource needs a
 primary read action and at least one `public?` attribute. For the last step
 it also needs an update action and a policy.
 
@@ -56,6 +56,7 @@ each step only if that step has not been taken.
 | --- | --- |
 | `mix.exs` | Adds the dependency (this part is `igniter.install` itself). |
 | `.formatter.exs` | Adds `:ash_data_table` to `import_deps`, so that `mix format` leaves the `table` block without parentheses. |
+| `config/config.exs` | Puts the `table` and `tables` sections first in Spark's section order. |
 | `assets/js/app.js` | Imports the table's hooks and spreads them into the `hooks` of your `LiveSocket`. |
 | `assets/css/app.css` | Adds an `@source` line, so that Tailwind sees the classes the table uses. |
 | `config/config.exs` | Sets `layout`, `gettext_backend` and `translate_error` under `config :ash_data_table`. |
@@ -64,8 +65,10 @@ The installer writes a configuration key only when your app has what the key
 names (`MyAppWeb.Layouts.app/1`, `MyAppWeb.Gettext`,
 `MyAppWeb.CoreComponents.translate_error/1`) and the key is not set yet. A
 file that does not look like the one of a new Phoenix 1.8 app is left as it
-is, and the step is printed for you to take by hand. The
-[README](../../README.md#by-hand) lists the manual steps.
+is, and the step is printed for you to take by hand.
+[Installation](../topics/installation.md#by-hand) lists the manual steps, and
+explains a setting the installer leaves to you: compressing LiveView's
+websocket.
 
 This is what the result looks like in the demo. The hooks, in
 [`demo/assets/js/app.js`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/assets/js/app.js):
@@ -82,9 +85,9 @@ const liveSocket = new LiveSocket("/live", Socket, {
 })
 ```
 
-The table has three hooks, for the grid, the pagination and the action
-panel. All ship with the library as colocated hooks behind the one import.
-There is nothing to install from npm.
+The table has five hooks: the grid, the pagination, the action panel, the
+picker and the grid's sender. All ship with the library as colocated hooks
+behind the one import. There is nothing to install from npm.
 
 The configuration, in
 [`demo/config/config.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/config/config.exs):
@@ -170,7 +173,9 @@ end
 
 `ash_data_table/3` expands to a `live` route for a ready-made LiveView. The
 resource is written in full: the alias of the surrounding `scope` is not
-applied to it.
+applied to it. A table can also be placed in a LiveView of your own, with a
+tag or with `AshDataTable.attach/4`:
+[Layout and embedding](../topics/layout-and-embedding.md) compares the three.
 
 Open `/projects` in the demo as Ada Admin. The page shows the columns ID,
 Name, Description, Status, Starts on, Budget, Client, Milestones and
@@ -257,7 +262,8 @@ end
 ```
 
 On `/tasks`, as Ada Admin, move to a cell of the Priority column and press
-Enter. A menu of the priorities opens; choose one and it is saved. The table
+Enter. The cell becomes a choice of the priorities; choose one and it is
+saved. The table
 ran `reprioritise` on that task with one input, the priority, and shows the
 row as the action returned it.
 
@@ -314,7 +320,11 @@ with hidden columns and refused reads.
 - [Authorization](../topics/authorization.md)
 - [Keyboard and accessibility](../topics/keyboard-and-accessibility.md)
 - [Messages and translations](../topics/messages-and-translations.md)
-- [Layout and embedding](../topics/layout-and-embedding.md)
+- [Layout and embedding](../topics/layout-and-embedding.md): the router line,
+  the tag and `attach/4`
+- [Events and commands](../topics/events-and-commands.md)
+- [Kits](../topics/kits.md): how the table looks
+- [Testing](../topics/testing.md)
 - [Mistakes at compile time](../topics/mistakes-at-compile-time.md)
 
 The options of the two extensions are listed in the DSL reference:

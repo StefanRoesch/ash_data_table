@@ -1293,7 +1293,8 @@ defmodule AshDataTable.Attrs do
   @doc """
   The action panel and its hook. `data-question` the question it asks
   before a submit, `data-ask` that it asks it only when something changed
-  (a map cell's panel), `data-destructive` on an action that destroys.
+  (the panel of a cell: a list, a map cell, a union), `data-destructive`
+  on an action that destroys.
   """
   def panel(id, panel, question, target, presentation) do
     opened(presentation)

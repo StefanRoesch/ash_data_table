@@ -68,8 +68,6 @@ outside, the ones the API extensions use. They accept public fields only.
 The action's own filter, preparations and policies apply as they do for any
 other caller. Nothing is sorted, filtered or cut into pages in the browser.
 
-The table passes no arguments to the action.
-
 ## Page size and default sort live on the read action
 
 The `table` block has no option for the page size and none for the default
@@ -174,9 +172,10 @@ pagination too: a cursor belongs to the size it was made with. The range
 new size.
 
 The choice is part of the table's state, like the sort: `task[per]=50` in
-the URL of a mounted table, and kept by the table itself where it is nested
-or placed without `url`. The size the table opens with is left out of the
-URL. See [State in the URL](state-in-the-url.md).
+the URL of a table that keeps its state there (the router page, a tag given
+`url`, a table attached with `url: true`), and kept by the table itself
+where it is nested or keeps its state itself. The size the table opens with
+is left out of the URL. See [State in the URL](state-in-the-url.md).
 
 A size is a claim, wherever it comes from. One that is not in `page_sizes`
 (`/tasks?task[per]=1000`, or an event somebody made up) is ignored, and the
@@ -197,7 +196,7 @@ show. Two cases differ:
   and that action does not allow the sizes, the table has that action's page
   size and no menu.
 
-The menu is a native `<select>` with a visible label. It comes after Next:
+The menu has a visible label. It comes after Next:
 one more tab stop under a table of its own, and reached with Right Arrow in
 the last row of a nested table.
 
@@ -369,10 +368,11 @@ Each of these is explained in [Nested tables](nested-tables.md).
 
 ## Loading, empty and failed reads
 
-The first read runs while the page is mounted, so the first render already
-has its rows. Later reads run beside the LiveView process: the table is
-marked `aria-busy`, and the previous rows stay in view, dimmed, until the
-new ones arrive.
+The first read of the table on the page runs in place, before the first
+render, so that render already has its rows. Later reads, and every read of
+a nested table, run beside the LiveView process: the table is marked
+`aria-busy`, and the previous rows stay in view, dimmed, until the new ones
+arrive.
 
 A read that succeeds and finds nothing shows "No records".
 
@@ -401,10 +401,11 @@ resource for it
 - **A keyset cursor that somebody altered in the URL** shows "The records
   could not be loaded."
 - **An exception raised by the very first read** is not caught: the page
-  fails as any LiveView does that crashes in `mount`. The same exception on a
-  later read shows the message above.
-- **A read action with a required argument** fails every read, since the
-  table supplies none. The person reads the action's message, "is required".
+  fails as any LiveView does that crashes while it is mounted. The same
+  exception on a later read shows the message above.
+- **A read action with a required argument** is not run while that
+  argument is empty: the table says "Fill in … to see records." in place of
+  its rows. See [Arguments](arguments.md#a-required-argument).
 - **An offset action that is not `countable`** has no total and no last page
   number. Next is offered as long as Ash reports more records.
 - **A keyset table does not say where its page lies.** Its rows are numbered

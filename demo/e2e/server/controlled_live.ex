@@ -1,8 +1,9 @@
 defmodule DemoWeb.E2E.Controlled do
   @moduledoc """
   A domain for the browser test of controlled mode (stage 6): memos kept in
-  memory, whose table's panels have plain fields only, as a page can draw
-  them in this version. Compiled in the e2e environment only.
+  memory, whose one row action ("Rename") has text fields only, so that the
+  page's own form can draw each as a plain input. Compiled in the e2e
+  environment only.
   """
   use Ash.Domain, validate_config_inclusion?: false, extensions: [AshDataTable.Domain]
 
@@ -47,9 +48,9 @@ end
 defmodule DemoWeb.E2E.ControlledLive do
   @moduledoc """
   A page whose memos are attached with `controlled: [:panel]`: the panel of
-  "Rename" is the page's own form, drawn from `AshDataTable.request/1`, and
-  sent with `AshDataTable.submit_request/4`. Compiled and routed in the e2e
-  environment only.
+  "Rename" is the page's own form, drawn from the first of
+  `AshDataTable.requests/1`, and sent with `AshDataTable.submit_request/4`.
+  Compiled and routed in the e2e environment only.
   """
   use DemoWeb, :live_view
 

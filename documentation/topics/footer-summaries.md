@@ -133,8 +133,8 @@ differ for a table that reads through another action.
   for each batch the table hears of. See [Live updates](live-updates.md).
 
 The rows never wait for the numbers: they are asked for beside the rows, in
-one more query. Until the new number is there the old one stays, a little
-dimmed (`aria-busy`).
+one more query. Until the new number is there the old one stays, marked
+`aria-busy` (the default kit dims it a little).
 
 If the numbers cannot be computed, every summary shows "–", the reason is
 logged, and the rows are as they are.

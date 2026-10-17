@@ -20,8 +20,8 @@ defmodule Demo.Tracker.Comment.CompactTable do
       max_depth 0
 
       # Up to three lines of a comment, with its line breaks: a row is as
-      # high as its comment needs. What is cut off after that is shown
-      # under the cell while the cell has the focus or the pointer.
+      # high as its comment needs. What is cut off after that is shown in
+      # the cell on Shift+Enter or "Show all", the row growing to it.
       column :body do
         max_lines 3
       end

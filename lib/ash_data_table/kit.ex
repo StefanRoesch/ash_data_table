@@ -397,7 +397,8 @@ defmodule AshDataTable.Kit do
   ### `AshDataTable.Present.Panel`
 
     * `title`, `submit`, `question` - messages (`question` nil for none)
-    * `kind` - `:cell`, `:row`, `:create`, `:table` or `:bulk`
+    * `kind` - `:cell`, `:row`, `:create`, `:table`, `:bulk`, or `:filter`
+      (the panel of a filter for several values, which runs no action)
     * `destructive?` - whether its action destroys the record
     * `errors` - what the action said of none of the fields, or nil
     * `method` - its form's HTTP method

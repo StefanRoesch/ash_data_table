@@ -190,9 +190,9 @@ The rule for a cell is narrow:
 | boolean | `:boolean` | No edit mode: the value is toggled in place and saved at once. |
 | date | `:date` | A date input. |
 | datetime | `:datetime`, `:utc_datetime`, `:utc_datetime_usec`, `:naive_datetime` | A datetime input, to the second, in the page's time zone (UTC unless the page gives one; see [Time zones](time-zones.md)). |
-| enum | an `Ash.Type.Enum`, `:atom` with `one_of` | A menu of the values, with an empty choice when the attribute can be nil. |
-| array of enum values | `{:array, type}` of an enum | Multiple choice: a list of boxes in the cell, one per value of the enum. See [Arrays](#arrays). |
-| array of text, numbers, booleans, dates or datetimes | `{:array, type}` of one of the types above | One control per value, with a button that takes the value away and a button that adds one. See [Arrays](#arrays). |
+| enum | an `Ash.Type.Enum`, `:atom` with `one_of` | The browser's own menu (a `<select>`) of the values, with an empty choice when the attribute can be nil. |
+| array of enum values | `{:array, type}` of an enum | Not in the cell: the side panel, with a box per value of the enum. See [Arrays](#arrays). |
+| array of text, numbers, booleans, dates or datetimes | `{:array, type}` of one of the types above | Not in the cell: the side panel, with one control per value, a button that takes the value away and a button that adds one. See [Arrays](#arrays). |
 | a value made of fields | an embedded resource, `:map` with the `fields` constraint, and an array of either | Not in the cell: the side panel, with a field for every field of the value. See [Maps and embedded resources](maps-and-embedded-resources.md). |
 
 Every other type is read-only text; see
@@ -206,7 +206,8 @@ the related record. See
 
 Nor has a cell whose value is made of fields: Enter and F2 open the side
 panel, where the value is edited field by field and saved with "Save". See
-[Maps and embedded resources](maps-and-embedded-resources.md).
+[Maps and embedded resources](maps-and-embedded-resources.md). An array
+opens the same side panel: see [Arrays](#arrays).
 
 A column's `component` can put an editor of its own in the place of the one
 in this table: on `/tasks`, "Progress" is edited with a slider and "Estimate
@@ -246,30 +247,31 @@ Both are columns of `/tasks`, and `update` accepts both. Nothing else is
 declared for them: an array is editable on the conditions of
 [What makes a cell editable](#what-makes-a-cell-editable), as any column.
 
-**An array of enum values is multiple choice.** The editor is a list of
-boxes that opens in the cell: one per value of the enum, in the order the
-enum declares them, each with the value's label. The boxes of the record's
-values are ticked.
+**An array is not edited in its cell.** Enter, F2, a double click or a
+typed key on the cell opens the side panel (the
+[action panel](row-actions-and-create.md)), with the column's attribute as
+its one field, as a cell of a map or a union does. The typed key opens the
+panel and is typed into nothing. The row stays as high as it was.
 
-**Any other array is edited value by value.** The editor is a list that
-opens in the cell: one control per value, which is the editor the value's
-type has in the table above (a box for a boolean), each followed by a button
-that takes the value away; and under them the button "Add value". Values are
-not typed as one text with commas.
+**An array of enum values is multiple choice.** The field is a group of
+boxes: one per value of the enum, in the order the enum declares them, each
+with the value's label. The boxes of the record's values are ticked.
 
-The row is as high as its editor needs while the editor is open, and one
-line high again when it closes.
+**Any other array is edited value by value.** The field holds one control
+per value, which is the editor the value's type has in the table above (a
+box for a boolean), each followed by a button that takes the value away; and
+under them the button "Add value". Values are not typed as one text with
+commas.
 
 | Gesture | Effect |
 | --- | --- |
-| Ticking a box, adding a value, taking one away, typing into one | Changes the editor only. Nothing is sent. |
-| Enter, in a value or on a box | Saves the list. Focus stays on the cell. |
-| Leaving the editor: a click elsewhere, Tab from its last control | Saves the list. |
-| Escape | Gives up everything done since the editor opened. |
+| Ticking a box, adding a value, taking one away, typing into one | Changes the panel only. Nothing is saved. |
+| "Save" | Runs the column's update action with the whole list. The panel closes, and focus is on the cell again. |
+| Escape, or "Cancel" | Gives up everything done since the panel opened. Focus is on the cell again. |
 
-An array's editor saves when the person is done with it, never at each
-step: a list with one value ticked or one value taken away is on the way to
-the list they want, and the action may not accept it half done.
+An array is saved when the person is done with it, never at each step: a
+list with one value ticked or one value taken away is on the way to the
+list they want, and the action may not accept it half done.
 
 What is sent, and what becomes of it:
 
@@ -277,8 +279,8 @@ What is sent, and what becomes of it:
   that are ticked, in the order the enum declares them. Casting each value is
   Ash's.
 - **No values is the empty array**, not nil. A record whose array is nil and
-  one whose array is empty both have an empty cell and an editor without
-  values, and closing that editor as it opened saves nothing.
+  one whose array is empty both have an empty cell and a field without
+  values, and "Save" with the values the record has changes nothing.
 - **A value left empty is left out.** `AshPhoenix.Form`, which the save goes
   through, takes out of an array what the array's `empty_values` constraint
   names, and that is the empty text unless the attribute says otherwise
@@ -291,13 +293,17 @@ What is sent, and what becomes of it:
   the action says: "must have 5 or fewer items" for a sixth tag, "Tags 2:
   length must be greater than or equal to 2" for a second tag of one
   character.
+- **A refused list stays in the panel.** The panel stays open with what was
+  typed or ticked, the action's message stands at the field, and it is read
+  out ("Tags was not saved: …"). The cell is not marked: it shows what the
+  record holds. Escape or "Cancel" gives the edit up.
 - **A message about one value says which.** Ash says the place of the value
   it refuses, and the table puts it in front of the message, as the value's
-  control is called in the editor: the column's label and the place,
-  counted from 1. When the cell is opened again, the control of that value
-  is marked (`aria-invalid`), until it is typed over. Of several values that
-  are none of the type, Ash names the first. A multiple choice names no
-  place, as its boxes have none: the message stands alone.
+  control is called in the panel: the column's label and the place,
+  counted from 1. The control of that value is marked (`aria-invalid`),
+  until it is typed over. Of several values that are none of the type, Ash
+  names the first. A multiple choice names no place, as its boxes have
+  none: the message stands alone.
 - **The same values in another order are another value**, and are saved.
 
 An array column is never sorted or filtered by, whatever it holds: see
@@ -312,10 +318,10 @@ is read-only. A single union is edited in the side panel too:
 see [Unions](unions.md).
 
 **Try it:** on `/tasks`, as Ada Admin, move to a cell of "Tags", press
-Enter, Tab to "Add value", press Enter, type a tag and press Enter again.
-Then add a tag of one character. On a cell of "Checks", press Enter, tick
-with Space, move with the arrow keys, and press Enter. `/specimens` has
-"Strings", "Integers" (which has to keep one value) and "Shades".
+Enter, Tab to "Add value", press Enter, type a tag and use "Save". Then add
+a tag of one character. On a cell of "Checks", press Enter, tick with
+Space, move with Tab, and use "Save". `/specimens` has "Strings",
+"Integers" (which has to keep one value) and "Shades".
 
 ## Limits an editor shows before saving
 
@@ -360,7 +366,7 @@ slider does: see [Custom components](custom-components.md).
 and its message is shown at the cell, as described under
 [When a save fails](#when-a-save-fails). The browser checks nothing: the
 forms of the action panel and of the argument line are `novalidate`, and a
-cell's editor is in no form. One thing is held back, as before: what the
+cell's editor is in no form. One thing is held back: what the
 browser cannot read as a number or a date at all (`1e`, a date half typed).
 Such an input says it is empty, and sending it would clear the value.
 
@@ -384,8 +390,7 @@ Ash does:
   array), and the `precision` and `scale` of a decimal.
 
 A `validate` of the resource is no constraint: what it says is known only
-once the action has run with the record. It is shown after a save, as
-before.
+once the action has run with the record. It is shown after a save.
 
 **Try it:** on `/specimens`, press Enter on a cell of "An integer", hold
 the up arrow past 1000, then type `5000` and press Enter. On `/tasks`, press
@@ -394,7 +399,7 @@ the down arrow in "Due within: Days" until it stops at 0.
 ## The counter of a text
 
 A text whose type says the most it can be long (`max_length`) has a counter
-beside its editor: how long the text is now, and the most it can be. A
+with its editor: how long the text is now, and the most it can be. A
 label's name takes 30 characters
 ([`demo/lib/demo/tracker/label.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/label.ex)):
 
@@ -437,8 +442,8 @@ it, and its message is shown as described under
 
 | The text | The counter |
 | --- | --- |
-| In the editor of a cell | Under the cell, at its end. It floats on top of the page, as the message of a failed cell does, so the text keeps all its room: the row is as high and the column as wide as before. |
-| A value of an array of text | After the value, in its row. |
+| In the editor of a cell | Under the text, in the cell, at its end. The row grows to it while the editor is open; the column keeps its width. |
+| A value of an array of text, in the side panel | After the value, in its row. |
 | A field of the action panel, also inside a map cell, an embedded resource or a union | Under the field, at its end. |
 | An argument of the argument line | After its input, on the line. |
 
@@ -461,8 +466,9 @@ less than or equal to 30". On `/tasks`, type into "Search" above the grid.
 | Enter | Saves. Focus stays on the cell. |
 | Leaving the cell: a click elsewhere, Tab | Saves. Focus goes where the person sent it. |
 | Escape | Gives the edit up. The cell shows its value again. |
-| Toggling a boolean, choosing from a menu | Saves at once. |
-| Ticking a box of a multiple choice; adding, changing or taking away a value of an array | Nothing yet: the list is saved by Enter or by leaving its editor. See [Arrays](#arrays). |
+| Toggling a boolean, choosing from a menu with the pointer | Saves at once. |
+| Moving through a menu with the arrow keys | Nothing yet: Enter, or leaving the cell, saves the value reached. |
+| Enter, F2, a double click or a typed key on an array | Opens the side panel; "Save" there saves the list. See [Arrays](#arrays). |
 | Letting go of a slider, or changing any other editor of a component that saves on change | Saves at once. The editor stays open; Enter or leaving the cell closes it. |
 
 Two rules keep the table from doing more than was asked:
@@ -503,6 +509,10 @@ new due date. And the row stays where it is, even if its new value no longer
 matches the filters or belongs elsewhere in the sort, until the next change
 of page, sort or filter reads the page afresh.
 
+A saved cell is told to the page as the event `:row_saved`, and the page
+can veto a save before it runs: see
+[Events and commands](events-and-commands.md).
+
 Loading calculations, aggregates and related records onto an action's result
 goes through the resource's primary read action, as it always does in Ash. A
 table that has both editable columns and calculation, aggregate or reference
@@ -525,9 +535,9 @@ Nothing is saved, and the table shows what the action returned.
 - The cell keeps what was typed and is marked: `aria-invalid`, a ring in
   the error colour, and a "!" at its end, which shows the failure without a
   colour.
-- The action's message is the cell's description (`aria-describedby`). It
-  appears under the cell while the cell has focus or the pointer, so the row
-  keeps its height, and it is announced to screen readers when it arrives.
+- The action's message stands in the cell, under the value, and the row
+  grows to it. It is the cell's description (`aria-describedby`), and it is
+  announced to screen readers when it arrives.
 - Focus is not pulled back to the cell. A person who tabbed on stays where
   they are.
 
@@ -535,7 +545,6 @@ Nothing is saved, and the table shows what the action returned.
 | --- | --- |
 | The action rejects the value | The action's message: "length must be greater than or equal to 3" |
 | The value is not one of the type | Ash's message: "is invalid" |
-| One value of an array is refused | The value's name in the editor, then the message: "Tags 2: length must be greater than or equal to 2" |
 | A validation about another field fails | That field's column label, then the message: "Progress: must be 100 when the task is done" |
 | A policy refuses the action on this record | "You are not allowed to change this." |
 | The record was deleted, or the person can no longer read it | "This record is no longer available." |
@@ -544,7 +553,8 @@ Nothing is saved, and the table shows what the action returned.
 Only errors of Ash's "invalid" class are shown in their own words; they are
 what an action returns on purpose. A field is named only if the person has a
 column for it. The messages can be translated; see
-[Messages and translations](messages-and-translations.md).
+[Messages and translations](messages-and-translations.md). A list the action
+refuses is shown in the side panel, not in the cell: see [Arrays](#arrays).
 
 A failed cell is put right in one of three ways:
 
@@ -608,12 +618,12 @@ only runs actions.
 - **A number cell and a letter.** A key the number input does not take starts
   the edit without replacing the number.
 - **A multiple choice whose record holds a value that is no longer one of
-  the choices.** The value is shown in the cell as it is, and has no box.
-  It is not lost: a save sends the ticked values, in the order the enum
+  the choices.** The value is shown in the cell as it is, and has no box in
+  the panel. It is not lost: a save sends the ticked values, in the order the enum
   declares them, and then every such value, in the order the record has
   them, so that only what a person could see and change has changed. The
   action then decides. Ash refuses a value that is not one of the type's,
-  so such a cell fails to save, with the action's message, until the record
+  so such a list fails to save, with the action's message, until the record
   is put right elsewhere. This can only happen to an array of `:atom`
   limited by `one_of`: an `Ash.Type.Enum` fails the read of a value it does
   not have, and the table says "The records could not be loaded."

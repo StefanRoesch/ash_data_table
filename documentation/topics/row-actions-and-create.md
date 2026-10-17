@@ -110,6 +110,10 @@ An action is declared once, and is the same in every row: there is no
 option that shows a button on some records only. Whether an action runs on
 one record is the action's own business, and its policy's.
 
+The page can add one more button, first in every row: `open: "Open"` on
+the tag, `attach/4` or the router line runs no action and tells the page
+which row was opened; see [Events and commands](events-and-commands.md).
+
 A table with a row action also has a box at the start of every row, and
 every row action is offered for the rows a person selects, unless it says
 `bulk? false`. That is the subject of
@@ -200,7 +204,9 @@ The create action always opens the panel, whatever its inputs.
 
 ## The fields of the panel
 
-The action panel is a modal dialog at the right edge of the window. It is
+The action panel of the default kit is a modal dialog at the right edge of
+the window. A kit, or `presentation: [panel: :inline]` on the table, opens
+it in the page instead, under the table; see [Kits](kits.md). It is
 headed by the action and the record ("Set progress: Write the report"; the
 record is called as in a [full view's heading](nested-tables.md#the-heading)),
 has one field per input from top to bottom, and ends in "Cancel" and "Run".
@@ -277,10 +283,10 @@ values, and "Checks", a multiple choice.
 - It therefore has no mark of a required field. How many values an array
   has to have is the action's to say (`min_length`), and is shown at the
   field when the action says it.
-- A value left empty is left out, as in a cell: see
+- A value left empty is left out: see
   [Inline editing](inline-editing.md#arrays).
-- A message about one value says which, as on a cell ("Tags 2: …"), and
-  the control of that value is marked while the message is shown.
+- A message about one value says which ("Tags 2: …"), and the control of
+  that value is marked while the message is shown.
 - A multiple choice keeps what the record holds that is none of its
   choices: it is sent with the ticked values, after them, and not shown.
 - Nothing is sent to the action when a value is added or taken away, other
@@ -399,6 +405,25 @@ This protects the table only. The action itself accepts the attribute from
 anyone its policy allows; see
 [Authorization](authorization.md#refusing-to-edit-a-hidden-field-protects-the-table-only).
 
+### Arguments the page fills
+
+A `page_argument` inside an `action` names a public argument of the action
+that the page fills, not the person:
+
+<!-- sketch -->
+```elixir
+action :assign do
+  page_argument :assignee_id
+end
+```
+
+The value comes from the page's `page_arguments`, given on the tag,
+`attach/4` or the router line. The panel has no field for it, and nothing
+the browser sends replaces it; an action whose only required input is such
+an argument runs straight away. A page that gives no value for it raises
+when the action opens or runs. See
+[Events and commands](events-and-commands.md).
+
 ## Errors in the panel
 
 The panel's form is an `AshPhoenix.Form` of the action, and the table adds
@@ -454,7 +479,7 @@ column's `confirm`; see [Confirm](confirm.md#confirm-on-a-row-action).
 | The action | The question is asked |
 | --- | --- |
 | Runs straight away | When its button is used. Cancel leaves everything as it was, with focus on the button. |
-| Opens the panel | When "Run" is used, on top of the panel. Cancel returns to the panel with everything as it was typed. |
+| Opens the panel | When "Run" is used, on top of the panel, or inside it where questions open in the page. Cancel returns to the panel with everything as it was typed. |
 
 A destroy action that names no `confirm` deletes at one click. That is
 allowed, and it has to be a visible choice: the compiler warns about it
@@ -462,8 +487,11 @@ until the action has a question or says `confirm false`, as the demo's task
 labels do above. `confirm false` on an update action is accepted and changes
 nothing.
 
+A table asks one question at a time: a new one gives the open one up, as
+Cancel does.
+
 Like a column's question, an action's is asked in the browser. It guards
-against slips and is no check.
+against slips and is no check, in controlled mode too.
 
 ## What running an action does
 
@@ -482,6 +510,10 @@ On the server, a row action is these steps:
 4. **The page shows what the action returned.**
 
 A create is `for_create` and `submit`, with the same last step.
+
+The page can hear what ran (`:action_ran`, `:row_destroyed`,
+`:row_created`) and stop a write before it runs; see
+[Events and commands](events-and-commands.md).
 
 | The action was | The page afterwards |
 | --- | --- |
@@ -537,8 +569,8 @@ Nothing pops up over the page. The failure is shown where a failed cell
 edit is shown: on a cell of the row.
 
 - The row's **actions cell** is marked (`aria-invalid`, a ring in the error
-  colour) and described by the message (`aria-describedby`), which appears
-  under the cell while the cell has focus or the pointer.
+  colour) and described by the message (`aria-describedby`), which stands
+  in the cell under its buttons: the row grows for it.
 - The message is announced: "Archive failed: You are not allowed to do
   this."
 - Focus is not moved, and the row's buttons stay.
@@ -660,8 +692,8 @@ On `/tasks` in the demo:
 
 | Actor | Actions column | "New task" |
 | --- | --- | --- |
-| Ada Admin | Five buttons on every row, and each runs on every task. | Yes, with thirteen fields. |
-| Max Member | Five buttons on every row. A task that is neither assigned to him nor reported by him refuses: "You are not allowed to do this." | Yes, with twelve fields: no "External ref". |
+| Ada Admin | Five buttons on every row, and each runs on every task. | Yes, with fourteen fields. |
+| Max Member | Five buttons on every row. A task that is neither assigned to him nor reported by him refuses: "You are not allowed to do this." | Yes, with thirteen fields: no "External ref". |
 | Vera Viewer | None. | No. |
 | Olga Outsider | As the member, on Globex's tasks. | Yes; the task is Globex's. |
 | Nobody | None, and no rows. | No. |
@@ -694,8 +726,10 @@ as a filter's controls are.
 | Escape | On an actions cell that shows a failure | Gives the message up. |
 | Space | On the cell | Selects the row, or takes it out of the selection, as on any cell of a row. |
 
-The action panel is a modal dialog. Focus moves into it and stays there,
-Tab goes through its fields and buttons, and Escape is Cancel. The field
+Focus moves into the action panel as it opens, Tab goes through its fields
+and buttons, and Escape is Cancel. Over the page, as a modal dialog, focus
+stays in it; in the page, Tab leaves it, and focus goes back to what opened
+it when it closes either way. The field
 of a key has one control, its button "Choose": Enter or Space on it opens
 the picker on top of the panel, and Escape there closes the picker alone.
 The field of several related records has a button per record besides,
@@ -743,8 +777,9 @@ All keys of a table are in
 - **A destroy action with inputs** opens the panel like any other, and its
   "Run" is in the error colour.
 - **A question on an action is asked in the browser.** An `act` event sent
-  to the LiveView by other means is not asked anything. What must not
-  happen belongs in the action.
+  to the LiveView by other means is not asked anything, in controlled mode
+  too. What must not happen belongs in the action's policy, or in the
+  page's `before_action` (see [Events and commands](events-and-commands.md)).
 
 ## Things people trip over
 

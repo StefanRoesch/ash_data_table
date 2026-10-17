@@ -48,12 +48,21 @@ defmodule AshDataTable.MixProject do
     [
       main: "readme",
       source_ref: "main",
+      # The kit contract names the structs a part is given ("Kit contract 1"
+      # in `AshDataTable.Kit`) and the opaque `AshDataTable.Table` names what
+      # it holds: their modules are the table's own and stay undocumented.
+      skip_code_autolink_to:
+        &String.match?(
+          &1,
+          ~r/^(t:)?AshDataTable\.(Model|Present|State|Query\.Page|Caller|Live\.Entry)(\.|$)/
+        ),
       # The tutorial and the topic guides are in reading order. Their code
       # blocks are checked against the repository by
       # `test/documentation_test.exs`.
       extras: [
         "README.md",
         "documentation/tutorials/get-started-with-ash-data-table.md",
+        "documentation/topics/installation.md",
         "documentation/topics/columns-and-defaults.md",
         "documentation/topics/reading-sorting-and-pagination.md",
         "documentation/topics/filtering.md",
@@ -73,13 +82,17 @@ defmodule AshDataTable.MixProject do
         "documentation/topics/named-tables.md",
         "documentation/topics/live-updates.md",
         "documentation/topics/footer-summaries.md",
-        "documentation/topics/custom-components.md",
         "documentation/topics/sensitive-columns.md",
         "documentation/topics/authorization.md",
-        "documentation/topics/keyboard-and-accessibility.md",
-        "documentation/topics/messages-and-translations.md",
         "documentation/topics/time-zones.md",
         "documentation/topics/layout-and-embedding.md",
+        "documentation/topics/events-and-commands.md",
+        "documentation/topics/controlled-mode.md",
+        "documentation/topics/custom-components.md",
+        "documentation/topics/kits.md",
+        "documentation/topics/keyboard-and-accessibility.md",
+        "documentation/topics/messages-and-translations.md",
+        "documentation/topics/testing.md",
         "documentation/topics/mistakes-at-compile-time.md",
         "documentation/dsls/DSL-AshDataTable.Resource.md",
         "documentation/dsls/DSL-AshDataTable.Domain.md",
@@ -100,6 +113,18 @@ defmodule AshDataTable.MixProject do
           AshDataTable.Live.Page,
           AshDataTable.NotFoundError
         ],
+        "Events and the veto": [
+          AshDataTable.Event,
+          AshDataTable.Request,
+          AshDataTable.Sensitive.Masked
+        ],
+        Kits: [
+          AshDataTable.Kit,
+          AshDataTable.Kit.Default,
+          AshDataTable.Kit.Words,
+          AshDataTable.Attrs,
+          AshDataTable.Ids
+        ],
         Components: [
           AshDataTable.Component,
           AshDataTable.Component.Column,
@@ -108,14 +133,23 @@ defmodule AshDataTable.MixProject do
           AshDataTable.Components.Progress,
           AshDataTable.Components.Slider
         ],
-        "Live updates": [AshDataTable.Resource.Notifier, AshDataTable.Test],
-        Translation: [AshDataTable.Gettext],
+        "Live updates": [AshDataTable.Resource.Notifier],
+        Translation: [AshDataTable.Gettext, AshDataTable.Messages],
+        Testing: [
+          AshDataTable.Test,
+          AshDataTable.KitCase,
+          AshDataTable.Test.Resource,
+          AshDataTable.Test.Resource.Domain,
+          AshDataTable.Test.Resource.Owner,
+          AshDataTable.Test.Resource.Part
+        ],
         Introspection: [
           AshDataTable.Resource.Info,
           AshDataTable.Resource.Table,
           AshDataTable.Resource.Column,
           AshDataTable.Resource.Relationship,
           AshDataTable.Resource.Action,
+          AshDataTable.Resource.PageArgument,
           AshDataTable.Resource.Reference,
           AshDataTable.Resource.Argument,
           AshDataTable.Resource.Upload,

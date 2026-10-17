@@ -67,7 +67,7 @@ table it is reported when the resource is compiled.
 ### The default table is always there
 
 A resource that lists the extension has a default table whether it writes a
-`table` block or not, as before. So a resource may declare named tables
+`table` block or not. So a resource may declare named tables
 only: its default table is then the default set of columns, read through the
 primary read action. It is the table that a picker shows, that a
 relationship nests when it names no table, and that `ash_data_table` mounts
@@ -82,8 +82,9 @@ a resource have the same name.
 
 `:default` is the name of the default table. No named table can have it, and
 wherever a table is named, `:default` names the default table:
-`table: :default` in the router, `table={:default}` on the component and
-`table :default` in a `relationship` all mean the same as leaving it out.
+`table: :default` in the router and in `attach/4`, `table={:default}` on the
+tag and `table :default` in a `relationship` all mean the same as leaving it
+out.
 
 ## Mounting a named table
 
@@ -120,7 +121,8 @@ letter) raises when the router is compiled.
 
 ## Placing a named table
 
-`<AshDataTable.table>` takes the name as `table`. The demo's page `/named`
+`<AshDataTable.table>` takes the name as `table`, and `AshDataTable.attach/4`
+as the option `table:`. The demo's page `/named`
 places two tables of the comments
 ([`demo/lib/demo_web/live/named_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/named_live.ex)):
 
@@ -138,7 +140,7 @@ places two tables of the comments
 />
 ```
 
-A name the resource has no table for raises when the component is rendered,
+A name the resource has no table for raises when the table is placed,
 with the same list of tables.
 
 Two tables of one resource are called the same unless you say otherwise:
@@ -156,8 +158,8 @@ page. Unless you give one, it is:
 | A named table | that, `_` and the table's name | `comment_compact` |
 
 So two tables of one resource stand on one page, and in one address,
-without an `id` being written. This holds for `ash_data_table` and for
-`<AshDataTable.table>`, where `id` can now be left out.
+without an `id` being written. This holds for `ash_data_table`,
+`<AshDataTable.table>` and `attach/4`.
 
 **Try it:** `/named` as Ada Admin. Click "Body" in the lower table, then in
 the upper one. The address holds both, each under its own id:
@@ -187,7 +189,7 @@ relationship :labels do
 end
 ```
 
-Without `table`, the destination's default table is nested, as before. A
+Without `table`, the destination's default table is nested. A
 relationship of the default set (a table that declares no `relationship`)
 always nests the default table.
 
@@ -217,7 +219,7 @@ task of the board has none, although `/labels` mounts the labels' default
 table.
 
 The address names the table that offers the relationship. For the default
-table of the parent that is the resource's short name, as before; for a
+table of the parent that is the resource's short name; for a
 named table it is followed by `_` and the table's name:
 
 <!-- sketch -->
@@ -260,9 +262,7 @@ defmodule Demo.Tracker.Comment.CompactTable do
       on_forbidden :message
       max_depth 0
 
-      # Up to three lines of a comment, with its line breaks: a row is as
-      # high as its comment needs. What is cut off after that is shown
-      # under the cell while the cell has the focus or the pointer.
+      # ...
       column :body do
         max_lines 3
       end
@@ -360,8 +360,8 @@ Enum.map(table.columns, & &1.name)
 #=> [:body, :author, :inserted_at]
 ```
 
-The functions that were there before (`columns/1`, `table_read_action/1` and
-the others) are about the default table.
+The functions of one table (`columns/1`, `table_read_action/1` and the
+others) are about the default table.
 
 ## Edge cases
 
@@ -384,7 +384,7 @@ the others) are about the default table.
   arguments of that table's actions only.
 - **The settings of the domain** (`AshDataTable.Domain`: the assign names and
   `authorize?`) hold for every table of the domain's resources.
-- **A full view from a table placed with another `id`** works as before: the
+- **A full view from a table placed with another `id`** works the same: the
   link is found by resource and table, not by id.
 
 ## Things people trip over

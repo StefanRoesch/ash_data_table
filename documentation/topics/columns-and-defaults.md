@@ -424,7 +424,7 @@ A file is no column at all: `Ash.Type.File` is the type of an action's
 argument, and Ash stores none. See [Files](files.md).
 
 An array of values that do have a cell type is not among them: it is shown
-as its values and can be edited, see
+as its values and can be edited in the side panel, see
 [Inline editing](inline-editing.md#arrays). It has no sort and no filter
 either.
 
@@ -457,7 +457,8 @@ What to know about it:
 
 - **A column is between 48 and 1000 pixels wide.** Text that does not fit is
   cut off with an ellipsis, in the header as in the cells. Rows stay one line
-  high. In a column with `max_lines` the text takes more lines instead, up
+  high, but for a cell that shows its whole text or the message of a failed
+  save. In a column with `max_lines` the text takes more lines instead, up
   to that many: see [Long text](#long-text).
 - **The first change fixes every column.** Each column keeps the width it has
   at that moment, and from then on the table is as wide as its columns
@@ -481,25 +482,24 @@ another column.
 ## Long text
 
 A cell shows one line of its text and cuts off the rest with "…". That keeps
-every row one line high. Two things help with a text that is longer.
+rows one line high. Two things help with a text that is longer.
 
-**The whole text, under the cell.** When a cell cuts some of its text off,
-the whole text is shown in a small box under the cell:
+**The whole text, in the row.** When a cell cuts some of its text off, it
+can show all of it in place: the row grows as high as the text needs.
 
-- when the cell has the focus (the keyboard, a click, or a tap), after
-  about half a second, and
-- when the pointer rests on the cell, after about half a second.
-
-It goes away at once when the focus moves on, when the pointer leaves, when
-the page scrolls, and with Escape. Escape does nothing else then: the focus
-stays where it is. The pointer can move onto the box, and the box stays for
-as long as the pointer is on it; a long text scrolls in it. Going through
-cells with the arrow keys shows nothing until you stop on one.
+- While the cell has the pointer or the focus, a small button "Show all"
+  is in the cell. A click on it, or Shift+Enter on the cell, shows the
+  whole text.
+- The button then says "Show less". It, Shift+Enter again, or Escape on the
+  cell cuts the text off again. Escape does nothing else then: the focus
+  stays where it is.
+- A cell whose whole text shows keeps showing it when the focus and the
+  pointer move on, until it is cut off again.
 
 This needs no declaration and works in every table and every column. It is
-not shown for a cell that shows all of its text, for a cell that is being
-edited (the editor holds the text), or for a cell whose save failed (its
-message is shown there).
+not offered for a cell that shows all of its text, for a cell that is being
+edited (the editor holds the text), or for a cell whose save failed or is
+on its way.
 
 **More lines in a column.** `max_lines` on a column lets its cells show
 several lines:
@@ -527,26 +527,26 @@ several lines:
   cell, a sensitive column, or a column whose `component` shows the cell,
   the option has no effect, and the compiler says so: see
   [Mistakes at compile time](mistakes-at-compile-time.md#columns).
-- **Editing is as before.** The editor of a text opens in the cell and grows
+- **Editing is the same.** The editor of a text opens in the cell and grows
   with its lines.
 - **Each table says it for itself.** A nested table and the table of a
   picker do what their own table's block says.
 
-What to know about the box with the whole text:
+What to know about the whole text:
 
-- **It shows what the cell shows, and nothing else.** The browser takes the
-  text from the cell. The server sends nothing for it.
+- **It is the cell's own text.** Nothing floats over the page, and the
+  server sends nothing for it.
 - **A sensitive cell has none**, masked or shown. Nor has a cell of a field
   the person may not see.
-- **A screen reader is not told of it.** The whole text is in the cell
-  already, and is read from there.
-- **It cannot be scrolled from the keyboard.** A text that is longer than
-  the box can be read in the cell's editor, or by making the column wider.
+- **A screen reader is not told of the button.** It is for the eye, and no
+  tab stop: the whole text is in the cell already, and is read from there.
+- **A live update of the row** brings the new text, shown whole again if it
+  was.
 - **A column header that is cut off has none.**
 
-**Try it:** open `/comments/compact` in the demo and stop on a comment that
-starts with "Done on my side". Then open `/comments`, where the same
-comments are one line, and do the same.
+**Try it:** open `/comments/compact` in the demo, stop on a comment that
+starts with "Done on my side" and press Shift+Enter. Then open
+`/comments`, where the same comments are one line, and do the same.
 
 ## Hiding columns
 
@@ -558,7 +558,7 @@ whose box is not ticked is hidden.
 Hiding is for the eye only. **It is not a permission.** A hidden column is
 still read from the database and still in the page; anybody can show it
 again. What a person must not see is kept away by a policy, a field policy
-or `sensitive?`, as before: see [Authorization](authorization.md) and
+or `sensitive?`: see [Authorization](authorization.md) and
 [Sensitive columns](sensitive-columns.md).
 
 What to know about it:
@@ -600,8 +600,12 @@ What to know about it:
 - **There is no option** to keep a column from being hidden, or to start
   with a column hidden.
 
-The list closes with Escape, with a click anywhere else, and when focus
-moves on. The keys are in
+The list is the browser's own popover: it opens under its button, and in
+a browser without CSS anchor positioning (Firefox today) in the middle of
+the window. It closes with Escape, with a click anywhere else, and when
+focus moves on. The button's text counts in the plural forms of the
+person's language (see
+[Messages and translations](messages-and-translations.md#counts-plural-forms)). The keys are in
 [Keyboard and accessibility](keyboard-and-accessibility.md#hiding-columns-from-the-keyboard).
 
 **Try it:** on `/tasks` in the demo, filter "Progress", then hide it with
@@ -652,7 +656,7 @@ keeps it in view when its block says `sticky_label? true`:
   wide. Then the table scrolls as one without the option does.
 - **For a person who does not see the label's field** (a field policy), the
   table has no label column, and nothing stays.
-- **Widths and hidden columns** work as before. The label column has its
+- **Widths and hidden columns** work as in any table. The label column has its
   handle and can be made wider or narrower; it cannot be hidden, with or
   without the option.
 - **The cells that stay have the page's ground**, so that what scrolls under
@@ -687,7 +691,8 @@ On `/labels`, in a narrow window, nothing does.
 - **An enum whose type has no label for a value** shows the value in words.
   An enum value that is no longer one of the type's values is shown as text.
 - **Width.** There is no width setting in the `table` block. Rows are one
-  line high, unless a column says `max_lines`; a cell wider than `20rem` is
+  line high, unless a column says `max_lines` or a cell shows its whole
+  text; a cell wider than `20rem` is
   cut off with an ellipsis, until a person makes the column wider: see
   [Column widths](#column-widths) and [Long text](#long-text). The
   editor of a text cell is a field that grows with the lines of its text. In

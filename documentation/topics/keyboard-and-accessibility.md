@@ -46,7 +46,8 @@ order, not 425.
   of the line above the grid ("Clear selection" and the bulk actions, while rows
   are selected, "Clear filters", while a filter applies, and "Columns"), and the
   pagination buttons below it.
-- Moving about never contacts the server. Neither does selecting rows.
+- Moving about never contacts the server. Selecting a row tells it what is
+  selected, and nothing else.
 - Where rows can be selected, the first cell of a row holds its box; where
   rows expand into nested tables, the next cell is the row's expander. Tab
   enters the grid on the first column of the table, to the right of both.
@@ -68,10 +69,12 @@ order, not 425.
 | Enter, on the heading of a sortable column | Sorts by the column: ascending, descending, none. Focus stays on the heading. |
 | F2, on the heading of a column | Goes to the handle that changes the column's width. See [Column widths from the keyboard](#column-widths-from-the-keyboard). |
 | Enter or F2, on a filter cell | Goes into the filter. |
-| Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. On a reference cell, opens the picker: see [Choosing a related record](choosing-a-related-record.md#the-keyboard). |
+| Enter or F2, on a cell that can be edited | Starts editing. On a boolean cell, toggles the value and saves. On a reference cell, opens the picker: see [Choosing a related record](choosing-a-related-record.md#the-keyboard). On an array, a map or a union, opens the side panel. |
 | Enter or F2, on the actions cell of a row | Goes to its first button. See [Row actions and the action panel](#row-actions-and-the-action-panel). |
 | Shift+Enter, on a cell of a sensitive column | Shows the cell's value, and hides it again. Escape hides it too, and so does leaving the cell. See [Sensitive columns](sensitive-columns.md#showing-a-value). |
-| A character, on a filter cell or a cell that can be edited | Goes into the filter or starts editing, with that character typed. |
+| Shift+Enter, on a cell that cuts its text off | Shows the whole text in the cell, the row as high as it needs, and cuts it off again. See [Long text](columns-and-defaults.md#long-text). |
+| A character, on a filter cell or a cell that can be edited | Goes into the filter or starts editing, with that character typed. On an array it opens the side panel, and the character is typed into nothing. |
+| Escape, on a cell whose whole text shows | Cuts the text off again, and does nothing else. |
 | Escape, on a cell whose save failed | Gives the failed edit up: the cell shows the saved value again. |
 | Escape, on an actions cell that shows the message of a failed action | Gives the message up. |
 | Space, on a cell of a row of records | Where rows can be selected: selects the row, or takes it out of the selection. Anywhere else nothing, and it does not scroll the page. |
@@ -161,10 +164,10 @@ What hiding does and does not do is in
 | Key | Where | Effect |
 | --- | --- | --- |
 | Enter, Space | On "Columns" | Opens the list, or closes it. Focus stays on the button. |
-| Tab, Shift+Tab | On "Columns", with the list open | Tab goes to the first box, and on through the boxes. |
+| Tab | On "Columns", with the list open | Goes to the first box, and on through the boxes. |
 | Space | On a box | Hides the column, or shows it again. The list stays open. |
 | Escape | On the button or in the list | Closes the list. Focus goes to the button. In a picker, the picker stays open. |
-| Tab | On the last box | Leaves the list, which closes. |
+| Tab on the last box, Shift+Tab on the button | | Leaves the list, which closes. |
 
 A click anywhere outside the list closes it as well.
 
@@ -177,12 +180,14 @@ In the grid, hidden columns are passed over:
   right that is shown takes its place; where there is none, the next to the
   left.
 
-It is a disclosure: a button with `aria-expanded` and `aria-controls`, and
-a group of labelled checkboxes named "Columns". It is not an ARIA menu. The
-button's text says how many columns are hidden, and how many of them the
-rows are filtered or sorted by: "Columns (2 hidden, 1 filtered)". Hiding
-or showing a column is read out once, politely: "Progress hidden",
-"Progress shown".
+The list is the browser's own popover, which its button opens: the browser
+opens and closes it and tells assistive technology whether it is open. It
+holds a group of labelled checkboxes named "Columns"; it is not an ARIA
+menu. It opens under its button, and in a browser without CSS anchor
+positioning (Firefox today) in the middle of the window. The button's text
+says how many columns are hidden, and how many of them the rows are
+filtered or sorted by: "Columns (2 hidden, 1 filtered)". Hiding or showing
+a column is read out once, politely: "Progress hidden", "Progress shown".
 
 A hidden column is not told to a screen reader: its cells are not
 displayed. The cells that are shown keep their `aria-colindex`, and the
@@ -205,7 +210,7 @@ A filter's controls are not tab stops. They are reached from their cell:
 | Arrow keys, Home, End | In a filter's control | Belong to the control. They do not move through the grid. |
 | Enter | In a filter's input | Applies what was typed. Focus stays in the input. |
 | Escape | In a filter's control | Gives up what was typed and not yet applied, and returns to the cell. |
-| Enter, Space, Down Arrow | On the button of "is any of" and "is none of" | Opens the list of values, with focus on its first box. In the list, Space ticks a box, the arrow keys go from box to box, Enter closes the list and applies what is ticked, and Escape closes it and gives the ticks up. See [Filtering](filtering.md#is-any-of-is-none-of). |
+| Enter, Space | On the button of "is any of" and "is none of" | Opens the side panel with a box per value, and focus on the first box. There Space ticks a box, Tab goes from box to box and on to "Cancel" and "Apply"; "Apply" filters the column, Escape and "Cancel" filter nothing. Focus comes back to the button. See [Filtering](filtering.md#is-any-of-is-none-of). |
 | Tab, Shift+Tab | In a filter's control | Move through the controls of this one filter: the operator menu, the value, the clear button. Tab from the last one leaves the grid. Shift+Tab from the first one returns to the cell. |
 
 After a filter is cleared with its own button, focus goes to its cell. After
@@ -247,11 +252,10 @@ cell's type:
 | text | Opens the editor with the text selected. | Opens the editor and replaces the text with the character. |
 | number | Opens the editor with the number selected. | Replaces the number, if the input takes the character. A letter opens the editor and leaves the number as it was. |
 | date, datetime | Opens the editor with its value. | Opens the editor and keeps the value; a digit goes into the input's first part. |
-| enum | Opens the menu at the cell's value. | Opens the menu at the first value that starts with the character. Nothing is saved by that alone. |
+| enum | Opens the browser's menu (a `<select>`) at the cell's value. | Opens the menu at the first value that starts with the character. Nothing is saved by that alone. |
 | boolean | Toggles the value and saves. | Nothing. |
-| array of enum values (multiple choice) | Opens the list of boxes, with focus on the first. | Opens the list, with focus on the first choice that starts with the character. Nothing is ticked by that alone. |
-| array of text or of numbers | Opens the list of values, with focus in the first and its text selected; on the button "Add value" when there is none. | Opens the list and starts a new value with the character, after the others. A character a number does not take adds nothing. |
-| array of dates, datetimes or booleans | As above. | Opens the list, as Enter does. |
+| array of enum values (multiple choice) | Opens the side panel, with focus on the first box. | Opens the side panel, as Enter does. Nothing is ticked by it. |
+| any other array | Opens the side panel, with focus in the first value; on the button "Add value" when there is none. | Opens the side panel, as Enter does. The character is typed into nothing. |
 | a value made of fields: an embedded resource, a map, an array of either | Opens the side panel, with focus in the value's first field. | Nothing. |
 | a union | Opens the side panel, with focus on the choice of its kind. | Nothing. |
 | The editor of a column's component, with a control that is typed into (text, a number) | Opens the editor with its value selected. | As text and number above. |
@@ -268,19 +272,20 @@ While a cell is being edited:
 | Arrow keys, Home, End, Page Up, Page Down | Belong to the editor: in a slider they move it. |
 | Tab, in the editor of a sensitive cell that has "Clear" | Goes from the input to the button "Clear", without saving. Enter or Space there empties the cell; Shift+Tab goes back to the input; Tab from the button saves what was typed and leaves the grid. See [Sensitive columns](sensitive-columns.md#emptying-a-value). |
 
-**The editor of an array** has several controls in one cell: the boxes of a
+**An array** is edited in the side panel, not in the cell: the boxes of a
 multiple choice, or a control and a button per value and the button that
-adds one. It is one editor all the same, and the two keys of the grid work
-from wherever in it the focus is:
+adds one, are the panel's one field. The panel is the
+[action panel](#row-actions-and-the-action-panel), and its keys are the
+panel's:
 
-| Key | In the editor of an array |
+| Key | In the side panel of an array |
 | --- | --- |
-| Enter | Saves the whole list. Focus goes back to the cell. On a button it uses the button: "Add value" adds a value and puts focus in it, a value's button takes the value away. |
-| Shift+Enter, in a value that is text | A new line. |
-| Escape | Gives up everything done since the editor opened. Focus goes back to the cell. |
+| Tab, Shift+Tab | Move through the boxes, or through the values and their buttons and "Add value", and on to "Cancel" and "Save". |
 | Space | Ticks or unticks the box that has focus; uses the button that has focus. Nothing is saved by it. |
-| Down Arrow, Up Arrow | In a multiple choice, move from box to box, and stop at the first and the last. In a list of values they belong to the value's control. |
-| Tab, Shift+Tab | Move through the controls of the editor. Tab from the last one, and Shift+Tab from the first, save and leave the grid, as from any editor. |
+| Enter, on a button | Uses it: "Add value" adds a value and puts focus in it, a value's button takes the value away. |
+| Arrow keys | Belong to the control that has focus. |
+| "Save" | Saves the whole list. The panel closes, and focus is on the cell again. |
+| Escape | Closes the panel without saving, as "Cancel" does. Focus is on the cell again. |
 
 When a value is taken away, focus goes to the value after it, else to the
 one before it, else to "Add value". The controls are named by their place:
@@ -336,14 +341,25 @@ are reached from the cell, as a filter's controls are.
 Space uses a button, as it does anywhere. On a **cell**, the actions cell
 included, Space selects the row.
 
-The **action panel** is a native `<dialog>` opened with `showModal()`, at
-the right edge of the window. While it is open the rest of the page cannot
-be reached, and the browser keeps focus inside it.
+The **action panel**, the **picker** and the **question** open over the
+page or in it, as the table's kit says, or as `presentation: [panel:
+:inline, picker: :inline, confirm: :inline]` says for one table, on the
+tag, on `AshDataTable.attach/4` or on the router line (see
+[Kits](kits.md)). The default kit opens all three over the page.
+
+- **Over the page** (modal): a dialog, the action panel at the right edge
+  of the window. While it is open the rest of the page cannot be reached,
+  and focus stays inside it. Escape is "Cancel".
+- **In the page** (inline): a region of the page. Focus moves into it as it
+  opens, Escape inside it is "Cancel", and Tab from its last control leaves
+  it for the page. Nothing else is blocked.
+
+Either way, focus goes back to what opened it when it goes.
 
 | Key | Effect |
 | --- | --- |
 | Tab, Shift+Tab | Move through the panel's fields and its two buttons. |
-| Enter or Space, on the button "Choose" of a field that holds the key of a related record | Opens the picker, a second modal dialog on top of the panel. Escape there closes the picker alone, and focus is on the button again. |
+| Enter or Space, on the button "Choose" of a field that holds the key of a related record | Opens the picker: on top of the panel, or inside it where the picker is in the page. Escape there closes the picker alone, and focus is on the button again. |
 | Enter or Space, on the button "✕" of a record in a field that holds several related records | Takes the record out of the field's list. Focus goes to the button of the record that stands in its place, else to the one before it, else to "Choose". See [Relationships an action manages](managing-relationships.md#the-keyboard-and-what-assistive-technology-is-told). |
 | Enter or Space, on the button "Clear" under a sensitive field | Notes that the field is to be emptied when the action runs: the field says "Will be cleared.", the button says "Keep", and focus stays on it. Once more takes it back. See [Sensitive columns](sensitive-columns.md#emptying-a-value). |
 | Enter, in a field of one line | Runs the action, as "Run" does. In a text field of several lines it makes a new line. |
@@ -360,6 +376,13 @@ Where focus goes afterwards:
 | The panel closed with Cancel or Escape, or after its action ran | On the control that opened it. |
 | A question answered with Cancel or Escape | On the button that asked. |
 
+A **question** opens with focus on "Cancel", the safe answer. Escape is
+"Cancel" and runs nothing. A question in the page that a panel or a picker
+over the page asks is shown inside that panel or picker, where it can be
+answered. A table asks **one question at a time**: a question asked while
+another of the same table is open gives the first one up, as "Cancel"
+does, and what it was about does not run. See [Confirm](confirm.md).
+
 The **create button** is an ordinary button and a tab stop, before the
 grid in the page's tab order. So are the buttons of a table's **table
 actions**, which stand after it: Enter and Space use one, focus stays on it
@@ -368,7 +391,8 @@ its panel. The create button of a nested table, and the buttons of its
 table actions, are on its relationship line: see the next section.
 
 What each action does is in
-[Row actions and create](row-actions-and-create.md).
+[Row actions and create](row-actions-and-create.md). A page hears what ran
+as events: see [Events and commands](events-and-commands.md).
 
 ## Selecting rows
 
@@ -383,6 +407,12 @@ boxes are not tab stops; their cells are cells of the grid.
 | Shift+Down Arrow, Shift+Up Arrow | On a cell of a row of records | Move to the next or the previous row of records, in the same column, and select the rows from where the key was first pressed to where focus is. Going back takes rows out again. What is open under a row is passed over. |
 | Shift+Tab | On a cell | Leaves the grid backwards. While rows are selected, the buttons of the line above the grid are what comes before it: the bulk actions, "Clear selection", and "Select all … that match" when it is offered. |
 | Enter, Space | On a button of that line | Uses it. |
+
+The selection is held on the server: every change of it is sent there, and
+the server draws the line above the grid, with the count, "Clear
+selection", "Select all … that match" and the buttons of the bulk actions.
+Moving with the arrow keys sends nothing. The page hears a change as the
+event `:selection_changed`: see [Events and commands](events-and-commands.md).
 
 Space belongs to the grid while focus is on a cell, and to a control once
 focus is in one: on a button it uses the button, in an editor or a filter
@@ -496,8 +526,8 @@ page and keeps the focus.
 | The result of a filter change | A polite live region: "12 results", or "Results updated" when the table has no total. |
 | A boolean cell | A mark that is hidden from assistive technology, and the text "Yes" or "No". |
 | An array cell | Its values as text, separated by commas. |
-| A value of an array that the action refused | The message names it as its control is named ("Tags 2: …"). In the list of values, in a cell that is opened again and in the action panel, that control has `aria-invalid`. |
-| The editor of an array, in a cell and in the action panel | A group (`role="group"`) named by the column. In a multiple choice each box is named by its choice; in a list each value's control is named by the column and its place ("Tags 2"), and its button "Remove Tags 2". The button that adds a value says "Add value". |
+| A value of an array that the action refused | The message names it as its control is named ("Tags 2: …"). In the panel, that control has `aria-invalid`. |
+| The field of an array, in the side panel and in the action panel | A group (`role="group"`) named by the column. In a multiple choice each box is named by its choice; in a list each value's control is named by the column and its place ("Tags 2"), and its button "Remove Tags 2". The button that adds a value says "Add value". |
 | A cell hidden from the person by a field policy | The text "Not available", for screen readers only. |
 | The expander of a row, and the button of a line | `aria-expanded`. The expanders, and the heading of their column, are named "Related records"; a line is named by its relationship. The expanders are a column of the grid, counted in `aria-colcount` and `aria-colindex`. |
 | A nested table | A grid of its own, named by its line and by the first data cell of the row it belongs to (`aria-labelledby`): "Comments Write the report". |
@@ -511,7 +541,8 @@ page and keeps the focus.
 | The length of a text | A text with a `max_length` is described by its counter (`aria-describedby`): "12/30", read when the control gets the focus. It is no live region, and is not read out at every key. Past the most it says a number greater than the most, in a heavier weight. In a cell's editor, on a field of the action panel and on the argument line. See [Inline editing](inline-editing.md#the-counter-of-a-text). |
 | The button that empties a sensitive value | Named with the column or the field: "Clear Budget". In the action panel it says "Keep" once it was used, named "Keep Budget" and described by "Will be cleared.". |
 | A save in progress | `aria-busy` on the cell. |
-| A failed save | `aria-invalid` on the cell, described by the action's message, and the same live region: "Title was not saved: …". |
+| A failed save | `aria-invalid` on the cell, described by the action's message, which stands in the cell under the value, and the same live region: "Title was not saved: …". |
+| A cell that cuts its text off | The whole text is in the cell, and is read from there. The button "Show all" / "Show less" that the cell gets while it has the pointer or the focus is for the eye: hidden from assistive technology, and no tab stop. |
 | The column of the row actions | A column of the grid, the last one, with the heading "Actions". It is counted in `aria-colcount` and `aria-colindex`. Each button is named by its action. |
 | That rows can be selected | `aria-multiselectable="true"` on the grid, and `aria-selected`, `true` or `false`, on every row of records. Neither is there on a table without the boxes. In the picker, where one row is selected at a time, the grid says `aria-multiselectable="false"`. |
 | The box of a row, and the one in the header | Checkboxes named "Select row" and "Select all rows of this page", in a first column of the grid that is counted in `aria-colcount` and `aria-colindex`. The one in the header is mixed when some rows of the page are selected. |
@@ -523,10 +554,11 @@ page and keeps the focus.
 | A table action, or a generic action in a row, that ran | The live region, and the same words above the grid: the action and what it returned, "Count unused: 3", or "Remove unused: done". |
 | A table action without a panel that failed | The live region, and the same words above the grid: "Count unused failed: …". |
 | An action that failed | The live region: "Archive failed: …". For an action that ran straight away, also `aria-invalid` on the row's actions cell, described by the message. |
-| The action panel | A modal dialog named by its heading (`aria-labelledby`): "Reassign: Write the report", "New task". |
+| The action panel | A modal dialog over the page, or a region in the page, named by its heading (`aria-labelledby`): "Reassign: Write the report", "New task". |
+| The question | A modal dialog over the page, or a region in the page, named by its question. Focus is on "Cancel" as it opens. |
 | A field of the panel | A label. A required field has `aria-required`, and the mark " \*" beside its label is hidden from assistive technology. A field with an error has `aria-invalid` and is described by the message. |
 | A field of the panel that holds the key of a related record | A group (`role="group"`) named by the field's label, with what the record is called as text and the button "Choose", which is described by that text. A group cannot say `aria-required`, so the label of a required one ends in the word "required", for screen readers only. Its errors describe the group. |
-| The picker | A modal dialog named by its heading: "Assignee: choose user". Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
+| The picker | A modal dialog over the page, or a region in the page, named by its heading: "Assignee: choose user". A picker in the page opened from a panel over the page is drawn inside the panel. "Choose" is `aria-disabled` while no row is selected. Its table is a grid named as the destination's table is, with `aria-multiselectable="false"`, `aria-selected` on every row, and a radio button named "Select row" in every row, all of one group. See [Choosing a related record](choosing-a-related-record.md#what-assistive-technology-is-told). |
 | A field of the panel that holds several related records | A group named by the field's label, with what each record is called as text, a button per record named by what it does ("Remove ops"), and the button "Choose". Its picker's grid says `aria-multiselectable="true"`, and has a box named "Select row" in every row and a status above it that says how many rows are selected. |
 | The field of a union | A group (`role="group"`) named by the field's label, which ends in the word "required", for screen readers only, where the union cannot be empty. In it a menu labelled "Kind", and the fields of the kind that is chosen, each with its own label. What the action says of the value of a kind that holds one value describes that value's control; of a kind made of fields, the group. |
 | The field of an argument that takes a file | The browser's file input, with a label. A required one has `aria-required`. A file the upload refuses, and what the action said of the file, mark the input `aria-invalid` and describe it; a refusal as the file is chosen is said in the live region as well ("File: The file is too large. …"). While the file is sent, a `<progress>` named by the file says how far it has come. |
@@ -568,7 +600,8 @@ follows the theme, light or dark.
 | --- | --- |
 | The focused cell | A solid ring of 2px, flush inside the cell, in the theme's text colour (`base-content`). Not in `primary`: a brand colour may be any lightness, and the text colour is the one a theme promises can be seen on its background. A cell keeps the ring while its editor has focus. |
 | Focus in a control | A filter's input and menu, a button in a cell, the pagination buttons and the fields and buttons of the action panel and the dialog show daisyUI's own focus ring. It is in the text colour as well. |
-| A cell whose save or action failed | A ring of 2px in the error colour mixed with the text colour, and a "!" at the end of the cell. The "!" is the mark that does not depend on a colour. Both are drawn by the cell's style: they do not change the row's height or the cell's width, and the cell's text stays where it is. The message is in a popover under the cell, in the text colour. |
+| A cell whose save or action failed | A ring of 2px in the error colour mixed with the text colour, and a "!" at the end of the cell. The "!" is the mark that does not depend on a colour. Both are drawn by the cell's style and do not change the cell's width. The message stands in the cell under the value, in the text colour, and the row grows to it. |
+| A cell that cuts its text off, with the pointer or the focus | A small underlined button "Show all" at its top end; once used, the whole text in the cell, the row as high as it needs, and "Show less" under it. |
 | A failed cell that has focus | Both rings: the focus ring at the edge of the cell and the ring of the failure inside it, with the "!". |
 | A cell whose save or action is on its way | Its text at 70% opacity. |
 | A selected row | The box at its start is ticked. A row has no other mark of being selected and no colour of its own; the box has an edge in the text colour at half strength, as the other boxes of a table have. |
@@ -648,8 +681,8 @@ The behaviour described in this guide is covered by the demo's browser tests
 ([`demo/e2e`](https://github.com/StefanRoesch/ash_data_table/tree/main/demo/e2e)):
 scripted keyboard tests in Playwright, and automated checks with axe-core on
 every demo table and in every state a table can be in (sorted, filtered,
-empty, failed, with each editor open, the two editors of an array among
-them, with the dialog open, with a failed cell, as each actor; with rows expanded and nested tables open to the
+empty, failed, with each editor open, the side panel of each kind of
+array among them, with the dialog open, with a failed cell, as each actor; with rows expanded and nested tables open to the
 deepest level, on a page limited to the records of one parent, with
 reference cells; with the actions column, a failed actions cell, the action
 panel open, with errors and with the dialog on top of it, and with the
@@ -704,11 +737,15 @@ have: a text, a number, a date, a box and a list of text. A menu, a multiple
 choice and a datetime in the line are the controls of the action panel at
 another size, and are covered by the page tests on the server only.
 
-The editor of an array is tested in the browser for text, for numbers and
-for enum values, which is what the demo's tasks and specimens have. The
+The side panel of an array is tested in the browser for text, for numbers
+and for enum values, which is what the demo's tasks and specimens have. The
 lists of dates, datetimes and booleans are made of the same rows with
 another control, and are covered by the demo's LiveView tests, which do not
-run the hook.
+run the hooks.
+
+The action panel, the picker and the question in the page (inline) are
+tested in the browser with a kit of the demo's own; the default kit opens
+them over the page.
 
 That is the whole of the verification, and its limits should be plain:
 
@@ -739,17 +776,18 @@ technology, a report of what you find is welcome in the
   keys change the value step by step without saving. Enter, or leaving the
   cell, saves the value reached.
 - **Escape on an ordinary cell** does nothing. It is only handled on a cell
-  whose save or action failed, in an editor, in a filter, on a button of a
-  cell and in a nested table.
+  whose save or action failed, on a cell whose whole text shows, in an
+  editor, in a filter, on a button of a cell and in a nested table. In a
+  nested table, Escape on a cell whose whole text shows cuts it off first;
+  the next Escape leaves the nested table.
 - **A cell whose save is on its way** cannot be opened until the server has
   answered.
-- **The message of a failed cell** is a popover under the cell, shown while
-  the cell has focus or the pointer. It does not change the row's height.
-  The ring and the "!" of the cell are there all the time.
+- **The message of a failed cell** stands in the cell, under the value,
+  with or without focus, and the row grows to it.
 - **Long text is cut off** to keep rows one line high. The whole value is in
   the cell for assistive technology, and in the editor. For the eye it is
-  shown under the cell while the cell has the focus or the pointer, and
-  Escape takes it away: see
+  shown in the cell, the row growing, with Shift+Enter or the button "Show
+  all"; Escape or "Show less" cuts it off again: see
   [Long text](columns-and-defaults.md#long-text).
 - **A mounted table brings no main landmark.** Its page is a heading and the
   table; `<main>` has to come from your layouts. See
@@ -764,12 +802,14 @@ technology, a report of what you find is welcome in the
   the ARIA grid pattern. Arrow keys move between cells.
 - **Expecting Space to toggle a boolean.** Enter and F2 do. Space selects
   the row, where rows can be selected, and does nothing where they cannot.
-  In the open editor of an array Space does tick a box, as it does
+  In the side panel of an array Space does tick a box, as it does
   anywhere.
 - **Expecting a tick in a multiple choice to be saved at once.** The list is
-  saved by Enter or by leaving it.
+  saved by "Save" in the side panel.
 - **Pressing Enter on "Add value" to save.** Enter on a button uses the
-  button. Enter in a value saves; so does Tab from the last control.
+  button: it adds a value. "Save" saves the list.
+- **Expecting Escape to leave a nested table while a whole text shows.**
+  The first Escape cuts the text off; the next one leaves.
 - **Expecting Tab to reach a row's buttons.** Move to the row's last cell
   and press Enter.
 - **Expecting Enter on a relationship line to reach its create button, or

@@ -36,6 +36,74 @@ declared in the resource and mounted with one line in the router.
   conventional assign names and under those the domain names.
 
 
+### Placing a table, and what the page can do with it
+
+- Three ways to place a table, on one core: the router line
+  (`AshDataTable.Router.ash_data_table/3`), the tag `<AshDataTable.table>`,
+  and `AshDataTable.attach/4` in a LiveView of the host's, drawn with the
+  function component `AshDataTable.attached/1`. An attached table has no
+  live component; nested tables and pickers' tables are drawn through
+  LiveView portals from the table on the page, in every way, and the rows of
+  every table are streams.
+- Events: with `notify`, a table tells its LiveView
+  `{:ash_data_table, id, {event, details}}` (`AshDataTable.Event`): reads,
+  saves, creates, destroys, actions, a run on the selection, the selection,
+  rows expanded and collapsed, requests. Records in them have every
+  `sensitive?` value masked. `open: "Open"` adds a button to every row that
+  tells the page `:row_opened`.
+- Page values: `context`, `private_arguments` and `page_arguments` reach
+  every call the table makes to Ash; `page_argument` inside a table's
+  `action` names a public argument the page fills.
+- The veto: `before_action` is asked before every write with an
+  `AshDataTable.Request`, and answers `:cont` or `{:halt, message}`.
+- Commands for an attached table, and for the router page's table in an
+  `on_mount` hook: `refresh/2`, `put_state/3`, `clear_selection/2`,
+  `selected_records/2`, `detach/2`; `status/1` reads what a page may know
+  of it. The router line takes the page values, the veto, `notify`, `open`,
+  `kit` and `presentation`, a function as `{module, function}`.
+- Controlled mode, for an attached table: `controlled: [:confirm, :panel,
+  :picker]` holds the table's questions, action panels and pickers as
+  requests for the page to draw (`requests/1`), answered with
+  `confirm_request/3`, `validate_request/4`, `submit_request/4`,
+  `pick_request/4`, `add_group_request/4`, `remove_group_request/4` and
+  `cancel_request/3`, for nested tables and pickers' tables too. A question
+  guards a person against a mistake and is no authorization, in this mode
+  as in any: the server does not enforce it.
+- The selection is held on the server, as claims read again before use.
+
+### Kits
+
+- Every table is drawn by a kit, `AshDataTable.Kit`: one function
+  component per part (32 in contract 1), `class/2` and `presentation/1`.
+  `use AshDataTable.Kit, contract: 1` starts from `AshDataTable.Kit.Default`,
+  the daisyUI kit, and is checked as it compiles. Named with
+  `config :ash_data_table, kit:`, or per table on the tag, at `attach/4` and
+  on the router line.
+- The browser behaviour finds every element by its markers (ARIA roles and
+  `data-*` attributes), never by its tag. `AshDataTable.Attrs` makes the
+  attribute bundles a part spreads, `AshDataTable.Ids` the ids the table
+  and a part share, `AshDataTable.Kit.Words` the texts each part is given
+  (with their messages and the locale). While LiveView's client debug is
+  on, the hooks say on the console which marker a part lacks.
+- The action panel, the picker and the question open over the page
+  (`:modal`) or in it (`:inline`), as the kit says or `presentation:` for
+  one table. One question at a time per table.
+- `AshDataTable.KitCase` checks a kit in a host's tests: twenty states, four
+  presentations, against `AshDataTable.Test.Resource`, which ships with the
+  library.
+- `AshDataTable.Messages` lists every message key with its values and its
+  English text; counts are said in Gettext's plural forms.
+
+### Editing several values in the side panel
+
+- A cell of a list or of several enum values is edited in the side panel,
+  as a map cell and a union are; a single enum is a native `<select>`.
+- "Is any of" and "is none of" open the side panel with a box per value.
+- A failed save's message stands in the cell, under its value, and the
+  counter of a text under its editor. Nothing floats but the Columns list,
+  which is the browser's popover (centred where the browser has no CSS
+  anchor positioning).
+
 ### Scrolling sideways
 
 - Every table scrolls sideways in an area of its own: the table on a page,
@@ -56,9 +124,6 @@ declared in the resource and mounted with one line in the router.
   table's area, beside the cells that stay and above the second scrollbar.
   The grids are no tab stops of their own in browsers that make one of every
   element that scrolls.
-- Changed markup: what a relationship line holds is in an element of its own
-  (`td[data-line] > div > button`), and a nested table is two elements deep
-  in its cell.
 
 ### Long text
 
@@ -68,12 +133,11 @@ declared in the resource and mounted with one line in the router.
   date, a datetime, a boolean, an enum, a reference cell, a sensitive column
   or a column whose component shows the cell it is reported at compile time.
 - The whole text of a cell that cuts some of its text off, in any column, is
-  shown in a popover under the cell while the cell has the focus or the
-  pointer rests on it, after a moment. Escape takes it away without moving
-  the focus, the pointer can go onto it, and it scrolls when the text is
-  long. The browser fills it from the cell's own text: nothing is sent for
-  it. A sensitive cell has none. It is hidden from screen readers, which
-  read the text in the cell.
+  shown in place, the row growing to it: with the "Show all" button the
+  cell offers while it has the focus or the pointer, or Shift+Enter; Escape
+  or "Show less" cuts it off again. Nothing is sent for it. A sensitive cell
+  has none. The button is for the eye: screen readers read the whole text
+  in the cell.
 
 ### Reading
 
@@ -168,13 +232,13 @@ declared in the resource and mounted with one line in the router.
 - **Arrays.** An array of text, numbers, booleans, dates, datetimes or enum
   values is a cell of its own: shown as its values, as plain text separated
   by commas, each as a cell of its type shows it (the labels of an enum's
-  values), and edited as a whole. An array of enum values is edited as
-  multiple choice, a list of boxes that opens in the cell; any other with
-  one control per value, a button that takes each value away and one that
-  adds a value. Enter or leaving the editor saves the list, Escape gives it
-  up; the values go to the column's update action as they were typed, and
-  the array's constraints are the action's to check. The same two editors
-  are the fields of an array in the action panel. An array column is
+  values), and edited as a whole in the side panel. An array of enum values
+  is edited as multiple choice, a box per value; any other with one control
+  per value, a button that takes each value away and one that adds a value.
+  "Save" saves the list, Cancel or Escape gives it up; the values go to the
+  column's update action as they were typed, and the array's constraints
+  are the action's to check. The same two editors are the fields of an
+  array in the action panel. An array column is
   neither sorted nor filtered by, as in Ash's interface extensions. Arrays
   of anything else (maps, embedded resources, unions, keys, arrays) stay
   read-only text. A column's `component` shows an array's cells; its editor
@@ -744,8 +808,7 @@ declared in the resource and mounted with one line in the router.
   `:string` and `:ci_string`, also as a NewType) has a counter beside the
   control it is typed into: how long it is now and the most it can be,
   "12/30". It follows what is typed at every key, without the server. In
-  the editor of a cell (under the cell, floating as the message of a failed
-  cell does, so that neither the row nor the column moves), on each value
+  the editor of a cell (under the editor, the row growing to it), on each value
   of an array of text, on a field of the action panel (also inside a map
   cell, an embedded resource or a union) and on the argument line. Nothing is declared for it, and a text
   without `max_length` has none.
@@ -1204,6 +1267,10 @@ declared in the resource and mounted with one line in the router.
 ### Tooling
 
 - `mix ash_data_table.install`, an Igniter installer (`mix igniter.install
-  ash_data_table`): the hook in `app.js`, the Tailwind source in `app.css`, the
-  formatter and the configuration.
+  ash_data_table`): the hooks in `app.js`, the Tailwind source in `app.css`,
+  the formatter, Spark's section order and the configuration. It leaves the
+  websocket's compression to the host.
+- `AshDataTable.Test`: `flush/1` and `listening/2` for live updates, and
+  `page/1`, `send_event/5` and `send_form/5` for nested tables and pickers,
+  which `Phoenix.LiveViewTest` does not see inside a portal.
 - The DSL reference, generated by Spark.

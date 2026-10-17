@@ -32,6 +32,20 @@ question.)
 "State" column, press Enter and choose another state. A dialog asks "Change
 the state of this task?" with the buttons Cancel and Confirm.
 
+## A question is no safety check
+
+A question guards a person against a slip of their own: a click on the
+wrong row, a value chosen by mistake. It does not guard your data against
+the person. The server does not enforce it, not even in
+[controlled mode](controlled-mode.md): an event sent to the LiveView by
+other means than the table's page (a forged one) runs what the question is
+about without the question.
+
+What must not happen belongs on the resource, as a policy or a validation
+of the action. A page that wants to refuse something itself has the
+`before_action` veto (see [Events and commands](events-and-commands.md)).
+Both run for every event, asked or not.
+
 ## When the dialog appears
 
 The dialog opens at the moment the edit would be saved, before the action
@@ -45,6 +59,7 @@ runs and before anything is sent to the server:
 | Toggles a boolean | Yes |
 | Lets go of a slider, or changes any other editor of a component that saves on change | Yes |
 | Chooses another related record in the picker of a reference cell | Yes, on top of the picker. Cancel returns to the picker, with the row still selected. |
+| Uses Save in the side panel of an array, map or union cell, with a changed value | Yes, on top of the panel. Cancel returns to the panel, with everything as it was typed. |
 | Presses Escape in the editor | No: the edit is given up |
 | Saves the value the cell already had | No: nothing would be saved |
 
@@ -67,11 +82,32 @@ its value changes, such as a slider, stays open after a save. So Confirm
 leaves the person in it, with the value saved, and Cancel leaves them in it
 with the value they chose and nothing saved.
 
-The dialog is a native `<dialog>` opened with `showModal()`: the rest of the
-page cannot be reached while it is open, and the browser keeps focus inside
-it.
-Focus starts on Cancel, the safe answer. The dialog is labelled by the
-question.
+## Where the question opens
+
+The question opens over the page or in it, as the table's
+presentation says (see [Kits](kits.md) and
+[Layout and embedding](layout-and-embedding.md)):
+
+- **Over the page** (`:modal`, the default kit's): the rest of the page
+  cannot be reached while it is open, and focus stays inside it. When it is
+  answered, focus goes back where it was.
+- **In the page** (`:inline`, `presentation: [confirm: :inline]`): a region
+  in the page. Focus moves into it, Escape inside it is Cancel, Tab leaves
+  it, and nothing else is out of reach. When it is answered, focus goes back
+  to where it was before. Asked from a panel or a picker that is open over
+  the page, it is shown inside that panel or picker, where it can be
+  answered.
+
+Either way focus starts on Cancel, the safe answer, and the question is
+named by its text.
+
+**One question at a time per table.** A question asked while another is
+open takes its place: the first is given up, as if Cancel had been used,
+and what it was about does not run.
+
+In controlled mode with `:confirm` the table does not ask: it hands the
+question to your page, which asks it as it likes and answers with a
+command. See [Controlled mode](controlled-mode.md).
 
 ## `confirm` on a row action
 
@@ -87,8 +123,8 @@ end
 ```
 
 **Try it:** `/tasks` as Ada Admin. Use "Destroy" at the end of a row: the
-same dialog asks "Delete this task? This cannot be undone." Its Confirm
-button is in the error colour.
+same dialog asks "Delete this task? This cannot be undone." In the default
+kit its Confirm button is in the error colour.
 
 | The action | The question is asked | Cancel, or Escape |
 | --- | --- | --- |
@@ -105,9 +141,10 @@ Escape put focus back on the button.
 
 Three things differ from a column's `confirm`:
 
-- **The Confirm button of a destroy action is in the error colour**, so the
-  answer that deletes looks like one. For an update action, and for a cell,
-  it is in the primary colour.
+- **The Confirm button of a destroy action is marked as one that deletes**,
+  so the answer that deletes looks like one: in the default kit, in the
+  error colour. For an update action, and for a cell, it is in the primary
+  colour.
 - **A destroy action without `confirm` is warned about** when the resource
   is compiled: one click on its button would delete the record. See
   [Mistakes at compile time](mistakes-at-compile-time.md#a-destroy-action-without-confirm).
@@ -133,7 +170,10 @@ A column takes a question only; `confirm false` is for actions.
 how many records it is about. An action with a `confirm` asks its own
 question and the number follows it ("Delete this task? This cannot be
 undone. 3 records are selected."); any other is asked for by its name
-("Run “Archive” on 3 records?"). See
+("Run “Archive” on 3 records?"). The question confirms exactly the
+selection it names: if the selection changes while it is open, it is given
+up, and if it changed before the answer reached the server, nothing runs
+and the table says so. See
 [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#the-question).
 
 The demo has no action with both a question and a panel. Every question
@@ -160,10 +200,8 @@ same file. See [Messages and translations](messages-and-translations.md).
 
 - **The question is asked in the browser.** The server is not involved until
   the person has confirmed; it then receives an ordinary save, or the
-  ordinary event of a row action. An event sent to the LiveView by other
-  means is not asked anything. `confirm` guards against slips, not against
-  misuse. What must not happen belongs in the action, as a policy or a
-  validation.
+  ordinary event of a row action. See
+  [A question is no safety check](#a-question-is-no-safety-check).
 - **A reference cell asks the server first.** Whether a choice in the
   picker changes the row is for the server to say: it reads the chosen
   record, and answers with the question when the choice would change the
@@ -178,8 +216,8 @@ same file. See [Messages and translations](messages-and-translations.md).
 - **An action the person cannot run asks nothing either.** It has no button
   for them.
 - **A table without any `confirm`**, on a column or on an action, has no
-  dialog in its markup, unless it offers an action for the selected rows:
-  that one always asks.
+  question to ask, unless it offers an action for the selected rows: that
+  one always asks.
 - **An action that fails after Confirm** looks like any failed action: its
   message is on the row's actions cell, or in the panel. Using the button
   again asks again.
@@ -198,7 +236,8 @@ same file. See [Messages and translations](messages-and-translations.md).
   saved, so it is not asked about.
 - **Writing the question as a statement.** The buttons say Cancel and
   Confirm, so the text should be a question that "Confirm" answers.
-- **Using `confirm` as protection.** It is not a check.
+- **Using `confirm` as protection.** It is not a check: see
+  [A question is no safety check](#a-question-is-no-safety-check).
 
 ## Not in the first version
 

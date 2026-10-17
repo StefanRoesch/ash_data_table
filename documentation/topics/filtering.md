@@ -90,7 +90,7 @@ second. A value picked to the minute means the start of that minute.
 | The operator menu | When another operator is picked and the input holds a value. An operator picked while the input is empty changes nothing yet. |
 | "is empty" | When it is picked. It needs no value, so the input goes away. |
 | An end of a range ("between") | As an input: on Enter, and when it is left. |
-| The list of "is any of" and "is none of" | When the list is closed: by Enter, by its button, or by going on to something else. Not on each tick. |
+| The side panel of "is any of" and "is none of" | On "Apply". Not on each tick; Cancel applies nothing. |
 
 After each change the result is put into a live region for screen readers:
 "12 results" when the table knows the total, otherwise "Results updated". The
@@ -106,19 +106,25 @@ they are operators in the menu of the columns that can have them.
 
 A column with a known set of values, an `Ash.Type.Enum` or an `:atom` with
 `one_of`, offers "is any of" and "is none of" beside "is". Picking one puts
-a button in place of the single choice. The button opens a list with a box
-for each value. Tick the values, then close the list: with Enter, with the
-button, or by clicking or tabbing on. The filter applies then, once, and
-the button says what is chosen: the value's label, or "2 selected".
+a button in place of the single choice; picking the operator alone filters
+nothing. The button opens the table's action panel, the one that
+[row actions](row-actions-and-create.md) open, titled "Filter State" for a
+column headed "State", with a box for each value. The boxes that apply are
+ticked. Tick the values and press "Apply": the filter applies then, once,
+the panel goes, and the button says what is chosen: "Any" while nothing
+is, the value's label for one, "2 selected" for more, with the labels as
+its tooltip.
 
 Ticking alone changes nothing, as typing into a text filter changes nothing
-before Enter. Escape closes the list and gives up the ticks that were not
-applied. In the list, Space ticks, the arrow keys go from box to box, and
-Tab goes on through the filter's controls.
+before Enter. Cancel, or Escape, closes the panel and filters nothing: what
+applied before still applies. Space ticks a box, Tab goes from box to box
+and on to Cancel and "Apply", and focus goes back to the button when the
+panel closes. The panel opens over the page or in it, as the table's
+[presentation](layout-and-embedding.md) says for its panel.
 
 **Try it:** `/tasks` in the demo. Under "State", pick "is any of", press the
-button beside it, tick "To do" and "Done", and click anywhere else. The
-table shows the tasks in one of the two states, and the address ends in:
+button beside it, tick "To do" and "Done", and press "Apply". The table
+shows the tasks in one of the two states, and the address ends in:
 
 <!-- sketch -->
 ```text
@@ -129,9 +135,12 @@ table shows the tasks in one of the two states, and the address ends in:
 ticked ones. A record without a value is found by neither of the two; "is
 empty" is for those, where the column offers it.
 
-The values in the list come from the column's type. Nothing is read from
-the database for them, so the list tells nobody which values the records
+The values in the panel come from the column's type. Nothing is read from
+the database for them, so the panel tells nobody which values the records
 hold.
+
+In [controlled mode](controlled-mode.md) the panel is a `:panel` request
+without an action, answered like any other.
 
 ### Between
 

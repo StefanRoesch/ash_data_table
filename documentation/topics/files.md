@@ -245,10 +245,15 @@ See [Mistakes at compile time](mistakes-at-compile-time.md#uploads).
 ## Things people trip over
 
 - **Several tables in one LiveView can each take a file.** Two placed
-  tables, a table and its nested tables, a picker: each has its own upload,
+  tables, a table and its nested tables: each has its own upload,
   also for arguments of the same name. The name LiveView knows an upload by
   holds the table's id (`ID-file-ARGUMENT`); it is the `name` of the file
   input.
+- **An attached table takes no file without `uploads`.** Draw it with
+  `<AshDataTable.attached table={@tasks} streams={@streams} uploads={assigns[:uploads]} />`;
+  see [Layout and embedding](layout-and-embedding.md). In controlled mode
+  the page draws the panel, and with it the file input of the upload the
+  request names; see [Controlled mode](controlled-mode.md).
 - **The file is gone after the action.** `Ash.Type.File.path/1` names a
   temporary file. Copy it, or store its content, inside the action.
 - **A larger file than 8 MB is refused though the action would take it.**

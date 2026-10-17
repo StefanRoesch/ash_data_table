@@ -77,7 +77,9 @@ Enter, F2 or a double click on the cell opens the side panel: the
 [action panel](row-actions-and-create.md#the-fields-of-the-panel), headed by
 the column and the record, with "Save" and "Cancel". A key that types a
 character does nothing on such a cell: there is nothing in the cell to type
-into.
+into. When the panel closes, focus is on the cell again. The panel opens
+over the page or in it, as for
+[a map cell](maps-and-embedded-resources.md#editing-in-the-side-panel).
 
 The union is a group, named by the column's label. In it:
 

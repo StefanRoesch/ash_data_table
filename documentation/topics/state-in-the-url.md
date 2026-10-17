@@ -2,12 +2,13 @@
 
 After reading this guide you can read and write a table's address by hand,
 know what a shared link carries and what it does not, and decide whether a
-table placed in one of your own pages keeps its state in the URL.
+table in one of your own pages keeps its state in the URL.
 
 ## The smallest example
 
-A table mounted in the router keeps its sort, its filters and its page in the
-address, with no setup. Reload, the back button and shared links work.
+The page of a router line (`ash_data_table "/tasks", MyApp.Tracker.Task`)
+keeps its table's sort, filters and page in the address, always, with no
+setup. Reload, the back button and shared links work.
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Click the heading "Title",
 then "Next" under the table. The address is now:
@@ -28,15 +29,16 @@ sorted.
 | Every filter that applies: column, operator, value | A filter value that was rejected as invalid |
 | What the person gave the arguments of the read action, and those a column asks for | An argument's value that Ash refused; an argument that is as its input shows it with nothing chosen |
 | The page number (offset) or the cursor (keyset) | An open editor, an open action panel, and what is typed in them |
+| The page size a person chose under "Rows per page" | |
 | The parent a table is limited to: the full view of a nested table | Cells whose save failed |
 | | Which rows are expanded, and the sort, filters and page of the tables nested in them |
 | | The mark of a row action that failed, and a row that was created and still stands at the top |
 | | The widths a person gave the columns. They last until the page is reloaded or left: see [Columns and defaults](columns-and-defaults.md#column-widths) |
 | | The columns a person hid. They are shown again when the page is reloaded or left: see [Columns and defaults](columns-and-defaults.md#hiding-columns) |
-| | Which rows are selected. A selection lasts through a sort and a change of page, is given up when a filter changes, and is gone after a reload: see [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-is-selected-and-for-how-long) |
+| | Which rows are selected. A selection lasts through a sort and a change of page, is given up when a filter, an argument or the limit to one parent changes, and is gone after a reload: see [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md#what-is-selected-and-for-how-long) |
 
-A default is left out: no sort, no filters and the first page give the plain
-path, `/tasks`.
+A default is left out: no sort, no filters, the first page and the page size
+the table opens with give the plain path, `/tasks`.
 
 Every change is a live patch (`push_patch`), so each one is an entry in the
 browser's history and the back button steps through them.
@@ -52,6 +54,7 @@ cannot collide with the page's own parameters or with another table's.
 | Sorted descending | `ID[sort]=-COLUMN` | `task[sort]=-title` |
 | Page, under offset pagination | `ID[page]=N` | `task[page]=2` |
 | Position, under keyset pagination | `ID[after]=CURSOR` or `ID[before]=CURSOR` | `comment[after]=…` |
+| A page size the person chose, one of `page_sizes` | `ID[per]=N` | `task[per]=50` |
 | A filter with the column's default operator | `ID[f][COLUMN]=VALUE` | `task[f][title]=report` |
 | A filter with another operator | `ID[f][COLUMN][OPERATOR]=VALUE` | `task[f][progress][at_least]=50` |
 | A filter whose operator takes no value | `ID[f][COLUMN][OPERATOR]=` | `task[f][due_on][is_empty]=` |
@@ -147,6 +150,7 @@ person meets it is dropped silently, and the rest is applied.
 | A sort by a column that does not exist, is not sortable or is private | `task[sort]=internal_note` | No sort |
 | A page that is not a positive whole number | `task[page]=zero` | The first page |
 | A cursor on a table paged by offset, or a page number on a keyset table | `task[after]=abc` | Ignored |
+| A page size that is not one of the table's `page_sizes` | `task[per]=1000` | The size the table opens with |
 | A filter on a column without a filter | `task[f][description]=x` | No filter |
 | An operator the column does not offer | `task[f][title][at_least]=x` | No filter |
 | A value that is not one of the column's type | `task[f][progress]=abc` | No filter |
@@ -174,11 +178,13 @@ you can watch one link change with the person.
 
 ## A table inside your own LiveView
 
-A table placed with `<AshDataTable.table>` does **not** use the URL by default.
-The host page owns its address, and the table cannot know whether the page
-wants table parameters in it. Such a table keeps its sort, filters and page
-in its own component state. They last as long as the LiveView does and are
-gone after a reload.
+A tag (`<AshDataTable.table>`) or a table attached with
+`AshDataTable.attach/4` does **not** use the URL by default. The host page
+owns its address, and the table cannot know whether the page wants table
+parameters in it. Such a table keeps its sort, filters and page itself.
+They last as long as the LiveView does and are gone after a reload. (See
+[Layout and embedding](layout-and-embedding.md) for the three ways to place
+a table.)
 
 The demo's dashboard has two tables of this kind
 ([`demo/lib/demo_web/live/dashboard_live.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/live/dashboard_live.ex)):
@@ -196,13 +202,46 @@ The demo's dashboard has two tables of this kind
 ```
 
 Neither is given `url`. (`heading` is about the line above the table; see
-[Layout and embedding](layout-and-embedding.md#the-line-of-the-table-s-name).)
+[Layout and embedding](layout-and-embedding.md).)
 
 **Try it:** `/dashboard` in the demo. Sort one table and page the other: the
 address stays `/dashboard`, and neither table moves when the other does.
 
-To keep an embedded table's state in the URL, pass the page's current URL as
-`url`. The demo's own pages do not do this, so the example is from a LiveView
+### An attached table: `url: true`
+
+A table attached with `AshDataTable.attach/4` keeps its state in the URL
+with `url: true`. That needs a LiveView mounted by the router (`live/3`),
+not one rendered inside another, which has no URL of its own; elsewhere
+`attach/4` raises an `ArgumentError`. The LiveView needs no
+`handle_params/3` of its own: the table hears every patch itself. The
+example is from a LiveView that exists for the demo's tests
+([`demo/test/support/attached_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/attached_tables.ex)),
+which has no `handle_params/3`:
+
+<!-- source: demo/test/support/attached_tables.ex -->
+```elixir
+def mount(_params, _session, socket),
+  do:
+    {:ok,
+     AshDataTable.attach(socket, :bulletins, Bulletin,
+       actor: socket.assigns[:reader],
+       url: true
+     )}
+```
+
+<!-- source: demo/test/support/attached_tables.ex -->
+```heex
+<AshDataTable.attached table={@bulletins} streams={@streams} />
+```
+
+Where the LiveView has a `handle_params/3`, it runs after the table has
+taken its parameters. Call `attach/4` in `mount/3`: the table then reads
+once LiveView hands the LiveView its URL, before the first render.
+
+### A tag: `url`
+
+To keep a tag's state in the URL, pass the page's current URL as `url`.
+The demo's own pages do not do this, so the example is from a LiveView
 that exists for the demo's tests
 ([`demo/test/support/plain_tables.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/support/plain_tables.ex)).
 The LiveView assigns the URL that `handle_params/3` receives:
@@ -225,8 +264,9 @@ and hands it to its tables:
 
 Each table then patches the page's URL, with its parameters under its id
 (`?entries[sort]=title`), and reads its state from the URL on every update.
-This is the mechanism the mounted page uses, and everything above holds for
-it: the format, what is ignored, reload, the back button and shared links.
+Everything above holds for it, as for the router page and an attached
+table with `url: true`: the format, what is ignored, reload, the back
+button and shared links.
 The tests of this page
 ([`demo/test/demo_web/tables/embedded_url_table_test.exs`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/test/demo_web/tables/embedded_url_table_test.exs))
 sort, filter and page both tables and open the addresses they arrive at.
@@ -234,13 +274,22 @@ sort, filter and page both tables and open the addresses they arrive at.
 `handle_params/3` is called for a LiveView that is mounted in the router. A
 LiveView rendered inside another one has no URL of its own to hand down.
 
+### Setting the state from the page
+
+A LiveView can give an attached table, or the router page's table, a sort,
+filters, arguments or a page itself with the command
+`AshDataTable.put_state/3`, in the format of this guide's parameters; with
+the state in the URL that patches the URL. See
+[Events and commands](events-and-commands.md).
+
 ## Several tables on one page
 
 Each table needs an `id` that is unique on the page. Two tables of one
 resource, its default table and a named one, have different ids without one
 being written (`comment` and `comment_compact`); the same table placed
 twice needs an `id` for each. Because the parameters
-are nested under the id, several tables with `url` share one address without
+are nested under the id, several tables with their state in the URL share
+one address without
 touching each other's state, and each leaves the other's parameters and the
 page's own in place when it patches. On the page above, paging the tickets
 and then the entries gives:
@@ -258,14 +307,14 @@ and then the entries gives:
 - **A cursor that was altered** is not dropped, because the table cannot tell
   a valid cursor from an invalid one without reading. The read fails and the
   table says "The records could not be loaded."
-- **A filter change removes the page.** Any change of sort or filter starts
-  again at the first page, so `page`, `after` and `before` disappear from the
-  address.
+- **A filter change removes the page.** Any change of sort, filters,
+  arguments or page size starts again at the first page, so `page`, `after`
+  and `before` disappear from the address.
 - **An ignored parameter stays in the address** until the person changes
   something. Then the table writes its state afresh and the stray parameter
   is gone.
-- **A refused read keeps the address.** When a mounted table's read comes to
-  be refused while the page is open, the browser is sent to the same URL
+- **A refused read keeps the address.** When the router page's read comes
+  to be refused while the page is open, the browser is sent to the same URL
   again, which then answers 404.
 - **The locale and the actor are not in the URL.** They come from the
   session.
@@ -279,11 +328,13 @@ and then the entries gives:
 
 - **The id is `task`, not `tasks`.** It comes from the module name, not from
   the path.
-- **An embedded table forgets its state on reload.** That is the default.
-  Pass `url` if the state should survive.
-- **Passing `url` without `handle_params/3`.** The table patches the URL,
-  but the LiveView has to receive the patch and hand the new URL down, or the
-  table never sees its new state.
+- **A table in your own LiveView forgets its state on reload.** That is
+  the default. Pass `url` to a tag, or `url: true` to `attach/4`, if the
+  state should survive.
+- **Passing `url` to a tag without `handle_params/3`.** The table patches
+  the URL, but the LiveView has to receive the patch and hand the new URL
+  down, or the table never sees its new state. An attached table with
+  `url: true` needs none of this.
 - **Building a link with an unknown operator or column.** Nothing fails; the
   filter is not there. Check the column's name and its operators.
 - **Expecting a link to show the sender's rows.** It shows the receiver's.

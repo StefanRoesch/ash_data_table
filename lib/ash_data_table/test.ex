@@ -1,7 +1,9 @@
 defmodule AshDataTable.Test do
   @moduledoc """
-  Help for the tests of an application whose tables follow live updates
-  (`live? true`: see the guide "Live updates").
+  Help for the tests of an application's tables: tables that follow live
+  updates (`live? true`: see the guide "Live updates"), and the tables
+  nested in rows and in pickers, which `Phoenix.LiveViewTest` does not see
+  (see the guide "Testing").
 
   A table hears of a change through a process of its own, which gathers
   what is announced for 100 ms before it hands it to the table.

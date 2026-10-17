@@ -88,9 +88,10 @@ line and its own selection. See [Nested tables](#nested-tables).
 The box in the header is ticked when every row of the page is selected, and
 shows the mixed state (a dash) when only some are.
 
-Selecting sends nothing to the server and brings no row back. Which rows
-are selected is known in the browser alone, as which cell is being edited
-is.
+The table holds what is selected on the server. The box is ticked in the
+browser at once, and every change of what is selected is sent to the
+server, which brings no row back: it draws the line above the grid from
+what it holds, so the count and the buttons follow a moment later.
 
 **Try it:** `/tasks` as Ada Admin. Press Tab until a cell has the focus
 ring, then Space: "1 selected". Hold Shift and press Down Arrow twice: "3
@@ -107,7 +108,7 @@ else inside a control that a cell holds:
 | On the cell of the box in the header | Selects the rows of the page. |
 | On any other cell: a heading, a filter cell, a relationship line, the cell that holds a nested table | Nothing. It does not scroll the page. |
 | On a button in a cell: a row action, an expander | Uses the button. |
-| In a filter's input, or in the editor of a cell | Types a space. In the editor of an array it ticks the box that has focus. |
+| In a filter's input, or in the editor of a cell | Types a space. |
 | On a cell, in a table without boxes | Nothing. |
 
 This is the split the ARIA grid pattern makes: a key belongs to the grid
@@ -123,14 +124,21 @@ A selection is a set of records, remembered by their primary keys.
 | The table is sorted | Stays. |
 | A filter is set, changed or cleared | Is given up. What was selected under other filters may not be among the rows any more. |
 | An [argument](arguments.md) of the table is changed | Is given up, for the same reason. "All that match" is what the filters match of what the read action returns for its arguments. |
+| The record the table is limited to (`of`) changes | Is given up, for the same reason. |
 | A cell is saved, a row action runs on one row | Stays. A row that the action took away is taken out of it. |
-| The page is reloaded, or left | Is gone. It is not in the URL, and the server does not keep it. |
+| The page is reloaded, or left | Is gone. It is not in the URL, and the table holds it only while the page is open. |
 | An action ran on it | The rows it did not run on stay selected; the others are taken out. |
 
 The line above the grid says how many records are selected, on this page
-and on the others: "3 selected". The count is a live region
-(`role="status"`): it is read out when it appears and whenever it changes,
-and focus stays where it is.
+and on the others: "1 selected", "3 selected", in the plural forms of the
+page's language (see [Messages and translations](messages-and-translations.md#counts-plural-forms)).
+The count is a live region: it is read out when it appears and whenever it
+changes, and focus stays where it is.
+
+A page hears of a selection through the events `:selection_changed` and
+`:bulk_ran`, and reads or clears it with the commands
+`selected_records/2` and `clear_selection/2`: see
+[Events and commands](events-and-commands.md).
 
 A table whose records have no primary key has no boxes: a row that cannot
 be named cannot be told from another.
@@ -165,18 +173,19 @@ from the left:
 
 | | Shown |
 | --- | --- |
-| The count: "3 selected", or "All 320 that match are selected" | While anything is selected. |
+| The count: "1 selected", "3 selected", or "All 320 that match are selected" | While anything is selected. |
 | "Select all 320 that match" | While every row of the page is selected and there is more than the page. |
 | "Clear selection" | While anything is selected. |
 | One button per bulk action, in the declared order | While anything is selected. |
 
-"Clear filters" is at the other end of the same line, as before. On a table
+"Clear filters" is at the other end of the same line. On a table
 of its own the line is as high as a button whether or not anything is
 selected, so the grid does not move when the buttons appear. A nested table
 keeps no room free for it.
 
-The buttons are ordinary buttons in the page's tab order, before the grid.
-They are there only while rows are selected. See
+The server draws the line from the selection it holds. Its buttons are
+ordinary buttons in the page's tab order, before the grid and the
+"Columns" button. They are there only while rows are selected. See
 [The keyboard](#the-keyboard).
 
 ## Which actions are offered
@@ -239,8 +248,11 @@ the option switches nothing on. See
 
 ## The question
 
-Every bulk action asks first, in the table's dialog, whether its action has
-a `confirm` or not: one click must not change a page of records.
+Every bulk action asks first, whether its action has a `confirm` or not:
+one click must not change a page of records. The question opens over the
+page or in it, as the table's [presentation](layout-and-embedding.md)
+says; a table asks one question at a time, and a new one gives the open
+one up, as Cancel.
 
 | The action | The question |
 | --- | --- |
@@ -255,8 +267,15 @@ a destroy action, as for a row. Cancel, and Escape, run nothing and put
 focus back on the button. For an action with inputs the question is asked
 when "Run" is used in the panel, on top of it.
 
-The number is worked out on the server when the button is used. Like every
-question of a table, it guards against slips and is no check.
+The number is worked out on the server when the button is used. Confirm
+runs the action on exactly the selection the question named. The page
+stays in use while the question is open; if the selection changed before
+Confirm, nothing runs, and the table says so: "Nothing was run: the
+selection changed after the question was asked."
+
+Like every question of a table, it guards against slips and is no check:
+the server does not enforce it, and an event sent by other means can skip
+it. Rules belong in the resource's policies. See [Confirm](confirm.md).
 
 ## Inputs
 
@@ -475,15 +494,14 @@ them.
 | Space | On the cell of the box in the header | Selects the rows of the page, or takes them out. |
 | Shift+Down Arrow, Shift+Up Arrow | On a cell of a row of records | Moves to the next or previous row of records and selects as it goes. What is open under a row is passed over. |
 | Left Arrow | On the first data cell of a row | Moves to the row's expander, where rows expand, and from there to its box. Home goes to the box at once. Tab still enters the grid on the first column of the table. |
-| Shift+Tab | On a cell of the grid | Leaves the grid backwards, to the last button of the line above it: the bulk actions, "Clear selection", "Select all … that match". |
+| Shift+Tab | On a cell of the grid | Leaves the grid backwards: to "Columns", then to the buttons of the line above the grid, the last first: the bulk actions, "Clear selection", "Select all … that match". |
 | Enter, Space | On a button of the line | Uses it. |
 
-The dialog of the question is a modal dialog: focus moves to Cancel, Tab
-reaches Confirm, and Escape is Cancel.
+When the question opens, focus moves to Cancel, Tab reaches Confirm, and
+Escape is Cancel, whether it opens over the page or in it.
 
 In a nested table the buttons of its line are tab stops as well, while that
-table has a selection. Without one, the tree of grids is one tab stop, as
-before.
+table has a selection. Without one, the tree of grids is one tab stop.
 
 All keys of a table are in
 [Keyboard and accessibility](keyboard-and-accessibility.md).
@@ -497,7 +515,7 @@ All keys of a table are in
 | The box of a row | A checkbox named "Select row", in a cell of the grid that is counted in `aria-colcount` and `aria-colindex`. |
 | The box of the page | A checkbox named "Select all rows of this page"; mixed when some rows of the page are selected. |
 | The line above the grid | A group (`role="group"`) named "Selected rows". |
-| The number of selected records | A live region in that group (`role="status"`): "3 selected". |
+| The number of selected records | A live region in that group: "3 selected". |
 | A run in progress | `aria-busy` on the grid; the buttons of the line are `aria-disabled`. |
 | What a run came to | The table's live region: "Archive: 2 done, 1 not done. You are not allowed to do this. (1)". |
 

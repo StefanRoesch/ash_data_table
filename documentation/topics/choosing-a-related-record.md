@@ -2,7 +2,7 @@
 
 A reference cell shows the record a belongs-to relationship points at. A
 person changes which record that is by choosing one from the related
-resource's own table, in a dialog at the side of the window: the picker.
+resource's own table, in the picker, which opens over the page or in it.
 After reading this guide you can say which reference cells are edited and
 which are not, predict what the picker shows and to whom, choose a record
 with the pointer and from the keyboard, say what a choice saves and what it
@@ -98,8 +98,8 @@ about there being something to choose from.
 | The relationship has no `filter` | See [Which records are offered](#which-records-are-offered). |
 | The records can be read through a `public?` action | The relationship's own `read_action`, else the read action of the destination's table. |
 
-A cell for which one of these does not hold stays read-only, as every
-reference cell was before: it shows the label and says `aria-readonly`.
+A cell for which one of these does not hold stays read-only: it shows the
+label and says `aria-readonly`.
 Under the table's `update_action` that is nothing to report. A column's own
 `update_action` that cannot save the column, and a `confirm` on a column
 nobody edits, are reported when the resource is compiled; see
@@ -119,10 +119,15 @@ nobody edits, are reported when the resource is compiled; see
 | A double click on the cell | Opens the picker. |
 | A printable key on the cell | Nothing. There is nothing to type into. |
 
-The picker is a second panel: a native modal `<dialog>` at the right edge of
-the window, as high as the window, as the action panel is. It is wider than
-the action panel (up to 48rem), because it holds a table, and the table
-scrolls sideways in it as it does on a page. It has:
+The picker opens as the table's [presentation](layout-and-embedding.md)
+says: over the page (`:modal`, the default kit's choice), or in it
+(`:inline`, set with `presentation: [picker: :inline]`). Over the page it
+is a modal dialog at the right edge of the window, as high as the window,
+as the action panel is, and the rest of the page cannot be used while it
+is open. In the page it is a part of the page: focus moves into it and
+back to where it was opened from, and the rest of the page stays in use.
+Either way it is wider than the action panel, because it holds a table,
+and the table scrolls sideways in it as it does on a page. It has:
 
 - a heading that says what is chosen for which column: the column's label,
   and what one record of the related resource is called ("Assignee: choose
@@ -132,6 +137,10 @@ scrolls sideways in it as it does on a page. It has:
 
 Nothing of a picker is in the page until one is opened. The table is
 rendered when the picker opens, and read then.
+
+A table attached with `controlled: [:picker]` draws no picker: it holds it
+as a request, which the page draws and answers with `pick_request/4`. See
+[Controlled mode](controlled-mode.md).
 
 Focus moves into the table: to the row of the record the cell points at
 now, when that record is on the page shown, else to the first row. The
@@ -214,15 +223,20 @@ table, which changes nothing, and "Choose" takes the selected row.
 | --- | --- |
 | A click anywhere on a row | Selects the row. |
 | Space on a cell of a row | Selects the row. |
-| "Choose" | Takes the selected row. It is not to be used while no row is selected (`aria-disabled`). |
-| Enter on a cell of a row | Chooses that row at once: selects it and takes it. |
+| "Choose" | Takes the row the picker's table holds as selected. It is not to be used while no row is selected (`aria-disabled`). |
+| Enter on a cell of a row | Chooses that row at once: selects it, and takes it once the server holds it as selected. |
 | A double click on a row | The same. |
 | "None" | Chooses no record: the key is emptied. Only where the key can be empty (`allow_nil?`). |
 | "Cancel", Escape | Closes the picker. Nothing is saved. |
 
 One row is selected at a time. Selecting another row takes the first one's
 place, and selecting the selected row again leaves it selected, as a radio
-button does. Selecting sends nothing to the server.
+button does. The picker's table holds what is selected on the server, as
+every table does (see
+[Selecting rows](selecting-rows-and-bulk-actions.md#selecting)), and
+draws "Choose" from it. "Choose", Enter and a double click take the row
+the server holds as selected, and only while that row is in view; nothing
+is sent with them that names a row.
 
 Why two steps: in a dialog, a person who moves through the rows with a
 screen reader or the keyboard has to be able to look at a row, and at
@@ -289,7 +303,7 @@ end
 | The input | Its field |
 | --- | --- |
 | An attribute that is the key of a public belongs-to relationship whose related record can be chosen (the last four rows of [the first table](#which-reference-cells-are-edited)) | What the record is called, as plain text, and a button "Choose" that opens the picker. Empty while the field holds no key, and where it holds the key of a record this person may not read. |
-| Any other key: its destination has no table, the relationship has a `filter` or is not public, or there is no relationship | A plain text field into which the key is typed, as before. |
+| Any other key: its destination has no table, the relationship has a `filter` or is not public, or there is no relationship | A plain text field into which the key is typed. |
 | An argument that holds a key and that no relationship explains, where the `action` of the block says which resource it refers to (`reference`) | The same field and the same picker, with the table of that resource. See [Table actions](table-actions.md#an-argument-that-holds-the-key-of-a-record). |
 
 The field is called what the table's column of the relationship is called
@@ -301,11 +315,12 @@ The record is called by its `label_field`, else by the first column of its
 table that holds something this person may see on it, as the heading of a
 [full view](nested-tables.md#the-heading) is.
 
-The picker opens **on top of the panel**: both are modal dialogs, and the
-panel stays as it is underneath, with everything that was typed into it. A
-choice puts the key into the field and closes the picker; focus is on the
-field's button again. Nothing runs until the panel's own button is used.
-Escape closes the picker alone.
+The picker opens **on top of the panel** where pickers open over the
+page, and **inside the panel** where they open in the page and the panel
+opens over it. Either way the panel stays as it is, with everything that
+was typed into it. A choice puts the key into the field and closes the
+picker; focus is on the field's button again. Nothing runs until the
+panel's own button is used. Escape closes the picker alone.
 
 "None" is offered where the action takes the input empty. A field that is
 required says so in its label, with a `*` and, for a screen reader, the
@@ -324,9 +339,9 @@ told by the browser it takes as a claim.
   action above, in their tenant. The destination's policies and field
   policies apply to the picker's table as they do on its own page.
 - **A person saves the key of a record they may read, and of no other.**
-  The row the picker's hook sends is a primary key from the browser. The
-  server reads the record by it, as the person, through the same read
-  action, and saves that record's value. A key that names nothing they may
+  The row the picker's table holds as selected is named by the browser, by
+  its primary key. The server reads the record by it, as the person,
+  through the same read action, and saves that record's value. A key that names nothing they may
   read there (a record of another tenant, one a policy hides, one the
   relationship's read action does not return, or no key at all) saves
   nothing, by whatever event it was sent.
@@ -348,7 +363,7 @@ told by the browser it takes as a claim.
   [Authorization](authorization.md#every-action-a-table-runs-is-public).
 
 A value that is typed into a plain key field is not looked up: the action
-is given it, as before.
+is given it as it is.
 
 ## Keys that are not one UUID
 
@@ -397,12 +412,12 @@ picker has nothing to choose.
 | Enter | On a heading, on a filter cell | Sorts; goes into the filter. As in any grid. |
 | Escape | In a filter of the picker's grid | Back to the filter's cell. The picker stays open. |
 | Escape | Anywhere else in the picker | Closes the picker. |
-| Tab | In the picker | Leaves the grid for the table's pages and the picker's buttons, and stays in the dialog. |
+| Tab | In the picker | Leaves the grid for the table's pages and the picker's buttons. Over the page it stays in the picker; in the page it goes on to the page after the last button. |
 | Enter, Space | On "Cancel", "None", "Choose" | Uses the button. |
 
 The grid in the picker is a grid like any other, with one tab stop. It is a
-tree of grids of its own: while the dialog is open, nothing outside it can
-be reached, by Tab or by the pointer.
+tree of grids of its own. While a picker over the page is open, nothing
+outside it can be reached, by Tab or by the pointer.
 
 When the picker closes, focus is back where it was opened from: on the
 cell, or on the "Choose" button of the panel's field.
@@ -414,7 +429,7 @@ All keys of a table are in
 
 | What | How |
 | --- | --- |
-| The picker | A modal dialog (`<dialog>`, shown with `showModal`), named by its heading (`aria-labelledby`). |
+| The picker | Over the page, a modal dialog; in the page, a region. Either is named by its heading. |
 | Its table | A grid, named as the destination's table is. |
 | That one row is selected at a time | `aria-multiselectable="false"` on the grid. |
 | Whether a row is selected | `aria-selected` on the row, `true` or `false`. |
@@ -447,10 +462,10 @@ theme. No screen reader has been tried.
 - **The label of the record is hidden from the person on that record.** The
   cell shows "Not available", and is still edited: what decides is whether
   they see the key.
-- **A new read of the table closes its picker**, as it closes its panel: a
-  sort, a filter or a change of page while a picker is open is not possible
-  from the page, as the dialog is modal, and a read that the server starts
-  takes the picker away.
+- **A new read of the table closes its picker**, as it closes its panel:
+  a sort, a filter or a change of page of the table the picker belongs to,
+  from the page where the picker is in the page, and a read that the server
+  starts, take the picker away.
 - **A read of the destination that is refused while the page is open.** The
   picker opens and says "These records are not available.", or "You are not
   allowed to see these records." where the destination's table says

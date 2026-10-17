@@ -509,10 +509,32 @@ on, with that page's own sort, filters and page, which are in its address.
 The rows that were expanded there are closed: what is expanded is in no
 address.
 
+## How a nested table is drawn
+
+The table on the page draws every table it shows. A nested table is moved
+into the cell under its relationship line through a portal (`<.portal>`):
+it is no live component of its own, whichever way the table on the page is
+placed (see [Layout and embedding](layout-and-embedding.md)).
+
+- **It is drawn with the kit of the table on the page**, and its action
+  panel, picker and question open as that table's do: over the page or in
+  it. See [Kits](kits.md).
+- **Controlled mode reaches it.** Where the page draws the questions, panels
+  or pickers of its table, it draws those of the nested tables too: see
+  [Controlled mode](controlled-mode.md).
+- **Its events go to the page of the table on the page**, with `path`, the
+  ids from the table on the page down to the nested table. See
+  [Events and commands](events-and-commands.md).
+- **`Phoenix.LiveViewTest` does not look into a portal.** In a test,
+  `AshDataTable.Test.page/1` reads the page as the browser shows it,
+  `AshDataTable.Test.send_event/5` sends a nested table its event, and
+  `AshDataTable.Test.send_form/5` sends one of its forms. See
+  [Testing](testing.md).
+
 ## Performance
 
-Each nested table is a component of its own with its own stream. The server
-keeps the keys of its page, its state and its table model, and no records.
+Each nested table has its own stream. The server keeps the keys of its
+page, its state and its table model, and no records.
 It queries when it is opened, sorted, filtered or paged, and when a person
 saves a cell or runs an action in it. While an action panel is open, the
 table it belongs to also keeps the panel's form and, for a row action, the
@@ -520,8 +542,7 @@ record it was opened with.
 
 Statements for one read, counted on Postgres with the demo's data
 ([`demo/perf/NESTED.md`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/perf/NESTED.md)
-has the run in a browser that the times are from; the statement counts are
-those of the library as it is now):
+has the run in a browser that the times are from):
 
 | Read | Statements | From click to rows |
 | --- | --- | --- |
@@ -529,10 +550,9 @@ those of the library as it is now):
 | `/tasks` → Labels (many-to-many, in full) | 2 | 16 ms |
 | `/tasks` → Project (belongs-to) | 2 | 14 ms |
 | `/tasks` → Newest comment (has-one of many) | 2 | 13 ms |
-| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 6: the parent with the count, the page, the calculation and the aggregate, one per reference cell | 38 ms, measured before the reference cells were columns |
+| `/projects` → Tasks (page of 25, counted; a calculation, an aggregate and three reference cells among the columns) | 6: the parent with the count, the page, the calculation and the aggregate, one per reference cell | 38 ms, measured without the reference cells |
 
-About 17 KiB of the page's process for each open nested table: 0.93 MB with
-fifty open. Opening one more does not get much slower as they add up.
+Opening one more nested table does not get much slower as they add up.
 Rendering and scrolling with fifty grids in one page were not measured. The
 browser, not the server, is where many open tables cost.
 
@@ -724,7 +744,10 @@ in a nested table for each of its rows.
   `label_field`.** The label is declared on the destination's table, not on
   the column.
 - **A sort by an aggregate that the page offers and the nested table does
-  not.** See "Aggregate columns in a nested table" above.
+  not.** The nested table reads through another action, which pages by
+  keyset, or a field policy hides the aggregate from the person on some
+  records. See
+  [Reading, sorting and pagination](reading-sorting-and-pagination.md#sorting).
 
 ## Not in the first version
 

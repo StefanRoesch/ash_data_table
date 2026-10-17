@@ -85,7 +85,7 @@ without the change:
 
 | The argument | Its field |
 | --- | --- |
-| One key whose records cannot be chosen | A plain text field into which the key is typed, as before. |
+| One key whose records cannot be chosen | A plain text field into which the key is typed. |
 | A list of keys whose records cannot be chosen | None: a table has no field for a list of keys. An action that requires it is reported when the resource is compiled, with the reason; see [Mistakes at compile time](mistakes-at-compile-time.md#row-actions-and-the-create-action). |
 | A map, or a list of maps: records to create or to change | None, unless the map declares its fields: then the group of fields a map has anywhere. A table creates no related record through it. |
 | A list of text for a relationship whose key is a UUID | A list of text values, typed. |
@@ -263,7 +263,7 @@ The table looks at the action behind the column (its own `update_action`,
 else the table's) and takes the first way that holds:
 
 1. **The action accepts the key**, and the key is a public, writable
-   attribute. The choice is given as that attribute, as before.
+   attribute. The choice is given as that attribute.
 2. **The action has an argument that hands one key to the column's
    relationship and relates the record it names** (`on_lookup`:
    `:append`, `:append_and_remove`). The choice is given as that argument.
@@ -298,11 +298,12 @@ The table adds no rule of its own, as for one record.
 
 - **A person is offered the records they may read**, through the picker's
   read action, in their tenant.
-- **A row is a claim.** "Choose" sends the rows that are selected. A row of
-  a record the field holds already is that record. Any other is read, as
-  the person, through the picker's read action; one that names nothing they
-  may read chooses nothing at all, and the picker says "This record is no
-  longer available."
+- **A row is a claim.** "Choose" takes the rows the picker's table holds
+  as selected, which the browser named by their keys. A row of a record the
+  field holds already is that record. Any other is read, as the person,
+  through the picker's read action; one that names nothing they may read
+  chooses nothing at all, and the picker says "This record is no longer
+  available."
 - **A key is a claim too.** When the panel's button is used, every key the
   form sends is looked up the same way before the action runs. One that
   names nothing they could have chosen runs nothing, and the panel says so
@@ -353,12 +354,12 @@ and no other.
 | Space | On a cell of a row of the picker | Selects the row, or takes it out. |
 | Shift and Down Arrow, Up Arrow | On a row of the picker | Selects a range, as in any table with boxes. |
 | Enter | On a row of the picker for several | Nothing. |
-| Tab | In the picker | Leaves the grid for the buttons, and stays in the dialog. |
+| Tab | In the picker | Leaves the grid for the buttons. Over the page it stays in the picker; in the page it goes on to the page. |
 | Escape | In the picker | Closes the picker alone. |
 
 | What | How |
 | --- | --- |
-| The field | A group named by its label (`role="group"`, `aria-labelledby`). |
+| The field | A group named by its label. |
 | A record's button | Named by what it does to which record: "Remove ops". For a record that is called "Not available", by its place: "Remove Labels 2". |
 | The picker's table | A grid that says `aria-multiselectable="true"`, with a box named "Select row" per row. |
 | How many rows are selected | A status above the grid, read out when it changes. |

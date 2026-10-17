@@ -133,6 +133,19 @@ defmodule AshDataTable.Live.Page do
   by its primary key, as the person, before the action runs on it, and a
   key that names nothing they may read through the table runs nothing.
 
+  ## What the host hears and gives
+
+  The page is the library's, so the host's code runs in the `on_mount`
+  hooks of the `live_session` around the route. The route can give the
+  table what `AshDataTable.attach/4` takes (`notify`, `open`, `context`,
+  `private_arguments`, `page_arguments`, `before_action`, `kit`,
+  `presentation`; see `AshDataTable.Router.ash_data_table/3`). A hook
+  hears the table's events with `Phoenix.LiveView.attach_hook/4` on
+  `:handle_info`, and may give the table, attached under `:table`, the
+  commands of `AshDataTable` (`AshDataTable.refresh/2` and the others).
+  The page takes no `controlled`: a host that draws what the table opens
+  attaches the table to a LiveView of its own.
+
   ## Live updates
 
   Where the resource's `table` block says `live? true`, the page follows
@@ -159,7 +172,8 @@ defmodule AshDataTable.Live.Page do
 
   The first line of the page is the table's: its name as the page's `h1`,
   and at the other end the create button, when the resource's `table` block
-  names a `create_action` that the person may run. The name is the
+  names a `create_action` that the person may run, and the buttons of its
+  table actions. The name is the
   resource's `plural_name`, or its short name, in words (`AshDataTable.label/1`),
   and is the page title too.
 

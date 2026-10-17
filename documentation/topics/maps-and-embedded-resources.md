@@ -113,8 +113,8 @@ end
 embedded resources without a primary key), "A typed map", and "A map", which
 declares no fields.
 
-Types that only look like these are not among them, and stay read-only
-text, as before: an `Ash.Type.Struct` (also one of a resource), an
+Types that only look like these are not among them, and are read-only
+text: an `Ash.Type.Struct` (also one of a resource), an
 `Ash.TypedStruct`, a keyword list and a tuple. See
 [Not in the first version](#not-in-the-first-version).
 
@@ -225,6 +225,12 @@ of what belongs to it, and by nothing else.
 
 Focus goes into the first field when the panel opens, and back to the cell
 when it closes.
+
+The panel opens over the page or in it, as the table's presentation says
+([Layout and embedding](layout-and-embedding.md)). Over the page (the
+default kit's), the rest of the page cannot be reached while it is open. In
+the page, nothing else is out of reach: Escape inside the panel is Cancel,
+and Tab can leave it.
 
 ### A value that can be left out
 
@@ -430,8 +436,7 @@ it is given the value as the record holds it (the struct of an embedded
 resource, a map, or a list of them), the one line of text the table itself
 would show as `text`, and a column whose `cell_type` is `:map`, or
 `{:array, :map}`. Its `editor/1` is not used: the value is edited in the
-side panel, with the table's own fields, as an array is edited with the
-table's own editor.
+side panel, with the table's own fields.
 
 ## Translating the fields
 
@@ -489,7 +494,8 @@ translated once, for a column and for a field of a client alike.
 - **A value inside itself.** An embedded resource that holds a value of its
   own type is read-only. (Ash 3.34 does not compile one.)
 - **A long value** is cut off in the cell, as every cell's text is. The
-  panel shows all of it, and so does the box under the cell: see
+  panel shows all of it, and so does "Show all" (or Shift+Enter) in the
+  cell, which shows the whole line in place: see
   [Long text](columns-and-defaults.md#long-text).
 
 ## Things people trip over

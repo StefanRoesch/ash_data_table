@@ -6,8 +6,9 @@ put one of the three shipped components on a column, write one of your own,
 and say exactly what a component is given, what it is never given, and what
 stays the table's whatever a component does.
 
-A component changes the look of a column and the control it is edited with.
-What a column is, how it is sorted and filtered, is in
+A component changes the look of one column's cells and the control they
+are edited with. To change how the whole table looks, any part of it and
+not only one column's cells, see [Kits](kits.md). What a column is, how it is sorted and filtered, is in
 [Columns and defaults](columns-and-defaults.md); how a cell is saved is in
 [Inline editing](inline-editing.md); the fields of the action panel are in
 [Row actions and create](row-actions-and-create.md).
@@ -41,6 +42,11 @@ parts, each a function component, and either can be left out:
 | --- | --- | --- |
 | `cell/1` | How a value is shown in a cell. | The table shows the value as it shows any value of that type. |
 | `editor/1` | What the value is edited with, in a cell and in the action panel. | The table's own editor of that type. |
+
+The table is drawn by its [kit](kits.md). Where a column has a component,
+the component comes first: its `cell/1` draws a cell's value in place of the
+kit's cell, and its `editor/1` is the column's editor in place of the
+kit's. Everything around them, the cell itself included, is the kit's.
 
 A component is an interface and nothing more. With one or without:
 
@@ -324,7 +330,9 @@ these do not depend on a component, and work over one:
 - the cell's id, its role and its place in the grid;
 - the focus ring, which the cell keeps while its editor has the focus;
 - a cell whose save is on its way, which is dimmed;
-- a cell whose save failed: the ring, the "!" and the message;
+- a cell whose save failed: the ring, the "!", and the action's message,
+  which stands in the cell under the value. Such a cell shows what was
+  typed, as text, and not the component's `cell/1`;
 - one line per row: a cell is cut off at the column's maximum width, and a
   component's markup with it. (`max_lines` is not for a column whose
   component shows the cell.)
@@ -417,9 +425,9 @@ the cell.
   component, and its `cell/1` shows the cells: `@value` is the list, and
   `@text` its values as the table would show them, separated by commas. Its
   `editor/1` is not used, in a cell or in the action panel: an editor's
-  control holds one value, and an array is edited with the table's own
-  editor, a multiple choice or a list of values. See
-  [Inline editing](inline-editing.md#arrays).
+  control holds one value. An array is edited in the side panel, with the
+  table's own field: a box per value for a multiple choice, a list of
+  values otherwise. See [Inline editing](inline-editing.md#arrays).
 - **The editor of a value made of fields.** A column that is an embedded
   resource or a map, or an array of either, can have a component, and its
   `cell/1` shows the cells: `@value` is the value as the record holds it

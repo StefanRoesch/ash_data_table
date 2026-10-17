@@ -27,7 +27,8 @@ defmodule AshDataTable.Kit.Words do
     * for a part of one text (`message`, `failure`): `text/2` and
       `message/2`;
     * for a part that shows a value: `locale/0`, and for a summary cell
-      `value/2` and `text/2`, the value as the default kit shows it.
+      `value/2` and `text/2`, the value as the default kit shows it; for
+      the pagination `value/2`, the page numbers it offers (`pages`).
 
   The table's core makes keys and values; the words are made here, in the
   LiveView's process.

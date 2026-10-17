@@ -378,10 +378,11 @@ The findings about the tables themselves have the path
 | The column \`NAME\` is declared more than once in the table \`:TABLE\`. | A named table declares the same `column` twice. Also said of a `relationship`, an `action`, an `argument` and an `upload`. In the `table` block Spark reports this itself ("Got duplicate …"). | Declare it once. A calculation shown twice needs `as` on the second column. |
 | \`label_field\` says what a record of the resource is called, whichever of its tables shows it, so it is no option of a named table. Write \`label_field :NAME\` in the \`table\` block of the resource. | `label_field` inside a named table. The path ends in `-> label_field`. | Move it to the `table` block. |
 
-A table that the router or `<AshDataTable.table>` names and the resource does
-not have is not found at compile time: the router does not look at the
-resource. It raises when the page is opened or the component rendered, and
-lists the resource's tables.
+A table that a router line, a tag (`<AshDataTable.table>`) or
+`AshDataTable.attach/4` names and the resource does not have is not found at
+compile time: the router does not look at the resource. It raises when the
+page is opened, the tag rendered or `attach/4` called, and lists the
+resource's tables.
 
 ## Relationships
 
@@ -562,8 +563,9 @@ is compiled before its domain and cannot read the domain's block. See
 | `table -> pub_sub` (of the domain) | RESOURCE says \`live? true\`, but the \`table\` block of DOMAIN names no \`pub_sub\` … | A resource of the domain announces its changes, and the domain does not say through which `Phoenix.PubSub` server. | Add `pub_sub MyApp.PubSub` to the domain's `table` block. |
 
 A domain that does not list `AshDataTable.Domain` is not checked. The table
-then refuses to be opened, with the same sentence. So does a page or a
-placed table that says `live?: true` for a resource that announces nothing.
+then refuses to be opened, with the same sentence. So does a router line, a
+tag or an attached table that says `live?: true` for a resource that
+announces nothing.
 
 ## A private action
 
@@ -746,8 +748,9 @@ Because a finding is a warning, a resource with a mistake can be compiled
 and its table opened. What happens then depends on the mistake. Where the
 table would have nothing sound to do, it refuses: it raises `ArgumentError`
 when it is rendered, with a message that starts "cannot build the table of"
-and names the resource and the cause. A mounted table's page then fails as
-any LiveView does that raises in its first render.
+and names the resource and the cause. The page of a router line, or the
+LiveView a tag or an attached table is in, then fails as any LiveView does
+that raises.
 
 | The mistake | At runtime |
 | --- | --- |
@@ -801,6 +804,54 @@ table built, or one built before the resource was compiled again, is
 refused where its action is private or no read action at all: "cannot
 build the nested table of …". No other action is read through in its
 place.
+
+## Mistakes in how a table is placed
+
+What the router line, the tag and `AshDataTable.attach/4` are given is
+checked as well. These are errors, not findings: an `ArgumentError` or a
+`CompileError` stops what was being done.
+
+**The router line** is checked when the router is compiled. An option it
+does not know, a `:table` that is no table name, an `:id` that is not
+lower-case letters, digits, `_` and `-` starting with a letter, a
+`:layout`, `:authorize?` or `:live?` of the wrong kind, a `:notify` that
+names no event, and a `:context`, `:private_arguments`,
+`:page_arguments` or `:before_action` that is no map or
+`{module, function}` each raise, for example:
+
+<!-- sketch -->
+```text
+** (ArgumentError) the :id of ash_data_table must be a string of lower-case letters, digits, `_` and `-` that starts with a letter, got: "Tasks"
+```
+
+**A tag and `attach/4`** check what they are given when the tag is rendered
+or `attach/4` is called: a `heading` that is not `true`, `false` or 1 to
+6, a `time_zone` that is no zone (see [Time zones](time-zones.md)), a
+`notify` that names no event, an `open` that is no text, a `presentation`
+that is not a list of `panel:`, `picker:` and `confirm:`, each `:modal` or
+`:inline`, and a `context`, `private_arguments`, `page_arguments` or
+`before_action` that is no map or function of the right arity. `attach/4`
+also refuses an option it does not know, a `controlled` that is not a list
+of `:confirm`, `:panel` and `:picker`, `url: true` in a LiveView that the
+router did not mount, and another resource, table or id under a name
+already attached. The router line's `:kit` and `:presentation` are checked
+this way when its page is opened.
+
+**A kit** is checked twice. `use AshDataTable.Kit, contract: 1` is checked
+when the kit compiles: another contract number, a public function of one
+argument that is no part of a kit, and a `class` or `presentation` of
+another arity are a `CompileError`. And a kit is checked again where it is
+named (the tag's `kit`, the option of `attach/4` or the router line, or
+`config :ash_data_table, kit: …`): a module that does not
+`use AshDataTable.Kit`, or whose `presentation/1` answers neither `:modal`
+nor `:inline`, is an `ArgumentError`:
+
+<!-- sketch -->
+```text
+** (ArgumentError) AshDataTable.attach/4 was given `kit: MyAppWeb.Table`, which is no kit: a kit is a module that says `use AshDataTable.Kit, contract: 1` (see AshDataTable.Kit)
+```
+
+See [Kits](kits.md).
 
 ## Edge cases
 

@@ -9,8 +9,8 @@ action.
 
 ## The smallest example
 
-There is nothing to declare in the `table` block. A mounted table reads who
-is asking from the socket assigns that your `on_mount` hook sets. In the demo
+There is nothing to declare in the `table` block. The page of a router line
+reads who is asking from the socket assigns that your `on_mount` hook sets. In the demo
 the hook is `DemoWeb.Actor`
 ([`demo/lib/demo_web/actor.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/actor.ex)):
 
@@ -51,7 +51,8 @@ and the "Actions" column are not among them.
 
 ## Where actor and tenant come from
 
-A mounted table looks at three socket assigns:
+The page of a router line (`ash_data_table "/tasks", MyApp.Tracker.Task`)
+looks at three socket assigns:
 
 1. `current_scope`, when it is assigned and not nil, is passed to Ash as the
    `scope`. It must implement `Ash.Scope.ToOpts`, and it then carries the
@@ -61,11 +62,20 @@ A mounted table looks at three socket assigns:
    logged in, which is not an error: the table shows what the resource
    leaves to an anonymous visitor.
 
+When an `on_mount` hook of yours assigns another user, scope or tenant
+while the page is open (a hook that hears of a login elsewhere), the page
+attaches its table again as that person before anything else of the
+callback runs: its expanded rows close, its picker goes, and the table
+reads anew.
+
 Who may open the page at all is not the table's concern. It is decided by
 your router, your pipelines and your `live_session`, as for any LiveView.
 
-A table placed in your own LiveView is given `scope`, or `actor` and
-`tenant`, as attributes and does not look at the assigns. See
+A table in your own LiveView is told who is asking and does not look at
+the assigns: a tag (`<AshDataTable.table>`) is given `scope`, or `actor`
+and `tenant`, as attributes, and `AshDataTable.attach/4` takes the same as
+options. Give the tag new attributes, or attach again under the same name,
+and the table reads anew as the new person. See
 [Layout and embedding](layout-and-embedding.md).
 
 ## The domain section
@@ -185,9 +195,11 @@ a URL, a session or an event can switch authorization off.
 | `authorize? false` in the domain's `table` block | every table of the domain's resources |
 | `authorize?: false` on an `ash_data_table` line | that page, and the tables nested in it |
 | `authorize?={false}` on `<AshDataTable.table>` | that table, and the tables nested in it |
+| `authorize?: false` given to `AshDataTable.attach/4` | that table, and the tables nested in it |
 
-The route and the attribute win over the domain, in both directions:
-`authorize?: true` authorizes a table of a domain that says `false`.
+The route, the attribute and the option win over the domain, in both
+directions: `authorize?: true` authorizes a table of a domain that says
+`false`. Nothing the browser sends can change it.
 
 A nested table links to its full view only on a page that is mounted the
 same way. A table without authorization never sends a person to a page that
@@ -474,8 +486,9 @@ not of this rule.
 ## `on_forbidden`
 
 By default a person whose read is refused outright is not told that the
-table exists. The mounted page raises `AshDataTable.NotFoundError`, which Phoenix
-renders as it renders a missing route. `on_forbidden :message` tells them
+table exists. The page of a router line raises `AshDataTable.NotFoundError`,
+which Phoenix renders as it renders a missing route; a tag or an attached
+table, which cannot make the host's page disappear, renders nothing. `on_forbidden :message` tells them
 instead. The demo's comments do
 ([`demo/lib/demo/tracker/comment.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo/tracker/comment.ex)):
 
@@ -496,6 +509,21 @@ end
 Choose `:message` when people know the table exists and should learn that
 they lack access. Keep `:not_found` when the table's existence is itself
 something not everybody should learn.
+
+## What the page adds is no authorization
+
+A page can give its table server values: `context` and `private_arguments`
+for every call to Ash the table makes, and `before_action`, a veto asked
+before every write. They are for a page's own rules (a value an action
+needs, a write the page wants to hold back). Who may see and do what
+belongs on the resource, in its policies, where every interface meets it.
+See [Events and commands](events-and-commands.md).
+
+A question (`confirm`) is no authorization either. It guards the person
+against a mistake, not the data against them: the server does not enforce
+it, also not where the page draws it itself
+([Controlled mode](controlled-mode.md)), and an event made by hand can skip
+it. What must not run is for the policies, or the veto, to refuse.
 
 ## Why a rule that depends on the record shows on save
 
@@ -634,9 +662,10 @@ does not accept the field, or a policy or validation on the one that does.
 
 ## Things people trip over
 
-- **Changing who is logged in without mounting again.** The table follows
-  the person who mounted the page. Mount the page again when the user
-  changes, as a login or a logout does.
+- **Changing who is logged in in your own LiveView without telling the
+  table.** A tag follows its attributes, and an attached table what it was
+  last attached with: attach it again under the same name with the new
+  person. The router page follows its socket assigns by itself.
 - **A table mounted outside the `live_session` that assigns the user** reads
   as nobody.
 - **Custom assign names without the domain section.** A table whose domain
@@ -663,7 +692,7 @@ does not accept the field, or a policy or validation on the one that does.
 
 ## Not in the first version
 
-No per-table authorization setting beside the domain's, no hiding of single
+No authorization setting in the `table` block, no hiding of single
 rows' edit affordance ahead of a save or of a row's buttons ahead of an
 action, and no login or session handling: that is the host's. The roadmap
 is in the

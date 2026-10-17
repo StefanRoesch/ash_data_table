@@ -56,7 +56,8 @@ end
 
 (A line `# ...` in an excerpt stands for lines that are left out.) The hook
 has to run for the `live_session` the tables are mounted in, as it
-does in the demo's router (`on_mount: [DemoWeb.Actor, DemoWeb.Locale]`).
+does in the demo's router
+(`on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone]`).
 
 **Changing the locale needs a new mount.** The locale belongs to the
 LiveView process and is set when the LiveView mounts. A table that is already
@@ -103,38 +104,47 @@ msgid "Clear filters"
 msgstr "Filter zurücksetzen"
 ```
 
-These are all the messages of the template
-([`priv/gettext/ash_data_table.pot`](https://github.com/StefanRoesch/ash_data_table/blob/main/priv/gettext/ash_data_table.pot)):
+### Counts: plural forms
 
-| Where | Messages |
-| --- | --- |
-| States | "No records", "The records could not be loaded.", "You are not allowed to see these records." |
-| Pagination | "Pagination: %{table}", "Previous", "Next", "Page %{page}", "Go to page %{page}", "%{from}–%{to}", "%{from}–%{to} of %{total}", "1 record" with the plural "%{count} records" |
-| Cells | "Yes", "No", "Not available" |
-| Filter operators | "contains", "equals", "starts with", "is empty", "greater than", "less than", "at least", "at most", "on", "before", "after", "is" |
-| Filter row | "Any", "Filter %{column}", "How to filter %{column}", "Not a valid value", "Clear the %{column} filter", "Clear filters" |
-| The argument line | "Fill in %{argument} to see records." (in place of the rows while an argument the read action requires is empty; `argument` is what it is called, or what they are called, with commas between), "%{column}: %{argument}" (what the input of an argument is called that a column asks for: "Due within: Days"). The rows of a list are the array editor's: "Add value", "%{column} %{position}", "Remove %{column} %{position}" |
-| Announcements | "1 result" with the plural "%{count} results", "Results updated", "%{column} was not saved: %{message}" |
-| Saving | "You are not allowed to change this.", "This record is no longer available.", "This could not be saved.", "%{field}: %{message}" |
-| The editor of an array | "Add value" (the button that adds one), "%{column} %{position}" (what the control of a value is called: "Tags 2"; a message about one value has it in front, through "%{field}: %{message}"), "Remove %{column} %{position}" (what its button is called) |
-| A value made of fields | "%{field}: %{value}" (one field of an embedded resource or a map, as its cell shows it: "City: Kiel"), "Save" (the button of the panel such a cell is edited in), "Remove %{column}" (what the button is called that takes such a value away: "Remove Address"). The button that adds one is the array's "Add value", and a value of an array is called by "%{column} %{position}" |
-| A union | "Kind" (what the choice of a union's kind is called in the panel). What each kind is called is your resource's wording: see below |
-| A file | What the field of an argument that takes a file says of a file its upload does not take: "The file is too large. The limit is %{limit}." (`limit` is a size, "100 kB"), "This type of file is not accepted.", "The file could not be uploaded." |
-| Dialog | "Cancel", "Confirm" |
-| Row actions | "Actions" (the heading of their column), "You are not allowed to do this.", "This could not be done.", and what is read out: "%{action}: done", "%{action} failed: %{message}" |
-| Table actions | "%{action}: %{result}" (what is shown above the grid, and read out, when a generic action returned a value: "Count unused: 3"). One that returned nothing is said with "%{action}: done", and a failure with "%{action} failed: %{message}" |
-| The action panel | "%{action}: %{record}" (the heading of a row action's panel), "Run", "Create"; "Cancel" is the dialog's |
-| Selecting rows | "Select row" and "Select all rows of this page" (what the boxes are called), "Selected rows" (the name of the line above the grid), "%{count} selected", "All %{count} that match are selected", "All that match are selected", "Select all %{count} that match", "Select all that match", "Clear selection". "%{count} selected" has no plural forms: the number is put in by the browser, which alone knows it |
-| Bulk actions | The question: "Run “%{action}” on 1 record?" with the plural "Run “%{action}” on %{count} records?", "Run “%{action}” on all records that match?"; after an action's own question, "%{question} 1 record is selected." with the plural "%{question} %{count} records are selected.", and "%{question} All records that match are selected.". The heading of the panel: "%{action}: 1 record" with the plural "%{action}: %{count} records", "%{action}: all records that match". The result: "%{action}: %{done} done.", "%{action}: %{done} done, %{failed} not done.", and "%{message} (%{count})" for each message of the action with the number of records it is about |
-| The picker | "%{column}: choose %{name}" (its heading: the column, and what one record of the table to choose from is called, "Assignee: choose user"), "Choose" (its button, and the button of a field of the action panel that opens it), "None", "required" (said to a screen reader of a required field of the panel that holds the key of a related record). "Select row" names its radio buttons, and "Cancel" is the dialog's. A field that holds several related records has no text of its own: the button that takes a record out is called by "Remove %{column}" with what the record is called ("Remove ops"), a record that may not be read is "Not available" and its button "Remove %{column} %{position}", and the picker counts with "%{count} selected" |
-| A sensitive value | "Hidden" (said to a screen reader in place of the mask), "Show", "Hide", "Show %{column}", "Hide %{column}" (the cell's button, and what it is called). "Clear", "Clear %{column}" (the button that empties one, in the editor of a cell and at a field of the action panel), "Will be cleared." (what such a field says once the button was used), "Keep", "Keep %{column}" (the button then) |
-| Column widths | "Resize %{column}" (what the handle at the end of a column's header is called: "Resize Title") |
-| Hiding columns | "Columns" (the button above the grid, and the name of its list), "Columns (%{details})" (the button while columns are hidden; `details` is made of the next three, with ", " between them: "Columns (2 hidden, 1 filtered)"), "%{count} hidden", "%{count} filtered", "%{count} sorted" (no plural forms: the numbers are put in by the browser, which alone knows them), "filtered", "sorted", "filtered, sorted" (after the name of a hidden column in the list, in brackets), "%{column} hidden", "%{column} shown" (read out) |
-| Create | "New %{name}" (the create button and the heading of its panel), "%{name} created" (read out; `name` is what one record is called: "Task created") |
-| Nested tables | "Related records" (the expanders and the heading of their column), "Loading…", "These records are not available." |
-| The full view | "Open in full view", "Open in full view: %{table}" (the link's accessible name), "%{record}: %{relationship}" (the heading over a table limited to the records of one parent), "Show all records" |
+A text with a number in it has a form per number: the result count, the
+total, "1 selected" on the selection line and on the button of a filter
+for several values, a question about the selected rows, and how many
+columns the Columns button says are hidden, filtered or sorted. The table
+says it on the server with Gettext's plural forms, so its entry has a
+`msgid_plural` and one `msgstr[n]` per form of the locale, as the
+`Plural-Forms` line at the top of the file says. From the demo's German
+file:
 
-**Rewording without translating.** To say "Nothing to show" in place of "No
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
+```po
+msgid "1 selected"
+msgid_plural "%{count} selected"
+msgstr[0] "1 ausgewählt"
+msgstr[1] "%{count} ausgewählt"
+```
+
+<!-- source: demo/priv/gettext/de/LC_MESSAGES/ash_data_table.po -->
+```po
+msgid "Run “%{action}” on 1 record?"
+msgid_plural "Run “%{action}” on %{count} records?"
+msgstr[0] "„%{action}“ für 1 Eintrag ausführen?"
+msgstr[1] "„%{action}“ für %{count} Einträge ausführen?"
+```
+
+### Every message, by key
+
+`AshDataTable.Messages` is the list of every text that is the table's.
+Its documentation lists each key with the names of its values and its
+English text, which is the msgid in the template; a key with a form per
+number has its plural msgid too, and `count` among its values. In code,
+`AshDataTable.Messages.all/0` gives the same list as data (`values`,
+`msgid`, `msgid_plural` per key), and `AshDataTable.Messages.key?/1` says
+whether a key is in it. A table shows no text of its own that is not in
+this list.
+
+### Rewording without translating
+
+To say "Nothing to show" in place of "No
 records" in an English app, give your backend an `ash_data_table.po` for `en` with
 that one entry. This is a sketch; the demo has no such file:
 
@@ -348,6 +358,19 @@ The prefix follows two rules:
   field whose column is left out for them, or which is no column of the
   table, is shown without a name.
 
+## In a kit of your own
+
+The default kit shows the texts as the table translated them. A
+[kit](kits.md) of your own is given, at each part that shows a text of
+the table's, both: `texts`, by name, the finished strings in the person's
+language, and `messages`, the same names, each the message the text was
+made of: `{key, values}`, a key of `AshDataTable.Messages` with its
+values, or an action's own message as Ash gives it, `{message, vars}`. A
+kit drawn in HEEx shows `texts`; one that translates for itself (a React or
+Vue kit) takes `messages` and looks each key up in its own catalogue.
+`AshDataTable.Kit.Words` makes both, and the `AshDataTable.Kit`
+documentation says which names each part is given.
+
 ## What a person reads when something is missing
 
 | `gettext_backend` | `translate_error` | The table's texts | Labels | Action messages |
@@ -379,10 +402,12 @@ English, and the resource's own wording.
   label in different resources get the same translation, and a label that
   reads exactly like one of the table's own messages ("Next", "Yes") shares
   its entry.
-- **Dates and numbers are not localized.** They are shown as the native
-  inputs write them, whatever the locale.
-- **Plural forms** follow the locale's rule in your `.po` file. Only the
-  result count has one.
+- **Dates and numbers are not localized** by the default kit. They are
+  shown as the native inputs write them, whatever the locale. A kit of
+  your own is given the raw value and the locale, and may format it.
+- **Plural forms** follow the locale's `Plural-Forms` rule in your `.po`
+  file. One entry serves every place with the same English text: "1
+  selected" is the selection line's and a filter's.
 - **A variable of an error that is not text or a number** is written out
   with `inspect/1` before it is handed over.
 

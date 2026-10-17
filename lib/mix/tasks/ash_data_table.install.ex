@@ -17,9 +17,9 @@ if Code.ensure_loaded?(Igniter) do
     Each step is left out when it has been taken already, so the task can be
     run again.
 
-      * `assets/js/app.js`: imports the table's hook from
-        `phoenix-colocated/ash_data_table` and spreads it into the hooks of the
-        `LiveSocket`.
+      * `assets/js/app.js`: imports the table's hooks from
+        `phoenix-colocated/ash_data_table` and spreads them into the hooks of
+        the `LiveSocket`.
       * `assets/css/app.css`: adds an `@source` line, so that Tailwind sees
         the classes the table's markup uses. It points at the dependency
         where it really is, which for a path dependency is that checkout.
@@ -34,6 +34,9 @@ if Code.ensure_loaded?(Igniter) do
 
     A file that does not look as the one of a new Phoenix 1.8 application
     does is left as it is, and the step is printed for you to take by hand.
+
+    It does not turn on compression of LiveView's websocket, an app-wide
+    trade-off that is yours: see the guide "Installation".
 
     Then it says what only you can do: add the extension to a resource and a
     line to the router.
@@ -401,7 +404,7 @@ else
     run it through Igniter's own archive, `mix igniter.install ash_data_table`
     (`mix archive.install hex igniter_new`), or add
     `{:igniter, "~> 0.6", only: [:dev, :test]}` to your dependencies, or take
-    the manual steps of the README.
+    the manual steps of the guide "Installation".
     """
 
     use Mix.Task
