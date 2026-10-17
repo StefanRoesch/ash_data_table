@@ -534,7 +534,10 @@ placed (see [Layout and embedding](layout-and-embedding.md)).
 ## Performance
 
 Each nested table has its own stream. The server keeps the keys of its
-page, its state and its table model, and no records.
+page, its state and its table model, and no records. LiveView keeps the
+rows a nested table was last sent with in its change tracking until the
+next render; the table itself stores no rows. An event of one nested table
+sends and patches that table only, however many are open.
 It queries when it is opened, sorted, filtered or paged, and when a person
 saves a cell or runs an action in it. While an action panel is open, the
 table it belongs to also keeps the panel's form and, for a row action, the

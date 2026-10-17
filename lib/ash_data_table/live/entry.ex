@@ -20,6 +20,10 @@ defmodule AshDataTable.Live.Entry do
     # that a task of a table that closed (its answer comes all the same,
     # cancelled) never reaches a table of the same id opened after it.
     token: nil,
+    # When the table opened, as a number that only grows: the portals of
+    # nested tables are drawn in this order (`AshDataTable.Live.Registry.portals/1`),
+    # parents before their children, and one that opens comes last.
+    opened: nil,
     resource: nil,
     # Where the table is: the ids of the tables it is rendered in, from the
     # table on the page down, and its own last. What lies under what is
@@ -210,5 +214,10 @@ defmodule AshDataTable.Live.Entry do
 
   @doc "The entry of a table that has read nothing yet."
   @spec new() :: t
-  def new, do: %__MODULE__{state: %State{}, token: make_ref()}
+  def new,
+    do: %__MODULE__{
+      state: %State{},
+      token: make_ref(),
+      opened: System.unique_integer([:monotonic, :positive])
+    }
 end

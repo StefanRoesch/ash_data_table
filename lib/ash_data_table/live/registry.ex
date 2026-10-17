@@ -217,14 +217,16 @@ defmodule AshDataTable.Live.Registry do
   end
 
   @doc """
-  The tables drawn into a cell of another's row, parents before their
-  children: LiveView moves the portals of one patch in the order of the
-  page, and a portal whose cell is not there yet fails.
+  The tables drawn into a cell of another's row, in the order they opened:
+  parents before their children, as a table opens after the one it is in
+  (LiveView moves the portals of one patch in the order of the page, and a
+  portal whose cell is not there yet fails), and a table that opens comes
+  last, so that no other portal moves for it.
   """
   def portals(%{entries: entries}) do
     entries
     |> Map.values()
     |> Enum.filter(& &1.target)
-    |> Enum.sort_by(&{length(&1.path), &1.id})
+    |> Enum.sort_by(& &1.opened)
   end
 end

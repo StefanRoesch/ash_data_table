@@ -171,16 +171,20 @@ defmodule AshDataTable.RegistryTest do
     end)
   end
 
-  test "the portals come parents first: LiveView moves them in the order of the page" do
+  test "the portals come in the order the tables opened: parents first, a new one last" do
+    [a, b, c, p] = for id <- ~w(a b c p), do: %{Entry.new() | id: id}
+
     table = %Table{
       entries: %{
-        "b" => %Entry{id: "b", path: ["t", "a", "b"], target: "x"},
-        "a" => %Entry{id: "a", path: ["t", "a"], target: "y"},
-        "c" => %Entry{id: "c", path: ["t", "c"], target: "z"},
-        "p" => %Entry{id: "p", path: ["t", "p"], target: nil}
+        "b" => %{b | path: ["t", "a", "b"], target: "x"},
+        "a" => %{a | path: ["t", "a"], target: "y"},
+        "c" => %{c | path: ["t", "c"], target: "z"},
+        "p" => %{p | path: ["t", "p"], target: nil}
       }
     }
 
-    assert table |> Registry.portals() |> Enum.map(& &1.id) == ["a", "c", "b"]
+    # a opened before b, the table it is in; c opened after both and comes
+    # last, so that no portal before it moves
+    assert table |> Registry.portals() |> Enum.map(& &1.id) == ["a", "b", "c"]
   end
 end

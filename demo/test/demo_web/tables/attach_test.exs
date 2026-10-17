@@ -122,6 +122,35 @@ defmodule DemoWeb.Tables.AttachTest do
     assert heard(render(view)) == "[]"
   end
 
+  # The portal of a nested table is drawn from values made for it alone, so
+  # that an event of another table sends nothing for it: what the table on
+  # the page is told again, and passes on, must still reach it, and so must
+  # what opens in the nested table itself.
+  test "a nested table's picker opens, and follows another presentation it is told",
+       %{conn: conn, plain: plain} do
+    [reply] = Ash.read!(Reply, authorize?: false)
+    {:ok, view, _html} = live(conn, "/support/attached")
+    expand(view, "bulletin", plain.id)
+    toggle(view, "bulletin", plain.id, "replies")
+    nested = nested("bulletin", plain.id, "replies")
+    render_async(view)
+
+    pick(view, nested, reply.id, "bulletin")
+    assert has?(view, "[id='#{nested}-picker'][data-presentation=modal]")
+
+    send(
+      view.pid,
+      {:run,
+       &AshDataTable.attach(&1, :bulletins, Bulletin,
+         actor: &1.assigns[:reader],
+         url: &1.assigns.url?,
+         presentation: [picker: :inline]
+       )}
+    )
+
+    assert has?(view, "[id='#{nested}-picker'][data-presentation=inline]")
+  end
+
   test "attached again as another person, the table closes what is open and reads again",
        %{conn: conn, plain: plain} do
     {:ok, view, _html} = live(conn, "/support/attached")

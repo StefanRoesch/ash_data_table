@@ -55,25 +55,25 @@ defmodule AshDataTable.Live.Drawing do
       router={@table.options.router}
     />
     <.portal
-      :for={{entry, rows} <- portals(@table, @streams)}
+      :for={{entry, rows, placed} <- portals(@table, @streams)}
       :key={entry.id}
       id={"#{entry.id}-portal"}
       target={"[id='#{entry.target}']"}
-      class={@table.options.kit.class(:portal, %{})}
+      class={placed.class}
     >
       <div data-ash-data-table-portal={entry.target}>
         <div data-ash-data-table-view>
           <.body
             :if={!entry.gone?}
             entry={entry}
-            options={%{@table.options | url: nil, heading: false, mounted?: false}}
-            time_zone={@table.caller.time_zone}
+            options={placed.options}
+            time_zone={placed.time_zone}
             rows={rows}
-            chooser={chooser(@table, entry)}
-            chooser_rows={rows(@streams, chooser(@table, entry))}
-            myself={@table.options.target}
+            chooser={placed.chooser}
+            chooser_rows={placed.chooser_rows}
+            myself={placed.myself}
             uploads={@uploads}
-            router={@table.options.router}
+            router={placed.router}
           />
           <div :if={entry.gone?} id={entry.id} hidden></div>
         </div>
@@ -98,10 +98,37 @@ defmodule AshDataTable.Live.Drawing do
 
   defp files!(entry, uploads), do: Files.panel_files(entry, uploads)
 
-  # The nested tables, parents first, each with the items of its stream:
-  # a portal is rendered again only when its table or its stream changed.
-  defp portals(table, streams),
-    do: for(entry <- Registry.portals(table), do: {entry, streams[entry.stream]})
+  # The nested tables, parents first, each with the items of its stream and
+  # what it is placed with (`placed`): a portal is rendered again only when
+  # its table, its stream or what it is placed with changed. Nothing in the
+  # portal reads `@table`, which changes with every table of the tree: each
+  # portal's values are made here, and LiveView compares them portal by
+  # portal (the variables of a keyed comprehension), so an event of one
+  # table sends and patches that table's portal only.
+  #
+  # LiveView keeps a comprehension's variables until the next render, a
+  # portal's stream among them: the rows a nested table was last sent with
+  # stay in LiveView's change tracking until then. The table itself keeps
+  # no rows.
+  defp portals(table, streams) do
+    options = %{table.options | url: nil, heading: false, mounted?: false}
+    class = table.options.kit.class(:portal, %{})
+
+    for entry <- Registry.portals(table) do
+      chooser = chooser(table, entry)
+
+      {entry, streams[entry.stream],
+       %{
+         options: options,
+         class: class,
+         time_zone: table.caller.time_zone,
+         chooser: chooser,
+         chooser_rows: rows(streams, chooser),
+         myself: table.options.target,
+         router: table.options.router
+       }}
+    end
+  end
 
   # The items of a table's stream, given to its grid whenever the table
   # changes: the grid's comprehension over them is then rendered again, with
