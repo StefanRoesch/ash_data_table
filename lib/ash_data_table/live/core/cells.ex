@@ -10,6 +10,7 @@ defmodule AshDataTable.Live.Core.Cells do
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Text
@@ -18,21 +19,17 @@ defmodule AshDataTable.Live.Core.Cells do
   # Enter or left the cell: the row by the key in its DOM id, the column, and
   # the value as it was typed. For an array that is a list, of its values as
   # they were typed.
-  def on({:save, key, name, typed} = intent, socket) do
-    case Operation.save(Core.operation(socket, intent)) do
-      # not a cell this table lets anyone edit: nothing a person can send
-      # through the table, so nothing is shown for it either
-      :refused ->
-        {:reply, %{ok: false}, socket}
+  #
+  # A column with a question, in controlled mode: the save waits for the
+  # host's answer (`Requests.ask_cell/5`), what was typed held here, and the
+  # hook is told that the cell waits (`held`).
+  def on({:save, _key, _name, typed} = intent, socket) do
+    case asked(socket, intent) do
+      {column, row} ->
+        {:reply, %{held: true}, Requests.ask_cell(socket, intent, column, row.pk, typed)}
 
-      result ->
-        saved(
-          result,
-          socket,
-          key,
-          Operation.column(Core.table(socket).entry.model, name),
-          typed
-        )
+      nil ->
+        write(intent, socket)
     end
   end
 
@@ -42,13 +39,13 @@ defmodule AshDataTable.Live.Core.Cells do
   # is asked for by name, and is the save of a cell in everything else: the
   # column has to be one this person edits and one that can be emptied, the
   # row one of the page, and the record is read again, as the person.
-  def on({:clear, key, name} = intent, socket) do
-    case Operation.clear(Core.operation(socket, intent)) do
-      :refused ->
-        {:reply, %{ok: false}, socket}
+  def on({:clear, _key, _name} = intent, socket) do
+    case asked(socket, intent) do
+      {column, row} ->
+        {:reply, %{held: true}, Requests.ask_cell(socket, intent, column, row.pk, "")}
 
-      result ->
-        saved(result, socket, key, Operation.column(Core.table(socket).entry.model, name), "")
+      nil ->
+        write(intent, socket)
     end
   end
 
@@ -154,6 +151,56 @@ defmodule AshDataTable.Live.Core.Cells do
 
       _none ->
         {:noreply, socket}
+    end
+  end
+
+  # Whether the column of a cell asks before a value is given to it, and
+  # the host asks it (controlled mode): the column and the row, for one this
+  # person edits on a row of the page; else nil, and the save goes the way
+  # it goes, refused where it is no cell of theirs.
+  defp asked(socket, intent) do
+    [_kind, key, name | _rest] = Tuple.to_list(intent)
+    %{model: model, rows: rows} = Core.table(socket).entry
+
+    with true <- Requests.controlled?(socket, :confirm),
+         %{editable?: true, confirm: question} = column when is_binary(question) <-
+           Operation.column(model, name),
+         %{} = row <- rows[key] do
+      {column, row}
+    else
+      _other -> nil
+    end
+  end
+
+  @doc """
+  The save of a cell, or "Clear", through `AshDataTable.Operation`: what
+  the hook sends, or Confirm runs after a question the host asked.
+  """
+  def write({:save, key, name, typed} = intent, socket) do
+    case Operation.save(Core.operation(socket, intent)) do
+      # not a cell this table lets anyone edit: nothing a person can send
+      # through the table, so nothing is shown for it either
+      :refused ->
+        {:reply, %{ok: false}, socket}
+
+      result ->
+        saved(
+          result,
+          socket,
+          key,
+          Operation.column(Core.table(socket).entry.model, name),
+          typed
+        )
+    end
+  end
+
+  def write({:clear, key, name} = intent, socket) do
+    case Operation.clear(Core.operation(socket, intent)) do
+      :refused ->
+        {:reply, %{ok: false}, socket}
+
+      result ->
+        saved(result, socket, key, Operation.column(Core.table(socket).entry.model, name), "")
     end
   end
 

@@ -272,6 +272,7 @@ export default {
       const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
       this.transport.push("clear", payload).then(reply => {
         if (!cell.isConnected || !cell.hasAttribute("aria-busy")) return
+        if (reply && reply.held) return this.holds.set(cell.id, {restore, value: "", old: ""})
         cell.removeAttribute("aria-busy")
         // the record is gone: there is no row to send, so the cell is marked here
         if (reply && reply.error) this.mark(cell, "", "", reply.error, restore)
@@ -410,12 +411,49 @@ export default {
     const payload = {row: this.rowKey(cell), column: this.columnOf(cell), value}
     this.transport.push("save", payload).then(reply => {
       if (!cell.isConnected) return
+      // the column's question is the host's to ask (controlled mode): the
+      // cell waits, busy, for its answer (`ash_data_table:answered`)
+      if (reply && reply.held) {
+        if (ed && this.editing === ed) this.waitOpen(ed, value)
+        this.holds.set(cell.id, {restore, value, old})
+        return
+      }
       if (ed && this.editing === ed) return this.committed(ed, value, old, reply)
       if (!cell.hasAttribute("aria-busy")) return
       cell.removeAttribute("aria-busy")
       if (reply && reply.error) this.mark(cell, value, old, reply.error, restore)
       else restore()
     })
+  },
+
+  // A save from an editor that stays open waits for the host's answer
+  // to the column's question: the editor closes, and the cell shows what
+  // was saved from it, busy, until the answer comes.
+  waitOpen(ed, value) {
+    const {cell} = ed
+    const focused = ed.root.contains(document.activeElement)
+    ed.pending = false
+    this.detach(ed)
+    this.released(cell, true)
+    // what was typed into a sensitive cell is never shown
+    if (ed.type === "secret") cell.replaceChildren(...ed.saved)
+    else cell.replaceChildren(...this.textFor(cell, value))
+    if (this.tree().activeId === cell.id) cell.tabIndex = 0
+    if (focused) cell.focus()
+  },
+
+  // The answer to a save that waited for the host: saved, the patch of
+  // its row has put the cell right; not saved, the cell is put back as it
+  // was, or marked where the record is gone.
+  answered({cell: id, saved, error}) {
+    const held = this.holds.get(id)
+    this.holds.delete(id)
+    const cell = document.getElementById(id)
+    if (!cell || !this.owns(cell) || !cell.hasAttribute("aria-busy")) return
+    cell.removeAttribute("aria-busy")
+    if (saved || !held) return
+    if (error) this.mark(cell, held.value, held.old, error, held.restore)
+    else held.restore()
   },
 
   // Marks a cell as failed the way the server does, for a record

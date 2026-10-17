@@ -8,6 +8,7 @@ defmodule AshDataTable.Live.Core.Picker do
   alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Reading
+  alias AshDataTable.Live.Core.Requests
   alias AshDataTable.Model
   alias AshDataTable.Operation
   alias AshDataTable.Pick
@@ -154,25 +155,67 @@ defmodule AshDataTable.Live.Core.Picker do
   #
   # The row is a claim. Which cell or field it is chosen for is the
   # server's to say, from what the picker was opened for.
-  def on({:picked, picked}, socket) when is_map(Current.entry(socket, :picker)) do
+  def on({:picked, picked}, socket) when is_map(Current.entry(socket, :picker)),
+    do: picked(socket, picked, :hook)
+
+  def on({:picked, _picked}, socket), do: {:reply, %{ok: false}, socket}
+
+  # Sent by the picker's hook for Cancel and Escape.
+  def on(:picker_cancel, socket),
+    do: {:noreply, Core.put(socket, picker: nil)}
+
+  @doc """
+  The host's choice for the picker it draws (controlled mode,
+  `AshDataTable.pick_request/4`): a primary key (a map, or the value of a
+  key of one field), a list of them where several are chosen, or nil for
+  none. Each is a claim, taken as a row the browser names.
+  """
+  def picked(socket, keys) do
+    case Core.table(socket).entry.picker do
+      %{reference: reference, several?: several?} ->
+        named = &named_key(reference.destination, &1)
+
+        picked =
+          if several?,
+            do: %{
+              row: nil,
+              rows: Enum.map(List.wrap(keys), named),
+              confirmed?: false,
+              arguments: nil
+            },
+            else: %{row: named.(keys), rows: nil, confirmed?: false, arguments: nil}
+
+        picked(socket, picked, :host)
+
+      nil ->
+        {:noreply, socket}
+    end
+  end
+
+  # A key as the host gives it, as the browser names a row: the values of
+  # the primary key in its order.
+  defp named_key(_destination, nil), do: nil
+
+  defp named_key(destination, %{} = key) do
+    case Ash.Resource.Info.primary_key(destination) do
+      [field] -> Map.get(key, field)
+      fields -> Enum.map(fields, &Map.get(key, &1))
+    end
+  end
+
+  defp named_key(_destination, value), do: value
+
+  defp picked(socket, picked, by) do
     picker = Core.table(socket).entry.picker
 
-    %{model: model, panel: panel} = Core.table(socket).entry
+    %{panel: panel} = Core.table(socket).entry
     named = picked.row
     # what the picker's read action is given: what its argument line holds
     arguments = picked_with(socket, picker.reference, picked.arguments)
 
     case picker.for do
       {:cell, key, name} ->
-        intent = {:refer, key, name, named, picked.confirmed?, arguments}
-
-        case Operation.refer(Core.operation(socket, intent)) do
-          :refused ->
-            {:reply, %{ok: false}, Core.put(socket, picker: nil)}
-
-          result ->
-            Cells.referred(result, socket, key, Enum.find(model.columns, &(&1.name == name)))
-        end
+        refer(socket, key, name, named, arguments, picked.confirmed?, by)
 
       {:input, name} ->
         case panel && reference_input(panel, Atom.to_string(name)) do
@@ -188,11 +231,48 @@ defmodule AshDataTable.Live.Core.Picker do
     end
   end
 
-  def on({:picked, _picked}, socket), do: {:reply, %{ok: false}, socket}
+  @doc """
+  The choice of a related record for a reference cell
+  (`AshDataTable.Operation.refer/1`), `confirmed?` once the column's
+  question was answered. In controlled mode the host asks it: the choice
+  waits, the picker closes and the hook is told the cell waits (`held`).
+  Where the host draws the picker and the table asks its own questions,
+  the host has shown the question with its chooser (`question` of its
+  request), and its choice is the answer.
+  """
+  def refer(socket, key, name, named, arguments, confirmed?, by \\ :hook) do
+    %{model: model, rows: rows} = Core.table(socket).entry
+    column = Enum.find(model.columns, &(&1.name == name))
+    intent = {:refer, key, name, named, confirmed?, arguments}
 
-  # Sent by the picker's hook for Cancel and Escape.
-  def on(:picker_cancel, socket),
-    do: {:noreply, Core.put(socket, picker: nil)}
+    case Operation.refer(Core.operation(socket, intent)) do
+      :refused ->
+        {:reply, %{ok: false}, Core.put(socket, picker: nil)}
+
+      {:ask, question} ->
+        cond do
+          Requests.controlled?(socket, :confirm) ->
+            {:reply, %{held: true},
+             socket
+             |> Core.put(picker: nil)
+             |> Requests.ask_cell(
+               {:refer, key, name, named, arguments},
+               column,
+               rows[key].pk,
+               named
+             )}
+
+          by == :host ->
+            refer(socket, key, name, named, arguments, true, by)
+
+          true ->
+            Cells.referred({:ask, question}, socket, key, column)
+        end
+
+      result ->
+        Cells.referred(result, socket, key, column)
+    end
+  end
 
   # The choice of a related record for a field of the action panel: its key
   # goes into the panel's form, as if it had been typed there, with what the

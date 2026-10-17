@@ -121,14 +121,15 @@ defmodule AshDataTable.Test.Resource do
       sideways (`sticky_label? true`); `note`, two lines of text, asked
       about before a save;
     * `secret`, a `sensitive?` text of at most 30, which no rendered state
-      may hold (`secret/0`); `done`, a boolean; `size`, a number drawn by a
+      may hold (`secret/0`), asked about before a save; `done`, a boolean; `size`, a number drawn by a
       component (`AshDataTable.Components.Progress`), summed in the footer;
       `tier`, one of two values, filtered by several of them;
     * `tags`, a list of short texts, edited value by value; `place`, a value
       made of fields (a map), `stops`, a list of them, and `kind`, a union,
       edited in the action panel;
     * `owner`, a reference cell with its picker
-      (`AshDataTable.Test.Resource.Owner`), and `parts`, the nested table
+      (`AshDataTable.Test.Resource.Owner`), asked about before a choice
+      changes it, and `parts`, the nested table
       under a row (`AshDataTable.Test.Resource.Part`);
     * the read action's argument `near`, in the argument line; it reads
       the same records whatever it holds;
@@ -170,7 +171,10 @@ defmodule AshDataTable.Test.Resource do
       confirm "Change the note?"
     end
 
-    column :secret
+    column :secret do
+      confirm "Change the secret?"
+    end
+
     column :done
 
     column :size do
@@ -187,7 +191,10 @@ defmodule AshDataTable.Test.Resource do
 
     column :stops
     column :kind
-    column :owner
+
+    column :owner do
+      confirm "Change the owner?"
+    end
 
     relationship :parts
 

@@ -64,3 +64,55 @@ defmodule DemoWeb.Support.GermanKitLive do
     """
   end
 end
+
+defmodule DemoWeb.Support.ControlledKitLive do
+  @moduledoc """
+  The table `AshDataTable.KitCase` draws, attached with what the session
+  says the page draws itself (`"controlled"`) and how what opens is
+  presented (`"presentation"`), in the session's tenant: for the tests of
+  controlled mode widened (the design note of stage 7, D17). It tells the
+  test (`"test"`) what it hears and what its veto was asked
+  (`{:asked, request}`), and answers the veto as the assign `answer` says;
+  `{:run, fun}` runs a command of the test's here.
+  """
+  use Phoenix.LiveView
+
+  @impl true
+  def mount(_params, %{"tenant" => tenant, "test" => test} = session, socket) do
+    socket =
+      socket
+      |> assign(test: test, answer: :cont)
+      |> AshDataTable.attach(:table, AshDataTable.Test.Resource,
+        id: "kit",
+        tenant: tenant,
+        notify: [:requested],
+        presentation: Map.get(session, "presentation", []),
+        controlled: Map.get(session, "controlled", []),
+        before_action: fn request, assigns ->
+          send(assigns.test, {:asked, request})
+          assigns.answer
+        end
+      )
+
+    {:ok, socket}
+  end
+
+  @impl true
+  def handle_info({:run, fun}, socket) do
+    {socket, told} = fun.(socket)
+    send(socket.assigns.test, {:ran, told})
+    {:noreply, socket}
+  end
+
+  def handle_info(message, socket) do
+    send(socket.assigns.test, {:heard, message})
+    {:noreply, socket}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
+    """
+  end
+end

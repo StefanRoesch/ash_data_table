@@ -180,7 +180,9 @@ defmodule AshDataTable.Event do
   @doc false
   # What a host draws of the request a table holds in controlled mode
   # (`AshDataTable.request/1`, which says its message terms in words): of a
-  # question, the action, its row and the question; of a panel besides its
+  # question, the action, its row and the question, and of a cell's
+  # question its column and the value it is to be given (nil for a
+  # sensitive column); of a panel besides its
   # title, what is said of none of its fields, and its fields, each with
   # its name, label, type, whether it is required, what it holds (nil for a
   # sensitive one), the values of a choice and what is said at it.
@@ -193,6 +195,8 @@ defmodule AshDataTable.Event do
       kind: :confirm,
       action: request.action,
       key: request.key,
+      column: request.column,
+      value: request.value,
       question: request.question,
       title: nil,
       errors: [],
@@ -208,6 +212,8 @@ defmodule AshDataTable.Event do
       kind: :panel,
       action: panel.action.name,
       key: panel.key && get_in(rows, [panel.key, :pk]),
+      column: Map.get(panel, :column),
+      value: nil,
       question: Map.get(panel, :question),
       title: shown.title,
       errors: List.wrap(shown.errors),

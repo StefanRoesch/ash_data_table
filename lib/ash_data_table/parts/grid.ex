@@ -920,7 +920,7 @@ defmodule AshDataTable.Parts.Grid do
         id={"#{@id}-editor-#{column.name}"}
         data-editor={Attrs.editor_kind(column)}
         data-commit={column.editor == :component && column.component.commit}
-        data-confirm={column.confirm}
+        data-confirm={@asks? && column.confirm}
       >
         <Kit.editor
           kit={@kit}

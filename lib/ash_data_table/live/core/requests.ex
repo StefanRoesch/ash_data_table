@@ -1,39 +1,59 @@
 defmodule AshDataTable.Live.Core.Requests do
   @moduledoc false
-  # Controlled mode (stage 6 D14): what the table would open, the host
-  # draws. A table attached with `controlled: [:confirm, :panel]` does not
-  # ask its questions before an action (`:confirm`) and does not draw the
-  # panel of a row action, a table action, a create or an action on the
-  # selection (`:panel`): it holds the request (`entry.request`, with a
+  # Controlled mode (stage 6 D14, widened in stage 7c, D17): what the
+  # table would open, the host draws. A table attached with `controlled:`
+  # holds a request in place of what it would draw (`entry.request`, with a
   # `ref` of its own), tells the page (`:requested`), and the host answers
-  # with commands (`AshDataTable.confirm_request/3`, `validate_request/4`,
-  # `submit_request/4`, `cancel_request/3`), each of which goes the way
-  # the person's own answer would: through `AshDataTable.Operation`, with
-  # its checks, the veto and the record read again. One request at a time;
-  # a new one takes the old one's place, with a `ref` and a `:requested` of
-  # its own, and an answer to another `ref` does nothing. A request holds
-  # what it was made for (`for`: of a panel its kind, action and row, of a
-  # question what Confirm runs), so that a panel that opens in another's
-  # place is a new request, not the old one's `ref` over other fields.
+  # with commands, each of which goes the way the person's own answer
+  # would: through `AshDataTable.Operation`, with its checks, the veto and
+  # the record read again.
+  #
+  #   * `:confirm` - every question: before a row action, a table action or
+  #     an action on the selection, before a save of a cell whose column
+  #     asks (`{:save, …}`, `{:clear, …}`, the typed text held here, never
+  #     in the projection of a sensitive column; the hook is told the cell
+  #     waits) and before the choice for a reference cell (`{:refer, …}`).
+  #     `AshDataTable.confirm_request/3` runs it, `cancel_request/3` gives
+  #     it up and the hook puts the cell back;
+  #   * `:panel` - every action panel: of a row action, a table action, a
+  #     create, an action on the selection and a map cell, with files,
+  #     groups, unions and chosen records;
+  #   * `:picker` - the picker: `AshDataTable.pick_request/4` chooses.
+  #
+  # One request at a time: a new one takes the old one's place, with a
+  # `ref` and a `:requested` of its own, and an answer to another `ref`
+  # does nothing. A request holds what it was made for (`for`), so that a
+  # panel or picker that opens in another's place is a new request. A
+  # question asked while a panel or picker is held ends that one.
   #
   # Only for the table on the page; a nested table and a picker's table
-  # draw what they open themselves, as does a map cell's panel: a panel of
-  # such a kind ends a request held, and is never handed to the host.
+  # draw what they open themselves.
+
+  import Phoenix.LiveView, only: [push_event: 3]
+
+  # the panels a host can draw
+  @kinds [:row, :table, :create, :bulk]
 
   alias AshDataTable.Event
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Bulk
+  alias AshDataTable.Live.Core.Cells
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
-
-  # the panels a host can draw: those of actions with plain fields
-  @kinds [:row, :table, :create, :bulk]
+  alias AshDataTable.Live.Core.Picker
 
   @doc "Whether the table on the page hands requests of `kind` to the host."
   def controlled?(socket, kind) do
-    %{entry: %{path: path}, options: options} = Core.table(socket)
-    length(path) == 1 and kind in Map.get(options, :controlled, [])
+    %{entry: entry, options: options} = Core.table(socket)
+    host?(options, entry, kind)
   end
+
+  @doc """
+  Whether the host draws what `entry` opens of `kind`: the table on the
+  page's, where it was attached `controlled:` so.
+  """
+  def host?(options, %{path: path}, kind),
+    do: length(path) == 1 and kind in Map.get(options, :controlled, [])
 
   @doc """
   Holds the question before an action instead of asking it: `run` is what
@@ -43,55 +63,115 @@ defmodule AshDataTable.Live.Core.Requests do
   primary key, nil for none.
   """
   def ask(socket, run, action, key) do
-    request = %{
-      ref: ref(),
-      kind: :confirm,
+    question(socket, %{
       for: run,
       run: run,
       action: action.name,
       key: key,
+      column: nil,
+      value: nil,
       question: action.confirm
-    }
-
-    # a panel held for the host is the old request, which this one ends
-    socket =
-      if match?(%{kind: :panel}, Core.table(socket).entry.request),
-        do: Core.put(socket, panel: nil, picker: nil),
-        else: socket
-
-    held(socket, request)
+    })
   end
 
   @doc """
-  After every callback (`AshDataTable.Live.Core.tidy/1`): a panel that
-  opened is held as a request, a new one with a `ref` of its own when it
-  is another panel than the one held; one that closed, or opened of a kind
-  the table draws itself, ends the panel's request. A question held stays
-  until a panel opens after it.
+  Holds the question of a column before a cell's value is given to it:
+  `run` is what Confirm runs (`{:save, key, name, typed}`, `{:clear, key,
+  name}`, `{:refer, key, name, named, arguments}`), `pk` the row's primary
+  key, `value` what the host is shown of it (nil for a sensitive column).
+  """
+  def ask_cell(socket, run, column, pk, value) do
+    [kind, key, name | _rest] = Tuple.to_list(run)
+
+    question(socket, %{
+      for: {kind, key, name},
+      run: run,
+      action: column.update_action,
+      key: pk,
+      column: column.name,
+      value: if(column.sensitive?, do: nil, else: value),
+      question: column.confirm
+    })
+  end
+
+  defp question(socket, request) do
+    # a panel or picker held for the host is the old request, which this
+    # one ends: it closes
+    socket =
+      case Core.table(socket).entry.request do
+        %{kind: :panel} -> Core.put(socket, panel: nil, picker: nil)
+        %{kind: :picker} -> Core.put(socket, picker: nil)
+        _confirm_or_none -> socket
+      end
+
+    held(socket, Map.merge(request, %{ref: ref(), kind: :confirm}))
+  end
+
+  @doc """
+  After every callback (`AshDataTable.Live.Core.tidy/1`): a panel or a
+  picker that opened is held as a request, a new one with a `ref` of its
+  own when it is another than the one held; one that closed ends the
+  request. A picker the host draws comes before the panel it was opened
+  from. A question held stays until a panel or picker opens after it.
   """
   def follow(socket) do
-    %{panel: panel, request: request} = Core.table(socket).entry
+    %{panel: panel, picker: picker, request: request} = Core.table(socket).entry
 
-    case {controlled?(socket, :panel) && handed(panel), request} do
-      {false, _request} -> socket
-      {nil, %{kind: :panel}} -> Core.put(socket, request: nil)
+    made_for =
+      (controlled?(socket, :picker) && picked(picker)) ||
+        (controlled?(socket, :panel) && handed(panel)) || nil
+
+    case {made_for, request} do
+      {nil, %{kind: kind}} when kind in [:panel, :picker] -> Core.put(socket, request: nil)
       {nil, _confirm_or_none} -> socket
-      {made_for, %{kind: :panel, for: made_for}} -> socket
-      {made_for, _other} -> held(socket, %{ref: ref(), kind: :panel, for: made_for})
+      {{kind, made_for}, %{kind: kind, for: made_for}} -> socket
+      {{kind, made_for}, _other} -> held(socket, %{ref: ref(), kind: kind, for: made_for})
     end
   end
 
-  # What a panel the host draws is made for; nil for none, and for one the
-  # table draws itself.
-  defp handed(%{kind: kind, action: action, key: key}) when kind in @kinds,
-    do: {kind, action.name, key}
+  # What a panel the host draws is made for; nil for none.
+  defp handed(%{kind: kind, action: action, key: key} = panel) when kind in @kinds,
+    do: {:panel, {kind, action.name, key, Map.get(panel, :column)}}
 
-  defp handed(_none_or_drawn_by_the_table), do: nil
+  defp handed(_none), do: nil
+
+  # What a picker the host draws is made for; nil for none.
+  defp picked(%{for: made_for}), do: {:picker, made_for}
+  defp picked(_none), do: nil
 
   defp held(socket, request) do
     socket
+    |> let_go()
     |> Core.put(request: request)
     |> Notify.told({:requested, %{ref: request.ref, kind: request.kind}})
+  end
+
+  # The question of a cell that a new request takes the place of, or that
+  # is given up: the hook puts the cell back.
+  defp let_go(socket) do
+    case Core.table(socket).entry.request do
+      %{kind: :confirm, for: {kind, key, name}} when kind in [:save, :clear, :refer] ->
+        answered(socket, key, name, %{ok: false})
+
+      _other ->
+        socket
+    end
+  end
+
+  @doc """
+  Tells the hook what came of a cell whose save waited for the host
+  (`ash_data_table:answered`): saved, or not (and why, where the row could
+  not be sent).
+  """
+  def answered(socket, key, name, reply) do
+    id = Core.table(socket).entry.id
+
+    push_event(socket, "ash_data_table:answered", %{
+      table: id,
+      cell: "#{id}-row-#{key}-c-#{name}",
+      saved: Map.get(reply, :ok) == true,
+      error: Map.get(reply, :error)
+    })
   end
 
   @doc """
@@ -112,26 +192,50 @@ defmodule AshDataTable.Live.Core.Requests do
   def confirmed(socket, %{run: run}) do
     socket = Core.put(socket, request: nil)
 
-    result =
-      case run do
-        {:act, key, name} -> Panel.act(socket, key, name, true)
-        {:table_run, _name} = intent -> Panel.on(intent, socket)
-        {:bulk_run, _name, _token} = intent -> Bulk.on(intent, socket)
-      end
+    case run do
+      {:act, key, name} ->
+        reply(Panel.act(socket, key, name, true))
 
-    case result do
-      {:noreply, socket} -> socket
-      {:reply, _reply, socket} -> socket
+      {:table_run, _name} = intent ->
+        reply(Panel.on(intent, socket))
+
+      {:bulk_run, _name, _token} = intent ->
+        reply(Bulk.on(intent, socket))
+
+      {:save, key, name, _typed} = intent ->
+        {:reply, said, socket} = Cells.write(intent, socket)
+        answered(socket, key, name, said)
+
+      {:clear, key, name} = intent ->
+        {:reply, said, socket} = Cells.write(intent, socket)
+        answered(socket, key, name, said)
+
+      {:refer, key, name, named, arguments} ->
+        {_reply, said, socket} = Picker.refer(socket, key, name, named, arguments, true)
+        answered(socket, key, name, said)
     end
   end
+
+  @doc "Gives the request up, as Cancel does: nothing runs, a cell is put back."
+  def cancelled(socket, %{kind: :panel}), do: panel(socket, :panel_cancel)
+
+  def cancelled(socket, %{kind: :picker}),
+    do: socket |> Core.put(picker: nil) |> Core.put(request: nil)
+
+  def cancelled(socket, _question), do: socket |> let_go() |> Core.put(request: nil)
 
   @doc "An event of the panel, given by the host for the panel it draws."
-  def panel(socket, intent) do
-    case Panel.on(intent, socket) do
-      {:noreply, socket} -> socket
-      {:reply, _reply, socket} -> socket
-    end
-  end
+  def panel(socket, intent), do: reply(Panel.on(intent, socket))
+
+  @doc """
+  The host's choice for the picker it draws: one key, several, or nil for
+  none. Each key is a claim, read again as the person through the picker's
+  read action, as a row the browser names.
+  """
+  def pick(socket, keys), do: reply(Picker.picked(socket, keys))
+
+  defp reply({:noreply, socket}), do: socket
+  defp reply({:reply, _reply, socket}), do: socket
 
   @doc "What the host may read of the request held, as `AshDataTable.Event` makes it."
   def projection(table), do: Event.request(table.entry)

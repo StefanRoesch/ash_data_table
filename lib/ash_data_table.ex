@@ -783,8 +783,7 @@ defmodule AshDataTable do
   def cancel_request(socket, name, ref) do
     command(socket, name, "AshDataTable.cancel_request/3", fn socket ->
       case AshDataTable.Live.Core.table(socket).entry.request do
-        %{ref: ^ref, kind: :panel} -> AshDataTable.Live.Core.Requests.panel(socket, :panel_cancel)
-        %{ref: ^ref} -> AshDataTable.Live.Core.put(socket, request: nil)
+        %{ref: ^ref} = request -> AshDataTable.Live.Core.Requests.cancelled(socket, request)
         _stale -> socket
       end
     end)

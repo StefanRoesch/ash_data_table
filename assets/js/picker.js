@@ -96,6 +96,9 @@ export default {
     const payload = this.several ? {rows: row, arguments: held} : {row, confirmed: !!confirmed, arguments: held}
     this.transport.push("picked", payload).then(reply => {
       this.busy = false
+      // the column's question is the host's to ask (controlled mode): the
+      // cell waits, busy, until it is answered
+      if (reply && reply.held) return
       if (cell) cell.removeAttribute("aria-busy")
       if (reply && reply.ask && this.grid) {
         // Cancel, and Escape: the browser puts focus back in the picker
