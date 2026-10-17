@@ -183,7 +183,6 @@ defmodule DemoWeb.DivKit do
           kit={@kit}
           id={"#{@id}-editor-#{column.name}"}
           column={column}
-          resource={@model.resource}
         />
       </template>
       <template :if={@editing? or @acting?} id={"#{@id}-failure"} phx-no-format><Kit.part part={:failure} kit={@kit} id={nil} message="" /></template>
@@ -373,8 +372,51 @@ defmodule DemoWeb.DivKit do
       id={"#{@id}-foot"}
       role="rowgroup"
       class="table-footer-group"
-      hidden={not (@summarised? and not is_nil(@page)) and not (@nested? and @pages?)}
+      hidden={
+        not (@summarised? and not is_nil(@page)) and
+          not (@nested? and (@pages? or (not is_nil(@page) and not is_nil(@full_view))))
+      }
     >
+      <div :if={@summarised? and @page} {Attrs.summaries(@id, @page)} class="table-row">
+        <div
+          :if={@selecting}
+          id={"#{@id}-summaries-select"}
+          role="gridcell"
+          aria-colindex="1"
+          tabindex="-1"
+          class="table-cell"
+        >
+        </div>
+        <div
+          :if={@expandable?}
+          id={"#{@id}-summaries-expander"}
+          role="gridcell"
+          aria-colindex={@lead}
+          tabindex="-1"
+          class="table-cell"
+        >
+        </div>
+        <Kit.part
+          :for={{column, index} <- Enum.with_index(@model.columns)}
+          part={:summary_cell}
+          kit={@kit}
+          id={"#{@id}-summary-#{column.name}"}
+          column={column}
+          colindex={@lead + index + 1}
+          summary={@summary && @summary[column.name]}
+          summing?={@summing?}
+          time_zone={@time_zone}
+        />
+        <div
+          :if={@acting?}
+          id={"#{@id}-summaries-actions"}
+          role="gridcell"
+          aria-colindex={length(@model.columns) + @lead + 1}
+          tabindex="-1"
+          class="table-cell"
+        >
+        </div>
+      </div>
       <div
         :if={@nested? and @pages?}
         {Attrs.row("#{@id}-foot-row")}
@@ -397,6 +439,51 @@ defmodule DemoWeb.DivKit do
             target={@myself}
           />
         </div>
+      </div>
+      <Kit.part
+        :if={@nested? and not is_nil(@page) and not is_nil(@full_view)}
+        part={:full_view}
+        kit={@kit}
+        acting?={@acting?}
+        full_view={@full_view}
+        id={@id}
+        label={@label}
+        lead={@lead}
+        model={@model}
+      />
+    </div>
+    """
+  end
+
+  # The summary of a column, as a cell of the footer row: what it is and
+  # the number as it came.
+  def summary_cell(assigns) do
+    ~H"""
+    <div
+      id={@id}
+      role="gridcell"
+      aria-colindex={@colindex}
+      tabindex="-1"
+      {Attrs.summary(@column, @summing?)}
+      class="table-cell whitespace-nowrap"
+    >
+      <span :if={@column.summary}>{@column.summary}</span>
+      <span :if={match?({:ok, _value}, @summary)}>{elem(@summary, 1)}</span>
+    </div>
+    """
+  end
+
+  # The link to a nested table's full view, as the last row of its grid.
+  def full_view(assigns) do
+    ~H"""
+    <div {Attrs.row("#{@id}-view-row")} class="table-row">
+      <div
+        {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}
+        class="table-cell px-2 py-1"
+      >
+        <.link id={"#{@id}-full-view"} navigate={@full_view} tabindex="-1" class="link">
+          Full view of {@label}
+        </.link>
       </div>
     </div>
     """

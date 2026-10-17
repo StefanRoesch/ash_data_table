@@ -1,16 +1,19 @@
 import type { Page } from "@playwright/test"
 import { expectNoAxeViolations } from "./support/a11y"
 import { expect, test } from "./support/fixtures"
+import { Table } from "./support/table"
 
 // A kit of one's own (the design note of stage 7, test groups AA and Y):
 // /e2e/kit draws a table of `AshDataTable.Test.Resource` with the demo's
 // kit of `div`s (`DemoWeb.DivKit`), whose action panel and picker open in
 // the page (`data-presentation="inline"`), or over it with
 // `?presentation=modal`, or the panel and the picker over the page with
-// the question in it (`?presentation=mixed`). What opens: focus goes in, Escape and Cancel take
-// it away and put focus back on what opened it, and Tab leaves what is
-// inline; axe finds nothing wrong either way. The grid of `div`s: the
-// arrow keys, editing, a nested table.
+// the question in it (`?presentation=mixed`), or the panel over the page
+// with the picker and the question in it (`?presentation=inside`). What
+// opens: focus goes in, Escape and Cancel take it away and put focus back
+// on what opened it, and Tab leaves what is inline; axe finds nothing wrong
+// either way. One question at a time: a new one gives up the one that is
+// open. The grid of `div`s: the arrow keys, editing, a nested table.
 
 /** The key of the record called `name`, as its row group's id says it. */
 async function key(page: Page, name: string): Promise<string> {
@@ -181,6 +184,131 @@ test.describe("the question in the page, asked from a panel over it", () => {
     }
     // the question of the page itself was not shown
     await expect(page.locator('[id="kit-dialog"]')).toBeHidden()
+  })
+})
+
+test.describe("one question at a time", () => {
+  const question = (page: Page) => page.locator('[id="kit-dialog"]')
+
+  /** Selects the row of `key` and asks to run "Delete" on it: the question is open. */
+  async function bulkAsked(page: Page, key: string) {
+    await page.locator(`[id="kit-row-${key}-s"] input`).click()
+    await page.locator("[data-bulk='destroy']").click()
+    await expect(question(page)).toBeVisible()
+    await expect(page.locator('[id="kit-dialog-question"]')).toContainText("Delete it?")
+  }
+
+  test("a table action asked while a question about the selection is open shows its own, and the first runs nothing", async ({
+    page,
+    pushed,
+  }) => {
+    const anchor = await opened(page)
+    await bulkAsked(page, anchor)
+    await pushed.clear()
+
+    await page.locator('[id="kit-do-greet"]').click()
+    await expect(page.locator('[id="kit-dialog-question"]')).toHaveText("Greet everyone?")
+    await expect(question(page).locator("button[value='cancel']")).toBeFocused()
+    await question(page).locator("button[value='confirm']").click()
+    await expect(question(page)).toBeHidden()
+
+    await expect.poll(() => pushed.count("table_run")).toBe(1)
+    expect(await pushed.count("bulk_run")).toBe(0)
+    await expect(page.locator(`[id="kit-row-${anchor}"]`)).toHaveCount(1)
+  })
+
+  test("a question about the selection is given up when the selection changes, and runs nothing", async ({
+    page,
+    pushed,
+  }) => {
+    const anchor = await opened(page)
+    const bolt = await key(page, "Bolt")
+    await bulkAsked(page, anchor)
+    await pushed.clear()
+
+    // Tab leaves the question in the page, and the selection changes
+    await page.locator(`[id="kit-row-${bolt}-s"] input`).click()
+    await expect(question(page)).toBeHidden()
+    expect(await pushed.count("bulk_run")).toBe(0)
+    await expect(page.locator(`[id="kit-row-${anchor}"]`)).toHaveCount(1)
+    await expect(page.locator(`[id="kit-row-${bolt}"]`)).toHaveCount(1)
+  })
+})
+
+test.describe("the question in the page, asked from a panel over it, answered there", () => {
+  async function asked(page: Page) {
+    const anchor = await opened(page, "?presentation=mixed")
+    await cell(page, anchor, "place").focus()
+    await page.keyboard.press("Enter")
+    const panel = page.locator('dialog[id="kit-panel"]')
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await panel.locator('[data-field="place.city"] :is(input, textarea)').fill("Thun")
+    await page.locator('[id="kit-panel-submit"]').click()
+    const copy = panel.locator('[id="kit-dialog-in"]')
+    await expect(copy).toBeVisible()
+    return { anchor, panel, copy }
+  }
+
+  test("Confirm inside the panel saves, and the panel goes", async ({ page }) => {
+    const { anchor, panel, copy } = await asked(page)
+    await copy.locator("button[value='confirm']").click()
+    await expect(panel).toHaveCount(0)
+    await expect(cell(page, anchor, "place")).toContainText("Thun")
+    await expect(cell(page, anchor, "place")).toBeFocused()
+  })
+
+  test("a patch that takes the question away answers it as Cancel: nothing is saved", async ({ page, pushed }) => {
+    const { anchor, panel, copy } = await asked(page)
+    await pushed.clear()
+    // the server draws the panel again, which takes the question it does not know away
+    await new Table(page, "kit", "/e2e/kit").forge("panel_validate", { panel: { place: { city: "Thun", zip: "3000" } } })
+    await expect(copy).toHaveCount(0)
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    expect(await pushed.count("panel_submit")).toBe(0)
+    await page.locator('[id="kit-panel-cancel"]').click()
+    await expect(panel).toHaveCount(0)
+    await expect(cell(page, anchor, "place")).toContainText("Bern")
+  })
+})
+
+test.describe("the picker in the page, opened from a panel over it", () => {
+  test("is drawn inside the panel, takes the focus, and Escape takes it away and leaves the panel open", async ({
+    page,
+  }) => {
+    const anchor = await opened(page, "?presentation=inside")
+    await page.locator(`[id="kit-row-${anchor}-a-staff"]`).click()
+    const panel = page.locator('dialog[id="kit-panel"]')
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    const choose = panel.locator('[id="kit-panel-f-helpers-choose"]')
+    await choose.click()
+    const picker = panel.locator('[id="kit-picker"]')
+    await expect(picker).toHaveAttribute("data-presentation", "inline")
+    await expect(picker).toHaveAttribute("role", "region")
+    await expect.poll(() => focusIn(page, "kit-pick-helpers-table")).toBe(true)
+    await expectNoAxeViolations(page)
+    await page.keyboard.press("Escape")
+    await expect(picker).toHaveCount(0)
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await expect(choose).toBeFocused()
+  })
+
+  test("a record chosen in it is the field's, and the panel's Cancel is the panel's own", async ({ page }) => {
+    const anchor = await opened(page, "?presentation=inside")
+    await page.locator(`[id="kit-row-${anchor}-a-staff"]`).click()
+    const panel = page.locator('dialog[id="kit-panel"]')
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    const field = panel.locator('[data-field="helpers"]')
+    await expect(field).toContainText("Bob")
+    await page.locator('[id="kit-panel-f-helpers-choose"]').click()
+    const picker = panel.locator('[id="kit-picker"]')
+    await expect.poll(() => focusIn(page, "kit-pick-helpers-table")).toBe(true)
+    await picker.locator('[role=rowgroup]').filter({ hasText: "Ann" }).locator("[data-selector] input").click()
+    await picker.locator("[data-take]").click()
+    await expect(picker).toHaveCount(0)
+    await expect(field).toContainText("Ann")
+    await expect.poll(() => panel.evaluate((dialog) => (dialog as HTMLDialogElement).open)).toBe(true)
+    await page.locator('[id="kit-panel-cancel"]').click()
+    await expect(panel).toHaveCount(0)
   })
 })
 

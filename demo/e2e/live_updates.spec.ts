@@ -52,6 +52,41 @@ async function retype(table: Table, key: string, column: string, text: string): 
 const notice = (table: Table) => table.page.locator(`[id="${table.id}-notice"]`)
 const readAgain = (table: Table) => table.page.locator(`[id="${table.id}-read-again"]`)
 
+test.describe("an action panel in the page", () => {
+  test("keeps its row as it is while a live update changes it, and the row follows once the panel is gone", async ({
+    browser,
+    page,
+  }) => {
+    const inline = new Table(page, "task", "/e2e/inline/tasks")
+    await inline.open()
+    const other = await another(browser, page, "admin")
+
+    try {
+      const theirs = new Table(other.page, "task", "/tasks")
+      await theirs.open()
+      const title = await inline.cell(OWN, "title").innerText()
+
+      await inline.acts(OWN, () => inline.action(OWN, "reassign").click())
+      await expect(inline.panel).toHaveAttribute("data-presentation", "inline")
+      await expect.poll(() => page.evaluate(() => !!document.getElementById("task-panel")?.contains(document.activeElement))).toBe(true)
+
+      await retype(theirs, OWN, "title", "Changed under the panel")
+      await retype(theirs, FIRST, "title", "Changed beside the panel")
+
+      // the row the panel is open for stays as it is; the other follows
+      await expect(inline.cell(FIRST, "title")).toHaveText("Changed beside the panel")
+      await expect(inline.cell(OWN, "title")).toHaveText(title)
+      await expect(inline.panel).toBeVisible()
+
+      await inline.panelCancel.click()
+      await expect(inline.panel).toHaveCount(0)
+      await expect(inline.cell(OWN, "title")).toHaveText("Changed under the panel")
+    } finally {
+      await other.close()
+    }
+  })
+})
+
 test.describe("two people on /tasks", () => {
   test("a row the admin changes is updated on the member's page, without a reload", async ({
     browser,

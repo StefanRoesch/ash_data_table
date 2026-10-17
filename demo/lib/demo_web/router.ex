@@ -295,8 +295,8 @@ defmodule DemoWeb.Router do
   # whose tables are attached to it; one that offers "Open"; one that
   # draws a panel of its table itself; a grid of `div`s that carries the
   # table's markers and the grid's hook (stage 7a); one whose saves wait
-  # until the test lets them go; and a table drawn with the demo's kit of
-  # `div`s (stage 7b).
+  # until the test lets them go; a table drawn with the demo's kit of
+  # `div`s (stage 7b); and /tasks with what opens in the page.
   if Application.compile_env(:demo, :e2e_routes, false) do
     # what the page of a test sent its LiveViews, by the page's session
     # (`DemoWeb.E2E.Recorder`)
@@ -333,6 +333,16 @@ defmodule DemoWeb.Router do
         live "/markers", MarkersLive
         live "/held", HeldLive
         live "/kit", KitLive
+      end
+    end
+
+    # /tasks with its action panel, picker and question in the page
+    scope "/e2e" do
+      pipe_through :browser
+
+      live_session :e2e_inline, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
+        ash_data_table "/inline/tasks", Demo.Tracker.Task,
+          presentation: [panel: :inline, picker: :inline, confirm: :inline]
       end
     end
   end

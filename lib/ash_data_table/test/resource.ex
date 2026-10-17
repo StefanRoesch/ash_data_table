@@ -19,7 +19,13 @@ defmodule AshDataTable.Test.Resource.Domain do
 end
 
 defmodule AshDataTable.Test.Resource.Owner do
-  @moduledoc "Who a `AshDataTable.Test.Resource` belongs to: its reference cell's picker shows them."
+  @moduledoc """
+  Who a `AshDataTable.Test.Resource` belongs to, and who helps with one: the
+  picker of its reference cell and of its field of helpers shows them. Its
+  primary key is a name, which is no id of the page as it is (`Ann Lee`):
+  the rows of the picker say what they name a record by (`data-key`). Its
+  `pin` is `sensitive?`.
+  """
   use Ash.Resource,
     domain: AshDataTable.Test.Resource.Domain,
     data_layer: Ash.DataLayer.Ets,
@@ -33,24 +39,37 @@ defmodule AshDataTable.Test.Resource.Owner do
     label_field :name
 
     column :name
+    column :pin
   end
 
   actions do
-    defaults [:read, create: [:name]]
+    defaults [:read, create: [:name, :pin, :holder_id], update: [:holder_id]]
   end
 
   attributes do
-    uuid_primary_key :id
-
     attribute :name, :string,
+      primary_key?: true,
       public?: true,
       allow_nil?: false,
       constraints: [length_count: :codepoints]
+
+    attribute :pin, :string,
+      public?: true,
+      sensitive?: true,
+      constraints: [length_count: :codepoints]
+  end
+
+  relationships do
+    belongs_to :holder, AshDataTable.Test.Resource, public?: true
   end
 end
 
 defmodule AshDataTable.Test.Resource.Part do
-  @moduledoc "A part of a `AshDataTable.Test.Resource`: the nested table under its rows."
+  @moduledoc """
+  A part of a `AshDataTable.Test.Resource`: the nested table under its rows.
+  Its `secret` is `sensitive?`. Without a label field, its list of columns
+  keeps one of them shown (`data-keeps-one`).
+  """
   use Ash.Resource,
     domain: AshDataTable.Test.Resource.Domain,
     data_layer: Ash.DataLayer.Ets,
@@ -61,14 +80,14 @@ defmodule AshDataTable.Test.Resource.Part do
   end
 
   table do
-    label_field :title
     update_action :update
 
     column :title
+    column :secret
   end
 
   actions do
-    defaults [:read, create: [:title, :resource_id], update: [:title]]
+    defaults [:read, create: [:title, :secret, :resource_id], update: [:title]]
   end
 
   attributes do
@@ -77,6 +96,11 @@ defmodule AshDataTable.Test.Resource.Part do
     attribute :title, :string,
       public?: true,
       allow_nil?: false,
+      constraints: [length_count: :codepoints]
+
+    attribute :secret, :string,
+      public?: true,
+      sensitive?: true,
       constraints: [length_count: :codepoints]
   end
 
@@ -93,20 +117,30 @@ defmodule AshDataTable.Test.Resource do
   that a kit's own tests can draw it.
 
     * `name`, text that cannot be empty and is at most 40 long, edited in
-      place; `note`, two lines of text, asked about before a save;
-    * `secret`, a `sensitive?` text, which no rendered state may hold
-      (`secret/0`); `done`, a boolean; `size`, a number drawn by a
-      component (`AshDataTable.Components.Progress`);
-    * `place`, a value made of fields (a map), `kind`, a union, both edited
-      in the action panel;
-    * `owner`, a reference cell with its picker (`AshDataTable.Test.Resource.Owner`),
-      and `parts`, the nested table under a row (`AshDataTable.Test.Resource.Part`);
-    * a row action that takes a file (`stamp`), one that asks first and
-      runs on the selected rows (`destroy`), and the create action; `place`
+      place, and the label column, which stays in view as the grid scrolls
+      sideways (`sticky_label? true`); `note`, two lines of text, asked
+      about before a save;
+    * `secret`, a `sensitive?` text of at most 30, which no rendered state
+      may hold (`secret/0`); `done`, a boolean; `size`, a number drawn by a
+      component (`AshDataTable.Components.Progress`), summed in the footer;
+      `tier`, one of two values, filtered by several of them;
+    * `tags`, a list of short texts, edited value by value; `place`, a value
+      made of fields (a map), `stops`, a list of them, and `kind`, a union,
+      edited in the action panel;
+    * `owner`, a reference cell with its picker
+      (`AshDataTable.Test.Resource.Owner`), and `parts`, the nested table
+      under a row (`AshDataTable.Test.Resource.Part`);
+    * the read action's argument `near`, in the argument line; it reads
+      the same records whatever it holds;
+    * row actions: one that takes a file (`stamp`), one whose panel holds
+      the sensitive field and the tags (`rekey`), one whose panel holds the helpers
+      chosen in the picker (`staff`), and one that asks first and runs on
+      the selected rows (`destroy`); a table action that asks first
+      (`greet`); the create action, whose panel holds every field; `place`
       asks before its panel saves a change.
 
-  A read in a tenant whose name begins with `broken` fails, for the
-  table's error.
+  The records are read by name. A read in a tenant whose name begins with
+  `broken` fails, for the table's error.
   """
   use Ash.Resource,
     domain: AshDataTable.Test.Resource.Domain,
@@ -125,6 +159,7 @@ defmodule AshDataTable.Test.Resource do
 
   table do
     label_field :name
+    sticky_label? true
     update_action :update
     create_action :create
 
@@ -140,21 +175,32 @@ defmodule AshDataTable.Test.Resource do
 
     column :size do
       component AshDataTable.Components.Progress
+      summary :sum
     end
+
+    column :tier
+    column :tags
 
     column :place do
       confirm "Change the place?"
     end
 
+    column :stops
     column :kind
     column :owner
 
     relationship :parts
 
     action :stamp
+    action :rekey
+    action :staff
 
     action :destroy do
       confirm "Delete it?"
+    end
+
+    action :greet do
+      confirm "Greet everyone?"
     end
 
     upload :file do
@@ -168,25 +214,46 @@ defmodule AshDataTable.Test.Resource do
 
     read :read do
       primary? true
+      argument :near, :string, constraints: [length_count: :codepoints]
+      prepare build(sort: [name: :asc])
       prepare AshDataTable.Test.Resource.Broken
       pagination offset?: true, required?: false, default_limit: 5, countable: true
     end
 
     create :create do
       primary? true
-      accept [:name, :note, :secret, :done, :size, :place, :kind, :owner_id]
+
+      accept [:name, :note, :secret, :done, :size, :tier, :tags, :place, :stops, :kind] ++
+               [:owner_id]
     end
 
     update :update do
       primary? true
       require_atomic? false
-      accept [:name, :note, :secret, :done, :size, :place, :kind, :owner_id]
+
+      accept [:name, :note, :secret, :done, :size, :tier, :tags, :place, :stops, :kind] ++
+               [:owner_id]
     end
 
     update :stamp do
       require_atomic? false
       accept [:note]
       argument :file, :file, allow_nil?: false
+    end
+
+    update :rekey do
+      require_atomic? false
+      accept [:secret, :tags]
+    end
+
+    update :staff do
+      require_atomic? false
+      argument :helpers, {:array, :string}
+      change manage_relationship(:helpers, type: :append_and_remove)
+    end
+
+    action :greet, :string do
+      run fn _input, _context -> {:ok, "Hello"} end
     end
   end
 
@@ -203,10 +270,15 @@ defmodule AshDataTable.Test.Resource do
     attribute :secret, :string,
       public?: true,
       sensitive?: true,
-      constraints: [length_count: :codepoints]
+      constraints: [max_length: 30, length_count: :codepoints]
 
     attribute :done, :boolean, public?: true, allow_nil?: false, default: false
     attribute :size, :integer, public?: true, constraints: [min: 0, max: 100]
+    attribute :tier, :atom, public?: true, constraints: [one_of: [:low, :high]]
+
+    attribute :tags, {:array, :string},
+      public?: true,
+      constraints: [items: [max_length: 8, length_count: :codepoints]]
 
     attribute :place, :map,
       public?: true,
@@ -214,6 +286,16 @@ defmodule AshDataTable.Test.Resource do
         fields: [
           city: [type: :string, constraints: [length_count: :codepoints]],
           zip: [type: :string, constraints: [length_count: :codepoints]]
+        ]
+      ]
+
+    attribute :stops, {:array, :map},
+      public?: true,
+      constraints: [
+        items: [
+          fields: [
+            city: [type: :string, constraints: [length_count: :codepoints]]
+          ]
         ]
       ]
 
@@ -228,8 +310,16 @@ defmodule AshDataTable.Test.Resource do
   end
 
   relationships do
-    belongs_to :owner, AshDataTable.Test.Resource.Owner, public?: true
+    belongs_to :owner, AshDataTable.Test.Resource.Owner,
+      public?: true,
+      attribute_type: :string,
+      destination_attribute: :name
+
     has_many :parts, AshDataTable.Test.Resource.Part, public?: true
+
+    has_many :helpers, AshDataTable.Test.Resource.Owner,
+      public?: true,
+      destination_attribute: :holder_id
   end
 end
 

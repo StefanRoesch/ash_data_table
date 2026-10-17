@@ -44,17 +44,13 @@ defmodule DemoWeb.Kits.KitNamedTest do
     assert drawn_by_div_kit?(html, "memo")
 
     Application.put_env(:ash_data_table, :kit, String)
+    # a LiveView that attaches a table and names no kit
+    {tenant, _key, session} = KitCase.given(nil, :empty, :modal)
+    on_exit(fn -> KitCase.clean(tenant) end)
 
     assert_raise ArgumentError,
                  ~r/`config :ash_data_table` was given `kit: String`, which is no kit/,
-                 fn ->
-                   AshDataTable.attach(
-                     %Phoenix.LiveView.Socket{},
-                     :table,
-                     Demo.Support.Plain.Memo,
-                     []
-                   )
-                 end
+                 fn -> live_isolated(conn, AshDataTable.KitCase.Live, session: session) end
   end
 
   test "attach names the kit, and a nested table and a picker's table are drawn with it",

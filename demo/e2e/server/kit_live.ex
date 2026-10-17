@@ -5,8 +5,10 @@ defmodule DemoWeb.E2E.KitLive do
   drawn with the demo's kit of `div`s (`DemoWeb.DivKit`), whose action
   panel, picker and question open in the page. `?presentation=modal` opens
   them over it, as the default kit does; `?presentation=mixed` the panel
-  and the picker over it, and the question in it. The records are kept in memory, in a tenant
-  of the page's own, made as it mounts.
+  and the picker over it, and the question in it; `?presentation=inside`
+  the panel over it, and the picker and the question in it (a picker a
+  field of the panel opens is drawn inside the panel). The records are kept
+  in memory, in a tenant of the page's own, made as it mounts.
   """
   use DemoWeb, :live_view
 
@@ -17,12 +19,14 @@ defmodule DemoWeb.E2E.KitLive do
     tenant = "e2e-kit-#{System.unique_integer([:positive])}"
     if connected?(socket), do: seed(tenant)
     # `?presentation=modal`, `mixed` (the panel and the picker over the
-    # page, the question in it), else everything in the page
-    {over, asked} =
+    # page, the question in it), `inside` (the panel over the page, the
+    # picker and the question in it), else everything in the page
+    presentation =
       case params["presentation"] do
-        "modal" -> {:modal, :modal}
-        "mixed" -> {:modal, :inline}
-        _inline -> {:inline, :inline}
+        "modal" -> [panel: :modal, picker: :modal, confirm: :modal]
+        "mixed" -> [panel: :modal, picker: :modal, confirm: :inline]
+        "inside" -> [panel: :modal, picker: :inline, confirm: :inline]
+        _inline -> [panel: :inline, picker: :inline, confirm: :inline]
       end
 
     {:ok,
@@ -32,17 +36,17 @@ defmodule DemoWeb.E2E.KitLive do
        id: "kit",
        tenant: tenant,
        kit: DemoWeb.DivKit,
-       presentation: [panel: over, picker: over, confirm: asked]
+       presentation: presentation
      )}
   end
 
-  # The records of the page: two owners, three records, two parts under
-  # the first, made through the resources' own actions.
+  # The records of the page: two owners, the second a helper of the first
+  # record, three records, two parts under the first, made through the
+  # resources' own actions.
   defp seed(tenant) do
     opts = [tenant: tenant, authorize?: false]
     create = &Ash.create!(&1, &2, opts)
-    ann = create.(Resource.Owner, %{name: "Ann"})
-    create.(Resource.Owner, %{name: "Bob"})
+    create.(Resource.Owner, %{name: "Ann"})
 
     first =
       create.(Resource, %{
@@ -50,8 +54,10 @@ defmodule DemoWeb.E2E.KitLive do
         note: "first",
         size: 40,
         place: %{city: "Bern", zip: "3000"},
-        owner_id: ann.id
+        owner_id: "Ann"
       })
+
+    create.(Resource.Owner, %{name: "Bob", holder_id: first.id})
 
     create.(Resource, %{name: "Bolt", size: 3})
     create.(Resource, %{name: "Cog"})
