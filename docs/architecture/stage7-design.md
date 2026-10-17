@@ -516,3 +516,38 @@ After the drift check of 7b (owner's decisions of 2026-10-17: every component cu
 - **`pagination.spec.ts`, "a cursor that is none".** Read, not rerun in loops: "You are not allowed to see these records." is the comments' answer to a read without an actor (`actor_present`). `Demo.Actors.fetch/1` took every failed read of the session's user (a connection of the test's transaction not had in time, under load) for nobody. It raises now, and LiveView mounts the page again; the spec passed once.
 - **Compression (owner, 2026-10-17).** The installer no longer turns on compression on LiveView's socket (`65f2fc7`): an app-wide trade-off the host decides; the demo keeps it. `files.spec.ts`'s progress test sent 90 kB of empty lines, which deflate past Bandit's inflate guard; it now sends one label and varied comment lines (`#`, which the demo's import skips), about 3.5 to 1.
 
+
+## 15. As built: 7c
+
+Commits on `main` after `stage7c-start` (`452306e`): `d5521aa` (D23 written into this note), `3c5a7ce` (step 7c.0, texts and values for every part), `90a5cb4` (7c.1, a column's and a reference cell's question), `2f5f330` (7c.2, the picker), `054cd9c` (7c.3, every panel; `attach/4` refuses nothing), `1522103` (the browser tests of group AB), `3659c40` (the architecture map and the markup contract).
+
+**7c.0, texts and values (D23).** As section 3, D23: `AshDataTable.Messages` (`messages.ex`, 3w, public) lists 140 keys with their values and the three made ones (`:label`, `:join`, `:words`); `Text.t/2` and `n/3` refuse a key not in it; `test/messages_test.exs` checks each key's text against its values and greps `lib/` for keys used. `AshDataTable.Kit.Words` (`kit/words.ex`, part 3, internal) is the one seam: one clause per part, applied by `Kit.part/1`. `Kit.Default` shows the given texts; what it draws below a part (a group's item in the panel, a value's place in a list of groups, the forbidden value inside a union) keeps its own words. `Attrs.selection/3`, `list/1` and `pagination/3` take texts instead of calling `Text` (`Attrs` calls `Text` no more). `KitCase` draws every state through a probe kit that checks each part's assigns (checked once by asking a name no part has: 76 of 76 fail). The demo's `DivKit` shows the given texts, its summary as `Summe 43` in German (`div_kit_test.exs`). Model labels stay words in the model (section 3, D23).
+
+**7c.1, the questions.** With `:confirm`, the editors' templates carry no `data-confirm` (`asks?`), so the hook asks nothing; `Core.Cells.on/2` holds a save or clear of a column with `confirm` as `%{kind: :confirm, for: {:save | :clear, key, name}}` (the typed text in `run`, `value` nil in the projection for a sensitive column), replying `{held: true}`: the hook keeps the cell `aria-busy` and what puts it back (`holds`). `Core.Picker.refer/7` holds a reference cell's choice the same way and closes the picker. `confirm_request/3` runs `Cells.write/2` or `Picker.refer/7` confirmed, through `Operation`; the hook is told `ash_data_table:answered` (`saved`, `error`), and puts the cell back where it was not saved, also when Cancel or a new request lets the question go. A question ends a panel or picker held for the host.
+
+**7c.2, the picker.** With `:picker`, a picker of the table on the page (a reference cell's, or a field's of a panel the table draws) is a request: the drawing draws no picker and `Nesting` opens no table for it (`Requests.host?/3`). The projection gives `resource`, `several?`, `none?`, `value` (what is held), `chosen` (labels of a field's records), `question`. `pick_request/4` takes a primary key (a map, or a one-field key's value), a list, or nil; each is read again as the person through the picker's read action (`Pick.chosen/3`), after the veto. Where the table asks its own questions, the host's choice is its answer to the column's question (it is in the request); with `:confirm` too, it is a request of its own.
+
+**7c.3, every panel.** A map cell's panel is a `:panel` request; every panel kind is handed to the host; `attach/4`'s refusal is gone. The projection describes each field with `editor`, a group's `fields`, a union's `kinds`, the chosen records (`chosen`), and a file field's `upload` (`Files.upload_name/2`, whose `live_file_input/1` the page draws; `submit_request/4` consumes it as the panel does). `add_group_request/4` and `remove_group_request/4` take a path, as `panel_add` and `panel_remove`; a path that is not a list of names raises. Chosen keys come back in the params and are read again as the person (`Act.unchosen/4`). **Fallback of section 7 (7c.3): not taken**; the two commands were enough.
+
+**Not taken on, as D17 says.** Nested tables and pickers' tables stay uncontrolled: they are drawn with the kit of the table on the page (every part replaceable, D16 levels 1 and 2), but a host cannot take over what they open (level 3).
+
+**Tests.** Group AB: `demo/test/demo_web/tables/controlled_widened_test.exs` (21 tests, `DemoWeb.Support.ControlledKitLive`, a table of `Test.Resource`, whose `secret` and `owner` columns now ask first) and `controlled_test.exs` (the map cell's panel a request; attach refuses no panel). Mutation-checked once each: the projection giving a sensitive column's typed value (1 of 10 fails), a stale `ref` answered (2 of 10), `Pick.chosen/3` taking a key without reading it (2 of 16). Browser: `controlled.spec.ts` on `/e2e/controlled/kit` (a column's question: the cell waits, Confirm saves, Cancel puts it back; the page's picker and its question). At the end, once each: root 1,247 tests, 0 failures (load 6.4 at the start); demo 3,044, 0 failures (load 8.3); browser 1,015 passed, 0 failed (8.4 min, load 12.6 at the start, 19.4 at the end). No laptop sleep. The markup snapshots did not change.
+
+**Performance (D22, §6).** `demo/perf/baseline.mjs` on `/tasks`, `stage7c-start` in a worktree and `3659c40`, back to back, 15 runs each, `PERF_WIRE=1`, at the machine's load: 15.4 before the first run, 10.2 before the second (8.8 after it). Median ms, payload bytes and wire bytes, start → end; Ash reads and statements the same for every action:
+
+| Action | ms | bytes | wire bytes |
+| --- | --- | --- | --- |
+| Cell save | 33.3 → 34.6 | 8,277 → 8,277 | 120 → 120 |
+| Expanding a row | 9.1 → 7.4 | 3,345 → 3,345 | 171 → 171 |
+| Opening a nested table | 56.8 → 58.4 | 33,710 → 33,752 | 4,835 → 4,838 |
+| Opening the picker | 34.9 → 36.3 | 34,980 → 35,616 | 3,598 → 3,507 |
+| Opening the panel | 22.0 → 22.0 | 4,299 → 4,299 | 85 → 86 |
+| Opening the panel inline | 14.3 → 14.9 | 4,240 → 4,240 | 88 → 88 |
+| Cell save in a nested table | 19.0 → 19.0 | 3,710 → 3,710 | 51 → 51 |
+| Cell save with a nested table open | 30.9 → 33.2 | 8,534 → 8,534 | 123 → 123 |
+| Selecting a row | 3.5 → 3.0 | 215 → 215 | 10 → 10 |
+| Page change | 71.8 → 67.9 | 152,255 → 153,625 (+0.9 %) | 11,607 → 11,895 (+2.5 %) |
+
+The growth is D23's: a part whose texts depend on what changed sends them again with it. On a page change the pagination's texts (`Previous`, `Next`, `Rows per page`, its name, one `Go to page N` per number) and the selection line's are made of the page and are sent again, where the default kit's constant texts were sent once at mount. The picker's table sends its parts' texts once more as it opens (+636 bytes payload, −91 wire). Times within 20 %.
+
+**Proposed for target.md (owner's yes needed).** §9 stage 7: "`attach/4` refuses nothing the table on the page opens" ticked; S8 lists `pick_request/4`, `add_group_request/4`, `remove_group_request/4` already (amendment 8). No other change.
