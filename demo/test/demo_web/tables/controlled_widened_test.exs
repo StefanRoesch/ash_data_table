@@ -304,4 +304,122 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       assert render(view) =~ ~r/id="kit-panel-f-helpers-c-1"[^>]*>\s*Ann Lee/
     end
   end
+
+  describe "every panel" do
+    @tag controlled: [:panel]
+    test "a map cell's is the host's, and its fields save through the veto",
+         %{view: view, tenant: tenant, key: key} do
+      html = event(view, "edit", %{"row" => key, "column" => "place"})
+      {ref, :panel} = requested()
+      refute html =~ ~s(id="kit-panel")
+
+      assert %{
+               column: :place,
+               question: "Change the place?",
+               fields: [%{name: :place, editor: :group, fields: fields, value: value}]
+             } = request(view)
+
+      assert Enum.map(fields, & &1.name) == [:city, :zip]
+      assert %{"city" => "Bern", "zip" => "3000"} = value
+
+      place = %{"_present" => "", "city" => "Thun", "zip" => "3600"}
+      answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"place" => place}))
+      assert_received {:asked, %AshDataTable.Request{column: :place}}
+      assert record(tenant, key).place == %{city: "Thun", zip: "3600"}
+      assert request(view) == nil
+    end
+
+    @tag controlled: [:panel]
+    test "groups are added and taken away by their path, and a stale ref does nothing",
+         %{view: view, tenant: tenant, key: key} do
+      event(view, "edit", %{"row" => key, "column" => "stops"})
+      {ref, :panel} = requested()
+      assert %{fields: [%{name: :stops, editor: :groups, value: held}]} = request(view)
+      assert map_size(Map.delete(held, "_present")) == 2
+
+      answer(view, &AshDataTable.add_group_request(&1, :table, "r0", ["stops"]))
+      answer(view, &AshDataTable.add_group_request(&1, :table, ref, ["stops"]))
+      assert %{fields: [%{value: held}]} = request(view)
+      assert map_size(Map.delete(held, "_present")) == 3
+
+      [first | _] = held |> Map.delete("_present") |> Map.keys() |> Enum.sort()
+      answer(view, &AshDataTable.remove_group_request(&1, :table, ref, ["stops", first]))
+      assert %{fields: [%{value: held}]} = request(view)
+      assert map_size(Map.delete(held, "_present")) == 2
+
+      answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"stops" => held}))
+      assert length(record(tenant, key).stops) == 2
+      assert request(view) == nil
+    end
+
+    @tag controlled: [:panel]
+    test "a union's kinds are described, and its value saved", %{
+      view: view,
+      tenant: tenant,
+      key: key
+    } do
+      event(view, "edit", %{"row" => key, "column" => "kind"})
+      {ref, :panel} = requested()
+      assert %{fields: [%{name: :kind, editor: :union, kinds: kinds}]} = request(view)
+      assert Enum.map(kinds, & &1.name) == [:count, :word]
+
+      kind = %{"_of" => "word", "_union_type" => "word", "_union_value" => "loose"}
+      answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"kind" => kind}))
+      assert %Ash.Union{type: :word, value: "loose"} = record(tenant, key).kind
+    end
+
+    @tag controlled: [:panel]
+    test "chosen records are keys in the params, each read again as the person",
+         %{view: view, tenant: tenant, key: key} do
+      event(view, "act", %{"row" => key, "action" => "staff"})
+      {ref, :panel} = requested()
+
+      assert %{fields: [%{name: :helpers, editor: :references, chosen: chosen}]} = request(view)
+      assert chosen == [%{key: "Bob Ray", label: "Bob Ray"}]
+
+      # a key that names nothing the person may choose runs nothing: it is
+      # read again after the veto, as every record is
+      answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"helpers" => ["", "Nobody"]}))
+      assert %{ref: ^ref} = request(view)
+      assert_received {:asked, %AshDataTable.Request{action: :staff}}
+
+      assert Resource.Owner
+             |> Ash.read!(tenant: tenant, authorize?: false)
+             |> Enum.find(&(&1.name == "Bob Ray"))
+             |> Map.get(:holder_id) == key
+
+      answer(view, &AshDataTable.submit_request(&1, :table, ref, %{"helpers" => ["", "Ann Lee"]}))
+      assert_received {:asked, %AshDataTable.Request{action: :staff}}
+      assert request(view) == nil
+
+      holders =
+        Resource.Owner
+        |> Ash.read!(tenant: tenant, authorize?: false)
+        |> Map.new(&{&1.name, &1.holder_id})
+
+      assert holders == %{"Ann Lee" => key, "Bob Ray" => nil}
+    end
+
+    @tag controlled: [:panel]
+    test "a file is the page's to draw, and the action is given it", %{view: view, key: key} do
+      event(view, "act", %{"row" => key, "action" => "stamp"})
+      {ref, :panel} = requested()
+      assert %{fields: fields} = request(view)
+      assert %{editor: :file, upload: "kit-file-file"} = Enum.find(fields, &(&1.name == :file))
+
+      # without a file nothing runs
+      view |> element("#host-form") |> render_submit(%{"panel" => %{"note" => "x"}})
+      assert %{ref: ^ref} = request(view)
+
+      file =
+        file_input(view, "#host-form", "kit-file-file", [
+          %{name: "stamp.txt", content: "stamped", type: "text/plain"}
+        ])
+
+      assert render_upload(file, "stamp.txt") =~ "kit"
+      view |> element("#host-form") |> render_submit(%{"panel" => %{"note" => "x"}})
+      assert_received {:asked, %AshDataTable.Request{action: :stamp}}
+      assert request(view) == nil
+    end
+  end
 end

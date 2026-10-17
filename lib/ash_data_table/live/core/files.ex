@@ -217,7 +217,8 @@ defmodule AshDataTable.Live.Core.Files do
   # two tables placed in a LiveView, a table and the tables nested in it,
   # a picker. Two of them can have an action with an argument of the same
   # name, and each a file for it at the same time.
-  defp upload_name(id, %{name: name}), do: id <> "-file-" <> Atom.to_string(name)
+  @doc "What the upload of a file field is called among the LiveView's uploads."
+  def upload_name(id, %{name: name}), do: id <> "-file-" <> Atom.to_string(name)
 
   # The upload of a field, as LiveView keeps it; nil for any other field.
   def upload_of(uploads, id, %{editor: :file} = input) when is_map(uploads),

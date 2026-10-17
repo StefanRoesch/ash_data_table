@@ -109,10 +109,43 @@ defmodule DemoWeb.Support.ControlledKitLive do
     {:noreply, socket}
   end
 
+  # the page's own form of a panel it draws: the file inputs, sent as the
+  # table's panel sends them
+  @impl true
+  def handle_event("host_validate", params, socket),
+    do:
+      {:noreply,
+       by_request(socket, &AshDataTable.validate_request(&1, :table, &2, params["panel"] || %{}))}
+
+  def handle_event("host_submit", params, socket),
+    do:
+      {:noreply,
+       by_request(socket, &AshDataTable.submit_request(&1, :table, &2, params["panel"] || %{}))}
+
+  defp by_request(socket, fun) do
+    case AshDataTable.request(socket.assigns.table) do
+      %{ref: ref} -> fun.(socket, ref)
+      nil -> socket
+    end
+  end
+
   @impl true
   def render(assigns) do
+    assigns = assign(assigns, request: AshDataTable.request(assigns.table))
+
     ~H"""
     <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
+    <form
+      :if={match?(%{kind: :panel}, @request)}
+      id="host-form"
+      phx-change="host_validate"
+      phx-submit="host_submit"
+    >
+      <.live_file_input
+        :for={%{upload: upload} <- @request.fields}
+        upload={@uploads[upload]}
+      />
+    </form>
     """
   end
 end

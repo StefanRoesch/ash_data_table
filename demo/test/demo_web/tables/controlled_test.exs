@@ -197,22 +197,32 @@ defmodule DemoWeb.Tables.ControlledTest do
       assert %{ref: ^second, action: :create} = request(view)
     end
 
-    test "a map cell's panel is the table's own: the request held ends, the host is told nothing",
+    test "a map cell's panel is a request of its own, which ends the panel held before",
          %{conn: conn, card: card} do
       {:ok, view, _html} = given(conn, %{"notify" => [:requested], "table" => :mapped})
 
       act(view, "card_mapped", card.id, "rename")
-      assert_received {:heard, {:ash_data_table, "card_mapped", {:requested, %{ref: ref}}}}
+      assert_received {:heard, {:ash_data_table, "card_mapped", {:requested, %{ref: first}}}}
 
       html = edit(view, "card_mapped", card.id, "size")
-      refute_received {:heard, {:ash_data_table, "card_mapped", {:requested, _details}}}
-      assert request(view) == nil
-      # drawn by the table itself
-      assert panel(html, "card_mapped") != nil
+      assert_received {:heard, {:ash_data_table, "card_mapped", {:requested, %{ref: ref}}}}
+      assert ref != first
+      # drawn by the host
+      assert panel(html, "card_mapped") == nil
+
+      assert %{kind: :panel, action: :update, column: :size, fields: [field]} = request(view)
+
+      assert %{name: :size, editor: :group, fields: [%{name: :width}, %{name: :height}]} =
+               field
 
       params = %{"title" => "Renamed", "reason" => "typo"}
-      answer(view, &AshDataTable.submit_request(&1, :cards, ref, params))
+      answer(view, &AshDataTable.submit_request(&1, :cards, first, params))
       assert Ash.get!(Card, card.id).title == "First"
+
+      size = %{"_present" => "", "width" => "3", "height" => "4"}
+      answer(view, &AshDataTable.submit_request(&1, :cards, ref, %{"size" => size}))
+      assert Ash.get!(Card, card.id).size == %{width: 3, height: 4}
+      assert request(view) == nil
     end
 
     test "a question held while a panel is open ends the panel, and stays the request",
@@ -239,7 +249,7 @@ defmodule DemoWeb.Tables.ControlledTest do
     end
   end
 
-  test "attach refuses a panel a page cannot draw, and names its action", %{conn: conn} do
+  test "attach takes what the page draws itself, and nothing else", %{conn: conn} do
     {:ok, view, _html} = given(conn, %{})
 
     # on the socket of the page, in its process; the page goes on as it was
@@ -253,8 +263,9 @@ defmodule DemoWeb.Tables.ControlledTest do
       end)
     end
 
-    assert refused.(:scans, Demo.Support.Files.Scan, controlled: [:panel]) =~
-             "the action `create` has the field `file`"
+    # a panel with a file is the page's to draw too
+    assert %Phoenix.LiveView.Socket{} =
+             refused.(:scans, Demo.Support.Files.Scan, controlled: [:panel, :picker, :confirm])
 
     assert refused.(:cards, Card, controlled: [:nested]) =~
              "is a list of `:confirm`, `:panel` and `:picker`"

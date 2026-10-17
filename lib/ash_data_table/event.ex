@@ -214,20 +214,21 @@ defmodule AshDataTable.Event do
       key: panel.key && get_in(rows, [panel.key, :pk]),
       column: Map.get(panel, :column),
       value: nil,
-      question: Map.get(panel, :question),
+      question: shown.question,
       title: shown.title,
       errors: List.wrap(shown.errors),
       fields:
         for %{input: input} = field <- shown.fields do
-          %{
-            name: field.name,
-            label: input.label,
-            type: input.cell_type,
-            required?: input.required?,
+          input
+          |> described()
+          |> Map.merge(%{
             value: if(input.sensitive?, do: nil, else: field.value),
-            values: input.values,
-            errors: field.errors
-          }
+            errors: field.errors,
+            chosen:
+              for {key, %{label: label}} <- field.chosen || %{} do
+                %{key: key, label: label}
+              end
+          })
         end
     }
   end
@@ -259,6 +260,32 @@ defmodule AshDataTable.Event do
   end
 
   def request(_entry), do: nil
+
+  # What a field is, as the page draws it: its name, label, type, the
+  # control it has (`editor`), whether it is required, the choices of an
+  # enum; of a value made of fields its `fields`, of a union its `kinds`,
+  # each described the same way.
+  defp described(input) do
+    own = %{
+      name: input.name,
+      label: input.label,
+      type: input.cell_type,
+      editor: input.editor,
+      required?: Map.get(input, :required?, false),
+      values: input.values
+    }
+
+    case input.editor do
+      editor when editor in [:group, :groups] ->
+        Map.put(own, :fields, for(%{input?: true} = field <- input.fields, do: described(field)))
+
+      :union ->
+        Map.put(own, :kinds, Enum.map(input.members, &described/1))
+
+      _plain ->
+        own
+    end
+  end
 
   # What a field of the panel holds that the picker is open for: the keys,
   # as the field writes them.

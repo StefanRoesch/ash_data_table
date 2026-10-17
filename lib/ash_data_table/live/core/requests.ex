@@ -31,13 +31,11 @@ defmodule AshDataTable.Live.Core.Requests do
 
   import Phoenix.LiveView, only: [push_event: 3]
 
-  # the panels a host can draw
-  @kinds [:row, :table, :create, :bulk]
-
   alias AshDataTable.Event
   alias AshDataTable.Live.Core
   alias AshDataTable.Live.Core.Bulk
   alias AshDataTable.Live.Core.Cells
+  alias AshDataTable.Live.Core.Files
   alias AshDataTable.Live.Core.Notify
   alias AshDataTable.Live.Core.Panel
   alias AshDataTable.Live.Core.Picker
@@ -130,7 +128,7 @@ defmodule AshDataTable.Live.Core.Requests do
   end
 
   # What a panel the host draws is made for; nil for none.
-  defp handed(%{kind: kind, action: action, key: key} = panel) when kind in @kinds,
+  defp handed(%{kind: kind, action: action, key: key} = panel),
     do: {:panel, {kind, action.name, key, Map.get(panel, :column)}}
 
   defp handed(_none), do: nil
@@ -237,8 +235,41 @@ defmodule AshDataTable.Live.Core.Requests do
   defp reply({:noreply, socket}), do: socket
   defp reply({:reply, _reply, socket}), do: socket
 
-  @doc "What the host may read of the request held, as `AshDataTable.Event` makes it."
-  def projection(table), do: Event.request(table.entry)
+  @doc """
+  Adds a value to a field made of groups of the panel the host draws, or
+  takes one away (`{:panel_add, path}`, `{:panel_remove, path}`): `path`
+  is the field's name and, inside it, the way to the value, as the panel's
+  own buttons name it.
+  """
+  def group(socket, change, path) when change in [:panel_add, :panel_remove] do
+    if not (is_list(path) and path != [] and Enum.all?(path, &is_binary/1)) do
+      raise ArgumentError,
+            "the path of a group is a list of names, the field's first, got: " <>
+              inspect(path, limit: 5)
+    end
+
+    panel(socket, {change, path})
+  end
+
+  @doc """
+  What the host may read of the request held, as `AshDataTable.Event`
+  makes it, with what a file field's upload is called among the LiveView's
+  uploads (`upload`), which the page draws `live_file_input/1` of.
+  """
+  def projection(%{entry: entry}) do
+    case Event.request(entry) do
+      %{kind: :panel, fields: fields} = request ->
+        %{request | fields: Enum.map(fields, &upload(&1, entry))}
+
+      request ->
+        request
+    end
+  end
+
+  defp upload(%{editor: :file} = field, entry),
+    do: Map.put(field, :upload, Files.upload_name(entry.id, field))
+
+  defp upload(field, _entry), do: field
 
   defp ref, do: "r" <> Integer.to_string(System.unique_integer([:positive]))
 end

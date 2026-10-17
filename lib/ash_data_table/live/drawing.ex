@@ -271,7 +271,7 @@ defmodule AshDataTable.Live.Drawing do
           presentation={presentation(@options, :confirm)}
         />
         <Kit.part
-          :if={panel?(@entry)}
+          :if={panel?(@entry, @options)}
           part={:panel}
           kit={@options.kit}
           id={@entry.id}
@@ -354,7 +354,8 @@ defmodule AshDataTable.Live.Drawing do
 
   # Whether the table draws the action panel: it is open, and not a
   # request the host draws (controlled mode).
-  defp panel?(entry), do: entry.panel != nil and not match?(%{kind: :panel}, entry.request)
+  defp panel?(entry, options),
+    do: entry.panel != nil and not AshDataTable.Live.Core.Requests.host?(options, entry, :panel)
 
   # Whether the picker is drawn inside the action panel: a field of a panel
   # that is open over the page opened it, and it opens in the page. The page
@@ -362,7 +363,7 @@ defmodule AshDataTable.Live.Drawing do
   # used. Elsewhere it is drawn after the panel, where the kit's `root/1`
   # puts what opens.
   defp picker_in_panel?(entry, options) do
-    picker?(entry, options) and panel?(entry) and presentation(options, :panel) == :modal and
+    picker?(entry, options) and panel?(entry, options) and presentation(options, :panel) == :modal and
       presentation(options, :picker) == :inline
   end
 

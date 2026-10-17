@@ -397,27 +397,36 @@ defmodule AshDataTable do
 
   ## What the page draws itself
 
-  `controlled: [:confirm, :panel]` (either, or both) has the table hold
-  what it would open, for the LiveView to draw: `:confirm` the question
-  before a row action, a table action or an action on the selection,
-  `:panel` the action panel of a row action, a table action, a create or
-  an action on the selection. The table tells the LiveView `:requested`
-  (with `notify`), `request/1` says what is held, and the LiveView answers
-  with `confirm_request/3`, `validate_request/4`, `submit_request/4` or
-  `cancel_request/3`; each goes the way the person's own answer would,
-  with the table's checks, the veto and the record read again. One request
-  at a time: a new one ends the one before, whose `ref` is answered no
-  more. A panel with a file, a group of fields, a union or records chosen
-  in the picker cannot be handed to the page in this version: `attach/4`
-  raises, and names the action.
+  `controlled: [:confirm, :panel, :picker]` (any of them) has the table
+  hold what it would open, for the LiveView to draw:
 
-  Left out in this version, and drawn by the table as ever: a column's
-  question before a save, a reference cell's question, a map cell's panel,
-  the picker, and everything of a nested table or a picker's table. A
-  question is no safety check: an event the browser forges runs a table
-  action or an action on the selection without the confirm (`table_run`,
-  `bulk_run`), as it would without the table's own question. What must
-  not run is for Ash's policies and for `before_action` to refuse.
+    * `:confirm` - every question: before a row action, a table action or
+      an action on the selection, before a cell of a column with `confirm`
+      is saved (what was typed is held by the table; the cell waits) and
+      before the record chosen for a reference cell is saved;
+    * `:panel` - every action panel: of a row action, a table action, a
+      create, an action on the selection and a map cell, with its files
+      (the page draws `live_file_input/1` of the upload `request/1`
+      names), its groups of fields and unions (`add_group_request/4`,
+      `remove_group_request/4`) and the records chosen for a field (their
+      keys in the params);
+    * `:picker` - the picker of a reference cell, and of a field of a panel
+      the table draws (`pick_request/4`).
+
+  The table tells the LiveView `:requested` (with `notify`), `request/1`
+  says what is held, and the LiveView answers with `confirm_request/3`,
+  `validate_request/4`, `submit_request/4`, `pick_request/4`,
+  `add_group_request/4`, `remove_group_request/4` or `cancel_request/3`;
+  each goes the way the person's own answer would, with the table's
+  checks, the veto and the record read again. One request at a time: a
+  new one ends the one before, whose `ref` is answered no more.
+
+  Nested tables and pickers' tables draw what they open themselves, in
+  this version. A question is no safety check: an event the browser forges
+  runs a table action or an action on the selection without the confirm
+  (`table_run`, `bulk_run`), as it would without the table's own question.
+  What must not run is for Ash's policies and for `before_action` to
+  refuse.
 
   Names and ids are unique on a page: two tables of one resource need an
   `id` each, and no id may begin with another's and `-row-` or `-pick-`
@@ -489,7 +498,7 @@ defmodule AshDataTable do
       before_action: opts[:before_action],
       notify: opts[:notify],
       open: open!(opts[:open], "AshDataTable.attach/4"),
-      controlled: controlled!(opts[:controlled], resource, table),
+      controlled: controlled!(opts[:controlled]),
       kit: kit!(opts[:kit], "AshDataTable.attach/4"),
       presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4")
     }
@@ -497,30 +506,13 @@ defmodule AshDataTable do
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)
   end
 
-  # What the host draws itself (controlled mode): the questions before an
-  # action and the action panels. A panel the host cannot be handed in this
-  # version (a file, a group or a union, records chosen in the picker) is
-  # refused here, for every action of the table that would open one.
-  defp controlled!(kinds, resource, table) do
+  # What the host draws itself (controlled mode): the questions, the action
+  # panels and the picker of the table on the page.
+  defp controlled!(kinds) do
     if not (is_list(kinds) and Enum.all?(kinds, &(&1 in [:confirm, :panel, :picker]))) do
       raise ArgumentError,
             "the `controlled` of AshDataTable.attach/4 is a list of `:confirm`, `:panel` and " <>
               "`:picker`, got: #{inspect(kinds, limit: 5)}"
-    end
-
-    if :panel in kinds do
-      model = AshDataTable.Model.build(resource, table: table)
-
-      for action <- [model.create | model.actions ++ model.table_actions],
-          action && action.panel?,
-          input <- action.inputs,
-          input.editor in [:file, :group, :groups, :union, :reference, :references] do
-        raise ArgumentError,
-              "AshDataTable.attach/4 was given `controlled: [:panel]`, and the panel of the " <>
-                "action `#{action.name}` has the field `#{input.name}`, which a page cannot " <>
-                "draw in this version: a file, a group of fields or a union, or records " <>
-                "chosen in the picker. Leave `:panel` out, and the table draws its panels."
-      end
     end
 
     Enum.uniq(kinds)
@@ -701,9 +693,13 @@ defmodule AshDataTable do
       draws the questions too);
     * `title`, `errors` - its title, and what is said that is about none of
       its fields (of a picker, why a key chose nothing);
-    * `fields` - of a panel, each with `name`, `label`, `type`, `required?`,
-      `value` (what it holds as typed; nil for a sensitive field), `values`
-      (the choices of an enum, else nil) and `errors`;
+    * `fields` - of a panel, each with `name`, `label`, `type`, `editor`
+      (its control), `required?`, `value` (what it holds as its form sends
+      it; nil for a sensitive field), `values` (the choices of an enum,
+      else nil), `errors` and `chosen` (the records a field holds that are
+      chosen, each with `key` and `label`); of a value made of fields its
+      `fields`, of a union its `kinds`, each described the same way; of a
+      file field `upload`, its upload among the LiveView's;
     * of a picker, `resource` (what is chosen from), `several?`, `none?`
       (whether no record may be chosen) and `chosen`: the records a field
       holds, each with `key` and `label`, as far as the table knows them.
@@ -750,6 +746,7 @@ defmodule AshDataTable do
                       for({value, label} <- field.values, do: {value, said.(label)})
               }
               |> Map.put(:messages, %{errors: Enum.map(field.errors, message)})
+              |> chosen_in_words()
             end
         })
         |> chosen_in_words()
@@ -829,6 +826,42 @@ defmodule AshDataTable do
       answer(socket, name, ref, :picker, "AshDataTable.pick_request/4", fn socket, _request ->
         AshDataTable.Live.Core.Requests.pick(socket, keys)
       end)
+
+  @doc """
+  Adds a value to a field made of groups of the panel of request `ref`: a
+  value of fields where it has none, one more to a list of them, as the
+  panel's own button does. `path` is the field's name, and the way to a
+  value inside it: `["place"]`, `["stops"]`. Nothing runs; `request/1`
+  then shows the value, empty.
+  """
+  @spec add_group_request(Phoenix.LiveView.Socket.t(), atom, String.t(), [String.t()]) ::
+          Phoenix.LiveView.Socket.t()
+  def add_group_request(socket, name, ref, path),
+    do:
+      answer(socket, name, ref, :panel, "AshDataTable.add_group_request/4", fn socket, _request ->
+        AshDataTable.Live.Core.Requests.group(socket, :panel_add, path)
+      end)
+
+  @doc """
+  Takes a value away from a field made of groups of the panel of request
+  `ref`, as the panel's own button does: `path` is the field's name and the
+  way to the value, `["place"]`, or a value of a list by the key it is
+  sent under, `["stops", "1"]`. Nothing runs.
+  """
+  @spec remove_group_request(Phoenix.LiveView.Socket.t(), atom, String.t(), [String.t()]) ::
+          Phoenix.LiveView.Socket.t()
+  def remove_group_request(socket, name, ref, path),
+    do:
+      answer(
+        socket,
+        name,
+        ref,
+        :panel,
+        "AshDataTable.remove_group_request/4",
+        fn socket, _request ->
+          AshDataTable.Live.Core.Requests.group(socket, :panel_remove, path)
+        end
+      )
 
   @doc "Gives request `ref` up, as Cancel does: nothing runs, and a cell is put back."
   @spec cancel_request(Phoenix.LiveView.Socket.t(), atom, String.t()) ::
