@@ -300,8 +300,16 @@ defmodule AshDataTable.Live.Core.Requests do
     |> Enum.flat_map(&List.wrap(projection(&1)))
   end
 
-  defp projection(entry) do
-    case Event.request(entry) do
+  defp projection(%{request: request} = entry) do
+    held = %{
+      table: entry.id,
+      path: entry.path,
+      panel: entry.panel,
+      picker: entry.picker,
+      key: request && row_key(request, entry)
+    }
+
+    case Event.request(request, held) do
       %{kind: :panel, fields: fields} = request ->
         %{request | fields: Enum.map(fields, &upload(&1, entry))}
 
@@ -309,6 +317,18 @@ defmodule AshDataTable.Live.Core.Requests do
         request
     end
   end
+
+  # The primary key of the row a request is about: a question names it, a
+  # panel and a cell's picker name the row by the key of its DOM id.
+  defp row_key(%{kind: :confirm, key: key}, _entry), do: key
+
+  defp row_key(%{kind: :panel}, %{panel: %{key: key}, rows: rows}) when not is_nil(key),
+    do: get_in(rows, [key, :pk])
+
+  defp row_key(%{kind: :picker}, %{picker: %{for: {:cell, key, _name}}, rows: rows}),
+    do: get_in(rows, [key, :pk])
+
+  defp row_key(_request, _entry), do: nil
 
   defp upload(%{editor: :file} = field, entry),
     do: Map.put(field, :upload, Files.upload_name(entry.id, field))

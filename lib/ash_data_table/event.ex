@@ -193,12 +193,16 @@ defmodule AshDataTable.Event do
   # sensitive one), the values of a choice and what is said at it; of a
   # picker, the column or field it chooses for, what it chooses from, and
   # what is held now.
-  @spec request(map) :: map | nil
-  def request(%{request: nil}), do: nil
+  #
+  # `held` is what the table holds beside the request, as plain values:
+  # `table` (its id), `path`, `panel`, `picker`, and `key`, the primary key
+  # of the row the request is about, or nil.
+  @spec request(map | nil, map) :: map | nil
+  def request(nil, _held), do: nil
 
-  def request(%{request: %{kind: :confirm} = request} = entry) do
-    entry
-    |> located(request.ref, :confirm, request.key)
+  def request(%{kind: :confirm} = request, held) do
+    held
+    |> located(request.ref, :confirm)
     |> Map.merge(%{
       action: request.action,
       column: request.column,
@@ -207,11 +211,11 @@ defmodule AshDataTable.Event do
     })
   end
 
-  def request(%{request: %{kind: :panel, ref: ref}, panel: %{} = panel, rows: rows} = entry) do
+  def request(%{kind: :panel, ref: ref}, %{panel: %{} = panel} = held) do
     shown = AshDataTable.Present.panel(panel)
 
-    entry
-    |> located(ref, :panel, panel.key && get_in(rows, [panel.key, :pk]))
+    held
+    |> located(ref, :panel)
     |> Map.merge(%{
       action: panel.action.name,
       column: Map.get(panel, :column),
@@ -234,34 +238,34 @@ defmodule AshDataTable.Event do
     })
   end
 
-  def request(%{request: %{kind: :picker, ref: ref}, picker: %{} = picker} = entry) do
-    {key, name, current} =
+  def request(%{kind: :picker, ref: ref}, %{picker: %{} = picker} = held) do
+    {name, current} =
       case picker.for do
-        {:cell, key, name} -> {get_in(entry.rows, [key, :pk]), name, picker.current}
-        {:input, name} when picker.several? -> {nil, name, held(entry.panel, name)}
-        {:input, name} -> {nil, name, picker.current}
+        {:cell, _key, name} -> {name, picker.current}
+        {:input, name} when picker.several? -> {name, held(held.panel, name)}
+        {:input, name} -> {name, picker.current}
       end
 
-    entry
-    |> located(ref, :picker, key)
+    held
+    |> located(ref, :picker)
     |> Map.merge(%{
       column: name,
       resource: picker.reference.destination,
       several?: picker.several?,
       allow_none?: picker.allow_none?,
       current: current,
-      chosen: chosen(entry.panel, name),
+      chosen: chosen(held.panel, name),
       question: picker.question,
       title: picker.title,
       errors: List.wrap(picker.error)
     })
   end
 
-  def request(_entry), do: nil
+  def request(_request, _held), do: nil
 
   # What every request says of where it is held.
-  defp located(entry, ref, kind, key),
-    do: %{ref: ref, kind: kind, table: entry.id, path: entry.path, key: key}
+  defp located(held, ref, kind),
+    do: %{ref: ref, kind: kind, table: held.table, path: held.path, key: held.key}
 
   # What a field is, as the page draws it: its name, label, type, the
   # control it has (`editor`), whether it is required, the choices of an
