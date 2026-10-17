@@ -207,8 +207,8 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
       assert length(column(html, "comment", "body")) == 20
 
-      assert %{more?: true, buttons: ["Select all 45 that match" | _]} =
-               selection(html, "comment")
+      assert %{offered?: true, buttons: ["Select all 45 that match" | _]} =
+               selection(select_page(view, "comment"), "comment")
 
       bulk(view, "comment", "destroy", :all)
       assert_reply view, %{ask: "Delete this comment? 45 records are selected."}
@@ -269,7 +269,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       assert attribute(html, "[id='#{comments}-select-head'] > input", "aria-label") ==
                ["Select all rows of this page"]
 
-      assert %{buttons: ["Select all 3 that match", "Clear selection", "Destroy"], more?: false} =
+      assert %{buttons: ["Select all 3 that match", "Clear selection", "Destroy"]} =
                selection(html, comments)
 
       # and the table around it has its own
@@ -391,12 +391,15 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
 
       assert column(html, "parcel", "title") == ["Parcel 01", "Parcel 02", "Parcel 03"]
 
-      assert selection(html, "parcel") == %{
-               buttons: ["Select all that match", "Clear selection", "Ship"],
-               more?: true,
-               selected: "{n} selected",
-               all: "All that match are selected"
-             }
+      assert %{buttons: ["Select all that match", "Clear selection", "Ship"], selected: ""} =
+               selection(html, "parcel")
+
+      assert selection(select_page(view, "parcel"), "parcel").offered?
+
+      assert selection(select(view, "parcel", :all), "parcel").selected ==
+               "All that match are selected"
+
+      select(view, "parcel", [])
 
       bulk(view, "parcel", "ship", :all)
       assert_reply view, %{ask: "Run “Ship” on all records that match?"}
@@ -405,8 +408,8 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "has no more to offer on a page that is all there is", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/support/parcels")
 
-      html = filter(view, "parcel", "title", v: "Parcel 08")
-      refute selection(html, "parcel").more?
+      filter(view, "parcel", "title", v: "Parcel 08")
+      refute selection(select_page(view, "parcel"), "parcel").offered?
     end
 
     test "runs on all that match through all of its pages, a page of the action at a time",
@@ -468,7 +471,10 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     test "runs on all that match, and on rows that are named", %{conn: conn} do
       {:ok, view, html} = live(conn, "/support/crates")
 
-      assert %{more?: true, buttons: ["Select all 7 that match" | _]} = selection(html, "crate")
+      assert %{offered?: true, buttons: ["Select all 7 that match" | _]} =
+               selection(select_page(view, "crate"), "crate")
+
+      select(view, "crate", [])
 
       html = filter(view, "crate", "title", v: "Crate 0")
       assert column(html, "crate", "sealed") == ["–No", "–No", "–No"]

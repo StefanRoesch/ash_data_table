@@ -157,7 +157,7 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
     test "has a button to select all that match, one to clear, and one per action that runs on several rows",
          %{conn: conn, world: world} do
-      {:ok, _view, html} = conn |> log_in(world.admin) |> live("/tasks")
+      {:ok, view, html} = conn |> log_in(world.admin) |> live("/tasks")
 
       assert %{
                buttons: [
@@ -169,18 +169,30 @@ defmodule DemoWeb.Tables.TaskBulkTest do
                  "Destroy",
                  "Set labels"
                ],
-               selected: "{n} selected",
-               all: "All 3 that match are selected"
+               selected: "",
+               controls?: false,
+               offered?: false
              } = selection(html)
 
       assert attribute(html, "#task-selection", "role") == ["group"]
       assert attribute(html, "#task-selection", "aria-label") == ["Selected rows"]
-      # the count is a live region, which the hook fills
+      # the count is a live region, which the server fills
       assert attribute(html, "#task-selected", "role") == ["status"]
-      assert text(html, "#task-selected") == ""
-      # hidden until the hook knows of a selection
-      assert attribute(html, "#task-selection-controls", "hidden") == [""]
-      assert attribute(html, "#task-select-all", "hidden") == [""]
+      assert attribute(html, "#task-selected", "phx-update") == []
+
+      # what is selected, in its plural form, with the buttons
+      [first, second | _rows] = page_rows(html)
+
+      assert %{selected: "1 selected", controls?: true, offered?: false} =
+               selection(select(view, "task", [first]))
+
+      assert %{selected: "2 selected", controls?: true} =
+               selection(select(view, "task", [first, second]))
+
+      assert %{selected: "All 3 that match are selected", controls?: true, offered?: false} =
+               selection(select(view, "task", :all))
+
+      assert %{selected: "", controls?: false} = selection(select(view, "task", []))
       # the one that deletes says so, for the colour of the answer in its question
       assert attribute(html, "#task-bulk-destroy", "data-destructive") == [""]
       assert attribute(html, "#task-bulk-archive", "data-destructive") == []
@@ -190,16 +202,24 @@ defmodule DemoWeb.Tables.TaskBulkTest do
          %{conn: conn, world: world} do
       conn = log_in(conn, world.admin)
 
-      {:ok, view, html} = live(conn, "/tasks")
-      refute selection(html).more?
+      # the whole page selected, and nothing more to select
+      {:ok, view, _html} = live(conn, "/tasks")
+      refute selection(select_page(view)).offered?
 
       for day <- 4..30, do: task(world, day, [])
-      {:ok, _view, html} = live(conn, "/tasks")
-      assert %{more?: true, buttons: ["Select all 30 that match" | _]} = selection(html)
+      {:ok, more, _html} = live(conn, "/tasks")
+      [first | _rows] = page_rows(render(more))
+      # not while some of the page is not selected
+      refute selection(select(more, "task", [first])).offered?
+
+      assert %{offered?: true, buttons: ["Select all 30 that match" | _]} =
+               selection(select_page(more))
 
       # under a filter that leaves less than a page, there is no more
-      html = filter(view, "task", "title", v: "Task 0")
-      assert %{more?: false, buttons: ["Select all 9 that match" | _]} = selection(html)
+      filter(view, "task", "title", v: "Task 0")
+
+      assert %{offered?: false, buttons: ["Select all 9 that match" | _]} =
+               selection(select_page(view))
     end
 
     test "a selection is given up when the filters change, and not by another sort",
@@ -852,9 +872,14 @@ defmodule DemoWeb.Tables.TaskBulkTest do
 
       assert %{
                buttons: ["Alle 2 passenden auswählen", "Auswahl aufheben", "Archivieren" | _],
-               selected: "{n} ausgewählt",
-               all: "Alle 2 passenden sind ausgewählt"
+               selected: ""
              } = selection(html)
+
+      assert selection(select(view, "task", [own.id])).selected == "1 ausgewählt"
+      assert selection(select(view, "task", [own.id, other.id])).selected == "2 ausgewählt"
+
+      assert selection(select(view, "task", :all)).selected ==
+               "Alle 2 passenden sind ausgewählt"
 
       assert attribute(html, box(own.id), "aria-label") == ["Zeile auswählen"]
 

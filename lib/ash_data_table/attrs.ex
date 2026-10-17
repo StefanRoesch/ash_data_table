@@ -148,8 +148,8 @@ defmodule AshDataTable.Attrs do
   #     region;
   #   * the argument line: `form[data-arguments]`, each argument a child
   #     `[data-argument=NAME]` with its `[data-label]` and `[data-error]`s;
-  #   * the line of the selection: `ID-selection` (`data-more`,
-  #     `data-selected`, `data-all`), each action's button `data-bulk`;
+  #   * the line of the selection: `ID-selection`, `ID-selected`, each
+  #     action's button `data-bulk`;
   #   * the action panel `ID-panel` (`data-question`): `ID-panel-title`,
   #     `ID-panel-form`, `ID-panel-errors`, `ID-panel-cancel`,
   #     `ID-panel-submit`. A field says its name in `data-field`; its label
@@ -285,7 +285,7 @@ defmodule AshDataTable.Attrs do
   # person to choose from, with nothing to run.
   #
   # Which rows are selected the server holds (`AshDataTable.Live.Core.Selection`),
-  # and the hook paints: it is told every change a person makes (`select`),
+  # draws the line above the grid from, and the hook paints in the rows: it is told every change a person makes (`select`),
   # and decides when a selection ends (the filters, the arguments or what
   # the table is limited to changed) or narrows (a row went, a run left
   # the rows it did not run on), which it tells the hook
@@ -296,7 +296,7 @@ defmodule AshDataTable.Attrs do
   # row's id, or what the row says in `data-key`.
   #
   # Above the grid, `ID-selection` holds the number of selected rows
-  # (`ID-selected`, a live region the hook fills) and, in
+  # (`ID-selected`, a live region the server renders) and, in
   # `ID-selection-controls`, `ID-select-all`, `ID-clear-selection` and a
   # button per action on the selected rows (`ID-bulk-ACTION`). Such an
   # action is run by `AshDataTable.Bulk`, beside the process; what it came to
@@ -1134,40 +1134,37 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The line above the grid with what is selected: `data-more` where there
-  are more records than the page, and the texts the hook says, with `{n}`
-  where it puts the count: the `selection_line` part's `texts`
-  (`selected_rows`, `selected`, `all_selected`).
+  The line above the grid with what is selected, named by the
+  `selection_line` part's `texts.selected_rows`.
   """
-  def selection(id, more?, texts) do
+  def selection(id, texts) do
     %{
       "id" => "#{id}-selection",
       "role" => "group",
       "aria-label" => texts.selected_rows,
-      "data-selection" => true,
-      "data-more" => more?,
-      "data-selected" => texts.selected,
-      "data-all" => texts.all_selected
+      "data-selection" => true
     }
   end
 
   @doc """
-  What the line above the grid says is selected, which the hook writes.
+  What the line above the grid says is selected: a live region, read out
+  when it changes.
   """
-  def selected(id), do: %{"id" => "#{id}-selected", "role" => "status", "phx-update" => "ignore"}
+  def selected(id), do: %{"id" => "#{id}-selected", "role" => "status"}
 
   @doc """
-  The buttons of the line, hidden while nothing is selected: the hook
-  shows them, so a patch leaves `hidden` alone.
+  The buttons of the line, there while something is selected (`shown?`).
   """
-  def selection_controls(id), do: shown_by_hook("#{id}-selection-controls")
+  def selection_controls(id, shown?),
+    do: %{"id" => "#{id}-selection-controls", "hidden" => not shown?}
 
   @doc """
-  "Select all" the records the filters match (`data-select-all`), shown by
-  the hook where there are more than the page.
+  "Select all" the records the filters match (`data-select-all`), there
+  once every row of the page is selected and there are more than the page
+  (`shown?`).
   """
-  def select_all(id),
-    do: Map.put(shown_by_hook("#{id}-select-all"), "data-select-all", true)
+  def select_all(id, shown?),
+    do: %{"id" => "#{id}-select-all", "hidden" => not shown?, "data-select-all" => true}
 
   @doc """
   "Clear selection" (`data-clear`).
@@ -1188,9 +1185,6 @@ defmodule AshDataTable.Attrs do
       "data-destructive" => action.type == :destroy
     }
   end
-
-  defp shown_by_hook(id),
-    do: %{"id" => id, "hidden" => true, "phx-mounted" => JS.ignore_attributes(["hidden"])}
 
   @doc """
   The popover with the whole text of a cell whose text is cut off, for the

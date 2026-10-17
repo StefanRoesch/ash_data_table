@@ -275,8 +275,12 @@ defmodule DemoWeb.Tables.TaskLabelsActionTest do
       assert text(html, "##{@labels}-actions-head") == nil
 
       # the line above its grid counts what is selected, and offers to clear it
-      assert %{buttons: ["Select all 3 that match", "Clear selection"], more?: false} =
+      assert %{buttons: ["Select all 3 that match", "Clear selection"]} =
                selection(html, @labels)
+
+      # all of the page selected, there is nothing more to offer: the page
+      # is all there is
+      refute selection(select_page(view, @labels), @labels).offered?
     end
 
     test "a choice puts the selected labels into the field, after those it held, and runs nothing",

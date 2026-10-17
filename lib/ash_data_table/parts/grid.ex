@@ -83,8 +83,13 @@ defmodule AshDataTable.Parts.Grid do
   #     filtered or sorted by its column;
   #   * `data-keeps-one` at the list, that one column has to stay (the
   #     table has no column of its label, which would);
-  #   * the texts, with `{n}`, `{details}` and `{column}` where the hook
-  #     puts something in.
+  #   * at the button, what it says of the hidden columns for every number
+  #     from 1 to the number of columns (`data-text-hidden`,
+  #     `data-text-filtered`, `data-text-sorted`, each a JSON list, the
+  #     text for 1 first), and the text they are put into, with `{details}`
+  #     where the hook puts them, a comma between;
+  #   * at a box, what is read out when its column is hidden and shown
+  #     again (`data-say-hidden`, `data-say-shown`).
   attr :id, :string, required: true
   attr :columns, :list, required: true
   attr :keeps_one?, :boolean, required: true
@@ -104,11 +109,9 @@ defmodule AshDataTable.Parts.Grid do
         data-columns-button
         data-text={@texts.columns}
         data-text-with={@texts.columns_with}
-        data-text-hidden={@texts.columns_hidden}
-        data-text-filtered={@texts.columns_filtered}
-        data-text-sorted={@texts.columns_sorted}
-        data-say-hidden={@texts.column_hidden}
-        data-say-shown={@texts.column_shown}
+        data-text-hidden={Attrs.held(@texts.columns_hidden)}
+        data-text-filtered={Attrs.held(@texts.columns_filtered)}
+        data-text-sorted={Attrs.held(@texts.columns_sorted)}
         class="btn btn-sm"
       >
         <span id={"#{@id}-columns-text"} phx-update="ignore">{@texts.columns}</span>
@@ -125,7 +128,10 @@ defmodule AshDataTable.Parts.Grid do
         class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow"
       >
         <label
-          :for={{column, flag} <- Enum.zip(@columns, @texts.flags)}
+          :for={
+            {column, flag, hidden, shown} <-
+              Enum.zip([@columns, @texts.flags, @texts.column_hidden, @texts.column_shown])
+          }
           id={"#{@id}-column-#{column.name}-entry"}
           class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
         >
@@ -134,7 +140,8 @@ defmodule AshDataTable.Parts.Grid do
             id={"#{@id}-column-#{column.name}"}
             checked
             data-head={"#{@id}-head-#{column.name}"}
-            data-label={column.label}
+            data-say-hidden={hidden}
+            data-say-shown={shown}
             data-filtered={is_map_key(@state.filters, column.name)}
             data-sorted={Attrs.aria_sort(@state.sort, column) != "none"}
             class={["peer checkbox checkbox-xs", Parts.Editors.box_edge()]}

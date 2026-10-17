@@ -417,7 +417,7 @@ defmodule AshDataTable.KitCase do
     event(view, "bulk_run", %{"action" => "destroy", "selection" => token})
 
     [
-      {selected, {:way, :selected}},
+      {selected, {:row_selected, :selected}},
       {asked, {:way, :selected}},
       {async(view), :selected}
     ]
@@ -533,8 +533,8 @@ defmodule AshDataTable.KitCase do
         need(page, "[id='kit-dialog'] button[value='confirm']", "its Confirm") ++
         need(
           page,
-          "[id='kit-selection'][data-selection][data-all][data-selected]",
-          "the selection line, with what it says"
+          "[id='kit-selection'][data-selection]",
+          "the selection line"
         ) ++
         need(page, "[id='kit-selected']", "what is selected") ++
         need(page, "[id='kit-selection-controls']", "the selection's buttons") ++
@@ -543,14 +543,14 @@ defmodule AshDataTable.KitCase do
         need(page, "[data-bulk='destroy']", "the action on the selection") ++
         need(
           page,
-          "[id='kit-columns-button'][data-columns-button][data-say-hidden][data-say-shown]",
-          "the Columns button"
+          "[id='kit-columns-button'][data-columns-button][data-text-hidden][data-text-filtered][data-text-sorted]",
+          "the Columns button, with what it says of the hidden columns"
         ) ++
         need(page, "[id='kit-columns'][data-columns-list]", "the Columns list") ++
         need(
           page,
-          "[id='kit-columns'] input[data-head][data-label]",
-          "a box of the Columns list"
+          "[id='kit-columns'] input[data-head][data-say-hidden][data-say-shown]",
+          "a box of the Columns list, with what is read out"
         ) ++
         need(page, "[id='kit-columns-control']", "its control") ++
         need(page, "[id='kit-columns-status']", "what it says") ++
@@ -699,12 +699,21 @@ defmodule AshDataTable.KitCase do
 
   # ---- what each state has besides ---------------------------------------
 
+  # one row selected: the line says so, with its buttons, and offers
+  # nothing for every record while the page is not all selected
+  defp special(page, {:row_selected, _state}, _key, _presentation) do
+    said = page |> LazyHTML.query("[id='kit-selected']") |> LazyHTML.text() |> String.trim()
+
+    if(said == "1 selected", do: [], else: ["what is selected, \"1 selected\" (#{said})"]) ++
+      need(page, "[id='kit-selection-controls']:not([hidden])", "the selection's buttons, shown") ++
+      need(page, "[id='kit-select-all'][hidden]", "Select all, hidden while the page is not")
+  end
+
   defp special(_page, {_way, _state}, _key, _presentation), do: []
 
   defp special(page, :rows, key, _presentation),
     do:
       record(page, key) ++
-        need(page, "[id='kit-selection'][data-more]", "that more records match than are shown") ++
         need(page, "[id='kit-pagination'][data-table='kit'][phx-hook]", "the pagination") ++
         need(page, "[id='kit-pagination'] [id='kit-next']", "Next")
 

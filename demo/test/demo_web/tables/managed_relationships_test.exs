@@ -195,8 +195,9 @@ defmodule DemoWeb.Tables.ManagedRelationshipsTest do
       assert text(html, "##{@skills}-range") == "1–2 of 5"
 
       # There is more than the page, and "all that match" is never on
-      # offer: it names no rows.
-      assert %{more?: false} = selection(html, @skills)
+      # offer, with the whole page selected too: it names no rows.
+      refute selection(select_page(view, @skills), @skills).offered?
+      html = render_async(view)
 
       assert Enum.sort(chosen_rows(html, @skills)) ==
                Enum.sort([skills["Alpha"].id, skills["Delta"].id])

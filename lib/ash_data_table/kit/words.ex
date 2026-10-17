@@ -169,15 +169,20 @@ defmodule AshDataTable.Kit.Words do
     ]
   end
 
-  defp words(:selection_line, %{page: page}) do
+  defp words(:selection_line, %{page: page, selected: count, all?: all?}) do
     total = page && page.total
 
     [
       select_all: if(total, do: t(:select_all, count: total), else: t(:select_all_uncounted)),
       selected_rows: t(:selected_rows),
-      selected: t(:selected, count: "{n}"),
-      all_selected:
-        if(total, do: t(:all_selected, count: total), else: t(:all_selected_uncounted)),
+      # what is selected, said in the live region: nil for nothing
+      selected:
+        cond do
+          all? and total -> t(:all_selected, count: total)
+          all? -> t(:all_selected_uncounted)
+          count > 0 -> t(:selected, count: count)
+          true -> nil
+        end,
       clear_selection: t(:clear_selection),
       clear_filters: t(:clear_filters),
       changed_records: t(:changed_records),
@@ -185,15 +190,20 @@ defmodule AshDataTable.Kit.Words do
     ]
   end
 
+  # What the button says of the hidden columns is said here for every
+  # number the browser can find, from 1 to the number of columns: the
+  # browser, which alone knows what is hidden, takes the one it needs.
   defp words(:columns, %{columns: columns, state: state}) do
+    counts = 1..length(columns)//1
+
     [
       columns: t(:columns),
       columns_with: t(:columns_with, details: "{details}"),
-      columns_hidden: t(:columns_hidden, count: "{n}"),
-      columns_filtered: t(:columns_filtered, count: "{n}"),
-      columns_sorted: t(:columns_sorted, count: "{n}"),
-      column_hidden: t(:column_hidden, column: "{column}"),
-      column_shown: t(:column_shown, column: "{column}"),
+      columns_hidden: Enum.map(counts, &t(:columns_hidden, count: &1)),
+      columns_filtered: Enum.map(counts, &t(:columns_filtered, count: &1)),
+      columns_sorted: Enum.map(counts, &t(:columns_sorted, count: &1)),
+      column_hidden: Enum.map(columns, &t(:column_hidden, column: &1.label)),
+      column_shown: Enum.map(columns, &t(:column_shown, column: &1.label)),
       flags: Enum.map(columns, &flag(state, &1))
     ]
   end

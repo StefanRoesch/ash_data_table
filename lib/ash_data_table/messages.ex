@@ -53,7 +53,8 @@ defmodule AshDataTable.Messages do
     range_from: {[], dgettext_noop("ash_data_table", "from")},
     range_to: {[], dgettext_noop("ash_data_table", "to")},
     # what the button of a filter for several values says of more than one
-    values_chosen: {[:count], dgettext_noop("ash_data_table", "%{count} selected")},
+    values_chosen:
+      {[:count], dngettext_noop("ash_data_table", "1 selected", "%{count} selected")},
     any: {[], dgettext_noop("ash_data_table", "Any")},
     filter: {[:column], dgettext_noop("ash_data_table", "Filter %{column}")},
     filter_operator: {[:column], dgettext_noop("ash_data_table", "How to filter %{column}")},
@@ -127,9 +128,8 @@ defmodule AshDataTable.Messages do
     select_page: {[], dgettext_noop("ash_data_table", "Select all rows of this page")},
     # names the line above the grid that says what is selected
     selected_rows: {[], dgettext_noop("ash_data_table", "Selected rows")},
-    # on that line: how many rows are selected. The count is put in by the
-    # table's hook, which is why it has no plural forms.
-    selected: {[:count], dgettext_noop("ash_data_table", "%{count} selected")},
+    # on that line: how many rows are selected
+    selected: {[:count], dngettext_noop("ash_data_table", "1 selected", "%{count} selected")},
     # every record the filters match is selected, on this page and on the
     # others; without a number where the read action does not count
     all_selected:
@@ -251,13 +251,15 @@ defmodule AshDataTable.Messages do
     # Hiding columns. "Columns" is the button above the grid and the name of
     # its list. With columns hidden the button says how many, and how many of
     # those the rows are filtered and sorted by: "Columns (2 hidden, 1
-    # filtered)". The parts are put together in the browser, which alone knows
-    # what is hidden, with a comma between them.
+    # filtered)". Each part is said for every number it can be, up to the
+    # number of columns, and the browser, which alone knows what is hidden,
+    # takes the ones it needs and puts them together with a comma between.
     columns: {[], dgettext_noop("ash_data_table", "Columns")},
     columns_with: {[:details], dgettext_noop("ash_data_table", "Columns (%{details})")},
-    columns_hidden: {[:count], dgettext_noop("ash_data_table", "%{count} hidden")},
-    columns_filtered: {[:count], dgettext_noop("ash_data_table", "%{count} filtered")},
-    columns_sorted: {[:count], dgettext_noop("ash_data_table", "%{count} sorted")},
+    columns_hidden: {[:count], dngettext_noop("ash_data_table", "1 hidden", "%{count} hidden")},
+    columns_filtered:
+      {[:count], dngettext_noop("ash_data_table", "1 filtered", "%{count} filtered")},
+    columns_sorted: {[:count], dngettext_noop("ash_data_table", "1 sorted", "%{count} sorted")},
     # at the box of a hidden column in the list, in brackets after its name
     column_filtered: {[], dgettext_noop("ash_data_table", "filtered")},
     column_sorted: {[], dgettext_noop("ash_data_table", "sorted")},

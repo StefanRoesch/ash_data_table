@@ -270,10 +270,6 @@ msgid "%{action}: all records that match"
 msgstr ""
 
 #, elixir-autogen, elixir-format
-msgid "%{count} selected"
-msgstr ""
-
-#, elixir-autogen, elixir-format
 msgid "%{message} (%{count})"
 msgstr ""
 
@@ -446,18 +442,6 @@ msgid "%{column} shown"
 msgstr ""
 
 #, elixir-autogen, elixir-format
-msgid "%{count} filtered"
-msgstr ""
-
-#, elixir-autogen, elixir-format
-msgid "%{count} hidden"
-msgstr ""
-
-#, elixir-autogen, elixir-format
-msgid "%{count} sorted"
-msgstr ""
-
-#, elixir-autogen, elixir-format
 msgid "Columns"
 msgstr ""
 
@@ -544,3 +528,27 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Nothing was run: the selection changed after the question was asked."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "1 filtered"
+msgid_plural "%{count} filtered"
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "1 hidden"
+msgid_plural "%{count} hidden"
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "1 selected"
+msgid_plural "%{count} selected"
+msgstr[0] ""
+msgstr[1] ""
+
+#, elixir-autogen, elixir-format
+msgid "1 sorted"
+msgid_plural "%{count} sorted"
+msgstr[0] ""
+msgstr[1] ""

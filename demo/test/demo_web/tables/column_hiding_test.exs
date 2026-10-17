@@ -71,17 +71,24 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
                ["task-columns-control"]
     end
 
-    test "carries the texts the browser puts numbers into", %{conn: conn} do
+    test "carries what it says of the hidden columns, for every number of them, in plural forms",
+         %{conn: conn} do
       {:ok, _view, html} = live(conn, "/tasks")
       data = &List.first(attribute(html, "#task-columns-button", "data-#{&1}"))
+      boxes = length(attribute(html, "#task-columns input", "id"))
 
       assert data.("text") == "Columns"
       assert data.("text-with") == "Columns ({details})"
-      assert data.("text-hidden") == "{n} hidden"
-      assert data.("text-filtered") == "{n} filtered"
-      assert data.("text-sorted") == "{n} sorted"
-      assert data.("say-hidden") == "{column} hidden"
-      assert data.("say-shown") == "{column} shown"
+
+      for {name, word} <- [{"hidden", "hidden"}, {"filtered", "filtered"}, {"sorted", "sorted"}] do
+        said = Jason.decode!(data.("text-#{name}"))
+        assert length(said) == boxes
+        assert Enum.take(said, 2) == ["1 #{word}", "2 #{word}"]
+      end
+
+      # what is read out of a column is said at its box, with its name
+      assert attribute(html, "#task-column-status", "data-say-hidden") == ["State hidden"]
+      assert attribute(html, "#task-column-status", "data-say-shown") == ["State shown"]
     end
 
     test "has a live region of its own beside it, which the server leaves empty", %{conn: conn} do
@@ -268,11 +275,20 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
     assert attribute(html, "#task-columns", "aria-label") == ["Spalten"]
     data = &List.first(attribute(html, "#task-columns-button", "data-#{&1}"))
     assert data.("text-with") == "Spalten ({details})"
-    assert data.("text-hidden") == "{n} ausgeblendet"
-    assert data.("text-filtered") == "{n} gefiltert"
-    assert data.("text-sorted") == "{n} sortiert"
-    assert data.("say-hidden") == "{column} ausgeblendet"
-    assert data.("say-shown") == "{column} eingeblendet"
+
+    assert data.("text-hidden") |> Jason.decode!() |> Enum.take(2) == [
+             "1 ausgeblendet",
+             "2 ausgeblendet"
+           ]
+
+    assert data.("text-filtered") |> Jason.decode!() |> Enum.take(2) == [
+             "1 gefiltert",
+             "2 gefiltert"
+           ]
+
+    assert data.("text-sorted") |> Jason.decode!() |> Enum.take(2) == ["1 sortiert", "2 sortiert"]
+    assert attribute(html, "#task-column-status", "data-say-hidden") == ["Status ausgeblendet"]
+    assert attribute(html, "#task-column-status", "data-say-shown") == ["Status eingeblendet"]
 
     html = filter(view, "task", "status", v: "todo")
     view |> element("#task-head-status") |> render_click()

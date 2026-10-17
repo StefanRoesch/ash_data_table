@@ -168,10 +168,8 @@ export default {
     if (box.checked) this.hidden.delete(box.dataset.head)
     else this.hidden.add(box.dataset.head)
     this.applyColumns()
-    const button = this.part("columns-button")
     const status = this.part("columns-status")
-    const text = this.hidden.has(box.dataset.head) ? button.dataset.sayHidden : button.dataset.sayShown
-    if (status) status.textContent = text.replace("{column}", box.dataset.label)
+    if (status) status.textContent = this.hidden.has(box.dataset.head) ? box.dataset.sayHidden : box.dataset.sayShown
   },
 
   // What is hidden has changed, or may have: the list, the rules,
@@ -221,10 +219,13 @@ export default {
       if (box.dataset.filtered !== undefined) counts.filtered++
       if (box.dataset.sorted !== undefined) counts.sorted++
     }
+    // each said for every number it can be (the server's plural forms):
+    // the one for this number
+    const said = (texts, count) => { try { return JSON.parse(texts)[count - 1] || "" } catch (_error) { return "" } }
     const {text, textWith, textHidden, textFiltered, textSorted} = button.dataset
     const details = [[counts.hidden, textHidden], [counts.filtered, textFiltered], [counts.sorted, textSorted]]
       .filter(([count]) => count > 0)
-      .map(([count, words]) => words.replace("{n}", String(count)))
+      .map(([count, texts]) => said(texts, count))
     const says = details.length > 0 ? textWith.replace("{details}", details.join(", ")) : text
     const shown = this.part("columns-text")
     if (shown && shown.textContent !== says) shown.textContent = says

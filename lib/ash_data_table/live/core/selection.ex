@@ -1,7 +1,7 @@
 defmodule AshDataTable.Live.Core.Selection do
   @moduledoc false
   # What is selected (stage 6 D10, RQ1): the entry holds it, the hook paints
-  # it. The hook says what a person selects on every change (`select`); the
+  # the rows, and the line above the grid is drawn from it (`whole_page?/1`). The hook says what a person selects on every change (`select`); the
   # server decides when a selection ends or narrows, and tells the hook with
   # `ash_data_table:select` (`{table, all, rows}`, each row `[key, named]`,
   # as the hook keeps it):
@@ -149,6 +149,23 @@ defmodule AshDataTable.Live.Core.Selection do
     |> :crypto.hash(:erlang.term_to_binary({all?, Enum.sort(rows), under}))
     |> binary_part(0, 12)
     |> Base.url_encode64(padding: false)
+  end
+
+  @doc """
+  Whether every row of the page is selected (or every record that
+  matches): the line above the grid offers "all that match" then. A row
+  is named as the hook names it (`select`), by what its `data-key` says,
+  else by the key in its DOM id.
+  """
+  def whole_page?(%{all?: true}), do: true
+  def whole_page?(%{rows: rows}) when map_size(rows) == 0, do: false
+
+  def whole_page?(%{rows: rows, selected: selected, model: model}) do
+    selected = MapSet.new(selected)
+
+    Enum.all?(rows, fn {key, row} ->
+      MapSet.member?(selected, Reading.names(model, row.pk, key) || key)
+    end)
   end
 
   @doc "A primary key as the hook names its row: what `select` sends for it."

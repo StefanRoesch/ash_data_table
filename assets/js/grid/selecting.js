@@ -47,7 +47,7 @@ export default {
   // where that is its primary key, else what the row says itself.
   named(body) { return body.dataset.key !== undefined ? LISTED(body.dataset.key) : null },
 
-  // The line above the grid, and its parts.
+  // The line above the grid, and a part of the table by its id.
   line() { return document.getElementById(`${this.id}-selection`) },
   part(name) { return document.getElementById(`${this.id}-${name}`) },
 
@@ -182,14 +182,13 @@ export default {
   },
 
   // Says of every row whether it is selected, on the row and in
-  // its box, and fills in the line above the grid. After every
-  // change of the selection, and after every patch: the server
-  // sends rows that say nothing of it.
+  // its box. After every change of the selection, and after every
+  // patch: the server sends rows that say nothing of it. The line
+  // above the grid is the server's: it draws it from what it is told.
   paint() {
     const mode = this.selects()
     if (!mode) return
     const selection = this.selection
-    const line = this.line()
     const rows = this.records()
     // A table to choose several records from starts with the rows
     // selected of the records that are chosen now, as the server
@@ -236,29 +235,11 @@ export default {
       const some = onPage > 0 && !every
       if (page.indeterminate !== some) page.indeterminate = some
     }
-    if (!line) return
-    const count = selection.all ? null : selection.keys.size
-    const text = selection.all ? line.dataset.all : (count > 0 ? line.dataset.selected.replace("{n}", String(count)) : "")
-    // a live region: it is read out when its text changes
-    const status = this.part("selected")
-    if (status && status.textContent !== text) status.textContent = text
+    // The buttons of the line go with the selection, as the server
+    // draws it: where one of them had the focus, it goes on to the grid.
     const controls = this.part("selection-controls")
-    const any = selection.all || count > 0
-    // "all that match" is offered once the whole page is selected
-    // and there is more than the page
-    const offer = this.part("select-all")
-    const offered = any && !selection.all && every && line.dataset.more !== undefined
-    if (offer && offer.hidden === offered) {
-      const focused = offer === document.activeElement
-      offer.hidden = !offered
-      if (focused) this.part("clear-selection").focus({preventScroll: true})
-    }
-    if (controls && controls.hidden === any) {
-      // the buttons go with the selection: focus is sent on to the grid
-      const focused = controls.contains(document.activeElement)
-      controls.hidden = !any
-      if (focused) this.toTabStop()
-    }
+    const left = document.activeElement === document.body || (controls && controls.contains(document.activeElement))
+    if (controls && controls.hidden && controls.contains(this.lineFocus) && left) this.toTabStop()
   },
 
   // To the cell that is the tab stop of the tree of grids.
@@ -276,9 +257,16 @@ export default {
     if (!line || line !== this.line()) return
     const button = e.target.closest("button")
     if (!button) return
-    if (is(button, SELECT_ALL)) this.select(new Map(), true)
-    else if (is(button, CLEAR)) this.select(new Map(), false)
-    else if (is(button, BULK)) this.bulk(button)
+    // "Select all that match" goes as every record is selected, and
+    // focus goes on to "Clear selection"; that one goes with what was
+    // selected, and focus goes on to the grid
+    if (is(button, SELECT_ALL)) {
+      this.select(new Map(), true)
+      this.part("clear-selection").focus({preventScroll: true})
+    } else if (is(button, CLEAR)) {
+      this.select(new Map(), false)
+      this.toTabStop()
+    } else if (is(button, BULK)) this.bulk(button)
   },
 
   // Uses the button of an action on the selected rows. The server

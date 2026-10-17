@@ -577,8 +577,11 @@ defmodule DemoWeb.TablePage do
   @doc """
   The line above the grid of the table `id` as the server renders it: what
   its buttons say, left to right, the one that selects all that match
-  first; whether that one can be offered (`more?`); and the two texts the
-  hook shows the count with. Nil for a table whose rows are not selected.
+  first; what it says is selected (`selected`, "" for nothing); whether its
+  buttons are there (`controls?`, while something is selected) and the one
+  that selects all that match (`offered?`, once the whole page is
+  selected and there is more). Nil for a table whose rows are not
+  selected.
   """
   def selection(html, id \\ "task") do
     line = "[id='#{id}-selection']"
@@ -593,11 +596,36 @@ defmodule DemoWeb.TablePage do
             html
             |> query("#{line} button")
             |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())),
-          more?: attribute(html, line, "data-more") != [],
-          selected: List.first(attribute(html, line, "data-selected")),
-          all: List.first(attribute(html, line, "data-all"))
+          selected: text(html, "[id='#{id}-selected']") || "",
+          controls?: attribute(html, "[id='#{id}-selection-controls']", "hidden") == [],
+          offered?: attribute(html, "[id='#{id}-select-all']", "hidden") == []
         }
     end
+  end
+
+  @doc """
+  The rows of the page of the table `id`, as its hook names them to the
+  server: what a row says in `data-key`, else the key in its id.
+  """
+  def page_rows(html, id \\ "task") do
+    prefix = "#{id}-row-"
+
+    for group <-
+          query(html, "[id='#{id}-table'] > [role=rowgroup][id^='#{prefix}']:not([data-detail])") do
+      case LazyHTML.attribute(group, "data-key") do
+        [named] -> Jason.decode!(named)
+        [] -> group |> LazyHTML.attribute("id") |> hd() |> String.replace_prefix(prefix, "")
+      end
+    end
+  end
+
+  @doc """
+  Selects every row of the page of the table `id`, as its hook does for the
+  box of the page; the page as it is then.
+  """
+  def select_page(view, id \\ "task") do
+    select(view, id, page_rows(Phoenix.LiveViewTest.render(view), id))
+    Phoenix.LiveViewTest.render(view)
   end
 
   @doc """

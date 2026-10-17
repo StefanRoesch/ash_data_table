@@ -257,10 +257,12 @@ defmodule DemoWeb.Tables.PageSizeTest do
     test "all that match are all there are, whatever the size", %{conn: conn} do
       {:ok, view, _html} = live(conn, "/tasks")
 
-      html = page_size(view, "task", 10)
+      page_size(view, "task", 10)
 
-      assert %{more?: true, all: "All 60 that match are selected"} = selection(html)
-      assert "Select all 60 that match" in selection(html).buttons
+      assert %{offered?: true, buttons: ["Select all 60 that match" | _]} =
+               selection(select_page(view))
+
+      assert selection(select(view, "task", :all)).selected == "All 60 that match are selected"
     end
 
     test "in German the menu is labelled in German", %{conn: conn, world: world} do

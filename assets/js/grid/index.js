@@ -36,8 +36,8 @@
 // that key, or what the row says in `data-key`. A selection
 // outlives its page and the sort, and the server gives it up when
 // the filters change. The line
-// above the grid (`ID-selection`) is rendered by the server and
-// filled in here. Others learn of a selection from `selected()`
+// above the grid (`ID-selection`) is the server's, with the count
+// and its buttons. Others learn of a selection from `selected()`
 // and from the event `ash_data_table:selection`, which this element
 // sends, with the same, whenever it changes.
 //
@@ -169,6 +169,14 @@ const core = {
     this.root = document.getElementById(this.id)
     this.onLine = e => this.onLineClick(e)
     if (this.root) this.root.addEventListener("click", this.onLine)
+    // the button of the line the focus was in last, for when the
+    // server takes the buttons away with the selection (`paint`)
+    this.lineFocus = null
+    this.onLineFocus = e => {
+      const line = this.line()
+      if (line && line.contains(e.target)) this.lineFocus = e.target
+    }
+    if (this.root) this.root.addEventListener("focusin", this.onLineFocus)
     // so is the argument line: Enter in one of its inputs applies
     // what the line holds now, as it does in a filter. A form of
     // several inputs without a button is not sent by Enter itself.
@@ -333,6 +341,7 @@ const core = {
     window.removeEventListener("scroll", this.onScroll, true)
     window.removeEventListener("resize", this.onScroll)
     if (this.root) this.root.removeEventListener("click", this.onLine)
+    if (this.root) this.root.removeEventListener("focusin", this.onLineFocus)
     if (this.root) this.root.removeEventListener("keydown", this.onArgument)
   },
 }

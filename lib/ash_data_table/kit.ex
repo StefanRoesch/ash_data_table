@@ -117,18 +117,25 @@ defmodule AshDataTable.Kit do
       draws an `argument` per argument.
     * `argument` - one argument's input (`data-argument`): `id`,
       `argument`, `name`, `named`, `value`, `errors`.
-    * `selection_line` - what is selected (`ID-selection`, `data-selection`
-      with `data-all`, `data-selected`, `data-more`; `ID-selected`,
-      `ID-selection-controls`, `ID-select-all`, `ID-clear-selection`, a
-      `data-bulk` button per action), the notice of changes, "Clear
-      filters", and the `columns` list: `id`, `bulk`, `choose`, `model`,
-      `notice?`, `page`, `row_count`, `running` (the `Model.Action` running
-      on the selection now, nil for none; never who started it),
-      `selecting`, `state`, `nested?`, `myself`.
-    * `columns` - "Columns" (`ID-columns-button` with `data-say-hidden`,
-      `data-say-shown`; `ID-columns`, `data-columns-list`, a box per column
-      with `data-head`, `data-label`, `data-filtered`, `data-sorted`;
-      `data-keeps-one`): `id`, `columns`, `keeps_one?`, `state`, `class`.
+    * `selection_line` - what is selected (`ID-selection`, `data-selection`;
+      `ID-selected`, the live region with `texts.selected`;
+      `ID-selection-controls`, `hidden` while nothing is selected;
+      `ID-select-all`, `hidden` but where `whole_page?` and the filters
+      match more than the page; `ID-clear-selection`, a `data-bulk` button
+      per action), the notice of changes, "Clear filters", and the
+      `columns` list: `id`, `bulk`, `choose`, `model`, `notice?`, `page`,
+      `row_count`, `running` (the `Model.Action` running on the selection
+      now, nil for none; never who started it), `selecting`, `selected`
+      (how many rows are selected), `all?` (every record that matches),
+      `whole_page?` (every row of the page is selected), `state`,
+      `nested?`, `myself`.
+    * `columns` - "Columns" (`ID-columns-button` with `data-text`,
+      `data-text-with`, and `data-text-hidden`, `data-text-filtered`,
+      `data-text-sorted`, each a JSON list of the texts for 1 to the
+      number of columns; `ID-columns`, `data-columns-list`, a box per column
+      with `data-head`, `data-say-hidden`, `data-say-shown`,
+      `data-filtered`, `data-sorted`; `data-keeps-one`): `id`, `columns`,
+      `keeps_one?`, `state`, `class`.
     * `status` - the live region `ID-status` and a run's result
       (`ID-result`): `id`, `announcement`, `announcements`, `result`.
     * `grid` - the grid's hook's element (`ID-grid`, `data-ash-data-table`,
@@ -287,12 +294,14 @@ defmodule AshDataTable.Kit do
       `filter_to`, `clear_filter`, `invalid_filter`, `chosen` (what a
       filter of several values says is chosen);
     * `selection_line` - `select_all`, `clear_selection`, `clear_filters`,
-      `changed_records`, `read_again`, and for `Attrs.selection/3`
-      `selected_rows`, `selected`, `all_selected`;
-    * `columns` - `columns`, `columns_with`, `columns_hidden`,
-      `columns_filtered`, `columns_sorted`, `column_hidden`,
-      `column_shown` (with `{n}`, `{details}` and `{column}` where the hook
-      puts in what it knows), `flags` (one per column, nil for none);
+      `changed_records`, `read_again`, `selected_rows` (for
+      `Attrs.selection/2`), `selected` (what is selected, in its plural
+      form; nil for nothing);
+    * `columns` - `columns`, `columns_with` (with `{details}` where the
+      hook puts the parts it takes), `columns_hidden`, `columns_filtered`,
+      `columns_sorted` (each a list: the text for 1, 2, … up to the number
+      of `columns`), `column_hidden`, `column_shown` and `flags` (one per
+      column; a flag nil for none);
     * `status` - `announcement`, `summary` and `failures` of a run's result;
     * `grid` - `select_page`, `select_row`, `related_records`, `actions`;
     * `row` - `select_row`, `related_records`;

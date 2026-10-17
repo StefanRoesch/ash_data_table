@@ -13,6 +13,7 @@ defmodule AshDataTable.Live.Drawing do
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Live.Core.Files
+  alias AshDataTable.Live.Core.Selection
   alias AshDataTable.Live.Core.Url
   alias AshDataTable.Live.Registry
   alias AshDataTable.Parts
@@ -198,9 +199,24 @@ defmodule AshDataTable.Live.Drawing do
         row_count={@entry.row_count}
         running={@entry.running && @entry.running.action}
         selecting={@entry.selecting}
+        selected={length(@entry.selected)}
+        all?={@entry.all?}
+        whole_page?={Selection.whole_page?(@entry)}
         state={@entry.state}
-        texts={Words.texts(:selection_line, %{page: @entry.page})}
-        messages={Words.messages(:selection_line, %{page: @entry.page})}
+        texts={
+          Words.texts(:selection_line, %{
+            page: @entry.page,
+            selected: length(@entry.selected),
+            all?: @entry.all?
+          })
+        }
+        messages={
+          Words.messages(:selection_line, %{
+            page: @entry.page,
+            selected: length(@entry.selected),
+            all?: @entry.all?
+          })
+        }
       />
       <Kit.part
         part={:status}

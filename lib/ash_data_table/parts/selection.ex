@@ -17,16 +17,12 @@ defmodule AshDataTable.Parts.Selection do
   # that clears the selection, and a button per action that runs on the
   # selected rows.
   #
-  # Which rows are selected the server holds, and the hook paints: what
-  # depends on it is the hook's to put in: the text of the count, which is a
-  # live region and is read out when it changes, and whether the controls
-  # and the button for "all that match" are shown. The server renders them
-  # hidden and leaves both alone afterwards. What it says for the hook:
-  #
-  #   * `data-more` is there when the filters match more records than the
-  #     page shows, which is when "all that match" is offered;
-  #   * `data-selected` and `data-all` are the two texts of the count, the
-  #     first with `{n}` where the number goes.
+  # Which rows are selected the server holds, and the line is drawn from
+  # it: the count, said with its plural form in a live region, which is read
+  # out when it changes; the buttons, there while something is selected;
+  # "all that match", there once every row of the page is selected and the
+  # filters match more records than the page shows. The hook paints the
+  # rows and their boxes only.
   #
   # The buttons are ordinary tab stops while they are shown, in a nested
   # table too: they are there only while rows are selected, and have to be
@@ -35,13 +31,14 @@ defmodule AshDataTable.Parts.Selection do
   attr :page, :any, required: true
   attr :row_count, :integer, required: true
   attr :choose?, :boolean, default: false
+  attr :selected, :integer, required: true
+  attr :all?, :boolean, required: true
+  attr :whole_page?, :boolean, required: true
   attr :bulk, :list, required: true
   attr :running?, :boolean, required: true
   attr :texts, :map, required: true
 
   defp selection(assigns) do
-    total = assigns.page && assigns.page.total
-
     # In a table to choose several records from, what is selected is what
     # is chosen: it is kept while the person filters to find a record, and
     # is the rows that were selected one by one, never "all that match",
@@ -54,17 +51,22 @@ defmodule AshDataTable.Parts.Selection do
         %{total: total} -> total > assigns.row_count
       end
 
+    any? = assigns.all? or assigns.selected > 0
+
     assigns =
-      assign(assigns, total: total, more?: more?)
+      assign(assigns,
+        any?: any?,
+        offered?: any? and not assigns.all? and assigns.whole_page? and more?
+      )
 
     ~H"""
     <div
-      {Attrs.selection(@id, @more?, @texts)}
+      {Attrs.selection(@id, @texts)}
       class="flex flex-wrap items-center gap-2"
     >
-      <p {Attrs.selected(@id)} class="text-sm"></p>
-      <div {Attrs.selection_controls(@id)} class="flex flex-wrap items-center gap-2">
-        <button type="button" {Attrs.select_all(@id)} class="btn btn-sm">
+      <p {Attrs.selected(@id)} class="text-sm">{@texts.selected}</p>
+      <div {Attrs.selection_controls(@id, @any?)} class="flex flex-wrap items-center gap-2">
+        <button type="button" {Attrs.select_all(@id, @offered?)} class="btn btn-sm">
           {@texts.select_all}
         </button>
         <button type="button" {Attrs.clear_selection(@id)} class="btn btn-sm">
@@ -97,6 +99,9 @@ defmodule AshDataTable.Parts.Selection do
   attr :row_count, :any, required: true
   attr :running, :any, required: true
   attr :selecting, :any, required: true
+  attr :selected, :integer, required: true
+  attr :all?, :boolean, required: true
+  attr :whole_page?, :boolean, required: true
   attr :state, :any, required: true
   attr :texts, :map, required: true
 
@@ -113,6 +118,9 @@ defmodule AshDataTable.Parts.Selection do
         page={@page}
         row_count={@row_count}
         choose?={not is_nil(@choose)}
+        selected={@selected}
+        all?={@all?}
+        whole_page?={@whole_page?}
         bulk={@bulk}
         running?={not is_nil(@running)}
         texts={@texts}
