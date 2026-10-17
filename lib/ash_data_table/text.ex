@@ -30,10 +30,6 @@ defmodule AshDataTable.Text do
   # not in it is refused, so that the list says every text a table shows
   @type key :: AshDataTable.Messages.key()
 
-  @plurals for {key, %{msgid_plural: plural}} <- AshDataTable.Messages.all(),
-               plural,
-               do: key
-
   @typedoc """
   A message, as the table's code passes it on until it is said: one of the
   data layer's (`t:AshDataTable.Errors.message/0`), or a text that is words
@@ -44,12 +40,18 @@ defmodule AshDataTable.Text do
 
   @doc "What a message says, in the locale of the process that asks."
   @spec say(message) :: String.t()
-  def say({:text, key, bindings}) when key in @plurals do
-    {count, bindings} = Keyword.pop!(bindings, :count)
-    n(key, count, said(bindings))
+  def say({:text, key, bindings}) do
+    case AshDataTable.Messages.all() do
+      # a key with a form per number has `count` among its bindings
+      %{^key => %{msgid_plural: plural}} when is_binary(plural) ->
+        {count, bindings} = Keyword.pop!(bindings, :count)
+        n(key, count, said(bindings))
+
+      _one_form ->
+        t(key, said(bindings))
+    end
   end
 
-  def say({:text, key, bindings}), do: t(key, said(bindings))
   def say({:ash, message, vars}), do: error({message, vars})
   def say({:label, text}), do: label(text)
   def say({:join, separator, messages}), do: Enum.map_join(messages, separator, &say/1)
