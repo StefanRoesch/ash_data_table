@@ -42,14 +42,14 @@ export function liveView(hook) {
   return {
     push(event, payload) {
       const name = named(hook.el, event)
-      // LiveView locks the element of the hook that pushes an event while
-      // the event is on its way: what the server sends for it meanwhile is
-      // kept aside until the answer. That is observed in LiveView 1.2.12,
-      // not documented: the guides "Syncing changes and optimistic UIs" and
-      // "JavaScript interoperability" of 1.2.12 say only that an element
-      // that pushes gets a `-loading` class until the answer, nothing of a
-      // hook's push or of patches kept aside. `portals.spec.ts` guards it:
-      // it fails if the grid is locked. A grid holds the cells nested tables
+      // LiveView keeps aside what the server sends for an element while an
+      // event of it is in flight, until the answer: documented for an
+      // input, a button and a form (guide "Syncing changes and optimistic
+      // UIs" of 1.2.12: "LiveView tracks how many events are currently in
+      // flight in a given input/button/form"). That a hook's push locks the
+      // hook's own element the same way is observed in 1.2.12
+      // (`pushHookEvent`, `lock: true`), not documented. `portals.spec.ts`
+      // guards it: it fails if the grid is locked. A grid holds the cells nested tables
       // are drawn into, and a nested table is drawn elsewhere and moved
       // into its cell (`<.portal>`): kept aside, the cell would not be
       // there when its table is moved, and LiveView would fail. So a
