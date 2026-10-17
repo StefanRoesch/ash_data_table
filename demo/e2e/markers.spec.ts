@@ -230,6 +230,44 @@ test.describe("a column that asks before a save", () => {
   })
 })
 
+test.describe("the question of an action panel", () => {
+  test("is asked in the table's question dialog, and the panel runs once it is confirmed", async ({
+    page,
+    pushed,
+  }) => {
+    await page.goto("/e2e/markers?panel=1")
+    await page.locator('[id="kit-panel"]').getByRole("button", { name: "Run" }).click()
+    const dialog = page.locator('[id="kit-dialog"]')
+    await expect(page.locator('[id="kit-dialog-question"]')).toHaveText("Stamp this part?")
+    await dialog.getByRole("button", { name: "Confirm" }).click()
+    await expect.poll(() => pushed.count("panel_submit")).toBe(1)
+  })
+
+  test("runs nothing where the panel finds no grid to ask in, and the development check says so", async ({
+    page,
+    pushed,
+    consoleErrors,
+  }) => {
+    const said: string[] = []
+    page.on("console", (message) => {
+      if (message.type() === "error") said.push(message.text())
+    })
+    consoleErrors.allow(/^ash_data_table: the panel kit-panel finds no grid of its table/)
+    await page.goto("/e2e/markers?panel=1&missing=grid")
+    await page.evaluate(() => (window as any).liveSocket.enableDebug())
+    await page.reload()
+    const panel = page.locator('[id="kit-panel"]')
+    await expect(panel).toBeVisible()
+    await panel.getByRole("button", { name: "Run" }).click()
+    await expect
+      .poll(() => said.some((text) => text.startsWith("ash_data_table: the panel kit-panel finds no grid of its table")))
+      .toBe(true)
+    // the push of a submit would be out by now: the error is said in the same handler
+    expect(await pushed.count("panel_submit")).toBe(0)
+    await expect(page.locator('[id="kit-dialog"]')).toBeHidden()
+  })
+})
+
 test.describe("the development check of the hooks", () => {
   /** Turns LiveView's client debug on for the page, and loads it again. */
   async function debugging(page: Page, path: string): Promise<void> {

@@ -147,9 +147,15 @@ export default {
       }
       const question = dialog.dataset.question
       const same = this.initial !== null && this.snapshot() === this.initial
-      if (!question || !this.grid || this.confirmed || same) { this.confirmed = false; return }
+      if (!question || this.confirmed || same) { this.confirmed = false; return }
       e.preventDefault()
       e.stopPropagation()
+      // without the grid there is no one to ask: nothing runs that would
+      // be asked about, as the grid's own question does without its dialog
+      if (!this.grid) {
+        if (this.transport.debug()) console.error(`ash_data_table: the panel ${dialog.id} finds no grid of its table (an element with the grid's hook and data-table="${dialog.getAttribute(OF)}"): nothing runs of what it would ask "${question}"`)
+        return
+      }
       const submitter = e.submitter
       this.grid.ask(question, dialog.matches(DESTRUCTIVE), dialog).then(confirmed => {
         if (confirmed !== true || !dialog.isConnected) return

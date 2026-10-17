@@ -20,7 +20,9 @@ defmodule DemoWeb.E2E.MarkersLive do
   `?missing=colindex` draws one cell without its place (`aria-colindex`),
   for the development check of the hook (D13). `?asks=1` has the column
   "Name" ask before a save, in the question dialog (`kit-dialog`), which
-  `?missing=dialog` leaves out: then nothing is saved. Compiled and routed in the
+  `?missing=dialog` leaves out: then nothing is saved. `?panel=1` draws an
+  action panel in the page whose action asks before it runs (`kit-panel`);
+  with `?missing=grid` it finds no grid of its table, and nothing runs. Compiled and routed in the
   e2e environment only. A whole table drawn with the demo's kit of `div`s
   is `/e2e/kit` (`DemoWeb.E2E.KitLive`, stage 7b); this page stays for what
   a kit can leave out, which the development check names.
@@ -52,6 +54,7 @@ defmodule DemoWeb.E2E.MarkersLive do
        parts: @parts,
        missing: params["missing"],
        asks: params["asks"] == "1",
+       panel: params["panel"] == "1",
        open: true
      )}
   end
@@ -346,6 +349,24 @@ defmodule DemoWeb.E2E.MarkersLive do
           aria-hidden="true"
           data-whole
         >
+        </div>
+        <%!-- an action panel in the page whose action asks before it
+        runs; with `?missing=grid` it names a table whose grid is not on
+        the page, so there is nobody to ask --%>
+        <div
+          :if={@panel}
+          id="kit-panel"
+          role="region"
+          aria-label="Stamp"
+          phx-hook="AshDataTable.Panel"
+          data-table={if @missing == "grid", do: "elsewhere", else: "kit"}
+          data-presentation="inline"
+          data-question="Stamp this part?"
+        >
+          <form id="kit-panel-form" phx-submit="ash_data_table:kit:panel_submit" novalidate>
+            <input type="text" name="form[note]" aria-label="Note" />
+            <button type="submit">Run</button>
+          </form>
         </div>
         <dialog
           :if={@missing != "dialog"}
