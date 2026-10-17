@@ -116,7 +116,7 @@ defmodule AshDataTable.Kit do
       form `ID-filters`, a `role=rowgroup` element per item of the stream
       `rows` (with `Attrs.rowgroup/2`'s bundle), the `footer`, a
       `<template>` per editable column (`ID-editor-FIELD`, `data-editor`,
-      `data-confirm`, `data-commit`) and the failure template `ID-failure`:
+      `data-confirm` where `asks?`, `data-commit`) and the failure template `ID-failure`:
       `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
       `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
       `creates`, `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
