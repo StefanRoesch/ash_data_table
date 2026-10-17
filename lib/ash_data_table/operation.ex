@@ -1,6 +1,6 @@
 defmodule AshDataTable.Operation do
   @moduledoc false
-  # The one way a table writes (target.md 4.3, stage 3b). Each write is one
+  # The one way a table writes (target.md 4.3). Each write is one
   # function, given one input value (`Operation.Input`), and each runs the
   # same steps in the same order:
   #
@@ -28,7 +28,7 @@ defmodule AshDataTable.Operation do
   # It runs in the LiveView's process, but for a run on a selection, which
   # it hands back to be started beside it (`{:start, run, files}`). A raise
   # in a write ends the LiveView as before, but in a generic action and a
-  # run on a selection, which are rescued where they run (D10).
+  # run on a selection, which are rescued where they run.
 
   alias AshDataTable.Act
   alias AshDataTable.Bulk
@@ -295,7 +295,7 @@ defmodule AshDataTable.Operation do
              &(&1.name == name and &1.editable? and Model.in_panel?(&1))
            ),
          %{} = row <- input.rows[key],
-         :cont <- asked(input, :map_cell, column, row) do
+         :cont <- asked(input, :panel_cell, column, row) do
       input.with_files.(fn _files ->
         case Edit.put(input.model, column, field, row.pk, params, panel.form.id, opts(input)) do
           {:ok, record} ->

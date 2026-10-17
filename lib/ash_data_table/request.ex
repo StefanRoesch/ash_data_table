@@ -23,7 +23,7 @@ defmodule AshDataTable.Request do
       action);
     * `from` - what asks: `:cell` (a cell saved), `:clear` (a sensitive
       cell emptied), `:reference` (a record chosen for a reference cell),
-      `:map_cell` (a cell edited in the side panel: a list, a map cell, a
+      `:panel_cell` (a cell edited in the side panel: a list, a map cell, a
       union), `:row` (a row action), `:table` (a
       table action), `:create` or `:bulk` (an action on a selection);
     * `column` - the column, for a cell; else nil;
@@ -52,7 +52,7 @@ defmodule AshDataTable.Request do
           resource: Ash.Resource.t(),
           action: atom,
           type: :update | :create | :destroy | :action,
-          from: :cell | :clear | :reference | :map_cell | :row | :table | :create | :bulk,
+          from: :cell | :clear | :reference | :panel_cell | :row | :table | :create | :bulk,
           column: atom | nil,
           key: map | nil,
           selection: :all | [term] | nil

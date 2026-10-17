@@ -207,7 +207,7 @@ def before_action(_request, _assigns), do: :cont
 
 The request says which table asks (`table`, `path`), which action of which
 resource (`resource`, `action`, `type`), from where (`from`: `:cell`,
-`:clear`, `:reference`, `:map_cell`, `:row`, `:table`, `:create`, `:bulk`),
+`:clear`, `:reference`, `:panel_cell`, `:row`, `:table`, `:create`, `:bulk`),
 and the row's `key`, the `column` or the `selection`. It holds no typed
 value, no input and no record: the veto can only stop a write. What a page
 adds to an action goes through the page values above, which Ash checks as it
