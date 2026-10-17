@@ -394,7 +394,7 @@ defmodule AshDataTable.Live.Core.Nesting do
               labelledby:
                 Enum.join(
                   ["#{row_id}-l-#{name}-b"] ++
-                    if(first, do: ["#{row_id}-c-#{first.name}"], else: []),
+                    if(first, do: [Present.cell_id(id, key, first.name)], else: []),
                   " "
                 ),
               url: nil,
