@@ -330,6 +330,7 @@ defmodule DemoWeb.Router do
         live "/attached", AttachedLive
         live "/opened", OpenedLive
         live "/controlled", ControlledLive
+        live "/controlled/kit", ControlledKitLive
         live "/markers", MarkersLive
         live "/held", HeldLive
         live "/kit", KitLive
