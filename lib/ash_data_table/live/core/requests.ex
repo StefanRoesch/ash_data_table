@@ -8,17 +8,26 @@ defmodule AshDataTable.Live.Core.Requests do
   # would: through `AshDataTable.Operation`, with its checks, the veto and
   # the record read again.
   #
-  #   * `:confirm` - every question: before a row action, a table action or
-  #     an action on the selection, before a save of a cell whose column
+  #   * `:confirm` - every question outside a panel: before a row action, a
+  #     table action or an action on the selection, before a save of a cell whose column
   #     asks (`{:save, …}`, `{:clear, …}`, the typed text held here, never
   #     in the projection of a sensitive column; the hook is told the cell
   #     waits) and before the choice for a reference cell (`{:refer, …}`).
   #     `AshDataTable.confirm_request/3` runs it, `cancel_request/3` gives
-  #     it up and the hook puts the cell back;
+  #     it up and the hook puts the cell back. A panel's own question (a row
+  #     action with inputs, a selection panel's count) is asked with the
+  #     panel: by the table, or by the host with `:panel`;
   #   * `:panel` - every action panel: of a row action, a table action, a
   #     create, an action on the selection and a map cell, with files,
   #     groups, unions and chosen records;
   #   * `:picker` - the picker: `AshDataTable.pick_request/4` chooses.
+  #
+  # The question is no safety check (target §1.5, final review S1): the
+  # hook sends no `table_run`, `bulk_run`, `picked` with `confirmed` or
+  # `panel_submit` for what the host holds, but the browser can, and the
+  # write then runs without it, through the checks, the veto, the re-read
+  # and Ash's policies all the same. Not enforced here, as in the table's
+  # own mode.
   #
   # One request at a time per table: a new one takes the old one's place,
   # with a `ref` and a `:requested` of its own, and an answer to another

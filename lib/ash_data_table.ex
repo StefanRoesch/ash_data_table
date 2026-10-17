@@ -394,10 +394,13 @@ defmodule AshDataTable do
   `controlled: [:confirm, :panel, :picker]` (any of them) has the table
   hold what it would open, for the LiveView to draw:
 
-    * `:confirm` - every question: before a row action, a table action or
-      an action on the selection, before a cell of a column with `confirm`
-      is saved (what was typed is held by the table; the cell waits) and
-      before the record chosen for a reference cell is saved;
+    * `:confirm` - every question outside a panel: before a row action, a
+      table action or an action on the selection, before a cell of a column
+      with `confirm` is saved (what was typed is held by the table; the
+      cell waits) and before the record chosen for a reference cell is
+      saved. A panel's own question (a row action with inputs, the count
+      of a selection's panel) is asked with the panel: by the table, or by
+      the page with `:panel`;
     * `:panel` - every action panel: of a row action, a table action, a
       create, an action on the selection and a map cell, with its files
       (the page draws `live_file_input/1` of the upload `requests/1`
@@ -419,11 +422,14 @@ defmodule AshDataTable do
   table: a new one ends the one before, whose `ref` is answered no more. A
   nested table's request ends when the table closes (its row collapsed).
 
-  A question is no safety check: an event the browser forges
-  runs a table action or an action on the selection without the confirm
-  (`table_run`, `bulk_run`), as it would without the table's own question.
-  What must not run is for Ash's policies and for `before_action` to
-  refuse.
+  A question is no safety check: it guards the person against a mistake,
+  not the data against them. With `:confirm` the page shows the question,
+  and the table's hook sends nothing that skips it; but the browser can
+  still send an event as if it were confirmed (`table_run`, `bulk_run`,
+  `picked` with `confirmed`, and with `:panel` `panel_submit`), and it
+  runs as it would in the table's own mode, without the question. The
+  table's checks, `before_action`, the record read again and Ash's
+  policies still decide: what must not run is for them to refuse.
 
   Names and ids are unique on a page: two tables of one resource need an
   `id` each, and no id may begin with another's and `-row-` or `-pick-`
