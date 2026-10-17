@@ -413,16 +413,19 @@ defmodule AshDataTable do
     * `:picker` - the picker of a reference cell, and of a field of a panel
       the table draws (`pick_request/4`).
 
-  The table tells the LiveView `:requested` (with `notify`), `request/1`
-  says what is held, and the LiveView answers with `confirm_request/3`,
-  `validate_request/4`, `submit_request/4`, `pick_request/4`,
-  `add_group_request/4`, `remove_group_request/4` or `cancel_request/3`;
+  It is so for every table the table shows: its nested tables, at every
+  depth, hold what they open as the table on the page does (a picker's
+  table opens nothing). The table tells the LiveView `:requested` and
+  `:request_ended` (with `notify`), `requests/1` says what is held, and the
+  LiveView answers with `confirm_request/3`, `validate_request/4`,
+  `submit_request/4`, `pick_request/4`, `add_group_request/4`,
+  `remove_group_request/4` or `cancel_request/3`, by the request's `ref`;
   each goes the way the person's own answer would, with the table's
-  checks, the veto and the record read again. One request at a time: a
-  new one ends the one before, whose `ref` is answered no more.
+  checks, the veto and the record read again. One request at a time per
+  table: a new one ends the one before, whose `ref` is answered no more. A
+  nested table's request ends when the table closes (its row collapsed).
 
-  Nested tables and pickers' tables draw what they open themselves, in
-  this version. A question is no safety check: an event the browser forges
+  A question is no safety check: an event the browser forges
   runs a table action or an action on the selection without the confirm
   (`table_run`, `bulk_run`), as it would without the table's own question.
   What must not run is for Ash's policies and for `before_action` to
@@ -677,81 +680,100 @@ defmodule AshDataTable do
   end
 
   @doc """
-  The request a table attached with `controlled:` holds for the page to
-  draw, or nil:
+  The requests the tables of a table attached with `controlled:` hold for
+  the page to draw: of the table on the page first, then of its nested
+  tables, parents before their children; `[]` for none, and for nil. Each
+  table holds one at a time. Every request has
 
     * `ref` - what the answer names (a new request has another);
-    * `kind` - `:confirm`, a question; `:panel`, an action panel; or
-      `:picker`, the picker of a reference cell or of a field of a panel;
-    * `action`, `key` - the action and its row's primary key (nil for none);
-    * `column`, `value` - of a cell's question the column and the value it
-      is to be given (nil for a sensitive column), of a map cell's panel
-      the column, of a picker the column or field it chooses for and the
-      key or keys it holds now;
-    * `question` - the question to ask before it runs, or nil (a picker's
-      is the column's, which the page asks with its chooser unless it
-      draws the questions too);
-    * `title`, `errors` - its title, and what is said that is about none of
-      its fields (of a picker, why a key chose nothing);
-    * `fields` - of a panel, each with `name`, `label`, `type`, `editor`
+    * `kind` - `:confirm`, `:panel` or `:picker`;
+    * `table`, `path` - the id of the table that holds it, and the ids from
+      the table on the page down to it (`[table]` for the table on the
+      page);
+    * `key` - the primary key of the row it is about, nil for none;
+    * `question` - the question to ask before it runs, or nil;
+    * `messages` - what its texts are made of, by name, as
+      `AshDataTable.Messages` lists them.
+
+  Besides, by kind:
+
+    * `:confirm`, a question: `action`, and for a cell's question `column`
+      and `value`, the value the cell is to be given (nil for a sensitive
+      column, and for an action's question);
+    * `:panel`, an action panel: `action`, `column` (of a map cell's panel,
+      else nil), `title`, `errors` (what is said that is about none of its
+      fields) and `fields`, each with `name`, `label`, `type`, `editor`
       (its control), `required?`, `value` (what it holds as its form sends
       it; nil for a sensitive field), `values` (the choices of an enum,
-      else nil), `errors` and `chosen` (the records a field holds that are
-      chosen, each with `key` and `label`); of a value made of fields its
-      `fields`, of a union its `kinds`, each described the same way; of a
-      file field `upload`, its upload among the LiveView's;
-    * of a picker, `resource` (what is chosen from), `several?`, `none?`
-      (whether no record may be chosen) and `chosen`: the records a field
-      holds, each with `key` and `label`, as far as the table knows them.
+      else nil), `errors`, `messages` and `chosen` (the records a field
+      holds that are chosen, each with `key` and `label`); of a value made
+      of fields its `fields`, of a union its `kinds`, each described the
+      same way; of a file field `upload`, its upload among the LiveView's;
+    * `:picker`, the picker of a reference cell or of a field of a panel:
+      `column` (the column or field it chooses for), `resource` (what is
+      chosen from), `several?`, `allow_none?` (whether no record may be
+      chosen), `current` (the key or keys held now), `chosen` (the records
+      a field holds, each with `key` and `label`, as far as the table knows
+      them), `title` and `errors` (why a key chose nothing). Its `question`
+      is the column's, which the page shows with its chooser unless it
+      draws the questions too (`pick_request/4`).
 
-  Texts are in words; `messages` (and each field's) holds what the
-  question, the title and the errors are made of, as
-  `AshDataTable.Messages` lists them. The page answers with
-  `confirm_request/3`, `validate_request/4`, `submit_request/4`,
-  `pick_request/4` and `cancel_request/3`; each goes as the person's own
-  answer would, through the table's checks, the veto and the record read
-  again, and does nothing for another `ref`. `:requested`
-  (`AshDataTable.Event`) says that one is waiting.
+  Texts are in words. The page answers with `confirm_request/3`,
+  `validate_request/4`, `submit_request/4`, `pick_request/4`,
+  `add_group_request/4`, `remove_group_request/4` and `cancel_request/3`,
+  by `ref`, whichever table holds it; each goes as the person's own answer
+  would, through the table's checks, the veto and the record read again,
+  and does nothing for a `ref` no table holds. `:requested`
+  (`AshDataTable.Event`) says that one is waiting, `:request_ended` that it
+  is held no more: answered, given up, taken over by another, or gone with
+  its table (a nested table whose row closed).
   """
-  @spec request(AshDataTable.Table.t() | nil) :: map | nil
-  def request(nil), do: nil
+  @spec requests(AshDataTable.Table.t() | nil) :: [map]
+  def requests(nil), do: []
 
-  def request(%AshDataTable.Table{} = table) do
-    case AshDataTable.Live.Core.Requests.projection(table) do
-      nil ->
-        nil
+  def requests(%AshDataTable.Table{} = table),
+    do: Enum.map(AshDataTable.Live.Core.Requests.projections(table), &in_words/1)
 
-      request ->
-        said = &AshDataTable.Text.say/1
-        message = &AshDataTable.Messages.of/1
+  # A request as the page shows it: its messages in words, and beside them.
+  defp in_words(request) do
+    said = &AshDataTable.Text.say/1
+    message = &AshDataTable.Messages.of/1
+    texts = Map.take(request, [:question, :title, :errors])
 
-        request
-        |> Map.merge(%{
-          question: request.question && said.(request.question),
-          title: request.title && said.(request.title),
-          errors: Enum.map(request.errors, said),
-          messages: %{
-            question: message.(request.question),
-            title: message.(request.title),
-            errors: Enum.map(request.errors, message)
-          },
-          fields:
-            for field <- request.fields do
-              %{
-                field
-                | label: said.(field.label),
-                  errors: Enum.map(field.errors, said),
-                  values:
-                    field.values &&
-                      for({value, label} <- field.values, do: {value, said.(label)})
-              }
-              |> Map.put(:messages, %{errors: Enum.map(field.errors, message)})
-              |> chosen_in_words()
-            end
-        })
-        |> chosen_in_words()
-    end
+    request
+    |> Map.merge(%{
+      question: request.question && said.(request.question),
+      messages:
+        Map.new(texts, fn
+          {:errors, errors} -> {:errors, Enum.map(errors, message)}
+          {name, text} -> {name, message.(text)}
+        end)
+    })
+    |> then(&if(texts[:title], do: %{&1 | title: said.(texts.title)}, else: &1))
+    |> then(&if(texts[:errors], do: %{&1 | errors: Enum.map(texts.errors, said)}, else: &1))
+    |> fields_in_words(said, message)
+    |> chosen_in_words()
   end
+
+  defp fields_in_words(%{fields: fields} = request, said, message) do
+    %{
+      request
+      | fields:
+          for field <- fields do
+            %{
+              field
+              | label: said.(field.label),
+                errors: Enum.map(field.errors, said),
+                values:
+                  field.values && for({value, label} <- field.values, do: {value, said.(label)})
+            }
+            |> Map.put(:messages, %{errors: Enum.map(field.errors, message)})
+            |> chosen_in_words()
+          end
+    }
+  end
+
+  defp fields_in_words(request, _said, _message), do: request
 
   # What the records a picker's field holds are called, in words.
   defp chosen_in_words(%{chosen: chosen} = request) do
@@ -769,7 +791,12 @@ defmodule AshDataTable do
   defp label_in_words({column, value, zone}), do: AshDataTable.Format.format(column, value, zone)
   defp label_in_words(_none), do: nil
 
-  @doc "Answers the question of request `ref` with Confirm: the action runs."
+  @doc """
+  Answers the question of request `ref` with Confirm: what it asked about
+  runs as the person's Confirm would run it (the action, a cell's save,
+  a reference cell's choice), through the table's checks, the veto and the
+  record read again; refused there, it does not.
+  """
   @spec confirm_request(Phoenix.LiveView.Socket.t(), atom, String.t()) ::
           Phoenix.LiveView.Socket.t()
   def confirm_request(socket, name, ref),
@@ -778,7 +805,7 @@ defmodule AshDataTable do
         socket,
         name,
         ref,
-        :confirm,
+        [:confirm],
         "AshDataTable.confirm_request/3",
         &AshDataTable.Live.Core.Requests.confirmed/2
       )
@@ -792,7 +819,8 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def validate_request(socket, name, ref, params) when is_map(params),
     do:
-      answer(socket, name, ref, :panel, "AshDataTable.validate_request/4", fn socket, _request ->
+      answer(socket, name, ref, [:panel], "AshDataTable.validate_request/4", fn socket,
+                                                                                _request ->
         AshDataTable.Live.Core.Requests.panel(socket, {:panel_validate, params})
       end)
 
@@ -805,7 +833,7 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def submit_request(socket, name, ref, params) when is_map(params),
     do:
-      answer(socket, name, ref, :panel, "AshDataTable.submit_request/4", fn socket, _request ->
+      answer(socket, name, ref, [:panel], "AshDataTable.submit_request/4", fn socket, _request ->
         AshDataTable.Live.Core.Requests.panel(socket, {:panel_submit, params})
       end)
 
@@ -828,7 +856,7 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def pick_request(socket, name, ref, keys),
     do:
-      answer(socket, name, ref, :picker, "AshDataTable.pick_request/4", fn socket, _request ->
+      answer(socket, name, ref, [:picker], "AshDataTable.pick_request/4", fn socket, _request ->
         AshDataTable.Live.Core.Requests.pick(socket, keys)
       end)
 
@@ -843,7 +871,8 @@ defmodule AshDataTable do
           Phoenix.LiveView.Socket.t()
   def add_group_request(socket, name, ref, path),
     do:
-      answer(socket, name, ref, :panel, "AshDataTable.add_group_request/4", fn socket, _request ->
+      answer(socket, name, ref, [:panel], "AshDataTable.add_group_request/4", fn socket,
+                                                                                 _request ->
         AshDataTable.Live.Core.Requests.group(socket, :panel_add, path)
       end)
 
@@ -861,7 +890,7 @@ defmodule AshDataTable do
         socket,
         name,
         ref,
-        :panel,
+        [:panel],
         "AshDataTable.remove_group_request/4",
         fn socket, _request ->
           AshDataTable.Live.Core.Requests.group(socket, :panel_remove, path)
@@ -871,17 +900,19 @@ defmodule AshDataTable do
   @doc "Gives request `ref` up, as Cancel does: nothing runs, and a cell is put back."
   @spec cancel_request(Phoenix.LiveView.Socket.t(), atom, String.t()) ::
           Phoenix.LiveView.Socket.t()
-  def cancel_request(socket, name, ref) do
-    command(socket, name, "AshDataTable.cancel_request/3", fn socket ->
-      case AshDataTable.Live.Core.table(socket).entry.request do
-        %{ref: ^ref} = request -> AshDataTable.Live.Core.Requests.cancelled(socket, request)
-        _stale -> socket
-      end
-    end)
-  end
+  def cancel_request(socket, name, ref),
+    do:
+      answer(
+        socket,
+        name,
+        ref,
+        :any,
+        "AshDataTable.cancel_request/3",
+        &AshDataTable.Live.Core.Requests.cancelled/2
+      )
 
-  defp answer(socket, name, ref, kind, where, fun),
-    do: command(socket, name, where, &AshDataTable.Live.Core.Requests.answer(&1, ref, kind, fun))
+  defp answer(socket, name, ref, kinds, where, fun),
+    do: command(socket, name, where, &AshDataTable.Live.Core.Requests.answer(&1, ref, kinds, fun))
 
   @doc """
   What a host may read of an `AshDataTable.Table`, as the assign holds it:

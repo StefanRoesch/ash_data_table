@@ -65,7 +65,7 @@ defmodule AshDataTable.Live.Registry do
   defp placed(_current, %{path: [_top]}, options), do: options
 
   defp placed(_current, _entry, options),
-    do: %{options | url: nil, heading: false, mounted?: false, controlled: []}
+    do: %{options | url: nil, heading: false, mounted?: false}
 
   @doc "Whether the table `id` is one of these: the one on the page or another."
   def known?(socket, id),
@@ -155,11 +155,12 @@ defmodule AshDataTable.Live.Registry do
   uploads cancelled and given up (an upload whose file is on its way when
   the table closes stays allowed: LiveView drops its entry once the upload
   has stopped, and a table of the same id takes the name again), its
-  stream emptied and its name back in the pool, its entry gone. What closes a table closes the tables under it
+  stream emptied and its name back in the pool, its request ended (the
+  host is told, `:request_ended`), its entry gone. What closes a table closes the tables under it
   too (`reconcile`): a table is never left without the one it is in.
   """
   def close(socket, id) do
-    socket = within(socket, id, &shut/1)
+    socket = within(socket, id, &(&1 |> Core.Requests.closing() |> shut()))
 
     %{entries: %{^id => %{stream: stream}} = entries} = table = Core.table(socket)
 

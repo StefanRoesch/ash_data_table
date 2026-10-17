@@ -32,7 +32,8 @@ defmodule AshDataTable.Event do
   | `:bulk_ran` | an action on a selection is done | `action`, `arguments`, `all?`, `succeeded` and `failed` (keys) |
   | `:selection_changed` | what is selected changed: by the person, or as the table ends or narrows it | `selected` (keys, as the browser named them: claims, not read again), `all?` (every record that matches) |
   | `:row_opened` | "Open" on a row, which the page offers with `open` (sent whatever `notify` says) | `key` |
-  | `:requested` | controlled mode: the table holds a request for the page to draw (`AshDataTable.request/1`) | `ref`, `kind` (`:confirm` or `:panel`) |
+  | `:requested` | controlled mode: the table holds a request for the page to draw (`AshDataTable.requests/1`) | `ref`, `kind` (`:confirm`, `:panel` or `:picker`) |
+  | `:request_ended` | controlled mode: the table holds that request no more: it was answered, given up, taken over by another, or the table closed (a nested table whose row closed) | `ref`, `kind` |
   | `:row_expanded`, `:row_collapsed` | a relationship's line under a row opened or closed | `key`, `relationship` |
 
   A key is a primary key as a map (`%{id: "…"}`). A record is the one the
@@ -63,6 +64,7 @@ defmodule AshDataTable.Event do
           | :selection_changed
           | :row_opened
           | :requested
+          | :request_ended
           | :row_expanded
           | :row_collapsed
 
@@ -83,6 +85,7 @@ defmodule AshDataTable.Event do
     :selection_changed,
     :row_opened,
     :requested,
+    :request_ended,
     :row_expanded,
     :row_collapsed
   ]
@@ -179,41 +182,39 @@ defmodule AshDataTable.Event do
 
   @doc false
   # What a host draws of the request a table holds in controlled mode
-  # (`AshDataTable.request/1`, which says its message terms in words): of a
-  # question, the action, its row and the question, and of a cell's
-  # question its column and the value it is to be given (nil for a
-  # sensitive column); of a panel besides its
+  # (`AshDataTable.requests/1`, which says its message terms in words),
+  # each kind with fields of its own: every one its `ref`, `kind`, the
+  # `table` that holds it and its `path` from the table on the page, the
+  # row's primary key (`key`) and the `question`. Of a question, the action
+  # and, of a cell's, its column and the value it is to be given (nil for a
+  # sensitive column); of a panel, the action, a map cell's column, its
   # title, what is said of none of its fields, and its fields, each with
   # its name, label, type, whether it is required, what it holds (nil for a
-  # sensitive one), the values of a choice and what is said at it.
+  # sensitive one), the values of a choice and what is said at it; of a
+  # picker, the column or field it chooses for, what it chooses from, and
+  # what is held now.
   @spec request(map) :: map | nil
   def request(%{request: nil}), do: nil
 
-  def request(%{request: %{kind: :confirm} = request}) do
-    %{
-      ref: request.ref,
-      kind: :confirm,
+  def request(%{request: %{kind: :confirm} = request} = entry) do
+    entry
+    |> located(request.ref, :confirm, request.key)
+    |> Map.merge(%{
       action: request.action,
-      key: request.key,
       column: request.column,
       value: request.value,
-      question: request.question,
-      title: nil,
-      errors: [],
-      fields: []
-    }
+      question: request.question
+    })
   end
 
-  def request(%{request: %{kind: :panel, ref: ref}, panel: %{} = panel, rows: rows}) do
+  def request(%{request: %{kind: :panel, ref: ref}, panel: %{} = panel, rows: rows} = entry) do
     shown = AshDataTable.Present.panel(panel)
 
-    %{
-      ref: ref,
-      kind: :panel,
+    entry
+    |> located(ref, :panel, panel.key && get_in(rows, [panel.key, :pk]))
+    |> Map.merge(%{
       action: panel.action.name,
-      key: panel.key && get_in(rows, [panel.key, :pk]),
       column: Map.get(panel, :column),
-      value: nil,
       question: shown.question,
       title: shown.title,
       errors: List.wrap(shown.errors),
@@ -230,36 +231,37 @@ defmodule AshDataTable.Event do
               end
           })
         end
-    }
+    })
   end
 
   def request(%{request: %{kind: :picker, ref: ref}, picker: %{} = picker} = entry) do
-    {key, name, value} =
+    {key, name, current} =
       case picker.for do
         {:cell, key, name} -> {get_in(entry.rows, [key, :pk]), name, picker.current}
         {:input, name} when picker.several? -> {nil, name, held(entry.panel, name)}
         {:input, name} -> {nil, name, picker.current}
       end
 
-    %{
-      ref: ref,
-      kind: :picker,
-      action: nil,
-      key: key,
+    entry
+    |> located(ref, :picker, key)
+    |> Map.merge(%{
       column: name,
-      value: value,
-      question: picker.question,
-      title: picker.title,
-      errors: List.wrap(picker.error),
-      fields: [],
       resource: picker.reference.destination,
       several?: picker.several?,
-      none?: picker.none?,
-      chosen: chosen(entry.panel, name)
-    }
+      allow_none?: picker.allow_none?,
+      current: current,
+      chosen: chosen(entry.panel, name),
+      question: picker.question,
+      title: picker.title,
+      errors: List.wrap(picker.error)
+    })
   end
 
   def request(_entry), do: nil
+
+  # What every request says of where it is held.
+  defp located(entry, ref, kind, key),
+    do: %{ref: ref, kind: kind, table: entry.id, path: entry.path, key: key}
 
   # What a field is, as the page draws it: its name, label, type, the
   # control it has (`editor`), whether it is required, the choices of an

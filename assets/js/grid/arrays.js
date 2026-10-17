@@ -271,8 +271,9 @@ export default {
       cell.setAttribute("aria-busy", "true")
       const payload = {row: this.rowKey(cell), column: this.columnOf(cell)}
       this.transport.push("clear", payload).then(reply => {
-        if (!cell.isConnected || !cell.hasAttribute("aria-busy")) return
-        if (reply && reply.held) return this.holds.set(cell.id, {restore, value: "", old: ""})
+        if (!cell.isConnected) return
+        if (reply && reply.held) return this.waitFor(reply.ref, cell, {restore, value: "", old: ""})
+        if (!cell.hasAttribute("aria-busy")) return
         cell.removeAttribute("aria-busy")
         // the record is gone: there is no row to send, so the cell is marked here
         if (reply && reply.error) this.mark(cell, "", "", reply.error, restore)
@@ -415,7 +416,7 @@ export default {
       // cell waits, busy, for its answer (`ash_data_table:answered`)
       if (reply && reply.held) {
         if (ed && this.editing === ed) this.waitOpen(ed, value)
-        this.holds.set(cell.id, {restore, value, old})
+        this.waitFor(reply.ref, cell, {restore, value, old})
         return
       }
       if (ed && this.editing === ed) return this.committed(ed, value, old, reply)
@@ -442,17 +443,43 @@ export default {
     if (focused) cell.focus()
   },
 
-  // The answer to a save that waited for the host: saved, the patch of
-  // its row has put the cell right; not saved, the cell is put back as it
-  // was, or marked where the record is gone.
-  answered({cell: id, saved, error}) {
-    const held = this.holds.get(id)
-    this.holds.delete(id)
-    const cell = document.getElementById(id)
-    if (!cell || !this.owns(cell) || !cell.hasAttribute("aria-busy")) return
+  // A cell whose save, or whose record chosen in the picker, waits for
+  // the host's answer to its column's question (controlled mode), held
+  // by the `ref` of that request: busy until the answer comes. `restore`
+  // puts the cell back as it was, `value` and `old` mark it where the
+  // record is gone (none for a choice, which marks nothing). A reply may
+  // come after a patch took `aria-busy` away: it is set again.
+  waitFor(ref, cell, {restore, value, old}) {
+    cell.setAttribute("aria-busy", "true")
+    this.holds.set(ref, {cell: cell.id, restore, value, old, patched: false})
+  },
+
+  // A patch of a held cell's row brings the cell as the server renders
+  // it: it stays busy, as its question is open still, and is not put back
+  // over the patch when the answer is no (`sync`).
+  rehold() {
+    for (const held of this.holds.values()) {
+      const cell = document.getElementById(held.cell)
+      if (!cell || !this.owns(cell) || cell.hasAttribute("aria-busy")) continue
+      cell.setAttribute("aria-busy", "true")
+      held.patched = true
+    }
+  },
+
+  // The answer to a save that waited for the host, by the `ref` of its
+  // request: saved, the patch of its row has put the cell right; not
+  // saved, the cell is put back as it was (as a patch brought it, if one
+  // did), or marked where the record is gone. An answer to a `ref` that
+  // is held no more touches nothing: the cell may be held for another.
+  answered({ref, saved, error}) {
+    const held = this.holds.get(ref)
+    if (!held) return
+    this.holds.delete(ref)
+    const cell = document.getElementById(held.cell)
+    if (!cell || !this.owns(cell)) return
     cell.removeAttribute("aria-busy")
-    if (saved || !held) return
-    if (error) this.mark(cell, held.value, held.old, error, held.restore)
+    if (saved || held.patched) return
+    if (error && held.value !== undefined) this.mark(cell, held.value, held.old, error, held.restore)
     else held.restore()
   },
 

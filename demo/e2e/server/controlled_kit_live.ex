@@ -4,8 +4,9 @@ defmodule DemoWeb.E2E.ControlledKitLive do
   of stage 7, D17, test group AB): a table of `AshDataTable.Test.Resource`
   attached with `controlled: [:confirm, :picker]`. The page draws the
   questions (of a column before a save, of a reference cell before a
-  choice) and the picker of the owner's cell itself, from
-  `AshDataTable.request/1`, and answers with `confirm_request/3`,
+  choice) and the picker of the owner's cell itself, of the table and of
+  the table of parts nested in its row, from `AshDataTable.requests/1`
+  (the first one held), and answers with `confirm_request/3`,
   `pick_request/4` and `cancel_request/3`. The records are kept in memory,
   in a tenant of the page's own, made as it mounts. Compiled and routed in
   the e2e environment only.
@@ -33,7 +34,8 @@ defmodule DemoWeb.E2E.ControlledKitLive do
     opts = [tenant: tenant, authorize?: false]
     Ash.create!(Resource.Owner, %{name: "Ann"}, opts)
     Ash.create!(Resource.Owner, %{name: "Bob"}, opts)
-    Ash.create!(Resource, %{name: "Anchor", note: "first", owner_id: "Ann"}, opts)
+    anchor = Ash.create!(Resource, %{name: "Anchor", note: "first", owner_id: "Ann"}, opts)
+    Ash.create!(Resource.Part, %{title: "Pin", resource_id: anchor.id, owner_id: "Ann"}, opts)
   end
 
   @impl true
@@ -47,7 +49,7 @@ defmodule DemoWeb.E2E.ControlledKitLive do
     do: {:noreply, by_request(socket, &AshDataTable.pick_request(&1, :table, &2, key))}
 
   defp by_request(socket, fun) do
-    case AshDataTable.request(socket.assigns.table) do
+    case List.first(AshDataTable.requests(socket.assigns.table)) do
       %{ref: ref} -> fun.(socket, ref)
       nil -> socket
     end
@@ -57,7 +59,7 @@ defmodule DemoWeb.E2E.ControlledKitLive do
   def render(assigns) do
     assigns =
       assign(assigns,
-        request: AshDataTable.request(assigns.table),
+        request: List.first(AshDataTable.requests(assigns.table)),
         owners:
           Ash.read!(Resource.Owner, tenant: assigns.tenant, authorize?: false)
           |> Enum.sort_by(& &1.name)

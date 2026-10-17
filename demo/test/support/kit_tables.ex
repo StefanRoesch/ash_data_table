@@ -85,7 +85,7 @@ defmodule DemoWeb.Support.ControlledKitLive do
       |> AshDataTable.attach(:table, AshDataTable.Test.Resource,
         id: "kit",
         tenant: tenant,
-        notify: [:requested],
+        notify: [:requested, :request_ended],
         presentation: Map.get(session, "presentation", []),
         controlled: Map.get(session, "controlled", []),
         before_action: fn request, assigns ->
@@ -122,8 +122,10 @@ defmodule DemoWeb.Support.ControlledKitLive do
       {:noreply,
        by_request(socket, &AshDataTable.submit_request(&1, :table, &2, params["panel"] || %{}))}
 
+  # the panel the page draws: the first request of the kind, of whichever
+  # table holds it
   defp by_request(socket, fun) do
-    case AshDataTable.request(socket.assigns.table) do
+    case Enum.find(AshDataTable.requests(socket.assigns.table), &(&1.kind == :panel)) do
       %{ref: ref} -> fun.(socket, ref)
       nil -> socket
     end
@@ -131,7 +133,10 @@ defmodule DemoWeb.Support.ControlledKitLive do
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, request: AshDataTable.request(assigns.table))
+    assigns =
+      assign(assigns,
+        request: Enum.find(AshDataTable.requests(assigns.table), &(&1.kind == :panel))
+      )
 
     ~H"""
     <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />

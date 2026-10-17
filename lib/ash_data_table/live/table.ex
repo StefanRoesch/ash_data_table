@@ -33,8 +33,9 @@ defmodule AshDataTable.Table do
   #     table (the full view, the parent of a table limited to related
   #     records).
   #   * `controlled`: what the host draws itself, of `:confirm` (the
-  #     questions before an action) and `:panel` (the action panels), with
-  #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Requests`).
+  #     questions), `:panel` (the action panels) and `:picker`, with
+  #     `attach(…, controlled: …)` (`AshDataTable.Live.Core.Requests`), for
+  #     every table the table shows, nested tables and pickers' tables too.
   #   * `kit`: the module the table is drawn with (`AshDataTable.Kit`),
   #     which the wiring names; every table it shows is drawn with it.
   #   * `presentation`: what the table was told opens in the page or over

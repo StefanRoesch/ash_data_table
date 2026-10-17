@@ -37,7 +37,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
     told
   end
 
-  defp request(view), do: run(view, &{&1, AshDataTable.request(&1.assigns.table)})
+  defp request(view), do: run(view, &{&1, List.first(AshDataTable.requests(&1.assigns.table))})
 
   defp answer(view, fun), do: run(view, &{fun.(&1), nil})
 
@@ -215,7 +215,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
                kind: :picker,
                column: :owner,
                key: %{id: ^key},
-               value: "Ann Lee",
+               current: "Ann Lee",
                resource: Resource.Owner,
                several?: false,
                question: "Change the owner?",
@@ -316,7 +316,7 @@ defmodule DemoWeb.Tables.ControlledWidenedTest do
       assert %{
                column: :helpers,
                several?: true,
-               value: ["Bob Ray"],
+               current: ["Bob Ray"],
                chosen: [%{key: "Bob Ray", label: "Bob Ray"}]
              } = request(view)
 

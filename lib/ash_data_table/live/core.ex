@@ -587,8 +587,8 @@ defmodule AshDataTable.Live.Core do
   #     let go in the same render. It may take rows away, and so tables
   #     under them, which are closed;
   #   * a selection made under other filters is given up (`Selection.scoped/1`);
-  #   * in controlled mode, a panel that opened or closed is held or let go
-  #     as a request (`Requests.follow/1`);
+  #   * in controlled mode, a panel or picker that opened or closed is held
+  #     or let go as a request, in every table (`Requests.follow/1`);
   #   * the summaries that are due are asked for.
   defp tidy(socket) do
     socket
@@ -596,7 +596,7 @@ defmodule AshDataTable.Live.Core do
     |> each(&Updates.follow/1)
     |> Nesting.reconcile()
     |> each(&Selection.scoped/1)
-    |> Requests.follow()
+    |> each(&Requests.follow/1)
     |> each(&Reading.summarise/1)
   end
 

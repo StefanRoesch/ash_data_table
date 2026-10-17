@@ -206,7 +206,13 @@ defmodule AshDataTable.KitCase do
     for name <- ~w(Cog Dial Edge Fuse),
         do: create.(Resource, %{name: name, secret: secret, tier: :low})
 
-    create.(Resource.Part, %{title: "Pin", secret: secret, resource_id: first.id})
+    create.(Resource.Part, %{
+      title: "Pin",
+      secret: secret,
+      resource_id: first.id,
+      owner_id: "Ann Lee"
+    })
+
     create.(Resource.Part, %{title: "Plate", secret: secret, resource_id: first.id})
     first.id
   end

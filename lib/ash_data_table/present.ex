@@ -139,7 +139,7 @@ defmodule AshDataTable.Present do
   defmodule Picker do
     @moduledoc false
     # The open picker: `title`, `question` and `error` as the core made them;
-    # `several?` whether several records are chosen, `none?` whether "None"
+    # `several?` whether several records are chosen, `allow_none?` whether "None"
     # is offered; `current` the key the cell or field holds now, and
     # `chosen` the rows that are selected as it opens (`{key, names}`). The
     # table inside is of `destination`, read with `choose_action`, by
@@ -156,7 +156,7 @@ defmodule AshDataTable.Present do
       :destination_attribute,
       :label,
       several?: false,
-      none?: false,
+      allow_none?: false,
       chosen: []
     ]
 
@@ -189,6 +189,16 @@ defmodule AshDataTable.Present do
   def mask, do: "••••••"
 
   @doc """
+  The DOM id of the cell of column `name` in the row of `key` (the key in
+  the row's DOM id) of the table `id`: what a row's `dom_id` and the
+  column's name make.
+  """
+  @spec cell_id(String.t(), String.t(), atom | String.t()) :: String.t()
+  def cell_id(id, key, name), do: "#{row_id(id, key)}-c-#{name}"
+
+  defp row_id(id, key), do: "#{id}-row-#{key}"
+
+  @doc """
   A row of the page, for the stream. `record` is the record as it was read
   or returned; it is scrubbed here, and nothing of it but its cells' values
   is kept. `attributes`: `id` (the table's), `key`, `rowindex`, `names`,
@@ -203,7 +213,7 @@ defmodule AshDataTable.Present do
 
     %Row{
       key: attributes.key,
-      dom_id: "#{attributes.id}-row-#{attributes.key}",
+      dom_id: row_id(attributes.id, attributes.key),
       rowindex: attributes.rowindex,
       names: attributes.names,
       open?: Map.get(attributes, :open?, false),
@@ -441,7 +451,7 @@ defmodule AshDataTable.Present do
       destination_attribute: picker.reference.destination_attribute,
       label: Model.label(picker.reference.destination),
       several?: picker.several?,
-      none?: picker.none?,
+      allow_none?: picker.allow_none?,
       chosen: picker.chosen
     }
   end

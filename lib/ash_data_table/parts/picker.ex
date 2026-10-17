@@ -50,7 +50,7 @@ defmodule AshDataTable.Parts.Picker do
           {@texts.cancel}
         </button>
         <button
-          :if={@picker.none?}
+          :if={@picker.allow_none?}
           type="button"
           {Attrs.none(@id)}
           class="btn"

@@ -66,7 +66,7 @@ defmodule AshDataTable.Live.Drawing do
           >
             <.body
               entry={entry}
-              options={%{@table.options | url: nil, heading: false, mounted?: false, controlled: []}}
+              options={%{@table.options | url: nil, heading: false, mounted?: false}}
               time_zone={@table.caller.time_zone}
               rows={rows}
               chooser={chooser(@table, entry)}
@@ -337,7 +337,7 @@ defmodule AshDataTable.Live.Drawing do
       >
         <.body
           entry={@chooser}
-          options={%{@options | url: nil, heading: false, mounted?: false, controlled: []}}
+          options={%{@options | url: nil, heading: false, mounted?: false}}
           chooser={nil}
           chooser_rows={nil}
           time_zone={@time_zone}

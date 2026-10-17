@@ -2,7 +2,7 @@ defmodule DemoWeb.Tables.ControlledTest do
   @moduledoc """
   Controlled mode (stage 6, group V): a table attached with `controlled:`
   holds the question before an action and the action panel as a request,
-  which the page draws (`AshDataTable.request/1`) and answers with
+  which the page draws (`AshDataTable.requests/1`) and answers with
   commands; every answer goes through the table's checks, the veto and
   the record read again. `DemoWeb.Support.GivenLive`.
   """
@@ -30,7 +30,7 @@ defmodule DemoWeb.Tables.ControlledTest do
     told
   end
 
-  defp request(view), do: run(view, &{&1, AshDataTable.request(&1.assigns.cards)})
+  defp request(view), do: run(view, &{&1, List.first(AshDataTable.requests(&1.assigns.cards))})
 
   defp answer(view, fun), do: run(view, &{fun.(&1), nil})
 
@@ -91,7 +91,7 @@ defmodule DemoWeb.Tables.ControlledTest do
     assert Ash.get!(Card, other.id).assignee == nil
   end
 
-  test "a nested table asks its own question: only the table on the page is controlled",
+  test "a nested table's question is held for the page too, with its table and path",
        %{conn: conn, card: card} do
     remark = Ash.Seed.seed!(Remark, %{body: "A remark", card_id: card.id})
     {:ok, view, _html} = given(conn, %{"notify" => [:requested]})
@@ -100,14 +100,22 @@ defmodule DemoWeb.Tables.ControlledTest do
     expand(view, "card", card.id)
     html = toggle(view, "card", card.id, "remarks")
 
-    # the hook asks before it sends `act`
-    assert attribute(html, "[id='#{nested}-row-#{remark.id}-a-destroy']", "data-question") ==
-             ["Delete this remark?"]
+    # the hook asks nothing: the button has no question
+    assert attribute(html, "[id='#{nested}-row-#{remark.id}-a-destroy']", "data-question") == []
 
     act(view, nested, remark.id, "destroy")
-    refute_received {:heard, {:ash_data_table, "card", {:requested, _details}}}
-    assert request(view) == nil
+
+    assert_received {:heard,
+                     {:ash_data_table, "card",
+                      {:requested, %{ref: ref, kind: :confirm, table: ^nested, path: path}}}}
+
+    assert path == ["card", nested]
+    assert %{ref: ^ref, table: ^nested, path: ^path, action: :destroy} = request(view)
+    assert [_remark] = Ash.read!(Remark)
+
+    answer(view, &AshDataTable.confirm_request(&1, :cards, ref))
     assert Ash.read!(Remark) == []
+    assert request(view) == nil
   end
 
   test "a panel is not drawn: the page has its fields, a sensitive one without its value",

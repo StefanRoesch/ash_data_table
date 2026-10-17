@@ -26,7 +26,7 @@ defmodule AshDataTable.Live.Core.Cells do
   def on({:save, _key, _name, typed} = intent, socket) do
     case asked(socket, intent) do
       {column, row} ->
-        {:reply, %{held: true}, Requests.ask_cell(socket, intent, column, row.pk, typed)}
+        held(Requests.ask_cell(socket, intent, column, row.pk, typed))
 
       nil ->
         write(intent, socket)
@@ -42,7 +42,7 @@ defmodule AshDataTable.Live.Core.Cells do
   def on({:clear, _key, _name} = intent, socket) do
     case asked(socket, intent) do
       {column, row} ->
-        {:reply, %{held: true}, Requests.ask_cell(socket, intent, column, row.pk, "")}
+        held(Requests.ask_cell(socket, intent, column, row.pk, ""))
 
       nil ->
         write(intent, socket)
@@ -153,6 +153,13 @@ defmodule AshDataTable.Live.Core.Cells do
         {:noreply, socket}
     end
   end
+
+  @doc """
+  The reply to an event whose cell waits for the host's answer to its
+  column's question: `held`, with the `ref` of that request, by which the
+  hook knows the answer (`ash_data_table:answered`).
+  """
+  def held(socket), do: {:reply, %{held: true, ref: Requests.ref(socket)}, socket}
 
   # Whether the column of a cell asks before a value is given to it, and
   # the host asks it (controlled mode): the column and the row, for one this

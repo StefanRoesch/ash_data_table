@@ -78,6 +78,62 @@ test.describe("what the page draws of the questions and the picker", () => {
     await expect(note).toHaveText("first")
   })
 
+  test("a cell held for the page stays busy while a patch puts its row back, and Cancel leaves the patch", async ({ page }) => {
+    const anchor = await opened(page)
+    const note = cell(page, anchor, "note")
+    await note.focus()
+    await page.keyboard.press("Enter")
+    await note.locator("textarea").fill("second")
+    await page.keyboard.press("Enter")
+    await expect(page.locator("#host-question-text")).toHaveText("Change the note?")
+    await expect(note).toHaveAttribute("aria-busy", "true")
+
+    // another cell of the row saves: the server sends the row again, with
+    // the note as the record has it, and the note waits still
+    const name = cell(page, anchor, "name")
+    await name.focus()
+    await page.keyboard.press("Enter")
+    await name.locator("textarea").fill("Anchored")
+    await page.keyboard.press("Enter")
+    await expect(name).toHaveText("Anchored")
+    await expect(name).not.toHaveAttribute("aria-busy")
+    await expect(note).toHaveText("first")
+    await expect(note).toHaveAttribute("aria-busy", "true")
+
+    await page.locator("#host-cancel").click()
+    await expect(page.locator("#host-question")).toHaveCount(0)
+    await expect(note).not.toHaveAttribute("aria-busy")
+    await expect(note).toHaveText("first")
+    await expect(name).toHaveText("Anchored")
+  })
+
+  test("a nested table's question is the page's too: its cell waits, and Confirm saves it", async ({ page }) => {
+    const anchor = await opened(page)
+    await page.locator(`[id="kit-row-${anchor}-e"] button`).click()
+    await page.locator(`[id="kit-row-${anchor}-l-parts-b"]`).click()
+    const nested = `kit-row-${anchor}-t-parts`
+    const group = page.locator(`[id^="${nested}-row-"][role=rowgroup]`).filter({ hasText: "Pin" })
+    await expect(group).toHaveCount(1)
+    const part = ((await group.getAttribute("id")) ?? "").replace(`${nested}-row-`, "")
+    const title = page.locator(`[id="${nested}-row-${part}-c-title"]`)
+
+    await title.focus()
+    await page.keyboard.press("Enter")
+    await title.locator("textarea").fill("Bolt")
+    await page.keyboard.press("Enter")
+
+    // the nested table asks nothing itself: the page's question, and its cell waits
+    await expect(page.locator(`[id="${nested}-dialog"]`)).not.toBeVisible()
+    await expect(page.locator("#host-question-text")).toHaveText("Change the title?")
+    await expect(title).toHaveAttribute("aria-busy", "true")
+    await expect(title).toHaveText("Bolt")
+
+    await page.locator("#host-confirm").click()
+    await expect(page.locator("#host-question")).toHaveCount(0)
+    await expect(title).not.toHaveAttribute("aria-busy")
+    await expect(title).toHaveText("Bolt")
+  })
+
   test("the picker is the page's, and its choice is asked about and saved", async ({ page }) => {
     const anchor = await opened(page)
     const owner = cell(page, anchor, "owner")

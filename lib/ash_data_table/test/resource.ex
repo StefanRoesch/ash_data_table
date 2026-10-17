@@ -66,9 +66,12 @@ end
 
 defmodule AshDataTable.Test.Resource.Part do
   @moduledoc """
-  A part of a `AshDataTable.Test.Resource`: the nested table under its rows.
-  Its `secret` is `sensitive?`. Without a label field, its list of columns
-  keeps one of them shown (`data-keeps-one`).
+  A part of a `AshDataTable.Test.Resource`: the nested table under its rows,
+  with what opens in a table as the table on the page has it: its `title`
+  asks before a save, its `owner` is a reference cell with its picker
+  (`AshDataTable.Test.Resource.Owner`), and its row action `retitle` opens
+  a panel. Its `secret` is `sensitive?`. Without a label field, its list of
+  columns keeps one of them shown (`data-keeps-one`).
   """
   use Ash.Resource,
     domain: AshDataTable.Test.Resource.Domain,
@@ -82,12 +85,26 @@ defmodule AshDataTable.Test.Resource.Part do
   table do
     update_action :update
 
-    column :title
+    column :title do
+      confirm "Change the title?"
+    end
+
     column :secret
+    column :owner
+
+    action :retitle
   end
 
   actions do
-    defaults [:read, create: [:title, :secret, :resource_id], update: [:title]]
+    defaults [
+      :read,
+      create: [:title, :secret, :resource_id, :owner_id],
+      update: [:title, :owner_id]
+    ]
+
+    update :retitle do
+      accept [:title]
+    end
   end
 
   attributes do
@@ -106,6 +123,11 @@ defmodule AshDataTable.Test.Resource.Part do
 
   relationships do
     belongs_to :resource, AshDataTable.Test.Resource, public?: true
+
+    belongs_to :owner, AshDataTable.Test.Resource.Owner,
+      public?: true,
+      attribute_type: :string,
+      destination_attribute: :name
   end
 end
 

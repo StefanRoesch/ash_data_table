@@ -225,8 +225,8 @@ const core = {
       else this.transport.push("left", {row})
     })
     // Saves that wait for the host's answer to their column's question
-    // (controlled mode), by the id of their cell: what puts the cell back.
-    // The server says when one is answered.
+    // (controlled mode), by the `ref` of the host's request: the cell and
+    // what puts it back (`waitFor`). The server says when one is answered.
     this.holds = new Map()
     this.transport.on("ash_data_table:answered", answer => {
       if (answer.table === this.id) this.answered(answer)

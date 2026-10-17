@@ -153,6 +153,8 @@ export default {
     // a patch has brought the cell whose value was shown as the
     // server renders it, or taken it away: nothing is shown any more
     if (this.revealed && !this.shows(this.revealed.cell)) this.revealed = null
+    // or a cell that waits for the host's answer: it waits still
+    if (this.holds && this.holds.size) this.rehold()
     const tree = this.tree()
     const top = this.top()
     const hook = top._ashDataTable

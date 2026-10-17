@@ -199,12 +199,12 @@ defmodule AshDataTable.PresentTest do
         several?: false,
         chosen: [],
         current: "0c000000-0000-4000-8000-000000000001",
-        none?: true,
+        allow_none?: true,
         question: nil,
         error: nil
       })
 
-    assert %Present.Picker{destination: Owner, choose_action: :read, none?: true} = picker
+    assert %Present.Picker{destination: Owner, choose_action: :read, allow_none?: true} = picker
     assert picker.label == Model.label(Owner)
   end
 

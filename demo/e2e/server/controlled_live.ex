@@ -78,7 +78,7 @@ defmodule DemoWeb.E2E.ControlledLive do
 
   @impl true
   def render(assigns) do
-    assigns = assign(assigns, request: AshDataTable.request(assigns.memos))
+    assigns = assign(assigns, request: List.first(AshDataTable.requests(assigns.memos)))
 
     ~H"""
     <Layouts.app flash={@flash}>

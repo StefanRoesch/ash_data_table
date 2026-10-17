@@ -78,7 +78,7 @@ defmodule AshDataTable.Live.Core.Picker do
                 several?: false,
                 chosen: [],
                 current: current,
-                none?: reference.allow_nil?,
+                allow_none?: reference.allow_nil?,
                 question: column.confirm,
                 error: nil
               }
@@ -120,7 +120,7 @@ defmodule AshDataTable.Live.Core.Picker do
           several?: true,
           current: nil,
           chosen: for(key <- panel.refs[name], %{row: {_, _} = row} <- [known[key]], do: row),
-          none?: false,
+          allow_none?: false,
           question: nil,
           error: nil
         }
@@ -136,7 +136,7 @@ defmodule AshDataTable.Live.Core.Picker do
           several?: false,
           current: Reading.blank_as_nil(held_key(panel, input)),
           chosen: [],
-          none?: not input.required?,
+          allow_none?: not input.required?,
           question: nil,
           error: nil
         }
@@ -270,15 +270,15 @@ defmodule AshDataTable.Live.Core.Picker do
       {:ask, question} ->
         cond do
           Requests.controlled?(socket, :confirm) ->
-            {:reply, %{held: true},
-             socket
-             |> Core.put(picker: nil)
-             |> Requests.ask_cell(
-               {:refer, key, name, named, arguments},
-               column,
-               rows[key].pk,
-               named
-             )}
+            socket
+            |> Core.put(picker: nil)
+            |> Requests.ask_cell(
+              {:refer, key, name, named, arguments},
+              column,
+              rows[key].pk,
+              named
+            )
+            |> Cells.held()
 
           by == :host ->
             refer(socket, key, name, named, arguments, true, by)

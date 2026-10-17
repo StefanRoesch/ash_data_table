@@ -238,10 +238,13 @@ defmodule AshDataTable.Attrs do
   # `table_run`), `ash_data_table:select` `{table, all, rows}` (what is
   # selected, where the server decided it: each row `[key, named]`, as the
   # hook keeps it), `ash_data_table:leaving` `{table, row}` (answered with
-  # `left`), `ash_data_table:answered` `{table, cell, saved, error}` (a
-  # save that waited for the host's answer to its column's question, in
-  # controlled mode: the hook had the reply `{held: true}` and kept the
-  # cell busy; not saved, it puts the cell back, or marks it with `error`).
+  # `left`), `ash_data_table:answered` `{table, ref, cell, saved, error}`
+  # (a save, a clear or a reference cell's choice that waited for the
+  # host's answer to its column's question, in controlled mode: the hook
+  # had the reply `{held: true, ref}` to `save`, `clear` or `picked`, and
+  # keeps the cell busy by that `ref`, across patches of its row; not
+  # saved, it puts the cell back where no patch came, or marks it with
+  # `error`; an `answered` of a `ref` it holds no more touches nothing).
   # A grid's hook tells whoever listens with DOM
   # events on its grid, `ash_data_table:selection` and, where it is told to
   # choose, `ash_data_table:choose`, each with what `selected()` gives:

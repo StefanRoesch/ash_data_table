@@ -728,7 +728,7 @@ defmodule AshDataTable.Live.Core.Panel do
   end
 
   # The first data cell of a row, where focus goes when the row was created.
-  defp first_cell(id, key, %{columns: [column | _]}), do: "#{id}-row-#{key}-c-#{column.name}"
+  defp first_cell(id, key, %{columns: [column | _]}), do: Present.cell_id(id, key, column.name)
 
   defp first_cell(id, key, _model), do: "#{id}-row-#{key}-a"
 
