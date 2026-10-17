@@ -271,7 +271,7 @@ defmodule AshDataTable.Resource.Reading do
   through a private read action, or nil.
 
   An aggregate is read through actions of the resources on its path, as
-  Ash applies their policies to it (ash 3.34.4, observed on Postgres): for
+  Ash applies their policies to it (ash 3.36.1): for
   each relationship of the path its own `read_action`, else the primary
   read action of its destination, and what Ash runs on the way through it
   (`AshDataTable.Resource.Relating.passed/1`); for the last relationship, the

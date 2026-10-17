@@ -89,7 +89,7 @@ defmodule AshDataTable.Query do
           | {:page_values, page_values}
 
   @typedoc """
-  What the page gives every call to Ash (stage 6): `context`, which every
+  What the page gives every call to Ash: `context`, which every
   call is given, and by name the `private_arguments`, which an action is
   given where it declares an argument of that name `public?: false`, and
   the `page_arguments`, which an action is given where its declaration
@@ -388,7 +388,7 @@ defmodule AshDataTable.Query do
       makes Ash count only the records on which the person sees the field,
       and with the table's read action as its own `read_action`: Ash would
       otherwise look at the field policies as the primary read action meets
-      them (ash 3.34.4), which need not be the ones the rows are read
+      them (ash 3.36.1), which need not be the ones the rows are read
       under;
 
     * a column the person sees on some records only (`partly_hidden?`, in a
@@ -670,7 +670,7 @@ defmodule AshDataTable.Query do
 
   # What Ash says of the arguments a column's calculation is loaded with,
   # by asked argument. It names the argument for a value that is none of
-  # its type. For one its constraints do not take it does not (ash 3.34.4),
+  # its type. For one its constraints do not take it does not (ash 3.36.1),
   # so that is put at the asked arguments whose own value their type does
   # not take, and failing that at all of them.
   defp asked(resource, column, asks) do

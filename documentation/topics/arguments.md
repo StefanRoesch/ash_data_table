@@ -362,15 +362,16 @@ a read action that requires an argument the line has no input for.
 - **A `sensitive?` argument has no input on the line**, as what the line
   holds is kept in the URL. A read action that requires one cannot be
   behind a table. See [Sensitive columns](sensitive-columns.md).
-- **A page of related records through an action that requires an argument
-  fails in Ash** (3.34.4): beside the load that is given the arguments, Ash
-  runs the action once more without any, and that one's "is required" is the
-  answer. Without a page the same load works. This is why such a nested
+- **A counted page of related records through an action that requires an
+  argument fails in Ash** (3.36.1): beside the load that is given the
+  arguments, Ash counts the page through the action once more without any,
+  and that one's "is required" is the answer. Without a page the same load
+  works, and a table counts wherever the action can. This is why such a nested
   table is shown in full.
 - **Two filters on one calculation with different arguments** ("Due within"
   and "Due within 7 days" at once) are right on a SQL data layer. A data
   layer that filters in memory (ETS) computes the calculation once for both
-  in Ash 3.34.4, and so does the same filter written with
+  in Ash 3.36.1, and so does the same filter written with
   `Ash.Query.filter/2`.
 - **A constraint of a calculation's argument** is reported by Ash without
   the argument's name. The table puts the message at the asked argument

@@ -66,7 +66,7 @@ defmodule AshDataTable.Model.Access do
   at one answers for none.
 
   A question Ash cannot answer counts as "never". Ash raises for one about
-  a generic action whose policy holds a check on a record (ash 3.34.4:
+  a generic action whose policy holds a check on a record (ash 3.36.1:
   "Cannot use filter or runtime checks with generic actions"), which such
   an action has none of; it would raise the same when the action is run.
   """

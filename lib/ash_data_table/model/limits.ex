@@ -79,7 +79,7 @@ defmodule AshDataTable.Model.Limits do
   # `min_length` or `match`.
   #
   # The counter counts as Ash does, so that the two never disagree
-  # (`Ash.Type.String`, `Ash.Type.CiString`, ash 3.34): the text is trimmed
+  # (`Ash.Type.String`, `Ash.Type.CiString`, ash 3.36.1): the text is trimmed
   # first unless `trim?` is false, a `:ci_string` with a `casing` is folded
   # before that, and what is left is counted in the unit of `length_count`:
   # graphemes, codepoints or bytes. Without one it is Ash's default, which

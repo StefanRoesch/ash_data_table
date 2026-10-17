@@ -492,7 +492,7 @@ translated once, for a column and for a field of a client alike.
 - **Two people edit the same value.** As for every cell: the last save
   wins, and the panel holds what the record held when it opened.
 - **A value inside itself.** An embedded resource that holds a value of its
-  own type is read-only. (Ash 3.34 does not compile one.)
+  own type is read-only. (Ash 3.36.1 does not compile one.)
 - **A long value** is cut off in the cell, as every cell's text is. The
   panel shows all of it, and so does "Show all" (or Shift+Enter) in the
   cell, which shows the whole line in place: see

@@ -185,7 +185,7 @@ defmodule AshDataTable.Resource.Relating do
 
   @doc """
   The read actions Ash runs on the way to the records of a relationship,
-  before the one that reads them (ash 3.34.4,
+  before the one that reads them (ash 3.36.1,
   `Ash.Actions.Read.Relationships`):
 
     * for a many-to-many, the one of the join resource: the `read_action`
@@ -329,10 +329,11 @@ defmodule AshDataTable.Resource.Relating do
   back in full), through a read action that declares pagination and runs
   without being given an argument.
 
-  A page of related records whose read action requires an argument fails
-  (ash 3.34.4: beside the load that is given the arguments, Ash runs the
-  action once more without any, and that one's "is required" is the
-  answer). Without a page the same load is read with them, so such a
+  A counted page of related records whose read action requires an
+  argument fails (ash 3.36.1: beside the load that is given the arguments,
+  Ash counts the page through the action once more without any, and that
+  one's "is required" is the answer; the table counts wherever the action
+  can). Without a page the same load is read with them, so such a
   nested table is shown in full.
   """
   @spec pageable?(struct, Ash.Resource.Actions.Read.t()) :: boolean

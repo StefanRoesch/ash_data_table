@@ -17,7 +17,7 @@ defmodule AshDataTable.Bulk do
   # ## How Ash is asked
   #
   # Through `Ash.bulk_update/4` and `Ash.bulk_destroy/4`, given the records
-  # that were read and these options (ash 3.34.4):
+  # that were read and these options (ash 3.36.1):
   #
   #   * `strategy: :stream` - one changeset per record, which is how an
   #     action runs on one record. The atomic strategies run one statement

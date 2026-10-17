@@ -534,7 +534,7 @@ defmodule AshDataTable.Resource.Acting do
   that action is private; nil when nothing is wrong.
 
   Ash loads what a create, an update or a destroy action returns through
-  the primary read action (ash 3.34.4: `Ash.Actions.Create`, `Update` and
+  the primary read action (ash 3.36.1: `Ash.Actions.Create`, `Update` and
   `Destroy` name it themselves), and asks its policies and field policies
   what of the result the person may have. No option of a call says
   otherwise, so a table that runs such an action runs the primary read
