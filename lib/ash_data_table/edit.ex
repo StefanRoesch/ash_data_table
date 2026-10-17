@@ -28,27 +28,24 @@ defmodule AshDataTable.Edit do
     * `{:ok, record}` - saved, or left as it was because the value is the one
       the record already has. The record is as the action returned it, with
       the table's calculations and aggregates loaded;
-    * `{:error, record, message, places}` - not saved. The record is as it
-      is stored. `places` says which values of an array the action's errors
-      are about, counted from 0; empty for every other column;
+    * `{:error, record, message}` - not saved. The record is as it is
+      stored;
     * `{:error, nil, message}` - not saved, and the record can no longer be
       read by this person.
   """
   @type result ::
           {:ok, Ash.Resource.record()}
-          | {:error, Ash.Resource.record(), Errors.message(), [non_neg_integer]}
-          | {:error, nil, Errors.message()}
+          | {:error, Ash.Resource.record() | nil, Errors.message()}
 
   @doc """
-  Saves `typed`, what a cell's editor holds, as the value of `column` on the
-  record with the primary key `key`: the text of the editor, and for an
-  array the texts of its values (see `typed?/2`).
+  Saves `typed`, the text a cell's editor holds, as the value of `column` on
+  the record with the primary key `key` (see `typed?/2`).
 
   Takes the options of `AshDataTable.Query.read/3` that say who is asking.
   """
-  @spec save(Model.t(), Column.t(), map, String.t() | [String.t()], [Query.option()]) :: result
+  @spec save(Model.t(), Column.t(), map, String.t(), [Query.option()]) :: result
   def save(%Model{} = model, %Column{editable?: true} = column, key, typed, opts)
-      when is_map(key) and (is_binary(typed) or is_list(typed)) do
+      when is_map(key) and is_binary(typed) do
     case Record.fetch(model, key, opts) do
       {:ok, record} -> save_record(model, column, record, typed, opts)
       :error -> {:error, nil, {:text, :record_gone, []}}
@@ -227,10 +224,10 @@ defmodule AshDataTable.Edit do
   end
 
   @doc """
-  Opens a map cell, or the cell of a union, for editing: the record with
-  the primary key `key` as it was read for the person, and the form of the
-  column's update action on it, for the side panel. `id` is the id of the
-  form.
+  Opens a cell that is edited in the side panel (an array, a map cell, a
+  union: `AshDataTable.Model.in_panel?/1`): the record with the primary key
+  `key` as it was read for the person, and the form of the column's update
+  action on it, for the side panel. `id` is the id of the form.
 
   `:hidden` when the value, or something in it, is not this person's to
   see, and so not theirs to change; `:error` when the record can no longer
@@ -239,7 +236,7 @@ defmodule AshDataTable.Edit do
   @spec open(Model.t(), Column.t(), map, String.t(), keyword) ::
           {:ok, Ash.Resource.record(), AshPhoenix.Form.t()} | :hidden | :error
   def open(%Model{} = model, %Column{editable?: true, editor: editor} = column, key, id, opts)
-      when editor in [:group, :groups, :union] and is_map(key) do
+      when editor in [:choices, :list, :group, :groups, :union] and is_map(key) do
     with {:ok, record} <- Record.fetch(model, key, opts) do
       if AshDataTable.Resource.Embedding.hidden?(Map.get(record, column.name)),
         do: :hidden,
@@ -248,12 +245,13 @@ defmodule AshDataTable.Edit do
   end
 
   @doc """
-  Saves what the side panel's form sent for a map cell or a union, as the
+  Saves what the side panel's form sent for a cell edited there, as the
   value of `column` on the record with the primary key `key`: the column's
-  update action, with the column's attribute as its one input, given as a
-  map of its fields (a list of them for an array), and for a union as its
-  kind and that kind's value. `input` is the column as the panel's one
-  input (`AshDataTable.Model.input/2`), and `id` the id of the form.
+  update action, with the column's attribute as its one input, given as
+  the list of its values (an array), a map of its fields (a list of them
+  for an array of maps), or for a union as its kind and that kind's value.
+  `input` is the column as the panel's one input
+  (`AshDataTable.Model.input/2`), and `id` the id of the form.
 
   Returns `{:ok, record}` when it was saved, and when what was sent is what
   the record holds, for which nothing is called; `{:error, form}`, the form
@@ -311,21 +309,16 @@ defmodule AshDataTable.Edit do
       )
 
   @doc """
-  Whether `typed` is what an editor of `column` holds: one text, and for an
-  array a list of texts, one per value. Anything else is nothing the table's
-  editors send.
+  Whether `typed` is what an editor of `column` holds in its cell: one
+  text. Anything else is nothing the table's editors send.
   """
   @spec typed?(Column.t(), term) :: boolean
   # a reference cell has no editor that holds a text: see `refer/5`
   def typed?(%Column{kind: :reference}, _typed), do: false
-  # nor has a map cell, which is edited in the side panel: see `put/7`
-  def typed?(%Column{cell_type: cell_type}, _typed)
-      when cell_type in [:map, {:array, :map}, :union, {:array, :union}],
-      do: false
-
-  def typed?(%Column{cell_type: {:array, _item}}, typed),
-    do: is_list(typed) and Enum.all?(typed, &is_binary/1)
-
+  # nor has an array, a map cell or a union, which are edited in the side
+  # panel: see `put/7`
+  def typed?(%Column{cell_type: {:array, _item}}, _typed), do: false
+  def typed?(%Column{cell_type: cell_type}, _typed) when cell_type in [:map, :union], do: false
   def typed?(%Column{}, typed), do: is_binary(typed)
 
   defp save_record(model, column, record, typed, opts) do
@@ -347,14 +340,8 @@ defmodule AshDataTable.Edit do
           unchanged?(column, typed, value, model.time_zone) ->
             unchanged(model, record, opts)
 
-          (gaps = Zone.gaps(column, typed, model.time_zone)) != [] ->
-            failed(
-              model,
-              record,
-              {:text, :no_such_time, zone: model.time_zone},
-              opts,
-              for([place | _rest] <- gaps, is_integer(place), do: place)
-            )
+          Zone.gaps(column, typed, model.time_zone) != [] ->
+            failed(model, record, {:text, :no_such_time, zone: model.time_zone}, opts)
 
           true ->
             {typed, []} = Zone.given(column, typed, model.time_zone)
@@ -374,9 +361,9 @@ defmodule AshDataTable.Edit do
   end
 
   # The row is shown again, with the cell marked: from the record as it is.
-  defp failed(model, record, message, opts, places \\ []) do
+  defp failed(model, record, message, opts) do
     case Record.load(model, record, opts) do
-      {:ok, record} -> {:error, record, message, places}
+      {:ok, record} -> {:error, record, message}
       :error -> {:error, nil, message}
     end
   end
@@ -400,7 +387,7 @@ defmodule AshDataTable.Edit do
         end
 
       {:error, form} ->
-        failed(model, record, message(form, column, model), opts, Errors.places(form, column))
+        failed(model, record, message(form, column, model), opts)
     end
   end
 

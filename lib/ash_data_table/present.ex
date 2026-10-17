@@ -65,9 +65,8 @@ defmodule AshDataTable.Present do
     #     sensitive fields masked. Nil but in the state `:value`;
     #   * `editable?` whether this person can edit this cell of this row;
     #   * `failure` of a cell whose save failed: what was typed (`""` for a
-    #     sensitive cell, whatever was typed), the action's message, and the
-    #     places of the values of an array it refused. Nil else, and nil on
-    #     a cell that cannot be edited.
+    #     sensitive cell, whatever was typed) and the action's message. Nil
+    #     else, and nil on a cell that cannot be edited.
     defstruct value: nil, state: :value, editable?: false, failure: nil
 
     @type t :: %__MODULE__{}
@@ -237,11 +236,9 @@ defmodule AshDataTable.Present do
   defp state(_column, value), do: {:value, value}
 
   # What was typed into a sensitive cell is never given back.
-  defp failure(%{sensitive?: true}, {_typed, message, places}),
-    do: %{typed: "", message: message, places: places}
+  defp failure(%{sensitive?: true}, {_typed, message}), do: %{typed: "", message: message}
 
-  defp failure(_column, {typed, message, places}),
-    do: %{typed: typed, message: message, places: places}
+  defp failure(_column, {typed, message}), do: %{typed: typed, message: message}
 
   # Whether a person can edit this cell: its column is editable, and the
   # field is not hidden from them on this row. The field of a reference cell

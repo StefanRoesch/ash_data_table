@@ -108,15 +108,9 @@ defmodule DemoWeb.Tables.TextCounterTest do
       assert [{"textarea", _attributes, _children}] = LazyHTML.to_tree(content)
     end
 
-    test "of an array of text has one in the row of each value, which the hook names by the row's place",
+    test "of an array of text is none: the array is edited in the side panel, whose rows have theirs",
          %{tasks: html} do
-      row = editor_content(html, "task", "tags")
-
-      assert %{text: "0/20", max: "20", unit: "codepoints", id: nil} =
-               counter(LazyHTML.query(row, "[data-count]"))
-
-      # the list has the id its rows' counters are named by
-      assert attribute(html, "template[id='task-editor-tags']", "id") == ["task-editor-tags"]
+      assert Enum.count(LazyHTML.query(editor_content(html, "task", "tags"), "[data-count]")) == 0
     end
 
     test "of anything that is no text with a most has none", %{tasks: html} do

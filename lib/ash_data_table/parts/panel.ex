@@ -360,7 +360,6 @@ defmodule AshDataTable.Parts.Panel do
           item={elem(@input.cell_type, 1)}
           limits={@limits}
           counted={@counted}
-          place={:panel}
           values={@value}
           name={@name <> "[]"}
           texts={Words.texts(:list, %{label: @input.label, values: @value})}

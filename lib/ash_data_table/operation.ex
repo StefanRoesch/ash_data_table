@@ -118,14 +118,13 @@ defmodule AshDataTable.Operation do
     @moduledoc false
     # A write that was not done: the `record` as it is now (nil when it is
     # gone, or not the person's to read), the `message` the person is told,
-    # the `places` of the values of an array it is about, the `form` with
+    # the `form` with
     # the action's errors at its fields, the inputs (or the reference cell)
     # whose chosen record is not there any more (`unchosen`), the record
     # that was `chosen` for a reference cell, and what the table `given`
     # the action itself, as it was read again (a create in a nested table).
     defstruct record: nil,
               message: nil,
-              places: [],
               form: nil,
               unchosen: [],
               chosen: nil,
@@ -293,7 +292,7 @@ defmodule AshDataTable.Operation do
     with %{} = column <-
            Enum.find(
              input.model.columns,
-             &(&1.name == name and &1.editable? and Model.group?(&1))
+             &(&1.name == name and &1.editable? and Model.in_panel?(&1))
            ),
          %{} = row <- input.rows[key],
          :cont <- asked(input, :map_cell, column, row) do
@@ -551,8 +550,7 @@ defmodule AshDataTable.Operation do
 
   defp edited({:ok, record}), do: {:ok, %Outcome{record: record}}
 
-  defp edited({:error, %_{} = record, message, places}),
-    do: failed(record, message, places: places)
+  defp edited({:error, %_{} = record, message}), do: failed(record, message)
 
   defp edited({:error, nil, message}), do: failed(nil, message)
 

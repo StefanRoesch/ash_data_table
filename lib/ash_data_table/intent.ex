@@ -41,7 +41,7 @@ defmodule AshDataTable.Intent do
           | {:argument_remove, String.t(), non_neg_integer}
           | {:expand, key}
           | {:toggle, key, String.t()}
-          | {:save, key, String.t(), String.t() | [String.t()]}
+          | {:save, key, String.t(), String.t()}
           | {:clear, key, String.t()}
           | {:discard, key, String.t()}
           | {:dismiss, key}
@@ -120,13 +120,10 @@ defmodule AshDataTable.Intent do
       when is_binary(row) and is_binary(relationship),
       do: {:ok, {:toggle, row, relationship}}
 
-  # Cells. What was typed is text, or for an array a list of texts.
+  # Cells. What was typed is text.
   def parse("save", %{"row" => row, "column" => column, "value" => typed})
-      when is_binary(row) and is_binary(column) do
-    if is_binary(typed) or (is_list(typed) and Enum.all?(typed, &is_binary/1)),
-      do: {:ok, {:save, row, column, typed}},
-      else: :malformed
-  end
+      when is_binary(row) and is_binary(column) and is_binary(typed),
+      do: {:ok, {:save, row, column, typed}}
 
   def parse(event, %{"row" => row, "column" => column})
       when event in ["clear", "discard", "reveal", "edit", "pick"] and is_binary(row) and

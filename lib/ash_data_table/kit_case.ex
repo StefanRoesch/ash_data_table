@@ -19,8 +19,8 @@ defmodule AshDataTable.KitCase do
   failed (`:failed`), and one of the sensitive column (`:secret_failed`),
   the panels of a row action with a file (`:panel`), of one with the
   sensitive field (`:rekey`), of the create action (`:create`) and its
-  failed submit (`:create_failed`), of a map cell (`:map_panel`) and of a
-  list of maps (`:groups_panel`), of records chosen in the picker
+  failed submit (`:create_failed`), of a cell of a list (`:list_panel`),
+  of a map cell (`:map_panel`) and of a list of maps (`:groups_panel`), of records chosen in the picker
   (`:staff`) and that picker (`:staff_picker`), the picker of a reference
   cell (`:picker`), the result of an action on selected rows
   (`:selected`), and the parts a table draws only where the router mounts
@@ -59,7 +59,8 @@ defmodule AshDataTable.KitCase do
 
   @table "kit"
   @states [:rows, :filtered, :empty, :error, :loading, :nested, :failed, :secret_failed] ++
-            [:panel, :rekey, :create, :create_failed, :map_panel, :groups_panel, :staff] ++
+            [:panel, :rekey, :create, :create_failed, :list_panel, :map_panel, :groups_panel] ++
+            [:staff] ++
             [:staff_picker, :picker, :selected, :links]
 
   @presentations [
@@ -390,6 +391,9 @@ defmodule AshDataTable.KitCase do
     [{opened, {:way, :create_failed}}, {failed, :create_failed}]
   end
 
+  defp drive(_kit, view, :list_panel, key),
+    do: [{event(view, "edit", %{"row" => key, "column" => "tags"}), :list_panel}]
+
   defp drive(_kit, view, :map_panel, key),
     do: [{event(view, "edit", %{"row" => key, "column" => "place"}), :map_panel}]
 
@@ -589,7 +593,7 @@ defmodule AshDataTable.KitCase do
         ~w(name note secret done size tier),
         &editor(page, &1, "input,textarea,select")
       ) ++
-        editor(page, "tags", "[data-list]") ++
+        in_panel(page, "tags", "list") ++
         need(page, "template[id='kit-editor-note'][data-confirm]", "the question of note") ++
         need(page, "template[id='kit-editor-secret'][data-editor='secret']", "a secret editor") ++
         in_template(
@@ -597,12 +601,6 @@ defmodule AshDataTable.KitCase do
           "kit-editor-name",
           "[data-count][data-max]",
           "the counter of name in its editor"
-        ) ++
-        in_template(
-          page,
-          "kit-editor-tags",
-          "[data-list][data-value-label][data-remove-label]",
-          "the list editor of tags, with what its rows are called"
         )
 
     grid ++ columns ++ editors ++ constants(page)
@@ -654,7 +652,11 @@ defmodule AshDataTable.KitCase do
         )
       end) ++
       need(page, "[id='#{row}-c-note'][data-lines='2']", "the lines of a cell of note") ++
-      need(page, "[id='#{row}-c-tags'][data-value]", "what a cell of a list holds") ++
+      none(
+        page,
+        "[id='#{row}-c-tags'][data-value]",
+        "editor's value on a cell of a list, which is edited in the panel"
+      ) ++
       need(page, "[id='#{row}-c-secret'] [data-mask]", "the mask of the sensitive cell") ++
       need(page, "[id='#{row}-c-secret'] [data-masked]", "what a screen reader hears of it") ++
       need(page, "[id='#{row}-c-secret'] [data-secret]", "where its value goes") ++
@@ -688,6 +690,21 @@ defmodule AshDataTable.KitCase do
   defp inside(template) do
     [{"template", _attrs, children}] = LazyHTML.to_tree(template)
     LazyHTML.from_tree(children)
+  end
+
+  # The template of a column edited in the side panel: its kind, and no
+  # control, as nothing is edited in the cell.
+  defp in_panel(page, field, kind) do
+    case Enum.to_list(LazyHTML.query(page, "template[id='kit-editor-#{field}']")) do
+      [template] ->
+        if LazyHTML.attribute(template, "data-editor") == [kind] and
+             count(inside(template), "input,select,textarea,button,[data-control]") == 0,
+           do: [],
+           else: ["the editor of #{field}, of the kind #{kind} and without a control"]
+
+      _none ->
+        ["the editor of #{field} (template[id='kit-editor-#{field}'])"]
+    end
   end
 
   defp in_template(page, id, selector, what) do
@@ -807,6 +824,12 @@ defmodule AshDataTable.KitCase do
     do:
       panel(page, presentation) ++
         need(page, "[id='kit-panel'] [data-invalid]", "the places of the values refused")
+
+  defp special(page, :list_panel, _key, presentation),
+    do:
+      panel(page, presentation) ++
+        need(page, "[id='kit-panel'] [data-field='tags'] [data-list]", "the field of the list") ++
+        need(page, "[id='kit-panel'] [data-field='tags'] [data-list] [data-add]", "its Add")
 
   defp special(page, :map_panel, _key, presentation),
     do:

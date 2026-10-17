@@ -374,7 +374,7 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "says what the action says, and the message holds nothing of what was typed", %{key: key} do
-      assert {:error, record, message, []} =
+      assert {:error, record, message} =
                Edit.save(model(), column(:token), key, "UPPER-SECRET", actor: @admin)
 
       assert message == {:ash, "must be lower case", []}
@@ -384,7 +384,7 @@ defmodule AshDataTable.SensitiveTest do
 
     test "a message that names what was typed keeps nothing of it, where the field is sensitive",
          %{key: key} do
-      assert {:error, _record, message, []} =
+      assert {:error, _record, message} =
                Edit.save(model(), column(:token), key, "taken-secret", actor: @admin)
 
       assert message == {:ash, "%{value} is taken", [value: AshDataTable.Present.mask()]}
@@ -392,12 +392,12 @@ defmodule AshDataTable.SensitiveTest do
       assert AshDataTable.Text.say(message) == "•••••• is taken"
 
       # a field that is not sensitive keeps it
-      assert {:error, _record, {:ash, "%{value} is taken", [value: "Taken"]}, []} =
+      assert {:error, _record, {:ash, "%{value} is taken", [value: "Taken"]}} =
                Edit.save(model(), column(:name), key, "Taken", actor: @admin)
     end
 
     test "is refused where the field is hidden from the person on the record", %{key: key} do
-      assert {:error, _record, {:text, :edit_not_allowed, []}, []} =
+      assert {:error, _record, {:text, :edit_not_allowed, []}} =
                Edit.save(model(), column(:pin), key, "1", actor: @member)
 
       assert stored(key).pin == 4711
@@ -453,7 +453,7 @@ defmodule AshDataTable.SensitiveTest do
     test "says what the action says where it refuses", %{} do
       pinned = Ash.Seed.seed!(Vault, %{name: "pinned", pin: 1})
 
-      assert {:error, record, {:ash, "stays on a pinned vault", []}, []} =
+      assert {:error, record, {:ash, "stays on a pinned vault", []}} =
                Edit.clear(model(), column(:pin), %{id: pinned.id}, actor: @admin)
 
       assert record.pin == 1
@@ -461,7 +461,7 @@ defmodule AshDataTable.SensitiveTest do
     end
 
     test "is refused where the field is hidden from the person on the record", %{key: key} do
-      assert {:error, _record, {:text, :edit_not_allowed, []}, []} =
+      assert {:error, _record, {:text, :edit_not_allowed, []}} =
                Edit.clear(model(), column(:pin), key, actor: @member)
 
       assert stored(key).pin == 4711

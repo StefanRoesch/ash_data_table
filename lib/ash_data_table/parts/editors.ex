@@ -68,18 +68,14 @@ defmodule AshDataTable.Parts.Editors do
     end
   end
 
-  # The editor of an array whose values each have a control of their own:
-  # one row per value, with the control of the values' cell type and a button
-  # that takes the value away, and after the rows a button that adds a value.
+  # The field of an array whose values each have a control of their own, in
+  # the action panel: one row per value, with the control of the values'
+  # cell type and a button that takes the value away, and after the rows a
+  # button that adds a value.
   #
-  # The rows are the hook's. In a cell it makes them all, from the row in the
-  # `<template>`, for the values the cell holds. In the action panel the
-  # server renders the rows the field starts with, and the hook those a
-  # person adds; there each row is sent with the form, under `name`.
-  #
-  # Unlike the editor of one value, which stands in the place of the cell's
-  # text, these controls have their edges: there are several in the cell, and
-  # the cell's focus ring does not say which of them has the focus.
+  # The server renders the rows the field starts with, and the panel's hook
+  # those a person adds, from the row in the `<template>`; each row is sent
+  # with the form, under `name`.
   #
   # What a control is called says its place ("Tags 2"), which changes as
   # values are added and taken away: the hook numbers them, from the two
@@ -89,7 +85,6 @@ defmodule AshDataTable.Parts.Editors do
   attr :item, :atom, required: true
   attr :limits, :map, required: true
   attr :counted, :any, required: true
-  attr :place, :atom, required: true
   attr :values, :list, required: true
   attr :name, :string, required: true
   attr :id, :string, required: true
@@ -103,10 +98,7 @@ defmodule AshDataTable.Parts.Editors do
       id={@id}
       data-list
       {Attrs.list(@texts)}
-      class={[
-        "flex flex-col gap-1",
-        if(@place == :grid, do: "items-start py-0.5", else: "items-stretch")
-      ]}
+      class="flex flex-col items-stretch gap-1"
       {@rest}
     >
       <template><.list_item
@@ -116,7 +108,6 @@ defmodule AshDataTable.Parts.Editors do
         limits={@limits}
         counted={@counted}
         list={@id}
-        place={@place}
         name={@name}
         value=""
         position={nil}
@@ -131,7 +122,6 @@ defmodule AshDataTable.Parts.Editors do
         limits={@limits}
         counted={@counted}
         list={@id}
-        place={@place}
         name={@name}
         value={value}
         position={position}
@@ -141,7 +131,7 @@ defmodule AshDataTable.Parts.Editors do
       <button
         type="button"
         data-add
-        class={["btn self-start", if(@place == :grid, do: "btn-xs", else: "btn-sm")]}
+        class="btn btn-sm self-start"
       >
         {@texts.add_value}
       </button>
@@ -155,7 +145,6 @@ defmodule AshDataTable.Parts.Editors do
   defp list_item(assigns) do
     assigns =
       assign(assigns,
-        grid?: assigns.place == :grid,
         # The counter of a value that is text with a most it can be long.
         # Its id says the row's place, as what the row's controls are
         # called does, and the hook numbers it with them.
@@ -177,7 +166,7 @@ defmodule AshDataTable.Parts.Editors do
         type="checkbox"
         checked={@value == "true"}
         aria-label={@value_label}
-        class={["checkbox", if(@grid?, do: "checkbox-xs", else: "checkbox-sm"), box_edge()]}
+        class={["checkbox checkbox-sm", box_edge()]}
       />
       <textarea
         :if={@item == :text}
@@ -185,11 +174,7 @@ defmodule AshDataTable.Parts.Editors do
         name={@name}
         aria-label={@value_label}
         aria-describedby={@count_id}
-        class={[
-          "textarea min-h-0",
-          if(@grid?, do: "textarea-xs w-48 resize-none", else: "flex-1"),
-          control_edge()
-        ]}
+        class={["textarea min-h-0 flex-1", control_edge()]}
       >{Phoenix.HTML.Form.normalize_value("textarea", @value)}</textarea>
       <Kit.part
         :if={@item == :text && @counted}
@@ -210,7 +195,7 @@ defmodule AshDataTable.Parts.Editors do
         name={@name}
         value={@value}
         aria-label={@value_label}
-        class={["input", if(@grid?, do: "input-xs w-48", else: "flex-1"), control_edge()]}
+        class={["input flex-1", control_edge()]}
       />
       <button
         type="button"

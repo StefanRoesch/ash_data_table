@@ -398,8 +398,8 @@ defmodule AshDataTable.Kit.Words do
   defp page_numbers(_page, %{page: current}), do: [current]
 
   # What a cell whose save failed shows of what was typed, as the cell
-  # would show it had it been saved: a yes or no, an enum's label, the
-  # values of an array. Nothing of a sensitive cell, which shows its mask.
+  # would show it had it been saved: a yes or no, an enum's label. Nothing
+  # of a sensitive cell, which shows its mask.
   defp typed(%{sensitive?: true}, _failure), do: []
   defp typed(_column, nil), do: []
   defp typed(column, %{typed: typed}), do: [typed: typed_text(typed, column)]
@@ -411,20 +411,7 @@ defmodule AshDataTable.Kit.Words do
     do:
       Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
 
-  defp typed_text(typed, %{cell_type: {:array, item}} = column) when is_list(typed) do
-    {:join, ", ", Enum.map(typed, &typed_item(&1, item, column))}
-  end
-
   defp typed_text(typed, _column), do: typed
-
-  defp typed_item("true", :boolean, _column), do: t(:yes)
-  defp typed_item("false", :boolean, _column), do: t(:no)
-
-  defp typed_item(typed, :enum, %{values: values}),
-    do:
-      Enum.find_value(values, typed, fn {value, label} -> to_string(value) == typed && label end)
-
-  defp typed_item(typed, _item, _column), do: typed
 
   # The heading of a table of related records in words, before and after
   # the record it names, where a part draws the record as a link: nil and

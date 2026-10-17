@@ -17,7 +17,69 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
-import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
+import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, COUNT, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
+
+// The field of an array that is given value by value (`LIST`): its rows,
+// one per value (`ITEM`), each with the control that holds the value.
+const items = list => Array.from(list.querySelectorAll(ITEM))
+const controlIn = item => item.querySelector("textarea,input:not([type=hidden])")
+const valueIn = item => {
+  const control = controlIn(item)
+  return control.type === "checkbox" ? String(control.checked) : control.value
+}
+
+// A box sends nothing while it is not ticked: what it holds is sent by the
+// input beside it.
+const hold = item => {
+  const held = item.querySelector("input[type=hidden]")
+  if (held) held.value = valueIn(item)
+}
+
+// What the controls of a row are called says the row's place, and so does
+// the id of the counter of a text, which its control names.
+const number = list => {
+  items(list).forEach((item, index) => {
+    const place = String(index + 1)
+    controlIn(item).setAttribute("aria-label", list.dataset.valueLabel.replace("{n}", place))
+    const counter = item.querySelector(COUNT)
+    if (counter && list.id) {
+      counter.id = `${list.id}-count-${place}`
+      controlIn(item).setAttribute("aria-describedby", counter.id)
+    }
+    item.querySelector(REMOVE).setAttribute("aria-label", list.dataset.removeLabel.replace("{n}", place))
+  })
+}
+
+// Adds a row for a value after the others, from the list's template, and
+// returns its control.
+const addValue = list => {
+  const item = list.querySelector("template").content.firstElementChild.cloneNode(true)
+  list.querySelector(ADD).before(item)
+  hold(item)
+  number(list)
+  return controlIn(item)
+}
+
+// Takes a row away. Focus goes to the value after it, else to the one
+// before it, else to the button that adds one.
+const removeValue = (list, item) => {
+  const all = items(list)
+  const at = all.indexOf(item)
+  const next = all[at + 1] || all[at - 1]
+  item.remove()
+  number(list)
+  ;(next ? controlIn(next) : list.querySelector(ADD)).focus()
+}
+
+// Marks the controls of the values at `places`, counted from 0, as the
+// ones the action refused, and no others.
+const markValues = (list, places) => {
+  items(list).forEach((item, index) => {
+    const control = controlIn(item)
+    if (places.includes(index)) control.setAttribute("aria-invalid", "true")
+    else control.removeAttribute("aria-invalid")
+  })
+}
 
 // What takes the focus as a panel or a picker opens in the page, as
 // the browser finds it in a modal dialog: its first control.
@@ -76,9 +138,9 @@ export default {
       for (const shown of field.querySelectorAll(VALUE_TEXT)) shown.textContent = e.target.value
     }))
     // The field of an array that is given value by value: its rows
-    // are added and taken away here, as they are in a cell, by the
-    // grid's hook. The server is told as it is of anything typed
-    // into a field, by the entry the field sends before its values.
+    // are added and taken away here. The server is told as it is of
+    // anything typed into a field, by the entry the field sends before
+    // its values.
     this.mark()
     const changed = list => {
       const own = list.parentElement.querySelector("input[data-own]")
@@ -86,17 +148,17 @@ export default {
     }
     dialog.addEventListener("click", own(e => {
       const list = e.target.closest && e.target.closest(LIST)
-      if (!list || !this.grid) return
-      if (e.target.closest(ADD)) this.grid.addValue(list, "").focus()
-      else if (e.target.closest(REMOVE)) this.grid.removeValue(list, e.target.closest(ITEM))
+      if (!list) return
+      if (e.target.closest(ADD)) addValue(list).focus()
+      else if (e.target.closest(REMOVE)) removeValue(list, e.target.closest(ITEM))
       else return
       changed(list)
     }))
     // a box of such a field: what it holds is sent by the input beside it
     dialog.addEventListener("change", own(e => {
       const item = e.target.closest && e.target.closest(`${LIST} ${ITEM}`)
-      if (!item || e.target.type !== "checkbox" || !this.grid) return
-      this.grid.hold(item)
+      if (!item || e.target.type !== "checkbox") return
+      hold(item)
       changed(item.closest(LIST))
     }))
     // A field made of groups (an embedded resource, a map, an array
@@ -200,11 +262,10 @@ export default {
   },
 
   mark() {
-    if (!this.grid) return
     for (const list of this.el.querySelectorAll(LIST)) {
       let places = []
       try { places = JSON.parse(list.parentElement.dataset.invalid || "[]") } catch (_error) { /* none */ }
-      this.grid.markValues(list, places)
+      markValues(list, places)
     }
   },
 

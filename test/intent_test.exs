@@ -70,12 +70,12 @@ defmodule AshDataTable.IntentTest do
     assert parse("act", %{"row" => "k1", "action" => "close"}) == {:ok, {:act, "k1", "close"}}
   end
 
-  test "a save gives what was typed: text, or for an array a list of texts" do
+  test "a save gives what was typed: text, and nothing else (an array is edited in the panel)" do
     assert parse("save", %{"row" => "k1", "column" => "title", "value" => "Hi"}) ==
              {:ok, {:save, "k1", "title", "Hi"}}
 
     assert parse("save", %{"row" => "k1", "column" => "tags", "value" => ["a", "b"]}) ==
-             {:ok, {:save, "k1", "tags", ["a", "b"]}}
+             :malformed
 
     assert parse("save", %{"row" => "k1", "column" => "tags", "value" => ["a", 1]}) == :malformed
     assert parse("save", %{"row" => "k1", "column" => "n", "value" => 1}) == :malformed

@@ -128,26 +128,37 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       end
     end
 
-    test "says what its editor starts with: the values, each as its editor writes it",
+    test "holds nothing for an editor in the cell: it is edited in the side panel, which starts with its values, each as its editor writes it",
          %{conn: conn} do
       roster = roster()
-      {:ok, _view, html} = open(conn, @admin)
+      {:ok, view, html} = open(conn, @admin)
 
-      assert held(html, roster, "words") == [~s(["alpha","beta"])]
-      assert held(html, roster, "numbers") == [~s(["1.50","20"])]
-      assert held(html, roster, "days") == [~s(["2026-03-09","2026-12-01"])]
-      assert held(html, roster, "switches") == [~s(["true","false"])]
-      # a choice is its value, not its label
-      assert held(html, roster, "stages") == [~s(["done","draft"])]
-      assert held(html, roster, "gaps") == [~s(["1","","3"])]
+      for field <- ~w(words numbers days switches stages gaps),
+          do: assert(held(html, roster, field) == [], field)
+
+      values = fn field ->
+        html = edit(view, "roster", roster.id, field)
+        value = field(html, field).value
+        cancel_panel(view, "roster")
+        value
+      end
+
+      assert values.("words") == ["alpha", "beta"]
+      assert values.("numbers") == ["1.50", "20"]
+      assert values.("days") == ["2026-03-09", "2026-12-01"]
+      assert values.("switches") == ["true", "false"]
+      # a choice is its value, not its label, in the enum's order
+      assert values.("stages") == ["draft", "done"]
+      assert values.("gaps") == ["1", "", "3"]
     end
 
-    test "of nil starts its editor with no values, as an empty array does", %{conn: conn} do
+    test "of nil starts its field with no values, as an empty array does", %{conn: conn} do
       roster = roster(%{words: [], numbers: nil})
-      {:ok, _view, html} = open(conn, @admin)
+      {:ok, view, _html} = open(conn, @admin)
 
-      assert held(html, roster, "words") == ["[]"]
-      assert held(html, roster, "numbers") == ["[]"]
+      assert field(edit(view, "roster", roster.id, "words"), "words").value == []
+      cancel_panel(view, "roster")
+      assert field(edit(view, "roster", roster.id, "numbers"), "numbers").value == []
     end
 
     test "is neither sorted nor filtered by", %{conn: conn} do
@@ -196,55 +207,89 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       %{roster: roster, view: view, html: html}
     end
 
-    test "an array of enum values with one box per value of the enum, in declared order, with the labels",
+    test "nothing in its cell: its template says the side panel, and holds no control",
          %{html: html} do
       assert editor(html, "roster", "stages") == %{
-               control: "choices",
-               choices: ["Draft", "In review", "Done"],
+               control: "panel",
+               choices: nil,
                confirm: "Change the stages?"
              }
 
-      # an atom limited to a set of values
-      assert editor(html, "roster", "sizes") == %{
-               control: "choices",
-               choices: ["Small", "Extra large"],
-               confirm: nil
-             }
+      for field <- ~w(sizes words numbers gaps days moments switches) do
+        assert %{control: "panel", choices: nil} = editor(html, "roster", field), field
+      end
+    end
+
+    test "in the side panel, an array of enum values with one box per value of the enum, in declared order, with the labels",
+         %{view: view, roster: roster} do
+      html = edit(view, "roster", roster.id, "stages")
+
+      assert %{heading: "Stages: Night shift", submit: "Save", fields: [field]} =
+               panel(html, "roster")
+
+      assert %{name: "stages", label: "Stages", control: "choices", value: ["draft", "done"]} =
+               field
+
+      assert ["Draft", "In review", "Done"] ==
+               html
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.query("#roster-panel-f-stages > label")
+               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+
+      # the column's question is the panel's, asked once something changed
+      assert attribute(html, "#roster-panel", "data-question") == ["Change the stages?"]
+      assert attribute(html, "#roster-panel", "data-ask") == ["changed"]
     end
 
     test "any other array with one control per value, of the editor its values have as a cell",
-         %{html: html} do
-      assert editor(html, "roster", "words").control == {"list", "textarea"}
-      assert editor(html, "roster", "numbers").control == {"list", "number"}
-      assert editor(html, "roster", "gaps").control == {"list", "number"}
-      assert editor(html, "roster", "days").control == {"list", "date"}
-      assert editor(html, "roster", "moments").control == {"list", "datetime-local"}
-      assert editor(html, "roster", "switches").control == {"list", "checkbox"}
+         %{view: view, roster: roster} do
+      for {field, control} <- [
+            {"words", "textarea"},
+            {"numbers", "number"},
+            {"gaps", "number"},
+            {"days", "date"},
+            {"moments", "datetime-local"},
+            {"switches", "checkbox"}
+          ] do
+        html = edit(view, "roster", roster.id, field)
+        assert %{control: "list"} = field(html, field)
+
+        assert [{tag, attributes, _children} | _rows] =
+                 html
+                 |> LazyHTML.from_fragment()
+                 |> LazyHTML.query(
+                   "#roster-panel-f-#{field}-values > [data-item] > :is(textarea, input:not([type=hidden]))"
+                 )
+                 |> LazyHTML.to_tree()
+
+        assert if(tag == "input", do: :proplists.get_value("type", attributes), else: tag) ==
+                 control,
+               field
+
+        cancel_panel(view, "roster")
+      end
     end
 
     test "which is a group that the column names, with what its controls are called by their place",
-         %{html: html} do
-      {"template", attributes, children} = tree(html, "template[id='roster-editor-words']")
-      [{"div", group, _rows}] = Enum.reject(children, &is_binary/1)
-
-      assert {"data-editor", "list"} in attributes
-      assert {"role", "group"} in group
-      assert {"aria-label", "Words"} in group
-      assert {"data-value-label", "Words {n}"} in group
-      assert {"data-remove-label", "Remove Words {n}"} in group
-
-      {"template", _attributes, children} = tree(html, "template[id='roster-editor-stages']")
-      [{"div", group, labels}] = Enum.reject(children, &is_binary/1)
+         %{view: view, roster: roster} do
+      html = edit(view, "roster", roster.id, "words")
+      {"div", group, _children} = tree(html, "#roster-panel-f-words")
 
       assert {"role", "group"} in group
-      assert {"aria-label", "Stages"} in group
+      assert {"aria-labelledby", "roster-panel-f-words-label"} in group
+      assert text(html, "#roster-panel-f-words-label") == "Words"
 
-      # each box in the label that names it, with the value it stands for
-      assert ["draft", "in_review", "done"] ==
-               for(
-                 {"label", _, [{"input", box, _} | _]} <- labels,
-                 do: :proplists.get_value("value", box)
-               )
+      assert attribute(
+               html,
+               "#roster-panel-f-words-values > [data-item] > textarea",
+               "aria-label"
+             ) ==
+               ["Words 1", "Words 2"]
+
+      assert attribute(html, "#roster-panel-f-words-values", "data-value-label") == ["Words {n}"]
+
+      assert attribute(html, "#roster-panel-f-words-values", "data-remove-label") ==
+               ["Remove Words {n}"]
     end
 
     test "every column with an editor has its cells open, and no other", %{
@@ -261,24 +306,28 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     end
 
     test "an array no action accepts, and one switched off in the block, are read-only",
-         %{html: html, roster: roster} do
+         %{view: view, html: html, roster: roster} do
       for field <- ~w(frozen sealed) do
         assert editor(html, "roster", field) == nil
         assert attribute(html, cell("roster", roster.id, field), "aria-readonly") == ["true"]
-        assert held(html, roster, field) == []
+        edit(view, "roster", roster.id, field)
+        assert_reply view, %{ok: false}
+        assert panel(render(view), "roster") == nil
       end
     end
 
     test "nothing of it is offered to a person who can never run the action", %{conn: conn} do
       roster = roster(%{name: "Other"})
-      {:ok, _view, html} = open(conn, @viewer)
+      {:ok, view, html} = open(conn, @viewer)
 
       assert editors(html, "roster") == []
-      assert held(html, roster, "words") == []
+      edit(view, "roster", roster.id, "words")
+      assert_reply view, %{ok: false}
+      assert panel(render(view), "roster") == nil
     end
 
     test "a column whose component has an editor of its own is edited with the table's all the same",
-         %{html: html, roster: roster} do
+         %{view: view, html: html, roster: roster} do
       # the component shows the cell: it is given the list, and the text the table would show
       assert {_cell, _, [{"span", probe, ["700, 900"]}]} =
                tree(html, cell("roster", roster.id, "marks"))
@@ -286,13 +335,22 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       assert {"data-value", "[700, 900]"} in probe
 
       # and its editor, which holds one value, is not used
-      assert editor(html, "roster", "marks").control == {"list", "number"}
+      assert editor(html, "roster", "marks").control == "panel"
       refute html =~ "data-probe-editor"
-      assert held(html, roster, "marks") == [~s(["700","900"])]
+      html = edit(view, "roster", roster.id, "marks")
+      assert %{control: "list", value: ["700", "900"]} = field(html, "marks")
+      refute html =~ "data-probe-editor"
     end
   end
 
-  describe "saving an array that is edited value by value" do
+  # Edits the cell of `field` in the side panel, as the hook asks for it
+  # (`edit`), and saves `values` there, as the panel's form sends them.
+  defp save_in_panel(view, roster, field, values) do
+    edit(view, "roster", roster.id, field)
+    send_panel(view, "roster", %{"panel" => %{field => sent(values)}})
+  end
+
+  describe "saving an array that is edited value by value, in the side panel" do
     setup %{conn: conn} do
       roster = roster()
       {:ok, view, _html} = open(conn, @admin)
@@ -301,26 +359,26 @@ defmodule DemoWeb.Tables.ArrayTableTest do
 
     test "sends the values as they were typed, and the action makes of them what it does",
          %{conn: conn, view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", ["gamma", "alpha", "delta"])
+      html = save_in_panel(view, roster, "words", ["gamma", "alpha", "delta"])
 
+      assert panel(html, "roster") == nil
       assert shown(html, roster, "words") == "gamma, alpha, delta"
-      assert failure(html, "roster", roster.id, "words") == nil
       assert stored(roster).words == ["gamma", "alpha", "delta"]
 
-      html = save(view, "roster", roster.id, "numbers", ["2.5", "-1"])
+      html = save_in_panel(view, roster, "numbers", ["2.5", "-1"])
       assert shown(html, roster, "numbers") == "2.5, -1"
       assert stored(roster).numbers == [Decimal.new("2.5"), Decimal.new("-1")]
 
-      html = save(view, "roster", roster.id, "days", ["2027-01-31"])
+      html = save_in_panel(view, roster, "days", ["2027-01-31"])
       assert shown(html, roster, "days") == "2027-01-31"
       assert stored(roster).days == [~D[2027-01-31]]
 
       html =
-        save(view, "roster", roster.id, "moments", ["2027-01-31T23:59:58", "2026-01-01T00:00:00"])
+        save_in_panel(view, roster, "moments", ["2027-01-31T23:59:58", "2026-01-01T00:00:00"])
 
       assert shown(html, roster, "moments") == "2027-01-31T23:59:58, 2026-01-01T00:00:00"
 
-      html = save(view, "roster", roster.id, "switches", ["false", "false", "true"])
+      html = save_in_panel(view, roster, "switches", ["false", "false", "true"])
       assert shown(html, roster, "switches") == "No, No, Yes"
       assert stored(roster).switches == [false, false, true]
 
@@ -330,10 +388,10 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     end
 
     test "with no values left saves the empty array", %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", [])
+      html = save_in_panel(view, roster, "words", [])
 
+      assert panel(html, "roster") == nil
       assert shown(html, roster, "words") == ""
-      assert failure(html, "roster", roster.id, "words") == nil
       assert stored(roster).words == []
     end
 
@@ -342,94 +400,81 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     # otherwise
     test "leaves out a value that was left empty, as the form of the action does",
          %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "numbers", ["1", "", "2"])
+      html = save_in_panel(view, roster, "numbers", ["1", "", "2"])
 
       assert shown(html, roster, "numbers") == "1, 2"
-      assert failure(html, "roster", roster.id, "numbers") == nil
       assert stored(roster).numbers == [Decimal.new("1"), Decimal.new("2")]
 
-      html = save(view, "roster", roster.id, "words", ["", ""])
-      assert failure(html, "roster", roster.id, "words") == nil
+      save_in_panel(view, roster, "words", ["", ""])
       assert stored(roster).words == []
     end
 
     test "keeps it in an array that says an empty text is a value, where the action decides",
          %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "gaps", ["", "5", ""])
+      html = save_in_panel(view, roster, "gaps", ["", "5", ""])
 
       assert shown(html, roster, "gaps") == ", 5,"
-      assert failure(html, "roster", roster.id, "gaps") == nil
       assert stored(roster).gaps == [nil, 5, nil]
     end
 
-    test "that has too many values is refused by the action, which says so on the cell",
+    test "that has too many values is refused by the action, which says so at the field",
          %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", ["aa", "bb", "cc", "dd"])
+      html = save_in_panel(view, roster, "words", ["aa", "bb", "cc", "dd"])
 
-      assert failure(html, "roster", roster.id, "words") == %{
-               shown: "aa, bb, cc, dd",
-               message: "must have 3 or fewer items"
-             }
-
+      assert field(html, "words").errors == ["must have 3 or fewer items"]
+      # the field keeps what was typed (its rows are the panel's hook's), the
+      # cell what the record has
+      assert attribute(html, "#roster-panel-f-words-values", "phx-update") == ["ignore"]
+      assert shown(html, roster, "words") == "alpha, beta"
+      assert failure(html, "roster", roster.id, "words") == nil
       assert stored(roster).words == ["alpha", "beta"]
+
+      assert announcement(html, "roster") ==
+               "Words was not saved: Words: must have 3 or fewer items"
     end
 
     test "with a value its type does not take is refused, with the action's message for that value",
          %{view: view, roster: roster} do
       # a constraint of the values
-      html = save(view, "roster", roster.id, "words", ["alpha", "b"])
-
-      assert failure(html, "roster", roster.id, "words") == %{
-               shown: "alpha, b",
-               message: "Words 2: length must be greater than or equal to 2"
-             }
+      html = save_in_panel(view, roster, "words", ["alpha", "b"])
+      assert field(html, "words").errors == ["Words 2: length must be greater than or equal to 2"]
+      cancel_panel(view, "roster")
 
       # a value that is no number
-      html = save(view, "roster", roster.id, "numbers", ["1", "many"])
-
-      assert failure(html, "roster", roster.id, "numbers") == %{
-               shown: "1, many",
-               message: "Numbers 2: is invalid"
-             }
+      html = save_in_panel(view, roster, "numbers", ["1", "many"])
+      assert field(html, "numbers").errors == ["Numbers 2: is invalid"]
 
       assert %{words: ["alpha", "beta"]} = stored(roster)
     end
 
-    test "that failed keeps what was typed for its editor, beside what the record has",
-         %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", ["alpha", "b"])
-      selector = cell("roster", roster.id, "words")
+    test "given up, the panel goes and the cell is as the record has it", %{
+      view: view,
+      roster: roster
+    } do
+      save_in_panel(view, roster, "words", ["alpha", "b"])
+      html = cancel_panel(view, "roster")
 
-      assert attribute(html, selector, "data-value") == [~s(["alpha","b"])]
-      assert attribute(html, selector, "data-saved") == [~s(["alpha","beta"])]
-
-      assert announcement(html, "roster") ==
-               "Words was not saved: Words 2: length must be greater than or equal to 2"
-
-      # given up, as Escape on the cell does: the record's values again
-      html = discard(view, "roster", roster.id, "words")
+      assert panel(html, "roster") == nil
       assert shown(html, roster, "words") == "alpha, beta"
       assert failure(html, "roster", roster.id, "words") == nil
-      assert attribute(html, selector, "data-value") == [~s(["alpha","beta"])]
     end
   end
 
-  describe "a save that is refused because of one value" do
+  describe "a save in the side panel that is refused because of one value" do
     setup %{conn: conn} do
       roster = roster()
       {:ok, view, _html} = open(conn, @admin)
       %{roster: roster, view: view}
     end
 
-    defp invalid(html, roster, field),
-      do: attribute(html, cell("roster", roster.id, field), "data-invalid")
+    defp invalid(html, field),
+      do: attribute(html, "#roster-panel-f-#{field}", "data-invalid")
 
     test "says which value: called what its control is called, by the column and its place",
          %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", ["alpha", "beta", "c"])
+      html = save_in_panel(view, roster, "words", ["alpha", "beta", "c"])
 
-      assert failure(html, "roster", roster.id, "words").message ==
-               "Words 3: length must be greater than or equal to 2"
+      assert field(html, "words").errors == ["Words 3: length must be greater than or equal to 2"]
 
       # for every type of value: a date that is none, a box that is neither
       for {field, typed, message} <- [
@@ -438,65 +483,53 @@ defmodule DemoWeb.Tables.ArrayTableTest do
             {"moments", ["2026-01-01T00:00:00", "2026-01-02T00:00:00", "later"],
              "Moments 3: Could not cast input to datetime"}
           ] do
-        html = save(view, "roster", roster.id, field, typed)
-        assert failure(html, "roster", roster.id, field).message == message
+        cancel_panel(view, "roster")
+        html = save_in_panel(view, roster, field, typed)
+        assert field(html, field).errors == [message], field
       end
     end
 
-    test "and tells the cell's editor the places of the values, counted from 0",
+    test "and tells the field the places of the values, counted from 0",
          %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", ["alpha", "beta", "c"])
-      assert invalid(html, roster, "words") == ["[2]"]
+      html = save_in_panel(view, roster, "words", ["alpha", "beta", "c"])
+      assert invalid(html, "words") == ["[2]"]
+      cancel_panel(view, "roster")
 
       # of values that are none of the type, Ash names the first
-      html = save(view, "roster", roster.id, "numbers", ["1", "two", "three"])
-      assert invalid(html, roster, "numbers") == ["[1]"]
-      assert failure(html, "roster", roster.id, "numbers").message == "Numbers 2: is invalid"
-
-      # the first cell is still marked with its own
-      assert invalid(html, roster, "words") == ["[2]"]
+      html = save_in_panel(view, roster, "numbers", ["1", "two", "three"])
+      assert invalid(html, "numbers") == ["[1]"]
+      assert field(html, "numbers").errors == ["Numbers 2: is invalid"]
     end
 
     test "says each of several values", %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "words", ["a", "beta", "c"])
+      html = save_in_panel(view, roster, "words", ["a", "beta", "c"])
 
-      assert failure(html, "roster", roster.id, "words").message ==
-               "Words 1: length must be greater than or equal to 2; " <>
-                 "Words 3: length must be greater than or equal to 2"
+      assert field(html, "words").errors == [
+               "Words 1: length must be greater than or equal to 2",
+               "Words 3: length must be greater than or equal to 2"
+             ]
 
-      assert invalid(html, roster, "words") == ["[0,2]"]
+      assert invalid(html, "words") == ["[0,2]"]
     end
 
     test "names no value when the action refuses the array as a whole", %{
       view: view,
       roster: roster
     } do
-      html = save(view, "roster", roster.id, "words", ["aa", "bb", "cc", "dd"])
+      html = save_in_panel(view, roster, "words", ["aa", "bb", "cc", "dd"])
 
-      assert failure(html, "roster", roster.id, "words").message == "must have 3 or fewer items"
-      assert invalid(html, roster, "words") == []
+      assert field(html, "words").errors == ["must have 3 or fewer items"]
+      assert invalid(html, "words") == []
     end
 
     test "names no place in a multiple choice, whose boxes have none", %{
       view: view,
       roster: roster
     } do
-      html = save(view, "roster", roster.id, "stages", ["done", "nope"])
+      html = save_in_panel(view, roster, "stages", ["done", "nope"])
 
-      assert failure(html, "roster", roster.id, "stages").message == "is invalid"
-      assert invalid(html, roster, "stages") == []
-    end
-
-    test "is forgotten with the failure: once the edit is given up, and once a save succeeds",
-         %{view: view, roster: roster} do
-      save(view, "roster", roster.id, "words", ["alpha", "c"])
-      html = discard(view, "roster", roster.id, "words")
-      assert invalid(html, roster, "words") == []
-
-      save(view, "roster", roster.id, "words", ["alpha", "c"])
-      html = save(view, "roster", roster.id, "words", ["alpha", "cc"])
-      assert invalid(html, roster, "words") == []
-      assert failure(html, "roster", roster.id, "words") == nil
+      assert field(html, "stages").errors == ["is invalid"]
+      assert invalid(html, "stages") == []
     end
   end
 
@@ -516,25 +549,27 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       %{roster: roster, view: view, html: html}
     end
 
-    test "is shown as it is, among the labels of the others, and is one of the values the editor starts with",
-         %{html: html, roster: roster} do
+    test "is shown as it is, among the labels of the others", %{html: html, roster: roster} do
       assert roster.sizes == [:medium, :small]
       assert shown(html, roster, "sizes") == "medium, Small"
-      assert held(html, roster, "sizes") == [~s(["medium","small"])]
-      # it has no box: the choices are the enum's
-      assert editor(html, "roster", "sizes").choices == ["Small", "Extra large"]
     end
 
-    test "is sent back with what was ticked, and what the action makes of it is shown on the cell",
+    test "is sent back from the cell's panel with what was ticked, and what the action makes of it is shown at the field",
          %{view: view, roster: roster} do
-      # what the editor sends when "Extra large" is ticked: the ticked values
-      # in the enum's order, then the value that has no box
-      html = save(view, "roster", roster.id, "sizes", ["small", "extra_large", "medium"])
+      html = edit(view, "roster", roster.id, "sizes")
 
-      assert failure(html, "roster", roster.id, "sizes") == %{
-               shown: "Small, Extra large, medium",
-               message: "atom must be one of small, extra_large, got: medium"
-             }
+      # it has no box: the choices are the enum's, and it is sent after them
+      assert %{control: "choices", value: ["small"]} = field(html, "sizes")
+      assert attribute(html, "#roster-panel-f-sizes > input[type=hidden]", "value") == ["medium"]
+
+      html =
+        send_panel(view, "roster", %{
+          "panel" => %{"sizes" => sent(["small", "extra_large", "medium"])}
+        })
+
+      assert field(html, "sizes").errors == [
+               "atom must be one of small, extra_large, got: medium"
+             ]
 
       assert stored(roster).sizes == [:medium, :small]
     end
@@ -596,7 +631,7 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     end
   end
 
-  describe "saving a multiple choice" do
+  describe "saving a multiple choice in the side panel" do
     setup %{conn: conn} do
       roster = roster()
       {:ok, view, _html} = open(conn, @admin)
@@ -608,13 +643,13 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       view: view,
       roster: roster
     } do
-      html = save(view, "roster", roster.id, "stages", ["draft", "in_review"])
+      html = save_in_panel(view, roster, "stages", ["draft", "in_review"])
 
+      assert panel(html, "roster") == nil
       assert shown(html, roster, "stages") == "Draft, In review"
-      assert failure(html, "roster", roster.id, "stages") == nil
       assert stored(roster).stages == [:draft, :in_review]
 
-      html = save(view, "roster", roster.id, "sizes", ["small", "extra_large"])
+      html = save_in_panel(view, roster, "sizes", ["small", "extra_large"])
       assert shown(html, roster, "sizes") == "Small, Extra large"
       assert stored(roster).sizes == [:small, :extra_large]
 
@@ -623,24 +658,21 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     end
 
     test "runs the column's own action", %{view: view, roster: roster} do
-      save(view, "roster", roster.id, "stages", ["draft"])
+      save_in_panel(view, roster, "stages", ["draft"])
       assert %{stages: [:draft], trace: "restage"} = stored(roster)
     end
 
     test "with nothing ticked sends the empty array, which this action refuses",
          %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "stages", [])
+      html = save_in_panel(view, roster, "stages", [])
 
-      assert failure(html, "roster", roster.id, "stages") == %{
-               shown: "",
-               message: "must have 1 or more items"
-             }
-
+      assert field(html, "stages").errors == ["must have 1 or more items"]
       assert %{stages: [:done, :draft], trace: nil} = stored(roster)
+      cancel_panel(view, "roster")
 
       # and an array without that constraint takes
-      html = save(view, "roster", roster.id, "sizes", [])
-      assert failure(html, "roster", roster.id, "sizes") == nil
+      html = save_in_panel(view, roster, "sizes", [])
+      assert panel(html, "roster") == nil
       assert stored(roster).sizes == []
     end
 
@@ -648,13 +680,9 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       view: view,
       roster: roster
     } do
-      html = save(view, "roster", roster.id, "stages", ["done", "nope"])
+      html = save_in_panel(view, roster, "stages", ["done", "nope"])
 
-      assert failure(html, "roster", roster.id, "stages") == %{
-               shown: "Done, nope",
-               message: "is invalid"
-             }
-
+      assert field(html, "stages").errors == ["is invalid"]
       assert stored(roster).stages == [:done, :draft]
     end
   end
@@ -667,15 +695,15 @@ defmodule DemoWeb.Tables.ArrayTableTest do
     end
 
     test "runs no action", %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "stages", ["done", "draft"])
+      html = save_in_panel(view, roster, "stages", ["done", "draft"])
 
+      assert panel(html, "roster") == nil
       assert shown(html, roster, "stages") == "Done, Draft"
-      assert failure(html, "roster", roster.id, "stages") == nil
       # `restage` leaves its trace whenever it runs
       assert stored(roster).trace == nil
 
       # the same values in another order are another value
-      save(view, "roster", roster.id, "stages", ["draft", "done"])
+      save_in_panel(view, roster, "stages", ["draft", "done"])
       assert %{stages: [:draft, :done], trace: "restage"} = stored(roster)
     end
 
@@ -684,20 +712,10 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       roster = roster(%{name: "Empty", stages: nil})
       {:ok, view, _html} = open(conn, @admin)
 
-      html = save(view, "roster", roster.id, "stages", [])
+      html = save_in_panel(view, roster, "stages", [])
 
-      assert failure(html, "roster", roster.id, "stages") == nil
+      assert panel(html, "roster") == nil
       assert %{stages: nil, trace: nil} = stored(roster)
-    end
-
-    test "typed again after a failed save runs nothing, and the cell is no longer marked",
-         %{view: view, roster: roster} do
-      html = save(view, "roster", roster.id, "stages", [])
-      assert failure(html, "roster", roster.id, "stages")
-
-      html = save(view, "roster", roster.id, "stages", ["done", "draft"])
-      assert failure(html, "roster", roster.id, "stages") == nil
-      assert stored(roster).trace == nil
     end
   end
 
@@ -708,13 +726,15 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       %{roster: roster, view: view}
     end
 
-    test "one text for an array, a list for one value, or a list of anything but texts: nothing is saved or shown",
+    test "a save of an array from the cell, whatever it holds, or a list for one value: nothing is saved or shown",
          %{view: view, roster: roster} do
       for {field, value} <- [
             {"words", "gamma"},
+            {"words", ["gamma"]},
             {"words", ["gamma", 1]},
             {"words", [["gamma"]]},
             {"words", %{"0" => "gamma"}},
+            {"stages", "done"},
             {"name", ["Day shift"]}
           ] do
         html = save(view, "roster", roster.id, field, value)
@@ -724,17 +744,49 @@ defmodule DemoWeb.Tables.ArrayTableTest do
         assert shown(html, roster, "name") == "Night shift"
       end
 
-      assert %{words: ["alpha", "beta"], name: "Night shift"} = stored(roster)
+      assert %{words: ["alpha", "beta"], stages: [:done, :draft], name: "Night shift"} =
+               stored(roster)
     end
 
-    test "an array no action accepts, one switched off, and one a table has no editor for save nothing",
+    test "an array no action accepts, one switched off, and one a table has no editor for open no panel and save nothing",
          %{view: view, roster: roster} do
       for field <- ~w(frozen sealed keys) do
-        html = save(view, "roster", roster.id, field, ["new"])
-        assert failure(html, "roster", roster.id, field) == nil
+        edit(view, "roster", roster.id, field)
+        assert_reply view, %{ok: false}
+        assert panel(render(view), "roster") == nil
+        save(view, "roster", roster.id, field, "new")
       end
 
       assert %{frozen: ["ice"], sealed: ["wax"]} = stored(roster)
+    end
+
+    test "a panel of one array saves that one: what the form sends for another column is not taken",
+         %{view: view, roster: roster} do
+      edit(view, "roster", roster.id, "words")
+
+      html =
+        send_panel(view, "roster", %{
+          "panel" => %{"words" => sent(["gamma"]), "name" => "Day shift", "stages" => sent([])}
+        })
+
+      assert panel(html, "roster") == nil
+      assert %{words: ["gamma"], name: "Night shift", stages: [:done, :draft]} = stored(roster)
+    end
+  end
+
+  describe "a save of an array in the side panel goes through the table's checks" do
+    test "the record is read again as the person: one that is no longer theirs is not saved",
+         %{conn: conn} do
+      roster = roster()
+      {:ok, view, _html} = open(conn, @admin)
+      edit(view, "roster", roster.id, "words")
+
+      # every record of the rosters is gone, as if another person deleted it
+      Demo.Support.Ets.stop(Roster)
+      html = send_panel(view, "roster", %{"panel" => %{"words" => sent(["gamma"])}})
+
+      assert panel(html, "roster").errors == ["This record is no longer available."]
+      assert Ash.read!(Roster, authorize?: false) == []
     end
   end
 
@@ -763,7 +815,9 @@ defmodule DemoWeb.Tables.ArrayTableTest do
       refute "Secrets" in headers(html, "roster")
       refute html =~ "hush"
 
-      save(view, "roster", roster.id, "secrets", ["loud"])
+      edit(view, "roster", roster.id, "secrets")
+      assert_reply view, %{ok: false}
+      save(view, "roster", roster.id, "secrets", "loud")
       assert stored(roster).secrets == ["hush"]
     end
   end

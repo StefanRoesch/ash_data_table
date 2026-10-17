@@ -112,18 +112,28 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
       end
     end
 
-    test "an array of text and one of numbers are saved value by value", %{
+    # Edits the cell of `field` in the side panel, as the hook asks for it,
+    # and saves `values` there, as the panel's form sends them.
+    defp save_in_panel(view, specimen, field, values) do
+      edit(view, "specimen", specimen.id, field)
+      send_panel(view, "specimen", %{"panel" => %{field => ["" | values]}})
+    end
+
+    defp field_errors(html, name),
+      do: Enum.find(panel(html, "specimen").fields, &(&1.name == name)).errors
+
+    test "an array of text and one of numbers are saved value by value, in the side panel", %{
       conn: conn,
       view: view,
       specimen: specimen
     } do
-      assert editor(html(view), "specimen", "strings").control == {"list", "textarea"}
-      assert editor(html(view), "specimen", "integers").control == {"list", "number"}
+      assert editor(html(view), "specimen", "strings").control == "panel"
+      assert editor(html(view), "specimen", "integers").control == "panel"
 
-      html = save(view, "specimen", specimen.id, "strings", ["three", "one", "four"])
+      html = save_in_panel(view, specimen, "strings", ["three", "one", "four"])
       assert shown(html, specimen, "strings") == "three, one, four"
 
-      html = save(view, "specimen", specimen.id, "integers", ["10", "0"])
+      html = save_in_panel(view, specimen, "integers", ["10", "0"])
       assert shown(html, specimen, "integers") == "10, 0"
 
       assert %{strings: ["three", "one", "four"], integers: [10, 0]} =
@@ -134,54 +144,48 @@ defmodule DemoWeb.Tables.SpecimenEditTest do
       assert shown(html, specimen, "integers") == "10, 0"
     end
 
-    test "an array of enum values is saved as multiple choice", %{
+    test "an array of enum values is saved as multiple choice, in the side panel", %{
       conn: conn,
       view: view,
       specimen: specimen
     } do
-      assert editor(html(view), "specimen", "shades") == %{
-               control: "choices",
-               choices: ["Light", "Medium", "Dark"],
-               confirm: nil
-             }
+      assert editor(html(view), "specimen", "shades").control == "panel"
 
-      html = save(view, "specimen", specimen.id, "shades", ["medium", "dark"])
+      assert ["Light", "Medium", "Dark"] ==
+               view
+               |> edit("specimen", specimen.id, "shades")
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.query("#specimen-panel-f-shades > label")
+               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+
+      cancel_panel(view, "specimen")
+
+      html = save_in_panel(view, specimen, "shades", ["medium", "dark"])
       assert shown(html, specimen, "shades") == "Medium, Dark"
       assert Ash.get!(Demo.KitchenSink.Specimen, specimen.id).shades == [:medium, :dark]
 
       # nothing ticked: the empty array
-      html = save(view, "specimen", specimen.id, "shades", [])
+      html = save_in_panel(view, specimen, "shades", [])
+      assert panel(html, "specimen") == nil
       assert shown(html, specimen, "shades") == ""
-      assert failure(html, "specimen", specimen.id, "shades") == nil
 
       {:ok, _view, html} = live(conn, "/specimens")
       assert shown(html, specimen, "shades") == ""
     end
 
-    test "an array the action refuses is shown as it was typed, with the action's message",
+    test "an array the action refuses stays in the panel as it was typed, with the action's message",
          %{view: view, specimen: specimen} do
       # `integers` has to have a value, and its values may not be negative
-      html = save(view, "specimen", specimen.id, "integers", [])
+      html = save_in_panel(view, specimen, "integers", [])
+      assert field_errors(html, "integers") == ["must have 1 or more items"]
 
-      assert failure(html, "specimen", specimen.id, "integers") == %{
-               shown: "",
-               message: "must have 1 or more items"
-             }
-
-      html = save(view, "specimen", specimen.id, "integers", ["5", "-1"])
-
-      assert failure(html, "specimen", specimen.id, "integers") == %{
-               shown: "5, -1",
-               message: "Integers 2: must be greater than or equal to 0"
-             }
+      html = send_panel(view, "specimen", %{"panel" => %{"integers" => ["", "5", "-1"]}})
+      assert field_errors(html, "integers") == ["Integers 2: must be greater than or equal to 0"]
+      cancel_panel(view, "specimen")
 
       # `strings` takes five values at most
-      html = save(view, "specimen", specimen.id, "strings", ~w(a b c d e f))
-
-      assert failure(html, "specimen", specimen.id, "strings") == %{
-               shown: "a, b, c, d, e, f",
-               message: "must have 5 or fewer items"
-             }
+      html = save_in_panel(view, specimen, "strings", ~w(a b c d e f))
+      assert field_errors(html, "strings") == ["must have 5 or fewer items"]
 
       assert %{strings: ["one", "two"], integers: [3, 4]} =
                Ash.get!(Demo.KitchenSink.Specimen, specimen.id)

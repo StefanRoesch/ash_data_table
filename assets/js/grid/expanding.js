@@ -49,7 +49,6 @@ export default {
   onKeydown(e) {
     const cell = this.cellOf(e.target)
     if (!cell || e.altKey) return
-    if (this.editing && this.editing.list && this.editing.root.contains(e.target)) return this.onListKeydown(e)
     if (this.editing && e.target === this.editing.input) return this.onEditorKeydown(e)
     // the "Clear" button of a sensitive cell's editor is of the editor
     if (this.editing && this.editing.clear === e.target) return this.onEditorKeydown(e)

@@ -279,47 +279,6 @@ defmodule AshDataTable.Parts.Grid do
     """
   end
 
-  # An array of enum values is edited as multiple choice: one box per value
-  # of the enum, in declared order. The boxes are a group, which the column
-  # names; each is named by the label of its value.
-  def editor(%{column: %{editor: :choices}} = assigns) do
-    ~H"""
-    <div role="group" aria-label={@column.label} class="flex flex-col items-start gap-1 py-0.5">
-      <label :for={{choice, label} <- @column.values} class="flex items-center gap-2">
-        <input
-          type="checkbox"
-          value={choice}
-          class={["checkbox checkbox-xs", Parts.Editors.box_edge()]}
-        />
-        {label}
-      </label>
-    </div>
-    """
-  end
-
-  # Any other array is edited value by value.
-  def editor(%{column: %{editor: :list, cell_type: {:array, item}}} = assigns) do
-    assigns = assign(assigns, item: item)
-
-    ~H"""
-    <Kit.part
-      part={:list}
-      kit={@kit}
-      id={"#{@id}-list"}
-      rest={%{"role" => "group", "aria-label" => @column.label}}
-      label={@column.label}
-      item={@item}
-      limits={Limits.of(@column)}
-      counted={@item == :text && Limits.counted(@column)}
-      place={:grid}
-      values={[]}
-      name={nil}
-      texts={Words.texts(:list, %{label: @column.label, values: []})}
-      messages={Words.messages(:list, %{label: @column.label, values: []})}
-    />
-    """
-  end
-
   # The control of a number says what the attribute's constraints say of it
   # (`AshDataTable.Model.Limits`). Nothing in the browser checks it against them:
   # the hook sends what the control holds, and Ash says what is wrong with it.
@@ -905,8 +864,8 @@ defmodule AshDataTable.Parts.Grid do
       <%!-- One editor per editable column. The hook opens a copy of it in the
         cell being edited; which cell that is, the server never knows. A
         reference column has an empty one: its cells are edited in the picker,
-        which the hook asks for. So has the column of a map cell, which is
-        edited in the side panel. A column whose component edits has the
+        which the hook asks for. So has the column of an array, a map cell or
+        a union, which is edited in the side panel. A column whose component edits has the
         component's editor (the design note of stage 7, D10); every other the
         kit's. --%>
       <template

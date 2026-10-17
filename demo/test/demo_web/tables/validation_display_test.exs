@@ -115,9 +115,18 @@ defmodule DemoWeb.Tables.ValidationDisplayTest do
                [%{"type" => "number", "step" => "any"}]
     end
 
-    test "of an array says the limits of each value on the control of a value", %{html: html} do
-      assert editor_controls(html, "specimen", "integers") ==
-               [%{"type" => "number", "min" => "0", "step" => "1"}]
+    test "of an array is the side panel's: its field says the limits of each value on the control of a value",
+         %{view: view, html: html, specimen: specimen} do
+      assert editor_controls(html, "specimen", "integers") == []
+
+      html = edit(view, "specimen", specimen.id, "integers")
+
+      assert [_row, %{"type" => "number", "min" => "0", "step" => "1"} | _rows] =
+               controls(html, "#specimen-panel-f-integers-values input:not([type=hidden])") ++
+                 controls(html, "#specimen-panel-f-integers-values > template")
+
+      for control <- controls(html, "#specimen-panel-f-integers-values [data-item] > input"),
+          do: assert(control == %{"type" => "number", "min" => "0", "step" => "1"})
     end
 
     test "of text says that it is required, and nothing of its length or its pattern", %{
@@ -126,8 +135,8 @@ defmodule DemoWeb.Tables.ValidationDisplayTest do
       # `a_string` takes 2 to 50 characters
       assert editor_controls(html, "specimen", "a_string") == [%{"aria-required" => "true"}]
       assert editor_controls(html, "specimen", "opt_string") == [%{}]
-      # a list of text, each of 20 characters at most
-      assert editor_controls(html, "specimen", "strings") == [%{}]
+      # a list of text, each of 20 characters at most, is edited in the side panel
+      assert editor_controls(html, "specimen", "strings") == []
     end
 
     test "of a choice and of a date says that it is required", %{html: html} do

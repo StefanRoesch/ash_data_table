@@ -48,9 +48,9 @@ defmodule AshDataTable.Attrs do
   # Editing a cell is the hook's until the value is saved: it opens the
   # column's editor in the cell and sends one `save` event with the row, the
   # column and the value as typed. The server reads the record again, runs the
-  # column's update action and puts the row back into the stream. The value
-  # of an array is the list of its values as typed; a cell says it as JSON
-  # (`data-value`), which the hook reads and the server never does.
+  # column's update action and puts the row back into the stream. A cell of
+  # several values (an array, a map cell, a union) is edited in the side
+  # panel instead (see "Map cells").
   #
   # Markup contract (spec sections 7.2 and 13), as `AshDataTable.Kit.Default`
   # draws it; a kit draws any elements that carry the same markers
@@ -129,9 +129,8 @@ defmodule AshDataTable.Attrs do
   #   * a sensitive cell: `button[data-reveal]`, `[data-mask]`,
   #     `[data-masked]`, `[data-secret]`;
   #   * the editor of a column: `template` `ID-editor-FIELD` (`data-editor`,
-  #     `data-confirm`), and in the editor of an array `[data-list]` with the
-  #     row of a value in a `template` of its own (`button[data-remove]`) and
-  #     `button[data-add]`;
+  #     `data-confirm`), empty for a column edited in the picker or the side
+  #     panel;
   #   * around the rows: `ID-status` (the live region), `ID-error`,
   #     `ID-loading`, `ID-empty`, `ID-fill`, `ID-notice`, `ID-read-again`,
   #     `ID-result` (`[data-summary]`, `[data-failure]`), the question dialog
@@ -189,7 +188,7 @@ defmodule AshDataTable.Attrs do
   #
   #   * `expand` `{row}`: answers `{open}`, whether the row is expanded now;
   #   * `toggle` `{row, relationship}`: no answer;
-  #   * `save` `{row, column, value}` (`value` a list for an array) and
+  #   * `save` `{row, column, value}` and
   #     `clear` `{row, column}`: `{ok: true}`, `{ok: false}`, or
   #     `{ok: false, error}` where the record is gone;
   #   * `discard` `{row, column}`, `dismiss` `{row}`, `left` `{row}`: no
@@ -357,17 +356,21 @@ defmodule AshDataTable.Attrs do
   # row that is selected. Which records the field holds is the server's to
   # keep (`refs` of the panel): the rows are rendered from it.
   #
-  # ## Map cells
+  # ## Map cells and arrays
   #
-  # A cell whose value is made of fields (an embedded resource, a map, or an
-  # array of either) has no editor in the cell either. The hook asks for it
-  # with one `edit` event, with the row and the column, and the server
-  # opens the action panel for it: the record is read, as the person, and
-  # the panel's one input is the column's attribute, shown as a group of
-  # the value's fields (`group/1`), or as one group per value of an array
-  # (`groups/1`). "Save" runs the column's update action with that one
-  # input (`AshDataTable.Edit.put/7`); what the action says about a field is
-  # shown at that field, and the panel stays open.
+  # A cell of several values has no editor in the cell either: an array
+  # (one box per value of an enum, or one control per value), and a cell
+  # whose value is made of fields (an embedded resource, a map, or an array
+  # of either). The hook asks for it with one `edit` event, with the row and
+  # the column, on Enter, F2, a double click or a key typed on the cell, and
+  # the server opens the action panel for it: the record is read, as the
+  # person, and the panel's one input is the column's attribute, shown as
+  # the field of an array, as a group of the value's fields (`group/1`), or
+  # as one group per value of an array (`groups/1`). "Save" runs the
+  # column's update action with that one input (`AshDataTable.Edit.put/7`,
+  # through `AshDataTable.Operation.submit/1`); what the action says about a
+  # field, or a value of an array, is shown at that field, and the panel
+  # stays open. Closed, it gives the focus back to the cell.
   #
   # What such a field holds is the server's to render, unlike the rows of an
   # array of plain values: a group shows the action's messages at its
@@ -833,10 +836,7 @@ defmodule AshDataTable.Attrs do
       cell whose save failed, which shows what was typed;
     * on a cell whose save failed, also `aria-invalid`, `aria-describedby`
       naming the action's message, and `data-saved`, the value the record
-      still has, which the hook compares with what is typed next; and
-      where the action said which values of an array it refused,
-      `data-invalid`, their places counted from 0, as JSON. The hook marks
-      the controls of those values when the cell's editor is opened again.
+      still has, which the hook compares with what is typed next.
 
   A cell of a sensitive column says that its editor holds nothing
   (`data-value=""`), and nothing else: what was typed into it is never
@@ -885,13 +885,13 @@ defmodule AshDataTable.Attrs do
       {true, nil} when column.sensitive? ->
         [{"data-value", ""}]
 
-      {true, %{typed: typed, places: places}} ->
+      {true, %{typed: typed}} ->
         [
           {"aria-invalid", "true"},
           {"aria-describedby", "#{id}-error"},
-          {"data-value", held(typed)},
+          {"data-value", typed},
           {"data-saved", held(Typed.of(column, cell.value, zone))}
-        ] ++ if(places == [], do: [], else: [{"data-invalid", held(places)}])
+        ]
 
       {true, nil} ->
         if own_value?(column),
@@ -900,23 +900,19 @@ defmodule AshDataTable.Attrs do
     end
   end
 
-  # What an editor holds, as a cell says it: the text, and for an array the
-  # texts of its values, as JSON.
   @doc "What an attribute holds of a list (as JSON) or a text (as it is)."
   def held(texts) when is_list(texts), do: Phoenix.json_library().encode!(texts)
   def held(text), do: text
 
   # Whether what a column's editor holds is something else than the text its
-  # cells show: a choice, which shows its label; a boolean; an array, whose
-  # editor holds each value apart; and a column whose component shows the
-  # value in a way of its own.
+  # cells show: a choice, which shows its label; a boolean; and a column
+  # whose component shows the value in a way of its own. A column edited in
+  # the side panel has no editor in the cell: nothing is held for one.
   defp own_value?(%{cell_type: cell_type}) when cell_type in [:boolean, :enum], do: true
-  # a map cell has no editor in the cell: nothing is held for one
-  defp own_value?(%{cell_type: cell_type})
-       when cell_type in [:map, {:array, :map}, :union, {:array, :union}],
-       do: false
 
-  defp own_value?(%{cell_type: {:array, _item}}), do: true
+  defp own_value?(%{editor: editor}) when editor in [:choices, :list, :group, :groups, :union],
+    do: false
+
   defp own_value?(%{component: %{cell?: true}}), do: true
   defp own_value?(_column), do: false
 

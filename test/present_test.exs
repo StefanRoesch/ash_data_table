@@ -64,7 +64,7 @@ defmodule AshDataTable.PresentTest do
   describe "a row" do
     test "holds no sensitive value, nor what was typed into a sensitive cell" do
       failed = %{
-        cells: %{token: {"typed-secret", "must be lower case", []}, name: {"Mine", "no", []}},
+        cells: %{token: {"typed-secret", "must be lower case"}, name: {"Mine", "no"}},
         action: "This could not be done."
       }
 
@@ -91,12 +91,12 @@ defmodule AshDataTable.PresentTest do
     test "keeps what failed in it, and what was typed only where it is no secret" do
       row =
         row(vault(), %{
-          cells: %{token: {"typed-secret", "must be lower case", []}, name: {"Mine", "no", [1]}},
+          cells: %{token: {"typed-secret", "must be lower case"}, name: {"Mine", "no"}},
           action: "This could not be done."
         })
 
-      assert row.cells.token.failure == %{typed: "", message: "must be lower case", places: []}
-      assert row.cells.name.failure == %{typed: "Mine", message: "no", places: [1]}
+      assert row.cells.token.failure == %{typed: "", message: "must be lower case"}
+      assert row.cells.name.failure == %{typed: "Mine", message: "no"}
       assert row.cells.pin.failure == nil
       assert row.action_failure == "This could not be done."
       assert %Present.Row{key: "k1", dom_id: "v-row-k1", rowindex: 3, open?: true} = row

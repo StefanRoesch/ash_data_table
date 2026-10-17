@@ -66,18 +66,29 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       assert shown(html, bare, "checks") == ""
     end
 
-    test "have their editors: a row per value, and a box per check", %{html: html} do
-      assert editor(html, "task", "tags") == %{
-               control: {"list", "textarea"},
-               choices: nil,
-               confirm: nil
-             }
+    test "are edited in the side panel: a row per value, and a box per check", %{
+      html: html,
+      view: view,
+      task: task
+    } do
+      assert editor(html, "task", "tags") == %{control: "panel", choices: nil, confirm: nil}
+      assert editor(html, "task", "checks") == %{control: "panel", choices: nil, confirm: nil}
 
-      assert editor(html, "task", "checks") == %{
-               control: "choices",
-               choices: ["Reviewed", "Tested", "Documented", "Released"],
-               confirm: nil
-             }
+      assert %{fields: [%{name: "tags", control: "list", value: ["api", "mobile"]}]} =
+               panel(edit(view, task.id, "tags"))
+
+      cancel_panel(view)
+
+      html = edit(view, task.id, "checks")
+
+      assert %{fields: [%{name: "checks", control: "choices", value: ["reviewed", "tested"]}]} =
+               panel(html)
+
+      assert ["Reviewed", "Tested", "Documented", "Released"] ==
+               html
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.query("#task-panel-f-checks > label")
+               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
     end
 
     test "have neither a sort nor a filter, on Postgres as anywhere", %{html: html} do
@@ -88,7 +99,17 @@ defmodule DemoWeb.Tables.TaskArraysTest do
     end
   end
 
-  describe "saving" do
+  # Edits the cell of `field` in the side panel, as the hook asks for it
+  # (`edit`), and saves `values` there, as the panel's form sends them: one
+  # entry of the field's own, then one per value.
+  defp save_in_panel(view, task, field, values) do
+    edit(view, task.id, field)
+    send_panel(view, %{"panel" => %{field => ["" | values]}})
+  end
+
+  defp field(html, name), do: Enum.find(panel(html).fields, &(&1.name == name))
+
+  describe "saving in the side panel" do
     setup %{conn: conn, world: world} do
       conn = log_in(conn, world.admin)
       {:ok, view, _html} = live(conn, "/tasks")
@@ -100,10 +121,10 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       view: view,
       task: task
     } do
-      html = save(view, task.id, "tags", ["api", "customer", "quick-win"])
+      html = save_in_panel(view, task, "tags", ["api", "customer", "quick-win"])
 
+      assert panel(html) == nil
       assert shown(html, task, "tags") == "api, customer, quick-win"
-      assert failure(html, task.id, "tags") == nil
       assert stored(task).tags == ["api", "customer", "quick-win"]
 
       {:ok, _view, html} = live(conn, "/tasks")
@@ -111,7 +132,7 @@ defmodule DemoWeb.Tables.TaskArraysTest do
     end
 
     test "of checks stores the values that were ticked", %{conn: conn, view: view, bare: bare} do
-      html = save(view, bare.id, "checks", ["reviewed", "released"])
+      html = save_in_panel(view, bare, "checks", ["reviewed", "released"])
 
       assert shown(html, bare, "checks") == "Reviewed, Released"
       assert stored(bare).checks == [:reviewed, :released]
@@ -121,10 +142,10 @@ defmodule DemoWeb.Tables.TaskArraysTest do
     end
 
     test "of an array without values stores the empty array", %{view: view, task: task} do
-      html = save(view, task.id, "tags", [])
+      html = save_in_panel(view, task, "tags", [])
       assert shown(html, task, "tags") == ""
 
-      html = save(view, task.id, "checks", [])
+      html = save_in_panel(view, task, "checks", [])
       assert shown(html, task, "checks") == ""
 
       assert %{tags: [], checks: []} = stored(task)
@@ -136,46 +157,39 @@ defmodule DemoWeb.Tables.TaskArraysTest do
     } do
       before = stored(task).updated_at
 
-      html = save(view, task.id, "tags", ["api", "mobile"])
-      assert failure(html, task.id, "tags") == nil
-
-      html = save(view, task.id, "checks", ["tested", "reviewed"])
-      assert failure(html, task.id, "checks") == nil
+      assert panel(save_in_panel(view, task, "tags", ["api", "mobile"])) == nil
+      assert panel(save_in_panel(view, task, "checks", ["tested", "reviewed"])) == nil
 
       assert stored(task).updated_at == before
     end
 
-    test "that the action refuses marks the cell, keeps what was typed and shows the action's message",
+    test "that the action refuses stays open, keeps what was typed and shows the action's message",
          %{view: view, task: task} do
       # a tag has two characters at least
-      html = save(view, task.id, "tags", ["api", "x"])
+      html = save_in_panel(view, task, "tags", ["api", "x"])
 
-      assert failure(html, task.id, "tags") == %{
-               shown: "api, x",
-               message: "Tags 2: length must be greater than or equal to 2"
-             }
+      # the rows of the values are the panel's hook's (`phx-update="ignore"`),
+      # which keeps what was typed
+      assert field(html, "tags").errors == ["Tags 2: length must be greater than or equal to 2"]
+      assert attribute(html, "#task-panel-f-tags-values", "phx-update") == ["ignore"]
 
       assert announcement(html) ==
-               "Tags was not saved: Tags 2: length must be greater than or equal to 2"
+               "Tags was not saved: Tags: Tags 2: length must be greater than or equal to 2"
 
-      # the cell says which value it was, for its editor to mark
-      assert attribute(html, cell(task.id, "tags"), "data-invalid") == ["[1]"]
+      # the field says which value it was, for its rows to be marked
+      assert attribute(html, "#task-panel-f-tags", "data-invalid") == ["[1]"]
+      # the cell is as the record has it
+      assert shown(html, task, "tags") == "api, mobile"
+      assert failure(html, task.id, "tags") == nil
 
       # and a task has five tags at most
-      html = save(view, task.id, "tags", ~w(aa bb cc dd ee ff))
-
-      assert failure(html, task.id, "tags") == %{
-               shown: "aa, bb, cc, dd, ee, ff",
-               message: "must have 5 or fewer items"
-             }
+      html = send_panel(view, %{"panel" => %{"tags" => ["" | ~w(aa bb cc dd ee ff)]}})
+      assert field(html, "tags").errors == ["must have 5 or fewer items"]
+      cancel_panel(view)
 
       # a check that is none
-      html = save(view, task.id, "checks", ["tested", "approved"])
-
-      assert failure(html, task.id, "checks") == %{
-               shown: "Tested, approved",
-               message: "is invalid"
-             }
+      html = save_in_panel(view, task, "checks", ["tested", "approved"])
+      assert field(html, "checks").errors == ["is invalid"]
 
       assert %{tags: ["api", "mobile"], checks: [:tested, :reviewed]} = stored(task)
     end
@@ -185,7 +199,7 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       task: task,
       project: project
     } do
-      html = save(view, task.id, "tags", ["api"])
+      html = save_in_panel(view, task, "tags", ["api"])
 
       assert shown(html, task, "project") == project.name
       assert shown(html, task, "headline") =~ "Write the report"
@@ -193,7 +207,7 @@ defmodule DemoWeb.Tables.TaskArraysTest do
   end
 
   describe "by a person who may not" do
-    test "change this task is refused on the cell, for either array", %{
+    test "change this task is refused in the panel, for either array", %{
       conn: conn,
       world: world,
       task: task
@@ -203,19 +217,12 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       # a member is offered editing on every task
       assert attribute(html, cell(task.id, "tags"), "aria-readonly") == []
 
-      html = save(view, task.id, "tags", ["mine"])
+      html = save_in_panel(view, task, "tags", ["mine"])
+      assert panel(html).errors == ["You are not allowed to change this."]
+      cancel_panel(view)
 
-      assert failure(html, task.id, "tags") == %{
-               shown: "mine",
-               message: "You are not allowed to change this."
-             }
-
-      html = save(view, task.id, "checks", ["released"])
-
-      assert failure(html, task.id, "checks") == %{
-               shown: "Released",
-               message: "You are not allowed to change this."
-             }
+      html = save_in_panel(view, task, "checks", ["released"])
+      assert panel(html).errors == ["You are not allowed to change this."]
 
       assert %{tags: ["api", "mobile"], checks: [:tested, :reviewed]} = stored(task)
     end
@@ -231,25 +238,35 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       assert editor(html, "task", "checks") == nil
       assert shown(html, task, "tags") == "api, mobile"
 
-      save(view, task.id, "tags", ["theirs"])
+      edit(view, task.id, "tags")
+      assert_reply view, %{ok: false}
+      assert panel(render(view)) == nil
+      save(view, task.id, "tags", "theirs")
       assert stored(task).tags == ["api", "mobile"]
     end
   end
 
   describe "in German" do
-    test "the values of an enum, the choices and what the editor's controls are called are translated",
+    test "the values of an enum, the choices and what the panel's controls are called are translated",
          %{conn: conn, world: world, task: task} do
       {:ok, view, html} = conn |> log_in(world.admin) |> in_locale("de") |> live("/tasks")
 
       assert shown(html, task, "checks") == "Getestet, Durchgesehen"
 
-      assert editor(html, "task", "checks").choices ==
-               ["Durchgesehen", "Getestet", "Dokumentiert", "Veröffentlicht"]
+      html = edit(view, task.id, "checks")
 
-      # the list of the tags: its name, its button, and the names its hook
-      # gives the controls, with `{n}` where a value's place goes
+      assert ["Durchgesehen", "Getestet", "Dokumentiert", "Veröffentlicht"] ==
+               html
+               |> LazyHTML.from_fragment()
+               |> LazyHTML.query("#task-panel-f-checks > label")
+               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
+
+      cancel_panel(view)
+      html = edit(view, task.id, "tags")
+
+      # the list of the tags: its button, and the names its hook gives the
+      # controls of the values it adds, with `{n}` where a value's place goes
       for {attribute, text} <- [
-            {"aria-label", "Schlagwörter"},
             {"data-value-label", "Schlagwörter {n}"},
             {"data-remove-label", "Schlagwörter {n} entfernen"}
           ] do
@@ -257,10 +274,7 @@ defmodule DemoWeb.Tables.TaskArraysTest do
       end
 
       assert html =~ "Wert hinzufügen"
-
-      # what was typed is shown with the labels of this language
-      html = save(view, task.id, "checks", ["released", "approved"])
-      assert failure(html, task.id, "checks").shown == "Veröffentlicht, approved"
+      assert text(html, "#task-panel-f-tags-label") == "Schlagwörter"
     end
   end
 

@@ -954,6 +954,17 @@ defmodule AshDataTable.Model do
   @doc false
   def group?(%{editor: editor}), do: editor in [:group, :groups, :union]
 
+  # The editors of a cell that is edited in the side panel, not in the cell:
+  # a value of several values (an array, a map cell, an array of them, a
+  # union).
+  @in_panel [:choices, :list, :group, :groups, :union]
+
+  @doc false
+  # Whether the cells of a column are edited in the side panel: the hook asks
+  # for it (`edit`), and the panel's one input is the column's attribute
+  # (`input/2`). A single value is edited in its cell.
+  def in_panel?(%{editor: editor}), do: editor in @in_panel
+
   @doc """
   Whether nothing but a rule keeps the table from being left without a
   column: it has no column of its label, which stays whatever is hidden.
@@ -1901,15 +1912,16 @@ defmodule AshDataTable.Model do
   defp members(_cell_type, _type, _constraints), do: nil
 
   @doc """
-  The input a map cell of `column` is edited as, in the side panel: the
-  column's attribute as the one input of its update action, with the fields
-  of its value. It is required where the action cannot take the attribute
-  empty (the column's `required?`). A union is edited the same way, with its
-  kinds.
+  The input a cell of `column` is edited as in the side panel
+  (`in_panel?/1`): the column's attribute as the one input of its update
+  action, an array with one box per value of its enum or one control per
+  value, a map cell with the fields of its value, a union with its kinds.
+  It is required where the action cannot take the attribute empty (the
+  column's `required?`).
   """
   @spec input(t, Column.t()) :: Input.t()
   def input(%__MODULE__{}, %Column{editor: editor} = column)
-      when editor in [:group, :groups, :union] do
+      when editor in @in_panel do
     %Input{
       name: column.name,
       kind: :attribute,

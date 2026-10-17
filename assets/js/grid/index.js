@@ -20,10 +20,6 @@
 // the row itself, patched in: with the new value, or with the cell
 // marked as failed.
 //
-// The editor of an array is several controls in one cell, and what
-// it holds is a list: the values as typed. A cell says a list as
-// JSON, as it says everything in text (`data-value`).
-//
 // Which rows are selected the server holds, and this hook paints
 // (`data-select` on this element says whether rows can be selected:
 // "multi" or "single"). The server renders a box in the first cell
@@ -56,9 +52,11 @@
 // as the record chosen now (`data-current`), until the person
 // selects another.
 //
-// Nor has a map cell (an embedded resource, a map, an array of
-// either): Enter, F2 and a double click ask the server for the
-// side panel (`edit`), in which its fields are edited and saved.
+// Nor has a cell of several values (an array, an embedded resource, a
+// map, an array of either, a union): Enter, F2 and a double click ask
+// the server for the side panel (`edit`), in which its values or
+// fields are edited and saved, as a form; so does a key typed on an
+// array.
 // The cell is the panel's opener, and has the focus again when
 // the panel is gone.
 //
@@ -98,7 +96,7 @@ import choices from "./choices.js"
 import selecting from "./selecting.js"
 import actions from "./actions.js"
 import editing from "./editing.js"
-import arrays from "./arrays.js"
+import saving from "./saving.js"
 import sensitive from "./sensitive.js"
 import dialog from "./dialog.js"
 import failure from "./failure.js"
@@ -119,10 +117,7 @@ const core = {
     // confirm, commit}, and `attributes` once a patch has brought
     // the cell's row again. `root` is what was put into the cell
     // and `input` the control in it; `commit` says when a
-    // component's editor saves. The editor of an array (`list`)
-    // has several controls: `read` gives what they hold, `shown`
-    // what the cell shows of it, and `input` is the one the focus
-    // was in last.
+    // component's editor saves.
     this.editing = null
     // the sensitive cell whose value is shown: {cell}, or null
     this.revealed = null
@@ -347,7 +342,7 @@ const core = {
 }
 
 const grid = {}
-for (const part of [core, counter, tree, expanding, widths, hiding, scrolling, choices, selecting, actions, editing, arrays, sensitive, dialog, failure, wholeText]) {
+for (const part of [core, counter, tree, expanding, widths, hiding, scrolling, choices, selecting, actions, editing, saving, sensitive, dialog, failure, wholeText]) {
   for (const key of Object.keys(part)) {
     if (Object.hasOwn(grid, key)) throw new Error(`ash_data_table: the grid's hook has two methods named ${key}`)
     grid[key] = part[key]

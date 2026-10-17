@@ -17,8 +17,7 @@ defmodule AshDataTable.Live.Core.Cells do
 
   # Sent by the hook when a person has changed a cell's value and pressed
   # Enter or left the cell: the row by the key in its DOM id, the column, and
-  # the value as it was typed. For an array that is a list, of its values as
-  # they were typed.
+  # the value as it was typed.
   #
   # A column with a question, in controlled mode: the save waits for the
   # host's answer (`Requests.ask_cell/5`), what was typed held here, and the
@@ -74,15 +73,16 @@ defmodule AshDataTable.Live.Core.Cells do
     end
   end
 
-  # Sent by the hook when a person opens the editor of a map cell: the row
-  # by the key in its DOM id, and the column. The side panel opens with the
-  # value's fields; nothing is saved. The record is read first, as the
-  # person.
+  # Sent by the hook when a person opens the editor of a cell that is
+  # edited in the side panel (an array, a map cell, a union): the row by the
+  # key in its DOM id, and the column. The side panel opens with the
+  # column's field, as a form of the column's update action; nothing is
+  # saved. The record is read first, as the person.
   def on({:edit, key, name}, socket) do
     %{id: id, model: model, rows: rows} = Core.table(socket).entry
 
     with %{editable?: true} = column <- Operation.column(model, name),
-         true <- Model.group?(column),
+         true <- Model.in_panel?(column),
          %{} = row <- rows[key] do
       case Edit.open(model, column, row.pk, "#{id}-panel", Core.reader(socket)) do
         {:ok, record, form} ->
@@ -223,13 +223,13 @@ defmodule AshDataTable.Live.Core.Cells do
          |> Reading.put_row(key, record)
          |> Notify.told(outcome.event)}
 
-      {:error, %Operation.Failure{record: %_{} = record, message: message, places: places}} ->
+      {:error, %Operation.Failure{record: %_{} = record, message: message}} ->
         # what was typed into a sensitive cell is not kept, and not shown
         typed = if column.sensitive?, do: "", else: typed
 
         {:reply, %{ok: false},
          socket
-         |> Reading.put_failure(key, record, column.name, {typed, message, places})
+         |> Reading.put_failure(key, record, column.name, {typed, message})
          |> Reading.put_row(key, record)
          |> Core.say({:text, :not_saved, column: column.label, message: message})}
 
@@ -274,7 +274,7 @@ defmodule AshDataTable.Live.Core.Cells do
            key,
            record,
            column.name,
-           {chosen_text(column, chosen, Core.table(socket).caller.time_zone), message, []}
+           {chosen_text(column, chosen, Core.table(socket).caller.time_zone), message}
          )
          |> Reading.put_row(key, record)
          |> Core.say({:text, :not_saved, column: column.label, message: message})}

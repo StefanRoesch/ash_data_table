@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ADD, CLEAR, COUNT, EXPANDER, GRIDCELL, ITEM, REMOVE, ROWGROUP} from "../markers.js"
-import {CONTROL_IN, LISTED, TYPED, is} from "./shared.js"
+import {CLEAR, COUNT, EXPANDER, GRIDCELL, ROWGROUP} from "../markers.js"
+import {CONTROL_IN, is} from "./shared.js"
 
 export default {
   // A cell's ids hold what an event names: `ID-row-KEY` on the row's
@@ -51,13 +51,18 @@ export default {
       if (key === null) this.pick(cell)
       return key === null
     }
+    // nor has an array: Enter, F2 and a key typed on it open the side
+    // panel, with the field of its values
+    if (type === "choices" || type === "list") {
+      this.editInPanel(cell)
+      return true
+    }
     // nor has a map cell, or a union: Enter and F2 open the side panel, typing does nothing
     if (type === "group" || type === "groups" || type === "union") {
       if (key === null) this.editInPanel(cell)
       return key === null
     }
     const root = template.content.firstElementChild.cloneNode(true)
-    if (type === "choices" || type === "list") return this.startList(cell, template, root, key)
     const input = CONTROL_IN(root)
     const current = this.valueOf(cell)
     // whether a sensitive cell holds a value: it then has its mask
@@ -197,156 +202,5 @@ export default {
         if (message) message.remove()
       })
     })
-  },
-
-  // The editor of an array: several controls in one cell. For an
-  // array of enum values, one box per value of the enum (multiple
-  // choice); for any other array, one control per value with a
-  // button that takes the value away, and a button that adds one.
-  //
-  // It is one editor all the same. Enter saves what all of its
-  // controls hold and Escape gives all of it up, from wherever in
-  // it the focus is; leaving it saves. Tab goes through its
-  // controls, and from the last of them out of the grid, as it
-  // does from a filter. Nothing is saved while a person is still
-  // in it: a box that is ticked or a value that is taken away is a
-  // step on the way to the list they want, which the action may
-  // not accept half done.
-  startList(cell, template, root, key) {
-    const choices = template.dataset.editor === "choices"
-    // an enum without values has nothing to tick
-    if (!root.querySelector(`input,${ADD}`)) return key === null
-    const current = LISTED(this.valueOf(cell))
-    const saved = Array.from(cell.childNodes)
-    // (the owner-kept exception of `startEdit`)
-    cell.setAttribute("phx-update", "ignore")
-    cell.replaceChildren(root)
-    const boxes = () => Array.from(root.querySelectorAll("input[type=checkbox]"))
-    // What a multiple choice holds that is none of its choices: a
-    // value the record has and the enum no longer does. It has no
-    // box, so a person can neither see nor change it here, and it
-    // is sent with the ticked values, after them, as it is.
-    let boxless = []
-    const load = values => {
-      if (!choices) return this.fill(root, values)
-      const offered = boxes().map(box => box.value)
-      for (const box of boxes()) box.checked = values.includes(box.value)
-      boxless = values.filter(value => !offered.includes(value))
-    }
-    const read = () => choices
-      ? boxes().filter(box => box.checked).map(box => box.value).concat(boxless)
-      : this.values(root)
-    // what the cell shows of a list until the server has answered:
-    // the labels of the choices, and values as they were typed
-    const shown = () => choices
-      ? boxes().filter(box => box.checked).map(box => box.parentElement.textContent.trim()).concat(boxless).join(", ")
-      : read().join(", ")
-    // What "unchanged" means: the list the record has, as these
-    // controls hold it. A failed cell shows what was typed instead.
-    load(cell.dataset.saved !== undefined ? LISTED(cell.dataset.saved) : current)
-    const old = read()
-    load(current)
-    // the values the action refused when this cell was saved last
-    if (!choices && cell.dataset.invalid !== undefined) this.markValues(root, LISTED(cell.dataset.invalid))
-    const ed = {cell, root, input: root, type: template.dataset.editor, saved, old, read, shown, list: true, confirm: template.dataset.confirm, lastKey: null}
-    this.editing = ed
-    cell.tabIndex = -1
-    // the control the focus is in, or was in last: where it goes
-    // back to when the column's question is answered with Cancel
-    root.addEventListener("focusin", e => { ed.input = e.target })
-    // Leaving the editor saves; going from one of its controls to
-    // another is not leaving it.
-    root.addEventListener("focusout", () => {
-      if (!document.hasFocus()) return
-      setTimeout(() => { if (!root.contains(document.activeElement)) this.finish(ed, true, false) }, 0)
-    })
-    // A click in the editor leaves the focus in it: on the box or
-    // the button that was clicked, which not every browser gives
-    // the focus by itself, and where it was for a click beside the
-    // controls. A control that is typed into takes the click as it is.
-    root.addEventListener("mousedown", e => {
-      if (e.target.closest(TYPED) || e.target.closest("input:not([type=checkbox])")) return
-      e.preventDefault()
-      const label = e.target.closest("label")
-      const control = e.target.closest("input,button") || (label && label.querySelector("input"))
-      if (control) control.focus()
-    })
-    root.addEventListener("click", e => {
-      if (e.target.closest(ADD)) this.addValue(root, "").focus()
-      else if (e.target.closest(REMOVE)) this.removeValue(root, e.target.closest(ITEM))
-    })
-    root.addEventListener("input", e => {
-      if (e.target.tagName === "TEXTAREA") this.fit(e.target)
-      // a value that was refused is another value now
-      e.target.removeAttribute("aria-invalid")
-    })
-    root.addEventListener("change", e => e.target.removeAttribute("aria-invalid"))
-    const controls = Array.from(root.querySelectorAll("input,textarea"))
-    // into the first value, or to the button that adds one when
-    // there is none yet
-    const first = controls[0] || root.querySelector(ADD)
-    if (key === null) {
-      first.focus()
-      if (first.matches(TYPED)) first.select()
-      return true
-    }
-    if (choices) {
-      // a typed character goes to the first choice that starts with
-      // it, as it does in a menu; nothing is ticked by that alone
-      const letter = key.toLowerCase()
-      const box = controls.find(box => box.parentElement.textContent.trim().toLowerCase().startsWith(letter))
-      ;(box || first).focus()
-      return true
-    }
-    // Typing on the cell starts a new value with what is typed: the
-    // values the cell holds stay. The character itself is typed by
-    // the browser. Only where a value is typed, though: on a list
-    // of dates or of boxes a key opens the editor, as Enter does.
-    const added = this.addValue(root, "")
-    if (!added.matches(TYPED)) {
-      added.closest(ITEM).remove()
-      first.focus()
-      return true
-    }
-    added.focus()
-    if (added.type === "number") {
-      // a character a number does not take adds nothing
-      setTimeout(() => {
-        if (this.editing === ed && added.isConnected && added.value === "" && !added.validity.badInput) {
-          this.removeValue(root, added.closest(ITEM))
-        }
-      }, 0)
-    }
-    return false
-  },
-
-  // In the editor of an array the keys belong to its controls: the
-  // arrow keys move in a text and step a number, Space ticks a box,
-  // Enter on a button uses it. The grid keeps two, and among the
-  // boxes of a multiple choice the arrow keys go from box to box.
-  onListKeydown(e) {
-    const ed = this.editing
-    switch (e.key) {
-      case "Escape":
-        e.preventDefault()
-        this.finish(ed, false, true)
-        break
-      case "Enter":
-        if (e.target.tagName === "BUTTON") return
-        // a new line in text
-        if (e.target.tagName === "TEXTAREA" && e.shiftKey) return
-        e.preventDefault()
-        this.finish(ed, true, true)
-        break
-      case "ArrowDown":
-      case "ArrowUp": {
-        if (ed.type !== "choices") return
-        const boxes = Array.from(ed.root.querySelectorAll("input[type=checkbox]"))
-        const next = boxes[boxes.indexOf(e.target) + (e.key === "ArrowDown" ? 1 : -1)]
-        if (next) next.focus()
-        e.preventDefault()
-        break
-      }
-    }
   },
 }

@@ -163,9 +163,7 @@ defmodule DemoWeb.TablePage do
       save(view, task.id, "title", "Write the summary")
       save(view, "specimen", specimen.id, "a_boolean", "true")
 
-  The value of an array is a list, of its values as typed:
-
-      save(view, task.id, "tags", ["api", "mobile"])
+  An array is saved in the side panel (`edit/4`, then `run_panel/3`).
   """
   def save(view, id \\ "task", key, field, value) do
     send_event(view, id, "save", %{"row" => to_string(key), "column" => field, "value" => value})
@@ -998,10 +996,8 @@ defmodule DemoWeb.TablePage do
   `"select"`, or the type of an input), the choices of a select, and the
   question asked before saving. Nil for a column without an editor.
 
-  An array has several controls: `"choices"`, one box per choice, or
-  `{"list", control}`, a row per value with that control, a button that
-  takes the value away, and a button that adds one. A reference cell has
-  none in the cell: `"reference"`, for the picker.
+  A reference cell has none in the cell: `"reference"`, for the picker; nor
+  has an array, a map cell or a union: `"panel"`, for the side panel.
   """
   def editor(html, id, field) do
     case html |> query("template[id='#{id}-editor-#{field}']") |> LazyHTML.to_tree() do
@@ -1014,28 +1010,15 @@ defmodule DemoWeb.TablePage do
 
         {control, choices} =
           case :proplists.get_value("data-editor", attributes, nil) do
-            "choices" ->
-              {"choices",
-               content
-               |> LazyHTML.query("label")
-               |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))}
-
             # a reference cell is edited in the picker: its template is empty
             "reference" ->
+              [] = Enum.reject(children, &(is_binary(&1) and String.trim(&1) == ""))
               {"reference", []}
 
-            "list" ->
-              # the row of a value is in a template of its own
-              [{"template", _attributes, row}] =
-                content |> LazyHTML.query("[data-list] > template") |> LazyHTML.to_tree()
-
-              row = LazyHTML.from_tree(row)
-
-              true =
-                Enum.count(LazyHTML.query(row, "button[data-remove]")) == 1 and
-                  Enum.count(LazyHTML.query(content, "[data-list] > button[data-add]")) == 1
-
-              {{"list", control(LazyHTML.query(row, "textarea,input"))}, []}
+            # so is the template of a cell edited in the side panel
+            editor when editor in ~w(choices list group groups union) ->
+              [] = Enum.reject(children, &(is_binary(&1) and String.trim(&1) == ""))
+              {"panel", []}
 
             _one_control ->
               {control(LazyHTML.query(content, "textarea,select,input")),

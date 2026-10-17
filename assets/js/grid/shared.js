@@ -9,7 +9,7 @@ export const PRINTABLE = e => e.key.length === 1 && !e.ctrlKey && !e.metaKey && 
 
 // What a cell says about itself besides its content, which a patch
 // does not bring to a cell that is being edited.
-export const KEPT = ["aria-readonly", "aria-invalid", "aria-describedby", "data-value", "data-saved", "data-invalid"]
+export const KEPT = ["aria-readonly", "aria-invalid", "aria-describedby", "data-value", "data-saved"]
 
 // keys that move through the options of a closed select
 export const SELECT_KEYS = ["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown"]
@@ -71,12 +71,8 @@ export const CONTROL_IN = root => root.matches(CONTROL)
   ? root
   : (root.querySelector(CONTROL) || root.querySelector("input,select,textarea") || root)
 
-// What an editor holds, as a cell says it: a list is written as
-// JSON. Two values are the same when they are written the same.
-export const WRITTEN = value => Array.isArray(value) ? JSON.stringify(value) : value
-export const SAME = (a, b) => WRITTEN(a) === WRITTEN(b)
-
-// the list a cell says
+// a list an element says, as JSON: what a row is named by, the rows
+// chosen as a picker opens
 export const LISTED = text => {
   try {
     const list = JSON.parse(text)

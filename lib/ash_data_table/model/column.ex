@@ -74,11 +74,12 @@ defmodule AshDataTable.Model.Column do
   #     column's own, else the table's. `nil` for a column that is not
   #     editable.
   #   * `editor` is what a cell of this column is edited with: `:text`,
-  #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`; for an array
-  #     `:choices` (one checkbox per value of an enum) or `:list` (one
-  #     control per value); `:group` for a map cell and `:groups` for an
-  #     array of them, which are edited in the side panel, field by field;
-  #     `:union` for a union, which is edited there too, kind first;
+  #     `:number`, `:boolean`, `:date`, `:datetime` or `:enum`, in the cell;
+  #     for an array `:choices` (one checkbox per value of an enum) or
+  #     `:list` (one control per value), which are edited in the side panel;
+  #     `:group` for a map cell and `:groups` for an array of them, edited
+  #     there field by field; `:union` for a union, edited there too, kind
+  #     first (`AshDataTable.Model.in_panel?/1`);
   #     `:component` for a column whose component has
   #     an editor; or `:reference` for a reference column, which is edited
   #     in the picker. `nil` for a column that is not editable.

@@ -1,88 +1,12 @@
-// The grid's hook: the values of an array.
+// The grid's hook: the editor of a component, and saving a cell.
 //
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ADD, COUNT, GRIDCELL, ITEM, REMOVE, VALUE_TEXT} from "../markers.js"
-import {GIVEN_UP, PRINTABLE, SELECT_KEYS, WRITTEN, SAME, TYPED} from "./shared.js"
+import {VALUE_TEXT} from "../markers.js"
+import {GIVEN_UP, PRINTABLE, SELECT_KEYS, TYPED} from "./shared.js"
 
 export default {
-  // A list editor (`[data-list]`), in a cell or in the action
-  // panel: its rows, one per value, each with the control that
-  // holds the value. The panel's hook uses these too.
-  items(list) { return Array.from(list.querySelectorAll(ITEM)) },
-
-  controlIn(item) { return item.querySelector("textarea,input:not([type=hidden])") },
-
-  valueIn(item) {
-    const control = this.controlIn(item)
-    return control.type === "checkbox" ? String(control.checked) : control.value
-  },
-
-  values(list) { return this.items(list).map(item => this.valueIn(item)) },
-
-  // Adds a row for a value after the others, and returns its control.
-  addValue(list, value) {
-    const item = list.querySelector("template").content.firstElementChild.cloneNode(true)
-    const control = this.controlIn(item)
-    if (control.type === "checkbox") control.checked = value === "true"
-    else control.value = value
-    list.querySelector(ADD).before(item)
-    this.hold(item)
-    this.number(list)
-    this.recountIn(item)
-    if (control.tagName === "TEXTAREA" && list.closest(GRIDCELL)) this.fit(control)
-    return control
-  },
-
-  // Takes a row away. Focus goes to the value after it, else to the
-  // one before it, else to the button that adds one.
-  removeValue(list, item) {
-    const items = this.items(list)
-    const at = items.indexOf(item)
-    const next = items[at + 1] || items[at - 1]
-    item.remove()
-    this.number(list)
-    ;(next ? this.controlIn(next) : list.querySelector(ADD)).focus()
-  },
-
-  fill(list, values) {
-    for (const item of this.items(list)) item.remove()
-    for (const value of values) this.addValue(list, value)
-  },
-
-  // Marks the controls of the values at `places`, counted from 0,
-  // as the ones an action refused, and no others.
-  markValues(list, places) {
-    this.items(list).forEach((item, index) => {
-      const control = this.controlIn(item)
-      if (places.includes(index)) control.setAttribute("aria-invalid", "true")
-      else control.removeAttribute("aria-invalid")
-    })
-  },
-
-  // A box sends nothing while it is not ticked: in the panel, what
-  // it holds is sent by the input beside it.
-  hold(item) {
-    const held = item.querySelector("input[type=hidden]")
-    if (held) held.value = this.valueIn(item)
-  },
-
-  // What the controls of a row are called says the row's place.
-  number(list) {
-    this.items(list).forEach((item, index) => {
-      const place = String(index + 1)
-      this.controlIn(item).setAttribute("aria-label", list.dataset.valueLabel.replace("{n}", place))
-      // the counter of a text is named by the row's place, too
-      const counter = item.querySelector(COUNT)
-      if (counter && list.id) {
-        counter.id = `${list.id}-count-${place}`
-        this.controlIn(item).setAttribute("aria-describedby", counter.id)
-      }
-      item.querySelector(REMOVE).setAttribute("aria-label", list.dataset.removeLabel.replace("{n}", place))
-    })
-  },
-
   // The editor of a column's component. What the table does for it
   // follows from its control, as it knows nothing else about it.
   //
@@ -291,10 +215,6 @@ export default {
     })
   },
 
-  // What an editor holds: the value of its control, or the list of
-  // the values of its controls.
-  held(ed) { return ed.read ? ed.read() : ed.input.value },
-
   // Ends an edit: saves the value if it has changed, after asking
   // when the column has a question, or gives it up. `refocus` puts
   // focus on the cell, for Enter and Escape; after a blur it is left
@@ -302,7 +222,7 @@ export default {
   finish(ed, save, refocus) {
     if (this.editing !== ed || ed.asking) return
     if (!ed.cell.isConnected) { this.editing = null; return }
-    if (save && !SAME(this.held(ed), ed.old) && ed.confirm) {
+    if (save && ed.input.value !== ed.old && ed.confirm) {
       ed.asking = true
       this.ask(ed.confirm).then(confirmed => {
         ed.asking = false
@@ -345,18 +265,18 @@ export default {
 
   close(ed, save, refocus) {
     const {cell, input} = ed
-    const value = this.held(ed)
+    const value = input.value
     // The cell as the server last sent it: as it was when the
     // editor opened, or as a patch of its row has brought it since.
     const restore = () => cell.replaceChildren(...ed.saved)
     // shows what was typed until the server has answered
-    const text = ed.shown ? ed.shown() : (input.tagName === "SELECT" && input.selectedOptions[0] ? input.selectedOptions[0].textContent : value)
+    const text = input.tagName === "SELECT" && input.selectedOptions[0] ? input.selectedOptions[0].textContent : value
     this.detach(ed)
     const failed = cell.hasAttribute("aria-invalid")
     // what was typed into a sensitive cell is never shown: until
     // the server has answered, the cell shows what it showed
     const typed = () => ed.type === "secret" ? restore() : cell.replaceChildren(...this.textFor(cell, text))
-    if (save && !SAME(value, ed.old)) {
+    if (save && value !== ed.old) {
       typed()
       this.save(cell, value, ed.old, restore)
       this.released(cell, true)
@@ -491,7 +411,7 @@ export default {
     // what was typed into a sensitive cell is not kept in the page
     const template = this.editorOf(cell)
     const secret = template && template.dataset.editor === "secret"
-    cell.dataset.value = secret ? "" : WRITTEN(value)
-    cell.dataset.saved = WRITTEN(old)
+    cell.dataset.value = secret ? "" : value
+    cell.dataset.saved = old
   },
 }

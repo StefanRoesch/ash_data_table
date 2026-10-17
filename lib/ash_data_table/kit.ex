@@ -239,14 +239,16 @@ defmodule AshDataTable.Kit do
     * `full_view` - the link to a nested table's full view (`data-view`,
       `ID-full-view`): `id`, `full_view` (its path), `label`, `model`,
       `lead`, `acting?`.
-    * `editor` - the editor of a column in its template: one control,
-      `data-control` where there are more: `id`, `column`.
+    * `editor` - the editor of a column in its template, for a single
+      value (an array, a map cell and a union are edited in the panel, a
+      reference in the picker): one control, `data-control` where there
+      are more: `id`, `column`.
     * `count` - the counter of a text (`data-count`, `data-max`): `id`,
       `counted`, `value`, `floats?`, `class`.
-    * `list` - the editor of a list (`data-list`, `data-value-label`,
-      `data-remove-label`, `data-item`, `data-add`, `data-remove`): `id`,
-      `rest` (attributes for its element), `label`, `item`, `limits`,
-      `counted`, `place` (`:grid` or `:panel`), `values`, `name`.
+    * `list` - the field of an array in the panel, value by value
+      (`data-list`, `data-value-label`, `data-remove-label`, `data-item`,
+      `data-add`, `data-remove`): `id`, `rest` (attributes for its
+      element), `label`, `item`, `limits`, `counted`, `values`, `name`.
     * `field` - a field of the panel (`data-field`, `data-add-group`,
       `data-remove-group`, `data-unpick`, `data-clear-field`,
       `data-invalid`): `id`, `input`, `name`, `value`, `errors`, `places`,
@@ -379,8 +381,8 @@ defmodule AshDataTable.Kit do
     * `value` - the value, in the state `:value` only (a reference cell's
       label, a map cell's value with its sensitive fields masked)
     * `editable?` - whether the person can edit this cell of this row
-    * `failure` - after a save failed: `typed` (`""` for a sensitive cell),
-      `message` and `places` (of an array's values it refused); else nil
+    * `failure` - after a save failed: `typed` (`""` for a sensitive cell)
+      and `message`; else nil
 
   ### `AshDataTable.Present.Panel`
 
@@ -776,7 +778,7 @@ defmodule AshDataTable.Kit do
       place={:grid}
       control={AshDataTable.Attrs.component_control(@column)}
     /><.part
-      :if={@column.editor not in [:component, :reference, :group, :groups, :union]}
+      :if={@column.editor not in [:component, :reference, :choices, :list, :group, :groups, :union]}
       part={:editor}
       kit={@kit}
       id={@id}
