@@ -243,11 +243,6 @@ defmodule AshDataTable do
         "what the kit says. See " <>
         "\"Modal or inline\" in `attach/4`."
 
-  # Rows to select with nothing to run on them, one at a time (`:single`) or
-  # several (`:multi`): how the table is shown for a person to choose from.
-  # Internal; the demo's pages for selection use it.
-  attr :select, :atom, default: nil, values: [nil, :single, :multi], doc: false
-
   def table(assigns) do
     assigns = assign_new(assigns, :grid_label, fn -> assigns.label || label(assigns.resource) end)
     table = assigns.table || :default
@@ -295,7 +290,6 @@ defmodule AshDataTable do
       mounted?={false}
       page_assigns={@assigns}
       time_zone={@time_zone}
-      select={@select}
       context={@context}
       private_arguments={@private_arguments}
       page_arguments={@page_arguments}
@@ -449,13 +443,25 @@ defmodule AshDataTable do
   """
   @spec attach(Phoenix.LiveView.Socket.t(), atom, Ash.Resource.t(), keyword) ::
           Phoenix.LiveView.Socket.t()
-  def attach(socket, name, resource, opts \\ []) when is_atom(name) and is_atom(resource) do
+  def attach(socket, name, resource, opts \\ []) when is_atom(name) and is_atom(resource),
+    do: attach(socket, name, resource, opts, false)
+
+  @doc false
+  # The table of a router line (`AshDataTable.Live.Page`): attached as
+  # `attach/4` attaches, and a page of its own, which a refused first read
+  # turns into a 404 (`AshDataTable.NotFoundError`).
+  @spec attach_mounted(Phoenix.LiveView.Socket.t(), atom, Ash.Resource.t(), keyword) ::
+          Phoenix.LiveView.Socket.t()
+  def attach_mounted(socket, name, resource, opts),
+    do: attach(socket, name, resource, opts, true)
+
+  defp attach(socket, name, resource, opts, mounted?) do
     opts =
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
           [:notify, :open, :kit, :presentation] ++
-          @page ++ [heading: true, url: false, mounted?: false, controlled: []]
+          @page ++ [heading: true, url: false, controlled: []]
       )
 
     page!(Map.new(Keyword.take(opts, @page)), "AshDataTable.attach/4")
@@ -488,7 +494,7 @@ defmodule AshDataTable do
       url: nil,
       label: opts[:label] || label(resource),
       heading: opts[:heading],
-      mounted?: opts[:mounted?],
+      mounted?: mounted?,
       # a default of an asked argument is given the LiveView's assigns as
       # they are when it is called (`AshDataTable.Live.Core.page_assigns/1`)
       page_assigns: :socket,

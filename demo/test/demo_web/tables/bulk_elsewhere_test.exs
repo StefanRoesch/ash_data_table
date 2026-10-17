@@ -824,7 +824,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
     end
   end
 
-  describe "a table that is told to let its rows be selected" do
+  describe "a table with no action to run on several rows" do
     setup %{conn: conn} do
       for title <- ["Slot A", "Slot B"] do
         Slot |> Ash.Changeset.for_create(:create, %{title: title}) |> Ash.create!()
@@ -841,50 +841,17 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       %{view: view, html: html}
     end
 
-    test "one at a time: a radio button in every row, of one group, none for the page, no line, and a grid that says it is not multi-selectable",
-         %{html: html} do
-      assert attribute(html, "#pick-grid", "data-select") == ["single"]
-      assert attribute(html, "#pick-table", "aria-multiselectable") == ["false"]
-
-      assert attribute(html, "#pick-table [role=gridcell][data-selector] > input", "type") ==
-               ["radio", "radio"]
-
-      assert attribute(html, "#pick-table [role=gridcell][data-selector] > input", "name") ==
-               ["pick-select", "pick-select"]
-
-      assert attribute(html, "#pick-table [role=gridcell][data-selector] > input", "aria-label") ==
-               ["Select row", "Select row"]
-
-      # told to let rows be selected, and not that it is one to choose from
-      assert attribute(html, "#pick-grid", "data-choose") == []
-
-      # the column has a header, which names it and stands for nothing
-      assert text(html, "#pick-select-head") == "Select row"
-      assert attribute(html, "#pick-select-head", "data-select-page") == []
-      assert attribute(html, "#pick-select-head input", "type") == []
-      assert selection(html, "pick") == nil
-      assert attribute(html, "#pick-table", "aria-colcount") == ["2"]
-    end
-
-    test "several at a time, without an action to run on them: the boxes and the line, with no action on it",
-         %{html: html} do
-      assert attribute(html, "#pile-grid", "data-select") == ["multi"]
-      assert attribute(html, "#pile-table", "aria-multiselectable") == ["true"]
-      assert attribute(html, "#pile-select-head", "data-select-page") == [""]
-      assert selection(html, "pile").buttons == ["Select all 2 that match", "Clear selection"]
-    end
-
-    test "and runs nothing for it", %{view: view} do
+    test "runs nothing on a selection the browser forges", %{view: view} do
       [slot | _] = Ash.read!(Slot)
 
-      bulk(view, "pile", "destroy", [slot.id])
+      bulk(view, "plain", "destroy", [slot.id])
       assert_reply view, %{ok: false}
-      run_bulk(view, "pile", "read", :all)
+      run_bulk(view, "plain", "read", :all)
 
       assert length(Ash.read!(Slot)) == 2
     end
 
-    test "is not, where it is told nothing and has no action to run on several rows",
+    test "lets no row be selected",
          %{html: html} do
       assert attribute(html, "#plain-grid", "data-select") == []
       assert attribute(html, "#plain-table [role=gridcell]", "role") != []
@@ -893,7 +860,7 @@ defmodule DemoWeb.Tables.BulkElsewhereTest do
       assert attribute(html, "#plain-table", "aria-colcount") == ["1"]
     end
 
-    test "nor where its records have no primary key, whatever it is told", %{html: html} do
+    test "nor where its records have no primary key", %{html: html} do
       assert column(html, "tally", "title") == ["A tally"]
       assert attribute(html, "#tally-grid", "data-select") == []
       assert attribute(html, "#tally-table [role=gridcell]", "role") != []

@@ -286,10 +286,8 @@ end
 
 defmodule DemoWeb.Support.SelectLive do
   @moduledoc """
-  A page whose tables are told that their rows can be selected, as the
-  library's own code tells a table that it shows for a person to choose
-  from: the table, given `select`. None of these tables
-  has an action to run on a selection.
+  A page whose tables have no action to run on several rows: one of slots,
+  and one of tallies, whose records have no primary key.
   """
   use Phoenix.LiveView
 
@@ -302,24 +300,10 @@ defmodule DemoWeb.Support.SelectLive do
   def render(assigns) do
     ~H"""
     <main>
-      <h1>Tables to select from</h1>
-      <.table id="pick" resource={Bulk.Slot} select={:single} />
-      <.table id="pile" resource={Bulk.Slot} select={:multi} />
-      <%!-- told nothing: a table without an action has nothing to select for --%>
-      <.table id="plain" resource={Bulk.Slot} select={nil} />
-      <%!-- records that cannot be named are not selected, whatever the table is told --%>
-      <.table id="tally" resource={Bulk.Tally} select={:multi} />
+      <h1>Tables with nothing to run on a selection</h1>
+      <AshDataTable.table id="plain" resource={Bulk.Slot} label="plain" heading={false} />
+      <AshDataTable.table id="tally" resource={Bulk.Tally} label="tally" heading={false} />
     </main>
-    """
-  end
-
-  attr :id, :string, required: true
-  attr :resource, :atom, required: true
-  attr :select, :atom, required: true
-
-  defp table(assigns) do
-    ~H"""
-    <AshDataTable.table id={@id} resource={@resource} select={@select} label={@id} heading={false} />
     """
   end
 end

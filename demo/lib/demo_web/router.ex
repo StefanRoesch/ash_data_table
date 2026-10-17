@@ -289,8 +289,7 @@ defmodule DemoWeb.Router do
 
   # For the browser tests (`e2e/`), in the e2e environment only: what a
   # test's page sent its LiveViews; deletes a task behind the table's back, and makes the reads of the
-  # comments fail; a page whose tables let their rows be selected with
-  # nothing to run on them; one whose table is given another actor while
+  # comments fail; a page whose table is given another actor while
   # it is open; one whose tables nested in each other take files; one
   # whose tables are attached to it; one that offers "Open"; one that
   # draws a panel of its table itself; a grid of `div`s that carries the
@@ -324,7 +323,6 @@ defmodule DemoWeb.Router do
       pipe_through :browser
 
       live_session :e2e, on_mount: [DemoWeb.Actor, DemoWeb.Locale, DemoWeb.Zone] do
-        live "/select", SelectLive
         live "/switch", SwitchLive
         live "/imports", ImportsLive
         live "/attached", AttachedLive

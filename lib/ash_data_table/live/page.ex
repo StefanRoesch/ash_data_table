@@ -339,7 +339,7 @@ defmodule AshDataTable.Live.Page do
   defp attached(%{assigns: %{route: route} = assigns} = socket) do
     socket
     |> assign(layout_assigns: given(socket))
-    |> AshDataTable.attach(
+    |> AshDataTable.attach_mounted(
       :table,
       route.resource,
       [
@@ -350,7 +350,6 @@ defmodule AshDataTable.Live.Page do
         heading: 1,
         authorize?: route.authorize?,
         live?: route.live?,
-        mounted?: true,
         time_zone: time_zone(route.resource, assigns)
       ] ++ reader(route.resource, assigns) ++ given(route)
     )
