@@ -390,23 +390,19 @@ by the compile that follows the change. See
 ## What it costs
 
 What `cell/1` renders is in every row, and a row is sent again as a whole
-when one of its cells is saved. Measured on the demo's `/tasks` as the
-admin, 25 rows of 17 columns, before and after four of its columns were
-given components:
+when one of its cells is saved. On the demo's `/tasks`, whose 17 columns
+include four with components (two badges, a bar and a unit), measured with
+`demo/perf/baseline.mjs` as the admin, 25 rows to a page:
 
-| | Without components | With them |
+| | Bytes the server sends | On the wire, compressed |
 | --- | --- | --- |
-| The page as HTML | 137.0 kB | 146.6 kB |
-| The first render over the socket | 132.6 kB | 137.2 kB |
-| One saved cell: the row that comes back | 4.43 kB | 4.86 kB |
-| The server's answer to `GET /tasks`, median of 30 | 22 ms | 24 ms |
+| A change of page | 155.7 kB | 11.9 kB |
+| One saved cell | 8.5 kB | 0.1 kB |
 
-A row is about 430 bytes longer, a tenth, for two badges, a bar and a unit.
-Over the socket the first render grows by less than the page does, because
-the fixed parts of a component's markup are sent once for all rows there;
-a single row that comes back after a save carries them in full. The two
-times are one run each on a laptop, and differ by less than two runs of the
-same code do.
+The fixed parts of a component's markup are sent once for all rows of a
+page; a row that comes back after a save carries them in full.
+[Installation](installation.md#compressing-the-websocket) says what
+compression costs.
 
 The shipped badge is one element and the shipped bar two, each with a
 handful of classes.

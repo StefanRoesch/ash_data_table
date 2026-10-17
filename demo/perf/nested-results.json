@@ -1,16 +1,16 @@
 {
- "date": "2026-10-07T09:46:55.675Z",
+ "date": "2026-10-17T19:09:51.452Z",
  "repetitions": 15,
  "machine": {
   "cpu": "12th Gen Intel(R) Core(TM) i7-1255U",
   "cores": 12,
   "load_average": [
-   3.87,
-   4.8,
-   7.91
+   1.79,
+   1.43,
+   1.53
   ]
  },
- "base": "http://127.0.0.1:4478",
+ "base": "http://127.0.0.1:4490",
  "versions": {
   "otp": "28",
   "schedulers": 12,
@@ -22,10 +22,10 @@
   "mix_env": "perf",
   "packages": {
    "phoenix_live_view": "1.2.12",
-   "ash_table": "0.1.0",
+   "ash_data_table": "0.1.0",
    "ash_phoenix": "2.3.25",
-   "ash_postgres": "2.14.2",
-   "ash": "3.34.4",
+   "ash_postgres": "2.14.5",
+   "ash": "3.36.1",
    "phoenix": "1.8.15",
    "ecto_sql": "3.14.0",
    "postgrex": "0.22.4",
@@ -34,9 +34,9 @@
  },
  "open": {
   "task.comments": {
-   "median_ms": 16.6,
-   "min_ms": 11.8,
-   "max_ms": 24.5,
+   "median_ms": 38,
+   "min_ms": 27.6,
+   "max_ms": 58,
    "median_database_ms": 4,
    "statements": [
     2
@@ -53,10 +53,10 @@
    ]
   },
   "task.labels": {
-   "median_ms": 15.9,
-   "min_ms": 10.6,
-   "max_ms": 23.2,
-   "median_database_ms": 3.9,
+   "median_ms": 37.7,
+   "min_ms": 27.7,
+   "max_ms": 57.9,
+   "median_database_ms": 4.1,
    "statements": [
     2
    ],
@@ -71,10 +71,10 @@
    ]
   },
   "task.project": {
-   "median_ms": 13.9,
-   "min_ms": 8.9,
-   "max_ms": 23.2,
-   "median_database_ms": 2.9,
+   "median_ms": 37.7,
+   "min_ms": 27.8,
+   "max_ms": 42.4,
+   "median_database_ms": 3.6,
    "statements": [
     2
    ],
@@ -86,10 +86,10 @@
    ]
   },
   "task.latest_comment": {
-   "median_ms": 13.3,
-   "min_ms": 8.3,
-   "max_ms": 17.3,
-   "median_database_ms": 3.1,
+   "median_ms": 38.1,
+   "min_ms": 25.1,
+   "max_ms": 54,
+   "median_database_ms": 3.5,
    "statements": [
     2
    ],
@@ -102,15 +102,15 @@
    ]
   },
   "project.tasks": {
-   "median_ms": 37.9,
-   "min_ms": 25.9,
-   "max_ms": 47.5,
-   "median_database_ms": 13,
+   "median_ms": 92.6,
+   "min_ms": 73.3,
+   "max_ms": 123.2,
+   "median_database_ms": 24.5,
    "statements": [
-    3
+    9
    ],
    "ash_reads": [
-    2
+    7
    ],
    "rows": [
     25
@@ -120,27 +120,79 @@
  "memory": [
   {
    "open": 0,
-   "memory_bytes": 88832,
-   "memory_before_gc_bytes": 426720,
-   "binaries_bytes": 373
+   "memory_bytes": 372696,
+   "memory_before_gc_bytes": 1808152,
+   "binaries_bytes": 1867
   },
   {
    "open": 1,
-   "memory_bytes": 143016,
-   "memory_before_gc_bytes": 292416,
-   "binaries_bytes": 587
+   "memory_bytes": 602296,
+   "memory_before_gc_bytes": 1130536,
+   "binaries_bytes": 2704
   },
   {
    "open": 10,
-   "memory_bytes": 230688,
-   "memory_before_gc_bytes": 694720,
-   "binaries_bytes": 2515
+   "memory_bytes": 1575240,
+   "memory_before_gc_bytes": 1824208,
+   "binaries_bytes": 8474
   },
   {
    "open": 50,
-   "memory_bytes": 973456,
-   "memory_before_gc_bytes": 1826288,
-   "binaries_bytes": 13510
+   "memory_bytes": 4121824,
+   "memory_before_gc_bytes": 9610648,
+   "binaries_bytes": 39377
   }
+ ],
+ "open_ms_by_number_open": [
+  36.7,
+  41.4,
+  80.2,
+  55,
+  50.2,
+  47,
+  69.7,
+  52.8,
+  70.1,
+  61.3,
+  59.6,
+  57.6,
+  65.7,
+  77,
+  77.6,
+  113.3,
+  78.5,
+  72,
+  80.3,
+  87.6,
+  102.7,
+  151.2,
+  92.9,
+  100.4,
+  111.6,
+  102.5,
+  106.2,
+  110,
+  109.3,
+  117.3,
+  126.4,
+  121.3,
+  141.3,
+  128.5,
+  139.1,
+  163.6,
+  238,
+  150.3,
+  191.4,
+  200.3,
+  163.6,
+  148.3,
+  167,
+  162.7,
+  164.4,
+  191.5,
+  214,
+  190.3,
+  191.8,
+  176.9
  ]
 }

@@ -73,7 +73,11 @@ async function closeLine(page, id, key, relationship) {
 async function memory(pathname) {
   await sleep(500)
   const { live_views } = await liveViews()
-  const [view, ...others] = live_views.filter((view) => view.url && new URL(view.url).pathname === pathname)
+  // the router's page keeps its URL to itself: with no `url` assign, the
+  // one page of the table's LiveView is the page (the script opens one at a time)
+  const [view, ...others] = live_views.filter((view) =>
+    view.url ? new URL(view.url).pathname === pathname : view.view === "AshDataTable.Live.Page",
+  )
   if (!view || others.length > 0) throw new Error(`expected one page on ${pathname}`)
   return { memory_bytes: view.memory, memory_before_gc_bytes: view.memory_before_gc, binaries_bytes: view.binaries }
 }
