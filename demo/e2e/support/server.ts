@@ -91,6 +91,10 @@ export function prepare(): void {
   if (EXTERNAL) return
 
   mkdirSync(STATE, { recursive: true })
+  // the servers' logs of an earlier run; within this run they only grow
+  for (const name of readdirSync(STATE)) {
+    if (/^\d+\.log$/.test(name)) rmSync(path.join(STATE, name), { force: true })
+  }
   const log = path.join(STATE, "prepare.log")
   const out = openSync(log, "w")
   const done = spawnSync(
@@ -133,7 +137,8 @@ async function start(index: number): Promise<Server> {
     )
   }
 
-  const out = openSync(log, "w")
+  // appended: a server that replaces a worker's keeps what the one before it said
+  const out = openSync(log, "a")
   const child = spawn(
     "mix",
     ["run", "--no-compile", "--no-deps-check", "--no-start", "--no-halt", "e2e/server/worker.exs"],
