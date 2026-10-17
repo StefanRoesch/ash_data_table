@@ -234,6 +234,26 @@ defmodule AshDataTable.SensitiveTest do
              ]) == "User: cy, Password: ••••••, Pin: ••••••; User: di"
     end
 
+    test "has its values masked in an error about it inside the value, and only it" do
+      model = model()
+      error = {"%{value} has expired", value: "s3cret"}
+
+      # the message inside the names of the way to the field
+      inner = fn
+        {:text, :error_on_field, bindings}, inner -> inner.(bindings[:message], inner)
+        message, _inner -> message
+      end
+
+      masked = fn path, field ->
+        inner.(AshDataTable.Errors.nested_text(model, path, field, error), inner)
+      end
+
+      assert masked.([:shown], :password) == {:ash, "%{value} has expired", value: "••••••"}
+      # every field of a value that is sensitive itself
+      assert masked.([:login], :user) == {:ash, "%{value} has expired", value: "••••••"}
+      assert masked.([:shown], :user) == {:ash, "%{value} has expired", value: "s3cret"}
+    end
+
     test "keeps the value from being edited where a person would give it" do
       attribute = Ash.Resource.Info.attribute(Vault, :logins)
 

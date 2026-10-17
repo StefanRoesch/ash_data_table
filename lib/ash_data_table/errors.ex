@@ -240,7 +240,8 @@ defmodule AshDataTable.Errors do
   @spec nested_text(Model.t(), [atom | non_neg_integer], atom, {String.t(), keyword}) ::
           message | nil
   def nested_text(%Model{} = model, [name | rest], field, {_message, _vars} = error) do
-    with %{label: label, cell_type: cell_type} when cell_type in [:map, {:array, :map}, :union] <-
+    with %{label: label, cell_type: cell_type} = column
+         when cell_type in [:map, {:array, :map}, :union] <-
            Enum.find(model.columns, &(&1.name == name)) do
       labels =
         Enum.reduce(rest ++ [field], [label], fn
@@ -251,12 +252,35 @@ defmodule AshDataTable.Errors do
             [{:label, AshDataTable.Resource.Words.humanize(name)} | labels]
         end)
 
-      Enum.reduce(labels, ash(error), fn label, message ->
+      sensitive? = column.sensitive? or sensitive_within?(column, rest ++ [field])
+
+      Enum.reduce(labels, ash(error, sensitive?), fn label, message ->
         {:text, :error_on_field, field: label, message: message}
       end)
     else
       _no_such_column -> nil
     end
+  end
+
+  @doc false
+  # Whether the field that `path` leads to inside a value made of fields (a
+  # column's, an input's or a field's: what has `fields` or `members`) is
+  # `sensitive?`, or a value around it is: by the names of the fields on the
+  # way, places in a list passed over, through every kind of a union. Where
+  # the way is not plain, a field of that name in any kind counts.
+  @spec sensitive_within?(map, [atom | non_neg_integer]) :: boolean
+  def sensitive_within?(_holder, []), do: false
+
+  def sensitive_within?(holder, [index | rest]) when is_integer(index),
+    do: sensitive_within?(holder, rest)
+
+  def sensitive_within?(holder, [name | rest]) do
+    kinds = Map.get(holder, :members) || []
+    fields = (Map.get(holder, :fields) || []) ++ kinds ++ Enum.flat_map(kinds, &(&1.fields || []))
+
+    Enum.any?(fields, fn field ->
+      field.name == name and (field.sensitive? or sensitive_within?(field, rest))
+    end)
   end
 
   @doc """

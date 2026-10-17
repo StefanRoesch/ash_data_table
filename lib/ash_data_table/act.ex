@@ -953,11 +953,12 @@ defmodule AshDataTable.Act do
     # panel has it, by the way to it
     nested =
       for {path, field, error} <- Errors.nested(form),
+          sensitive? = nested_sensitive?(inputs, path, field),
           placed =
             (case place(inputs, path, field, error) do
-               {:field, place} -> {place, Errors.ash(error)}
+               {:field, place} -> {place, Errors.ash(error, sensitive?)}
                # at the group, which says which of its fields is meant
-               {:group, place} -> {single(place), named(field, error)}
+               {:group, place} -> {single(place), named(field, error, sensitive?)}
                nil -> {nil, Errors.nested_text(model, path, field, error)}
              end),
           not is_nil(elem(placed, 1)),
@@ -1080,10 +1081,25 @@ defmodule AshDataTable.Act do
 
   # The message of an error about a field the panel has no place for, after
   # the field's name in words.
-  defp named(field, error) do
+  defp named(field, error, sensitive?) do
     {:text, :error_on_field,
-     field: {:label, AshDataTable.Resource.Words.humanize(field)}, message: Errors.ash(error)}
+     field: {:label, AshDataTable.Resource.Words.humanize(field)},
+     message: Errors.ash(error, sensitive?)}
   end
+
+  # Whether an error inside a value is about a `sensitive?` field of it: its
+  # variables are masked then, as at a field of the panel.
+  defp nested_sensitive?(inputs, [name | rest], field) do
+    case Enum.find(inputs, &(&1.name == name)) do
+      nil ->
+        false
+
+      input ->
+        Map.get(input, :sensitive?, false) or Errors.sensitive_within?(input, rest ++ [field])
+    end
+  end
+
+  defp nested_sensitive?(_inputs, _path, _field), do: false
 
   defp step(index, {place, %{cell_type: {:array, :map}} = at})
        when is_integer(index) do
