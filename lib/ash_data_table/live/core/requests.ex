@@ -38,7 +38,8 @@ defmodule AshDataTable.Live.Core.Requests do
   @doc """
   Holds the question before an action instead of asking it: `run` is what
   the person's Confirm would send (`{:act, key, name}`, `{:table_run,
-  name}`, `{:bulk_run, name}`), `action` the action and `key` its row's
+  name}`, `{:bulk_run, name, token}`: the token of the selection the
+  question names), `action` the action and `key` its row's
   primary key, nil for none.
   """
   def ask(socket, run, action, key) do
@@ -115,7 +116,7 @@ defmodule AshDataTable.Live.Core.Requests do
       case run do
         {:act, key, name} -> Panel.act(socket, key, name, true)
         {:table_run, _name} = intent -> Panel.on(intent, socket)
-        {:bulk_run, _name} = intent -> Bulk.on(intent, socket)
+        {:bulk_run, _name, _token} = intent -> Bulk.on(intent, socket)
       end
 
     case result do

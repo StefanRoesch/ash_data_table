@@ -81,8 +81,14 @@ export default {
   // been read and can go. The server holds what is selected, and is
   // told every change (`select`), but the one it made itself and
   // tells the hook (`told`, `ash_data_table:select`).
+  //
+  // A question about running an action on the selection that is still
+  // open is given up when the selection changes: it named another.
   select(keys, all, seen = true, told = false) {
     const selection = this.selection
+    const changed = all !== selection.all || keys.size !== selection.keys.size ||
+      Array.from(keys.keys()).some(key => !selection.keys.has(key))
+    if (changed && this.bulkAsked && this.answer === this.bulkAsked) this.giveUp()
     selection.keys = keys
     selection.all = all
     if (!all && keys.size === 0) selection.anchor = null
@@ -279,22 +285,30 @@ export default {
   // is told the action, and runs it on what it holds as selected,
   // and nothing runs yet: it opens the action's panel, or answers
   // with the question to ask first, which says how many records it
-  // is about. Confirm then runs the action; what became of it comes
-  // back as a patch, and as the rows on which it did not run, which
-  // stay selected (`ash_data_table:select`).
+  // is about, and with a token of the selection it named
+  // (`selection`). Confirm then runs the action, with that token: the
+  // server runs nothing when what it holds as selected is no longer
+  // what the question named. What became of it comes back as a patch,
+  // and as the rows on which it did not run, which stay selected
+  // (`ash_data_table:select`).
+  //
+  // A question that is open gives way to this one (`ask`), and this
+  // one is given up when the selection changes (`select`).
   bulk(button) {
-    if (button.getAttribute("aria-disabled") === "true" || this.asking) return
+    if (button.getAttribute("aria-disabled") === "true" || this.bulking) return
     const {all, rows} = this.selected()
     if (!all && rows.length === 0) return
-    const payload = {action: button.dataset.bulk}
-    // one question at a time
-    this.asking = true
-    this.transport.push("bulk", payload).then(reply => {
-      if (!reply || !reply.ask) { this.asking = false; return }
+    const action = button.dataset.bulk
+    // one push at a time: a second waits for the answer to the first
+    this.bulking = true
+    this.transport.push("bulk", {action}).then(reply => {
+      this.bulking = false
+      if (!reply || !reply.ask) return
       // Cancel, and Escape: the browser puts focus back on the button
-      this.ask(reply.ask, is(button, DESTRUCTIVE)).then(confirmed => {
-        this.asking = false
-        if (confirmed) this.transport.push("bulk_run", payload)
+      const asked = this.ask(reply.ask, is(button, DESTRUCTIVE))
+      this.bulkAsked = this.answer
+      asked.then(confirmed => {
+        if (confirmed === true) this.transport.push("bulk_run", {action, selection: reply.selection})
       })
     })
   },

@@ -202,9 +202,12 @@ defmodule AshDataTable.Attrs do
   #     `{ok: false, error}`;
   #   * `select` `{rows}` or `{all: true}`, on every change of what is
   #     selected: no answer;
-  #   * `bulk` `{action}`, on what is selected: `{panel: true}`, `{ask}`
-  #     (the question to ask first) or `{ok: false}`; `bulk_run`, the
-  #     same, once the person has confirmed: no answer;
+  #   * `bulk` `{action}`, on what is selected: `{panel: true}`, `{ask,
+  #     selection}` (the question to ask first, and a token of the
+  #     selection it names) or `{ok: false}`; `bulk_run` `{action,
+  #     selection}`, once the person has confirmed, with that token: no
+  #     answer; where the selection is no longer the one the token names,
+  #     nothing runs and the result says so;
   #   * `bulk_seen` `{}`, `table_run` `{action}`: no answer.
   #
   # From the panel's hook, on `ID-panel`: `panel_add` and `panel_remove`

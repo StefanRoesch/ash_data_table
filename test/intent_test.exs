@@ -100,8 +100,11 @@ defmodule AshDataTable.IntentTest do
     # an action on it names the action only
     assert parse("bulk", %{"action" => "close"}) == {:ok, {:bulk, "close"}}
 
-    assert parse("bulk_run", %{"action" => "close", "rows" => ["1"]}) ==
-             {:ok, {:bulk_run, "close"}}
+    # and its run the token of the selection its question named
+    assert parse("bulk_run", %{"action" => "close", "selection" => "t", "rows" => ["1"]}) ==
+             {:ok, {:bulk_run, "close", "t"}}
+
+    assert parse("bulk_run", %{"action" => "close"}) == :malformed
 
     assert parse("bulk", %{"action" => 1}) == :malformed
     assert parse("bulk_seen", %{}) == {:ok, :bulk_seen}

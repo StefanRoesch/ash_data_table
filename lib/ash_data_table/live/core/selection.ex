@@ -137,6 +137,20 @@ defmodule AshDataTable.Live.Core.Selection do
     end
   end
 
+  @doc """
+  A token of what is selected now: the rows (or every record that matches)
+  and what they were selected under. The question before an action on the
+  selection carries it, and Confirm sends it back: the action runs only on
+  the selection the question named (`AshDataTable.Live.Core.Bulk`). It
+  says nothing the page does not show: the rows are the page's own claims.
+  """
+  def token(%{selected: rows, all?: all?, selected_under: under}) do
+    :sha256
+    |> :crypto.hash(:erlang.term_to_binary({all?, Enum.sort(rows), under}))
+    |> binary_part(0, 12)
+    |> Base.url_encode64(padding: false)
+  end
+
   @doc "A primary key as the hook names its row: what `select` sends for it."
   def named(model, pk) do
     row_key = Reading.row_key(model, pk, 0)

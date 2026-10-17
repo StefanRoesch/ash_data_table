@@ -57,6 +57,40 @@ defmodule DemoWeb.Tables.ControlledTest do
     assert request(view) == nil
   end
 
+  test "Confirm of a question about the selection runs nothing once the selection changed",
+       %{conn: conn, card: card} do
+    other = Ash.Seed.seed!(Card, %{title: "Second"})
+    {:ok, view, _html} = given(conn, %{"notify" => [:requested]})
+
+    select(view, "card", [other.id])
+    bulk(view, "card", "assign", [other.id])
+    assert_reply view, %{ok: true}
+    assert_received {:heard, {:ash_data_table, "card", {:requested, %{ref: ref, kind: :confirm}}}}
+
+    # the host shows the question; the selection changes meanwhile
+    select(view, "card", [card.id, other.id])
+    answer(view, &AshDataTable.confirm_request(&1, :cards, ref))
+
+    html = render(view)
+
+    assert bulk_result(html, "card") == %{
+             summary: "Nothing was run: the selection changed after the question was asked.",
+             failures: []
+           }
+
+    assert Ash.get!(Card, other.id).assignee == nil
+    assert Ash.get!(Card, card.id).assignee == nil
+    assert request(view) == nil
+
+    # asked again, Confirm runs it on the selection the question names now
+    bulk(view, "card", "assign", [card.id])
+    assert_received {:heard, {:ash_data_table, "card", {:requested, %{ref: ref}}}}
+    answer(view, &AshDataTable.confirm_request(&1, :cards, ref))
+    ran(view)
+    assert Ash.get!(Card, card.id).assignee == "ann"
+    assert Ash.get!(Card, other.id).assignee == nil
+  end
+
   test "a nested table asks its own question: only the table on the page is controlled",
        %{conn: conn, card: card} do
     remark = Ash.Seed.seed!(Remark, %{body: "A remark", card_id: card.id})

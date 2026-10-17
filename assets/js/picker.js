@@ -99,7 +99,7 @@ export default {
       if (cell) cell.removeAttribute("aria-busy")
       if (reply && reply.ask && this.grid) {
         // Cancel, and Escape: the browser puts focus back in the picker
-        this.grid.ask(reply.ask).then(yes => { if (yes && this.el.isConnected) this.choose(row, true) })
+        this.grid.ask(reply.ask, false, this.el).then(yes => { if (yes === true && this.el.isConnected) this.choose(row, true) })
         return
       }
       // the row's record is gone: there is no row to send, so the cell is marked here

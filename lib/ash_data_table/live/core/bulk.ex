@@ -113,7 +113,8 @@ defmodule AshDataTable.Live.Core.Bulk do
   # each as the hook names it (its primary key), or every record the filters
   # match. Nothing runs yet: an action with inputs opens its panel, and for
   # any other the answer is the question to ask first, which says how many
-  # records it is about.
+  # records it is about, with a token of the selection it names
+  # (`Selection.token/1`), which Confirm sends back.
   #
   # The action has to be one this table offers this person for a selection.
   # The rows are not looked up among those of the page, as a selection
@@ -122,7 +123,9 @@ defmodule AshDataTable.Live.Core.Bulk do
   def on({:bulk, name} = intent, socket) do
     with {:ok, action, selection} <-
            Operation.bulk_action(Core.operation(socket, intent), name) do
-      question = question(action, selected(selection, Core.table(socket).entry))
+      %{entry: entry} = Core.table(socket)
+      question = question(action, selected(selection, entry))
+      token = Selection.token(entry)
 
       cond do
         action.panel? ->
@@ -131,10 +134,10 @@ defmodule AshDataTable.Live.Core.Bulk do
         # in controlled mode the host asks it (`Requests.ask/4`)
         Requests.controlled?(socket, :confirm) ->
           {:reply, %{ok: true},
-           Requests.ask(socket, {:bulk_run, name}, %{action | confirm: question}, nil)}
+           Requests.ask(socket, {:bulk_run, name, token}, %{action | confirm: question}, nil)}
 
         true ->
-          {:reply, %{ask: Text.say(question)}, socket}
+          {:reply, %{ask: Text.say(question), selection: token}, socket}
       end
     else
       :error -> {:reply, %{ok: false}, socket}
@@ -144,21 +147,42 @@ defmodule AshDataTable.Live.Core.Bulk do
   # Sent by the hook once the person has answered that question with
   # Confirm, for an action without a panel: the action runs on what is
   # selected. Whether it has a panel is the table's to say, not the event's.
-  def on({:bulk_run, name} = intent, socket) do
-    input = Core.operation(socket, intent)
+  #
+  # Only on the selection the question named: a question in the page leaves
+  # the page in use, and the selection may change before it is answered
+  # (as it may while a host asks it, in controlled mode). Then nothing runs,
+  # and the person is told why.
+  def on({:bulk_run, name, token}, socket) do
+    input = Core.operation(socket, {:bulk_run, name})
 
     with {:ok, action, _selection} <- Operation.bulk_action(input, name),
+         :named <- named(socket, token),
          {:start, run, files} <- Operation.bulk(input) do
       {:noreply, start_bulk(socket, action, run, files)}
     else
-      {:halted, message} -> {:noreply, Core.say(socket, message)}
-      _other -> {:noreply, socket}
+      :changed ->
+        changed = {:text, :bulk_selection_changed, []}
+
+        {:noreply,
+         socket
+         |> Core.put(result: %{summary: changed, failures: []})
+         |> Core.say(changed)}
+
+      {:halted, message} ->
+        {:noreply, Core.say(socket, message)}
+
+      _other ->
+        {:noreply, socket}
     end
   end
 
   # Sent by the hook when the person changes the selection while the table
   # still says what the last run came to: that is said no longer.
   def on(:bulk_seen, socket), do: {:noreply, Core.put(socket, result: nil)}
+
+  # Whether what is selected is what the token names.
+  defp named(socket, token),
+    do: if(token == Selection.token(Core.table(socket).entry), do: :named, else: :changed)
 
   # How many records a selection is: the rows that were named, or what the
   # last read counted, nil where the read action does not count.

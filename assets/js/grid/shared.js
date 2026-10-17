@@ -119,6 +119,11 @@ export const is = (node, marker) => node.matches(marker)
 // `data-paragraph`), for an element the hook writes the marker on.
 export const ATTRIBUTE = marker => marker.slice(1, -1)
 
+// What the table's question resolves to when nobody answered it: another
+// question took its place, or what it was about changed (`ask` in
+// grid/dialog.js). What asked it neither runs nor takes the focus back.
+export const GIVEN_UP = "given up"
+
 export const STEP = 10
 
 // The scrollbars at the bottom edge of the window (see "scrolling

@@ -117,6 +117,7 @@ defmodule AshDataTable.Text do
           | :bulk_on_all
           | :bulk_done
           | :bulk_not_done
+          | :bulk_selection_changed
           | :bulk_failure
           | :choose
           | :choose_none
@@ -482,6 +483,15 @@ defmodule AshDataTable.Text do
 
   defp msgid(:bulk_not_done),
     do: dgettext_noop("ash_data_table", "%{action}: %{done} done, %{failed} not done.")
+
+  # the selection changed after the question before such an action was
+  # asked: nothing ran
+  defp msgid(:bulk_selection_changed),
+    do:
+      dgettext_noop(
+        "ash_data_table",
+        "Nothing was run: the selection changed after the question was asked."
+      )
 
   defp msgid(:bulk_failure), do: dgettext_noop("ash_data_table", "%{message} (%{count})")
 

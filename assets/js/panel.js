@@ -17,7 +17,7 @@
 const UNREADABLE = form =>
   Array.from(form.elements).find(control => control.validity && control.validity.badInput)
 
-import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
+import {ADD, ADD_GROUP, CANCEL, CLEAR_FIELD, CONTROL, DESTRUCTIVE, FIELD, GRID, GRIDCELL, HEADER, ITEM, LIST, OF, OPENED, REMOVE, REMOVE_GROUP, SELECTION, UNPICK, VALUE_TEXT} from "./markers.js"
 
 // What takes the focus as a panel or a picker opens in the page, as
 // the browser finds it in a modal dialog: its first control.
@@ -27,13 +27,16 @@ export const FOCUSABLE = ":is(input:not([type=hidden]),select,textarea,button,a[
 // (`data-presentation`): a modal dialog over the page, or a part of
 // the page, which focus moves into. Escape inside it is Cancel, as
 // it is in a modal dialog, unless what has the focus took it.
-export function opened(el, cancel) {
+//
+// `own` keeps to the events of `el` itself, where something else that
+// opens is drawn inside it.
+export function opened(el, cancel, own = handle => handle) {
   if (el.dataset.presentation === "inline") {
-    el.addEventListener("keydown", e => {
+    el.addEventListener("keydown", own(e => {
       if (e.key !== "Escape" || e.defaultPrevented) return
       e.preventDefault()
       cancel()
-    })
+    }))
     const first = Array.from(el.querySelectorAll(FOCUSABLE)).find(control => control.getClientRects().length > 0)
     if (first) first.focus()
   } else {
@@ -53,21 +56,25 @@ export default {
     this.opener = active && active !== document.body ? active : null
     this.openerId = this.opener && this.opener.id
     this.confirmed = false
-    opened(dialog, () => this.cancel())
+    // A picker that a field opened may be drawn inside the panel (a
+    // modal panel, an inline picker): what happens in it is the
+    // picker's, not the panel's.
+    const own = handle => e => { if (e.target.closest && e.target.closest(OPENED) === dialog) handle(e) }
+    opened(dialog, () => this.cancel(), own)
     // Focus is on the first control of the panel. Where that is the
     // button that takes a group away, it goes on to the group's first
     // field: Enter there is not to remove what the person came to edit.
     if (document.activeElement && document.activeElement.matches(REMOVE_GROUP)) this.into(dialog.id)
-    dialog.addEventListener("click", e => { if (e.target.closest(CANCEL)) this.cancel() })
+    dialog.addEventListener("click", own(e => { if (e.target.closest(CANCEL)) this.cancel() }))
     // What the editor of a column's component shows of its control's
     // value besides the control (the number beside a slider) follows
     // the control here, as it does in a cell, without waiting for
     // the server.
-    dialog.addEventListener("input", e => {
+    dialog.addEventListener("input", own(e => {
       const field = e.target.closest && e.target.closest(FIELD)
       if (!field || !e.target.matches(CONTROL)) return
       for (const shown of field.querySelectorAll(VALUE_TEXT)) shown.textContent = e.target.value
-    })
+    }))
     // The field of an array that is given value by value: its rows
     // are added and taken away here, as they are in a cell, by the
     // grid's hook. The server is told as it is of anything typed
@@ -77,51 +84,51 @@ export default {
       const own = list.parentElement.querySelector("input[data-own]")
       if (own) own.dispatchEvent(new Event("input", {bubbles: true}))
     }
-    dialog.addEventListener("click", e => {
+    dialog.addEventListener("click", own(e => {
       const list = e.target.closest && e.target.closest(LIST)
       if (!list || !this.grid) return
       if (e.target.closest(ADD)) this.grid.addValue(list, "").focus()
       else if (e.target.closest(REMOVE)) this.grid.removeValue(list, e.target.closest(ITEM))
       else return
       changed(list)
-    })
+    }))
     // a box of such a field: what it holds is sent by the input beside it
-    dialog.addEventListener("change", e => {
+    dialog.addEventListener("change", own(e => {
       const item = e.target.closest && e.target.closest(`${LIST} ${ITEM}`)
       if (!item || e.target.type !== "checkbox" || !this.grid) return
       this.grid.hold(item)
       changed(item.closest(LIST))
-    })
+    }))
     // A field made of groups (an embedded resource, a map, an array
     // of either): the server adds a group and takes one away, and
     // says where focus goes then: into the group that was added,
     // or to what stands where the one that is gone stood.
-    dialog.addEventListener("click", e => {
+    dialog.addEventListener("click", own(e => {
       const button = e.target.closest && e.target.closest(`${ADD_GROUP},${REMOVE_GROUP}`)
       if (!button) return
       const add = button.dataset.addGroup !== undefined
       let path = null
       try { path = JSON.parse(add ? button.dataset.addGroup : button.dataset.removeGroup) } catch (_error) { return }
       this.transport.push(add ? "panel_add" : "panel_remove", {path}).then(reply => this.into(reply && reply.focus))
-    })
+    }))
     // A field that holds several related records: the server takes
     // one out, and says where focus goes then: to the button of the
     // record that stands where it stood, or to the field's "Choose".
-    dialog.addEventListener("click", e => {
+    dialog.addEventListener("click", own(e => {
       const button = e.target.closest && e.target.closest(UNPICK)
       if (!button) return
       let named = null
       try { named = JSON.parse(button.dataset.unpick) } catch (_error) { return }
       this.transport.push("panel_unpick", {input: named[0], key: named[1]}).then(reply => this.into(reply && reply.focus))
-    })
+    }))
     // A sensitive field that can be emptied: its button asks the
     // server to note it, or to take it back, and has the focus
     // again once the field is rendered anew.
-    dialog.addEventListener("click", e => {
+    dialog.addEventListener("click", own(e => {
       const button = e.target.closest && e.target.closest(CLEAR_FIELD)
       if (!button) return
       this.transport.push("panel_clear", {input: button.dataset.clearField}).then(reply => this.into(reply && reply.focus))
-    })
+    }))
     // The panel of a cell asks the column's question only when
     // something was changed: what its form holds as it opens is
     // what the record has.
@@ -129,7 +136,7 @@ export default {
     // An action with a question asks it when "Run" is used, in the
     // table's other dialog, on top of this one. Cancel there comes
     // back here, with everything as it was typed.
-    dialog.addEventListener("submit", e => {
+    dialog.addEventListener("submit", own(e => {
       // what the browser cannot read is not sent as "nothing"
       const unreadable = UNREADABLE(e.target)
       if (unreadable) {
@@ -144,12 +151,12 @@ export default {
       e.preventDefault()
       e.stopPropagation()
       const submitter = e.submitter
-      this.grid.ask(question, dialog.matches(DESTRUCTIVE)).then(confirmed => {
-        if (!confirmed || !dialog.isConnected) return
+      this.grid.ask(question, dialog.matches(DESTRUCTIVE), dialog).then(confirmed => {
+        if (confirmed !== true || !dialog.isConnected) return
         this.confirmed = true
         e.target.requestSubmit(submitter)
       })
-    }, true)
+    }), true)
   },
 
   cancel() { this.transport.push("panel_cancel", {}) },

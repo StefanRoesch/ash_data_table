@@ -540,3 +540,7 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "This time does not exist in %{zone}."
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Nothing was run: the selection changed after the question was asked."
+msgstr ""

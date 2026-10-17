@@ -235,14 +235,13 @@ const core = {
       if (target && (this.el.contains(target) || (line && line.contains(target)))) target.focus({preventScroll: true})
     })
     // The server says that a table action asks first: its question is
-    // asked in the table's dialog, and Confirm runs the action.
+    // asked in the table's dialog, and Confirm runs the action. A
+    // question that is open gives way to it (`ask`).
     // Cancel, and Escape: the browser puts focus back on the button.
     this.transport.on("ash_data_table:ask", ({table, action, question}) => {
-      if (table !== this.id || this.asking) return
-      this.asking = true
+      if (table !== this.id) return
       this.ask(question, false).then(confirmed => {
-        this.asking = false
-        if (confirmed) this.transport.push("table_run", {action})
+        if (confirmed === true) this.transport.push("table_run", {action})
       })
     })
     // what happens in a grid nested in this one is that grid's

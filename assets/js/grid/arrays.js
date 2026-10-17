@@ -4,7 +4,7 @@
 // puts together, and share its state through `this`.
 
 import {ADD, COUNT, GRIDCELL, ITEM, REMOVE, VALUE_TEXT} from "../markers.js"
-import {PRINTABLE, SELECT_KEYS, WRITTEN, SAME, TYPED} from "./shared.js"
+import {GIVEN_UP, PRINTABLE, SELECT_KEYS, WRITTEN, SAME, TYPED} from "./shared.js"
 
 export default {
   // A list editor (`[data-list]`), in a cell or in the action
@@ -210,7 +210,8 @@ export default {
     ed.asking = true
     this.ask(ed.confirm).then(confirmed => {
       ed.asking = false
-      if (this.editing !== ed) return
+      // given up: nobody answered, and focus stays where it is
+      if (this.editing !== ed || confirmed === GIVEN_UP) return
       // Cancel: back in the editor, with what was chosen
       if (confirmed) send()
       input.focus()
@@ -280,7 +281,8 @@ export default {
     ed.asking = true
     this.ask(ed.confirm).then(confirmed => {
       ed.asking = false
-      if (this.editing !== ed) return
+      // given up: nobody answered, and focus stays where it is
+      if (this.editing !== ed || confirmed === GIVEN_UP) return
       // Cancel: back in the editor, with what was typed
       if (confirmed) run()
       else ed.input.focus()
@@ -302,7 +304,8 @@ export default {
       ed.asking = true
       this.ask(ed.confirm).then(confirmed => {
         ed.asking = false
-        if (this.editing !== ed) return
+        // given up: nobody answered, and focus stays where it is
+        if (this.editing !== ed || confirmed === GIVEN_UP) return
         // Cancel: back in the editor, with what was typed
         if (confirmed) this.close(ed, true, refocus)
         else ed.input.focus()
@@ -387,6 +390,8 @@ export default {
     }
     if (!template.dataset.confirm) return commit()
     this.ask(template.dataset.confirm).then(confirmed => {
+      // given up: nobody answered, and focus stays where it is
+      if (confirmed === GIVEN_UP) return
       if (confirmed) commit()
       cell.focus()
     })

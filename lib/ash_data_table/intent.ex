@@ -54,7 +54,7 @@ defmodule AshDataTable.Intent do
           | {:table_run, String.t()}
           | {:select, selection}
           | {:bulk, String.t()}
-          | {:bulk_run, String.t()}
+          | {:bulk_run, String.t(), String.t()}
           | :bulk_seen
           | {:panel_validate, map}
           | {:panel_submit, map}
@@ -153,9 +153,12 @@ defmodule AshDataTable.Intent do
   def parse("select", %{"all" => true}), do: {:ok, {:select, :all}}
   def parse("select", %{"rows" => rows}) when is_list(rows), do: {:ok, {:select, {:rows, rows}}}
 
-  def parse(event, %{"action" => action})
-      when event in ["bulk", "bulk_run"] and is_binary(action),
-      do: {:ok, {tag(event), action}}
+  def parse("bulk", %{"action" => action}) when is_binary(action), do: {:ok, {:bulk, action}}
+
+  # with the token of the selection its question named
+  def parse("bulk_run", %{"action" => action, "selection" => token})
+      when is_binary(action) and is_binary(token),
+      do: {:ok, {:bulk_run, action, token}}
 
   def parse("bulk_seen", _params), do: {:ok, :bulk_seen}
 
@@ -208,8 +211,6 @@ defmodule AshDataTable.Intent do
   defp tag("reveal"), do: :reveal
   defp tag("edit"), do: :edit
   defp tag("pick"), do: :pick
-  defp tag("bulk"), do: :bulk
-  defp tag("bulk_run"), do: :bulk_run
   defp tag("panel_add"), do: :panel_add
   defp tag("panel_remove"), do: :panel_remove
 

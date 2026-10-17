@@ -6,7 +6,8 @@ defmodule DemoWeb.TablePage do
   `id` is the table's id, the last part of its resource's name: `"task"`.
   """
 
-  import Phoenix.LiveViewTest, only: [render_async: 2]
+  import ExUnit.Assertions, only: [assert_receive: 2]
+  import Phoenix.LiveViewTest, only: [assert_reply: 2, render_async: 2]
 
   @doc """
   Sets a column's filter and leaves it, as a person does who types a value or
@@ -507,9 +508,37 @@ defmodule DemoWeb.TablePage do
   """
   def run_bulk(view, id \\ "task", action, selection) do
     select(view, id, selection)
-    send_event(view, id, "bulk_run", %{"action" => action})
+    confirm_bulk(view, id, action)
 
     ran(view)
+  end
+
+  @doc """
+  Answers the question before an action on what is selected now with
+  Confirm, as the table's hook does: it asks for the question (`bulk`),
+  and sends `bulk_run` with the token of the selection the question named.
+  Returns the page as `bulk_run` left it.
+  """
+  def confirm_bulk(view, id \\ "task", action) do
+    token = bulk_token(view, id, action)
+    send_event(view, id, "bulk_run", %{"action" => action, "selection" => token})
+  end
+
+  @doc """
+  The token of what is selected now, as the question before `action` (one
+  without a panel) carries it: what `bulk_run` sends back. `""` where the
+  table asks no question (the action is not offered, or has a panel).
+  """
+  def bulk_token(view, id \\ "task", action) do
+    send_event(view, id, "bulk", %{"action" => action})
+
+    try do
+      assert_reply(view, %{selection: token})
+      token
+    rescue
+      # no question came: the answer was `{ok: false}` or `{panel: true}`
+      ExUnit.AssertionError -> ""
+    end
   end
 
   @doc """

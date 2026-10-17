@@ -34,7 +34,7 @@ export default {
     const question = button.dataset.question
     if (!question) return run()
     // Cancel, and Escape: the browser puts focus back on the button
-    this.ask(question, is(button, DESTRUCTIVE)).then(confirmed => { if (confirmed) run() })
+    this.ask(question, is(button, DESTRUCTIVE)).then(confirmed => { if (confirmed === true) run() })
   },
 
   // Uses the page's "Open" of a row: the server is told the row, and

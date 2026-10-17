@@ -288,7 +288,7 @@ defmodule DemoWeb.Tables.AttachTest do
 
       select(view, "crate", [first.id])
 
-      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
+      confirm_bulk(view, "crate", "weigh")
       switch(view, %{current_user: %{someone | role: :member}})
 
       html = ran(view)
@@ -304,7 +304,7 @@ defmodule DemoWeb.Tables.AttachTest do
 
       select(view, "crate", [first.id])
 
-      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
+      confirm_bulk(view, "crate", "weigh")
       switch(view, %{current_user: other})
 
       html = ran(view)
@@ -320,7 +320,7 @@ defmodule DemoWeb.Tables.AttachTest do
          %{conn: conn, crates: [first | _]} do
       {:ok, view, _html} = live(conn, "/support/switched/crates")
       select(view, "crate", [first.id])
-      forge(view, "crate", "bulk_run", %{"action" => "weigh"})
+      confirm_bulk(view, "crate", "weigh")
 
       # the run is cancelled as its table is detached; its answer, that it
       # was, comes all the same, to a table of the same id

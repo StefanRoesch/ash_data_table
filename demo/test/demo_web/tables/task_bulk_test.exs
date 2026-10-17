@@ -643,11 +643,19 @@ defmodule DemoWeb.Tables.TaskBulkTest do
          %{conn: conn, world: world, task: task} do
       {:ok, view, _html} = conn |> log_in(world.admin) |> live("/tasks")
 
-      # `bulk_run` is for an action without inputs
-      html = run_bulk(view, "reassign", [task.id])
+      # `bulk_run` is for an action without inputs: given the token of the
+      # selection that the question of another action named, it runs none
+      # that has a panel
+      select(view, [task.id])
+      token = bulk_token(view, "archive")
+      forge(view, "task", "bulk_run", %{"action" => "reassign", "selection" => token})
+      html = ran(view)
       assert bulk_result(html) == nil
 
-      html = run_bulk(view, "set_progress", :all)
+      select(view, :all)
+      token = bulk_token(view, "archive")
+      forge(view, "task", "bulk_run", %{"action" => "set_progress", "selection" => token})
+      html = ran(view)
       assert bulk_result(html) == nil
 
       assert %Task{progress: 40, internal_note: nil} = stored!(task)

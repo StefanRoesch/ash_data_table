@@ -51,13 +51,43 @@ defmodule DemoWeb.Tables.SelectionTest do
     assert %{selected: [], all?: false} = changed()
   end
 
+  test "Confirm runs nothing on a selection other than the one its question named", %{
+    view: view,
+    card: card,
+    other: other
+  } do
+    select(view, "card", [other.id])
+    token = bulk_token(view, "card", "assign")
+
+    # the question is open in the page, and the selection changes under it
+    select(view, "card", [card.id, other.id])
+    html = forge(view, "card", "bulk_run", %{"action" => "assign", "selection" => token})
+
+    said = "Nothing was run: the selection changed after the question was asked."
+    assert bulk_result(html, "card") == %{summary: said, failures: []}
+    assert announcement(html, "card") == said
+    assert attribute(html, "#card-table", "aria-busy") == []
+    assert Ash.get!(Card, other.id).assignee == nil
+    assert Ash.get!(Card, card.id).assignee == nil
+
+    # a token of nothing selected is not one of what is selected now either
+    forge(view, "card", "bulk_run", %{"action" => "assign", "selection" => ""})
+    assert Ash.get!(Card, card.id).assignee == nil
+
+    # asked again, it runs on what the question names now
+    confirm_bulk(view, "card", "assign")
+    ran(view)
+    assert Ash.get!(Card, other.id).assignee == "ann"
+    assert Ash.get!(Card, card.id).assignee == "ann"
+  end
+
   test "an action runs on what the table holds as selected", %{
     view: view,
     card: card,
     other: other
   } do
     select(view, "card", [other.id])
-    forge(view, "card", "bulk_run", %{"action" => "assign"})
+    confirm_bulk(view, "card", "assign")
     ran(view)
 
     assert Ash.get!(Card, other.id).assignee == "ann"
