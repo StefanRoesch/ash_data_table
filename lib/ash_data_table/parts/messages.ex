@@ -6,11 +6,8 @@ defmodule AshDataTable.Parts.Messages do
   # and empty messages (`message`), of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  import AshDataTable.Parts.Common, only: [said: 1]
-
   alias AshDataTable.Attrs
   alias AshDataTable.Parts
-  alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
   # Whether anything of the table asks a question before it runs: a column,
@@ -24,6 +21,8 @@ defmodule AshDataTable.Parts.Messages do
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
   attr :notice?, :any, required: true
+  # the selection line's texts: `changed_records` and `read_again`
+  attr :texts, :map, required: true
 
   def notice(assigns) do
     ~H"""
@@ -32,7 +31,7 @@ defmodule AshDataTable.Parts.Messages do
     button that reads the page again. The button goes away with the notice,
     so focus is sent on to the grid. --%>
     <p :if={@notice?} id={"#{@id}-notice"} class="flex items-center gap-2 text-sm">
-      <span>{Text.t(:changed_records)}</span>
+      <span>{@texts.changed_records}</span>
       <button
         type="button"
         id={"#{@id}-read-again"}
@@ -43,7 +42,7 @@ defmodule AshDataTable.Parts.Messages do
           |> JS.focus(to: "##{@id}-table [tabindex='0']")
         }
       >
-        {Text.t(:read_again)}
+        {@texts.read_again}
       </button>
     </p>
     """
@@ -60,13 +59,13 @@ defmodule AshDataTable.Parts.Messages do
     <%!-- Read out after each filter change, and when a save fails. A live region
     is only read when its content changes, so every other announcement ends in a
     no-break space. --%>
-    <p {Attrs.status(@id)} class={@kit.class(:status, %{})} phx-no-format>{said(@announcement)}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
+    <p {Attrs.status(@id)} class={@kit.class(:status, %{})} phx-no-format>{@texts.announcement}{if rem(@announcements, 2) == 1, do: "\u00A0"}</p>
     <%!-- What the last action on the selected rows came to: on how many records
     it ran, on how many it did not, and why not. It is read out through the live
     region above, and stays until the selection changes. In the text colour. --%>
     <p :if={@result} id={"#{@id}-result"} class="mb-2 text-sm">
-      <span data-summary>{said(@result.summary)}</span>
-      <span :for={failure <- @result.failures} data-failure>{said(failure)}</span>
+      <span data-summary>{@texts.summary}</span>
+      <span :for={failure <- @texts.failures} data-failure>{failure}</span>
     </p>
     """
   end
@@ -116,9 +115,9 @@ defmodule AshDataTable.Parts.Messages do
         <form method="dialog">
           <p id={"#{@id}-dialog-question"}></p>
           <div class="mt-6 flex justify-end gap-2">
-            <button value="cancel" class="btn">{Text.t(:cancel)}</button>
+            <button value="cancel" class="btn">{@texts.cancel}</button>
             <button value="confirm" class="btn btn-primary data-destructive:btn-error">
-              {Text.t(:confirm)}
+              {@texts.confirm}
             </button>
           </div>
         </form>
@@ -136,6 +135,7 @@ defmodule AshDataTable.Parts.Messages do
   attr :id, :string, required: true
   attr :kind, :atom, required: true
   attr :text, :string, required: true
+  attr :message, :any, required: true
   attr :nested?, :boolean, required: true
   attr :kit, :atom, required: true
 
@@ -151,14 +151,14 @@ defmodule AshDataTable.Parts.Messages do
     """
   end
 
-  # The messages the table shows now, each with what it says.
+  # The messages the table shows now, each with its kind.
   def messages(error, fill, loading?, row_count) do
     [
-      error && {:error, said(error)},
-      loading? && {:loading, Text.t(:loading)},
-      fill && {:fill, said(fill)},
+      error && {:error, error},
+      loading? && {:loading, {:text, :loading, []}},
+      fill && {:fill, fill},
       (is_nil(error) and is_nil(fill) and row_count == 0 and not loading?) &&
-        {:empty, Text.t(:no_records)}
+        {:empty, {:text, :no_records, []}}
     ]
     |> Enum.filter(& &1)
   end

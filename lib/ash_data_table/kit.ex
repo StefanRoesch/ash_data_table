@@ -222,6 +222,68 @@ defmodule AshDataTable.Kit do
     * `failure` - the message of a failed cell: a popover with `id`,
       `message`.
 
+  ## Texts and values
+
+  Wherever a part shows a text of the table's or a value, it is given the
+  text and what the text is made of, so that a kit shows the text as it
+  is, or translates and formats for itself (a React or Vue kit, an API
+  client):
+
+    * `texts` - by name, the finished strings in the person's language
+      (the locale of the LiveView's process);
+    * `messages` - the same names, each the message it was made of:
+      `{key, values}`, the key and its values as `AshDataTable.Messages`
+      lists them, or an action's own message as Ash gives it, `{message,
+      vars}`. A name may hold a list, and nil where the part shows nothing
+      there;
+    * `text` and `message` alone in a part of one text (`message`,
+      `failure`);
+    * for a value: `value` (raw), its `text` and `locale`.
+
+  What each part is given of them (beside the assigns above):
+
+    * `related` - `relationship`, `heading` (nil without a title),
+      `show_all_records`;
+    * `full_view` - `full_view`, `full_view_of`;
+    * `argument` - `add_value`, `errors`, and per value of a list
+      `value_position`, `remove_value`;
+    * `filter` - `filter`, `filter_operator`, `any`, `operators` (one per
+      `column.operators`), `range_from`, `range_to`, `filter_from`,
+      `filter_to`, `clear_filter`, `invalid_filter`, `chosen` (what a
+      filter of several values says is chosen);
+    * `selection_line` - `select_all`, `clear_selection`, `clear_filters`,
+      `changed_records`, `read_again`, and for `Attrs.selection/3`
+      `selected_rows`, `selected`, `all_selected`;
+    * `columns` - `columns`, `columns_with`, `columns_hidden`,
+      `columns_filtered`, `columns_sorted`, `column_hidden`,
+      `column_shown` (with `{n}`, `{details}` and `{column}` where the hook
+      puts in what it knows), `flags` (one per column, nil for none);
+    * `status` - `announcement`, `summary` and `failures` of a run's result;
+    * `grid` - `select_page`, `select_row`, `related_records`, `actions`;
+    * `row` - `select_row`, `related_records`;
+    * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
+      `show_value`, `hide_value`; forbidden: `not_available`;
+    * `summary_cell` - `value`, `text`, `locale`; `kind`, `not_available`;
+    * `resizer` - `resize_column`;
+    * `editor` - `clear`, `clear_value`;
+    * `list` - `add_value`, `value_label`, `remove_label` (with `{n}`), and
+      per value `value_position`, `remove_value`;
+    * `panel` - `title`, `submit`, `question`, `errors`, `cancel`;
+    * `field` - `locale`; `required`, `choose`, `add_value`, `kind`,
+      `remove_group`, `will_be_cleared`, `keep`, `clear`, `keep_value`,
+      `clear_value`, `errors`, and per record it holds `chosen` (what the
+      record is called) and `remove_chosen`;
+    * `picker` - `title`, `question`, `error`, `cancel`, `choose_none`,
+      `choose`;
+    * `confirm` - `cancel`, `confirm`;
+    * `message`, `failure` - `text`, `message`;
+    * `pagination` - `label`, `range`, `previous`, `next`,
+      `rows_per_page`, and `pages` (the page numbers offered) with a
+      `go_to_page` each.
+
+  The names of the model's columns, values, actions, relationships and
+  arguments, and the table's label, are words in the model already.
+
   ## Presentation hints
 
   What a column says of how it is drawn is for the parts alone: its
@@ -350,7 +412,7 @@ defmodule AshDataTable.Kit do
   def part(assigns) do
     {part, assigns} = Map.pop!(assigns, :part)
 
-    apply(assigns.kit, part, [assigns])
+    apply(assigns.kit, part, [AshDataTable.Kit.Words.given(part, assigns)])
   end
 
   @doc """

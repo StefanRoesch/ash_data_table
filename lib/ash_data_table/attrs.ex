@@ -585,7 +585,6 @@ defmodule AshDataTable.Attrs do
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts.Common
   alias AshDataTable.Present
-  alias AshDataTable.Text
   alias AshDataTable.Typed
   alias Phoenix.LiveView.JS
 
@@ -985,12 +984,13 @@ defmodule AshDataTable.Attrs do
   The list editor of an array (`data-list`, which the part writes, as
   `data-item`, `data-add` and `data-remove` in it): what the hook calls a
   value it adds and its button that takes it away, with `{n}` where the
-  value's place goes.
+  value's place goes: the `list` part's `texts.value_label` and
+  `texts.remove_label`.
   """
-  def list(label) do
+  def list(texts) do
     %{
-      "data-value-label" => Text.t(:value_position, column: label, position: "{n}"),
-      "data-remove-label" => Text.t(:remove_value, column: label, position: "{n}")
+      "data-value-label" => texts.value_label,
+      "data-remove-label" => texts.remove_label
     }
   end
 
@@ -1113,18 +1113,18 @@ defmodule AshDataTable.Attrs do
   @doc """
   The line above the grid with what is selected: `data-more` where there
   are more records than the page, and the texts the hook says, with `{n}`
-  where it puts the count.
+  where it puts the count: the `selection_line` part's `texts`
+  (`selected_rows`, `selected`, `all_selected`).
   """
-  def selection(id, more?, total) do
+  def selection(id, more?, texts) do
     %{
       "id" => "#{id}-selection",
       "role" => "group",
-      "aria-label" => Text.t(:selected_rows),
+      "aria-label" => texts.selected_rows,
       "data-selection" => true,
       "data-more" => more?,
-      "data-selected" => Text.t(:selected, count: "{n}"),
-      "data-all" =>
-        if(total, do: Text.t(:all_selected, count: total), else: Text.t(:all_selected_uncounted))
+      "data-selected" => texts.selected,
+      "data-all" => texts.all_selected
     }
   end
 
@@ -1185,7 +1185,8 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   The pagination, and its hook. Under a table on the page a navigation
-  landmark; in a nested table a group in its last row.
+  landmark; in a nested table a group in its last row. `label` is what it
+  is called: the `pagination` part's `texts.label`.
   """
   def pagination(id, label, nested?) do
     %{
@@ -1193,7 +1194,7 @@ defmodule AshDataTable.Attrs do
       "phx-hook" => "AshDataTable.Pagination",
       "data-table" => id,
       "role" => nested? && "group",
-      "aria-label" => Text.t(:pagination, table: label)
+      "aria-label" => label
     }
   end
 

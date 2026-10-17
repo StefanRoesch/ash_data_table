@@ -7,10 +7,8 @@ defmodule AshDataTable.Parts.Summary do
 
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
-  alias AshDataTable.Format
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
-  alias AshDataTable.Text
 
   # The summary of a column in the footer row: what it is ("Sum") and the
   # number, as a cell of the column shows a value. The space between them is
@@ -19,28 +17,22 @@ defmodule AshDataTable.Parts.Summary do
   # maximum of no values. A dash, read out as "Not available", for a number
   # that cannot be shown to this person: the column's field is hidden from
   # them on some records, or the summary could not be computed.
-  attr :column, :map, required: true
   attr :summary, :any, required: true
-  attr :time_zone, :string, required: true
+  attr :texts, :map, required: true
+  attr :text, :any, required: true
 
   defp summary(assigns) do
     ~H"""
-    <span data-summary-kind class="text-xs">{Text.t(summary_text(@column.summary)) <> " "}</span><span
+    <span data-summary-kind class="text-xs">{@texts.kind <> " "}</span><span
       :if={@summary == :unavailable}
       data-summary-unavailable
-    ><span aria-hidden="true">–</span><span class="sr-only">{Text.t(:not_available)}</span></span><span
+    ><span aria-hidden="true">–</span><span class="sr-only">{@texts.not_available}</span></span><span
       :if={match?({:ok, _value}, @summary)}
       data-summary-value
       class="font-medium"
-    >{Format.summary(@column, elem(@summary, 1), @time_zone)}</span>
+    >{@text}</span>
     """
   end
-
-  defp summary_text(:count), do: :summary_count
-  defp summary_text(:sum), do: :summary_sum
-  defp summary_text(:avg), do: :summary_avg
-  defp summary_text(:min), do: :summary_min
-  defp summary_text(:max), do: :summary_max
 
   # The cell of a column in the footer row: what varies of it is
   # `AshDataTable.Attrs.summary/2`'s; its id, place, role and `tabindex` are
@@ -52,6 +44,8 @@ defmodule AshDataTable.Parts.Summary do
   attr :summary, :any, required: true
   attr :summing?, :boolean, required: true
   attr :time_zone, :string, required: true
+  attr :texts, :map, required: true
+  attr :text, :any, required: true
 
   def summary_cell(assigns) do
     ~H"""
@@ -63,7 +57,7 @@ defmodule AshDataTable.Parts.Summary do
       {Attrs.summary(@column, @summing?)}
       class="whitespace-nowrap"
       phx-no-format
-    ><.summary :if={@column.summary} column={@column} summary={@summary} time_zone={@time_zone} /></td>
+    ><.summary :if={@column.summary} summary={@summary} texts={@texts} text={@text} /></td>
     """
   end
 

@@ -11,7 +11,6 @@ defmodule AshDataTable.Parts.Panel do
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
   alias AshDataTable.Act
-  alias AshDataTable.Format
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
@@ -34,6 +33,7 @@ defmodule AshDataTable.Parts.Panel do
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
   # what opens inside the panel: the picker a field opened, where the panel
   # is over the page and the picker in it
   slot :inner_block, required: true
@@ -44,7 +44,7 @@ defmodule AshDataTable.Parts.Panel do
     for the reason given at the other dialog. --%>
     <.dynamic_tag
       tag_name={if @presentation == :modal, do: "dialog", else: "section"}
-      {Attrs.panel(@id, @panel, said(@panel.question), @target, @presentation)}
+      {Attrs.panel(@id, @panel, @texts.question, @target, @presentation)}
       class={@kit.class(:panel, %{destructive?: @panel.destructive?, presentation: @presentation})}
     >
       <%!-- `novalidate`, for the reason given at the argument line: the
@@ -57,7 +57,7 @@ defmodule AshDataTable.Parts.Panel do
         phx-target={@target}
         novalidate
       >
-        <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{said(@panel.title)}</h2>
+        <h2 id={"#{@id}-panel-title"} class="mb-4 text-lg font-semibold">{@texts.title}</h2>
         <%!-- what the action says that is about none of the fields --%>
         <div
           :if={@panel.errors}
@@ -65,7 +65,7 @@ defmodule AshDataTable.Parts.Panel do
           role="alert"
           class="mb-4 text-sm font-medium"
         >
-          <p :for={message <- @panel.errors}>{said(message)}</p>
+          <p :for={message <- @texts.errors}>{message}</p>
         </div>
         <Kit.part
           :for={field <- @panel.fields}
@@ -85,14 +85,14 @@ defmodule AshDataTable.Parts.Panel do
         />
         <div class="mt-6 flex justify-end gap-2">
           <button type="button" {Attrs.cancel("#{@id}-panel-cancel")} class="btn">
-            {Text.t(:cancel)}
+            {@texts.cancel}
           </button>
           <button
             type="submit"
             id={"#{@id}-panel-submit"}
             class={["btn", if(@panel.destructive?, do: "btn-error", else: "btn-primary")]}
           >
-            {said(@panel.submit)}
+            {@texts.submit}
           </button>
         </div>
       </form>
@@ -125,6 +125,8 @@ defmodule AshDataTable.Parts.Panel do
   attr :inside, :map, required: true
   attr :target, :any, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
+  attr :locale, :string, required: true
 
   def field(assigns) do
     value = assigns.value
@@ -162,19 +164,13 @@ defmodule AshDataTable.Parts.Panel do
         references?: assigns.input.editor == :references,
         # what the record is called whose key the field holds, while it
         # holds that key
-        called:
-          case assigns.chosen do
-            %{^value => %{label: label}} -> called(label)
-            _other -> nil
-          end,
+        called: if(assigns.input.editor == :reference, do: List.first(assigns.texts.chosen)),
         # the records a field of several holds, each with its key, what it
-        # is called, and its place, counted from 1
+        # is called and the name of its button that takes it out
         entries:
           if assigns.input.editor == :references do
-            for {key, position} <- Enum.with_index(value, 1) do
-              {key, with(%{label: label} <- (assigns.chosen || %{})[key], do: called(label)),
-               position}
-            end
+            Enum.zip([value, assigns.texts.chosen, assigns.texts.remove_chosen])
+            |> Enum.with_index()
           end
       )
 
@@ -221,7 +217,7 @@ defmodule AshDataTable.Parts.Panel do
       <span :if={@reference?} id={"#{@id}-label"} class="label mb-1 text-base-content">
         <span data-label>{@input.label}</span>
         <span :if={@input.required?} aria-hidden="true">*</span>
-        <span :if={@input.required?} class="sr-only">{Text.t(:required)}</span>
+        <span :if={@input.required?} class="sr-only">{@texts.required}</span>
       </span>
       <div
         :if={@reference?}
@@ -242,7 +238,7 @@ defmodule AshDataTable.Parts.Panel do
           phx-value-input={@input.name}
           phx-target={@target}
         >
-          {Text.t(:choose)}
+          {@texts.choose}
         </button>
       </div>
       <%!-- The keys of several related records are not typed either: the
@@ -264,23 +260,19 @@ defmodule AshDataTable.Parts.Panel do
       >
         <input type="text" name={@name <> "[]"} value="" hidden data-own />
         <div
-          :for={{key, called, position} <- @entries}
+          :for={{{key, called, remove}, at} <- @entries}
           class="flex items-center gap-1"
           data-chosen-item
         >
           <input type="text" name={@name <> "[]"} value={key} hidden data-key />
-          <span id={"#{@id}-c-#{position - 1}"} class="text-sm" data-chosen>
-            {called || Text.t(:not_available)}
+          <span id={"#{@id}-c-#{at}"} class="text-sm" data-chosen>
+            {called}
           </span>
           <button
             type="button"
-            id={"#{@id}-r-#{position - 1}"}
+            id={"#{@id}-r-#{at}"}
             {Attrs.unpick(@input.name, key)}
-            aria-label={
-              if called,
-                do: Text.t(:remove_group, column: called),
-                else: Text.t(:remove_value, column: @input.label, position: position)
-            }
+            aria-label={remove}
             class="btn btn-ghost btn-xs"
           >
             <span aria-hidden="true">✕</span>
@@ -294,7 +286,7 @@ defmodule AshDataTable.Parts.Panel do
           phx-value-input={@input.name}
           phx-target={@target}
         >
-          {Text.t(:choose)}
+          {@texts.choose}
         </button>
       </div>
       <div
@@ -449,7 +441,7 @@ defmodule AshDataTable.Parts.Panel do
       The panel's hook sends it (`panel_clear`), and puts the focus back on
       the button, which a patch that changes what stands before it takes off. --%>
       <p :if={@clear == :asked} id={"#{@id}-cleared"} class="text-sm" data-cleared>
-        {Text.t(:will_be_cleared)}
+        {@texts.will_be_cleared}
       </p>
       <button
         :if={@clear}
@@ -458,13 +450,13 @@ defmodule AshDataTable.Parts.Panel do
         class="btn btn-sm justify-self-start"
         aria-label={
           if @clear == :asked,
-            do: Text.t(:keep_value, column: @input.label),
-            else: Text.t(:clear_value, column: @input.label)
+            do: @texts.keep_value,
+            else: @texts.clear_value
         }
         aria-describedby={@clear == :asked && "#{@id}-cleared"}
         {Attrs.clear_field(@input.name)}
       >
-        {if @clear == :asked, do: Text.t(:keep), else: Text.t(:clear)}
+        {if @clear == :asked, do: @texts.keep, else: @texts.clear}
       </button>
       <%!-- how long the text is, and the most it can be: under its control,
       at the end, where the eye is when the text gets long --%>
@@ -480,7 +472,7 @@ defmodule AshDataTable.Parts.Panel do
       />
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != [] and not @group?} id={"#{@id}-error"} class="mt-1 text-sm">
-        <p :for={message <- @errors} data-error>{said(message)}</p>
+        <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
     </div>
     """
@@ -980,9 +972,6 @@ defmodule AshDataTable.Parts.Panel do
 
   # What a record that a field holds is called: the value its label is,
   # as a cell of that column shows it (`AshDataTable.Present.Field`).
-  defp called({column, value, zone}), do: Format.format(column, value, zone)
-  defp called(nil), do: nil
-
   # The values of a multiple choice's field that are none of its choices.
   defp boxless(%{values: values}, held) do
     choices = Enum.map(values, fn {choice, _label} -> to_string(choice) end)

@@ -7,7 +7,6 @@ defmodule AshDataTable.Parts.Editors do
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
   alias AshDataTable.Model.Limits
-  alias AshDataTable.Text
 
   # How long a text is and the most it can be, beside the control the text
   # is typed into: "12/30". Only for a text whose type says a `max_length`
@@ -96,13 +95,14 @@ defmodule AshDataTable.Parts.Editors do
   attr :id, :string, required: true
   attr :rest, :map, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   def list(assigns) do
     ~H"""
     <div
       id={@id}
       data-list
-      {Attrs.list(@label)}
+      {Attrs.list(@texts)}
       class={[
         "flex flex-col gap-1",
         if(@place == :grid, do: "items-start py-0.5", else: "items-stretch")
@@ -120,6 +120,8 @@ defmodule AshDataTable.Parts.Editors do
         name={@name}
         value=""
         position={nil}
+        value_label={nil}
+        remove_label={nil}
       /></template>
       <.list_item
         :for={{value, position} <- Enum.with_index(@values, 1)}
@@ -133,13 +135,15 @@ defmodule AshDataTable.Parts.Editors do
         name={@name}
         value={value}
         position={position}
+        value_label={Enum.at(@texts.value_position, position - 1)}
+        remove_label={Enum.at(@texts.remove_value, position - 1)}
       />
       <button
         type="button"
         data-add
         class={["btn self-start", if(@place == :grid, do: "btn-xs", else: "btn-sm")]}
       >
-        {Text.t(:add_value)}
+        {@texts.add_value}
       </button>
     </div>
     """
@@ -151,12 +155,6 @@ defmodule AshDataTable.Parts.Editors do
   defp list_item(assigns) do
     assigns =
       assign(assigns,
-        value_label:
-          assigns.position &&
-            Text.t(:value_position, column: assigns.label, position: assigns.position),
-        remove_label:
-          assigns.position &&
-            Text.t(:remove_value, column: assigns.label, position: assigns.position),
         grid?: assigns.place == :grid,
         # The counter of a value that is text with a most it can be long.
         # Its id says the row's place, as what the row's controls are

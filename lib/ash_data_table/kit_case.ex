@@ -34,6 +34,10 @@ defmodule AshDataTable.KitCase do
   with the picker and the question in it (`:inside`: a picker a field of
   the panel opens is drawn inside the panel).
 
+  Every part is drawn through a kit of its own that first checks what the
+  part is given: its `texts`, `messages` and `locale`, or its `text` and
+  `message`, where `AshDataTable.Kit` says it has them.
+
   What a person does with the keyboard and hears from a screen reader is
   not checked here: that needs a browser. The library checks it for
   `AshDataTable.Kit.Default` and for a kit drawn with `div`s in its own
@@ -80,6 +84,18 @@ defmodule AshDataTable.KitCase do
     kit = Keyword.fetch!(opts, :kit)
     endpoint = Keyword.fetch!(opts, :endpoint)
 
+    # The kit, drawn through a kit that first checks what each part is given
+    # (`given!/2`): every part the kit draws is called through it.
+    probed =
+      for part <- AshDataTable.Kit.parts() do
+        quote do
+          def unquote(part)(assigns) do
+            AshDataTable.KitCase.given!(unquote(part), assigns)
+            unquote(kit).unquote(part)(%{assigns | kit: __MODULE__})
+          end
+        end
+      end
+
     quote do
       use ExUnit.Case, async: true
 
@@ -91,13 +107,25 @@ defmodule AshDataTable.KitCase do
       @endpoint unquote(endpoint)
       @kit unquote(kit)
 
+      defmodule Probe do
+        @moduledoc false
+        use AshDataTable.Kit, contract: 1
+
+        unquote_splicing(probed)
+
+        def class(part, state), do: unquote(kit).class(part, state)
+        def presentation(thing), do: unquote(kit).presentation(thing)
+      end
+
       for presentation <- AshDataTable.KitCase.presentations(),
           state <- AshDataTable.KitCase.states() do
         @presentation presentation
         @state state
 
         test "#{inspect(@kit)} draws the state #{@state}, what opens #{@presentation}" do
-          {tenant, key, session} = AshDataTable.KitCase.given(@kit, @state, @presentation)
+          {tenant, key, session} =
+            AshDataTable.KitCase.given(__MODULE__.Probe, @state, @presentation)
+
           on_exit(fn -> AshDataTable.KitCase.clean(tenant) end)
 
           {:ok, view, html} =
@@ -105,10 +133,30 @@ defmodule AshDataTable.KitCase do
               session: session
             )
 
-          AshDataTable.KitCase.check(@kit, view, html, key, @state, @presentation)
+          AshDataTable.KitCase.check(__MODULE__.Probe, view, html, key, @state, @presentation)
         end
       end
     end
+  end
+
+  @doc false
+  # What a part is given of its texts and values (`AshDataTable.Kit`, "Texts
+  # and values"): raises, and fails the state, where the part lacks one.
+  def given!(part, assigns) do
+    missing =
+      for name <- AshDataTable.Kit.Words.names(part), not is_map_key(assigns, name), do: name
+
+    if missing != [] do
+      raise ArgumentError, "the part #{inspect(part)} is given no #{inspect(missing)}"
+    end
+
+    with %{texts: texts, messages: messages} <- assigns,
+         false <- Map.keys(texts) == Map.keys(messages) do
+      raise ArgumentError,
+            "the part #{inspect(part)} is given `texts` and `messages` of other names"
+    end
+
+    :ok
   end
 
   # ---- the records -------------------------------------------------------
@@ -300,7 +348,8 @@ defmodule AshDataTable.KitCase do
     nested = "kit-row-#{key}-t-parts"
 
     related =
-      Phoenix.LiveViewTest.render_component(&kit.related/1, %{
+      Phoenix.LiveViewTest.render_component(&AshDataTable.Kit.part/1, %{
+        part: :related,
         kit: kit,
         id: @table,
         via: parts,
@@ -314,7 +363,8 @@ defmodule AshDataTable.KitCase do
 
     # a row of the grid: parsed inside one
     full_view =
-      Phoenix.LiveViewTest.render_component(&kit.full_view/1, %{
+      Phoenix.LiveViewTest.render_component(&AshDataTable.Kit.part/1, %{
+        part: :full_view,
         kit: kit,
         acting?: false,
         full_view: "/parts?of=Anchor",

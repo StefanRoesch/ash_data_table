@@ -238,14 +238,14 @@ defmodule AshDataTable.Live.Drawing do
       <Kit.part part={:whole_text} kit={@options.kit} id={@entry.id} />
       <Kit.part
         :for={
-          {kind, text} <-
+          {kind, message} <-
             Parts.Messages.messages(@entry.error, @entry.fill, @entry.loading?, @entry.row_count)
         }
         part={:message}
         kit={@options.kit}
         id={@entry.id}
         kind={kind}
-        text={text}
+        message={message}
         nested?={@entry.nested?}
       />
       <Kit.part

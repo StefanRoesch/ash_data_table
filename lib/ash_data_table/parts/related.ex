@@ -163,18 +163,16 @@ defmodule AshDataTable.Parts.Related do
   attr :kit, :atom, required: true
 
   def related(assigns) do
-    # in the host's words, as the line of the relationship is
-    label = Text.label(assigns.via.label)
-
-    # the message with a mark where the record goes
+    # The message with a mark where the record goes: the record is a link,
+    # put into the text where the translation has it.
     parts =
       :related_heading
-      |> Text.t(record: "\0", relationship: label)
+      |> Text.t(record: "\0", relationship: assigns.texts.relationship)
       |> String.split("\0", parts: 2)
 
     assigns =
       assign(assigns,
-        label: label,
+        label: assigns.texts.relationship,
         parts: parts,
         titled?: assigns.title && match?([_, _], parts)
       )
@@ -191,7 +189,7 @@ defmodule AshDataTable.Parts.Related do
         <Parts.Heading.create :if={@create} id={@id} action={@create} target={@target} />
         <Parts.Heading.table_actions id={@id} actions={@actions} target={@target} />
         <.link id={"#{@id}-related-clear"} patch={@clear} class="btn btn-sm">
-          {Text.t(:show_all_records)}
+          {@texts.show_all_records}
         </.link>
       </div>
     </div>
@@ -220,10 +218,10 @@ defmodule AshDataTable.Parts.Related do
           id={"#{@id}-full-view"}
           navigate={@full_view}
           tabindex="-1"
-          aria-label={Text.t(:full_view_of, table: @label)}
+          aria-label={@texts.full_view_of}
           class="link sticky left-4 text-sm"
         >
-          {Text.t(:full_view)}
+          {@texts.full_view}
         </.link>
       </td>
     </tr>

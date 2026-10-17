@@ -30,138 +30,11 @@ defmodule AshDataTable.Text do
 
   @domain "ash_data_table"
 
-  @type key ::
-          :no_records
-          | :read_failed
-          | :not_allowed
-          | :pagination
-          | :previous
-          | :next
-          | :page
-          | :go_to_page
-          | :rows_per_page
-          | :range
-          | :range_of_total
-          | :yes
-          | :no
-          | :not_available
-          | :operator_contains
-          | :operator_equals
-          | :operator_starts_with
-          | :operator_is_empty
-          | :operator_greater_than
-          | :operator_less_than
-          | :operator_at_least
-          | :operator_at_most
-          | :operator_on
-          | :operator_before
-          | :operator_after
-          | :operator_is
-          | :operator_any_of
-          | :operator_none_of
-          | :operator_between
-          | :filter_from
-          | :filter_to
-          | :range_from
-          | :range_to
-          | :values_chosen
-          | :any
-          | :filter
-          | :filter_operator
-          | :invalid_filter
-          | :clear_filter
-          | :clear_filters
-          | :changed_records
-          | :read_again
-          | :results_updated
-          | :record_gone
-          | :error_on_field
-          | :edit_not_allowed
-          | :save_failed
-          | :no_such_time
-          | :not_saved
-          | :cancel
-          | :confirm
-          | :related_records
-          | :loading
-          | :records_not_available
-          | :full_view
-          | :full_view_of
-          | :related_heading
-          | :show_all_records
-          | :actions
-          | :new_record
-          | :run
-          | :create
-          | :action_on
-          | :action_done
-          | :action_result
-          | :created
-          | :action_not_done
-          | :action_not_allowed
-          | :action_failed
-          | :add_value
-          | :value_position
-          | :remove_value
-          | :select_row
-          | :select_page
-          | :selected_rows
-          | :selected
-          | :all_selected
-          | :all_selected_uncounted
-          | :select_all
-          | :select_all_uncounted
-          | :clear_selection
-          | :bulk_question_all
-          | :bulk_confirm_all
-          | :bulk_on_all
-          | :bulk_done
-          | :bulk_not_done
-          | :bulk_selection_changed
-          | :bulk_failure
-          | :choose
-          | :choose_none
-          | :choose_for
-          | :required
-          | :field_value
-          | :save
-          | :remove_group
-          | :fill_in
-          | :argument_of
-          | :kind
-          | :upload_too_large
-          | :upload_not_accepted
-          | :upload_failed
-          | :hidden_value
-          | :show
-          | :hide
-          | :show_value
-          | :hide_value
-          | :clear
-          | :clear_value
-          | :keep
-          | :keep_value
-          | :will_be_cleared
-          | :resize_column
-          | :columns
-          | :columns_with
-          | :columns_hidden
-          | :columns_filtered
-          | :columns_sorted
-          | :column_filtered
-          | :column_sorted
-          | :column_filtered_sorted
-          | :column_hidden
-          | :column_shown
-          | :summary_count
-          | :summary_sum
-          | :summary_avg
-          | :summary_min
-          | :summary_max
+  # the keys are the public list's (`AshDataTable.Messages`); a key that is
+  # not in it is refused, so that the list says every text a table shows
+  @type key :: AshDataTable.Messages.key()
 
-  @type plural :: :results | :records | :bulk_question | :bulk_confirm | :bulk_on
-
-  @plurals [:results, :records, :bulk_question, :bulk_confirm, :bulk_on]
+  @plurals AshDataTable.Messages.plurals()
 
   @typedoc """
   A message, as the table's code passes it on until it is said: one of the
@@ -237,6 +110,7 @@ defmodule AshDataTable.Text do
   @doc "The text for `key`, with `%{name}` placeholders filled from `bindings`."
   @spec t(key, keyword) :: String.t()
   def t(key, bindings \\ []) do
+    known!(key)
     Gettext.dgettext(backend(), @domain, msgid(key), Map.new(bindings))
   end
 
@@ -244,11 +118,23 @@ defmodule AshDataTable.Text do
   The text for `key` in the plural form of `count`, which is bound as
   `%{count}`, with the other placeholders filled from `bindings`.
   """
-  @spec n(plural, non_neg_integer, keyword) :: String.t()
+  @spec n(key, non_neg_integer, keyword) :: String.t()
   def n(key, count, bindings \\ []) do
+    known!(key)
     {singular, plural} = msgids(key)
     Gettext.dngettext(backend(), @domain, singular, plural, count, Map.new(bindings))
   end
+
+  defp known!(key) do
+    if not AshDataTable.Messages.key?(key) do
+      raise ArgumentError,
+            "#{inspect(key)} is no key of AshDataTable.Messages: a text a table shows is in its list"
+    end
+  end
+
+  @doc "The locale the table's texts are said in, in this process: Gettext's, of its backend."
+  @spec locale() :: String.t()
+  def locale, do: Gettext.get_locale(backend())
 
   # what a filter change found, for the live region
   defp msgids(:results), do: dngettext_noop("ash_data_table", "1 result", "%{count} results")

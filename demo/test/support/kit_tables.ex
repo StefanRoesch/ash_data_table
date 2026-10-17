@@ -35,3 +35,32 @@ defmodule DemoWeb.Support.KitTagLive do
     """
   end
 end
+
+defmodule DemoWeb.Support.GermanKitLive do
+  @moduledoc """
+  The table `AshDataTable.KitCase` draws, in German: a table of
+  `AshDataTable.Test.Resource` in the tenant of the session, drawn with
+  the demo's kit of `div`s (`DemoWeb.DivKit`), in a LiveView whose locale
+  is `de`.
+  """
+  use Phoenix.LiveView
+
+  @impl true
+  def mount(_params, %{"tenant" => tenant}, socket) do
+    Gettext.put_locale(DemoWeb.Gettext, "de")
+
+    {:ok,
+     AshDataTable.attach(socket, :table, AshDataTable.Test.Resource,
+       id: "kit",
+       tenant: tenant,
+       kit: DemoWeb.DivKit
+     )}
+  end
+
+  @impl true
+  def render(assigns) do
+    ~H"""
+    <AshDataTable.attached table={@table} streams={@streams} uploads={assigns[:uploads]} />
+    """
+  end
+end

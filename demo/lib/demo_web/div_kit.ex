@@ -8,7 +8,8 @@ defmodule DemoWeb.DivKit do
   the markers alone (`AshDataTable.KitCase`, `e2e/kit.spec.ts`).
 
   The `div`s are laid out as a table is (`display: table` and its kin), so
-  the columns line up; what is not a grid part is the default kit's.
+  the columns line up; what is not a grid part is the default kit's. What
+  it says is what each part is given (`texts`), in the person's language.
   """
   use AshDataTable.Kit, contract: 1
 
@@ -41,17 +42,17 @@ defmodule DemoWeb.DivKit do
                 :if={@selecting == :multi}
                 type="checkbox"
                 tabindex="-1"
-                aria-label="Select the rows of the page"
+                aria-label={@texts.select_page}
                 class="checkbox checkbox-xs"
               />
-              <span :if={@selecting == :single} class="sr-only">Select a row</span>
+              <span :if={@selecting == :single} class="sr-only">{@texts.select_row}</span>
             </div>
             <div
               :if={@expandable?}
               {Attrs.header("#{@id}-expander-head", @lead)}
               class="table-cell w-0 px-2 py-1"
             >
-              <span class="sr-only">Related records</span>
+              <span class="sr-only">{@texts.related_records}</span>
             </div>
             <Kit.part
               :for={{column, index} <- Enum.with_index(@model.columns)}
@@ -77,7 +78,7 @@ defmodule DemoWeb.DivKit do
               {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
               class="table-cell px-2 py-1"
             >
-              Actions
+              {@texts.actions}
             </div>
           </div>
           <div {Attrs.row("#{@id}-filter-row", "2")} class="table-row">
@@ -245,7 +246,7 @@ defmodule DemoWeb.DivKit do
       tabindex="-1"
       data-selector
       class="table-cell px-2 py-1"
-    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label="Select the row" class="checkbox checkbox-xs" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label="Select the row" class="radio radio-xs" /></div><div
+    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={@texts.select_row} class="checkbox checkbox-xs" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={@texts.select_row} class="radio radio-xs" /></div><div
       :if={@expandable?}
       id={"#{@dom_id}-e"}
       role="gridcell"
@@ -253,7 +254,7 @@ defmodule DemoWeb.DivKit do
       tabindex="-1"
       data-expander
       class="table-cell px-2 py-1"
-    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label="Related records"></button></div><div
+    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={@texts.related_records}></button></div><div
       :for={{column, index} <- Enum.with_index(@columns)}
       id={"#{@dom_id}-c-#{column.name}"}
       role="gridcell"
@@ -456,7 +457,7 @@ defmodule DemoWeb.DivKit do
   end
 
   # The summary of a column, as a cell of the footer row: what it is and
-  # the number as it came.
+  # the number, both as the table says them in the person's language.
   def summary_cell(assigns) do
     ~H"""
     <div
@@ -467,8 +468,7 @@ defmodule DemoWeb.DivKit do
       {Attrs.summary(@column, @summing?)}
       class="table-cell whitespace-nowrap"
     >
-      <span :if={@column.summary}>{@column.summary}</span>
-      <span :if={match?({:ok, _value}, @summary)}>{elem(@summary, 1)}</span>
+      <span :if={@column.summary}>{@texts.kind}{@text && " " <> @text}</span>
     </div>
     """
   end
@@ -481,8 +481,14 @@ defmodule DemoWeb.DivKit do
         {Attrs.spanning("#{@id}-view", Attrs.colcount(@model, @lead, @acting?), %{"data-view" => true})}
         class="table-cell px-2 py-1"
       >
-        <.link id={"#{@id}-full-view"} navigate={@full_view} tabindex="-1" class="link">
-          Full view of {@label}
+        <.link
+          id={"#{@id}-full-view"}
+          navigate={@full_view}
+          tabindex="-1"
+          aria-label={@texts.full_view_of}
+          class="link"
+        >
+          {@texts.full_view}
         </.link>
       </div>
     </div>

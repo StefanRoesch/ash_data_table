@@ -4,11 +4,8 @@ defmodule AshDataTable.Parts.Picker do
   # `picker` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  import AshDataTable.Parts.Common, only: [said: 1]
-
   alias AshDataTable.Attrs
   alias AshDataTable.Present
-  alias AshDataTable.Text
 
   # The picker: where a person chooses the related record of a reference
   # cell, or of a field of the action panel that holds such a key. A modal
@@ -27,16 +24,17 @@ defmodule AshDataTable.Parts.Picker do
   # `:modal`, a dialog over the page, or `:inline`, a part of it
   attr :presentation, :atom, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
   slot :inner_block, required: true
 
   def picker(assigns) do
     ~H"""
     <.dynamic_tag
       tag_name={if @presentation == :modal, do: "dialog", else: "section"}
-      {Attrs.picker(@id, said(@picker.question), @picker.several?, @target, @presentation)}
+      {Attrs.picker(@id, @texts.question, @picker.several?, @target, @presentation)}
       class={@kit.class(:picker, %{presentation: @presentation})}
     >
-      <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{said(@picker.title)}</h2>
+      <h2 id={"#{@id}-picker-title"} class="mb-4 text-lg font-semibold">{@texts.title}</h2>
       <%!-- the row that was chosen names no record this person may read --%>
       <p
         :if={@picker.error}
@@ -44,12 +42,12 @@ defmodule AshDataTable.Parts.Picker do
         role="alert"
         class="mb-4 text-sm font-medium"
       >
-        {said(@picker.error)}
+        {@texts.error}
       </p>
       {render_slot(@inner_block)}
       <div class="mt-6 flex justify-end gap-2">
         <button type="button" {Attrs.cancel("#{@id}-picker-cancel")} class="btn">
-          {Text.t(:cancel)}
+          {@texts.cancel}
         </button>
         <button
           :if={@picker.none?}
@@ -57,7 +55,7 @@ defmodule AshDataTable.Parts.Picker do
           {Attrs.none(@id)}
           class="btn"
         >
-          {Text.t(:choose_none)}
+          {@texts.choose_none}
         </button>
         <%!-- Not to be used while no row is selected, and says so without
         being `disabled`, as the buttons above a grid do. Which rows are
@@ -69,7 +67,7 @@ defmodule AshDataTable.Parts.Picker do
           {Attrs.take(@id, @picker.several?)}
           class="btn btn-primary aria-disabled:btn-disabled"
         >
-          {Text.t(:choose)}
+          {@texts.choose}
         </button>
       </div>
     </.dynamic_tag>

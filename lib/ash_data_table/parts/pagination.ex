@@ -7,7 +7,6 @@ defmodule AshDataTable.Parts.Pagination do
   alias AshDataTable.Attrs
   alias AshDataTable.Model
   alias AshDataTable.Parts
-  alias AshDataTable.Text
 
   # Whether there are pages to go through.
   def pages?(page, model), do: not is_nil(page) and model.pagination.strategy != :none
@@ -36,19 +35,21 @@ defmodule AshDataTable.Parts.Pagination do
   attr :label, :string, required: true
   attr :target, :any, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
+  attr :pages, :list, required: true
 
   def pagination(assigns) do
     ~H"""
     <nav
       :if={not @nested?}
-      {Attrs.pagination(@id, @label, false)}
+      {Attrs.pagination(@id, @texts.label, false)}
       class={@kit.class(:pagination, %{nested?: false})}
     >
       <.pages {assigns} />
     </nav>
     <div
       :if={@nested?}
-      {Attrs.pagination(@id, @label, true)}
+      {Attrs.pagination(@id, @texts.label, true)}
       class={@kit.class(:pagination, %{nested?: true})}
     >
       <.pages {assigns} />
@@ -60,7 +61,7 @@ defmodule AshDataTable.Parts.Pagination do
     ~H"""
     <%!-- `me-auto`: under a table of its own the range is at one end and the
     controls together at the other. --%>
-    <p id={"#{@id}-range"} class="me-auto text-sm">{range_text(@page, @row_count, @state)}</p>
+    <p id={"#{@id}-range"} class="me-auto text-sm">{@texts.range}</p>
     <div class="join">
       <button
         type="button"
@@ -72,7 +73,7 @@ defmodule AshDataTable.Parts.Pagination do
         phx-value-to="previous"
         phx-target={@target}
       >
-        {Text.t(:previous)}
+        {@texts.previous}
       </button>
       <%!-- The page numbers have an element to themselves, which the layout
       does not see: Previous and Next are then always the first and the last
@@ -84,7 +85,7 @@ defmodule AshDataTable.Parts.Pagination do
         class="contents [&>:first-child]:ms-[calc(var(--border)*-1)]"
       >
         <button
-          :for={number <- page_numbers(@page, @state)}
+          :for={{number, label} <- Enum.zip(@pages, @texts.go_to_page)}
           type="button"
           id={"#{@id}-page-#{number}"}
           class={[
@@ -92,7 +93,7 @@ defmodule AshDataTable.Parts.Pagination do
             number == @state.page && "btn-active"
           ]}
           tabindex={@nested? && "-1"}
-          aria-label={Text.t(:go_to_page, page: number)}
+          aria-label={label}
           aria-current={number == @state.page && "page"}
           phx-click={Parts.Common.event(@id, "page")}
           phx-value-to={number}
@@ -111,7 +112,7 @@ defmodule AshDataTable.Parts.Pagination do
         phx-value-to="next"
         phx-target={@target}
       >
-        {Text.t(:next)}
+        {@texts.next}
       </button>
     </div>
     <%!-- The page sizes a person can choose between, for a table that offers
@@ -124,7 +125,7 @@ defmodule AshDataTable.Parts.Pagination do
       phx-target={@target}
       class="flex items-center gap-2"
     >
-      <label for={"#{@id}-page-size"} class="text-sm">{Text.t(:rows_per_page)}</label>
+      <label for={"#{@id}-page-size"} class="text-sm">{@texts.rows_per_page}</label>
       <select
         id={"#{@id}-page-size"}
         name="size"
@@ -143,32 +144,16 @@ defmodule AshDataTable.Parts.Pagination do
     """
   end
 
-  defp range_text(%{offset: offset, total: total}, row_count, _state)
-       when is_integer(offset) and row_count > 0 do
-    bindings = [from: offset + 1, to: offset + row_count, total: total]
-    if total, do: Text.t(:range_of_total, bindings), else: Text.t(:range, bindings)
-  end
-
-  defp range_text(%{offset: offset}, _row_count, state) when is_integer(offset),
-    do: Text.t(:page, page: state.page)
-
-  # Keyset pagination: the page does not know its place among the others, so
-  # the total is all there is to say, when the action counts.
-  defp range_text(%{total: total}, _row_count, _state) when is_integer(total),
-    do: Text.n(:records, total)
-
-  defp range_text(_page, _row_count, _state), do: nil
-
   # The page numbers offered: the first, the last and those around the
   # current one, of the pages there are; and the current one, also when the
   # URL asked for a page beyond the last. Without a total only the current
   # page is known.
-  defp page_numbers(%{pages: pages}, %{page: current}) when is_integer(pages) do
+  def page_numbers(%{pages: pages}, %{page: current}) when is_integer(pages) do
     [1, pages | Enum.to_list((current - 2)..(current + 2)//1)]
     |> Enum.filter(&((&1 >= 1 and &1 <= pages) or &1 == current))
     |> Enum.uniq()
     |> Enum.sort()
   end
 
-  defp page_numbers(_page, %{page: current}), do: [current]
+  def page_numbers(_page, %{page: current}), do: [current]
 end

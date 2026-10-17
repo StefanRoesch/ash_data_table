@@ -8,7 +8,6 @@ defmodule AshDataTable.Parts.Filter do
 
   alias AshDataTable.Parts
   alias AshDataTable.State
-  alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
   # What a column's filter shows: what was typed and rejected; else what
@@ -50,12 +49,16 @@ defmodule AshDataTable.Parts.Filter do
         name={"filter[#{@column.name}][o]"}
         form={@form}
         tabindex="-1"
-        aria-label={Text.t(:filter, column: @column.label)}
+        aria-label={@texts.filter}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
-        <option value="">{Text.t(:any)}</option>
-        <option :for={choice <- @column.operators} value={choice} selected={choice == @operator}>
-          {Text.t(choice)}
+        <option value="">{@texts.any}</option>
+        <option
+          :for={{choice, said} <- Enum.zip(@column.operators, @texts.operators)}
+          value={choice}
+          selected={choice == @operator}
+        >
+          {said}
         </option>
       </select>
       <select
@@ -64,11 +67,15 @@ defmodule AshDataTable.Parts.Filter do
         name={"filter[#{@column.name}][o]"}
         form={@form}
         tabindex="-1"
-        aria-label={Text.t(:filter_operator, column: @column.label)}
+        aria-label={@texts.filter_operator}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
-        <option :for={choice <- @column.operators} value={choice} selected={choice == @operator}>
-          {operator_text(choice)}
+        <option
+          :for={{choice, said} <- Enum.zip(@column.operators, @texts.operators)}
+          value={choice}
+          selected={choice == @operator}
+        >
+          {said}
         </option>
       </select>
       <select
@@ -77,10 +84,10 @@ defmodule AshDataTable.Parts.Filter do
         name={"filter[#{@column.name}][v]"}
         form={@form}
         tabindex="-1"
-        aria-label={Text.t(:filter, column: @column.label)}
+        aria-label={@texts.filter}
         class={["select select-xs w-auto", Parts.Editors.control_edge()]}
       >
-        <option value="">{Text.t(:any)}</option>
+        <option value="">{@texts.any}</option>
         <option
           :for={{choice, label} <- @column.values}
           value={choice}
@@ -89,7 +96,14 @@ defmodule AshDataTable.Parts.Filter do
           {label}
         </option>
       </select>
-      <.choices :if={@takes == :many} id={@id} form={@form} column={@column} chosen={@value} />
+      <.choices
+        :if={@takes == :many}
+        id={@id}
+        form={@form}
+        column={@column}
+        chosen={@value}
+        texts={@texts}
+      />
       <%!-- an operator such as "is empty" is complete without a value --%>
       <input
         :if={@column.cell_type not in [:boolean, :enum] and @takes == :one}
@@ -101,7 +115,7 @@ defmodule AshDataTable.Parts.Filter do
         value={@value}
         phx-debounce="blur"
         tabindex="-1"
-        aria-label={Text.t(:filter, column: @column.label)}
+        aria-label={@texts.filter}
         aria-invalid={@rejected? && "true"}
         aria-describedby={@rejected? && "#{@id}-error"}
         class={["input input-xs w-32", Parts.Editors.control_edge()]}
@@ -114,13 +128,13 @@ defmodule AshDataTable.Parts.Filter do
         <div
           :for={
             {end_of, suffix, word, name, typed} <- [
-              {"from", "value", :range_from, :filter_from, elem(@value, 0)},
-              {"to", "to", :range_to, :filter_to, elem(@value, 1)}
+              {"from", "value", @texts.range_from, @texts.filter_from, elem(@value, 0)},
+              {"to", "to", @texts.range_to, @texts.filter_to, elem(@value, 1)}
             ]
           }
           class="flex min-w-0 items-center justify-between gap-1"
         >
-          <span aria-hidden="true" class="shrink-0 text-xs font-normal">{Text.t(word)}</span>
+          <span aria-hidden="true" class="shrink-0 text-xs font-normal">{word}</span>
           <input
             type={Parts.Editors.input_type(@column.cell_type)}
             step={Parts.Editors.input_step(@column.cell_type)}
@@ -130,7 +144,7 @@ defmodule AshDataTable.Parts.Filter do
             value={typed}
             phx-debounce="blur"
             tabindex="-1"
-            aria-label={Text.t(name, column: @column.label)}
+            aria-label={name}
             aria-invalid={
               @rejected? && not is_nil(typed) && not State.value?(@column, typed) && "true"
             }
@@ -144,7 +158,7 @@ defmodule AshDataTable.Parts.Filter do
         type="button"
         id={"#{@id}-clear"}
         tabindex="-1"
-        aria-label={Text.t(:clear_filter, column: @column.label)}
+        aria-label={@texts.clear_filter}
         class="btn btn-ghost btn-xs"
         phx-click={Parts.Common.event(@table, "clear_filter")}
         phx-value-column={@column.name}
@@ -155,7 +169,7 @@ defmodule AshDataTable.Parts.Filter do
     </div>
     <%!-- in the text colour: the error colour is too faint for small text --%>
     <p :if={@rejected?} id={"#{@id}-error"} class="mt-1 text-xs">
-      {Text.t(:invalid_filter)}
+      {@texts.invalid_filter}
     </p>
     """
   end
@@ -177,19 +191,13 @@ defmodule AshDataTable.Parts.Filter do
   attr :form, :string, required: true
   attr :column, :map, required: true
   attr :chosen, :list, required: true
+  attr :texts, :map, required: true
 
   defp choices(assigns) do
     labels =
       for {value, label} <- assigns.column.values, to_string(value) in assigns.chosen, do: label
 
-    says =
-      case labels do
-        [] -> Text.t(:any)
-        [label] -> label
-        labels -> Text.t(:values_chosen, count: length(labels))
-      end
-
-    assigns = assign(assigns, says: says, labels: labels)
+    assigns = assign(assigns, says: assigns.texts.chosen, labels: labels)
 
     ~H"""
     <button
@@ -198,7 +206,7 @@ defmodule AshDataTable.Parts.Filter do
       tabindex="-1"
       aria-expanded="false"
       aria-controls={"#{@id}-values"}
-      aria-label={"#{Text.t(:filter, column: @column.label)}: #{@says}"}
+      aria-label={"#{@texts.filter}: #{@says}"}
       title={@labels != [] && Enum.join(@labels, ", ")}
       phx-mounted={JS.ignore_attributes(["aria-expanded"])}
       data-choices-button
@@ -212,7 +220,7 @@ defmodule AshDataTable.Parts.Filter do
     <div
       id={"#{@id}-values"}
       role="group"
-      aria-label={Text.t(:filter, column: @column.label)}
+      aria-label={@texts.filter}
       popover="manual"
       phx-mounted={JS.ignore_attributes(["style"])}
       data-choices
@@ -237,6 +245,4 @@ defmodule AshDataTable.Parts.Filter do
     </div>
     """
   end
-
-  defp operator_text(operator), do: Text.t(String.to_existing_atom("operator_#{operator}"))
 end

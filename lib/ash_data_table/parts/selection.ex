@@ -9,7 +9,6 @@ defmodule AshDataTable.Parts.Selection do
   alias AshDataTable.Kit
   alias AshDataTable.Model
   alias AshDataTable.Parts
-  alias AshDataTable.Text
   alias Phoenix.LiveView.JS
 
   # What is selected, and what can be done with it: the number of selected
@@ -37,6 +36,7 @@ defmodule AshDataTable.Parts.Selection do
   attr :choose?, :boolean, default: false
   attr :bulk, :list, required: true
   attr :running?, :boolean, required: true
+  attr :texts, :map, required: true
 
   defp selection(assigns) do
     total = assigns.page && assigns.page.total
@@ -58,18 +58,16 @@ defmodule AshDataTable.Parts.Selection do
 
     ~H"""
     <div
-      {Attrs.selection(@id, @more?, @total)}
+      {Attrs.selection(@id, @more?, @texts)}
       class="flex flex-wrap items-center gap-2"
     >
       <p {Attrs.selected(@id)} class="text-sm"></p>
       <div {Attrs.selection_controls(@id)} class="flex flex-wrap items-center gap-2">
         <button type="button" {Attrs.select_all(@id)} class="btn btn-sm">
-          {if @total,
-            do: Text.t(:select_all, count: @total),
-            else: Text.t(:select_all_uncounted)}
+          {@texts.select_all}
         </button>
         <button type="button" {Attrs.clear_selection(@id)} class="btn btn-sm">
-          {Text.t(:clear_selection)}
+          {@texts.clear_selection}
         </button>
         <%!-- While an action runs the buttons are not to be used, and say so
         without being `disabled`: a button that is disabled drops the focus. --%>
@@ -99,6 +97,7 @@ defmodule AshDataTable.Parts.Selection do
   attr :running, :any, required: true
   attr :selecting, :any, required: true
   attr :state, :any, required: true
+  attr :texts, :map, required: true
 
   def selection_line(assigns) do
     ~H"""
@@ -115,12 +114,14 @@ defmodule AshDataTable.Parts.Selection do
         choose?={not is_nil(@choose)}
         bulk={@bulk}
         running?={not is_nil(@running)}
+        texts={@texts}
       />
       <Parts.Messages.notice
         id={@id}
         myself={@myself}
         nested?={@nested?}
         notice?={@notice?}
+        texts={@texts}
       />
       <%!-- the button goes away with the filters, so focus is sent on to the grid --%>
       <button
@@ -134,7 +135,7 @@ defmodule AshDataTable.Parts.Selection do
           |> JS.focus(to: "##{@id}-table [tabindex='0']")
         }
       >
-        {Text.t(:clear_filters)}
+        {@texts.clear_filters}
       </button>
       <Kit.part
         :if={length(@model.columns) > 1 and Parts.Grid.hideable(@model) != []}

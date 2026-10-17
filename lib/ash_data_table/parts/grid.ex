@@ -35,6 +35,7 @@ defmodule AshDataTable.Parts.Grid do
   # (`aria-label`), so that the handle's name is no part of it.
   attr :id, :string, required: true
   attr :column, :map, required: true
+  attr :texts, :map, required: true
 
   def resizer(assigns) do
     ~H"""
@@ -42,7 +43,7 @@ defmodule AshDataTable.Parts.Grid do
       id={@id}
       role="separator"
       aria-orientation="vertical"
-      aria-label={Text.t(:resize_column, column: @column.label)}
+      aria-label={@texts.resize_column}
       aria-valuemin={Attrs.least_width()}
       aria-valuemax={Attrs.most_width()}
       tabindex="-1"
@@ -89,6 +90,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :keeps_one?, :boolean, required: true
   attr :state, :map, required: true
   attr :class, :any, required: true
+  attr :texts, :map, required: true
 
   def columns(assigns) do
     ~H"""
@@ -100,22 +102,22 @@ defmodule AshDataTable.Parts.Grid do
         aria-controls={"#{@id}-columns"}
         phx-mounted={JS.ignore_attributes(["aria-expanded"])}
         data-columns-button
-        data-text={Text.t(:columns)}
-        data-text-with={Text.t(:columns_with, details: "{details}")}
-        data-text-hidden={Text.t(:columns_hidden, count: "{n}")}
-        data-text-filtered={Text.t(:columns_filtered, count: "{n}")}
-        data-text-sorted={Text.t(:columns_sorted, count: "{n}")}
-        data-say-hidden={Text.t(:column_hidden, column: "{column}")}
-        data-say-shown={Text.t(:column_shown, column: "{column}")}
+        data-text={@texts.columns}
+        data-text-with={@texts.columns_with}
+        data-text-hidden={@texts.columns_hidden}
+        data-text-filtered={@texts.columns_filtered}
+        data-text-sorted={@texts.columns_sorted}
+        data-say-hidden={@texts.column_hidden}
+        data-say-shown={@texts.column_shown}
         class="btn btn-sm"
       >
-        <span id={"#{@id}-columns-text"} phx-update="ignore">{Text.t(:columns)}</span>
+        <span id={"#{@id}-columns-text"} phx-update="ignore">{@texts.columns}</span>
       </button>
       <%!-- with the edge and the ground of the table's other popovers --%>
       <div
         id={"#{@id}-columns"}
         role="group"
-        aria-label={Text.t(:columns)}
+        aria-label={@texts.columns}
         popover="manual"
         phx-mounted={JS.ignore_attributes(["style"])}
         data-columns-list
@@ -123,7 +125,7 @@ defmodule AshDataTable.Parts.Grid do
         class="inset-auto m-0 max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow"
       >
         <label
-          :for={column <- @columns}
+          :for={{column, flag} <- Enum.zip(@columns, @texts.flags)}
           id={"#{@id}-column-#{column.name}-entry"}
           class="flex cursor-pointer items-center gap-2 px-1 py-0.5 whitespace-nowrap"
         >
@@ -138,8 +140,8 @@ defmodule AshDataTable.Parts.Grid do
             class={["peer checkbox checkbox-xs", Parts.Editors.box_edge()]}
           />
           <span>{column.label}</span>
-          <span :if={column_flag(@state, column)} data-flag class="peer-checked:hidden">
-            ({column_flag(@state, column)})
+          <span :if={flag} data-flag class="peer-checked:hidden">
+            ({flag})
           </span>
         </label>
       </div>
@@ -149,18 +151,6 @@ defmodule AshDataTable.Parts.Grid do
       <p id={"#{@id}-columns-status"} role="status" phx-update="ignore" class="sr-only"></p>
     </div>
     """
-  end
-
-  # What a column's box in the list says of the column besides its name,
-  # while the column is hidden: that the rows are filtered by it, sorted by
-  # it, or both.
-  defp column_flag(state, column) do
-    case {is_map_key(state.filters, column.name), Attrs.aria_sort(state.sort, column) != "none"} do
-      {true, true} -> Text.t(:column_filtered_sorted)
-      {true, false} -> Text.t(:column_filtered)
-      {false, true} -> Text.t(:column_sorted)
-      {false, false} -> nil
-    end
   end
 
   # What a cell of an editable column is edited with: the native control of
@@ -177,6 +167,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :id, :string, required: true
   attr :column, :map, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   # A sensitive column, which is text or a number: a password input, so that
   # what is typed is not shown. The hook opens it empty.
@@ -208,10 +199,10 @@ defmodule AshDataTable.Parts.Grid do
       <button
         type="button"
         data-clear
-        aria-label={Text.t(:clear_value, column: @column.label)}
+        aria-label={@texts.clear_value}
         class="btn btn-xs -my-1 shrink-0"
       >
-        {Text.t(:clear)}
+        {@texts.clear}
       </button>
     </div>
     """
@@ -435,6 +426,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :asks?, :boolean, required: true
   attr :time_zone, :string, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   def row(assigns) do
     ~H"""
@@ -450,14 +442,14 @@ defmodule AshDataTable.Parts.Grid do
       aria-colindex="1"
       tabindex="-1"
       data-selector
-    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={Text.t(:select_row)} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={Text.t(:select_row)} class="radio radio-xs border-base-content/50" /></td><td
+    ><input :if={@selecting == :multi} type="checkbox" tabindex="-1" aria-label={@texts.select_row} class="checkbox checkbox-xs border-base-content/50" /><input :if={@selecting == :single} type="radio" name={"#{@id}-select"} tabindex="-1" aria-label={@texts.select_row} class="radio radio-xs border-base-content/50" /></td><td
       :if={@expandable?}
       id={"#{@dom_id}-e"}
       role="gridcell"
       aria-colindex={@lead}
       tabindex="-1"
       data-expander
-    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={Text.t(:related_records)}></button></td><td
+    ><button type="button" tabindex="-1" aria-expanded={to_string(@row.open?)} aria-label={@texts.related_records}></button></td><td
       :for={{column, colindex, cell} <- cells(@columns, @lead, @row)}
       id={"#{@dom_id}-c-#{column.name}"}
       role="gridcell"
@@ -524,16 +516,17 @@ defmodule AshDataTable.Parts.Grid do
   attr :failure, :any, required: true
   attr :time_zone, :string, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   def cell(%{failure: nil} = assigns) do
     ~H"""
-    {shown(@column, @state, @value, @text, @time_zone)}
+    {shown(@column, @state, @value, @text, @time_zone, @texts)}
     """
   end
 
   def cell(%{column: %{sensitive?: true}} = assigns) do
     ~H"""
-    {shown(@column, @state, nil, nil, @time_zone)}<Kit.part
+    {shown(@column, @state, nil, nil, @time_zone, @texts)}<Kit.part
       part={:failure}
       kit={@kit}
       id={"#{@id}-error"}
@@ -633,13 +626,13 @@ defmodule AshDataTable.Parts.Grid do
   # What a cell shows, by what it holds (`AshDataTable.Present.Cell`).
   #
   # A field the actor may not see on this row looks empty and is announced.
-  defp shown(_column, :forbidden, _value, _text, _zone) do
-    {:safe, [~s(<span class="sr-only" data-unseen>), escape(Text.t(:not_available)), "</span>"]}
+  defp shown(_column, :forbidden, _value, _text, _zone, texts) do
+    {:safe, [~s(<span class="sr-only" data-unseen>), escape(texts.not_available), "</span>"]}
   end
 
   # A record that has no value has an empty cell, whatever its column: what
   # "empty" looks like is the table's to say, in one way for all columns.
-  defp shown(_column, :empty, _value, _text, _zone), do: ""
+  defp shown(_column, :empty, _value, _text, _zone, _texts), do: ""
 
   # A sensitive value is not shown: the cell holds a mask, the same for
   # every value and for the eye only, what a screen reader says in its
@@ -650,38 +643,38 @@ defmodule AshDataTable.Parts.Grid do
   #
   # What is rendered is the same whatever the value is; the value itself is
   # not in what a row is rendered from (`AshDataTable.Present`).
-  defp shown(column, :masked, _value, _text, _zone) do
+  defp shown(_column, :masked, _value, _text, _zone, texts) do
     {:safe,
      [
        ~s(<span class="inline-flex max-w-72 items-center align-bottom"><span data-mask aria-hidden="true">),
        Present.mask(),
        ~s(</span><span data-masked class="sr-only">),
-       escape(Text.t(:hidden_value)),
+       escape(texts.hidden_value),
        ~s(</span><span data-secret aria-live="polite" class="min-w-0 truncate"></span>),
        ~s(<button type="button" tabindex="-1" data-reveal data-show="),
-       escape(Text.t(:show)),
+       escape(texts.show),
        ~s(" data-hide="),
-       escape(Text.t(:hide)),
+       escape(texts.hide),
        ~s(" data-show-label="),
-       escape(Text.t(:show_value, column: column.label)),
+       escape(texts.show_value),
        ~s(" data-hide-label="),
-       escape(Text.t(:hide_value, column: column.label)),
+       escape(texts.hide_value),
        ~s(" aria-label="),
-       escape(Text.t(:show_value, column: column.label)),
+       escape(texts.show_value),
        ~s(" class="btn btn-xs -my-1 ms-2 shrink-0">),
-       escape(Text.t(:show)),
+       escape(texts.show),
        "</button></span>"
      ]}
   end
 
-  defp shown(column, :value, value, text, zone),
+  defp shown(column, :value, value, text, zone, _texts),
     do: column |> value(value, text, zone) |> paragraph(column)
 
   # A value as a cell of its column shows it. The kind of a union is no
   # sensitive field: what it holds is shown as a cell of its own type
   # shows it.
   defp value(_column, %Ash.ForbiddenField{}, _text, zone),
-    do: shown(nil, :forbidden, nil, nil, zone)
+    do: shown(nil, :forbidden, nil, nil, zone, %{not_available: Text.t(:not_available)})
 
   defp value(_column, nil, _text, _zone), do: ""
   defp value(_column, %Ash.NotLoaded{}, _text, _zone), do: ""
@@ -752,6 +745,7 @@ defmodule AshDataTable.Parts.Grid do
   attr :summary, :any, required: true
   attr :summing?, :any, required: true
   attr :time_zone, :any, required: true
+  attr :texts, :map, required: true
 
   def grid(assigns) do
     ~H"""
@@ -789,17 +783,17 @@ defmodule AshDataTable.Parts.Grid do
                 :if={@selecting == :multi}
                 type="checkbox"
                 tabindex="-1"
-                aria-label={Text.t(:select_page)}
+                aria-label={@texts.select_page}
                 class={["checkbox checkbox-xs block", Parts.Editors.box_edge()]}
               />
-              <span :if={@selecting == :single} class="sr-only">{Text.t(:select_row)}</span>
+              <span :if={@selecting == :single} class="sr-only">{@texts.select_row}</span>
             </th>
             <th
               :if={@expandable?}
               {Attrs.header("#{@id}-expander-head", @lead)}
               class="w-0"
             >
-              <span class="sr-only">{Text.t(:related_records)}</span>
+              <span class="sr-only">{@texts.related_records}</span>
             </th>
             <Kit.part
               :for={{column, index} <- Enum.with_index(@model.columns)}
@@ -825,7 +819,7 @@ defmodule AshDataTable.Parts.Grid do
               {Attrs.header("#{@id}-actions-head", length(@model.columns) + @lead + 1)}
               class="whitespace-nowrap"
             >
-              {Text.t(:actions)}
+              {@texts.actions}
             </th>
           </tr>
           <tr {Attrs.row("#{@id}-filter-row", "2")}>

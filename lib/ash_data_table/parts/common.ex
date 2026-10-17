@@ -72,7 +72,7 @@ defmodule AshDataTable.Parts.Common do
   # `id` is what the cell names in `aria-describedby`; nil in the template
   # the hook copies (`ID-failure`). Without whitespace: the hook copies it.
   attr :id, :string, default: nil
-  attr :message, :any, required: true
+  attr :text, :string, required: true
 
   def failure(assigns) do
     ~H"""
@@ -81,7 +81,7 @@ defmodule AshDataTable.Parts.Common do
       {Attrs.failure()}
       class="inset-auto m-0 max-w-xs rounded border border-[color-mix(in_oklab,var(--color-error)_70%,var(--color-base-content))] bg-base-100 px-2 py-1 text-xs whitespace-normal text-base-content shadow"
       phx-no-format
-    >{Text.say(@message)}</span>
+    >{@text}</span>
     """
   end
 end

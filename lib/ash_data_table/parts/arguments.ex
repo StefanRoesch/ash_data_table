@@ -4,14 +4,11 @@ defmodule AshDataTable.Parts.Arguments do
   # The parts `argument_line` and `argument` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
-  import AshDataTable.Parts.Common, only: [said: 1]
-
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
   alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
-  alias AshDataTable.Text
 
   # One input of the argument line: its label, the control of its type, and
   # under it what Ash says of a value it refuses. The controls are those of
@@ -33,6 +30,7 @@ defmodule AshDataTable.Parts.Arguments do
   attr :target, :any, required: true
   attr :table, :string, required: true
   attr :kit, :atom, required: true
+  attr :texts, :map, required: true
 
   def argument(assigns) do
     assigns =
@@ -170,7 +168,7 @@ defmodule AshDataTable.Parts.Arguments do
               name={@name <> "[]"}
               value={value}
               phx-debounce="blur"
-              aria-label={Text.t(:value_position, column: @argument.label, position: at + 1)}
+              aria-label={Enum.at(@texts.value_position, at)}
               aria-invalid={@errors != [] && "true"}
               aria-describedby={@counted && "#{@id}-#{at}-count"}
               class={["input input-sm w-40", Parts.Editors.control_edge()]}
@@ -188,7 +186,7 @@ defmodule AshDataTable.Parts.Arguments do
             <button
               type="button"
               id={"#{@id}-#{at}-remove"}
-              aria-label={Text.t(:remove_value, column: @argument.label, position: at + 1)}
+              aria-label={Enum.at(@texts.remove_value, at)}
               class="btn btn-ghost btn-xs"
               phx-click={Parts.Common.event(@table, "argument_remove")}
               phx-value-argument={@named}
@@ -207,13 +205,13 @@ defmodule AshDataTable.Parts.Arguments do
             phx-value-argument={@named}
             phx-target={@target}
           >
-            {Text.t(:add_value)}
+            {@texts.add_value}
           </button>
         </div>
       </div>
       <%!-- in the text colour: the error colour is too faint for small text --%>
       <div :if={@errors != []} id={"#{@id}-error"} class="mt-1 text-xs">
-        <p :for={message <- @errors} data-error>{said(message)}</p>
+        <p :for={message <- @texts.errors} data-error>{message}</p>
       </div>
     </div>
     """
