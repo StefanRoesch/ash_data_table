@@ -2784,26 +2784,6 @@ defmodule AshDataTable.ModelTest do
       assert for_actor.table_actions == []
       assert for_actor.actions == []
     end
-
-    test "nested_table_actions/2 gives the ones a person can ever run in a nested table" do
-      [items] = Model.build(TableActing.Shelf).relationships
-      nested = Model.build(TableActing.Item, via: items)
-
-      names = fn opts -> Enum.map(Model.nested_table_actions(nested, opts), & &1.name) end
-
-      assert names.(actor: %{role: :admin}) == [:count, :purge]
-      assert names.(actor: %{role: :member}) == [:count]
-      assert names.(actor: nil) == [:count]
-      assert names.(actor: nil, authorize?: false) == [:count, :purge]
-
-      # a table without table actions has none in a nested table either
-      [cards | _] = Model.build(AshDataTable.Test.Acting.Board).relationships
-
-      assert Model.nested_table_actions(
-               Model.build(cards.destination, via: cards),
-               actor: nil
-             ) == []
-    end
   end
 
   describe "running a generic action" do

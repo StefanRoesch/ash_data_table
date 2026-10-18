@@ -1042,17 +1042,18 @@ test.describe("creating a record", () => {
     tasks,
     pushed,
   }) => {
-    // before the grid stand "Columns" (hiding.spec.ts) and the inputs of
-    // the argument line, and before those the create button
+    // right before the grid, at the far end of the heading line, after
+    // "Columns" (hiding.spec.ts) and the inputs of the argument line
     await tasks.cell(FIRST, "title").focus()
     await page.keyboard.press("Shift+Tab")
-    await expect(tasks.columnsButton).toBeFocused()
+    await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
-    await expect(tasks.create).toBeFocused()
+    await expect(tasks.columnsButton).toBeFocused()
+    await tasks.create.focus()
 
     await pushed.clear()
     await page.keyboard.press("Enter")
@@ -1113,9 +1114,8 @@ test.describe("creating a record", () => {
     await tasks.press("Escape")
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.create).toBeFocused()
-    // the grid behind it is as it was, after the inputs of the argument
-    // line and "Columns"
-    for (let stops = 0; stops < 4; stops++) await page.keyboard.press("Tab")
+    // the grid behind it is as it was, right after it
+    await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
   })
 
@@ -1334,10 +1334,10 @@ test.describe("creating in a nested table", () => {
         ;(window as any).__whileLoading = seen
         new MutationObserver(() => {
           const create = document.getElementById(button)
-          if (document.getElementById(loading) && create) seen.push(create.getClientRects().length > 0)
+          if (document.getElementById(loading)) seen.push(!!create && create.getClientRects().length > 0)
         }).observe(document.body, { subtree: true, childList: true })
       },
-      [`${tasks.nested(FIRST, "comments").id}-loading`, `task-row-${FIRST}-l-comments-create`],
+      [`${tasks.nested(FIRST, "comments").id}-loading`, `task-row-${FIRST}-t-comments-create`],
     )
 
     const comments = await tasks.openLine(FIRST, "comments")
@@ -1351,32 +1351,37 @@ test.describe("creating in a nested table", () => {
     await expect(tasks.line(FIRST, "comments"), "the line's own button says what it said").toHaveText("Comments")
     expect(await tasks.tabStops(), "the tree is one tab stop still").toHaveLength(1)
 
-    // on the line, right after the label
+    // on the line, which is the nested table's heading line: at its far
+    // end, as a table's create button is on its own, inside what is seen
+    // of the table around it
     const label = (await tasks.line(FIRST, "comments").boundingBox())!
     const button = (await create.boundingBox())!
     const cell = (await tasks.lineCell(FIRST, "comments").boundingBox())!
-    expect(button.x).toBeGreaterThanOrEqual(label.x + label.width)
-    expect(button.x - (label.x + label.width)).toBeLessThanOrEqual(12)
+    const grid = (await comments.hookRoot.boundingBox())!
+    expect(button.x).toBeGreaterThan(label.x + label.width)
+    expect(Math.abs(button.x + button.width - (grid.x + grid.width))).toBeLessThanOrEqual(2)
+    expect(button.x + button.width).toBeLessThanOrEqual(page.viewportSize()!.width)
     expect(button.y).toBeGreaterThanOrEqual(cell.y)
     expect(button.y + button.height).toBeLessThanOrEqual(cell.y + cell.height)
+    expect(Math.abs(button.y + button.height / 2 - (label.y + label.height / 2))).toBeLessThanOrEqual(2)
 
-    // no line is higher for it, and the nested table looks as any table does
-    expect(await lineHeights(tasks, FIRST)).toEqual(closed)
-    await expect(comments.headerLine, "its name is the line").toHaveCount(0)
-    await expect(comments.create).toHaveCount(0)
+    // the nested table's heading line is on its line, with no name of its own
+    await expect(tasks.lineCell(FIRST, "comments").locator(`[id="${comments.id}-header"]`)).toHaveCount(1)
+    await expect(comments.name).toHaveCount(0)
 
     // a has-one, a many-to-many and a belongs-to have none
     for (const relationship of ["first_comment", "labels", "project"]) {
       await tasks.openLine(FIRST, relationship)
       await expect(tasks.lineCreate(FIRST, relationship), relationship).toHaveCount(0)
     }
-    expect(await lineHeights(tasks, FIRST)).toEqual(closed)
+    for (const relationship of ["first_comment", "labels", "project"]) await tasks.line(FIRST, relationship).click()
 
-    // closed again, the button is gone with the table
+    // closed again, the button is gone with the table, and the line is as
+    // high as it was
     await tasks.line(FIRST, "comments").click()
     await expect(comments.root).toHaveCount(0)
     await expect(create).toHaveCount(0)
-    expect(await lineHeights(tasks, FIRST)).toEqual(closed)
+    await expect.poll(() => lineHeights(tasks, FIRST)).toEqual(closed)
   })
 
   test("with the pointer: the button opens the panel of the nested table, and the new record is its first row, with the focus", async ({
@@ -1449,11 +1454,14 @@ test.describe("creating in a nested table", () => {
     await expect(toggle, "first the button that opens the line").toBeFocused()
     await tasks.press("ArrowLeft")
     await expect(toggle, "Left ends at the first control").toBeFocused()
+    // then the nested table's heading line: "Columns", and create at its end
+    await tasks.press("ArrowRight")
+    await expect(comments.columnsButton).toBeFocused()
     await tasks.press("ArrowRight")
     await expect(create).toBeFocused()
     await tasks.press("ArrowRight")
     await expect(create, "Right ends at the last").toBeFocused()
-    await tasks.press("ArrowLeft")
+    await tasks.press("ArrowLeft", "ArrowLeft")
     await expect(toggle).toBeFocused()
     await tasks.press("Escape")
     await expect(line).toBeFocused()
@@ -1462,7 +1470,7 @@ test.describe("creating in a nested table", () => {
     await expect(toggle).toHaveAttribute("aria-expanded", "true")
 
     // Enter on the create button opens the panel; Escape gives the focus back to it
-    await tasks.press("F2", "ArrowRight", "Enter")
+    await tasks.press("F2", "ArrowRight", "ArrowRight", "Enter")
     await expect(comments.panel).toBeVisible()
     await expect(comments.field("body")).toBeFocused()
     expect(await pushed.count("create")).toBe(1)
@@ -1535,6 +1543,8 @@ test.describe("creating in a nested table", () => {
     await expect(nested.range).toHaveText("1–25 of 57")
 
     await create.click()
+    // the panel opens with the patch that answers the click
+    await expect(nested.panel).toBeVisible()
     expect(await nested.fields()).not.toContain("project_id")
     expect(await nested.fields()).toContain("title")
     await nested.field("title").fill("Made under its project")
@@ -1576,11 +1586,10 @@ test.describe("creating in a nested table", () => {
       const comments = await tasks.openLine(FIRST, "comments")
       await expect(comments.rows.first()).toBeVisible()
       await expect(tasks.lineCreate(FIRST, "comments")).toHaveCount(0)
-      await expect(tasks.grid.locator("button[data-create]")).toHaveCount(0)
-      // F2 on the line has nothing to go into
+      // F2 on the line goes into it, where "Columns" is the last control
       await tasks.lineCell(FIRST, "comments").focus()
-      await tasks.press("F2")
-      await expect(tasks.lineCell(FIRST, "comments")).toBeFocused()
+      await tasks.press("F2", "ArrowRight", "ArrowRight")
+      await expect(comments.columnsButton).toBeFocused()
     })
   })
 })
@@ -1594,9 +1603,10 @@ test.describe("creating in the full view", () => {
     await expect(comments.relatedHeading).toHaveText("Rename the onboarding email: Comments")
     const before = await comments.rowKeys()
 
-    // the line of the page's name has no button of its own
+    // the line of the page's name has no button of its own but "Columns"
     await expect(comments.name).toHaveText("Comments")
-    await expect(comments.headerLine.getByRole("button")).toHaveCount(0)
+    await expect(comments.headerLine.getByRole("button")).toHaveCount(1)
+    await expect(comments.headerLine.getByRole("button")).toHaveAccessibleName("Columns")
     await expect(comments.create).toHaveText("New comment")
     const heading = (await comments.relatedHeading.boundingBox())!
     const create = (await comments.create.boundingBox())!

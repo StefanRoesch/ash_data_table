@@ -46,6 +46,13 @@ defmodule AshDataTable.Ids do
   @spec line_button(String.t(), atom | String.t()) :: String.t()
   def line_button(row, name), do: "#{row}-l-#{name}-b"
 
+  @doc """
+  The place on the line of relationship `name` that the nested table's
+  heading is moved into, its second portal target: `ROW-l-NAME-h`.
+  """
+  @spec line_heading(String.t(), atom | String.t()) :: String.t()
+  def line_heading(row, name), do: "#{row}-l-#{name}-h"
+
   @doc "The row under a line that the nested table is moved into: `ROW-n-NAME`."
   @spec nested_row(String.t(), atom | String.t()) :: String.t()
   def nested_row(row, name), do: "#{row}-n-#{name}"

@@ -196,6 +196,18 @@ defmodule DemoWeb.Tables.TaskBulkTest do
       # the one that deletes says so, for the colour of the answer in its question
       assert attribute(html, "#task-bulk-destroy", "data-destructive") == [""]
       assert attribute(html, "#task-bulk-archive", "data-destructive") == []
+
+      # of five actions the first two are on the line, the others in the
+      # menu "More" opens, the browser's popover
+      assert attribute(html, "#task-bulk-more-button", "popovertarget") == ["task-bulk-more"]
+      assert attribute(html, "#task-bulk-more", "popover") == ["auto"]
+
+      assert attribute(html, "#task-bulk-more [data-bulk]", "data-bulk") ==
+               ["set_progress", "destroy", "set_labels"]
+
+      # "Clear selection" is a quiet button
+      assert [clear] = attribute(html, "#task-clear-selection", "class")
+      assert "btn-ghost" in String.split(clear)
     end
 
     test "offers all that match only when there is more than the page shows",

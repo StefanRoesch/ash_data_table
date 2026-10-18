@@ -61,6 +61,7 @@ defmodule DemoWeb.Tables.ProtectedAggregateTest do
 
     assert headers(html, id) == ["Name", "Email", "Role"]
     assert column(html, id, "name") == [world.member.name]
-    refute html =~ "7.5"
+    # anywhere in the page but the drawing of an icon, whose path has numbers
+    refute Regex.replace(~r{<svg.*?</svg>}s, html, "") =~ "7.5"
   end
 end

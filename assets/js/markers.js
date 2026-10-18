@@ -72,7 +72,6 @@ export const SUMMARIES = "[data-summaries]"
 export const HANDLE = "[data-resize]"
 export const OPEN = "[data-open]"
 export const ACTION = "[data-action]"
-export const CREATE = "[data-create]"
 export const TABLE_ACTION = "[data-table-action]"
 // an action that destroys: a row action's button, an action on the
 // selected rows, the action panel, and the confirm of the question

@@ -236,10 +236,16 @@ export default {
       if (page.indeterminate !== some) page.indeterminate = some
     }
     // The buttons of the line go with the selection, as the server
-    // draws it: where one of them had the focus, it goes on to the grid.
+    // draws it, and the line with them where nothing else is on it:
+    // where one of them had the focus, it goes on to the grid.
     const controls = this.part("selection-controls")
-    const left = document.activeElement === document.body || (controls && controls.contains(document.activeElement))
-    if (controls && controls.hidden && controls.contains(this.lineFocus) && left) this.toTabStop()
+    const focus = this.lineFocus
+    const gone = !!focus && (!focus.isConnected || (!!controls && controls.hidden && controls.contains(focus)))
+    const left = document.activeElement === document.body || (!!controls && controls.contains(document.activeElement))
+    if (gone && left) {
+      this.lineFocus = null
+      this.toTabStop()
+    }
   },
 
   // To the cell that is the tab stop of the tree of grids.
@@ -266,7 +272,18 @@ export default {
     } else if (is(button, CLEAR)) {
       this.select(new Map(), false)
       this.toTabStop()
-    } else if (is(button, BULK)) this.bulk(button)
+    } else if (is(button, BULK)) {
+      // one of the menu of the actions after the first two: the menu
+      // closes, and its button has the focus, which the question gives
+      // back to it
+      const menu = button.closest("[popover]")
+      if (menu) {
+        menu.hidePopover()
+        const opener = this.part("bulk-more-button")
+        if (opener) opener.focus({preventScroll: true})
+      }
+      this.bulk(button)
+    }
   },
 
   // Uses the button of an action on the selected rows. The server

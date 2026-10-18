@@ -550,10 +550,12 @@ starts with "Done on my side" and press Shift+Enter. Then open
 
 ## Hiding columns
 
-A person can take columns out of sight and bring them back. Above the table,
-at the end of the line that also holds "Clear filters", is a button
-"Columns". It opens a list of the table's columns with a box each. A column
-whose box is not ticked is hidden.
+A person can take columns out of sight and bring them back. On the heading
+line above the table, after the table's name, is a button "Columns": an eye
+struck through, the word, and while columns are hidden how many in a badge.
+A nested table has its own on the line that opens it. It opens a list of
+the table's columns with a box each. A column whose box is not ticked is
+hidden.
 
 Hiding is for the eye only. **It is not a permission.** A hidden column is
 still read from the database and still in the page; anybody can show it
@@ -574,8 +576,8 @@ What to know about it:
   it. A table with one column has no "Columns" button.
 - **A hidden column keeps its filter and its sort.** The rows do not change
   when a column is hidden. Because a filter lives in the header row, it goes
-  out of sight with its column, so the button says it: "Columns (2 hidden,
-  1 filtered)", and "1 sorted" likewise. In the list the column reads
+  out of sight with its column, so the button's name says it: "Columns (2
+  hidden, 1 filtered)", and "1 sorted" likewise. In the list the column reads
   "Progress (filtered)" for as long as it is hidden. "Clear filters" clears
   the filter of a hidden column too.
 - **Nothing is remembered.** What is hidden lives in the browser, for as

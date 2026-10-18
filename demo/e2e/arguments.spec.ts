@@ -56,24 +56,37 @@ test.describe("the line of /tasks", () => {
     // no button runs the line
     await expect(tasks.argumentLine.getByRole("button")).toHaveCount(0)
 
+    // on the heading line, after the table's name and "Columns", before the
+    // create button at its far end; the line's form makes no box of its own
     const name = (await tasks.name.boundingBox())!
-    const line = (await tasks.argumentLine.boundingBox())!
+    const columns = (await tasks.columnsButton.boundingBox())!
+    const search = (await tasks.argument("search").boundingBox())!
+    const days = (await tasks.argument("due_within-days").boundingBox())!
+    const create = (await tasks.create.boundingBox())!
+    const heading = (await tasks.headerLine.boundingBox())!
     const grid = (await tasks.grid.boundingBox())!
-    expect(line.y).toBeGreaterThan(name.y)
-    expect(line.y + line.height).toBeLessThanOrEqual(grid.y)
+    expect(search.x).toBeGreaterThan(columns.x + columns.width)
+    expect(columns.x).toBeGreaterThan(name.x + name.width)
+    expect(days.x).toBeGreaterThan(search.x)
+    expect(create.x).toBeGreaterThan(days.x + days.width)
+    for (const box of [name, columns, search, days, create]) {
+      expect(Math.abs(box.y + box.height / 2 - (search.y + search.height / 2))).toBeLessThanOrEqual(2)
+    }
+    expect(heading.y + heading.height).toBeLessThanOrEqual(grid.y)
 
     await expectNoAxeViolations(page)
   })
 
   test("its inputs are ordinary tab stops before the grid", async ({ page, tasks }) => {
-    await tasks.create.focus()
+    // after "Columns" (hiding.spec.ts) on the heading line
+    await tasks.columnsButton.focus()
     await page.keyboard.press("Tab")
     await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.argument("due_within-days")).toBeFocused()
-    // between the line and the grid: "Columns" (hiding.spec.ts)
+    // between them and the grid: the create button at the line's end
     await page.keyboard.press("Tab")
-    await expect(tasks.columnsButton).toBeFocused()
+    await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Tab")
     await expect(tasks.cell(FIRST, "title")).toBeFocused()
     // and back
@@ -166,14 +179,22 @@ test.describe("the line of /tasks", () => {
     expect(await pushed.all()).toEqual([])
   })
 
-  test("the grid does not move when the line under it fills", async ({ tasks }) => {
+  test("the line of the selection under it takes one line once it fills, and none again when it empties", async ({
+    tasks,
+  }) => {
     const before = (await tasks.grid.boundingBox())!.y
 
     await tasks.box(FIRST).click()
     await expect(tasks.selectedCount).toHaveText("1 selected")
+    const selected = (await tasks.grid.boundingBox())!.y
+    expect(selected).toBeGreaterThan(before)
     await tasks.reads(() => tasks.filterValue("billable?").selectOption("yes"))
     await expect(tasks.clearFilters).toBeVisible()
+    // the filter's button is on the same line
+    expect((await tasks.grid.boundingBox())!.y).toBe(selected)
 
+    await tasks.reads(() => tasks.clearFilters.click())
+    await expect(tasks.selectedCount).toHaveText("")
     expect((await tasks.grid.boundingBox())!.y).toBe(before)
   })
 
@@ -320,9 +341,8 @@ test.describe("/deadlines: a read action that requires an argument", () => {
     await deadlines.argument("include_done?").focus()
     await page.keyboard.press("Tab")
     await expect(page.locator("#deadline-arg-tags-add")).toBeFocused()
-    // "Columns" stands between the line and the grid (hiding.spec.ts)
-    await page.keyboard.press("Tab")
-    await expect(deadlines.columnsButton).toBeFocused()
+    // the line is the last of the heading line ("Columns" comes before it,
+    // hiding.spec.ts), and the table creates nothing
     await page.keyboard.press("Tab")
     expect(await deadlines.hasFocus()).toBe(true)
   })

@@ -339,7 +339,6 @@ defmodule AshDataTable.Live.Core do
      # actions that run on several records
      |> put(selecting: selecting, lead: lead(selecting, expandable?))
      |> put(bulk: if(selecting == :multi, do: Model.bulk_actions(model), else: []))
-     |> Nesting.creates()
      # before the read: what changes from here on is heard
      |> Updates.listen()
      |> Reading.read()}

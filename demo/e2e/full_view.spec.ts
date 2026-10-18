@@ -199,23 +199,24 @@ test.describe("the page a link leads to", () => {
     await expect(tasks.relatedClear).toHaveRole("link")
     await expect(tasks.relatedClear).toHaveText("Show all records")
 
-    // from the grid backwards: "Columns" (hiding.spec.ts), the two inputs
-    // of the argument line (arguments.spec.ts), "Show all records", the
-    // create button before it on the same line (actions.spec.ts), then the
-    // parent
+    // from the grid backwards: "Show all records", the create button
+    // before it on the same line (actions.spec.ts), the parent; then the
+    // heading line above it: the two inputs of the argument line
+    // (arguments.spec.ts) and "Columns" (hiding.spec.ts)
     await tasks.cell(await tasks.rowKey(1), "title").focus()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.columnsButton).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.argument("due_within-days")).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.argument("search")).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.relatedClear).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.create).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     await expect(tasks.relatedParent).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.argument("due_within-days")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.argument("search")).toBeFocused()
+    await page.keyboard.press("Shift+Tab")
+    await expect(tasks.columnsButton).toBeFocused()
+    await tasks.relatedParent.focus()
     await page.keyboard.press("Tab")
     await page.keyboard.press("Tab")
     await expect(tasks.relatedClear).toBeFocused()

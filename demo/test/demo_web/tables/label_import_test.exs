@@ -271,7 +271,7 @@ defmodule DemoWeb.Tables.LabelImportTest do
       ran(view)
 
       nested = nested(task.id, "labels")
-      html = table_act(view, nested, "import", on: "task-row-#{task.id}-l-labels-do-import")
+      html = table_act(view, nested, "import", on: "task-row-#{task.id}-t-labels-do-import")
 
       assert %{heading: "Import", fields: [%{name: "file", control: "file"}]} =
                panel(html, nested)

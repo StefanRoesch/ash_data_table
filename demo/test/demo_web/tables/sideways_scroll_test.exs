@@ -74,9 +74,9 @@ defmodule DemoWeb.Tables.SidewaysScrollTest do
 
     assert MapSet.subset?(
              MapSet.new([
-               "[&_[data-ash-data-table-portal]]:sticky",
-               "[&_[data-ash-data-table-portal]]:left-0",
-               "[&_[data-ash-data-table-portal]]:w-0",
+               "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:sticky",
+               "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:left-0",
+               "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:w-0",
                "[&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
              ]),
              MapSet.new(String.split(root))

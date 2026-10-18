@@ -97,10 +97,21 @@ defmodule AshDataTable.Parts.Grid do
   #     where the hook puts them, a comma between;
   #   * at a box, what is read out when its column is hidden and shown
   #     again (`data-say-hidden`, `data-say-shown`).
+  #
+  # The button shows an eye struck through, "Columns" and, while columns are
+  # hidden, how many in a badge; what it is called is the text the hook
+  # writes (`ID-columns-text`, out of sight: "Columns (2 hidden)", of a
+  # nested table "Columns of Comments (2 hidden)"), which begins with what
+  # it shows. The badge is the hook's too (`ID-columns-count`), empty and
+  # out of sight while nothing is hidden. In a nested table the button is no
+  # tab stop, as the other buttons on its line are not: the line's cell is
+  # entered from the grid (F2, Enter) and its buttons reached with the
+  # arrow keys.
   attr :id, :string, required: true
   attr :columns, :list, required: true
   attr :keeps_one?, :boolean, required: true
   attr :state, :map, required: true
+  attr :nested?, :boolean, required: true
   attr :class, :any, required: true
   attr :texts, :map, required: true
 
@@ -110,10 +121,32 @@ defmodule AshDataTable.Parts.Grid do
       <button
         type="button"
         {Attrs.columns_button(@id, @texts)}
+        tabindex={@nested? && "-1"}
         style={"anchor-name: #{anchor(@id)}"}
-        class="btn btn-sm"
+        class="btn btn-ghost btn-sm gap-1 px-2"
       >
-        <span id={"#{@id}-columns-text"} phx-update="ignore">{@texts.columns}</span>
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="1.6"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          class="size-4"
+        >
+          <path d="M3.98 8.22A10.48 10.48 0 0 0 1.93 12C3.23 16.34 7.24 19.5 12 19.5c.99 0 1.95-.14 2.86-.4M6.23 6.23A10.45 10.45 0 0 1 12 4.5c4.76 0 8.77 3.16 10.07 7.5a10.52 10.52 0 0 1-4.29 5.77M6.23 6.23 3 3m3.23 3.23 3.65 3.65m7.89 7.89L21 21m-3.23-3.23-3.65-3.65m0 0a3 3 0 1 0-4.24-4.24m4.24 4.24L9.88 9.88" />
+        </svg>
+        <span aria-hidden="true">{@texts.columns}</span>
+        <span id={"#{@id}-columns-text"} phx-update="ignore" class="sr-only">
+          {@texts.columns_name}
+        </span>
+        <span
+          id={"#{@id}-columns-count"}
+          phx-update="ignore"
+          aria-hidden="true"
+          class="badge badge-xs badge-neutral empty:hidden"
+        ></span>
       </button>
       <div
         {Attrs.columns(@id, @keeps_one?, @texts)}
@@ -657,7 +690,6 @@ defmodule AshDataTable.Parts.Grid do
   attr :asks?, :boolean, required: true
   attr :busy?, :any, required: true
   attr :choose, :any, required: true
-  attr :creates, :any, required: true
   attr :editing?, :any, required: true
   attr :expandable?, :any, required: true
   # what each column's filter shows: `filter`, `rejected?`, `applied?`
@@ -803,7 +835,6 @@ defmodule AshDataTable.Parts.Grid do
               row={row}
               model={@model}
               colspan={length(@model.columns) + @lead + Common.trail(@acting?)}
-              creates={@creates}
               myself={@myself}
             /><Kit.part
               :if={!Attrs.detail?(row)}
@@ -961,15 +992,11 @@ defmodule AshDataTable.Parts.Grid do
             "[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:forced-color-adjust-none forced-colors:[&_[role=grid]>[role=rowgroup]>[role=row]>:is([data-expander],[data-line])_button[aria-expanded]]:before:border-s-[CanvasText]",
             # a line's mark stands under its row's
             "[&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-line]_button[aria-expanded]]:ps-1 [&_[role=grid]>[role=rowgroup]>[role=row]>[role=gridcell][data-line]_button[aria-expanded]]:before:me-2",
-            # the create button on a line, and the buttons of the nested table's
-            # table actions, once the nested table under it has read: found by
-            # the table's own marker of its portal, whatever LiveView wraps it in
-            "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-create]]:inline-flex",
-            "[&_[role=grid]>[role=rowgroup]>[role=row]:has(+[role=row]>[data-nested]_[data-ash-data-table-portal]_[data-read])>[data-line]_[data-table-action]]:inline-flex",
             # a nested table stays at the left edge of the scroll area around
             # it, and is as wide as that area (`--ash-data-table-view`, which
-            # the grid's hook sets)
-            "[&_[data-ash-data-table-portal]]:sticky [&_[data-ash-data-table-portal]]:left-0 [&_[data-ash-data-table-portal]]:w-0 [&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
+            # the grid's hook sets); its heading, the other portal, is on its
+            # line, which stays there itself
+            "[&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:sticky [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:left-0 [&_[data-ash-data-table-portal]:has(>[data-ash-data-table-view])]:w-0 [&_[data-ash-data-table-view]]:w-[var(--ash-data-table-view)]"
           ],
           " "
         )

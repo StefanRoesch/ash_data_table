@@ -129,7 +129,6 @@ defmodule DemoWeb.DivKit do
               row={row}
               model={@model}
               colspan={length(@model.columns) + @lead + if(@acting?, do: 1, else: 0)}
-              creates={@creates}
               myself={@myself}
             /><Kit.part
               :if={!Attrs.detail?(row)}
@@ -320,8 +319,6 @@ defmodule DemoWeb.DivKit do
       open?={relationship.name in @row.lines}
       count={@row.counts[relationship.name]}
       colspan={@colspan}
-      create={@creates[relationship.name][:create]}
-      actions={@creates[relationship.name][:actions] || []}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
       texts={Words.texts(:line, %{count: @row.counts[relationship.name]})}
@@ -345,15 +342,19 @@ defmodule DemoWeb.DivKit do
         {Attrs.line(@relationship)}
         class="table-cell px-2 py-1"
       >
-        <button
-          type="button"
-          id={Ids.line_button(@id, @relationship.name)}
-          tabindex="-1"
-          aria-expanded={to_string(@open?)}
-          class="font-medium"
-        >
-          {@relationship.label}
-        </button>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            id={Ids.line_button(@id, @relationship.name)}
+            tabindex="-1"
+            aria-expanded={to_string(@open?)}
+            class="font-medium"
+          >
+            {@relationship.label}
+          </button>
+          <%!-- where the nested table's heading line goes --%>
+          <div :if={@open?} id={Ids.line_heading(@id, @relationship.name)} class="grow"></div>
+        </div>
       </div>
     </div>
     <div :if={@open?} id={Ids.nested_row(@id, @relationship.name)} role="row" class="table-row">

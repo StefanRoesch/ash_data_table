@@ -184,6 +184,9 @@ msgstr "Alle passenden auswählen"
 msgid "Clear selection"
 msgstr "Auswahl aufheben"
 
+msgid "More"
+msgstr "Mehr"
+
 msgid "Run “%{action}” on 1 record?"
 msgid_plural "Run “%{action}” on %{count} records?"
 msgstr[0] "„%{action}“ für 1 Eintrag ausführen?"
@@ -748,6 +751,12 @@ msgstr "Spalten"
 
 msgid "Columns (%{details})"
 msgstr "Spalten (%{details})"
+
+msgid "Columns of %{table}"
+msgstr "Spalten von %{table}"
+
+msgid "Columns of %{table} (%{details})"
+msgstr "Spalten von %{table} (%{details})"
 
 msgid "1 hidden"
 msgid_plural "%{count} hidden"

@@ -122,8 +122,9 @@ test.describe("opening the picker", () => {
     await expect(people.radio(kim)).toBeChecked()
     await expect(people.cell(kim, "name")).toBeFocused()
     await expect(tasks.pickerChoose).toHaveAttribute("aria-disabled", "false")
-    await expect(tasks.picker.getByRole("button")).toHaveText([
-      "Columns",
+    // "Columns" of its table, on the table's heading line, named by it
+    await expect(tasks.picker.getByRole("button").first()).toHaveAccessibleName("Columns")
+    await expect(tasks.picker.locator("button:not([data-columns-button])")).toHaveText([
       "Previous",
       "1",
       "Next",

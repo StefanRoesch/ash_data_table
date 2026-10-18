@@ -135,8 +135,8 @@ export default {
   },
 
   // Says in the list which columns are shown, and on the button
-  // how many are hidden, and how many of those the rows are
-  // filtered and sorted by: their filters are in the header row,
+  // how many are hidden (in its name, and in its badge), and how
+  // many of those the rows are filtered and sorted by: their filters are in the header row,
   // out of sight with them. After every change of what is hidden,
   // and of the list.
   //
@@ -177,6 +177,11 @@ export default {
     const says = details.length > 0 ? textWith.replace("{details}", details.join(", ")) : text
     const shown = this.part("columns-text")
     if (shown && shown.textContent !== says) shown.textContent = says
+    // the badge with how many are hidden: empty, and so out of sight,
+    // while none is
+    const count = this.part("columns-count")
+    const number = counts.hidden > 0 ? String(counts.hidden) : ""
+    if (count && count.textContent !== number) count.textContent = number
   },
 
   // Nothing stays in a column that is hidden now: focus and the

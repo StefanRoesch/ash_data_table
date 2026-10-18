@@ -226,7 +226,8 @@ test.describe("row actions and the action panel", () => {
           await expectNoAxeViolations(page)
 
           await tasks.lineCell(FIRST, "comments").focus()
-          await tasks.press("F2", "ArrowRight")
+          // after the nested table's "Columns" on the line
+          await tasks.press("F2", "ArrowRight", "ArrowRight")
           await expect(tasks.lineCreate(FIRST, "comments")).toBeFocused()
           await expectNoAxeViolations(page)
 

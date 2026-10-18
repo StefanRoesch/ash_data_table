@@ -279,7 +279,7 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
       assert text(html, cell(id, entry.id, "text")) == "one more"
       assert "one more" in entries()
 
-      html = table_act(view, id, "tally", on: "case-row-#{first.id}-l-entries-do-tally")
+      html = table_act(view, id, "tally", on: "case-row-#{first.id}-t-entries-do-tally")
       assert result(html, id) == "Tally: 3"
     end
 
@@ -290,7 +290,7 @@ defmodule DemoWeb.Tables.UncheckedTableTest do
       open_entries(view, first.id)
       id = nested("case", first.id, "entries")
 
-      click(view, "[id='case-row-#{first.id}-l-entries-create']")
+      click(view, "[id='case-row-#{first.id}-t-entries-create']")
       html = run_panel(view, id, text: "three")
 
       assert panel(html, id) == nil

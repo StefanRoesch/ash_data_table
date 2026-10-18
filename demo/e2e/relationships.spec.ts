@@ -327,7 +327,7 @@ test.describe("on the selected rows", () => {
   }) => {
     await tasks.box(FIRST).click()
     await tasks.box(SECOND).click()
-    await tasks.bulk("set_labels").click()
+    await tasks.useBulk("set_labels")
 
     await expect(tasks.panelTitle).toHaveText("Set labels: 2 records")
     await expect(tasks.fieldChosenItems("labels")).toHaveCount(0)

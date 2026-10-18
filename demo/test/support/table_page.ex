@@ -487,12 +487,13 @@ defmodule DemoWeb.TablePage do
 
   @doc """
   What the buttons on a relationship line under the row `key` of the table
-  `id` say, left to right, after the one that opens the line: the create
-  button and the table actions of the nested table.
+  `id` say, left to right, after the one that opens the line and the
+  nested table's "Columns": the create button and the table actions of the
+  nested table, on its heading line, which is on the line.
   """
   def line_buttons(html, id \\ "task", key, relationship) do
     html
-    |> query("[id='#{id}-row-#{key}-l-#{relationship}-c'] > div > button:not([aria-expanded])")
+    |> query("[id='#{id}-row-#{key}-l-#{relationship}-h'] button:not([data-columns-button])")
     |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim()))
   end
 
@@ -635,7 +636,8 @@ defmodule DemoWeb.TablePage do
         %{
           buttons:
             html
-            |> query("#{line} button")
+            # the actions in the menu after the first two too, without its button
+            |> query("#{line} button:not([popovertarget])")
             |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())),
           selected: text(html, "[id='#{id}-selected']") || "",
           controls?: attribute(html, "[id='#{id}-selection-controls']", "hidden") == [],

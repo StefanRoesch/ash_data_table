@@ -28,8 +28,10 @@ read :read do
 end
 ```
 
-The table of the tasks has a line of inputs above its grid, the **argument
-line**, with one input for `search`, labelled "Search".
+The table of the tasks has inputs above its grid, the **argument line**,
+with one input for `search`, labelled "Search". They stand on the table's
+heading line, after its name and "Columns"; a nested table's stand on the
+line that opens it.
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Type `login` into "Search"
 and press Enter: the rows are the tasks with "login" in their title or their

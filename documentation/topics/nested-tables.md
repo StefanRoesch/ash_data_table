@@ -189,7 +189,7 @@ offers create only where
 
 The table then fills that attribute in from the row above, which it reads
 again as the person, and leaves it out of the panel. The button is on the
-relationship line, after the label, once the nested table has read: "New
+relationship line, at its far end, once the nested table has read: "New
 comment" on the "Comments" line of a task, "New task" on the "Tasks" line
 of a project. A belongs-to, a has-one, a many-to-many, a manual
 relationship and one with `no_attributes?` offer none.
@@ -329,10 +329,11 @@ sort, filter cells are entered, cells are edited, the buttons of a row's
 actions cell are reached with Enter. The pages and the link of
 a nested table are rows of its grid and no tab stops of their own, so that
 Tab from anywhere in the tree leaves it. Its create button is on its line
-for the same reason, and so are the buttons of its table actions. The "Clear filters" button of a
+for the same reason, and so are the buttons of its table actions and its
+"Columns" button: F2 on the line goes to them. The "Clear filters" button of a
 nested table is not reached from the keyboard; each filter is cleared from
-its own cell. Its "Columns" button is a tab stop of its own: it is the only
-way to the list of the nested table's columns.
+its own cell. The inputs of its argument line, on its line too, are tab
+stops of their own.
 
 Focus is kept through everything that patches the page. When a line or a
 row is closed while focus is inside it, focus goes to the line, or to the
@@ -522,6 +523,12 @@ The default kit keeps the nesting readable:
 - **A title per relationship**: its arrow opens and closes that one nested
   table, and once the nested table has read it says how many records it has
   (where that is known: the read action counts, or there is one page).
+  While it is open the title is the nested table's heading line, the same
+  as a table on the page has above its grid: after the name and the count
+  its "Columns", the inputs of its argument line, and at the far end its
+  create button and table actions. One line, which wraps only where it
+  does not fit. Under it, the line of its selection takes room only while
+  rows are selected or a filter is set, as on the page.
 - **About a row of space between two nested tables**, and no card around
   them; **one stronger rule** where the nested area ends.
 - With `sticky_header`, a nested table is about ten rows high and scrolls by
@@ -534,7 +541,8 @@ go, and the lines and borders carry the structure.
 ## How a nested table is drawn
 
 The table on the page draws every table it shows. A nested table is moved
-into the cell under its relationship line through a portal (`<.portal>`):
+into the cell under its relationship line through a portal (`<.portal>`),
+and its heading line onto the relationship line through a second one:
 it is no live component of its own, whichever way the table on the page is
 placed (see [Layout and embedding](layout-and-embedding.md)).
 
@@ -735,8 +743,8 @@ in a nested table for each of its rows.
   is open**: a row that is saved shows the cell as "Not available". Where the
   relationship says `allow_forbidden_field? false`, the refusal fails the
   whole read, and the table shows that as the refusal of its own read.
-- **Hidden columns.** A nested table has its own "Columns" button, on a
-  line above its header, and what is hidden in it is that nested table's
+- **Hidden columns.** A nested table has its own "Columns" button, on the
+  line that opens it, named for it ("Columns of Comments"), and what is hidden in it is that nested table's
   alone. Closing the line and opening it again shows every column. Hiding
   columns of the table around it leaves the nested table as wide as it
   was: as wide as what is seen of the table around it. See

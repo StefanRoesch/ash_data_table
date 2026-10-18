@@ -101,9 +101,12 @@ defmodule AshDataTable.Attrs do
   # sections that follow say what each part is for.
   #
   #   * the root element `ID` (`data-read` once the table has read); in it
-  #     the line of the table's name, `ID-header`, with the name `ID-name`,
-  #     the create button `ID-create` and the table actions `ID-do-ACTION`
-  #     (`data-table-action`);
+  #     the table's heading line, `ID-header`, with the name `ID-name`, the
+  #     "Columns" button, the argument line, the create button `ID-create`
+  #     and the table actions `ID-do-ACTION` (`data-table-action`). A
+  #     nested table's heading line is drawn by the nested table and moved
+  #     onto its line (`ID-row-KEY-l-NAME-h`, its second portal), so its
+  #     buttons are `ID-row-KEY-t-NAME-create` and the like;
   #   * `ID-grid`, the grid's hook's element (`data-ash-data-table`, `data-lead`,
   #     `data-select`, `data-choose`, `data-chosen-rows`); in it `ID-table`,
   #     the `<table role="grid">`, which says `aria-busy` while it reads, and
@@ -119,9 +122,9 @@ defmodule AshDataTable.Attrs do
   #     selected and `data-current` in a table to choose from;
   #   * the detail of a row says `data-detail` and `data-row` (the key of its
   #     row); the cell of a line `data-line` (the relationship), with
-  #     `ID-row-KEY-l-NAME-c > div > button`s: the one that opens it
-  #     (`aria-expanded`), then `ID-row-KEY-l-NAME-create` and the nested
-  #     table's actions `ID-row-KEY-l-NAME-do-ACTION`; the cell of a nested
+  #     `ID-row-KEY-l-NAME-c > div > button` the one that opens it
+  #     (`aria-expanded`), and in the same `div` the place of the nested
+  #     table's heading line, `ID-row-KEY-l-NAME-h`; the cell of a nested
   #     table `data-nested`;
   #   * a failed cell, and a failed actions cell: `aria-invalid` and
   #     `aria-describedby`, which names the message, a child of the cell
@@ -142,13 +145,16 @@ defmodule AshDataTable.Attrs do
   #     `ID-select-filter`, `ID-expander-head`, `ID-expander-filter`,
   #     `ID-actions-head`, `ID-actions-filter`; a filter's controls are
   #     `select[id$='-operator']` and `select[id$='-value']`;
-  #   * the "Columns" list: its button says `data-columns-button`, a hidden
+  #   * the "Columns" list: its button says `data-columns-button` and holds
+  #     `ID-columns-text` (what it is called, with what is hidden) and
+  #     `ID-columns-count` (how many are hidden), both the hook's; a hidden
   #     column's entry `data-flag`, and `ID-columns-status` is its live
   #     region;
   #   * the argument line: `form[data-arguments]`, each argument a child
   #     `[data-argument=NAME]` with its `[data-label]` and `[data-error]`s;
   #   * the line of the selection: `ID-selection`, `ID-selected`, each
-  #     action's button `data-bulk`;
+  #     action's button `data-bulk`, after the first two of more than three
+  #     in the menu `ID-bulk-more` its button `ID-bulk-more-button` opens;
   #   * the action panel `ID-panel` (`data-question`): `ID-panel-title`,
   #     `ID-panel-form`, `ID-panel-errors`, `ID-panel-cancel`,
   #     `ID-panel-submit`. A field says its name in `data-field`; its label
@@ -299,7 +305,10 @@ defmodule AshDataTable.Attrs do
   # Above the grid, `ID-selection` holds the number of selected rows
   # (`ID-selected`, a live region the server renders) and, in
   # `ID-selection-controls`, `ID-select-all`, `ID-clear-selection` and a
-  # button per action on the selected rows (`ID-bulk-ACTION`). Such an
+  # button per action on the selected rows (`ID-bulk-ACTION`; of more than
+  # three, the first two, and the others in the popover `ID-bulk-more`
+  # that `ID-bulk-more-button` opens). The line takes no room while nothing
+  # is selected, no filter is set and no notice shows. Such an
   # action is run by `AshDataTable.Bulk`, beside the process; what it came to
   # is in `ID-result`, and the rows it did not run on stay selected
   # (`ash_data_table:select`).
@@ -307,8 +316,8 @@ defmodule AshDataTable.Attrs do
   # ## Table actions
   #
   # A table action is a button: `ID-do-ACTION`, on the line of the table's
-  # name beside the create button, and for a nested table on the line that
-  # names it, in the table around it (`…-l-NAME-do-ACTION`). Either sends
+  # name beside the create button; a nested table's heading line stands on
+  # the line that names it (`…-t-NAME-do-ACTION`). Either sends
   # `table_act` to the table the action is of. An action with inputs opens
   # the action panel; one with a question is asked in the table's dialog,
   # which the hook opens when the server tells it to (`ash_data_table:ask`), and
@@ -608,7 +617,7 @@ defmodule AshDataTable.Attrs do
     [colspan] [data-selector] [data-select-page] [data-expander] [data-line] [data-nested]
     [data-actions] [data-pager] [data-view] [data-filter] [data-lines] [data-paragraph] [data-detail]
     [data-current] [data-summaries]
-    [data-resize] [data-open] [data-action] [data-create] [data-table-action] [data-destructive]
+    [data-resize] [data-open] [data-action] [data-table-action] [data-destructive]
     [data-question] [data-confirm]
     [data-reveal] [data-mask] [data-masked] [data-secret] [data-unseen] [data-whole]
     [data-control] [data-clear] [data-count] [data-value-text] [data-list] [data-item] [data-add]
@@ -981,14 +990,9 @@ defmodule AshDataTable.Attrs do
 
   @doc """
   A line under an expanded row: `data-line` names its relationship, on
-  the line's cell (the part writes its id, role, place and `tabindex`),
-  and `data-table-action` the table action of a nested table that
-  a button on the line runs.
+  the line's cell (the part writes its id, role, place and `tabindex`).
   """
   def line(relationship), do: %{"data-line" => relationship.name}
-
-  @doc "The button on a line that runs a nested table's table action (`data-table-action`)."
-  def line_action(action), do: %{"data-table-action" => action.name}
 
   @doc """
   The counter of a text with a most it can be long: the unit it counts in
@@ -1164,18 +1168,21 @@ defmodule AshDataTable.Attrs do
   @doc """
   The "Columns" button: it opens and closes the list of the columns, the
   browser's popover (`popovertarget`), and says what the hook writes on it
-  of the hidden columns: its text (`data-text`), the text the parts are
+  of the hidden columns: what it is called (`data-text`, `columns_name`:
+  of a nested table its table's name with it), the text the parts are
   put into (`data-text-with`, with `{details}`), and the parts for every
   number from 1 to the number of columns (`data-text-hidden`,
   `data-text-filtered`, `data-text-sorted`, each a JSON list): the
-  `columns` part's `texts`.
+  `columns` part's `texts`. The hook writes the name with the parts into
+  `ID-columns-text`, and the number of hidden columns, or nothing, into
+  `ID-columns-count`.
   """
   def columns_button(id, texts) do
     %{
       "id" => "#{id}-columns-button",
       "popovertarget" => "#{id}-columns",
       "data-columns-button" => true,
-      "data-text" => texts.columns,
+      "data-text" => texts.columns_name,
       "data-text-with" => texts.columns_with,
       "data-text-hidden" => held(texts.columns_hidden),
       "data-text-filtered" => held(texts.columns_filtered),
@@ -1186,13 +1193,14 @@ defmodule AshDataTable.Attrs do
   @doc """
   The list of the columns, a box each: a popover the button opens
   (`popover="auto"`: a click elsewhere and Escape close it), a group named
-  by `texts.columns`; `data-keeps-one` where one column has to stay shown.
+  by `texts.columns_name`; `data-keeps-one` where one column has to stay
+  shown.
   """
   def columns(id, keeps_one?, texts) do
     %{
       "id" => "#{id}-columns",
       "role" => "group",
-      "aria-label" => texts.columns,
+      "aria-label" => texts.columns_name,
       "popover" => "auto",
       "data-columns-list" => true,
       "data-keeps-one" => keeps_one?
@@ -1251,6 +1259,20 @@ defmodule AshDataTable.Attrs do
       "data-destructive" => action.type == :destroy
     }
   end
+
+  @doc """
+  The button of the menu of the actions on the selected rows after the
+  first two, where there are more than three: it opens and closes the
+  menu, the browser's popover (`popovertarget`).
+  """
+  def bulk_more_button(id),
+    do: %{"id" => "#{id}-bulk-more-button", "popovertarget" => "#{id}-bulk-more"}
+
+  @doc """
+  That menu: a popover (`popover="auto"`) that holds the buttons of those
+  actions (`bulk/3`), each used as one in the line is.
+  """
+  def bulk_more(id), do: %{"id" => "#{id}-bulk-more", "popover" => "auto"}
 
   @doc """
   The pagination, and its hook. Under a table on the page a navigation

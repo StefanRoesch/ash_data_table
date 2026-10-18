@@ -79,11 +79,11 @@ defmodule AshDataTable.RegistryTest do
 
   defp ids(socket), do: socket.assigns.table.entries |> Map.keys() |> Enum.sort()
 
-  test "a table renders the nested table of each open line of a row on its page, into that line's cell" do
+  test "a table renders the nested table of each open line of a row on its page, into that line's cell and its heading onto the line" do
     run(fn live ->
       socket = socket(live) |> open(%{"1" => [:comments], "2" => [], "3" => [:comments]})
 
-      assert [{"t-row-1-t-comments", given, "t-row-1-n-comments-c"}] =
+      assert [{"t-row-1-t-comments", given, {"t-row-1-n-comments-c", "t-row-1-l-comments-h"}}] =
                Nesting.children(socket, "t")
 
       assert %{id: "t-row-1-t-comments", parent_key: %{id: 1}, url: nil, mounted?: false} = given

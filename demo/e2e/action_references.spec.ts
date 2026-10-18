@@ -187,7 +187,7 @@ test.describe("\"Assign open tasks\" at /projects: a generic action in every row
     const [first, second] = await projects.rowKeys()
     await projects.box(first).click()
     await projects.box(second).click()
-    await projects.bulk("assign_open_tasks").click()
+    await projects.useBulk("assign_open_tasks")
 
     await expect(projects.panel).toBeVisible()
     await expect(projects.panelTitle).toHaveText("Assign open tasks: 2 records")

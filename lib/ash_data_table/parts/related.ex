@@ -11,7 +11,6 @@ defmodule AshDataTable.Parts.Related do
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
   alias AshDataTable.Parts
-  alias AshDataTable.Parts.Common
 
   # What is under an expanded row: one line per relationship the person is
   # offered, and under an open line the row whose one cell holds the nested
@@ -29,7 +28,6 @@ defmodule AshDataTable.Parts.Related do
   attr :row, :map, required: true
   attr :model, :map, required: true
   attr :colspan, :integer, required: true
-  attr :creates, :map, required: true
   attr :myself, :any, required: true
   attr :kit, :atom, required: true
 
@@ -44,8 +42,6 @@ defmodule AshDataTable.Parts.Related do
       open?={relationship.name in @row.lines}
       count={line_count(@row, relationship)}
       colspan={@colspan}
-      create={@creates[relationship.name][:create]}
-      actions={@creates[relationship.name][:actions] || []}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
       texts={Words.texts(:line, %{count: line_count(@row, relationship)})}
@@ -64,18 +60,21 @@ defmodule AshDataTable.Parts.Related do
   # the row's (`ID-row-KEY`), `table` the nested table's, whose events the
   # line's buttons send.
   #
-  # The line is the small title of its nested table: the arrow that opens
+  # The line is the heading line of its nested table: the arrow that opens
   # and closes it, the relationship's name and, once the nested table has
-  # read, how many records it has (`count`). Its element that stays in
-  # view draws the line of the nested area down its left (see
-  # `Parts.Look`) and the one inset after it.
+  # read, how many records it has (`count`); after them, while it is open,
+  # the place the nested table's own heading line is moved into
+  # (`Ids.line_heading/2`: its "Columns", its argument line, its create
+  # button and table actions, the kit's `heading/1` drawn by the nested
+  # table, see `AshDataTable.Live.Drawing`). Its element that stays in
+  # view, as wide as what is seen of the table (`--ash-data-table-view`),
+  # draws the line of the nested area down its left (see `Parts.Look`) and
+  # the one inset after it.
   attr :id, :string, required: true
   attr :relationship, :map, required: true
   attr :open?, :boolean, required: true
   attr :count, :any, required: true
   attr :colspan, :integer, required: true
-  attr :create, :any, required: true
-  attr :actions, :list, required: true
   attr :table, :string, required: true
   attr :myself, :any, required: true
   attr :texts, :map, required: true
@@ -94,9 +93,11 @@ defmodule AshDataTable.Parts.Related do
       >
         <%!-- What the line holds stays at the left edge of the table's
         scroll area while the table scrolls sideways under it, as the nested
-        table under it does: the padding of the cell is this element's, so
-        that it stands in the same place stuck and not. --%>
-        <div class="sticky left-0 w-fit border-s-[3px] border-s-primary/45 py-1 ps-5 pe-4">
+        table under it does, and is as wide as what is seen of it, so that
+        the far end of the heading line is in view: the padding of the cell
+        is this element's, so that it stands in the same place stuck and not.
+        One line, which wraps only where it does not fit. --%>
+        <div class="sticky left-0 flex w-[var(--ash-data-table-view,100%)] flex-wrap items-center gap-x-3 gap-y-2 border-s-[3px] border-s-primary/45 py-1 ps-5">
           <button
             type="button"
             id={Ids.line_button(@id, @relationship.name)}
@@ -109,41 +110,18 @@ defmodule AshDataTable.Parts.Related do
           <%!-- How many records the nested table has, once it has read: beside
           the button, not in it, as the button names the nested grid, which
           says its number of rows itself. --%>
-          <span :if={@open? and @texts.count} class="ms-1 text-sm text-base-content/70">
+          <span :if={@open? and @texts.count} class="-ms-1 text-sm text-base-content/70">
             {@texts.count}
           </span>
-          <%!-- The create button of the nested table, on the line that names
-          it: after the label, since the line is as wide as the table around it
-          and its far end is usually out of sight. It is shown once the nested
-          table has read (the rule is with the table's classes), and as high as
-          the line's text, so the line is as high with it as without. --%>
-          <button
-            :if={@open? and @create}
-            type="button"
-            id={"#{@id}-l-#{@relationship.name}-create"}
-            tabindex="-1"
-            data-create
-            phx-click={Common.event(@table, "create")}
-            phx-target={@myself}
-            class="btn btn-xs ms-2 hidden h-5 align-top"
+          <%!-- The nested table's heading line, put here by the browser (a
+          portal): it takes the rest of the line, and goes under the name as a
+          whole where it does not fit beside it. --%>
+          <div
+            :if={@open?}
+            id={Ids.line_heading(@id, @relationship.name)}
+            class="min-w-0 grow basis-auto"
           >
-            {@create}
-          </button>
-          <%!-- The table actions of the nested table, after it and looking as
-          it does: shown with it, and used on the nested table. --%>
-          <button
-            :for={action <- (@open? && @actions) || []}
-            type="button"
-            id={"#{@id}-l-#{@relationship.name}-do-#{action.name}"}
-            tabindex="-1"
-            {Attrs.line_action(action)}
-            phx-click={Common.event(@table, "table_act")}
-            phx-value-action={action.name}
-            phx-target={@myself}
-            class="btn btn-xs ms-2 hidden h-5 align-top"
-          >
-            {action.label}
-          </button>
+          </div>
         </div>
       </td>
     </tr>

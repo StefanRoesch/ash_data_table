@@ -39,13 +39,13 @@ order, not 425.
 - Exactly one cell is in the tab order at any time. At first it is the first
   cell of the first row of records.
 - The cell a person moved to is the one Tab returns to.
-- The controls around the grid are ordinary tab stops: the create button on
-  the line of the table's name, where the table has one, and the buttons of
-  its [table actions](table-actions.md) after it, the inputs of the
-  [argument line](arguments.md), where the table has arguments, the buttons
-  of the line above the grid ("Clear selection" and the bulk actions, while rows
-  are selected, "Clear filters", while a filter applies, and "Columns"), and the
-  pagination buttons below it.
+- The controls around the grid are ordinary tab stops: on the heading line
+  of the table "Columns", the inputs of the [argument line](arguments.md),
+  where the table has arguments, the create button, where the table has one,
+  and the buttons of its [table actions](table-actions.md) after it; the
+  buttons of the line above the grid ("Clear selection" and the bulk actions
+  or "More", while rows are selected, "Clear filters", while a filter
+  applies), and the pagination buttons below it.
 - Moving about never contacts the server. Selecting a row tells it what is
   selected, and nothing else.
 - Where rows can be selected, the first cell of a row holds its box; where
@@ -156,7 +156,8 @@ one tab stop.
 
 ## Hiding columns from the keyboard
 
-"Columns", above the grid, is an ordinary button and a tab stop. It opens a
+"Columns", on the heading line above the grid, is an ordinary button and a
+tab stop. It opens a
 list with a box per column; a column whose box is not ticked is hidden.
 What hiding does and does not do is in
 [Columns and defaults](columns-and-defaults.md#hiding-columns).
@@ -167,7 +168,7 @@ What hiding does and does not do is in
 | Tab | On "Columns", with the list open | Goes to the first box, and on through the boxes. |
 | Space | On a box | Hides the column, or shows it again. The list stays open. |
 | Escape | On the button or in the list | Closes the list. Focus goes to the button. In a picker, the picker stays open. |
-| Tab on the last box, Shift+Tab on the button | | Leaves the list, which closes. |
+| Tab on the last box, Shift+Tab on the button | | Leaves the list, which closes: on to the next control of the heading line, or back to the one before. |
 
 A click anywhere outside the list closes it as well.
 
@@ -184,10 +185,13 @@ The list is the browser's own popover, which its button opens: the browser
 opens and closes it and tells assistive technology whether it is open. It
 holds a group of labelled checkboxes named "Columns"; it is not an ARIA
 menu. It opens under its button, and in a browser without CSS anchor
-positioning (Firefox today) in the middle of the window. The button's text
-says how many columns are hidden, and how many of them the rows are
-filtered or sorted by: "Columns (2 hidden, 1 filtered)". Hiding or showing
-a column is read out once, politely: "Progress hidden", "Progress shown".
+positioning (Firefox today) in the middle of the window. The button shows
+an eye struck through, "Columns" and, in a badge, how many columns are
+hidden. Its accessible name says how many are hidden, and how many of them
+the rows are filtered or sorted by: "Columns (2 hidden, 1 filtered)"; of a
+nested table it names the table: "Columns of Comments (2 hidden)". The
+badge is not read out besides. Hiding or showing a column is read out
+once, politely: "Progress hidden", "Progress shown".
 
 A hidden column is not told to a screen reader: its cells are not
 displayed. The cells that are shown keep their `aria-colindex`, and the
@@ -196,8 +200,10 @@ column 5 of 12 when column 4 is hidden. That is what ARIA has these two
 attributes for: a grid of which
 [not every column is there](https://www.w3.org/WAI/ARIA/apg/practices/grid-and-table-properties/).
 
-The "Columns" button of a nested table is a tab stop of its own, inside the
-grid around it: there is no other way to its list from the keyboard.
+The "Columns" button of a nested table stands on the line that opens it,
+and is no tab stop, as the other buttons on that line are not: F2 on the
+line goes to its controls, and Right Arrow to "Columns" (see
+[Rows that expand](#rows-that-expand) below).
 
 ## The filter row from the keyboard
 
@@ -227,7 +233,7 @@ browser's.
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Tab, Shift+Tab | Anywhere on the line | To the next and the previous input, and from the last one into the grid. Leaving an input applies what was typed in it. |
+| Tab, Shift+Tab | Anywhere on the line | To the next and the previous input, and from the last one on to the create button, where the table has one, and into the grid. Leaving an input applies what was typed in it. |
 | Enter | In an input | Applies what the line holds now. Focus stays in the input. |
 | Space | On a box | Ticks it, which applies at once. So does a choice from a menu. |
 | Enter, Space | On "Add value" of a list | Adds a row for one more value, and focus goes into it. |
@@ -443,9 +449,10 @@ says whether the row is expanded
 (`aria-expanded`). An expanded row has, under it, one row per relationship
 line, each a cell that spans the grid with a button of its own, and under an
 open line a row whose one cell holds the nested table. All of them are cells
-of the grid, which the arrow keys stop at. A line whose nested table lets
-the person create has a second button after its label, such as "New
-comment".
+of the grid, which the arrow keys stop at. An open line is the nested
+table's heading line: after the button that names it, the nested table's
+"Columns", the inputs of its argument line, and at its far end its create
+button ("New comment") and the buttons of its table actions.
 
 | Key | Where | Effect |
 | --- | --- | --- |
@@ -453,7 +460,7 @@ comment".
 | Right Arrow | On an expander or a line that is closed | Opens it. On one that is open, moves on as on any cell. |
 | Left Arrow | On an expander or a line that is open | Closes it, with everything open under it. |
 | Enter | On an expander or a line | Opens or closes it. |
-| F2 | On a line that has a create button, or the buttons of table actions | Goes to the line's controls: the button that opens and closes it, the create button, and the buttons of the nested table's table actions. Left Arrow and Right Arrow move between them; Enter uses one; Escape returns to the line. |
+| F2 | On a line that is open | Goes to the line's controls: the button that opens and closes it, then the nested table's "Columns", the inputs of its argument line, its create button and the buttons of its table actions. Left Arrow and Right Arrow move between the buttons (in an input they move in the text, and Tab goes on); Enter uses one; Escape returns to the line. |
 | Down Arrow, Up Arrow | | Go through the lines and the nested tables' cells as through rows, keeping the column for the rows below them. |
 | Enter, F2 | On the cell that holds a nested table | Goes into the nested table: to the cell that was left last, or to its first data cell. |
 | Escape | On a cell of a nested table | Comes back out, to the cell that holds it. |
@@ -469,9 +476,12 @@ from a table of its own, so that the whole tree stays one tab stop:
 - Its "Clear filters" button is not in the tab order and not reached from
   the keyboard. Each filter is cleared from its own cell.
 
-One thing is a tab stop inside the tree all the same: the buttons of a
-nested table's line above its grid, while that nested table has rows
-selected. They are there only then, and have to be reached.
+Two things are tab stops inside the tree all the same: the inputs of a
+nested table's argument line, on the line that opens it, and the buttons of
+its line above its grid, while that nested table has rows selected. Those
+are there only then, and have to be reached. Focus in an input on the line
+leaves the tree's tab stop where it was, so Tab from it goes on into the
+nested grid.
 
 On the page a nested table's link leads to, the heading that says what the
 table is limited to and the control "Show all records" are ordinary content

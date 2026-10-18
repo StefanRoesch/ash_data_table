@@ -168,7 +168,7 @@ by `email`: the selection is given up.
 
 ## The line above the grid
 
-The line is above the grid, under the line of the table's name. It holds,
+The line is above the grid, under the heading line of the table. It holds,
 from the left:
 
 | | Shown |
@@ -176,16 +176,21 @@ from the left:
 | The count: "1 selected", "3 selected", or "All 320 that match are selected" | While anything is selected. |
 | "Select all 320 that match" | While every row of the page is selected and there is more than the page. |
 | "Clear selection" | While anything is selected. |
-| One button per bulk action, in the declared order | While anything is selected. |
+| One button per bulk action, in the declared order; of more than three, the first two, and the others in a menu that "More" opens | While anything is selected. |
 
-"Clear filters" is at the other end of the same line. On a table
-of its own the line is as high as a button whether or not anything is
-selected, so the grid does not move when the buttons appear. A nested table
-keeps no room free for it.
+An action that destroys has the error colour's outline. "Clear filters" is
+at the other end of the same line. The line takes room only while
+something is on it: rows are selected, a filter is set, or the
+[notice of changes](live-updates.md) shows. No room is kept for it, on a
+table of its own as on a nested one, so the grid moves down by a line when
+the first row is selected. The count is said in a live region that is
+always there, empty and of no height while nothing is selected.
 
 The server draws the line from the selection it holds. Its buttons are
-ordinary buttons in the page's tab order, before the grid and the
-"Columns" button. They are there only while rows are selected. See
+ordinary buttons in the page's tab order, right before the grid. "More"
+opens a menu (the browser's popover), whose buttons are tab stops after it;
+a click elsewhere or Escape closes it, and an action used from it closes it
+with focus on "More". They are there only while rows are selected. See
 [The keyboard](#the-keyboard).
 
 ## Which actions are offered
@@ -411,9 +416,9 @@ when the task is done (1)".
 
 | After | Focus is |
 | --- | --- |
-| A question answered with Cancel or Escape | On the button that asked. |
-| A run that left rows selected | On the button that was used. |
-| A run that left nothing selected | On the grid's current cell: the buttons are gone. |
+| A question answered with Cancel or Escape | On the button that asked; for an action of the menu, on "More". |
+| A run that left rows selected | On the button that was used, or "More". |
+| A run that left nothing selected | On the grid's current cell: the buttons are gone, and the line with them. |
 | "Clear selection" | On the grid's current cell. |
 | "Select all … that match" | On "Clear selection". |
 
@@ -494,7 +499,7 @@ them.
 | Space | On the cell of the box in the header | Selects the rows of the page, or takes them out. |
 | Shift+Down Arrow, Shift+Up Arrow | On a cell of a row of records | Moves to the next or previous row of records and selects as it goes. What is open under a row is passed over. |
 | Left Arrow | On the first data cell of a row | Moves to the row's expander, where rows expand, and from there to its box. Home goes to the box at once. Tab still enters the grid on the first column of the table. |
-| Shift+Tab | On a cell of the grid | Leaves the grid backwards: to "Columns", then to the buttons of the line above the grid, the last first: the bulk actions, "Clear selection", "Select all … that match". |
+| Shift+Tab | On a cell of the grid | Leaves the grid backwards: to the buttons of the line above the grid, the last first: "More" or the bulk actions, "Clear selection", "Select all … that match"; then to the heading line. |
 | Enter, Space | On a button of the line | Uses it. |
 
 When the question opens, focus moves to Cancel, Tab reaches Confirm, and

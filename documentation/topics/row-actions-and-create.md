@@ -612,10 +612,10 @@ resource's short name in words. `Demo.Tracker.Task` gives "New task",
 
 | The table | The button |
 | --- | --- |
-| Mounted with `ash_data_table` | On the line of the page's heading: the table's name at the left, the button at the right. |
+| Mounted with `ash_data_table` | On the line of the page's heading: the table's name, "Columns" and the inputs of the argument line at the left, the button at the right. |
 | Embedded with `<AshDataTable.table>` | On the line of the table's name, in the same way. The `heading` attribute says what the name is; see [Layout and embedding](layout-and-embedding.md#the-line-of-the-table-s-name). |
 | The full view of a nested table | On the line that names the parent and the relationship, before "Show all records". The record is created under that parent. |
-| A nested table | On its relationship line, after the label. See below. |
+| A nested table | On its relationship line, at its far end. See below. |
 
 A person who can never run the create action has no button.
 
@@ -648,10 +648,11 @@ used. Nothing the form sends can replace it. When the parent is gone or no
 longer theirs to read, nothing is created: "This record is no longer
 available."
 
-**Where the button is.** On the relationship line, right after its label,
-while the line is open and once the nested table has read. A line is as
-wide as the table around it, so its far end is usually out of sight; the
-button is where the eye already is.
+**Where the button is.** On the relationship line, which is the nested
+table's heading line, at its far end, while the line is open and once the
+nested table has read. The line is as wide as what is seen of the table
+around it, and stays in place while that table scrolls sideways, so its far
+end is in view.
 
 | Under a row of | The line | Offers |
 | --- | --- | --- |

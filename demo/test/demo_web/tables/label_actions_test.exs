@@ -96,7 +96,7 @@ defmodule DemoWeb.Tables.LabelActionsTest do
 
       assert html
              |> LazyHTML.from_fragment()
-             |> LazyHTML.query("#label-header button")
+             |> LazyHTML.query("#label-header button:not([data-columns-button])")
              |> Enum.map(&(&1 |> LazyHTML.text() |> String.trim())) ==
                ["New label", "Count unused", "Recolour", "Remove unused", "Merge", "Import"]
 
@@ -326,7 +326,7 @@ defmodule DemoWeb.Tables.LabelActionsTest do
     } do
       html =
         table_act(view, nested, "count_unused",
-          on: "task-row-#{task.id}-l-labels-do-count_unused"
+          on: "task-row-#{task.id}-t-labels-do-count_unused"
         )
 
       # the unused labels of the organization: those of this task are all used

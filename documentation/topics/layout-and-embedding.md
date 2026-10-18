@@ -167,7 +167,8 @@ recompiling the dependency. `mix ash_data_table.install` sets it when your
 app has `MyAppWeb.Layouts.app/1`.
 
 Inside the layout the page is the table, and the first line of the table is
-the page's heading: the table's name as an `h1` at the left and, where the
+the page's heading: the table's name as an `h1` at the left, then
+"Columns" and the inputs of its [argument line](arguments.md) and, where the
 table has a create action that the person may run, its create button at the
 right, followed by the buttons of its [table actions](table-actions.md). The
 name is the resource's `plural_name`, or its short name, in words: "Tasks",
@@ -264,16 +265,30 @@ attaches its table instead.
 
 ### The line of the table's name
 
-Above its grid a table has one line: its name at the left and its create
-button at the right. On a mounted page that line is the page's `h1`. An
+Above its grid a table has one heading line, the same for a table on the
+page and a [nested table](nested-tables.md): its name, "Columns" (an eye
+struck through, the word, and while columns are hidden how many, see
+[Columns and defaults](columns-and-defaults.md)), the inputs of its
+[argument line](arguments.md), and at the far end its create button and
+the buttons of its [table actions](table-actions.md). It wraps only where
+it does not fit. On a mounted page the name is the page's `h1`. An
 embedded or attached table cannot know the outline of the page it is in, so
 `heading` says what the name is:
 
 | `heading` | The name is | The line |
 | --- | --- | --- |
-| `true`, the default | Text that is no heading. | The name, and the create button and the buttons of the table actions, where there are any. |
+| `true`, the default | Text that is no heading. | The name, "Columns", the inputs, and the create button and the buttons of the table actions, where there are any. |
 | A number from 1 to 6 | A heading of that level: `heading={2}` renders an `h2`. | The same. |
-| `false` | Left out, for a page that names the table itself. | The buttons alone, where there are any; else no line at all. |
+| `false` | Left out, for a page that names the table itself. | The rest, where there is any; else no line at all. |
+
+Under it, and only while there is something on it, is the line of the
+selection: what is selected and its actions, the notice of changes and
+"Clear filters" ([Selecting rows](selecting-rows-and-bulk-actions.md#the-line-above-the-grid)).
+No room is kept for it: the grid moves down by a line while it is there.
+
+A nested table has no name of its own: the line under its row that opens
+it is its heading line, with its "Columns", its inputs and its create
+button on it ([Nested tables](nested-tables.md)).
 
 Anything else raises an `ArgumentError` when the table is rendered.
 
@@ -401,7 +416,7 @@ scrolls sideways in an area of its own, and the page around it does not.
   table. It stays in place while the table around it
   scrolls under it, and scrolls by itself: a wide nested table in a wide
   table are two things to scroll, each without the other. So do the line
-  that opens it, its "Columns" button and its pages.
+  that opens it, which holds its "Columns" button, and its pages.
 - **Shift and the mouse wheel** (or a sideways swipe) scroll the table under
   the pointer, as the browser has it. A nested table that is scrolled to its
   end does not go on to scroll the table around it. The wheel alone scrolls

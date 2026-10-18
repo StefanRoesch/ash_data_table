@@ -146,6 +146,9 @@ defmodule AshDataTable.Messages do
     select_all: {[:count], dgettext_noop("ash_data_table", "Select all %{count} that match")},
     select_all_uncounted: {[], dgettext_noop("ash_data_table", "Select all that match")},
     clear_selection: {[], dgettext_noop("ash_data_table", "Clear selection")},
+    # the button of the menu that holds the actions on the selected rows
+    # after the first two, where there are more than three
+    more_actions: {[], dgettext_noop("ash_data_table", "More")},
     # what is asked before an action runs on the selected rows
     bulk_question:
       {[:count, :action],
@@ -263,6 +266,11 @@ defmodule AshDataTable.Messages do
     # takes the ones it needs and puts them together with a comma between.
     columns: {[], dgettext_noop("ash_data_table", "Columns")},
     columns_with: {[:details], dgettext_noop("ash_data_table", "Columns (%{details})")},
+    # the same of a nested table, which says whose columns they are: the
+    # button shows "Columns", and is called "Columns of Comments"
+    columns_of: {[:table], dgettext_noop("ash_data_table", "Columns of %{table}")},
+    columns_of_with:
+      {[:table, :details], dgettext_noop("ash_data_table", "Columns of %{table} (%{details})")},
     columns_hidden: {[:count], dngettext_noop("ash_data_table", "1 hidden", "%{count} hidden")},
     columns_filtered:
       {[:count], dngettext_noop("ash_data_table", "1 filtered", "%{count} filtered")},

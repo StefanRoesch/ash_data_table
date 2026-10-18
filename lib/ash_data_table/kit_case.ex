@@ -578,6 +578,7 @@ defmodule AshDataTable.KitCase do
         need(page, "[id='kit-columns-control']", "its control") ++
         need(page, "[id='kit-columns-status']", "what it says") ++
         need(page, "[id='kit-columns-text']", "its text") ++
+        need(page, "[id='kit-columns-count']", "its number of hidden columns") ++
         need(page, "[id='kit-scrollbar'][data-scrollbar]", "the scrollbar") ++
         need(page, "template[id='kit-failure']", "the failure template") ++
         need(
@@ -799,6 +800,11 @@ defmodule AshDataTable.KitCase do
         page,
         "[id='#{nested}-columns'][data-keeps-one]",
         "the Columns list of a table without a label column"
+      ) ++
+      need(
+        page,
+        "[id='kit-row-#{key}-l-parts-c'] [id='#{AshDataTable.Ids.line_heading(AshDataTable.Ids.row("kit", key), :parts)}'] [id='#{nested}-columns-button']",
+        "the nested table's heading line on its line (`AshDataTable.Ids.line_heading/2`)"
       )
   end
 

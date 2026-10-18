@@ -3,7 +3,7 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {ACTIONS, CREATE, EXPANDER, FILTER, GRID, HANDLE, HEADER, LINE, NESTED, PAGER, ROW, ROWGROUP, SELECT_PAGE, TABLE_ACTION, VIEW} from "../markers.js"
+import {ACTIONS, EXPANDER, FILTER, GRID, HANDLE, HEADER, LINE, NESTED, PAGER, ROW, ROWGROUP, SELECT_PAGE, VIEW} from "../markers.js"
 import {PRINTABLE, cellsOf, is} from "./shared.js"
 
 export default {
@@ -29,6 +29,12 @@ export default {
         if (reply && typeof reply.open === "boolean") button.setAttribute("aria-expanded", String(reply.open))
       })
     }
+  },
+
+  // The controls of a line a person can use: the button that opens it,
+  // and those of its nested table's heading line, which stands on it.
+  lineControls(cell) {
+    return Array.from(cell.querySelectorAll("input,select,button")).filter(control => this.usable(control))
   },
 
   // Follows the link a cell holds, as a click on it does.
@@ -132,9 +138,10 @@ export default {
         // the column's width
         if (is(cell, HEADER) && this.handleOf(cell)) this.handleOf(cell).focus()
         // into a cell that holds controls; a line among them, when
-        // it holds more than the button that opens it
+        // it holds more than the button that opens it: the heading
+        // line of its nested table, which stands on it
         else if (is(cell, FILTER) || is(cell, PAGER) || is(cell, ACTIONS)) this.enter(cell)
-        else if (is(cell, LINE) && cell.querySelector(`${CREATE},${TABLE_ACTION}`)) this.enter(cell)
+        else if (is(cell, LINE) && this.lineControls(cell).length > 1) this.enter(cell)
         else if (is(cell, NESTED)) this.enterNested(cell)
         else if (this.canEdit(cell)) this.startEdit(cell, null)
         else handled = false

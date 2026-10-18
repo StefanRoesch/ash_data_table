@@ -564,3 +564,15 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Show less"
 msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Columns of %{table}"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "Columns of %{table} (%{details})"
+msgstr ""
+
+#, elixir-autogen, elixir-format
+msgid "More"
+msgstr ""

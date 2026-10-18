@@ -42,7 +42,9 @@ test.describe("the buttons", () => {
     page,
   }) => {
     await expect(labels.tableActions).toHaveText(["Count unused", "Recolour", "Remove unused", "Merge", "Import"])
-    await expect(labels.headerLine.getByRole("button")).toHaveText([
+    // after "Columns" (hiding.spec.ts)
+    await expect(labels.headerLine.getByRole("button").first()).toHaveAccessibleName("Columns")
+    await expect(labels.headerLine.locator("button:not([data-columns-button])")).toHaveText([
       "New label",
       "Count unused",
       "Recolour",
@@ -66,15 +68,15 @@ test.describe("the buttons", () => {
       right = own.x + own.width
     }
 
-    // Tab goes through them in that order, then to "Columns"
-    // (hiding.spec.ts), and then into the grid
-    await labels.create.focus()
+    // Tab goes through them in that order, after "Columns" (hiding.spec.ts),
+    // and then into the grid
+    await labels.columnsButton.focus()
+    await page.keyboard.press("Tab")
+    await expect(labels.create).toBeFocused()
     for (const name of ["count_unused", "recolour", "remove_unused", "merge", "import"]) {
       await page.keyboard.press("Tab")
       await expect(labels.tableAction(name)).toBeFocused()
     }
-    await page.keyboard.press("Tab")
-    await expect(labels.columnsButton).toBeFocused()
     await page.keyboard.press("Tab")
     expect(await labels.hasFocus()).toBe(true)
   })
@@ -315,7 +317,8 @@ test.describe("in a nested table", () => {
       await expect(button).toHaveAttribute("class", (await create.getAttribute("class"))!)
       expect((await button.boundingBox())!.height).toBe((await create.boundingBox())!.height)
     }
-    await expect(tasks.lineCell(FIRST, "labels").getByRole("button")).toHaveText([
+    // beside "Columns", which is the nested table's as well
+    await expect(tasks.lineCell(FIRST, "labels").locator("button:not([data-columns-button])")).toHaveText([
       "Labels",
       "Count unused",
       "Recolour",
@@ -323,11 +326,15 @@ test.describe("in a nested table", () => {
       "Merge",
       "Import",
     ])
-    // the nested table has no line of its own for them
-    await expect(nested.headerLine).toHaveCount(0)
+    // the nested table's heading line is on the line that names it, and
+    // there is no other
+    await expect(tasks.lineCell(FIRST, "labels").locator(`[id="${nested.id}-header"]`)).toHaveCount(1)
     await expect(nested.tableActions).toHaveCount(0)
     // a table without table actions has none on its line
-    await expect(tasks.lineCell(FIRST, "comments").getByRole("button")).toHaveText(["Comments", "New comment"])
+    await expect(tasks.lineCell(FIRST, "comments").locator("button:not([data-columns-button])")).toHaveText([
+      "Comments",
+      "New comment",
+    ])
     await expect(comments.grid).toBeVisible()
     expect(await tasks.tabStops(), "the tree is one tab stop still").toHaveLength(1)
 
@@ -335,6 +342,8 @@ test.describe("in a nested table", () => {
     await tasks.lineCell(FIRST, "labels").focus()
     await page.keyboard.press("F2")
     await expect(tasks.line(FIRST, "labels")).toBeFocused()
+    await page.keyboard.press("ArrowRight")
+    await expect(nested.columnsButton).toBeFocused()
     await page.keyboard.press("ArrowRight")
     await expect(tasks.lineAction(FIRST, "labels", "count_unused")).toBeFocused()
     await page.keyboard.press("Enter")

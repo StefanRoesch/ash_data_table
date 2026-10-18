@@ -144,11 +144,14 @@ const core = {
     // and `range` the range that Shift and the arrow keys are
     // drawing, with what was selected before it.
     this.selection = {keys: new Map(), all: false, anchor: null, range: null}
-    // the line above the grid is outside this element: its buttons
-    // are heard at the table's own element
-    this.root = document.getElementById(this.id)
+    // The line above the grid is outside this element, and so is the
+    // heading line, which a nested table has on the line that names it,
+    // in the table around it: what happens there is heard at the
+    // document, and each handler takes only what is this table's (by
+    // the ids of its parts).
+    this.scope = document
     this.onLine = e => this.onLineClick(e)
-    if (this.root) this.root.addEventListener("click", this.onLine)
+    this.scope.addEventListener("click", this.onLine)
     // the button of the line the focus was in last, for when the
     // server takes the buttons away with the selection (`paint`)
     this.lineFocus = null
@@ -156,22 +159,20 @@ const core = {
       const line = this.line()
       if (line && line.contains(e.target)) this.lineFocus = e.target
     }
-    if (this.root) this.root.addEventListener("focusin", this.onLineFocus)
+    this.scope.addEventListener("focusin", this.onLineFocus)
     // so is the argument line: Enter in one of its inputs applies
     // what the line holds now, as it does in a filter. A form of
     // several inputs without a button is not sent by Enter itself.
     this.onArgument = e => this.onArgumentKeydown(e)
-    if (this.root) this.root.addEventListener("keydown", this.onArgument)
+    this.scope.addEventListener("keydown", this.onArgument)
     // The counter of a text follows what is typed, wherever in the
     // table the text is: in a cell, in the argument line, in the
     // action panel. Nothing is sent for it.
     this.onTyped = e => this.onCount(e)
-    if (this.root) this.root.addEventListener("input", this.onTyped)
+    this.scope.addEventListener("input", this.onTyped)
     // and so is "Columns", with its list
     this.onColumns = e => this.onColumnsEvent(e)
-    for (const type of ["change", "focusout"]) {
-      if (this.root) this.root.addEventListener(type, this.onColumns)
-    }
+    for (const type of ["change", "focusout"]) this.scope.addEventListener(type, this.onColumns)
     // A patch of the argument line brings its counters as the
     // server counted them, from what it had heard by then, which
     // need not be all that has been typed since: they are counted
@@ -302,15 +303,13 @@ const core = {
     this.observer && this.observer.disconnect()
     this.counted && this.counted.disconnect()
     this.listed && this.listed.disconnect()
-    for (const type of ["change", "focusout"]) {
-      if (this.root) this.root.removeEventListener(type, this.onColumns)
-    }
-    if (this.root) this.root.removeEventListener("input", this.onTyped)
+    for (const type of ["change", "focusout"]) this.scope.removeEventListener(type, this.onColumns)
+    this.scope.removeEventListener("input", this.onTyped)
     window.removeEventListener("scroll", this.onScroll, true)
     window.removeEventListener("resize", this.onScroll)
-    if (this.root) this.root.removeEventListener("click", this.onLine)
-    if (this.root) this.root.removeEventListener("focusin", this.onLineFocus)
-    if (this.root) this.root.removeEventListener("keydown", this.onArgument)
+    this.scope.removeEventListener("click", this.onLine)
+    this.scope.removeEventListener("focusin", this.onLineFocus)
+    this.scope.removeEventListener("keydown", this.onArgument)
   },
 }
 

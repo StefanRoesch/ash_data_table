@@ -309,7 +309,7 @@ test.describe("in the URL", () => {
 
     // a hidden column keeps its filter, and the list of columns says so
     await tasks.hide("status")
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden, 1 filtered)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden, 1 filtered)")
     await tasks.unhide("status")
 
     await tasks.reads(() => tasks.clearFilters.click())

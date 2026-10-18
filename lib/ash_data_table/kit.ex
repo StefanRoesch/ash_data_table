@@ -159,18 +159,23 @@ defmodule AshDataTable.Kit do
       it shows). In
       `AshDataTable.table/1` it is inside a plain element of the tag's own
       (`display: contents`): a live component's root must be static.
-    * `heading` - the line of the table's name, its create (`ID-create`)
-      and table actions (`data-table-action`): `id`, `heading`, `label`,
-      `model`, `offered` (the table actions), `page`, `related`, `nested?`,
-      `myself`.
+    * `heading` - the heading line (`ID-header`): the table's name, the
+      `columns` part, the `argument_line` part, and its create
+      (`ID-create`) and table actions (`data-table-action`): `id`,
+      `heading`, `label`, `model`, `offered` (the table actions), `page`,
+      `related`, `state`, `lines`, `refused`, `nested?`, `myself`. A nested
+      table's is drawn in a portal of its own onto its line
+      (`Ids.line_heading/2`, which the `line` part draws), where the line
+      gives the name; its buttons are no tab stops there, as the line's are
+      not (`tabindex="-1"`).
     * `related` - above a table limited to the records of one record
       (`ID-related`, `ID-related-clear`): `id`, `via` (the relationship),
       `title`, `parent` (`path` of its page, or nil), `clear` (the path of
       every record), `create`, `actions`, `target`.
     * `argument_line` - the form of the read action's arguments
-      (`ID-arguments`, `data-arguments`, `AshDataTable.Attrs.arguments/2`):
-      `id`, `lines`, `model`, `refused`, `state`, `nested?`, `myself`; it
-      draws an `argument` per argument.
+      (`ID-arguments`, `data-arguments`, `AshDataTable.Attrs.arguments/2`),
+      drawn by `heading`: `id`, `lines`, `model`, `refused`, `state`,
+      `nested?`, `myself`; it draws an `argument` per argument.
     * `argument` - one argument's input (`data-argument`): `id`,
       `argument`, `name`, `named`, `value`, `errors`.
     * `selection_line` - what is selected (`ID-selection`, `data-selection`;
@@ -178,20 +183,24 @@ defmodule AshDataTable.Kit do
       `ID-selection-controls`, `hidden` while nothing is selected;
       `ID-select-all`, `hidden` but where `whole_page?` and the filters
       match more than the page; `ID-clear-selection`, a `data-bulk` button
-      per action), the notice of changes, "Clear filters", and the
-      `columns` list: `id`, `bulk`, `choose`, `model`, `notice?`, `page`,
+      per action, of more than three the first two and the others in the
+      popover `ID-bulk-more` that `ID-bulk-more-button` opens), the notice
+      of changes and "Clear filters"; `Kit.Default` gives it no room while
+      none of them is there: `id`, `bulk`, `choose`, `model`, `notice?`, `page`,
       `row_count`, `running` (the `Model.Action` running on the selection
       now, nil for none; never who started it), `selecting`, `selected`
       (how many rows are selected), `all?` (every record that matches),
       `whole_page?` (every row of the page is selected), `state`,
       `nested?`, `myself`.
-    * `columns` - "Columns" (`ID-columns-button` with `data-text`,
-      `data-text-with`, and `data-text-hidden`, `data-text-filtered`,
-      `data-text-sorted`, each a JSON list of the texts for 1 to the
-      number of columns; `ID-columns`, `data-columns-list`, a box per column
-      with `data-head`, `data-say-hidden`, `data-say-shown`,
+    * `columns` - "Columns", drawn by `heading` (`ID-columns-button` with
+      `data-text`, `data-text-with`, and `data-text-hidden`,
+      `data-text-filtered`, `data-text-sorted`, each a JSON list of the
+      texts for 1 to the number of columns, and inside it the hook's
+      `ID-columns-text`, what it is called, and `ID-columns-count`, how many
+      columns are hidden or nothing; `ID-columns`, `data-columns-list`, a
+      box per column with `data-head`, `data-say-hidden`, `data-say-shown`,
       `data-filtered`, `data-sorted`; `data-keeps-one`): `id`, `columns`,
-      `keeps_one?`, `state`, `class`.
+      `keeps_one?`, `state`, `nested?`, `class`.
     * `status` - the live region `ID-status` and a run's result
       (`ID-result`): `id`, `announcement`, `announcements`, `result`.
     * `grid` - the grid's hook's element (`ID-grid`, `data-ash-data-table`,
@@ -205,7 +214,7 @@ defmodule AshDataTable.Kit do
       where the table asks, `asks?`) and the failure template `ID-failure`:
       `id`, `model`, `rows`, `page`, `state`, `filters`, `pages?`, `label`,
       `labelledby`, `label_column`, `lead`, `selecting`, `choose`,
-      `creates`, `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
+      `open`, `asks?`, `acting?`, `editing?`, `expandable?`,
       `busy?`, `running` (as `selection_line`'s), `row_count`, `full_view`, `summarised?`,
       `summary`, `summing?`, `time_zone`, `nested?`, `myself`. It draws a
       `header_cell` and a `filter_cell` per column, a `row` or a `detail`
@@ -282,17 +291,18 @@ defmodule AshDataTable.Kit do
       `data-secret` and the button `data-reveal` (`data-show`,
       `data-hide`, `data-show-label`, `data-hide-label`).
     * `detail` - the lines under an expanded row (`data-detail`,
-      `data-row`): `id`, `row`, `model`, `colspan`, `creates`, `myself`; a
+      `data-row`): `id`, `row`, `model`, `colspan`, `myself`; a
       `line` each.
     * `line` - a relationship's line (`data-line`, its cell
       `Ids.line_cell/2` and its button `Ids.line_button/2`, which names the
       nested grid) and, while it is open, the row `Ids.nested_row/2` whose
       cell `Ids.nested_cell/2` a nested table is moved into (`data-nested`,
-      `data-line-cell`, `data-expander-cell`): `id` (the row's DOM id),
+      `data-line-cell`, `data-expander-cell`), and while it is open the
+      empty element `Ids.line_heading/2` on the line, which the nested
+      table's `heading` is moved into: `id` (the row's DOM id),
       `relationship`, `open?`, `count` (how many records the open nested
       table has, once it has read and where it is known; else nil),
-      `colspan`, `create`, `actions`, `table` (the nested table's id),
-      `myself`.
+      `colspan`, `table` (the nested table's id), `myself`.
     * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
       `data-summaries`, a `summary_cell` per column), and in a nested table
       its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
@@ -364,12 +374,14 @@ defmodule AshDataTable.Kit do
       `column.operators`), `range_from`, `range_to`, `filter_from`,
       `filter_to`, `clear_filter`, `invalid_filter`, `chosen` (what a
       filter of several values says is chosen);
-    * `selection_line` - `select_all`, `clear_selection`, `clear_filters`,
+    * `selection_line` - `select_all`, `clear_selection`, `more_actions`, `clear_filters`,
       `changed_records`, `read_again`, `selected_rows` (for
       `Attrs.selection/2`), `selected` (what is selected, in its plural
       form; nil for nothing);
-    * `columns` - `columns`, `columns_with` (with `{details}` where the
-      hook puts the parts it takes), `columns_hidden`, `columns_filtered`,
+    * `columns` - `columns` (what the button shows), `columns_name` (what
+      it and its list are called: of a nested table with the table's name,
+      "Columns of Comments"), `columns_with` (that name, with `{details}`
+      where the hook puts the parts it takes), `columns_hidden`, `columns_filtered`,
       `columns_sorted` (each a list: the text for 1, 2, … up to the number
       of `columns`), `column_hidden`, `column_shown` and `flags` (one per
       column; a flag nil for none);
@@ -419,8 +431,7 @@ defmodule AshDataTable.Kit do
   read action refused, with its messages), `selecting` (`:single`,
   `:multi` or nil), `summary` (by column `{:ok, value}` or
   `:unavailable`), `result` (a run's `summary` and `failures`, messages),
-  `announcement`/`announcements` (messages), `creates` (by relationship,
-  a nested table's `create` and `actions`), `related` (`via` and `key` of
+  `announcement`/`announcements` (messages), `related` (`via` and `key` of
   the record a table is limited to), `full_view` (a path) and `running`
   (an `AshDataTable.Model.Action`, or nil).
 
@@ -738,15 +749,18 @@ defmodule AshDataTable.Kit do
   `:confirm`, `:panel`, `:picker`, `:pagination`,
   `:message`), and of the element LiveView moves a nested table in
   (`:portal`, the `class` of `Phoenix.Component.portal/1`'s wrapper;
-  `display: contents` in `Kit.Default`), or nil. The two elements inside
-  that wrapper are the table's, styled by their markers:
+  `display: contents` in `Kit.Default`; the wrapper of a nested table's
+  heading line takes it too), or nil. The two elements inside the
+  wrapper of a nested table are the table's, styled by their markers:
   `data-ash-data-table-portal` keeps the nested table at the left edge of
   the scroll area around it, `data-ash-data-table-view` makes it as wide
   as that area (`--ash-data-table-view`, which the grid's hook sets);
-  `Kit.Default` does both in its root's rules. `state` is what the table
-  knows as it draws the part: `nested?` (the root, the argument line, the
-  selection line, the
-  grid, the pagination, a message), `kind` (a message), `destructive?` (the
+  `Kit.Default` does both in its root's rules. The heading line's portal
+  holds a `data-ash-data-table-portal` only. `state` is what the table
+  knows as it draws the part: `nested?` (the root, the heading line, the
+  argument line, the selection line, the grid, the pagination, a
+  message), `shown?` (the selection line: whether anything is on it, a
+  selection, a filter or the notice), `kind` (a message), `destructive?` (the
   panel), `presentation` (the panel, the picker, the question), `look` (the
   root: see "The look of a table"). Never called per row or
   cell: what changes there in the browser (selected, busy, invalid) is an

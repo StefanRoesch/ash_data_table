@@ -92,6 +92,15 @@ declared in the resource and mounted with one line in the router.
   and nested area in the theme's colours, and `density`, `stripes`,
   `column_lines` and a `sticky_header` in the table's own scroll area, as
   the kit says (`look/1`) or `look:` for one table.
+- One heading line per table, the same for a table on the page and a
+  nested one: the name (for a nested table its line, with its count),
+  "Columns", the inputs of the argument line, and at the far end create and
+  the table actions; it wraps only where it does not fit. The `heading`
+  part draws the `columns` and `argument_line` parts; a nested table's
+  heading is moved onto its line (`Ids.line_heading/2`, which a kit's
+  `line` draws), where its buttons are no tab stops. The line of the
+  selection takes no room while nothing is selected, filtered or noticed
+  (`shown?` in its class's state), in a table on the page too.
 - `AshDataTable.KitCase` checks a kit in a host's tests: twenty states, four
   presentations, against `AshDataTable.Test.Resource`, which ships with the
   library.
@@ -113,8 +122,8 @@ declared in the resource and mounted with one line in the router.
 - Every table scrolls sideways in an area of its own: the table on a page,
   every nested table and the table of a picker. A nested table is as wide as
   what is seen of the table around it and stays in place while that table
-  scrolls; the line that opens it, its "Columns" button and its pages stay
-  with it. A nested table scrolled to its end does not scroll the table
+  scrolls; the line that opens it, with its "Columns" button, and its
+  pages stay with it. A nested table scrolled to its end does not scroll the table
   around it.
 - A table whose own scrollbar is below the window has a second one at the
   bottom edge of the window, for the innermost table that is cut off there.
@@ -554,7 +563,8 @@ declared in the resource and mounted with one line in the router.
   first cell of the new row; after the panel closes, to the control that
   opened it.
 - `heading` on `<AshDataTable.table>`: how the table's name is shown on the
-  line above it, which also holds the create button. `true` (the default)
+  line above it, which also holds "Columns", the argument line and the
+  create button. `true` (the default)
   shows it as text, a number from 1 to 6 as a heading of that level, `false`
   leaves it out.
 - New messages in the Gettext template: "Actions", "New %{name}", "Run",
@@ -592,7 +602,10 @@ declared in the resource and mounted with one line in the router.
   Without a number where the read action does not count.
 - A line above the grid, beside "Clear filters": the number of selected
   records in a live region, "Clear selection", and a button per bulk
-  action.
+  action; of more than three, the first two and a menu "More" (the
+  browser's popover) with the others. A destroy has the error colour's
+  outline. The line takes room only while rows are selected, a filter is
+  set or the notice of changes shows.
 - The bulk actions are the table's row actions. `bulk? false` on an
   `action` keeps it to one row. An action that accepts an attribute of the
   primary key, or one that is an identity by itself, is not offered either;
@@ -901,11 +914,13 @@ declared in the resource and mounted with one line in the router.
 
 ### Hiding columns
 
-- A person can hide columns and show them again. A "Columns" button above
-  the grid, beside "Clear filters", opens a list of the table's columns with
-  a box each. It is a disclosure (`aria-expanded`, `aria-controls`, a group
-  of labelled checkboxes), closes with Escape, with a click elsewhere and
-  when focus moves on, and is the same in a nested table and in a picker.
+- A person can hide columns and show them again. A "Columns" button on the
+  heading line (an eye struck through, "Columns", and a badge with how many
+  are hidden) opens a list of the table's columns with a box each, the
+  browser's popover (a group of labelled checkboxes), which closes with
+  Escape, with a click elsewhere and when focus moves on, and is the same in
+  a nested table and in a picker. A nested table's is on its line, no tab
+  stop there, and named for it: "Columns of Comments".
 - Hiding is done in the browser and is not a permission: the column is still
   read and still in the page. Nothing is sent to the server, nothing is in
   the URL, nothing is stored, and nothing is declared. A reload shows every
@@ -913,7 +928,7 @@ declared in the resource and mounted with one line in the router.
 - Every column can be hidden but the label column (`label_field`). A table
   without one always keeps one column. The columns of the boxes, the
   expanders and the row actions are not in the list.
-- A hidden column keeps its filter and its sort. The button says so
+- A hidden column keeps its filter and its sort. The button's name says so
   ("Columns (2 hidden, 1 filtered)"), and so does the column's line in the
   list ("Progress (filtered)"). "Clear filters" clears it as well.
 - The arrow keys, Home and End pass over hidden columns, and a hidden cell
@@ -923,6 +938,7 @@ declared in the resource and mounted with one line in the router.
 - Hidden columns stay hidden through every sort, filter, page, save and
   expanded row, and keep the width a person gave them.
 - New messages of the template: "Columns", "Columns (%{details})",
+  "Columns of %{table}", "Columns of %{table} (%{details})", "More",
   "%{count} hidden", "%{count} filtered", "%{count} sorted", "filtered",
   "sorted", "filtered, sorted", "%{column} hidden", "%{column} shown".
 

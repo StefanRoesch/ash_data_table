@@ -116,18 +116,23 @@ defmodule AshDataTable.Kit.Default do
 
   def class(:root, %{nested?: true}), do: "ash-data-table"
   def class(:portal, _state), do: "contents"
-  def class(:heading, _state), do: "mb-4 flex min-h-8 items-center justify-between gap-2"
+  # The heading line: on the page under the name's own room; nested, on the
+  # line that names the table, which has its padding.
+  def class(:heading, %{nested?: false}),
+    do: "mb-2 flex min-h-8 flex-wrap items-center gap-x-3 gap-y-2"
+
+  def class(:heading, %{nested?: true}), do: "flex flex-wrap items-center gap-x-3 gap-y-2"
   def class(:related, _state), do: "mb-2 flex flex-wrap items-center justify-between gap-2"
 
-  def class(:argument_line, %{nested?: nested?}),
-    do:
-      "flex flex-wrap items-start gap-x-4 gap-y-2 " <> if(nested?, do: "px-4 py-2", else: "mb-2")
+  # The argument line is a part of the heading line: its inputs are the
+  # heading line's, and wrap with it.
+  def class(:argument_line, _state), do: "contents"
 
-  def class(:selection_line, %{nested?: true}),
-    do: "flex flex-wrap items-center gap-2 justify-start"
+  # The line above the grid takes no room while nothing is on it.
+  def class(:selection_line, %{shown?: true, nested?: nested?}),
+    do: "flex flex-wrap items-center gap-2 " <> if(nested?, do: "mb-1", else: "mb-2")
 
-  def class(:selection_line, %{nested?: false}),
-    do: "flex flex-wrap items-center gap-2 mb-2 min-h-8 justify-between"
+  def class(:selection_line, %{shown?: false}), do: nil
 
   def class(:status, _state), do: "sr-only"
   def class(:grid, %{nested?: true}), do: "overflow-x-auto outline-none overscroll-x-contain"

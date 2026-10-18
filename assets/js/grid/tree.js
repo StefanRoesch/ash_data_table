@@ -217,6 +217,10 @@ export default {
     const cell = this.cellOf(e.target)
     if (!cell) { tree.hadFocus = false; return }
     tree.hadFocus = true
+    // an input of a nested table's heading line, which stands on its
+    // line, is a tab stop of its own (its argument line): the tree's tab
+    // stop stays where it is, so that Tab from it goes on into the grid
+    if (is(cell, LINE) && e.target !== cell && e.target.tabIndex >= 0) return
     if (!this.spans(cell)) this.col = place(cell)
     this.setActive(cell)
     this.offerWhole()
@@ -263,9 +267,11 @@ export default {
     // focus on their cell
     if (is(cell, EXPANDER) || is(cell, LINE)) {
       const button = e.target.closest("button")
-      // another control of a line (its create button) is used as it
-      // is, and keeps the focus: its panel gives it back
+      // another control of a line (of its nested table's heading line:
+      // "Columns" and its list, an input, create) is used as it is, and
+      // keeps the focus: a panel gives it back
       if (button && !button.hasAttribute("aria-expanded")) return
+      if (!button && e.target.closest("input,select,textarea,label,[popover]")) return
       if (button) this.open(cell)
       // a button that was used from the keyboard keeps the focus
       if (document.activeElement !== cell && !(button && e.detail === 0)) cell.focus()
@@ -367,8 +373,10 @@ export default {
       // applies the filter now; focus stays where the person is typing.
       // A patch leaves the value attribute of a focused input alone,
       // so what Escape restores is noted here.
+      // this table's filters only: the argument line of a nested table
+      // on a line is that table's (its hook sends it)
       case "Enter":
-        if (input && control.form) {
+        if (input && control.form && control.form.id === `${this.id}-filters`) {
           e.preventDefault()
           if (control.form.reportValidity()) {
             control.defaultValue = control.value
@@ -378,19 +386,29 @@ export default {
         break
       // through the controls of this filter; from its last one Tab
       // leaves the grid, as it does from a cell
+      // (but from an input of a nested table's heading line on a line, a
+      // tab stop of its own: Tab is the browser's, from tab stop to tab stop)
       case "Tab":
+        if (is(cell, LINE) && control.tabIndex >= 0) break
         if (this.toControl(cell, control, e.shiftKey ? -1 : 1)) e.preventDefault()
         break
       // through the buttons of a cell that holds several: the pages
       // of a nested table, the actions of a row, a line's controls
       case "ArrowLeft":
       case "ArrowRight":
-        if (is(cell, PAGER) || is(cell, ACTIONS) || is(cell, LINE)) {
+        // not in what is typed into, where they move in the text
+        if (is(cell, PAGER) || is(cell, ACTIONS) || (is(cell, LINE) && !this.typedInto(control))) {
           this.toControl(cell, control, e.key === "ArrowLeft" ? -1 : 1)
           e.preventDefault()
         }
         break
     }
+  },
+
+  // Whether a control is one a person types into, where the arrow keys
+  // move in the text.
+  typedInto(control) {
+    return control.tagName === "TEXTAREA" || (control.tagName === "INPUT" && !["checkbox", "radio", "button", "submit"].includes(control.type))
   },
 
   // To the control before or after this one in its cell, if there is one.

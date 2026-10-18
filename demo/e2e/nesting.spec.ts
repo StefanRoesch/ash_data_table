@@ -253,21 +253,25 @@ test.describe("with the keyboard", () => {
     await page.keyboard.press("Shift+Tab")
     await expect(nestedTasks.cell(inner, "title")).toBeFocused()
 
-    // Backwards, the nested table's "Columns" button (hiding.spec.ts) and
-    // the inputs of its argument line come first: they stand before its
-    // grid, and are tab stops of their own (arguments.spec.ts). Then the
-    // tree is left.
-    await page.keyboard.press("Shift+Tab")
-    await expect(nestedTasks.columnsButton).toBeFocused()
+    // Backwards, the inputs of the nested table's argument line come first:
+    // they stand on its line, before its grid, and are tab stops of their
+    // own (arguments.spec.ts); its "Columns" is none, as the other buttons
+    // on a line (hiding.spec.ts). Then the tree is left.
     await page.keyboard.press("Shift+Tab")
     await expect(nestedTasks.argument("due_within-days")).toBeFocused()
+    // the tree's tab stop stays where it was
+    expect(await tasks.tabStops()).toEqual([`${nestedTasks.id}-row-${inner}-c-title`])
     await page.keyboard.press("Shift+Tab")
     await expect(nestedTasks.argument("search")).toBeFocused()
-    // so does the "Columns" button of the nested table around it
-    await page.keyboard.press("Shift+Tab")
-    await expect(project.columnsButton).toBeFocused()
     await page.keyboard.press("Shift+Tab")
     expect(await tasks.hasFocus()).toBe(false)
+    await expect(nestedTasks.columnsButton).not.toBeFocused()
+    await expect(project.columnsButton).not.toBeFocused()
+
+    // and forwards again from the inputs, into the grid where it was left
+    await nestedTasks.argument("due_within-days").focus()
+    await page.keyboard.press("Tab")
+    await expect(nestedTasks.cell(inner, "title")).toBeFocused()
   })
 
   test("moving about, in the lines and in a nested table, sends nothing; opening a line sends one event", async ({

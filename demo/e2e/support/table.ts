@@ -204,6 +204,19 @@ export class Table {
     return this.byId(`${this.id}-columns-button`)
   }
 
+  /**
+   * What "Columns" is called, which the hook writes out of sight: "Columns
+   * (2 hidden)", of a nested table "Columns of Comments (2 hidden)".
+   */
+  get columnsText(): Locator {
+    return this.byId(`${this.id}-columns-text`)
+  }
+
+  /** The badge on "Columns" with how many columns are hidden: empty while none is. */
+  get columnsCount(): Locator {
+    return this.byId(`${this.id}-columns-count`)
+  }
+
   /** The list it opens, the browser's popover: a box for every column that can be hidden. */
   get columnsList(): Locator {
     return this.byId(`${this.id}-columns`)
@@ -569,7 +582,7 @@ export class Table {
 
   /** The button of a table action of a line's nested table: on the line, after its label. */
   lineAction(key: string, relationship: string, name: string): Locator {
-    return this.byId(`${this.id}-row-${key}-l-${relationship}-do-${name}`)
+    return this.byId(`${this.id}-row-${key}-t-${relationship}-do-${name}`)
   }
 
   // ---- row actions --------------------------------------------------------
@@ -676,6 +689,22 @@ export class Table {
   /** The button of one action on the selected rows. */
   bulk(name: string): Locator {
     return this.byId(`${this.id}-bulk-${name}`)
+  }
+
+  /** "More": the button of the menu of the actions after the first two, where there are more than three. */
+  get bulkMore(): Locator {
+    return this.byId(`${this.id}-bulk-more-button`)
+  }
+
+  /** Uses an action on the selected rows as a person does: through "More" where it is in its menu. */
+  async useBulk(name: string): Promise<void> {
+    const button = this.bulk(name)
+    const menu = this.byId(`${this.id}-bulk-more`)
+    if ((await menu.count()) > 0 && (await menu.locator(`[data-bulk="${name}"]`).count()) > 0) {
+      if (!(await menu.evaluate((m) => m.matches(":popover-open")))) await this.bulkMore.click()
+      await expect(button).toBeVisible()
+    }
+    await button.click()
   }
 
   /** The buttons of the actions on the selected rows, left to right. */
@@ -876,7 +905,7 @@ export class Table {
 
   /** The create button of a line's nested table: on the line, after its label. */
   lineCreate(key: string, relationship: string): Locator {
-    return this.byId(`${this.id}-row-${key}-l-${relationship}-create`)
+    return this.byId(`${this.id}-row-${key}-t-${relationship}-create`)
   }
 
   /** The cell under an open line that holds the nested table. */

@@ -54,31 +54,92 @@ defmodule AshDataTable.Live.Drawing do
       uploads={@uploads}
       router={@table.options.router}
     />
-    <.portal
+    <.nested
       :for={{entry, rows, placed} <- portals(@table, @streams)}
       :key={entry.id}
-      id={"#{entry.id}-portal"}
-      target={"[id='#{entry.target}']"}
-      class={placed.class}
-    >
-      <div data-ash-data-table-portal={entry.target}>
+      entry={entry}
+      rows={rows}
+      placed={placed}
+      uploads={@uploads}
+    />
+    """
+  end
+
+  # The two portals of a nested table: the table into the cell under its
+  # line, and its heading line onto that line (`heading_target`), where
+  # the line names it: the line of a nested table is its heading line, the
+  # same as a table on the page has above its grid (the kit's
+  # `heading/1`). Both are marked with the place they go into
+  # (`data-ash-data-table-portal`).
+  attr :entry, :any, required: true
+  attr :rows, :any, required: true
+  attr :placed, :any, required: true
+  attr :uploads, :any, required: true
+
+  defp nested(assigns) do
+    ~H"""
+    <.portal id={"#{@entry.id}-portal"} target={"[id='#{@entry.target}']"} class={@placed.class}>
+      <div data-ash-data-table-portal={@entry.target}>
         <div data-ash-data-table-view>
           <.body
-            :if={!entry.gone?}
-            entry={entry}
-            options={placed.options}
-            time_zone={placed.time_zone}
-            rows={rows}
-            chooser={placed.chooser}
-            chooser_rows={placed.chooser_rows}
-            myself={placed.myself}
+            :if={!@entry.gone?}
+            entry={@entry}
+            options={@placed.options}
+            time_zone={@placed.time_zone}
+            rows={@rows}
+            chooser={@placed.chooser}
+            chooser_rows={@placed.chooser_rows}
+            myself={@placed.myself}
             uploads={@uploads}
-            router={placed.router}
+            router={@placed.router}
           />
-          <div :if={entry.gone?} id={entry.id} hidden></div>
+          <div :if={@entry.gone?} id={@entry.id} hidden></div>
         </div>
       </div>
     </.portal>
+    <.portal
+      :if={@entry.heading_target}
+      id={"#{@entry.id}-heading-portal"}
+      target={"[id='#{@entry.heading_target}']"}
+      class={@placed.class}
+    >
+      <div data-ash-data-table-portal={@entry.heading_target}>
+        <.heading
+          :if={!@entry.gone?}
+          entry={@entry}
+          kit={@placed.options.kit}
+          myself={@placed.myself}
+        />
+      </div>
+    </.portal>
+    """
+  end
+
+  # The heading line of a table (the kit's `heading/1`): above the grid of
+  # the table on the page, on its line for a nested table.
+  attr :entry, :any, required: true
+  attr :kit, :atom, required: true
+  attr :myself, :any, required: true
+  attr :heading, :any, default: false
+
+  defp heading(assigns) do
+    ~H"""
+    <Kit.part
+      part={:heading}
+      kit={@kit}
+      heading={@heading}
+      id={@entry.id}
+      label={@entry.label}
+      lines={@entry.lines}
+      model={@entry.model}
+      myself={@myself}
+      nested?={@entry.nested?}
+      offered={@entry.offered}
+      page={@entry.page}
+      refused={@entry.refused}
+      related={@entry.related}
+      state={@entry.state}
+    />
     """
   end
 
@@ -167,18 +228,13 @@ defmodule AshDataTable.Live.Drawing do
       page={@entry.page}
       look={Kit.look(@options.kit, @options.look)}
     >
-      <Kit.part
-        part={:heading}
+      <%!-- a nested table's heading line is on its line (`nested/1`) --%>
+      <.heading
+        :if={not @entry.nested?}
+        entry={@entry}
         kit={@options.kit}
-        heading={@options.heading}
-        id={@entry.id}
-        label={@entry.label}
-        model={@entry.model}
         myself={@myself}
-        nested?={@entry.nested?}
-        offered={@entry.offered}
-        page={@entry.page}
-        related={@entry.related}
+        heading={@options.heading}
       />
       <Kit.part
         :if={@entry.related}
@@ -201,17 +257,6 @@ defmodule AshDataTable.Live.Drawing do
         target={@myself}
         texts={Words.texts(:related, %{via: @entry.related.via, title: @entry.related_title})}
         messages={Words.messages(:related, %{via: @entry.related.via, title: @entry.related_title})}
-      />
-      <Kit.part
-        part={:argument_line}
-        kit={@options.kit}
-        id={@entry.id}
-        lines={@entry.lines}
-        model={@entry.model}
-        myself={@myself}
-        nested?={@entry.nested?}
-        refused={@entry.refused}
-        state={@entry.state}
       />
       <Kit.part
         part={:selection_line}
@@ -266,7 +311,6 @@ defmodule AshDataTable.Live.Drawing do
         asks?={:confirm not in @options.controlled}
         busy?={@entry.busy?}
         choose={@entry.choose}
-        creates={@entry.creates}
         editing?={@entry.editing?}
         expandable?={@entry.expandable?}
         full_view={@entry.full_view}

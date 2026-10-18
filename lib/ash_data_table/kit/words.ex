@@ -190,6 +190,7 @@ defmodule AshDataTable.Kit.Words do
           true -> nil
         end,
       clear_selection: t(:clear_selection),
+      more_actions: t(:more_actions),
       clear_filters: t(:clear_filters),
       changed_records: t(:changed_records),
       read_again: t(:read_again)
@@ -199,12 +200,21 @@ defmodule AshDataTable.Kit.Words do
   # What the button says of the hidden columns is said here for every
   # number the browser can find, from 1 to the number of columns: the
   # browser, which alone knows what is hidden, takes the one it needs.
-  defp words(:columns, %{columns: columns, state: state}) do
+  #
+  # `columns` is what the button shows; `columns_name` what it and its list
+  # are called, which names the table where it is nested in another, and
+  # `columns_with` that name with what is hidden.
+  defp words(:columns, %{columns: columns, state: state, label: label, nested?: nested?}) do
     counts = 1..length(columns)//1
 
     [
       columns: t(:columns),
-      columns_with: t(:columns_with, details: "{details}"),
+      columns_name: if(nested?, do: t(:columns_of, table: label), else: t(:columns)),
+      columns_with:
+        if(nested?,
+          do: t(:columns_of_with, table: label, details: "{details}"),
+          else: t(:columns_with, details: "{details}")
+        ),
       columns_hidden: Enum.map(counts, &t(:columns_hidden, count: &1)),
       columns_filtered: Enum.map(counts, &t(:columns_filtered, count: &1)),
       columns_sorted: Enum.map(counts, &t(:columns_sorted, count: &1)),

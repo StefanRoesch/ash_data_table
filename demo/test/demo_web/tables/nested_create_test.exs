@@ -55,7 +55,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
   end
 
   # The create button of a line: on the line itself, after its label.
-  defp line_create(key, relationship), do: "[id='task-row-#{key}-l-#{relationship}-create']"
+  defp line_create(key, relationship), do: "[id='task-row-#{key}-t-#{relationship}-create']"
 
   defp open_line(view, key, relationship) do
     expand(view, key)
@@ -84,11 +84,17 @@ defmodule DemoWeb.Tables.NestedCreateTest do
       button = line_create(task.id, "comments")
 
       assert text(html, button) == "New comment"
-      # in the line's cell, right after the button that opens the line
+      # in the line's cell: the button that opens the line, and on the
+      # nested table's heading line, which stands on it, the create button
       assert attribute(html, "[id='task-row-#{task.id}-l-comments-c'] > div > button", "id") == [
-               "task-row-#{task.id}-l-comments-b",
-               "task-row-#{task.id}-l-comments-create"
+               "task-row-#{task.id}-l-comments-b"
              ]
+
+      assert attribute(
+               html,
+               "[id='task-row-#{task.id}-l-comments-c'] [id='task-row-#{task.id}-l-comments-h'] button:not([data-columns-button])",
+               "id"
+             ) == ["task-row-#{task.id}-t-comments-create"]
 
       # the line's own button says "Comments" and nothing else
       assert text(html, "[id='task-row-#{task.id}-l-comments-b']") == "Comments"
@@ -132,7 +138,7 @@ defmodule DemoWeb.Tables.NestedCreateTest do
       {:ok, view, _html} = live(conn, "/support/switch")
 
       comments = nested("tasks", task.id, "comments")
-      button = "[id='tasks-row-#{task.id}-l-comments-create']"
+      button = "[id='tasks-row-#{task.id}-t-comments-create']"
 
       # what is open is closed when the person changes: opened again each time
       open = fn ->

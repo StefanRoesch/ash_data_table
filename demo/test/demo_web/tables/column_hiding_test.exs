@@ -49,8 +49,17 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
          %{conn: conn} do
       {:ok, _view, html} = live(conn, "/tasks")
 
-      assert text(html, "#task-columns-button") == "Columns"
+      # it shows "Columns", and is called what the hook writes, out of sight
+      assert text(html, "#task-columns-button > span[aria-hidden]") == "Columns"
+      assert text(html, "#task-columns-text") == "Columns"
+      assert attribute(html, "#task-columns-text", "class") == ["sr-only"]
+      # the number of hidden columns is the hook's, empty while none is
+      assert text(html, "#task-columns-count") == ""
+      assert attribute(html, "#task-columns-count", "phx-update") == ["ignore"]
+      assert attribute(html, "#task-columns-button svg", "aria-hidden") == ["true"]
       assert attribute(html, "#task-columns-button", "type") == ["button"]
+      # a tab stop in a table on the page
+      assert attribute(html, "#task-columns-button", "tabindex") == []
       # the browser opens and closes it, and says whether it is open
       assert attribute(html, "#task-columns-button", "popovertarget") == ["task-columns"]
       assert attribute(html, "#task-columns-button", "aria-expanded") == []
@@ -61,22 +70,24 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       assert attribute(html, "#task-columns", "style") ==
                ["position-anchor: --ash-data-table-columns-task"]
 
-      # looks as the other buttons of its line do
-      assert attribute(html, "#task-columns-button", "class") == ["btn btn-sm"]
+      # a quiet button
+      assert attribute(html, "#task-columns-button", "class") == [
+               "btn btn-ghost btn-sm gap-1 px-2"
+             ]
+
       # before the grid, and no part of it
       assert attribute(html, "#task-grid #task-columns-button", "id") == []
-
-      assert attribute(html, "#task > div > #task-columns-control", "id") == [
-               "task-columns-control"
-             ]
     end
 
-    test "stands beside \"Clear filters\", on the same line", %{conn: conn} do
-      {:ok, view, _html} = live(conn, "/tasks")
-      html = filter(view, "task", "title", v: "a")
+    test "stands on the heading line, after the table's name and before the argument line",
+         %{conn: conn} do
+      {:ok, _view, html} = live(conn, "/tasks")
 
-      assert attribute(html, "#task-clear-filters + #task-columns-control", "id") ==
+      assert attribute(html, "#task-header > #task-name + #task-columns-control", "id") ==
                ["task-columns-control"]
+
+      assert attribute(html, "#task-header > #task-columns-control + #task-arguments", "id") ==
+               ["task-arguments"]
     end
 
     test "carries what it says of the hidden columns, for every number of them, in plural forms",
@@ -235,9 +246,24 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       html = toggle(view, task.id, "comments")
       id = nested("task", task.id, "comments")
 
-      assert text(html, "[id='#{id}-columns-button']") == "Columns"
+      # it says whose columns they are, and is no tab stop, as the other
+      # buttons on the line it stands on are not
+      assert text(html, "[id='#{id}-columns-text']") == "Columns of Comments"
+      assert attribute(html, "[id='#{id}-columns']", "aria-label") == ["Columns of Comments"]
+
+      assert List.first(attribute(html, "[id='#{id}-columns-button']", "data-text-with")) ==
+               "Columns of Comments ({details})"
+
+      assert attribute(html, "[id='#{id}-columns-button']", "tabindex") == ["-1"]
       assert attribute(html, "[id='#{id}-columns-button']", "popovertarget") == ["#{id}-columns"]
-      assert attribute(html, "[id='#{id}-columns-button']", "class") == ["btn btn-sm"]
+
+      # on the line that names it
+      line = "task-row-#{task.id}-l-comments-h"
+
+      assert attribute(html, "[id='#{line}'] [id='#{id}-columns-button']", "id") == [
+               "#{id}-columns-button"
+             ]
+
       assert listed(html, id) == columns(html, id)
       # and the table around it has its own still
       assert listed(html, "task") == tl(columns(html, "task"))
@@ -250,7 +276,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
       html = pick(view, task.id, "assignee")
       id = "task-pick-assignee"
 
-      assert text(html, "[id='#{id}-columns-button']") == "Columns"
+      assert text(html, "[id='#{id}-columns-text']") == "Columns"
       assert listed(html, id) != []
       assert listed(html, id) == columns(html, id) -- ["name"]
     end
@@ -279,7 +305,7 @@ defmodule DemoWeb.Tables.ColumnHidingTest do
   test "in German", %{conn: conn} do
     {:ok, view, html} = conn |> in_locale("de") |> live("/tasks")
 
-    assert text(html, "#task-columns-button") == "Spalten"
+    assert text(html, "#task-columns-text") == "Spalten"
     assert attribute(html, "#task-columns", "aria-label") == ["Spalten"]
     data = &List.first(attribute(html, "#task-columns-button", "data-#{&1}"))
     assert data.("text-with") == "Spalten ({details})"

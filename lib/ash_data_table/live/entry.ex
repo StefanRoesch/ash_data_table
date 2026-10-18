@@ -48,9 +48,11 @@ defmodule AshDataTable.Live.Entry do
     stream: nil,
     uploads: [],
     # For a table shown in another's row: the id of the cell its portal
-    # puts it into, and what the table it is in told it last (it is told
-    # again only when that changes).
+    # puts it into, the id of the place on its line its heading is put into
+    # (`heading_target`), and what the table it is in told it last (it is
+    # told again only when that changes).
     target: nil,
+    heading_target: nil,
     given: nil,
     # The sort, filters, arguments and page (`AshDataTable.State`): an empty
     # one in `new/0`, not here, so that this module does not need `State`
@@ -133,15 +135,13 @@ defmodule AshDataTable.Live.Entry do
     # `AshDataTable.Live.Core.Nesting.built/1`); and what the component
     # derives from it there: whether a column can be edited, whether the
     # rows have an actions cell, the table actions offered, whether rows
-    # expand, the column that stays in view, and what the nested tables let
-    # the person create (`creates/1`).
+    # expand and the column that stays in view.
     model: nil,
     editing?: false,
     acting?: false,
     offered: [],
     expandable?: false,
     label_column: nil,
-    creates: %{},
     # The action panel, while it is open: the one action a person is giving
     # the inputs of, with its form. At most one per table; a new read
     # closes it.

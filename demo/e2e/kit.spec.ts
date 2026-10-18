@@ -195,6 +195,9 @@ test.describe("one question at a time", () => {
   /** Selects the row of `key` and asks to run "Delete" on it: the question is open. */
   async function bulkAsked(page: Page, key: string) {
     await page.locator(`[id="kit-row-${key}-s"] input`).click()
+    // after the first two of its actions on the selection, in the menu "More"
+    const more = page.locator('[id="kit-bulk-more-button"]')
+    if ((await page.locator('[id="kit-bulk-more"] [data-bulk="destroy"]').count()) > 0) await more.click()
     await page.locator("[data-bulk='destroy']").click()
     await expect(question(page)).toBeVisible()
     await expect(page.locator('[id="kit-dialog-question"]')).toContainText("Delete it?")

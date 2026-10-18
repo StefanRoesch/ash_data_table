@@ -137,14 +137,23 @@ defmodule AshDataTable.Live.Registry do
   # ---- opening and closing --------------------------------------------
 
   @doc """
-  Adds the table `id`, placed in the cell `target` of the table it is in,
-  with a stream of its own and nothing else yet: it is told what it is with
-  `within/3`.
+  Adds the table `id`, placed in the cell of the table it is in and with
+  its heading on the line above it (`{cell, heading}`, nil for a picker's
+  table), with a stream of its own and nothing else yet: it is told what it
+  is with `within/3`.
   """
-  def add(socket, id, target) do
+  def add(socket, id, place) do
     {stream, socket} = take_stream(socket)
     %{entries: entries} = table = Core.table(socket)
-    entry = %{AshDataTable.Live.Entry.new() | id: id, target: target, stream: stream}
+    {target, heading} = place || {nil, nil}
+
+    entry = %{
+      AshDataTable.Live.Entry.new()
+      | id: id,
+        target: target,
+        heading_target: heading,
+        stream: stream
+    }
 
     Core.put(socket, %{table | entries: Map.put(entries, id, entry)})
   end

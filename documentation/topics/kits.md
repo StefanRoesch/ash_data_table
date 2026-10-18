@@ -117,7 +117,7 @@ in the primary colour down its left (see
 mixed from the daisyUI theme's colours, so it follows the host's theme,
 light and dark; there is no colour among the options.
 
-Four things can be changed, as **the look** of a table:
+Six options, in five rows, can be changed, as **the look** of a table:
 
 | Option | What it does | Default kit |
 | --- | --- | --- |
@@ -280,6 +280,23 @@ What a cell holds and a column's editor are drawn with `Kit.cell/1` and
 `Kit.editor/1`, which call the column's component before the kit's `cell` and
 `editor`. A part called through the kit is given every assign by its caller:
 the defaults of its own `attr`s are not applied.
+
+The heading line above the grid is the `heading` part, and it draws the
+`columns` part ("Columns") and the `argument_line` part inside it, so a kit
+moves or redraws either by replacing it, and `heading` places them. A nested
+table draws its `heading` too, and it is moved onto the line that opens it
+(a portal of its own, as the nested table is moved into the cell under the
+line): a kit's `line` part draws the empty element `Ids.line_heading/2`
+where it wants it, as it draws the cell `Ids.nested_cell/2`. The line gives
+the nested table its name; the nested table's buttons there are no tab
+stops, as the line's are not.
+
+The line of the selection (`selection_line`) says in its class's `state`
+whether anything is on it (`shown?`): the default kit gives it no room
+while nothing is selected, no filter is set and no notice shows. Of more
+than three actions on the selected rows it shows the first two and puts
+the others in a menu, "More" (the browser's popover); an action that
+destroys has the error colour's outline.
 
 ## The development check
 

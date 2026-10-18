@@ -461,10 +461,10 @@ defmodule DemoWeb.Tables.TableActionsTest do
                ["New shift", "Count", "Clear all", "Rename all"]
 
       # they look as the create button of the line does, and are no tab stops
-      button = "[id='rota-row-#{rota.id}-l-shifts-do-count']"
+      button = "[id='rota-row-#{rota.id}-t-shifts-do-count']"
 
       assert attribute(html, button, "class") ==
-               attribute(html, "[id='rota-row-#{rota.id}-l-shifts-create']", "class")
+               attribute(html, "[id='rota-row-#{rota.id}-t-shifts-create']", "class")
 
       assert attribute(html, button, "tabindex") == ["-1"]
 
@@ -487,7 +487,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
          %{conn: conn, rota: rota, shifts: shifts} do
       {view, _html} = open_shifts(conn, :member, rota)
 
-      html = table_act(view, shifts, "count", on: "rota-row-#{rota.id}-l-shifts-do-count")
+      html = table_act(view, shifts, "count", on: "rota-row-#{rota.id}-t-shifts-do-count")
 
       # the shifts of every rota: nothing tells the action which rota it is under
       assert result(html, shifts) == "Count: 2"
@@ -505,7 +505,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
       {view, _html} = open_shifts(conn, :admin, rota)
 
       html =
-        table_act(view, shifts, "rename_all", on: "rota-row-#{rota.id}-l-shifts-do-rename_all")
+        table_act(view, shifts, "rename_all", on: "rota-row-#{rota.id}-t-shifts-do-rename_all")
 
       assert %{heading: "Rename all", fields: [%{name: "title"}]} = panel(html, shifts)
       assert panel(html, "rota") == nil
@@ -515,7 +515,7 @@ defmodule DemoWeb.Tables.TableActionsTest do
       assert result(html, shifts) == "Rename all: 2"
       assert column(html, shifts, "title") == ["Shift"]
 
-      table_act(view, shifts, "clear", on: "rota-row-#{rota.id}-l-shifts-do-clear")
+      table_act(view, shifts, "clear", on: "rota-row-#{rota.id}-t-shifts-do-clear")
 
       assert_push_event view, "ash_data_table:ask", %{
         table: ^shifts,

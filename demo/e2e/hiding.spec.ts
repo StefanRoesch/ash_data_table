@@ -77,7 +77,7 @@ test.describe("the button and its list", () => {
     pushed,
   }) => {
     await pushed.clear()
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
     // the list is the browser's popover, which the button opens: the browser
     // says whether it is open, and what the button controls
     await expect(tasks.columnsButton).toHaveAttribute("popovertarget", "task-columns")
@@ -111,7 +111,7 @@ test.describe("the button and its list", () => {
     await expect(tasks.header("priority")).toBeVisible()
     await expect(tasks.cell(FIRST, "priority")).toBeVisible()
     expect(await tasks.shownColumns()).toEqual(before.filter((column) => column !== "status"))
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
     await expect(tasks.columnsStatus).toHaveText("State hidden")
     // the list stays open: several columns are hidden one after the other
     await expect(tasks.columnsList).toBeVisible()
@@ -125,16 +125,24 @@ test.describe("the button and its list", () => {
     await expect(page.getByRole("columnheader", { name: "Priority", exact: true })).toHaveCount(1)
 
     await tasks.columnBox("priority").uncheck()
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
+    // it shows how many in its badge, which a screen reader is not told twice
+    await expect(tasks.columnsButton).toContainText("Columns")
+    await expect(tasks.columnsCount).toHaveText("2")
+    await expect(tasks.columnsCount).toBeVisible()
+    await expect(tasks.columnsCount).toHaveAttribute("aria-hidden", "true")
     await expect(tasks.columnsStatus).toHaveText("Priority hidden")
 
     await tasks.columnBox("status").check()
     await expect(tasks.header("status")).toBeVisible()
     await expect(tasks.cell(FIRST, "status")).toBeVisible()
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
     await expect(tasks.columnsStatus).toHaveText("State shown")
     await tasks.columnBox("priority").check()
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
+    // and no badge while none is hidden
+    await expect(tasks.columnsCount).toHaveText("")
+    await expect(tasks.columnsCount).toBeHidden()
     expect(await tasks.shownColumns()).toEqual(before)
 
     // the server has heard of none of it, and the URL says nothing
@@ -152,7 +160,7 @@ test.describe("the button and its list", () => {
     // all of them can be hidden at once: the label stays, and no box is held back
     await tasks.hide(...HIDEABLE)
     expect(await tasks.shownColumns()).toEqual(["title"])
-    await expect(tasks.columnsButton).toHaveText("Columns (21 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (21 hidden)")
     for (const column of HIDEABLE) await expect(tasks.columnBox(column)).toBeEnabled()
     await expect(tasks.boxCell(FIRST)).toBeVisible()
     await expect(tasks.expanderCell(FIRST)).toBeVisible()
@@ -228,12 +236,14 @@ test.describe("the button and its list", () => {
     await page.keyboard.press("Space")
     await expect(tasks.header("status")).toBeVisible()
 
-    // out of the list at its end: it closes, and focus is in the grid
+    // out of the list at its end: it closes, and focus is on what comes
+    // after the button on the heading line, the first input of the
+    // argument line
     await tasks.columnBox("reporter").focus()
     await page.keyboard.press("Tab")
     await expect(tasks.columnsList).toBeHidden()
     await expect.poll(() => tasks.columnsOpen()).toBe(false)
-    expect(await tasks.hasFocus()).toBe(true)
+    await expect(tasks.argument("search")).toBeFocused()
 
     // and at its start
     await tasks.columnsButton.focus()
@@ -246,11 +256,18 @@ test.describe("the button and its list", () => {
   test("in a narrow window the list stays inside it", async ({ page, tasks }) => {
     await page.setViewportSize({ width: 520, height: 900 })
     await tasks.columnsButton.click()
+    const at = (await tasks.columnsButton.boundingBox())!
+    const wide = (await tasks.columnsList.boundingBox())!
+    await page.keyboard.press("Escape")
+    // a window so narrow that the list under the button would reach past it
+    // (the button stands at the start of its line, after the table's name)
+    const width = Math.floor(at.x + wide.width - 16)
+    await page.setViewportSize({ width, height: 900 })
+    await tasks.columnsButton.click()
     const button = (await tasks.columnsButton.boundingBox())!
     const list = (await tasks.columnsList.boundingBox())!
-    // the button is at the window's edge: the list would reach past it
-    expect(button.x + list.width).toBeGreaterThan(520)
-    expect(list.x + list.width).toBeLessThanOrEqual(520)
+    expect(button.x + list.width).toBeGreaterThan(width)
+    expect(list.x + list.width).toBeLessThanOrEqual(width)
     expect(list.x).toBeGreaterThanOrEqual(0)
   })
 
@@ -284,7 +301,7 @@ test.describe("a table without a column of its label", () => {
     await expect(comments.columnBox(kept)).toBeChecked()
     await comments.columnBox(kept).click({ force: true })
     await expect(comments.header(kept)).toBeVisible()
-    await expect(comments.columnsButton).toHaveText(`Columns (${others.length} hidden)`)
+    await expect(comments.columnsButton).toHaveAccessibleName(`Columns (${others.length} hidden)`)
 
     // once another is shown again, either can go
     await comments.columnBox(others[0]).check()
@@ -318,7 +335,7 @@ test.describe("a table without a column of its label", () => {
 
     await expect(comments.header(next)).toBeVisible()
     expect(await comments.shownColumns()).toEqual([next])
-    await expect(comments.columnsButton).toHaveText(`Columns (${others.length} hidden)`)
+    await expect(comments.columnsButton).toHaveAccessibleName(`Columns (${others.length} hidden)`)
     await comments.openColumns()
     await expect(comments.columnBox(next)).toBeChecked()
     await expect(comments.columnBox(next)).toBeDisabled()
@@ -434,9 +451,11 @@ test.describe("the keys of the grid", () => {
     await tasks.hide("due_on")
     expect(await tasks.tabStops()).toEqual([`task-row-${first}-c-progress`])
 
-    // Tab from the button, with the list closed, goes into the grid: to that cell
+    // Tab from the last control before the grid, with the list closed, goes
+    // into the grid: to that cell
     await page.keyboard.press("Escape")
     await expect(tasks.columnsButton).toBeFocused()
+    await tasks.create.focus()
     await page.keyboard.press("Tab")
     await expect(tasks.cell(first, "progress")).toBeFocused()
     // and Down Arrow stays in its column
@@ -512,7 +531,7 @@ test.describe("what is hidden outlives what the server sends", () => {
       }
       await expect(tasks.cell(key, "progress"), after).toBeVisible()
       await expect(tasks.columnBox("progress"), after).toBeChecked()
-      await expect(tasks.columnsButton, after).toHaveText("Columns (3 hidden)")
+      await expect(tasks.columnsButton, after).toHaveAccessibleName("Columns (3 hidden)")
       expect(await tasks.tabStops(), after).toHaveLength(1)
     }
     await same("at first")
@@ -588,7 +607,7 @@ test.describe("what is hidden outlives what the server sends", () => {
     await expect(tasks.columnBox("status")).not.toBeChecked()
     await expect(tasks.columnBox("progress")).not.toBeChecked()
     await expect(tasks.columnBox("priority")).toBeChecked()
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
     expect(await tasks.columnsOpen()).toBe(true)
     await expect(tasks.header("status")).toBeHidden()
   })
@@ -602,7 +621,7 @@ test.describe("what is hidden outlives what the server sends", () => {
     await page.reload()
     await tasks.ready()
     expect(await tasks.shownColumns()).toEqual(before)
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
     await tasks.openColumns()
     for (const column of HIDEABLE) await expect(tasks.columnBox(column)).toBeChecked()
     // one sheet per grid, for what its hook says of scrolling sideways, and
@@ -661,7 +680,7 @@ test.describe("what is hidden outlives what the server sends", () => {
   }) => {
     await tasks.open()
     await tasks.hide("status", "progress")
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
 
     // what a patch does that takes the column away, and one that brings it back
     const entry = await page.evaluate(() => {
@@ -670,14 +689,14 @@ test.describe("what is hidden outlives what the server sends", () => {
       entry.remove()
       return html
     })
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
 
     await page.evaluate((entry) => {
       document.getElementById("task-column-status-entry")!.insertAdjacentHTML("afterend", entry)
       // as the server sends it: ticked
       ;(document.getElementById("task-column-progress") as HTMLInputElement).checked = true
     }, entry)
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
     await expect(tasks.columnBox("progress")).not.toBeChecked()
     await expect(tasks.header("progress")).toBeHidden()
   })
@@ -704,19 +723,19 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
 
     // shown, it has no word at its box: its filter is there to be seen
     await tasks.openColumns()
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
     await expect(tasks.columnFlag("progress")).toHaveText("(filtered, sorted)")
     await expect(tasks.columnFlag("progress")).toBeHidden()
     await expect(page.getByRole("checkbox", { name: "Progress", exact: true })).toBeChecked()
 
     await tasks.hide("progress")
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden, 1 filtered, 1 sorted)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden, 1 filtered, 1 sorted)")
     await expect(tasks.columnEntry("progress")).toHaveText("Progress (filtered, sorted)")
     await expect(tasks.columnFlag("progress")).toBeVisible()
     await expect(page.getByRole("checkbox", { name: "Progress (filtered, sorted)", exact: true })).not.toBeChecked()
     // another hidden column says nothing of the kind
     await tasks.hide("status")
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden, 1 filtered, 1 sorted)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden, 1 filtered, 1 sorted)")
     await expect(tasks.columnEntry("status")).toHaveText("State")
     await expect(tasks.columnFlag("status")).toHaveCount(0)
 
@@ -734,13 +753,13 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
       tasks.forge("sort", { column: "title" }),
     )
     await expect(tasks.columnsList).toBeVisible()
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden, 1 filtered)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden, 1 filtered)")
     await expect(tasks.columnEntry("progress")).toHaveText("Progress (filtered)")
 
     // "Clear filters" clears the one that is out of sight as well
     await page.keyboard.press("Escape")
     await tasks.reads(() => tasks.clearFilters.click())
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
     expect(params(page)).toEqual({ "task[sort]": "title" })
     await tasks.openColumns()
     await expect(tasks.columnEntry("progress")).toHaveText("Progress")
@@ -756,23 +775,23 @@ test.describe("a hidden column that the rows are filtered or sorted by", () => {
     await tasks.reads(() => tasks.filterValue("title").press("Enter"))
     expect(await tasks.rowKeys()).toEqual([FIRST])
     await tasks.hide("priority")
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
 
     await tasks.forge("sort", { column: "priority" })
     await expect(tasks.header("priority")).toHaveAttribute("aria-sort", "ascending")
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden, 1 sorted)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden, 1 sorted)")
     await expect(tasks.columnFlag("priority")).toBeVisible()
   })
 
   test("a column that is hidden first and sorted by afterwards", async ({ tasks }) => {
     await tasks.hide("priority")
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
     // sorted by a script: its header is not there to be clicked
     await tasks.reads(() => tasks.header("priority").evaluate((header: HTMLElement) => header.click()))
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden, 1 sorted)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden, 1 sorted)")
     await expect(tasks.columnEntry("priority")).toHaveText("Priority (sorted)")
     await tasks.unhide("priority")
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
     await expect(tasks.columnFlag("priority")).toBeHidden()
     await expect(tasks.header("priority")).toHaveAttribute("aria-sort", "ascending")
   })
@@ -995,7 +1014,7 @@ test.describe("what is open in a column when it is hidden", () => {
     await tasks.box(FIRST).click()
     await tasks.box(SECOND).click()
     await expect(tasks.selectedCount).toHaveText("2 selected")
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
     await expect(tasks.columnsButton).toBeVisible()
   })
 })
@@ -1049,18 +1068,19 @@ test.describe("each table on its own", () => {
 
     await comments.hide("body")
     await expect(comments.header("body")).toBeHidden()
-    await expect(comments.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(comments.columnsButton).toHaveAccessibleName("Columns of Comments (1 hidden)")
+    await expect(comments.columnsCount).toHaveText("1")
     await expect(comments.columnsStatus).toHaveText("Body hidden")
     expect(await comments.shownColumns()).toEqual(inner.filter((column) => column !== "body"))
     // the table around it is as it was
     expect(await tasks.shownColumns()).toEqual(outer)
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
 
     // and the other way round
     await tasks.hide("status", "priority")
     expect(await comments.shownColumns()).toEqual(inner.filter((column) => column !== "body"))
-    await expect(comments.columnsButton).toHaveText("Columns (1 hidden)")
-    await expect(tasks.columnsButton).toHaveText("Columns (2 hidden)")
+    await expect(comments.columnsButton).toHaveAccessibleName("Columns of Comments (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden)")
     await page.keyboard.press("Escape")
 
     // the line and the nested table's cell span the columns that are shown, and no more
@@ -1102,7 +1122,7 @@ test.describe("each table on its own", () => {
     await comments.loaded()
     await expect(comments.header("body")).toBeVisible()
     expect(await comments.shownColumns()).toEqual(inner)
-    await expect(comments.columnsButton).toHaveText("Columns")
+    await expect(comments.columnsButton).toHaveAccessibleName("Columns of Comments")
   })
 
   test("the table of a picker: Escape closes its list and leaves the picker open", async ({ page, tasks }) => {
@@ -1125,7 +1145,7 @@ test.describe("each table on its own", () => {
     expect(list.x + list.width).toBeLessThanOrEqual(page.viewportSize()!.width)
     await users.columnBox(listed[0]).uncheck()
     await expect(users.header(listed[0])).toBeHidden()
-    await expect(users.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(users.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
     expect(await users.shownColumns()).toEqual(columns.filter((column) => column !== listed[0]))
 
     await page.keyboard.press("Escape")
@@ -1135,7 +1155,7 @@ test.describe("each table on its own", () => {
     // hiding has selected or chosen no row
     expect(await users.selectedKeys()).toEqual(selected)
     // the table behind the picker has its own
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
 
     // with the list closed, Escape is the picker's again
     await page.keyboard.press("Escape")
@@ -1153,10 +1173,10 @@ test.describe("each table on its own", () => {
 
     // both have a column called "status"
     await projects.hide("status")
-    await expect(projects.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(projects.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
     expect(await projects.shownColumns()).toEqual(theirs.filter((column) => column !== "status"))
     expect(await tasks.shownColumns()).toEqual(mine)
-    await expect(tasks.columnsButton).toHaveText("Columns")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns")
 
     // the other table's button closes this one's list
     await tasks.columnsButton.click()
@@ -1172,8 +1192,8 @@ test.describe("each table on its own", () => {
     await projects.reads(() => projects.header("name").click({ position: { x: 20, y: 10 } }))
     await expect(projects.header("status")).toBeHidden()
     await expect(tasks.header("priority")).toBeHidden()
-    await expect(projects.columnsButton).toHaveText("Columns (1 hidden)")
-    await expect(tasks.columnsButton).toHaveText("Columns (1 hidden)")
+    await expect(projects.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
+    await expect(tasks.columnsButton).toHaveAccessibleName("Columns (1 hidden)")
   })
 })
 
@@ -1181,7 +1201,7 @@ test("in German the button, its list and what is read out are German", async ({ 
   await tasks.open()
   await switchLocale(page, "de")
   await tasks.ready()
-  await expect(tasks.columnsButton).toHaveText("Spalten")
+  await expect(tasks.columnsButton).toHaveAccessibleName("Spalten")
   await tasks.columnsButton.click()
   await expect(page.getByRole("group", { name: "Spalten" })).toBeVisible()
 
@@ -1189,7 +1209,7 @@ test("in German the button, its list and what is read out are German", async ({ 
   await tasks.filterValue("progress").fill("100")
   await tasks.reads(() => tasks.filterValue("progress").press("Enter"))
   await tasks.hide("progress", "status")
-  await expect(tasks.columnsButton).toHaveText("Spalten (2 ausgeblendet, 1 gefiltert)")
+  await expect(tasks.columnsButton).toHaveAccessibleName("Spalten (2 ausgeblendet, 1 gefiltert)")
   await expect(tasks.columnEntry("progress")).toHaveText(`${label} (gefiltert)`)
   await tasks.columnBox("progress").check()
   await expect(tasks.columnsStatus).toHaveText(`${label} eingeblendet`)
@@ -1222,7 +1242,7 @@ for (const theme of ["light", "dark"] as const) {
       await tasks.reads(() => tasks.filterValue("progress").press("Enter"))
       await tasks.hide("progress", "status")
       await expect(tasks.columnFlag("progress")).toBeVisible()
-      await expect(tasks.columnsButton).toHaveText("Columns (2 hidden, 1 filtered)")
+      await expect(tasks.columnsButton).toHaveAccessibleName("Columns (2 hidden, 1 filtered)")
       await tasks.columnBox("progress").focus()
       await expectNoAxeViolations(page)
 

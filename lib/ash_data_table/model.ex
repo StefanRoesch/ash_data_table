@@ -616,44 +616,6 @@ defmodule AshDataTable.Model do
     end
   end
 
-  @doc """
-  What a nested table lets this person create, without working out
-  everything else of it for them: the create action of its model, or nil
-  when it has none or the person can never run it.
-
-  `nested` is the model `build/2` gives with `via:` the relationship, which
-  is the same for everybody. `opts` are those of `for_actor/2`; Ash is asked
-  on every call.
-  """
-  @spec nested_create(%__MODULE__{}, keyword) :: Action.t() | nil
-  def nested_create(%__MODULE__{resource: resource, create: create}, opts) do
-    with %Action{} <- create,
-         true <-
-           not Keyword.get(opts, :authorize?, true) or
-             Access.forbidden_actions(resource, [create.name], opts) == [] do
-      create
-    else
-      _none_or_never -> nil
-    end
-  end
-
-  @doc """
-  The table actions a nested table offers this person, without working out
-  everything else of it for them: those of its model that they can ever
-  run. `nested`, `opts` and what is asked are as for `nested_create/2`.
-  """
-  @spec nested_table_actions(%__MODULE__{}, keyword) :: [Action.t()]
-  def nested_table_actions(%__MODULE__{table_actions: []}, _opts), do: []
-
-  def nested_table_actions(%__MODULE__{resource: resource, table_actions: actions}, opts) do
-    if Keyword.get(opts, :authorize?, true) do
-      forbidden = Access.forbidden_actions(resource, Enum.map(actions, & &1.name), opts)
-      Enum.reject(actions, &(&1.name in forbidden))
-    else
-      actions
-    end
-  end
-
   # The row actions, the table actions and the create action as this person
   # meets them: without an action they can never run, and without the
   # inputs of fields they can never see. A field policy is about reading;

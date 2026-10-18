@@ -79,8 +79,8 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
                ["comment-create", "comment-related-clear"]
 
       assert text(html, "#comment-create") == "New comment"
-      # the line of the page's name has none
-      assert attribute(html, "#comment-header button", "id") == []
+      # the line of the page's name has none: "Columns" only
+      assert attribute(html, "#comment-header button", "id") == ["comment-columns-button"]
     end
 
     test "creates under the record it is limited to, which is no field of the panel",
@@ -211,15 +211,15 @@ defmodule DemoWeb.Tables.ActionsElsewhereTest do
            comments: comments
          } do
       # a comment under the task
-      click(view, "[id='#{tasks}-row-#{task.id}-l-comments-create']")
+      click(view, "[id='#{tasks}-row-#{task.id}-t-comments-create']")
 
       html = run_panel(view, comments, body: "Deep down")
       assert hd(column(html, comments, "body")) == "Deep down"
       assert {"Deep down", task.id, world.member.id} in comments()
 
       # a task under the project: `project_id` is no field, and is the project's
-      html = click(view, "[id='project-row-#{project.id}-l-tasks-create']")
-      assert text(html, "[id='project-row-#{project.id}-l-tasks-create']") == "New task"
+      html = click(view, "[id='project-row-#{project.id}-t-tasks-create']")
+      assert text(html, "[id='project-row-#{project.id}-t-tasks-create']") == "New task"
       refute "project_id" in Enum.map(panel(html, tasks).fields, & &1.name)
 
       html = run_panel(view, tasks, title: "Under the project")

@@ -400,12 +400,13 @@ test.describe("selecting from the keyboard", () => {
     await tasks.press("Space")
     // the server draws the buttons once it is told of the selection
     await expect(tasks.clearSelection).toBeVisible()
-    // "Columns" (hiding.spec.ts) stands between the line's buttons and the grid
+    // the line stands right before the grid: its last button is "More",
+    // whose menu holds the actions after the first two
     await tasks.press("Shift+Tab")
-    expect(await tasks.focused()).toBe("task-columns-button")
+    expect(await tasks.focused()).toBe("task-bulk-more-button")
     await tasks.press("Shift+Tab")
-    expect(await tasks.focused()).toBe("task-bulk-set_labels")
-    await tasks.press("Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab", "Shift+Tab")
+    expect(await tasks.focused()).toBe("task-bulk-reassign")
+    await tasks.press("Shift+Tab", "Shift+Tab")
     expect(await tasks.focused()).toBe("task-clear-selection")
 
     await page.keyboard.press("Enter")
@@ -600,20 +601,25 @@ test.describe("the line above the grid", () => {
     expect(await tasks.hasFocus()).toBe(true)
   })
 
-  test("does not move the grid when its buttons appear, and stands at the other end from Clear filters", async ({
+  test("takes no room while nothing is selected, one line once something is, and stands at the other end from Clear filters", async ({
     page,
     tasks,
   }) => {
     const top = async () => (await tasks.grid.boundingBox())!.y
     const before = await top()
+    // nothing is kept free for it: the heading line is right above the grid
+    expect((await tasks.selectionLine.boundingBox())?.height ?? 0).toBe(0)
+    const heading = (await tasks.headerLine.boundingBox())!
+    expect(before - (heading.y + heading.height)).toBeLessThanOrEqual(12)
 
     await tasks.box(FIRST).click()
     await expect(tasks.clearSelection).toBeVisible()
-    expect(await top()).toBe(before)
+    const selected = await top()
+    expect(selected).toBeGreaterThan(before)
 
     await tasks.pageBox.click()
     await expect(tasks.selectAll).toBeVisible()
-    expect(await top()).toBe(before)
+    expect(await top()).toBe(selected)
 
     // a filter takes the selection with it, and leaves its own button at the right
     await tasks.filterCell("title").focus()
@@ -628,6 +634,11 @@ test.describe("the line above the grid", () => {
     const filters = (await tasks.clearFilters.boundingBox())!
     expect(clear.x).toBeLessThan(filters.x)
     expect(Math.abs(clear.y - filters.y)).toBeLessThanOrEqual(1)
+    expect(await top()).toBe(selected)
+
+    // and with the selection and the filter gone, it takes no room again
+    await tasks.reads(() => tasks.clearFilters.click())
+    await expect(tasks.clearFilters).toHaveCount(0)
     expect(await top()).toBe(before)
   })
 
@@ -658,7 +669,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.box(THIRD).click()
     await pushed.clear()
 
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await expect(tasks.question).toBeVisible()
     await expect(tasks.question.locator("p")).toHaveText("Run “Archive” on 3 records?")
     await expect(tasks.question.getByRole("button", { name: "Confirm" })).not.toHaveAttribute("data-destructive")
@@ -669,7 +680,7 @@ test.describe("an action on the selected rows", () => {
     await answered(tasks)
     expect(await tasks.focused()).toBe("task-bulk-archive")
 
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await expect(tasks.question).toBeVisible()
     await page.keyboard.press("Escape")
     await answered(tasks)
@@ -689,7 +700,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.box(THIRD).click()
     await pushed.clear()
 
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await confirmed(tasks)
 
     await expect(tasks.result).toHaveText("Archive: 2 done.")
@@ -720,7 +731,7 @@ test.describe("an action on the selected rows", () => {
     // the server is told every change, and the action names nothing else
     expect(await pushed.count("select")).toBe(2)
 
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await expect(tasks.question.locator("p")).toHaveText("Run “Archive” on 2 records?")
     await confirmed(tasks)
     await expect(tasks.result).toHaveText("Archive: 2 done.")
@@ -733,7 +744,7 @@ test.describe("an action on the selected rows", () => {
 
   test("what it came to stays through a sort, and goes when something else is selected", async ({ tasks }) => {
     await tasks.box(FIRST).click()
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await confirmed(tasks)
 
     await tasks.reads(() => tasks.header("title").click())
@@ -749,7 +760,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.box(FIRST).click()
     await tasks.box(SECOND).click()
 
-    await tasks.bulk("destroy").click()
+    await tasks.useBulk("destroy")
     await expect(tasks.question.locator("p")).toHaveText(
       "Delete this task? This cannot be undone. 2 records are selected.",
     )
@@ -772,7 +783,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.box(FIRST).click()
     await tasks.box(SECOND).click()
 
-    await tasks.bulk("reassign").click()
+    await tasks.useBulk("reassign")
     await expect(tasks.panel).toBeVisible()
     await expect(tasks.panelTitle).toHaveText("Reassign: 2 records")
     expect(await tasks.fields()).toEqual(["assignee_id", "reason"])
@@ -818,7 +829,7 @@ test.describe("an action on the selected rows", () => {
     tasks,
   }) => {
     await tasks.box(FIRST).click()
-    await tasks.bulk("set_progress").click()
+    await tasks.useBulk("set_progress")
     await expect(tasks.panelTitle).toHaveText("Set progress: 1 record")
 
     await page.keyboard.press("Escape")
@@ -826,7 +837,9 @@ test.describe("an action on the selected rows", () => {
     await expect(tasks.panel).toHaveCount(0)
     await expect(tasks.selectedCount).toHaveText("1 selected")
     await expect(tasks.result).toHaveCount(0)
-    expect(await tasks.focused()).toBe("task-bulk-set_progress")
+    // an action of the menu "More" closed: focus is back on its button
+    await expect(tasks.bulkMore.locator("xpath=following-sibling::*[@popover]")).toBeHidden()
+    expect(await tasks.focused()).toBe("task-bulk-more-button")
   })
 
   test("that a validation refuses on some rows is done on the others, and says why", async ({ tasks }) => {
@@ -835,7 +848,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.box(done).click()
     await tasks.box(todo).click()
 
-    await tasks.bulk("set_progress").click()
+    await tasks.useBulk("set_progress")
     await expect(tasks.panel).toBeVisible()
     await tasks.field("progress").fill("50")
     await tasks.panelSettled()
@@ -859,7 +872,7 @@ test.describe("an action on the selected rows", () => {
     await tasks.pageBox.click()
     await tasks.selectAll.click()
 
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await expect(tasks.question.locator("p")).toHaveText(`Run “Archive” on ${SEED.tasks.acme} records?`)
     await tasks.question.getByRole("button", { name: "Confirm" }).click()
     await expect(tasks.result).toHaveText(`Archive: ${SEED.tasks.acme} done.`, { timeout: 20_000 })
@@ -878,7 +891,7 @@ test.describe("an action on the selected rows", () => {
       tasks,
     }) => {
       await tasks.pageBox.click()
-      await tasks.bulk("archive").click()
+      await tasks.useBulk("archive")
       await confirmed(tasks)
 
       const summary = (await tasks.result.locator("[data-summary]").textContent())!
@@ -960,11 +973,13 @@ test.describe("a nested table", () => {
     expect(await tasks.selectedKeys()).toEqual([])
     await expect(comments.clearSelection).toBeVisible()
 
-    // its "Columns" button (hiding.spec.ts) stands between them and its grid
-    await page.keyboard.press("Shift+Tab")
-    expect(await tasks.focused()).toBe(`${comments.id}-columns-button`)
+    // right before its grid: its "Columns" is on its line, and no tab stop
     await page.keyboard.press("Shift+Tab")
     expect(await tasks.focused()).toBe(`${comments.id}-bulk-destroy`)
+    // which, as the only action, stands on the line, and in the error colour
+    await expect(comments.bulk("destroy")).toHaveClass(/btn-outline/)
+    await expect(comments.bulk("destroy")).toHaveClass(/btn-error/)
+    await expect(comments.bulkMore).toHaveCount(0)
   })
 
   test.describe(() => {
@@ -974,7 +989,7 @@ test.describe("a nested table", () => {
       expect(keys.length).toBeGreaterThan(0)
 
       await comments.box(keys[0]).click()
-      await comments.bulk("destroy").click()
+      await comments.useBulk("destroy")
       await expect(comments.question.locator("p")).toHaveText("Delete this comment? 1 record is selected.")
       await comments.question.getByRole("button", { name: "Confirm" }).click()
 
@@ -998,7 +1013,7 @@ test.describe("rows with a primary key of two attributes", () => {
     await expect(labels.selectedCount).toHaveText("2 selected")
 
     // "Remove" asks nothing in a row; for several rows it asks
-    await labels.bulk("destroy").click()
+    await labels.useBulk("destroy")
     await expect(labels.question.locator("p")).toHaveText("Run “Remove” on 2 records?")
     await labels.question.getByRole("button", { name: "Confirm" }).click()
 
@@ -1046,7 +1061,7 @@ test.describe("in German", () => {
     await tasks.pageBox.click()
     await tasks.box(FIRST).click()
 
-    await tasks.bulk("archive").click()
+    await tasks.useBulk("archive")
     await expect(tasks.question.locator("p")).toHaveText("„Archivieren“ für 1 Eintrag ausführen?")
     await tasks.question.getByRole("button", { name: "Bestätigen" }).click()
     await expect(tasks.result).toHaveText("Archivieren: 1 erledigt.")
@@ -1082,7 +1097,7 @@ for (const theme of ["light", "dark"] as const) {
 
     test("the question of an action on the selected rows", async ({ page, tasks }) => {
       await tasks.box(FIRST).click()
-      await tasks.bulk("destroy").click()
+      await tasks.useBulk("destroy")
       await expect(tasks.question).toBeVisible()
       await expectNoAxeViolations(page)
     })
@@ -1090,7 +1105,7 @@ for (const theme of ["light", "dark"] as const) {
     test("the panel of an action on the selected rows, with an error", async ({ page, tasks }) => {
       await tasks.box(FIRST).click()
       await tasks.box(SECOND).click()
-      await tasks.bulk("reassign").click()
+      await tasks.useBulk("reassign")
       await expect(tasks.panel).toBeVisible()
       await expectNoAxeViolations(page)
 
@@ -1107,7 +1122,7 @@ for (const theme of ["light", "dark"] as const) {
       const [done] = await keysWhere(tasks, "status", "Done")
       await tasks.box(done).click()
       await tasks.box(FIRST).click()
-      await tasks.bulk("set_progress").click()
+      await tasks.useBulk("set_progress")
       await tasks.field("progress").fill("50")
       await tasks.panelSettled()
       await tasks.panelSubmit.click()
@@ -1117,7 +1132,7 @@ for (const theme of ["light", "dark"] as const) {
 
       await tasks.clearSelection.click()
       await tasks.box(SECOND).click()
-      await tasks.bulk("archive").click()
+      await tasks.useBulk("archive")
       await confirmed(tasks)
       await expect(tasks.result).toHaveText("Archive: 1 done.")
       await expectNoAxeViolations(page)

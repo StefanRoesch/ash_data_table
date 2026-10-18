@@ -30,12 +30,20 @@ const params = (page: Page) => Object.fromEntries(new URL(page.url()).searchPara
  */
 async function portals(page: Page): Promise<{ portals: number; loose: number }> {
   return page.evaluate(() => {
+    // Each nested table has two: the table, in the cell under its line
+    // (`data-nested`), and its heading line, on the line
+    // (`ROW-l-NAME-h`). Both must be inside the element they name.
     const marked = Array.from(document.querySelectorAll<HTMLElement>("[data-ash-data-table-portal]"))
+    const tables = marked.filter((marker) => marker.querySelector(":scope > [data-ash-data-table-view]"))
+    const placed = (marker: HTMLElement) =>
+      marker.parentElement?.closest(`[id="${CSS.escape(marker.dataset.ashDataTablePortal!)}"]`) != null
     return {
-      portals: marked.length,
-      loose: marked.filter(
-        (marker) => marker.closest("[role=gridcell][data-nested]")?.id !== marker.dataset.ashDataTablePortal,
-      ).length,
+      portals: tables.length,
+      loose:
+        tables.filter((marker) => marker.closest("[role=gridcell][data-nested]")?.id !== marker.dataset.ashDataTablePortal)
+          .length +
+        marked.filter((marker) => !placed(marker)).length +
+        Math.abs(marked.length - 2 * tables.length),
     }
   })
 }

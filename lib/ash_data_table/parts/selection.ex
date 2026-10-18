@@ -1,14 +1,11 @@
 defmodule AshDataTable.Parts.Selection do
   @moduledoc false
   # The line above the grid: what is selected and what can be done with it,
-  # the notice of changes, "Clear filters" and "Columns" (the kit's
-  # `columns/1`). The part `selection_line` of `AshDataTable.Kit.Default`.
+  # the notice of changes and "Clear filters". It takes room only while one
+  # of them is there. The part `selection_line` of `AshDataTable.Kit.Default`.
   use Phoenix.Component
 
   alias AshDataTable.Attrs
-  alias AshDataTable.Kit
-  alias AshDataTable.Kit.Words
-  alias AshDataTable.Model
   alias AshDataTable.Parts
   alias Phoenix.LiveView.JS
 
@@ -27,6 +24,15 @@ defmodule AshDataTable.Parts.Selection do
   # The buttons are ordinary tab stops while they are shown, in a nested
   # table too: they are there only while rows are selected, and have to be
   # reached then.
+  #
+  # Of more than three actions the first two are buttons of the line and
+  # the others are in a menu (`More`, the browser's popover, placed as the
+  # list of "Columns" is). An action that destroys has the error colour's
+  # outline. "Clear selection" is a quiet button, as "Clear filters" is.
+  #
+  # The number is said in a live region that is always there, empty while
+  # nothing is selected: a region that comes into the page with its text
+  # is not read out.
   attr :id, :string, required: true
   attr :page, :any, required: true
   attr :row_count, :integer, required: true
@@ -69,29 +75,74 @@ defmodule AshDataTable.Parts.Selection do
         <button type="button" {Attrs.select_all(@id, @offered?)} class="btn btn-sm">
           {@texts.select_all}
         </button>
-        <button type="button" {Attrs.clear_selection(@id)} class="btn btn-sm">
+        <button type="button" {Attrs.clear_selection(@id)} class="btn btn-ghost btn-sm">
           {@texts.clear_selection}
         </button>
         <%!-- While an action runs the buttons are not to be used, and say so
         without being `disabled`: a button that is disabled drops the focus. --%>
         <button
-          :for={action <- @bulk}
+          :for={action <- inline(@bulk)}
           type="button"
           {Attrs.bulk(@id, action, @running?)}
-          class={["btn btn-sm", @running? && "btn-disabled"]}
+          class={bulk_class(action, @running?)}
         >
           {action.label}
         </button>
+        <button
+          :if={menu(@bulk) != []}
+          type="button"
+          {Attrs.bulk_more_button(@id)}
+          style={"anchor-name: --ash-data-table-more-#{@id}"}
+          class="btn btn-sm"
+        >
+          {@texts.more_actions} <span aria-hidden="true">▾</span>
+        </button>
+        <ul
+          :if={menu(@bulk) != []}
+          {Attrs.bulk_more(@id)}
+          style={"position-anchor: --ash-data-table-more-#{@id}"}
+          class="dropdown menu rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
+        >
+          <li :for={action <- menu(@bulk)}>
+            <button
+              type="button"
+              {Attrs.bulk(@id, action, @running?)}
+              class={[
+                "whitespace-nowrap",
+                action.type == :destroy && "text-error",
+                @running? && "opacity-50"
+              ]}
+            >
+              {action.label}
+            </button>
+          </li>
+        </ul>
       </div>
     </div>
     """
+  end
+
+  # Of more than three actions, the first two are on the line and the
+  # others in the menu. Worked out where they are used, from `bulk`, so that
+  # LiveView sends the buttons again only when the actions changed.
+  defp inline(bulk) when length(bulk) > 3, do: Enum.take(bulk, 2)
+  defp inline(bulk), do: bulk
+
+  defp menu(bulk) when length(bulk) > 3, do: Enum.drop(bulk, 2)
+  defp menu(_bulk), do: []
+
+  defp bulk_class(action, running?) do
+    [
+      "btn btn-sm",
+      action.type == :destroy && "btn-outline btn-error",
+      running? && "btn-disabled"
+    ]
   end
 
   attr :bulk, :any, required: true
   attr :choose, :any, required: true
   attr :id, :any, required: true
   attr :kit, :atom, required: true
-  attr :model, :any, required: true
   attr :myself, :any, required: true
   attr :nested?, :any, required: true
   attr :notice?, :any, required: true
@@ -108,10 +159,15 @@ defmodule AshDataTable.Parts.Selection do
   def selection_line(assigns) do
     ~H"""
     <%!-- The line above the grid: what is selected and what can be done with
-    it at one end, "Clear filters" and "Columns" at the other. As high as a
-    button, so that the table does not move when one of them appears; a nested
-    table keeps no room free for it. --%>
-    <div class={@kit.class(:selection_line, %{nested?: @nested?})}>
+    it at one end, "Clear filters" at the other. Only while something is
+    selected, a filter is set or a notice shows does it take room: no room
+    is kept for it, in a table on the page as in a nested one. --%>
+    <div class={
+      @kit.class(:selection_line, %{
+        nested?: @nested?,
+        shown?: shown?(@notice?, @state, @selecting, @all?, @selected)
+      })
+    }>
       <.selection
         :if={@selecting == :multi}
         id={@id}
@@ -138,7 +194,7 @@ defmodule AshDataTable.Parts.Selection do
         type="button"
         id={"#{@id}-clear-filters"}
         tabindex={@nested? && "-1"}
-        class={["btn btn-sm", not @nested? && "ms-auto"]}
+        class="btn btn-ghost btn-sm ms-auto"
         phx-click={
           JS.push(Parts.Common.event(@id, "clear_filters"), target: @myself)
           |> JS.focus(to: "##{@id}-table [tabindex='0']")
@@ -146,19 +202,12 @@ defmodule AshDataTable.Parts.Selection do
       >
         {@texts.clear_filters}
       </button>
-      <Kit.part
-        :if={length(@model.columns) > 1 and Parts.Grid.hideable(@model) != []}
-        part={:columns}
-        kit={@kit}
-        id={@id}
-        columns={Parts.Grid.hideable(@model)}
-        keeps_one?={Model.keeps_one?(@model)}
-        state={@state}
-        class={not @nested? and @state.filters == %{} and "ms-auto"}
-        texts={Words.texts(:columns, %{columns: Parts.Grid.hideable(@model), state: @state})}
-        messages={Words.messages(:columns, %{columns: Parts.Grid.hideable(@model), state: @state})}
-      />
     </div>
     """
   end
+
+  # Whether anything is on the line: rows are selected, a filter is set, or
+  # the notice shows.
+  defp shown?(notice?, state, selecting, all?, selected),
+    do: notice? or state.filters != %{} or (selecting == :multi and (all? or selected > 0))
 end

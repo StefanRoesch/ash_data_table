@@ -92,12 +92,6 @@ defmodule AshDataTable.Live.Core.Nesting do
     model(socket, {resource, table, via, choose && choose.read_action, live})
   end
 
-  # The model of the nested table of a relationship, as far as it is the
-  # same for everybody: the one the nested table itself is built with, where
-  # it was told nothing of live updates.
-  defp nested_model(socket, relationship),
-    do: model(socket, {relationship.destination, relationship.table, relationship, nil, nil})
-
   defp model(socket, {resource, table, via, choose, live} = key) do
     build = fn -> Model.build(resource, table: table, via: via, choose: choose, live?: live) end
 
@@ -118,58 +112,6 @@ defmodule AshDataTable.Live.Core.Nesting do
   defp reloading?(%{endpoint: nil}), do: false
 
   defp reloading?(%{endpoint: endpoint}), do: endpoint.config(:code_reloader) == true
-
-  # What the nested tables of this table's rows let the person create, and
-  # which table actions they offer: by relationship, what the create button
-  # on its line says (`create`), and the table actions with what their
-  # buttons say (`actions`). The buttons are on the line, which is this
-  # table's, and each is used on the nested table, which decides everything
-  # about it once more.
-  #
-  # Whether a nested table has a create action, and which table actions, is
-  # its model's to say, and is the same for everybody. Whether this person
-  # may run them is asked of Ash here, on every update.
-  def creates(socket) do
-    case Core.table(socket) do
-      %{entry: %{expandable?: true, model: model}} = table -> creates(socket, table, model)
-      _not_expandable -> Core.put(socket, creates: %{})
-    end
-  end
-
-  defp creates(socket, table, model) do
-    reader = nested_reader(table)
-
-    {creates, socket} =
-      Enum.reduce(model.relationships, {%{}, socket}, fn relationship, {creates, socket} ->
-        {nested, socket} = nested_model(socket, relationship)
-
-        # a nested table authorizes as it was told, else as its domain says
-        authorize? =
-          if(is_nil(reader.authorize?),
-            do: AshDataTable.Domain.Info.authorize?(relationship.destination),
-            else: reader.authorize?
-          )
-
-        opts =
-          [authorize?: authorize?] ++ Map.to_list(Map.take(reader, [:scope, :actor, :tenant]))
-
-        # the table actions of the nested table, on the same line: what
-        # each button says, and which action it is
-        actions =
-          for action <- Model.nested_table_actions(nested, opts),
-              do: %{name: action.name, label: Text.label(action.label)}
-
-        create =
-          if Model.nested_create(nested, opts),
-            do: Text.t(:new_record, name: Text.label(nested.name))
-
-        if create || actions != [],
-          do: {Map.put(creates, relationship.name, %{create: create, actions: actions}), socket},
-          else: {creates, socket}
-      end)
-
-    Core.put(socket, creates: creates)
-  end
 
   # Sent by the hook when a person uses the expander of a row: the row by
   # the key in its DOM id. The row is expanded to its lines, or closed with
@@ -350,8 +292,8 @@ defmodule AshDataTable.Live.Core.Nesting do
   end
 
   # The tables the table `id` renders: by id, with what each is told and
-  # the cell its portal goes into (nil for the table of a picker, which is
-  # drawn where its dialog is). A nested table only for a line of a row that
+  # where its portals go, the cell and the place on its line for its heading
+  # (nil for the table of a picker, which is drawn where its dialog is). A nested table only for a line of a row that
   # is on the page, and of a relationship the person is offered.
   def children(socket, id) do
     table = Core.table(socket)
@@ -424,7 +366,8 @@ defmodule AshDataTable.Live.Core.Nesting do
               mounted?: false
             })
 
-          {Ids.nested_table(row, name), given, Ids.nested_cell(row, name)}
+          {Ids.nested_table(row, name), given,
+           {Ids.nested_cell(row, name), Ids.line_heading(row, name)}}
         end
 
       _nothing_open ->

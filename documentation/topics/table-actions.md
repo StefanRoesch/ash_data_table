@@ -105,7 +105,7 @@ the page, in its tab order before the grid.
 | --- | --- |
 | Mounted with `ash_data_table`, or embedded with `<AshDataTable.table>` | On the line of the table's name, at the right. A table without a name and without a create button has the line for them alone. |
 | The full view of a nested table | On the line that names the parent and the relationship, before "Show all records". |
-| A nested table | On its relationship line, after the label and the create button. See [Nested tables](#nested-tables). |
+| A nested table | On its relationship line, at its far end, after the create button. See [Nested tables](#nested-tables). |
 | The table in a picker | None. A picker is for choosing a record. |
 
 A table that could not read has none: no buttons beside an error, and none
@@ -451,10 +451,10 @@ action do not apply to it.
 
 A nested table is the table of the destination resource, so it has that
 table's table actions. A nested table has no line of its name of its own:
-its name is the relationship line of the table around it. The buttons are
-there, after the label and after the create button where the line has one,
-once the nested table has read. They look as the create button of a line
-does.
+its name is the relationship line of the table around it, which is its
+heading line. The buttons are there, at its far end after the create button
+where the line has one, once the nested table has read. They look as the
+create button does.
 
 - A button of a line is used on the nested table. Its panel, its question
   and what it says afterwards are the nested table's, and the table around
@@ -469,7 +469,7 @@ does.
   not.
 
 **Try it:** `/tasks` as Ada Admin. Expand a row and open "Labels". On the
-line, after "Labels", are "Count unused", "Recolour", "Remove unused",
+line, at its far end, are "Count unused", "Recolour", "Remove unused",
 "Merge" and "Import".
 
 ## The keyboard
