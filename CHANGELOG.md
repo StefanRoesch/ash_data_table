@@ -88,6 +88,10 @@ declared in the resource and mounted with one line in the router.
 - The action panel, the picker and the question open over the page
   (`:modal`) or in it (`:inline`), as the kit says or `presentation:` for
   one table. One question at a time per table.
+- The look of a table: the default kit's row lines, header group, open row
+  and nested area in the theme's colours, and `density`, `stripes`,
+  `column_lines` and a `sticky_header` in the table's own scroll area, as
+  the kit says (`look/1`) or `look:` for one table.
 - `AshDataTable.KitCase` checks a kit in a host's tests: twenty states, four
   presentations, against `AshDataTable.Test.Resource`, which ships with the
   library.

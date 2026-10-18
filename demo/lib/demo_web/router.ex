@@ -82,6 +82,27 @@ defmodule DemoWeb.Router do
 
       # Two tables of one resource on one page, placed without an id.
       live "/named", NamedLive
+
+      # The look of a table (`AshDataTable.Kit`): the projects with the
+      # header that stays in view, as their table's own scroll area, in
+      # their nested tables too; the tasks with compact rows, stripes and
+      # lines between the columns.
+      ash_data_table "/projects/sticky", Demo.Tracker.Project,
+        id: "project-sticky",
+        look: [sticky_header: true]
+
+      ash_data_table "/tasks/striped", Demo.Tracker.Task,
+        id: "task-striped",
+        look: [density: :compact, stripes: true, column_lines: true]
+
+      # The tasks drawn with a kit of the tests that shows its look on each
+      # root (`DemoWeb.LookKit`, `look_test.exs`).
+      if Application.compile_env(:demo, :test_routes, false) do
+        ash_data_table "/look/tasks", Demo.Tracker.Task,
+          id: "looked",
+          kit: DemoWeb.LookKit,
+          look: [density: :compact, sticky_header: true, nested_height: "12rem"]
+      end
     end
   end
 

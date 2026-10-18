@@ -105,6 +105,68 @@ be answered; a picker in the page that a field of a modal panel opens is
 drawn inside the panel. One question at a time per table: a question asked
 while another is still open gives the first up, as Cancel does.
 
+## The look of a table
+
+The default kit draws rows with a line under each and no stripes, a tint
+under the pointer, the header and the filter row as one group under a
+stronger rule, numbers at the end of their cells in digits of one width,
+and square boxes that select a row. The row whose relationships are open
+stays tinted, with a bar at its left edge, and the area under it has a line
+in the primary colour down its left (see
+[Nested tables](nested-tables.md#how-a-nested-table-looks)). Every tint is
+mixed from the daisyUI theme's colours, so it follows the host's theme,
+light and dark; there is no colour among the options.
+
+Four things can be changed, as **the look** of a table:
+
+| Option | What it does | Default kit |
+| --- | --- | --- |
+| `density` | How high the rows are, with the same text size: `:compact`, `:normal`, `:roomy`. | `:normal` |
+| `stripes` | Every other record faintly tinted, counted over the records only: the lines and nested tables under an open row are no stripe. | `false` |
+| `column_lines` | A line between the columns, besides the line under each row. | `false` |
+| `sticky_header` | The table gets a height of its own and only its rows scroll in it; its header and filter row stay in view. See [Layout and embedding](layout-and-embedding.md#a-header-that-stays-in-view). | `false` |
+| `height`, `nested_height` | With `sticky_header`: how high a table, and a table nested in a row, is at most, as a CSS length. | `min(75dvh, 48rem)`, `28rem` (about ten rows) |
+
+As with the presentation, a kit says its own with `look/1`, and one table
+says otherwise again with `look`, on the router line, the tag or
+`attach/4`. The look is drawing, not data: it is no option of the
+resource's `table` block (`sticky_label?` stays there, as it says which
+column a record is called by). Every table a table shows, nested at any
+depth or in a picker, looks the same. The demo mounts its projects once
+more with the header that stays in view, and its tasks with the other three
+([`demo/lib/demo_web/router.ex`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/lib/demo_web/router.ex)):
+
+<!-- source: demo/lib/demo_web/router.ex -->
+```elixir
+ash_data_table "/projects/sticky", Demo.Tracker.Project,
+  id: "project-sticky",
+  look: [sticky_header: true]
+
+ash_data_table "/tasks/striped", Demo.Tracker.Task,
+  id: "task-striped",
+  look: [density: :compact, stripes: true, column_lines: true]
+```
+
+A kit says its own, for every table drawn with it:
+
+<!-- sketch -->
+```elixir
+def look(:stripes), do: true
+def look(option), do: super(option)
+```
+
+and one table in a LiveView of your own:
+
+<!-- sketch -->
+```heex
+<AshDataTable.table resource={MyApp.Tracker.Task} look={[density: :compact, sticky_header: true, height: "60vh"]} />
+```
+
+A look of another shape is refused where the table is placed: an option
+that is none, a value of another kind, a height that is no CSS length. A kit
+of your own is given the resolved look, a map of all six, as `look` in its
+`root/1` and in `class(:root, …)`; what it draws of it is up to it.
+
 ## Drawing a part
 
 A part is a function component of the kit, named after the part
@@ -257,6 +319,10 @@ kit of the old number fails to compile with a message that names what
 changed.
 
 ## Edge cases
+
+- **A kit of your own that keeps the default kit's classes of the root**
+  (`super(:root, state)`) keeps its look too: the rules find the grid's
+  parts by their roles, not their tags, so a grid of `div`s looks the same.
 
 - **A column's component wins in a cell.** A value the person may see is
   drawn by the column's component, if it has one, and only otherwise by the

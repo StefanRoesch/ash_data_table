@@ -405,7 +405,9 @@ scrolls sideways in an area of its own, and the page around it does not.
   the pointer, as the browser has it. A nested table that is scrolled to its
   end does not go on to scroll the table around it. The wheel alone scrolls
   the page, as everywhere.
-- **A scrollbar that stays in reach.** A table that is higher than the window
+- **A scrollbar that stays in reach.** (Not with a [header that stays in
+  view](#a-header-that-stays-in-view): there the table's own scrollbar is
+  in view.) A table that is higher than the window
   has its scrollbar below the window. While that is so, the table has a
   second scrollbar at the bottom edge of the window, as wide as the table's
   area. The two move together. It goes when the table's own scrollbar comes
@@ -451,6 +453,39 @@ wrong place: keep those off the elements around a table.
 the comments scroll under their own rows, and the tasks stay. Scroll the
 page until the comments reach below the window, and the scrollbar at the
 bottom edge is theirs.
+
+## A header that stays in view
+
+`look: [sticky_header: true]` (see [Kits](kits.md#the-look-of-a-table))
+gives a table a height of its own, as Airtable does: only the rows scroll,
+up and down and sideways, inside the table, and the header with the filter
+row stays at its top. It is plain CSS (`position: sticky` on the header
+group, in the table's own scroll area); no script places anything.
+
+- **How high.** The table on a page is at most `min(75dvh, 48rem)` high, a
+  nested table about ten rows (`28rem`); `height` and `nested_height` say
+  otherwise, as CSS lengths. A table with fewer rows is as high as its rows.
+- **Nested tables and pickers' tables** have their own height and header
+  that stays, each in a scroll area of its own. Each nested scroll area is a
+  layer of its own, so its header never rises over the header of the table
+  it is in; the header of the table on the page is drawn over everything
+  nested. With `sticky_label?`, the label column's header is the corner, over
+  both.
+- **The focus is never hidden under the header.** A cell the keyboard moves
+  to is scrolled into view below the header group (`scroll-padding-top`).
+- **No second scrollbar** at the bottom edge of the window: the table's own
+  is in view.
+- **Square corners.** A scroll area whose header stays in view has square
+  corners: a rounded corner clips the header and the rows under it alike,
+  and the rows would show through its edge while they scroll.
+
+A known browser limitation: in Firefox, while it scrolls on the graphics
+card, the header of a table nested two levels deep can show for a moment
+above the scroll area of the table it is in, outside it.
+
+**Try it:** `/projects/sticky` in the demo. Expand a project, open its tasks and a
+task's comments, and scroll inside the projects or inside the tasks: only the
+rows move.
 
 ## What a refused read does
 
@@ -530,6 +565,10 @@ table shows the message in place of the rows.
   are drawn elsewhere and moved into their cells, and LiveView patches a
   stream item without them. Put `<AshDataTable.attached>` outside your own
   streams.
+- **A height of your own around a table with `sticky_header`.** The table
+  scrolls in its own area; a parent with a fixed height and `overflow: auto`
+  makes two areas that scroll up and down, one in the other. Give the table
+  its `height` instead.
 - **A component of yours renders again on every event of an attached
   table.** Every event of the table renders the LiveView again. Give your
   components named assigns, not `assigns` whole or spread attributes.

@@ -509,6 +509,28 @@ on, with that page's own sort, filters and page, which are in its address.
 The rows that were expanded there are closed: what is expanded is in no
 address.
 
+## How a nested table looks
+
+The default kit keeps the nesting readable:
+
+- **The open row stays tinted**, in the primary colour, with a bar at its
+  left edge.
+- **One line down the left of the nested area**, in the primary colour at
+  reduced strength, which starts under the open row's bar, and one inset
+  after it, about an expander wide. Each deeper level has the same: its own
+  line and its one inset, in the same colour.
+- **A title per relationship**: its arrow opens and closes that one nested
+  table, and once the nested table has read it says how many records it has
+  (where that is known: the read action counts, or there is one page).
+- **About a row of space between two nested tables**, and no card around
+  them; **one stronger rule** where the nested area ends.
+- With `sticky_header`, a nested table is about ten rows high and scrolls by
+  itself, its header staying in view: see
+  [Layout and embedding](layout-and-embedding.md#a-header-that-stays-in-view).
+
+Every tint is mixed from the theme's colours. In forced colours the tints
+go, and the lines and borders carry the structure.
+
 ## How a nested table is drawn
 
 The table on the page draws every table it shows. A nested table is moved
