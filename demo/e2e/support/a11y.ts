@@ -19,6 +19,18 @@ export async function expectNoAxeViolations(page: Page, within?: string): Promis
   await expect(page.locator("html[data-loading]")).toHaveCount(0)
   await expect(page.locator("body > canvas")).toBeHidden()
 
+  // What opens or closes with a transition is checked once it stands: the
+  // list of the columns is daisyUI's dropdown, which fades in and out, and
+  // its text measured halfway is paler than it is.
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((animation) => animation.effect?.getComputedTiming().endTime !== Infinity)
+        .map((animation) => animation.finished.catch(() => undefined)),
+    ),
+  )
+
   // Two things keep a check short on a page of 1,500 elements, where it
   // would take five seconds and more. axe runs in the page itself and hands
   // back what it found (`setLegacyMode`), in place of every node's raw result

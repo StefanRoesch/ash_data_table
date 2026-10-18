@@ -242,10 +242,16 @@ export class Table {
     return this.columnsList.evaluate((list) => list.matches(":popover-open"))
   }
 
-  /** Opens the list of the columns, if it is not open. */
+  /**
+   * Opens the list of the columns, if it is not open, and waits until it
+   * stands where it opens: daisyUI's dropdown grows into place as it opens.
+   */
   async openColumns(): Promise<void> {
     if (!(await this.columnsOpen())) await this.columnsButton.click()
     await expect(this.columnsList).toBeVisible()
+    await this.columnsList.evaluate((list) =>
+      Promise.all(list.getAnimations().map((animation) => animation.finished)),
+    )
   }
 
   /** Hides columns with the pointer: opens the list and takes the tick out of each one's box. */

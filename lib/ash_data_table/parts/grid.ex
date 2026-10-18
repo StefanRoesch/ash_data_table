@@ -74,7 +74,10 @@ defmodule AshDataTable.Parts.Grid do
   # elsewhere and Escape close it, and the button says whether it is open.
   # It is placed under the button by CSS anchor positioning (the button's
   # `anchor-name`, the list's `position-anchor` and `position-area`);
-  # where a browser has none, it opens in the middle of the window.
+  # where a browser has none, it opens in the middle of the window. It looks
+  # as daisyUI 5's dropdown that is a popover does (`dropdown menu` on the
+  # popover itself, `rounded-box bg-base-100 shadow-sm`); `flex-nowrap`
+  # keeps a long list in one column that scrolls, where `menu` would wrap.
   #
   # `columns` are the columns that can be hidden (`hideable/1`).
   # A column that is filtered or sorted by says so at its box, in text, for
@@ -115,7 +118,7 @@ defmodule AshDataTable.Parts.Grid do
       <div
         {Attrs.columns(@id, @keeps_one?, @texts)}
         style={"position-anchor: #{anchor(@id)}"}
-        class="max-h-[60vh] overflow-y-auto rounded border border-base-content/40 bg-base-100 p-2 text-sm text-base-content shadow [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
+        class="dropdown menu max-h-[60vh] flex-nowrap overflow-y-auto rounded-box bg-base-100 p-2 text-base-content shadow-sm forced-colors:border [position-area:bottom_span-right] [position-try-fallbacks:flip-inline,flip-block] supports-[position-area:bottom]:inset-auto supports-[position-area:bottom]:m-0 supports-[position-area:bottom]:mt-0.5"
       >
         <label
           :for={
