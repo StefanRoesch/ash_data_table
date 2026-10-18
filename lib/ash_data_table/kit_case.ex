@@ -116,6 +116,7 @@ defmodule AshDataTable.KitCase do
 
         def class(part, state), do: unquote(kit).class(part, state)
         def presentation(thing), do: unquote(kit).presentation(thing)
+        def look(option), do: unquote(kit).look(option)
       end
 
       for presentation <- AshDataTable.KitCase.presentations(),

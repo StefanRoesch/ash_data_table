@@ -243,6 +243,13 @@ defmodule AshDataTable do
         "what the kit says. See " <>
         "\"Modal or inline\" in `attach/4`."
 
+  attr :look, :list,
+    default: [],
+    doc:
+      "How the table looks, over what its kit says: `[sticky_header: true, density: :compact, " <>
+        "stripes: true, column_lines: true, height: \"60vh\", nested_height: \"20rem\"]`, " <>
+        "any of them. See \"The look of a table\" in `AshDataTable.Kit`."
+
   def table(assigns) do
     assigns = assign_new(assigns, :grid_label, fn -> assigns.label || label(assigns.resource) end)
     table = assigns.table || :default
@@ -298,6 +305,7 @@ defmodule AshDataTable do
       open={@open}
       kit={@kit}
       presentation={presentation!(@presentation, "<AshDataTable.table>")}
+      look={AshDataTable.Kit.look!(@look, "<AshDataTable.table>")}
     />
     """
   end
@@ -321,7 +329,7 @@ defmodule AshDataTable do
 
   The options are the attributes of `table/1`: `id`, `table`, `scope`,
   `actor`, `tenant`, `authorize?`, `live?`, `label`, `heading`,
-  `time_zone`, `kit` and `presentation`. Besides, `url: true` keeps sort, filters and page in the
+  `time_zone`, `kit`, `presentation` and `look`. Besides, `url: true` keeps sort, filters and page in the
   page's URL, under the table's id. That needs a LiveView mounted by the
   router and not inside another; it needs no `handle_params/3` of its own.
   Call `attach/4` in `mount/3`: the table then reads when LiveView first
@@ -388,6 +396,13 @@ defmodule AshDataTable do
   at a time: a question asked while
   another of the table is still open in the page gives the first up, as
   Cancel does.
+
+  ## How it looks
+
+  `look: [sticky_header: true]` (and `density`, `stripes`, `column_lines`,
+  `height`, `nested_height`) says how the table looks, over what its kit
+  says (`c:AshDataTable.Kit.look/1`): see "The look of a table" in
+  `AshDataTable.Kit`. Every table it shows looks the same.
 
   ## What the page draws itself
 
@@ -468,7 +483,7 @@ defmodule AshDataTable do
       Keyword.validate!(
         opts,
         [:id, :table, :scope, :actor, :tenant, :authorize?, :live?, :label, :time_zone] ++
-          [:notify, :open, :kit, :presentation] ++
+          [:notify, :open, :kit, :presentation, :look] ++
           @page ++ [heading: true, url: false, controlled: []]
       )
 
@@ -517,7 +532,8 @@ defmodule AshDataTable do
       open: open!(opts[:open], "AshDataTable.attach/4"),
       controlled: controlled!(opts[:controlled]),
       kit: kit!(opts[:kit], "AshDataTable.attach/4"),
-      presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4")
+      presentation: presentation!(opts[:presentation] || [], "AshDataTable.attach/4"),
+      look: AshDataTable.Kit.look!(opts[:look] || [], "AshDataTable.attach/4")
     }
 
     AshDataTable.Live.Hooks.attach(socket, name, given, opts[:url] == true)

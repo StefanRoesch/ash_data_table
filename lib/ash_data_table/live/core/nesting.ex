@@ -218,6 +218,43 @@ defmodule AshDataTable.Live.Core.Nesting do
     end
   end
 
+  # How many records each open nested table of this table has, once it has
+  # read and where that is known: its total, or all its rows where it has
+  # one page. Its line says it; the row's detail is put into the stream
+  # again where that changed (in `tidy/1`, after the nested table's read).
+  def counted(socket) do
+    %{entry: %{id: id, open: open, rows: rows, counts: counts}, entries: entries} =
+      Core.table(socket)
+
+    now =
+      for {key, lines} <- open, is_map_key(rows, key), into: %{} do
+        row = Ids.row(id, key)
+
+        counted =
+          for name <- lines,
+              count = count(entries[Ids.nested_table(row, name)]),
+              into: %{},
+              do: {name, count}
+
+        {key, counted}
+      end
+
+    changed = for {key, said} <- now, Map.get(counts, key, %{}) != said, do: key
+
+    if now == counts do
+      socket
+    else
+      Enum.reduce(changed, Core.put(socket, counts: now), &Reading.put_detail(&2, &1))
+    end
+  end
+
+  defp count(%{gone?: false, page: %{total: total}}) when is_integer(total), do: total
+
+  defp count(%{gone?: false, page: %{previous: nil, next: nil}, row_count: count}),
+    do: count
+
+  defp count(_entry), do: nil
+
   # What the table in a picker is given of the table it is opened from: who
   # is asking. It authorizes as a nested table does: as this table was told,
   # else as its own resource's domain says.

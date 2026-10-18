@@ -9,6 +9,7 @@ defmodule AshDataTable.Parts.Related do
   alias AshDataTable.Attrs
   alias AshDataTable.Ids
   alias AshDataTable.Kit
+  alias AshDataTable.Kit.Words
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
 
@@ -41,27 +42,43 @@ defmodule AshDataTable.Parts.Related do
       id={Ids.row(@id, @row.key)}
       relationship={relationship}
       open?={relationship.name in @row.lines}
+      count={line_count(@row, relationship)}
       colspan={@colspan}
       create={@creates[relationship.name][:create]}
       actions={@creates[relationship.name][:actions] || []}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
+      texts={Words.texts(:line, %{count: line_count(@row, relationship)})}
+      messages={Words.messages(:line, %{count: line_count(@row, relationship)})}
     />
     """
+  end
+
+  # How many records the open nested table of a line has, once it is known.
+  defp line_count(row, relationship) do
+    if relationship.name in row.lines, do: Map.get(row.counts, relationship.name)
   end
 
   # One relationship's line under an expanded row, and under it, while it
   # is open, the row whose one cell the nested table is moved into. `id` is
   # the row's (`ID-row-KEY`), `table` the nested table's, whose events the
   # line's buttons send.
+  #
+  # The line is the small title of its nested table: the arrow that opens
+  # and closes it, the relationship's name and, once the nested table has
+  # read, how many records it has (`count`). Its element that stays in
+  # view draws the line of the nested area down its left (see
+  # `Parts.Look`) and the one inset after it.
   attr :id, :string, required: true
   attr :relationship, :map, required: true
   attr :open?, :boolean, required: true
+  attr :count, :any, required: true
   attr :colspan, :integer, required: true
   attr :create, :any, required: true
   attr :actions, :list, required: true
   attr :table, :string, required: true
   attr :myself, :any, required: true
+  attr :texts, :map, required: true
 
   def line(assigns) do
     ~H"""
@@ -73,21 +90,24 @@ defmodule AshDataTable.Parts.Related do
         aria-colindex="1"
         tabindex="-1"
         {Attrs.line(@relationship)}
-        class="px-0 py-1"
+        class="p-0"
       >
         <%!-- What the line holds stays at the left edge of the table's
         scroll area while the table scrolls sideways under it, as the nested
         table under it does: the padding of the cell is this element's, so
         that it stands in the same place stuck and not. --%>
-        <div class="sticky left-0 w-fit px-4">
+        <div class="sticky left-0 w-fit border-s-[3px] border-s-primary/45 py-1 ps-5 pe-4">
           <button
             type="button"
             id={Ids.line_button(@id, @relationship.name)}
             tabindex="-1"
             aria-expanded={to_string(@open?)}
-            class="font-medium"
+            class="text-sm font-semibold"
           >
-            {@relationship.label}
+            {@relationship.label}{if @open? and @texts.count, do: " "}<span
+              :if={@open? and @texts.count}
+              class="ms-1 font-normal text-base-content/70"
+            >{@texts.count}</span>
           </button>
           <%!-- The create button of the nested table, on the line that names
           it: after the label, since the line is as wide as the table around it

@@ -456,9 +456,17 @@ defmodule AshDataTable.Live.Core.Reading do
   # The detail of a row as the stream holds it: what is under an expanded
   # row. `lines` are the names of its open lines, nil while the row is not
   # expanded; `pk` is the row's primary key, which its nested tables are
-  # given. No record is needed for it.
-  def detail(id, key, pk, lines) do
-    %{dom_id: Ids.detail(Ids.row(id, key)), detail?: true, key: key, pk: pk, lines: lines}
+  # given; `counts` how many records its open nested tables have, by name,
+  # where that is known. No record is needed for it.
+  def detail(id, key, pk, lines, counts \\ %{}) do
+    %{
+      dom_id: Ids.detail(Ids.row(id, key)),
+      detail?: true,
+      key: key,
+      pk: pk,
+      lines: lines,
+      counts: counts
+    }
   end
 
   # Puts a row of the page into the stream again, in its place: with the
@@ -493,12 +501,12 @@ defmodule AshDataTable.Live.Core.Reading do
   # reads nothing for it; one that is no longer rendered is gone, with its
   # state.
   def put_detail(socket, key) do
-    %{id: id, rows: rows, open: open} = Core.table(socket).entry
+    %{id: id, rows: rows, open: open, counts: counts} = Core.table(socket).entry
 
     stream_insert(
       socket,
       Core.table(socket).entry.stream,
-      detail(id, key, rows[key].pk, open[key])
+      detail(id, key, rows[key].pk, open[key], Map.get(counts, key, %{}))
     )
   end
 

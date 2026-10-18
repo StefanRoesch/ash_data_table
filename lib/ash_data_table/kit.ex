@@ -1,4 +1,38 @@
 defmodule AshDataTable.Kit do
+  # The options of a table's look ("The look of a table" below).
+  @look [
+    density: [
+      type: {:in, [:compact, :normal, :roomy]},
+      doc:
+        "How high the rows are, with the same text size: `:compact`, `:normal` or `:roomy`. `:normal` in `Kit.Default`."
+    ],
+    stripes: [
+      type: :boolean,
+      doc:
+        "Every other record faintly tinted, counted over the records only: the lines and nested tables under an open row are no stripe. `false` in `Kit.Default`."
+    ],
+    column_lines: [
+      type: :boolean,
+      doc:
+        "A line between the columns, besides the line under each row. `false` in `Kit.Default`."
+    ],
+    sticky_header: [
+      type: :boolean,
+      doc:
+        "The table gets a height of its own, and only its rows scroll inside it, both ways; its header and filter row stay in view at its top. So do a nested table's and a picker's table's. The scrollbar at the bottom edge of the window is not shown then: the table's own is in view. `false` in `Kit.Default`."
+    ],
+    height: [
+      type: {:or, [nil, {:custom, __MODULE__, :css_length, []}]},
+      doc:
+        "How high a table is at most with `sticky_header`, a CSS length (`\"60vh\"`, `\"min(80dvh, 50rem)\"`); nil for the kit's own (`min(75dvh, 48rem)` in `Kit.Default`)."
+    ],
+    nested_height: [
+      type: {:or, [nil, {:custom, __MODULE__, :css_length, []}]},
+      doc:
+        "The same for a table nested in a row; nil for the kit's own (about ten rows in `Kit.Default`)."
+    ]
+  ]
+
   @moduledoc """
   How a table is drawn: one function component per part of the table,
   the classes of the parts drawn once per table, and whether what opens
@@ -24,14 +58,19 @@ defmodule AshDataTable.Kit do
         # open the action panel in the page, not over it
         def presentation(:panel), do: :inline
         def presentation(thing), do: super(thing)
+
+        # every table of this kit with faint stripes and a sticky header
+        def look(:stripes), do: true
+        def look(:sticky_header), do: true
+        def look(option), do: super(option)
       end
 
   `use AshDataTable.Kit, contract: 1` makes every part `Kit.Default`'s; a
   kit defines the parts it draws itself, and calls `super/1` for what
   `Kit.Default` draws. It is checked as it compiles: a contract other
   than this version's, a public function of one argument that is no
-  part (`pagniation/1`), and a `class` or `presentation` of another number
-  of arguments fail to compile.
+  part (`pagniation/1`), and a `class`, `presentation` or `look` of another
+  number of arguments fail to compile.
 
   A kit is named in the configuration, for every table:
 
@@ -42,6 +81,21 @@ defmodule AshDataTable.Kit do
   `AshDataTable.attach/4` and on the router line
   (`AshDataTable.Router.ash_data_table/3`). The tables a table shows, nested
   in its rows and in its pickers, are drawn with its kit.
+
+  ## The look of a table
+
+  How a table looks, beside its parts' markup, is a kit's `look/1`: one
+  answer per option, overridable per table where the table is placed
+  (`look: [stripes: true]` on `AshDataTable.table/1`, `AshDataTable.attach/4`
+  and the router line), as `presentation/1` is. The options, checked as
+  the table is placed (`look!/2`):
+
+  #{Spark.Options.docs(@look)}
+  A kit draws what it is told: `Kit.Default` draws it with the classes of
+  its root, which reach every table inside it, nested tables and pickers'
+  tables too; the root part and `class(:root, …)` are given the options as
+  `look`, a map of all six. Every tint is mixed from the theme's colours:
+  there is no colour among the options.
 
   ## What a part is given, and what it must write
 
@@ -100,7 +154,9 @@ defmodule AshDataTable.Kit do
       of a picker's table: `inner_block` (the table) and `opened` (what
       opens: the question, the action panel and the picker, where they are
       drawn in the page); `id`, `nested?` (whether the table is shown
-      inside another: nested in a row, or a picker's), `page`. In
+      inside another: nested in a row, or a picker's), `page`, `look` (the
+      table's look, see "The look of a table": the same for every table
+      it shows). In
       `AshDataTable.table/1` it is inside a plain element of the tag's own
       (`display: contents`): a live component's root must be static.
     * `heading` - the line of the table's name, its create (`ID-create`)
@@ -233,8 +289,10 @@ defmodule AshDataTable.Kit do
       nested grid) and, while it is open, the row `Ids.nested_row/2` whose
       cell `Ids.nested_cell/2` a nested table is moved into (`data-nested`,
       `data-line-cell`, `data-expander-cell`): `id` (the row's DOM id),
-      `relationship`, `open?`, `colspan`, `create`, `actions`, `table`
-      (the nested table's id), `myself`.
+      `relationship`, `open?`, `count` (how many records the open nested
+      table has, once it has read and where it is known; else nil),
+      `colspan`, `create`, `actions`, `table` (the nested table's id),
+      `myself`.
     * `footer` - `ID-foot`, with the row of the summaries (`ID-summaries`,
       `data-summaries`, a `summary_cell` per column), and in a nested table
       its pages (`data-pager`) and the `full_view`: `id`, `model`, `page`,
@@ -297,6 +355,8 @@ defmodule AshDataTable.Kit do
       `heading_before` and `heading_after` (its words before and after the
       record, which a part draws as a link; nil without a title),
       `show_all_records`;
+    * `line` - `count` (how many records its open nested table has, nil
+      where that is not known);
     * `full_view` - `full_view`, `full_view_of`;
     * `argument` - `add_value`, `errors`, and per value of a list
       `value_position`, `remove_value`;
@@ -380,9 +440,11 @@ defmodule AshDataTable.Kit do
     * `cells` - by column name, a `AshDataTable.Present.Cell` each
 
   The stream holds besides, under an expanded row, its detail: a map with
-  `detail?: true`, `dom_id` (`AshDataTable.Ids.detail/1`), `key`, `pk` and
+  `detail?: true`, `dom_id` (`AshDataTable.Ids.detail/1`), `key`, `pk`,
   `lines` (the names of the open relationships, nil while the row is not
-  expanded).
+  expanded) and `counts` (by the name of an open relationship, how many
+  records its nested table has, where that is known; the `count` of its
+  `line`).
 
   ### `AshDataTable.Present.Cell`
 
@@ -685,7 +747,8 @@ defmodule AshDataTable.Kit do
   knows as it draws the part: `nested?` (the root, the argument line, the
   selection line, the
   grid, the pagination, a message), `kind` (a message), `destructive?` (the
-  panel), `presentation` (the panel, the picker, the question). Never called per row or
+  panel), `presentation` (the panel, the picker, the question), `look` (the
+  root: see "The look of a table"). Never called per row or
   cell: what changes there in the browser (selected, busy, invalid) is an
   attribute, which the root's style reaches.
   """
@@ -693,6 +756,63 @@ defmodule AshDataTable.Kit do
 
   @doc "Whether `thing` opens over the page (`:modal`) or in it (`:inline`)."
   @callback presentation(thing) :: :modal | :inline
+
+  @doc """
+  The kit's answer for one option of the look (see "The look of a table"),
+  which a table's `look` overrides.
+  """
+  @callback look(option :: atom) :: term
+
+  @doc "The options of the look, by name."
+  @spec look_options() :: [atom]
+  def look_options, do: Keyword.keys(@look)
+
+  @doc """
+  Checks the look a table is placed with (a keyword list of the options of
+  "The look of a table") and returns it. Raises with what is wrong;
+  `where` names what was given it.
+  """
+  @spec look!(term, String.t()) :: keyword
+  def look!(given, where) do
+    with true <- Keyword.keyword?(given),
+         {:ok, look} <- Spark.Options.validate(given, @look) do
+      look
+    else
+      false ->
+        raise ArgumentError,
+              "the `look` of #{where} is a keyword list such as [stripes: true], " <>
+                "got: #{inspect(given, limit: 5)}"
+
+      {:error, error} ->
+        raise ArgumentError, "the `look` of #{where}: " <> Exception.message(error)
+    end
+  end
+
+  @doc """
+  The look of a table drawn with `kit`: what it was placed with
+  (`look!/2`), else what the kit says, as a map of every option.
+  """
+  @spec look(module, keyword) :: %{atom => term}
+  def look(kit, given) do
+    Map.new(@look, fn {option, _schema} ->
+      {option, Keyword.get_lazy(given, option, fn -> kit.look(option) end)}
+    end)
+  end
+
+  # A height of a table: a CSS length, written into a custom property of
+  # the root's `style`, so no more than a length is let in.
+  @doc false
+  def css_length(value) when is_binary(value) do
+    if value =~
+         ~r/\A(?:\s|[-+*\/,()]|(?:min|max|calc|clamp)\(|\d*\.?\d+(?:px|rem|em|ch|lh|vh|dvh|svh|lvh|vw|%)?)+\z/,
+       do: {:ok, value},
+       else:
+         {:error,
+          "a CSS length such as \"60vh\" or \"min(80dvh, 50rem)\", got: #{inspect(value)}"}
+  end
+
+  def css_length(value),
+    do: {:error, "a CSS length such as \"60vh\", got: #{inspect(value)}"}
 
   @doc "The parts of this version's contract."
   @spec parts() :: [atom]
@@ -805,8 +925,9 @@ defmodule AshDataTable.Kit do
   def component?(_column, _cell), do: false
 
   @doc """
-  Whether `module` is a kit: it says it implements this behaviour, and its
-  `presentation/1` answers `:modal` or `:inline` for each thing that opens.
+  Whether `module` is a kit: it says it implements this behaviour, its
+  `presentation/1` answers `:modal` or `:inline` for each thing that opens,
+  and its `look/1` answers each option of the look as `look!/2` takes it.
   Raises with what to do otherwise; `where` names what was given it.
   """
   @spec check!(module, String.t()) :: module
@@ -834,6 +955,24 @@ defmodule AshDataTable.Kit do
       raise ArgumentError,
             "#{where} was given `kit: #{inspect(module)}`, whose `presentation(#{inspect(thing)})` " <>
               "is #{inspect(presentation)}: it is `:modal` or `:inline`"
+    end
+
+    if not function_exported?(module, :look, 1) do
+      raise ArgumentError,
+            "#{where} was given `kit: #{inspect(module)}`, which has no `look/1`: " <>
+              "a kit says its answer to each option of the look"
+    end
+
+    look = Enum.map(look_options(), &{&1, module.look(&1)})
+
+    try do
+      look!(look, "the kit #{inspect(module)}")
+    rescue
+      error in ArgumentError ->
+        reraise ArgumentError,
+                "#{where} was given `kit: #{inspect(module)}`, whose `look/1` " <>
+                  "answers what is no look: " <> Exception.message(error),
+                __STACKTRACE__
     end
 
     module
@@ -869,7 +1008,9 @@ defmodule AshDataTable.Kit do
 
       def presentation(thing), do: AshDataTable.Kit.Default.presentation(thing)
 
-      defoverridable unquote(Enum.map(@parts, &{&1, 1}) ++ [class: 2, presentation: 1])
+      def look(option), do: AshDataTable.Kit.Default.look(option)
+
+      defoverridable unquote(Enum.map(@parts, &{&1, 1}) ++ [class: 2, presentation: 1, look: 1])
 
       @after_compile {AshDataTable.Kit, :checked}
     end
@@ -879,7 +1020,7 @@ defmodule AshDataTable.Kit do
   defp changed(_contract), do: "."
 
   # A kit as it compiled (`@after_compile`): every public function of one
-  # argument is a part or `presentation/1`, and `class` takes two.
+  # argument is a part, `presentation/1` or `look/1`, and `class` takes two.
   @doc false
   def checked(env, _bytecode) do
     functions =
@@ -890,18 +1031,18 @@ defmodule AshDataTable.Kit do
 
     unknown =
       for {name, 1} <- functions,
-          name not in @parts and name != :presentation,
+          name not in @parts and name not in [:presentation, :look],
           do: "#{name}/1"
 
     arity =
       for {name, arity} <- functions,
-          {name, arity} not in [class: 2, presentation: 1],
-          name in [:class, :presentation],
+          {name, arity} not in [class: 2, presentation: 1, look: 1],
+          name in [:class, :presentation, :look],
           do: "#{name}/#{arity}"
 
     problems =
       Enum.map(unknown, &"`#{&1}` is no part of a kit") ++
-        Enum.map(arity, &"`#{&1}`: `class` takes two arguments and `presentation` one")
+        Enum.map(arity, &"`#{&1}`: `class` takes two arguments, `presentation` and `look` one")
 
     if problems != [] do
       raise CompileError,

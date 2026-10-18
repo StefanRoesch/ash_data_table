@@ -10,6 +10,32 @@ defmodule AshDataTable.Kit.Default do
   It opens the action panel, the picker and the question as modal dialogs
   (`presentation/1`); a table can open them in the page instead
   (`presentation: [panel: :inline]`, see `AshDataTable.attach/4`).
+
+  ## Its look
+
+  Rows with a line under each and no stripes, a tint under the pointer,
+  the header and the filter row as one group under a stronger rule,
+  numbers at the end of their cells in digits of one width, square boxes
+  that select a row. The row whose relationships are open stays tinted,
+  with a bar at its left edge; the area under it has a line in the
+  primary colour down its left and one inset, at every depth, a title
+  per relationship (its arrow opens and closes that nested table, and
+  says how many records it has once it has read), about a row of space
+  between two nested tables and a stronger rule where the area ends.
+  Every tint is mixed from the daisyUI theme's colours.
+
+  What it draws by default (`look/1`), each overridable per table with
+  `look: […]` where the table is placed (see "The look of a table" in
+  `AshDataTable.Kit`):
+
+    * `density: :normal`;
+    * `stripes: false` (faint, the records only);
+    * `column_lines: false`;
+    * `sticky_header: false`; on, a table is at most `min(75dvh, 48rem)`
+      high, a nested table about ten rows (`28rem`), unless `height` and
+      `nested_height` say otherwise.
+
+      <AshDataTable.table resource={MyApp.Tracker.Task} look={[sticky_header: true, density: :compact]} />
   """
   @behaviour AshDataTable.Kit
 
@@ -83,7 +109,11 @@ defmodule AshDataTable.Kit.Default do
   # The classes of the parts drawn once per table. Written out in full, as
   # Tailwind finds a class only as it is written in the source.
   @impl true
-  def class(:root, %{nested?: false}), do: Parts.Grid.root()
+  # The table on the page holds the rules of every table inside it: the
+  # structure and its look (`Parts.Look`, only the options that are on).
+  def class(:root, %{nested?: false, look: look}),
+    do: Parts.Grid.root() <> " " <> Parts.Look.root(look)
+
   def class(:root, %{nested?: true}), do: "ash-data-table"
   def class(:portal, _state), do: "contents"
   def class(:heading, _state), do: "mb-4 flex min-h-8 items-center justify-between gap-2"
@@ -151,4 +181,9 @@ defmodule AshDataTable.Kit.Default do
 
   @impl true
   def presentation(_thing), do: :modal
+
+  @impl true
+  def look(:density), do: :normal
+  def look(option) when option in [:stripes, :column_lines, :sticky_header], do: false
+  def look(option) when option in [:height, :nested_height], do: nil
 end

@@ -763,7 +763,8 @@ defmodule AshDataTable.Attrs do
   once per column (an opened nested table sends them once per column).
   `data-label` where it stays in view as the grid scrolls
   sideways (`sticky_label?`), `data-sort` where it sorts; a click sorts
-  by it.
+  by it. `data-number` where the column shows a number as text, as its
+  cells (`cell/5`).
   """
   def column_header(id, column, sort, label?, myself) do
     sortable? = column.sortable?
@@ -771,6 +772,7 @@ defmodule AshDataTable.Attrs do
     %{
       "aria-sort" => sortable? && aria_sort(sort, column),
       "data-label" => label?,
+      "data-number" => number?(column),
       "data-sort" => sortable?,
       "phx-click" => sortable? && Common.event(id, "sort"),
       "phx-value-column" => sortable? && column.name,
@@ -849,6 +851,8 @@ defmodule AshDataTable.Attrs do
   A cell of a sensitive column says that its editor holds nothing
   (`data-value=""`), and nothing else: what was typed into it is never
   sent back. `data-lines` where the column shows more than one line.
+  `data-number` where the column shows a number as text (not through a
+  component), so that a kit can set it at the end of the cell.
 
   `row` is a `Present.Row`: each cell says whether it can be
   edited and what failed in it (`Present.Cell`).
@@ -858,10 +862,17 @@ defmodule AshDataTable.Attrs do
   """
   def cell(id, column, editing?, row, zone) do
     Map.new([
-      {"data-lines", column.max_lines > 1 && column.max_lines}
+      {"data-lines", column.max_lines > 1 && column.max_lines},
+      {"data-number", number?(column)}
       | editing(editing?, id, column, row, zone)
     ])
   end
+
+  # A column whose cells show a number as text: nil, not false, where not.
+  defp number?(%{cell_type: :number, component: component}),
+    do: if(match?(%{cell?: true}, component), do: nil, else: true)
+
+  defp number?(_column), do: nil
 
   defp editing(false, _id, _column, _row, _zone), do: []
 
@@ -951,7 +962,11 @@ defmodule AshDataTable.Attrs do
   summaries are on their way and once more when they are there.
   """
   def summary(column, summing?) do
-    %{"aria-busy" => column.summary && summing? && "true", "data-summary" => column.summary}
+    %{
+      "aria-busy" => column.summary && summing? && "true",
+      "data-summary" => column.summary,
+      "data-number" => number?(column)
+    }
   end
 
   @doc """

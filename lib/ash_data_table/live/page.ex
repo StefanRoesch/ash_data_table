@@ -139,7 +139,7 @@ defmodule AshDataTable.Live.Page do
   hooks of the `live_session` around the route. The route can give the
   table what `AshDataTable.attach/4` takes (`notify`, `open`, `context`,
   `private_arguments`, `page_arguments`, `before_action`, `kit`,
-  `presentation`; see `AshDataTable.Router.ash_data_table/3`). A hook
+  `presentation`, `look`; see `AshDataTable.Router.ash_data_table/3`). A hook
   hears the table's events with `Phoenix.LiveView.attach_hook/4` on
   `:handle_info`, and may give the table, attached under `:table`, the
   commands of `AshDataTable` (`AshDataTable.refresh/2` and the others).
@@ -376,14 +376,15 @@ defmodule AshDataTable.Live.Page do
   # `AshDataTable.attach/4` takes it: a `{module, function}` as a function.
   defp given(route) do
     for name <-
-          [:notify, :open, :kit, :presentation, :context, :private_arguments, :page_arguments] ++
-            [:before_action],
+          [:notify, :open, :kit, :presentation, :look, :context, :private_arguments] ++
+            [:page_arguments, :before_action],
         Map.has_key?(route, name) do
       case {name, route[name]} do
         {:before_action, {module, function}} ->
           {name, fn request, assigns -> apply(module, function, [request, assigns]) end}
 
-        {_name, {module, function}} when name not in [:notify, :open, :kit, :presentation] ->
+        {_name, {module, function}}
+        when name not in [:notify, :open, :kit, :presentation, :look] ->
           {name, fn assigns, ref -> apply(module, function, [assigns, ref]) end}
 
         {_name, value} ->

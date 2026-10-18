@@ -63,7 +63,7 @@ defmodule AshDataTable.Router do
       the domain says otherwise. Written in the router, and taken from
       nowhere else. See "Without authorization" below.
 
-    * `:notify`, `:open`, `:kit`, `:presentation`, `:context`, `:private_arguments`,
+    * `:notify`, `:open`, `:kit`, `:presentation`, `:look`, `:context`, `:private_arguments`,
       `:page_arguments`, `:before_action` - as the options of
       `AshDataTable.attach/4`, written so that a route can hold them: a
       function as `{module, function}`, called as `function(assigns,
@@ -112,8 +112,8 @@ defmodule AshDataTable.Router do
   that authorizes, where they would see other records, and a table that
   authorizes never links to a page without.
   """
-  @page [:notify, :open, :kit, :presentation, :context, :private_arguments, :page_arguments] ++
-          [:before_action]
+  @page [:notify, :open, :kit, :presentation, :look, :context, :private_arguments] ++
+          [:page_arguments, :before_action]
 
   defmacro ash_data_table(path, resource, opts \\ []) do
     # As Phoenix does for the modules named in routes: expanding the alias as
@@ -232,6 +232,9 @@ defmodule AshDataTable.Router do
 
   # a list, which `AshDataTable.attach/4` checks
   defp page!(:presentation, presentation) when is_list(presentation), do: presentation
+
+  # the look, checked here as `AshDataTable.attach/4` checks it
+  defp page!(:look, look), do: AshDataTable.Kit.look!(look, "ash_data_table")
 
   defp page!(:before_action, {module, function} = mf) when is_atom(module) and is_atom(function),
     do: mf

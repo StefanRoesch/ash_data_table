@@ -101,6 +101,10 @@ defmodule AshDataTable.Live.Entry do
     # The rows that are expanded, by row key: the names of their open
     # lines. A new read forgets them.
     open: %{},
+    # How many records the open nested tables have, by row key and
+    # relationship, as their lines say it: of each that has read and knows
+    # it (`AshDataTable.Live.Core.Nesting.counted/1`).
+    counts: %{},
     # What makes a table a nested one: the relationship it is reached
     # through and the primary key of the row it belongs to. `depth` counts
     # from the table on the page; `depth_limit` is that table's `max_depth`.

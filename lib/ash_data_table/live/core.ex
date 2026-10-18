@@ -223,7 +223,7 @@ defmodule AshDataTable.Live.Core do
             [:via, :parent_key, :parent_authorize?, :depth, :depth_limit, :labelledby] ++
             [:select, :choose, :page_assigns, :parent_arguments] ++
             [:context, :private_arguments, :page_arguments, :before_action, :notify] ++
-            [:controlled, :kit, :presentation]
+            [:controlled, :kit, :presentation, :look]
         )
       )
 
@@ -598,6 +598,7 @@ defmodule AshDataTable.Live.Core do
     |> each(&Updates.follow/1)
     |> Nesting.reconcile()
     |> each(&Selection.scoped/1)
+    |> each(&Nesting.counted/1)
     |> each(&Requests.follow/1)
     |> each(&Reading.summarise/1)
   end

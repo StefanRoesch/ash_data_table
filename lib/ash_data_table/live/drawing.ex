@@ -165,6 +165,7 @@ defmodule AshDataTable.Live.Drawing do
       id={@entry.id}
       nested?={length(@entry.path) > 1}
       page={@entry.page}
+      look={Kit.look(@options.kit, @options.look)}
     >
       <Kit.part
         part={:heading}

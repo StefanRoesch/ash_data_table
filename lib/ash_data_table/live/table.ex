@@ -40,6 +40,9 @@ defmodule AshDataTable.Table do
   #     which the wiring names; every table it shows is drawn with it.
   #   * `presentation`: what the table was told opens in the page or over
   #     it (`panel: :inline`), over what its kit says.
+  #   * `look`: what the table was told of its look (`sticky_header: true`,
+  #     `AshDataTable.Kit.look!/2`), over what its kit says; every table it
+  #     shows looks the same.
   #
   # A table nested in a row or in a picker is placed by the table it is in:
   # it keeps no state in the URL, has no heading and is no page of its own
@@ -76,7 +79,8 @@ defmodule AshDataTable.Table do
     router: nil,
     controlled: [],
     kit: nil,
-    presentation: []
+    presentation: [],
+    look: []
   }
 
   # `authorize?` is the entry's: as each table was told it

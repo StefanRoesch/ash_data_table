@@ -214,6 +214,125 @@ defmodule AshDataTable.KitTest do
     end
   end
 
+  test "a look of another arity fails to compile" do
+    error =
+      assert_raise CompileError, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.LookArity do
+          use AshDataTable.Kit, contract: 1
+
+          def look(_option, _table), do: true
+        end
+        """)
+      end
+
+    assert Exception.message(error) =~
+             "`look/2`: `class` takes two arguments, `presentation` and `look` one"
+  end
+
+  test "a kit's look is its own over the default kit's, and a table's over the kit's" do
+    kit =
+      compile("""
+      defmodule AshDataTable.KitTest.Striped do
+        use AshDataTable.Kit, contract: 1
+
+        def look(:stripes), do: true
+        def look(option), do: super(option)
+      end
+      """)
+
+    assert Kit.check!(kit, "a test") == kit
+
+    assert Kit.look(Kit.Default, []) == %{
+             density: :normal,
+             stripes: false,
+             column_lines: false,
+             sticky_header: false,
+             height: nil,
+             nested_height: nil
+           }
+
+    assert %{stripes: true, density: :normal} = Kit.look(kit, [])
+
+    assert %{stripes: false, density: :roomy, height: "50vh"} =
+             Kit.look(kit, Kit.look!([stripes: false, density: :roomy, height: "50vh"], "a test"))
+  end
+
+  test "a look that is no keyword list, names no option, or holds a value of another kind is refused" do
+    for {look, said} <- [
+          {:sticky, ~r/the `look` of a test is a keyword list such as \[stripes: true\]/},
+          {[stripe: true], ~r/the `look` of a test: unknown options \[:stripe\]/},
+          {[density: :tiny], ~r/the `look` of a test: .*density.*:tiny/s},
+          {[sticky_header: "yes"], ~r/the `look` of a test: .*sticky_header/s},
+          # a height is written into the root's style: a CSS length and no more
+          {[height: "10rem; background: red"], ~r/a CSS length/},
+          {[nested_height: "url(x)"], ~r/a CSS length/},
+          {[height: "var(--x)"], ~r/a CSS length/},
+          {[height: 400], ~r/a CSS length/}
+        ] do
+      assert_raise ArgumentError, said, fn -> Kit.look!(look, "a test") end
+    end
+
+    assert Kit.look!([height: "min(80dvh, 50rem)", nested_height: "20rem"], "a test") == [
+             height: "min(80dvh, 50rem)",
+             nested_height: "20rem"
+           ]
+  end
+
+  test "a kit whose look answers what is no look, or that has no look of one argument, is refused" do
+    kit =
+      compile("""
+      defmodule AshDataTable.KitTest.Dense do
+        use AshDataTable.Kit, contract: 1
+
+        def look(:density), do: :dense
+        def look(option), do: super(option)
+      end
+      """)
+
+    assert_raise ArgumentError, ~r/whose `look\/1` answers what is no look: .*density/s, fn ->
+      Kit.check!(kit, "a test")
+    end
+
+    {lookless, _warned} =
+      ExUnit.CaptureIO.with_io(:stderr, fn ->
+        compile("""
+        defmodule AshDataTable.KitTest.Lookless do
+          @behaviour AshDataTable.Kit
+          def presentation(_thing), do: :modal
+        end
+        """)
+      end)
+
+    assert_raise ArgumentError, ~r/which has no `look\/1`/, fn ->
+      Kit.check!(lookless, "a test")
+    end
+  end
+
+  test "attach, the tag and the router line refuse a look of another shape" do
+    assert_raise ArgumentError, ~r/the `look` of AshDataTable.attach\/4: unknown options/, fn ->
+      AshDataTable.Test.LiveHost.run(
+        &AshDataTable.attach(&1, :table, AshDataTable.Test.Resource,
+          tenant: "kit-attach",
+          look: [stripe: true]
+        )
+      )
+    end
+
+    assert_raise ArgumentError, ~r/the `look` of ash_data_table: .*density/s, fn ->
+      AshDataTable.Router.__live_opts__(AshDataTable.Test.Resource, look: [density: :tiny])
+    end
+
+    require Phoenix.LiveViewTest
+
+    assert_raise ArgumentError, ~r/the `look` of <AshDataTable.table> is a keyword list/, fn ->
+      Phoenix.LiveViewTest.render_component(&AshDataTable.table/1,
+        resource: AshDataTable.Test.Resource,
+        look: :sticky
+      )
+    end
+  end
+
   test "the default kit is a kit, of every part" do
     assert Kit.check!(Kit.Default, "a test") == Kit.Default
     for part <- Kit.parts(), do: assert(function_exported?(Kit.Default, part, 1), "#{part}/1")

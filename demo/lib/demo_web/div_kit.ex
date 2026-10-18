@@ -318,11 +318,14 @@ defmodule DemoWeb.DivKit do
       id={Ids.row(@id, @row.key)}
       relationship={relationship}
       open?={relationship.name in @row.lines}
+      count={@row.counts[relationship.name]}
       colspan={@colspan}
       create={@creates[relationship.name][:create]}
       actions={@creates[relationship.name][:actions] || []}
       table={Ids.nested_table(Ids.row(@id, @row.key), relationship.name)}
       myself={@myself}
+      texts={Words.texts(:line, %{count: @row.counts[relationship.name]})}
+      messages={Words.messages(:line, %{count: @row.counts[relationship.name]})}
     />
     """
   end
