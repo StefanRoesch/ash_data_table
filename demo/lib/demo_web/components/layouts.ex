@@ -38,7 +38,8 @@ defmodule DemoWeb.Layouts do
   def app(assigns) do
     ~H"""
     <div id="app-layout" class="px-4 py-8 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-7xl space-y-6">
+      <%!-- the whole width of the window: tables have many columns --%>
+      <div class="space-y-6">
         <%!-- A table states no zone in its cells: the page says it once,
         where it is not UTC (in UTC the page looks as it did before). --%>
         <p
