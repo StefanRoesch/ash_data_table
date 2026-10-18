@@ -14,8 +14,8 @@ defmodule AshDataTable.Intent do
   # `parse/2` refuses no payload that the table took before it existed:
   # where the table looked a value up without asking its type first (a
   # column's name, say), a value of another type found nothing there, and
-  # is refused here with the same answer (see `malformed/2` in the table
-  # component). `:malformed` is answered as the table answered such an
+  # is refused here with the same answer (see `malformed/2` in
+  # `AshDataTable.Live.Core`). `:malformed` is answered as the table answered such an
   # event: that answer is the live layer's.
 
   @typedoc "A key in a row's DOM id, as the browser names a row: a claim."

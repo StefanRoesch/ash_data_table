@@ -7,7 +7,7 @@ defmodule AshDataTable.Live.Core do
   # `handle_async/3`, each ending in `tidy/1`. Besides: the fields of the
   # table (`put/2`), who is asking (`reader/1`), what a write is given
   # (`operation/3`), the live region (`say/2`), the resource's wording as
-  # the person reads it (`in_words/1`). Every table the component shows is
+  # the person reads it (`in_words/1`). Every table a placed table shows is
   # an entry of its `AshDataTable.Table` (`AshDataTable.Live.Registry`).
 
   require Logger

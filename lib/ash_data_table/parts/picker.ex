@@ -16,7 +16,7 @@ defmodule AshDataTable.Parts.Picker do
   #
   # The table is as wide as its columns need, so the dialog is wider than
   # the panel, and the table scrolls sideways in it as it does on a page.
-  # It is the slot: the table component draws it.
+  # It is the slot: `AshDataTable.Live.Drawing` draws it.
   attr :id, :string, required: true
   # what `AshDataTable.Present.picker/1` gives of the open picker
   attr :picker, Present.Picker, required: true

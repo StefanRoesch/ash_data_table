@@ -416,7 +416,8 @@ defmodule AshDataTable.Live.Core.Reading do
   defp not_found(socket, _read) when not Current.option(socket, :mounted?), do: socket
 
   # While the page is mounted, the first read is the request's: the table
-  # is `gone?`, and the component raises (`AshDataTable.NotFoundError`).
+  # is `gone?`, and the page raises (`AshDataTable.Live.Page`,
+  # `AshDataTable.NotFoundError`).
   defp not_found(socket, :first), do: socket
 
   # Later, the page is on screen. The browser is sent to ask for it afresh,

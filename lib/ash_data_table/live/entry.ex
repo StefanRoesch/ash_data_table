@@ -132,7 +132,7 @@ defmodule AshDataTable.Live.Entry do
     # The table as the person asking meets it, made on every update from
     # the model its resource and block say, which the `AshDataTable.Table`
     # keeps for the whole tree (`models`,
-    # `AshDataTable.Live.Core.Nesting.built/1`); and what the component
+    # `AshDataTable.Live.Core.Nesting.built/1`); and what the live core
     # derives from it there: whether a column can be edited, whether the
     # rows have an actions cell, the table actions offered, whether rows
     # expand and the column that stays in view.
@@ -186,7 +186,7 @@ defmodule AshDataTable.Live.Entry do
     # and what the last one came to, until the person selects something else.
     running: nil,
     result: nil,
-    # Live updates (see "Live updates" at the top of the component). `live`
+    # Live updates (see "Live updates" at the top of `AshDataTable.Attrs`). `live`
     # is the table's listener while it follows them: the process and the
     # topic it listens to. `waiting` is what was announced and not looked at
     # yet, and `held` the keys of the rows that are read again once the
@@ -198,7 +198,7 @@ defmodule AshDataTable.Live.Entry do
     notice?: false,
     # the rows that go once the hook says that no cell of them is edited
     leaving: MapSet.new(),
-    # The footer row (see "Footer summaries" at the top of the component).
+    # The footer row (see "Footer summaries" at the top of `AshDataTable.Attrs`).
     # `summary` holds, by column, what the last answer said: `{:ok, value}`
     # or `:unavailable`; nil before the first answer, and while an argument
     # the read action requires is empty. `summing?` says that an answer is

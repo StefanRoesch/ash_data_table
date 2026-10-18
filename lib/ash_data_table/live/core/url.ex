@@ -150,7 +150,7 @@ defmodule AshDataTable.Live.Core.Url do
     do: socket |> Core.put(announce?: true, result: nil) |> go(state)
 
   # With the state in the URL the change is a patch, and the new state comes
-  # back through `update/2`. Otherwise the component holds it.
+  # back through `update/2`. Otherwise the entry holds it.
   def go(socket, state) when Current.entry(socket, :state) == state, do: socket
 
   def go(socket, state) when is_binary(Current.option(socket, :url)) do
