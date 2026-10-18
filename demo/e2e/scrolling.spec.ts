@@ -57,12 +57,25 @@ async function pointAt(page: Page, table: Table, down: number): Promise<void> {
 }
 
 /** The cell that has the focus. */
+// How far a nested table stands in from the table around it: the line
+// down the left of the nested area and the one inset after it (the
+// default kit's look), the same at every depth.
+async function inset(page: Page): Promise<number> {
+  return page
+    .locator("[data-ash-data-table-view]")
+    .first()
+    .evaluate((view) => {
+      const style = getComputedStyle(view)
+      return parseFloat(style.borderInlineStartWidth) + parseFloat(style.paddingInlineStart)
+    })
+}
+
 function focused(page: Page): Locator {
   return page.locator("[role=gridcell]:focus, [role=columnheader]:focus")
 }
 
 test.describe("every table scrolls sideways in an area of its own", () => {
-  test("a nested table is as wide as what is seen of the table around it, and scrolls alone", async ({
+  test("a nested table is as wide as what is seen of the table around it, less its inset, and scrolls alone", async ({
     page,
     tasks,
   }) => {
@@ -71,10 +84,13 @@ test.describe("every table scrolls sideways in an area of its own", () => {
 
     const outer = await tasks.area()
     const inner = await comments.area()
+    const step = await inset(page)
+    expect(step).toBeGreaterThan(0)
     expect(outer.all).toBeGreaterThan(outer.seen)
-    // as wide as what is seen of /tasks, and in the same place; wider inside
-    expect(inner.seen).toBe(outer.seen)
-    expect(inner.left).toBe(outer.left)
+    // as wide as what is seen of /tasks, less its inset, and in the same
+    // place after it; wider inside
+    expect(inner.seen).toBe(outer.seen - step)
+    expect(inner.left).toBe(outer.left + step)
     expect(inner.all).toBeGreaterThan(inner.seen)
 
     // the line that opened it has its mark still: a triangle, turned (once
@@ -110,9 +126,11 @@ test.describe("every table scrolls sideways in an area of its own", () => {
     const inner = await project.openLine(await project.rowKey(1), "tasks")
 
     const outer = await tasks.area()
-    expect((await project.area()).seen).toBe(outer.seen)
-    expect(await inner.area()).toMatchObject({ seen: outer.seen, left: outer.left })
-    expect((await inner.area()).all).toBeGreaterThan(outer.seen)
+    const step = await inset(page)
+    // one inset per level
+    expect((await project.area()).seen).toBe(outer.seen - step)
+    expect(await inner.area()).toMatchObject({ seen: outer.seen - 2 * step, left: outer.left + 2 * step })
+    expect((await inner.area()).all).toBeGreaterThan(outer.seen - 2 * step)
 
     // each of the three scrolls alone
     await inner.scrollTo(400)
@@ -122,21 +140,22 @@ test.describe("every table scrolls sideways in an area of its own", () => {
     await tasks.scrollTo(250)
     expect(await project.scrollLeft()).toBe(100)
     expect(await inner.scrollLeft()).toBe(400)
-    expect(await inner.area()).toMatchObject({ seen: outer.seen, left: outer.left })
+    expect(await inner.area()).toMatchObject({ seen: outer.seen - 2 * step, left: outer.left + 2 * step })
 
-    // a narrower window: all three are as wide as what is seen now
+    // a narrower window: all three are as wide as what is seen now, less
+    // their insets
     await page.setViewportSize({ width: 800, height: 600 })
     await expect.poll(async () => (await tasks.area()).seen).toBeLessThan(outer.seen)
     const narrow = (await tasks.area()).seen
-    await expect.poll(async () => (await project.area()).seen).toBe(narrow)
-    await expect.poll(async () => (await inner.area()).seen).toBe(narrow)
+    await expect.poll(async () => (await project.area()).seen).toBe(narrow - step)
+    await expect.poll(async () => (await inner.area()).seen).toBe(narrow - 2 * step)
 
     // and a wider one
     await page.setViewportSize({ width: 1200, height: 600 })
     await expect.poll(async () => (await tasks.area()).seen).toBeGreaterThan(outer.seen)
     const wide = (await tasks.area()).seen
-    await expect.poll(async () => (await project.area()).seen).toBe(wide)
-    await expect.poll(async () => (await inner.area()).seen).toBe(wide)
+    await expect.poll(async () => (await project.area()).seen).toBe(wide - step)
+    await expect.poll(async () => (await inner.area()).seen).toBe(wide - 2 * step)
   })
 
   test("Shift and the wheel scroll the table under the pointer, and no other; the wheel alone scrolls the page", async ({

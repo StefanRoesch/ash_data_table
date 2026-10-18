@@ -396,8 +396,9 @@ scrolls sideways in an area of its own, and the page around it does not.
   [nested table](nested-tables.md) at every depth, and the table of a
   [picker](choosing-a-related-record.md). The scrollbar of a table is
   directly under its own rows.
-- **A nested table is as wide as what is seen of the table around it**, not
-  as wide as that table. It stays in place while the table around it
+- **A nested table is as wide as what is seen of the table around it**, less
+  the one inset of its level (the default kit's look), not as wide as that
+  table. It stays in place while the table around it
   scrolls under it, and scrolls by itself: a wide nested table in a wide
   table are two things to scroll, each without the other. So do the line
   that opens it, its "Columns" button and its pages.

@@ -104,11 +104,14 @@ defmodule AshDataTable.Parts.Related do
             aria-expanded={to_string(@open?)}
             class="text-sm font-semibold"
           >
-            {@relationship.label}{if @open? and @texts.count, do: " "}<span
-              :if={@open? and @texts.count}
-              class="ms-1 font-normal text-base-content/70"
-            >{@texts.count}</span>
+            {@relationship.label}
           </button>
+          <%!-- How many records the nested table has, once it has read: beside
+          the button, not in it, as the button names the nested grid, which
+          says its number of rows itself. --%>
+          <span :if={@open? and @texts.count} class="ms-1 text-sm text-base-content/70">
+            {@texts.count}
+          </span>
           <%!-- The create button of the nested table, on the line that names
           it: after the label, since the line is as wide as the table around it
           and its far end is usually out of sight. It is shown once the nested

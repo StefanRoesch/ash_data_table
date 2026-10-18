@@ -87,8 +87,10 @@ defmodule DemoWeb.Tables.LookTest do
     # its line says how many records it has, once it has read
     count = Enum.count(world.comments, &(&1.task_id == task.id))
 
-    assert text(html, "[id='looked-row-#{task.id}-l-comments-b']") =~
-             ~r/^Comments\s+#{count} records?$/
+    assert text(html, "[id='looked-row-#{task.id}-l-comments-c']") =~
+             ~r/^Comments\s+#{count} records?(\s|$)/
+
+    assert text(html, "[id='looked-row-#{task.id}-l-comments-b']") == "Comments"
 
     # no style of its own: the table on the page holds the heights
     assert attribute(html, "[id='#{nested}']", "style") == []
