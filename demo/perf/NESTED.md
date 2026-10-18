@@ -73,5 +73,15 @@ the first five lines took 33 to 45 ms each from click to rows, the last
 five of the fifty 87 to 94 ms (at `85798e7`: 177 to 371 ms;
 `open_ms_by_number_open` in the results of a run). An event of one nested
 table sends and patches that table's portal only; what still grows is the
-page around them. Rendering, scrolling and layout with fifty grids in one
+page around them. Measured once more with 1 and with 48 open, opening one
+more sends the same frames (29,072 and about 6,900 bytes), and the server
+spends about the same in its callbacks (a toggle 3 to 6 ms, each render 1
+to 2 ms; the library's own functions about 12 ms under a tracer either
+way). The growth is in the browser, in LiveView's patch: it morphs the
+whole LiveView's markup for every patch, and the nested tables are inside
+it, so indexing it (`indexTree` 6 → 19 ms of CPU, with `isPhxDestroyed`,
+`getNodeKey` and `querySelectorAll` from nothing to 6 to 9 ms each) and
+the layout the hooks measure (`getBoundingClientRect` 6 → 12 ms) grow with
+the page. Before the refactor each nested table was a component, which
+LiveView patches on its own. Rendering, scrolling and layout with fifty grids in one
 page were not measured.
