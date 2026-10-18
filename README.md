@@ -1,5 +1,38 @@
 # ash_data_table
 
+## Try the demo
+
+The repository is private: you need read access to
+`StefanRoesch/ash_data_table` on GitHub.
+
+```sh
+git clone git@github.com:StefanRoesch/ash_data_table.git
+cd ash_data_table
+```
+
+With Docker only (no Elixir needed):
+
+```sh
+docker compose --profile demo up --build
+```
+
+Or with Elixir 1.18 or later and Docker for Postgres (the Docker image uses
+Elixir 1.19 on OTP 28):
+
+```sh
+docker compose up -d postgres   # Postgres on port 5477
+cd demo
+mix setup                       # deps, database, seed data, assets
+mix phx.server
+```
+
+Open http://localhost:4478 and pick a person under "Acting as" at the top
+right, for example "Ada Admin". Then look at "Tasks" (open a row with its
+arrow to see the related tables), "Projects" and the other pages in the
+menu. What each person may see and change differs: switch persons to see
+the table follow the resource's policies. More in
+[demo/README.md](demo/README.md).
+
 An Ash extension that presents a resource to people as an editable table in
 Phoenix LiveView. It is an interface to Ash resources in the way
 `ash_json_api` and `ash_graphql` are, for humans.
