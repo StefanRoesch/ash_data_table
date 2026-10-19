@@ -6,7 +6,7 @@ import { Table } from "./support/table"
 
 // axe-core on nested tables (see a11y-tables.spec.ts).
 
-// Nested tables: a grid in a cell of a grid, at every depth, and what is
+// Nested tables: a table in a cell of a table, at every depth, and what is
 // around it (the lines, the pages in the last row, an editor, the dialog).
 test.describe("nested tables", () => {
   const FIRST = SEED.task.first
@@ -17,8 +17,8 @@ test.describe("nested tables", () => {
     await expect(tasks.lines(FIRST)).toHaveCount(7)
     await expectNoAxeViolations(page)
 
-    // with focus on a line
-    await tasks.lineCell(FIRST, "comments").focus()
+    // with focus on a line's button
+    await tasks.line(FIRST, "comments").focus()
     await expectNoAxeViolations(page)
   })
 
@@ -51,8 +51,7 @@ test.describe("nested tables", () => {
     await page.keyboard.type("Fix")
     await nested.reads(() => page.keyboard.press("Enter"))
     await expectNoAxeViolations(page)
-    await nested.pagerCell.focus()
-    await projects.press("Enter")
+    await nested.pageButton(1).focus()
     await expectNoAxeViolations(page)
   })
 

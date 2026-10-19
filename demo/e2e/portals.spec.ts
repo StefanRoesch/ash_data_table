@@ -65,7 +65,7 @@ async function portals(page: Page): Promise<{ portals: number; loose: number }> 
     return {
       portals: tables.length,
       loose:
-        tables.filter((marker) => marker.closest("[role=gridcell][data-nested]")?.id !== marker.dataset.ashDataTablePortal)
+        tables.filter((marker) => marker.closest("[role=cell][data-nested]")?.id !== marker.dataset.ashDataTablePortal)
           .length +
         marked.filter((marker) => !placed(marker)).length +
         Math.abs(marked.length - 2 * tables.length),
@@ -106,7 +106,7 @@ test.describe("the portal of a nested table", () => {
 
     // its rows are its stream's: a sort reads them again, in their place
     await expect(comments.rows).not.toHaveCount(0)
-    await comments.reads(() => comments.header("body").click())
+    await comments.sortBy("body")
     await expect(tasks.nestedCell(FIRST, "comments").locator(`[id="${comments.id}-grid"]`)).toHaveCount(1)
     await expect(comments.rows).not.toHaveCount(0)
 
@@ -195,9 +195,7 @@ test.describe("a row put again under an open nested table", () => {
       expect(await portals(page)).toEqual({ portals: 3, loose: 0 })
 
       // text typed into the filter of a nested table, not yet sent
-      await projectTasks.filterCell("title").focus()
-      await tasks.press("Enter")
-      await expect(projectTasks.filterValue("title")).toBeFocused()
+      await projectTasks.filterValue("title").focus()
       await page.keyboard.type("Half a filter")
       await retype(theirs, FIRST, "title", "Put again with a filter typed")
       await expect(tasks.cell(FIRST, "title")).toHaveText("Put again with a filter typed")
@@ -241,7 +239,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
   test("a sort", async ({ page, tasks }) => {
     await tasks.open()
     const comments = await tasks.openLine(FIRST, "comments")
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     await expect(comments.root).toHaveCount(0)
     expect(await portals(page)).toEqual({ portals: 0, loose: 0 })
   })
@@ -249,8 +247,7 @@ test.describe("a nested table leaves with what takes its row or line away", () =
   test("a filter", async ({ page, tasks }) => {
     await tasks.open()
     const comments = await tasks.openLine(FIRST, "comments")
-    await tasks.filterCell("title").focus()
-    await tasks.press("Enter")
+    await tasks.filterValue("title").focus()
     await page.keyboard.type("a")
     await tasks.reads(() => tasks.press("Enter"))
     await expect(comments.root).toHaveCount(0)

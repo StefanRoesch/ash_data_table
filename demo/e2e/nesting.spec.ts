@@ -3,8 +3,8 @@ import { expect, test } from "./support/fixtures"
 import { Table } from "./support/table"
 
 // Nested tables in a browser: the expander and the lines by pointer and by
-// keyboard, into a nested table and back out, the one tab stop of the whole
-// tree, and focus through everything that patches the page.
+// keyboard, Tab into a nested table and back out (it is simply further down
+// the page), and focus through everything that patches the page.
 //
 // /tasks as the admin. A row of it expands into seven lines; "Comments" is
 // a table of several rows with keyset pages, "Project" a table of one row
@@ -40,13 +40,12 @@ test.describe("with the pointer", () => {
       /Assignee/,
       /Reported by/,
     ])
-    // the click leaves focus on the expander's cell, which is the tab stop
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-e`])
+    // the click leaves focus on the expander, a button
+    await expect(tasks.expander(FIRST)).toBeFocused()
 
     const project = await tasks.openLine(FIRST, "project")
     await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "true")
-    await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
+    await expect(tasks.line(FIRST, "project")).toBeFocused()
     await expect(project.rows).toHaveCount(1)
     expect(await project.columns()).toEqual([
       "id",
@@ -60,9 +59,9 @@ test.describe("with the pointer", () => {
       "inserted_at",
     ])
 
-    // a grid of its own, named by its line and by the row it belongs to
+    // a table of its own, named by its line and by the row it belongs to
     const title = await tasks.cell(FIRST, "title").textContent()
-    await expect(project.grid).toHaveRole("grid")
+    await expect(project.grid).toHaveRole("table")
     await expect(project.grid).toHaveAccessibleName(`Project ${title}`)
 
     await tasks.line(FIRST, "project").click()
@@ -100,248 +99,119 @@ test.describe("with the pointer", () => {
 })
 
 test.describe("with the keyboard", () => {
-  test("Tab enters the grid at the first data cell, with the expander one cell to its left and the box before it", async ({
-    page,
-    tasks,
-  }) => {
-    await tasks.pageButton(1).focus()
-    await page.keyboard.press("Shift+Tab")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
-
-    await tasks.press("ArrowLeft")
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-    // the row is not expanded, so Left goes on: to the box that selects the row
-    await tasks.press("ArrowLeft")
-    await expect(tasks.boxCell(FIRST)).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.boxCell(FIRST), "the first cell of a row is where Left ends").toBeFocused()
+  test("Tab goes along a row: its box, its expander, its editable cells", async ({ tasks }) => {
+    await tasks.box(FIRST).focus()
+    expect(await tasks.walk(2)).toEqual([`task-row-${FIRST}-e>button`, `task-row-${FIRST}-c-title`])
+    expect(await tasks.walk(2, true)).toEqual([`task-row-${FIRST}-e>button`, `task-row-${FIRST}-s>input`])
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
   })
 
-  test("Right Arrow on an expander opens it, Left Arrow closes it, and Enter does either", async ({
+  test("Enter and Space on the expander open and close the row, focus stays on it, and Tab goes on to its first line", async ({
     tasks,
+    pushed,
   }) => {
-    await tasks.expanderCell(FIRST).focus()
-
-    await tasks.press("ArrowRight")
+    await tasks.expander(FIRST).focus()
+    await pushed.clear()
+    await tasks.press("Enter")
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
     await expect(tasks.lines(FIRST)).toHaveCount(7)
-    await expect(tasks.expanderCell(FIRST), "focus stays on the expander").toBeFocused()
+    await expect(tasks.expander(FIRST), "focus stays on the expander").toBeFocused()
+    expect(await pushed.count("expand")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
 
-    // open already: Right Arrow moves on
-    await tasks.press("ArrowRight")
-    await expect(tasks.cell(FIRST, "title")).toBeFocused()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-
-    await tasks.press("ArrowLeft")
+    await tasks.press(" ")
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
     await expect(tasks.lines(FIRST)).toHaveCount(0)
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-
-    await tasks.press("Enter")
-    await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
-    await tasks.press("Enter")
-    await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-e`])
-  })
-
-  test("the lines are cells the arrow keys stop at, and open and close as the expander does", async ({
-    tasks,
-  }) => {
-    await tasks.expanderCell(FIRST).focus()
-    await tasks.press("ArrowRight")
+    await expect(tasks.expander(FIRST)).toBeFocused()
+    await tasks.press(" ")
     await expect(tasks.lines(FIRST)).toHaveCount(7)
 
-    await tasks.press("ArrowDown")
-    await expect(tasks.lineCell(FIRST, "comments")).toBeFocused()
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowDown", "ArrowDown")
-    await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
-
-    await tasks.press("ArrowRight")
-    await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "true")
-    await expect(tasks.lineCell(FIRST, "project"), "focus stays on the line").toBeFocused()
-    await tasks.nested(FIRST, "project").loaded()
-    // open already: Right Arrow has nowhere to go in a cell that spans the table
-    await tasks.press("ArrowRight")
-    await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
-
-    await tasks.press("ArrowLeft")
-    await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "false")
-    await expect(tasks.nested(FIRST, "project").root).toHaveCount(0)
-    await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
-
-    await tasks.press("Enter")
-    await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "true")
-    await tasks.press("Enter")
-    await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "false")
-
-    // down from the last line is the next row, in the column the person came from
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowDown")
-    await expect(tasks.expanderCell(SECOND)).toBeFocused()
-    // and up from there is the last line again, then the lines, then the row itself
-    await tasks.press("ArrowUp")
-    await expect(tasks.lineCell(FIRST, "reporter")).toBeFocused()
-    await tasks.press("ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp")
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-    expect(await tasks.tabStops()).toHaveLength(1)
+    // the lines stand under the row: after the row's own stops, its actions last
+    await tasks.actions(FIRST).last().focus()
+    expect(await tasks.walk(7)).toEqual(
+      ["comments", "first_comment", "latest_comment", "labels", "project", "assignee", "reporter"].map(
+        (name) => `task-row-${FIRST}-l-${name}-b`,
+      ),
+    )
+    // and after the last line, the next row
+    expect(await tasks.walk(1)).toEqual([`task-row-${SECOND}-s>input`])
   })
 
-  test("Enter on the cell of a nested table goes into it, and Escape comes back out", async ({
+  test("Enter and Space on a line's button open and close its table, focus stays on it, and Tab goes into the table and out to the next line", async ({
     tasks,
+    pushed,
   }) => {
-    await tasks.expanderCell(FIRST).focus()
-    await tasks.press("ArrowRight")
-    await tasks.lineCell(FIRST, "project").focus()
-    await tasks.press("ArrowRight")
+    await tasks.expand(FIRST)
+    const line = tasks.line(FIRST, "project")
     const project = tasks.nested(FIRST, "project")
-    await project.loaded()
-    const [key] = await project.rowKeys()
-
-    // the cell that holds the nested table is the next stop down
-    await tasks.press("ArrowDown")
-    await expect(tasks.nestedCell(FIRST, "project")).toBeFocused()
-
+    await line.focus()
+    await pushed.clear()
     await tasks.press("Enter")
-    await expect(project.cell(key, "id"), "its first data cell").toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`${project.id}-row-${key}-c-id`])
+    await project.loaded()
+    await expect(line).toHaveAttribute("aria-expanded", "true")
+    await expect(line, "focus stays on the line").toBeFocused()
+    expect(await pushed.count("toggle")).toBe(1)
+    expect(await pushed.all()).toHaveLength(1)
 
-    // in it, the arrow keys are its own
-    await tasks.press("ArrowRight")
-    await expect(project.cell(key, "name")).toBeFocused()
-    // the table of one project filters nothing: it has no filter row
-    await tasks.press("ArrowUp")
-    await expect(project.header("name")).toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(project.header("name"), "Up ends at its header, not in the table around it").toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(project.cell(key, "name")).toBeFocused()
-    // its last row holds its link to the full view (full_view.spec.ts)
-    await tasks.press("ArrowDown", "ArrowDown")
-    await expect(project.viewCell, "Down ends at its last row").toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(project.cell(key, "name"), "and Up comes back in the column it was in").toBeFocused()
+    // into it: its heading line, which stands on the line, its "Skip table", its header and its row
+    const [key] = await project.rowKeys()
+    const stops = await tasks.walk(6)
+    expect(stops).toContain(`${project.id}-skip`)
+    expect(stops.at(-1)!.startsWith(project.id)).toBe(true)
 
-    await tasks.press("Escape")
-    await expect(tasks.nestedCell(FIRST, "project")).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-n-project-c`])
+    // out of it: after its last stop, the link to its full view, the next line
+    await project.fullView.focus()
+    expect(await tasks.walk(1)).toEqual([`task-row-${FIRST}-l-assignee-b`])
+    expect(await tasks.walk(1, true)).toEqual([`${project.id}-full-view`])
+    // its cells are in it, not around it: the first one that is a stop is its record's
+    expect(await project.tabStops()).toContain(`${project.id}-row-${key}-c-name`)
 
-    // and back in at the cell it was left at
-    await tasks.press("F2")
-    await expect(project.cell(key, "name")).toBeFocused()
-    await tasks.press("Escape", "ArrowUp")
-    await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
+    await line.focus()
+    await tasks.press(" ")
+    await expect(line).toHaveAttribute("aria-expanded", "false")
+    await expect(project.root).toHaveCount(0)
+    await expect(line).toBeFocused()
+    await tasks.press("Enter")
+    await expect(line).toHaveAttribute("aria-expanded", "true")
+    await tasks.press("Enter")
+    await expect(line).toHaveAttribute("aria-expanded", "false")
+    await expect(line).toBeFocused()
   })
 
-  test("Up Arrow goes past a filter cell without a filter to the column's header; a table with no filter has no filter row", async ({
-    page,
-    tasks,
-  }) => {
-    // "Reported by": no column filters, so there is no filter row to stop at
+  test("a table where no column filters has no filter row", async ({ page, tasks }) => {
+    // "Reported by": no column filters
     const reporter = await tasks.openLine(FIRST, "reporter")
-    const [person] = await reporter.rowKeys()
     await expect(page.locator(`[id='${reporter.id}-filter-row']`)).toHaveCount(0)
-    await tasks.nestedCell(FIRST, "reporter").focus()
-    await tasks.press("Enter")
-    await expect(reporter.cell(person, "name")).toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(reporter.header("name")).toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(reporter.cell(person, "name")).toBeFocused()
-
     // "Comments": its ID does not filter, its Body does
     const comments = await tasks.openLine(FIRST, "comments")
-    const [comment] = await comments.rowKeys()
-    await comments.cell(comment, "id").focus()
-    await tasks.press("ArrowUp")
-    await expect(comments.header("id"), "straight to the header, never sideways").toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(comments.cell(comment, "id")).toBeFocused()
-    await tasks.press("ArrowRight", "ArrowUp")
-    await expect(comments.filterCell("body")).toBeFocused()
-    // along the filter row only to the cells that hold a filter
-    await tasks.press("ArrowLeft")
-    await expect(comments.filterCell("body")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(comments.filterCell("inserted_at")).toBeFocused()
-    await tasks.press("ArrowRight")
-    await expect(comments.filterCell("inserted_at")).toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(comments.header("inserted_at")).toBeFocused()
+    await expect(comments.filterCell("id").locator("input, select, button")).toHaveCount(0)
+    await expect(comments.filterValue("body")).toBeVisible()
   })
 
-  test("Tab leaves the whole tree from inside a nested table, and comes back to where it was", async ({
+  test("Shift+Tab from a nested table's first stop goes back to its line, and the inputs of its argument line stand on that line", async ({
     page,
     tasks,
   }) => {
     const project = await tasks.openLine(FIRST, "project")
     const [key] = await project.rowKeys()
     const nestedTasks = await project.openLine(key, "tasks")
-    const [inner] = await nestedTasks.rowKeys()
 
-    await nestedTasks.cell(inner, "title").click()
-    await expect(nestedTasks.cell(inner, "title")).toBeFocused()
-    // the pages of the nested table are no tab stops: the next one is outside the grid
-    expect(await tasks.tabStops()).toEqual([`${nestedTasks.id}-row-${inner}-c-title`])
+    // its argument line is on its line, after the line's button; its "Skip table" after it
+    await nestedTasks.skip.focus()
+    await page.keyboard.press("Shift+Tab")
+    expect(await nestedTasks.hasFocus()).toBe(false)
+    const back = await tasks.walk(4, true)
+    expect(back).toContain(`${nestedTasks.id}-arg-search`)
+    expect(back).toContain(`${nestedTasks.id}-arg-due_within-days`)
+    expect(back).toContain(`${project.id}-row-${key}-l-tasks-b`)
 
-    await page.keyboard.press("Tab")
-    await expect(tasks.pageButton(1)).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    await expect(nestedTasks.cell(inner, "title")).toBeFocused()
-
-    // Backwards, the inputs of the nested table's argument line come first:
-    // they stand on its line, before its grid, and are tab stops of their
-    // own (arguments.spec.ts); its "Columns" is none, as the other buttons
-    // on a line (hiding.spec.ts). Then the tree is left.
-    await page.keyboard.press("Shift+Tab")
-    await expect(nestedTasks.argument("due_within-days")).toBeFocused()
-    // the tree's tab stop stays where it was
-    expect(await tasks.tabStops()).toEqual([`${nestedTasks.id}-row-${inner}-c-title`])
-    await page.keyboard.press("Shift+Tab")
-    await expect(nestedTasks.argument("search")).toBeFocused()
-    await page.keyboard.press("Shift+Tab")
-    expect(await tasks.hasFocus()).toBe(false)
-    await expect(nestedTasks.columnsButton).not.toBeFocused()
-    await expect(project.columnsButton).not.toBeFocused()
-
-    // and forwards again from the inputs, into the grid where it was left
+    // and forwards from its last input, into the table
     await nestedTasks.argument("due_within-days").focus()
-    await page.keyboard.press("Tab")
-    await expect(nestedTasks.cell(inner, "title")).toBeFocused()
+    const on = await tasks.walk(3)
+    expect(on).toContain(`${nestedTasks.id}-skip`)
   })
 
-  test("moving about, in the lines and in a nested table, sends nothing; opening a line sends one event", async ({
-    tasks,
-    pushed,
-  }) => {
-    await tasks.expanderCell(FIRST).focus()
-    await pushed.clear()
-    await tasks.press("ArrowRight")
-    await expect(tasks.lines(FIRST)).toHaveCount(7)
-    expect(await pushed.count("expand")).toBe(1)
-    expect(await pushed.all()).toHaveLength(1)
-
-    await tasks.press("ArrowDown")
-    await pushed.clear()
-    await tasks.press("ArrowRight")
-    const comments = tasks.nested(FIRST, "comments")
-    await comments.loaded()
-    expect(await pushed.count("toggle")).toBe(1)
-    expect(await pushed.all()).toHaveLength(1)
-
-    await pushed.clear()
-    await tasks.press("ArrowDown", "Enter")
-    await tasks.press("ArrowRight", "ArrowDown", "ArrowUp", "ArrowUp", "ArrowLeft", "End", "Home")
-    await tasks.press("Control+End", "Control+Home", "PageDown", "PageUp", "Escape")
-    await expect(tasks.nestedCell(FIRST, "comments")).toBeFocused()
-    await tasks.press("ArrowDown", "ArrowDown", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp")
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-
-    expect(await pushed.all()).toEqual([])
-    expect(await tasks.tabStops()).toHaveLength(1)
-  })
-
-  test("a character does nothing on an expander, a line and the cell of a nested table; Space selects the row from its expander, and nothing from the others", async ({
+  test("a character does nothing on an expander and a line's button, and Tab about sends nothing", async ({
     page,
     tasks,
     pushed,
@@ -349,213 +219,171 @@ test.describe("with the keyboard", () => {
     await tasks.openLine(FIRST, "project")
     await pushed.clear()
 
-    for (const cell of [
-      tasks.expanderCell(FIRST),
-      tasks.lineCell(FIRST, "project"),
-      tasks.nestedCell(FIRST, "project"),
-    ]) {
-      await cell.focus()
-      await page.keyboard.press("Space")
+    for (const button of [tasks.expander(FIRST), tasks.line(FIRST, "project")]) {
+      await button.focus()
       await page.keyboard.press("x")
-      await page.keyboard.press("F2")
       await expect(tasks.openEditors).toHaveCount(0)
     }
+    await tasks.expander(FIRST).focus()
+    await tasks.walk(12)
+    await tasks.walk(12, true)
 
-    // F2 on the cell of the nested table went into it; nothing else happened
-    await pushed.expectSelected(tasks)
-    expect(await pushed.besides("select")).toEqual([])
-    // the expander is a cell of the row; a line and what is under it are not
-    expect(await tasks.selectedKeys()).toEqual([FIRST])
+    expect(await pushed.all()).toEqual([])
+    expect(await tasks.selectedKeys()).toEqual([])
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "true")
     await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "true")
   })
 })
 
 test.describe("three levels down", () => {
-  test("nested tables expand again, with one tab stop at every depth, down to the limit", async ({
+  test("nested tables expand again at every depth, down to the limit, and Tab goes into the deepest and out", async ({
     tasks,
   }) => {
     // tasks -> project -> tasks -> comments
     const project = await tasks.openLine(FIRST, "project")
-    expect(await tasks.tabStops()).toHaveLength(1)
     const [projectKey] = await project.rowKeys()
 
     const projectTasks = await project.openLine(projectKey, "tasks")
-    expect(await tasks.tabStops()).toHaveLength(1)
     await expect(projectTasks.rows).toHaveCount(25)
     await expect(projectTasks.expanders).toHaveCount(25)
     const [taskKey] = await projectTasks.rowKeys()
 
     const comments = await projectTasks.openLine(taskKey, "comments")
-    expect(await tasks.tabStops()).toHaveLength(1)
     // at depth 3 of 3: the same table as one level up, without expanders:
     // the boxes that select a row, its five columns and the one of its actions
     await expect(comments.expanders).toHaveCount(0)
     await expect(comments.headerCells).toHaveCount(7)
     await expect(comments.grid).toHaveAttribute("aria-colcount", "7")
 
-    // by keyboard all the way in, and all the way out again
-    await projectTasks.cell(taskKey, "title").focus()
-    await tasks.press("ArrowLeft")
-    await expect(projectTasks.expanderCell(taskKey)).toBeFocused()
-    await tasks.press("ArrowDown", "ArrowDown")
-    await expect(projectTasks.nestedCell(taskKey, "comments")).toBeFocused()
+    // in from its line, by Tab
+    await projectTasks.line(taskKey, "comments").focus()
+    expect(await tasks.walk(5)).toContain(`${comments.id}-skip`)
+    // its "Skip table" skips it alone: the next stop is the next line of its row
+    await comments.skip.focus()
     await tasks.press("Enter")
-    expect(await comments.hasFocus()).toBe(true)
-    expect(await tasks.tabStops()).toHaveLength(1)
-
-    await tasks.press("Escape")
-    await expect(projectTasks.nestedCell(taskKey, "comments")).toBeFocused()
-    await tasks.press("Escape")
-    await expect(project.nestedCell(projectKey, "tasks")).toBeFocused()
-    await tasks.press("Escape")
-    await expect(tasks.nestedCell(FIRST, "project")).toBeFocused()
-    await tasks.press("Escape")
-    await expect(tasks.nestedCell(FIRST, "project"), "at the top Escape has nowhere to go").toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-n-project-c`])
+    await expect(comments.skipTarget).toBeFocused()
+    expect(await tasks.walk(1)).toEqual([`${projectTasks.id}-row-${taskKey}-l-first_comment-b`])
   })
 })
 
 test.describe("focus", () => {
-  test("stays in a nested table through its own sort, and goes to the cell at the same place when its rows change", async ({
+  test("stays on a nested table's sort button through its own sort; when its rows change, on the same cell if it is back, else on the cell at the same place", async ({
     tasks,
   }) => {
     const project = await tasks.openLine(FIRST, "project")
     const [projectKey] = await project.rowKeys()
     const nested = await project.openLine(projectKey, "tasks")
 
-    await nested.header("title").focus()
+    await nested.sortButton("title").focus()
     await nested.reads(() => tasks.press("Enter"))
     await expect(nested.header("title")).toHaveAttribute("aria-sort", "ascending")
-    await expect(nested.header("title")).toBeFocused()
+    await expect(nested.sortButton("title")).toBeFocused()
     // the table around it has not moved
     await expect(tasks.header("title")).toHaveAttribute("aria-sort", "none")
     await expect(tasks.line(FIRST, "project")).toHaveAttribute("aria-expanded", "true")
     expect(tasks.page.url()).not.toContain("sort")
 
+    // its rows are read again under the focus (sent without a click,
+    // which would move the focus): a sort brings the row back, and focus
+    // is on the same cell, wherever it stands now
     const sorted = await nested.rowKeys()
     await nested.cell(sorted[2], "priority").focus()
-    await nested.reads(() => nested.header("title").click())
-    await nested.cell((await nested.rowKeys())[2], "priority").focus()
-    await nested.reads(() => nested.header("progress").click())
+    await nested.reads(() => nested.forge("sort", { column: "progress" }))
     const resorted = await nested.rowKeys()
     expect(resorted).not.toEqual(sorted)
-    expect(await tasks.tabStops()).toHaveLength(1)
-    expect(await nested.hasFocus()).toBe(true)
+    expect(resorted).toContain(sorted[2])
+    await expect(nested.cell(sorted[2], "priority")).toBeFocused()
+
+    // another page brings other rows: the same cell of the row at the place the focused row stood
+    const place = resorted.indexOf(sorted[2])
+    await nested.reads(() => nested.forge("page", { to: "2" }))
+    const other = await nested.rowKeys()
+    expect(other).not.toContain(sorted[2])
+    await expect(nested.cell(other[place], "priority")).toBeFocused()
   })
 
-  test("goes through the pages of a nested table from its last row, and stays on the control that was used", async ({
+  test("goes through the pages of a nested table, Tab stops after its rows, and stays on the control that was used", async ({
     page,
-    tasks,
   }) => {
     const projects = new Table(page, "project", "/projects")
     await projects.open()
     const nested = await projects.openLine(MOBILE_APP, "tasks")
     await expect(nested.range).toHaveText("1–25 of 57")
 
-    // the pages are a group in a row at the end of the grid, and no tab stops
+    // the pages are a group in a row at the end of its table
     await expect(nested.pagination).toHaveRole("group")
     await expect(nested.pagination).toHaveAccessibleName("Pagination: Tasks")
-    const last = (await nested.rowKeys()).at(-1)!
-    await nested.cell(last, "title").focus()
-    expect(await projects.tabStops()).toHaveLength(1)
+    // Previous is disabled on the first page: the first page's button is the first stop of the pages
+    await nested.pageButton(1).focus()
+    expect(await projects.walk(1)).toEqual([`${nested.id}-page-2`])
 
-    // under the last task is the footer row of the tasks' summaries (footer.spec.ts)
-    await projects.press("ArrowDown")
-    await expect(nested.summary("title")).toBeFocused()
-    await projects.press("ArrowDown")
-    await expect(nested.pagerCell).toBeFocused()
-    // under them, the link to the full view: the last row
-    await projects.press("ArrowDown")
-    await expect(nested.viewCell).toBeFocused()
-    await projects.press("ArrowDown")
-    await expect(nested.viewCell, "the last row is where Down ends").toBeFocused()
-    await projects.press("ArrowUp")
-    await expect(nested.pagerCell).toBeFocused()
-
-    // Enter goes to the first control that can be used; Left and Right move between them
-    await projects.press("Enter")
-    await expect(nested.pageButton(1)).toBeFocused()
-    await projects.press("ArrowRight")
-    await expect(nested.pageButton(2)).toBeFocused()
     await nested.reads(() => projects.press("Enter"))
     await expect(nested.range).toHaveText("26–50 of 57")
     await expect(nested.pageButton(2)).toBeFocused()
     expect(page.url()).not.toContain("page")
     await expect(projects.range, "the projects around it are on their page").toHaveText("1–6 of 6")
 
-    await projects.press("ArrowRight", "ArrowRight")
-    await expect(nested.next).toBeFocused()
+    await nested.next.focus()
     await nested.reads(() => projects.press("Enter"))
     await expect(nested.range).toHaveText("51–57 of 57")
     // Next is disabled on the last page: focus goes to the page that is shown
     await expect(nested.pageButton(3)).toBeFocused()
-
-    await projects.press("Escape")
-    await expect(nested.pagerCell).toBeFocused()
-    // over the footer row of the summaries, back to the last task
-    await projects.press("ArrowUp", "ArrowUp")
-    expect(await nested.focused()).toMatch(new RegExp(`^${nested.id}-row-.*-c-title$`))
-    expect(await projects.tabStops()).toHaveLength(1)
+    // after the pages: "Rows per page", then its link to the full view
+    await expect(nested.next).toBeDisabled()
+    expect(await projects.walk(2)).toEqual([`${nested.id}-page-size`, `${nested.id}-full-view`])
   })
 
-  test("comes back to the line when its nested table is closed from inside, and to the expander when the row is", async ({
+  test("comes back to the line when its nested table is closed while focus is in it, and to the expander when the row is", async ({
     tasks,
   }) => {
     const project = await tasks.openLine(FIRST, "project")
     const [key] = await project.rowKeys()
 
-    // focus is in the nested table; the pointer closes the line around it
-    await project.cell(key, "name").click()
-    await tasks.line(FIRST, "project").click()
+    // focus is in the nested table; the line closes without a click on it
+    await project.cell(key, "name").focus()
+    await tasks.forge("toggle", { row: FIRST, relationship: "project" })
     await expect(project.root).toHaveCount(0)
-    await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
+    await expect(tasks.line(FIRST, "project")).toBeFocused()
 
     await tasks.line(FIRST, "project").click()
     await project.loaded()
-    await project.cell(key, "name").click()
-    await tasks.expander(FIRST).click()
+    await project.cell(key, "name").focus()
+    await tasks.forge("expand", { row: FIRST })
     await expect(tasks.lines(FIRST)).toHaveCount(0)
-    await expect(tasks.expanderCell(FIRST)).toBeFocused()
-    expect(await tasks.tabStops()).toEqual([`task-row-${FIRST}-e`])
+    await expect(tasks.expander(FIRST)).toBeFocused()
   })
 
-  test("stays in the grid when a new read of the table around it takes an open nested table away", async ({
+  test("stays in the table when a new read of the table around it takes an open nested table away", async ({
     page,
     tasks,
   }) => {
     const project = await tasks.openLine(FIRST, "project")
-    const [key] = await project.rowKeys()
-    await project.cell(key, "name").click()
+    await expect(project.rows).toHaveCount(1)
 
-    // the back button after a sort reads the tasks again, from outside the grid
-    await tasks.reads(() => tasks.header("title").click())
+    // the back button after a sort reads the tasks again, from outside the table
+    await tasks.sortBy("title")
     await expect(tasks.lines(FIRST)).toHaveCount(0)
 
     const opened = await tasks.rowKey(1)
     const again = await tasks.openLine(opened, "project")
     const [nestedKey] = await again.rowKeys()
-    await again.cell(nestedKey, "name").click()
+    await again.cell(nestedKey, "name").focus()
     await tasks.reads(() => page.goBack())
 
     await expect(tasks.expander(FIRST)).toHaveAttribute("aria-expanded", "false")
     expect(await tasks.hasFocus()).toBe(true)
-    expect(await tasks.tabStops()).toHaveLength(1)
   })
 })
 
 test.describe("filtering in a nested table", () => {
-  test("its filter row works as on a page of its own, and Escape leaves the filter before it leaves the table", async ({
+  test("its filter row works as on a page of its own; Escape gives up what was typed, and focus stays", async ({
     page,
-    tasks,
   }) => {
     const projects = new Table(page, "project", "/projects")
     await projects.open()
     const nested = await projects.openLine(MOBILE_APP, "tasks")
 
-    await nested.filterCell("title").focus()
-    await projects.press("Enter")
-    await expect(nested.filterValue("title")).toBeFocused()
+    await nested.filterValue("title").focus()
     await page.keyboard.type("Fix")
     await nested.reads(() => projects.press("Enter"))
 
@@ -569,19 +397,16 @@ test.describe("filtering in a nested table", () => {
     await expect(projects.status).toHaveText("")
     await expect(projects.clearFilters).toHaveCount(0)
 
-    // "Clear filters" of a nested table is there for the pointer, and no tab stop
-    await expect(nested.clearFilters).toBeVisible()
-    expect(await projects.tabStops()).toHaveLength(1)
-
+    await page.keyboard.type("es")
     await projects.press("Escape")
-    await expect(nested.filterCell("title")).toBeFocused()
-    await projects.press("Escape")
-    await expect(projects.nestedCell(MOBILE_APP, "tasks")).toBeFocused()
+    await expect(nested.filterValue("title")).toHaveValue("Fix")
+    await expect(nested.filterValue("title")).toBeFocused()
 
-    await nested.reads(() => nested.clearFilters.click())
+    // "Clear filters" of a nested table is a Tab stop of its own
+    await nested.clearFilters.focus()
+    await nested.reads(() => projects.press("Enter"))
     await expect(nested.range).toHaveText("1–25 of 57")
-    expect(await projects.hasFocus()).toBe(true)
-    expect(await projects.tabStops()).toHaveLength(1)
+    expect(await nested.hasFocus()).toBe(true)
   })
 })
 
@@ -599,8 +424,6 @@ test.describe("editing in a nested table", () => {
     await title.focus()
     await projects.press("Enter")
     await expect(nested.editor(title)).toBeFocused()
-    // while a cell is edited its editor is the one tab stop of the tree
-    expect(await projects.tabStops()).toEqual(["TEXTAREA"])
     await projects.retype("Edited under its project")
     await pushed.clear()
     await nested.saves(title, () => projects.press("Enter"))
@@ -611,14 +434,12 @@ test.describe("editing in a nested table", () => {
     expect(await pushed.all()).toHaveLength(1)
     await expect(projects.line(MOBILE_APP, "tasks")).toHaveAttribute("aria-expanded", "true")
 
-    // Escape gives the edit up, and only the next one leaves the table
+    // Escape gives the edit up; focus stays on the cell
     await projects.press("Enter")
     await projects.retype("Given up")
     await projects.press("Escape")
     await expect(title).toHaveText("Edited under its project")
     await expect(title).toBeFocused()
-    await projects.press("Escape")
-    await expect(projects.nestedCell(MOBILE_APP, "tasks")).toBeFocused()
 
     // the record is saved: the page of the tasks shows it
     const tasks = new Table(page, "task", "/tasks")
@@ -641,7 +462,7 @@ test.describe("editing in a nested table", () => {
       await expect(nested.editorTemplates, relationship).not.toHaveCount(0)
       const keys = await nested.rowKeys()
       const cell = nested.cell(keys[0], column)
-      await expect(cell, relationship).not.toHaveAttribute("aria-readonly")
+      await expect(cell, relationship).toHaveAttribute("tabindex", "0")
 
       await cell.focus()
       await tasks.press("Enter")
@@ -652,7 +473,7 @@ test.describe("editing in a nested table", () => {
 
       await expect(cell, relationship).toHaveText(value)
       await expect(cell, relationship).toBeFocused()
-      await expect(cell, relationship).not.toHaveAttribute("aria-invalid")
+      await expect(cell, relationship).not.toHaveAttribute("data-failed")
       // one save, of this table, and nothing is read again: the rows stay where they are
       expect(await pushed.count("save"), relationship).toBe(1)
       expect(await pushed.all(), relationship).toHaveLength(1)
@@ -669,15 +490,13 @@ test.describe("editing in a nested table", () => {
   test("the people under a task cannot be edited: their table names no update action", async ({ tasks, pushed }) => {
     const reporter = await tasks.openLine(FIRST, "reporter")
     await expect(reporter.editorTemplates).toHaveCount(0)
-    await expect(reporter.grid.locator("[aria-readonly]")).toHaveCount(0)
+    // no cell of it is a Tab stop
+    await expect(reporter.grid.locator(":is([role=cell],[role=rowheader])[tabindex]")).toHaveCount(0)
 
     const name = reporter.cell(await reporter.rowKey(1), "name")
-    await name.focus()
     await pushed.clear()
-    await tasks.press("Enter", "F2", "x")
     await name.dblclick()
     await expect(reporter.openEditors).toHaveCount(0)
-    await expect(name).toBeFocused()
     expect(await pushed.all()).toEqual([])
   })
 
@@ -702,17 +521,15 @@ test.describe("editing in a nested table", () => {
     await projects.press("Enter")
     await projects.retype("ab")
     await nested.saves(title, () => projects.press("Enter"))
-    await expect(title).toHaveAttribute("aria-invalid", "true")
+    await expect(title).toHaveAttribute("data-failed")
     await expect(nested.failure(title)).toHaveText("length must be greater than or equal to 3")
     await expect(nested.status).toHaveText("Title was not saved: length must be greater than or equal to 3")
     await expect(projects.status).toHaveText("")
 
-    // Escape on the failed cell restores it; the next one leaves the table
+    // Escape on the failed cell restores it; focus stays on it
     await projects.press("Escape")
-    await expect(title).not.toHaveAttribute("aria-invalid", "true")
+    await expect(title).not.toHaveAttribute("data-failed")
     await expect(title).toBeFocused()
-    await projects.press("Escape")
-    await expect(projects.nestedCell(MOBILE_APP, "tasks")).toBeFocused()
   })
 
   test("a row of the table around it that is saved keeps what is open under it, and the focus", async ({
@@ -733,7 +550,6 @@ test.describe("editing in a nested table", () => {
     await expect(comments.grid).toBeVisible()
     // the nested table is named after the row as it is now
     await expect(comments.grid).toHaveAccessibleName("Labels Saved with its labels open")
-    expect(await tasks.tabStops()).toEqual([`task-row-${SECOND}-c-title`])
   })
 })
 
@@ -750,15 +566,12 @@ test.describe("many tables open at once", () => {
     for (const key of keys) await tasks.line(key, "project").click()
     for (const key of keys) await tasks.nested(key, "project").loaded()
 
-    await expect(tasks.grid.getByRole("grid")).toHaveCount(50)
-    expect(await tasks.tabStops()).toHaveLength(1)
+    await expect(tasks.grid.getByRole("table")).toHaveCount(50)
     await expect(tasks.rows).toHaveCount(25)
 
-    // the keyboard works among them
-    await tasks.cell(keys[3], "title").focus()
-    await tasks.press("ArrowLeft", "ArrowDown")
-    await expect(tasks.lineCell(keys[3], "comments")).toBeFocused()
-    expect(await tasks.tabStops()).toHaveLength(1)
+    // the keyboard works among them: from a row's last action to its first line
+    await tasks.actions(keys[3]).last().focus()
+    expect(await tasks.walk(1)).toEqual([`task-row-${keys[3]}-l-comments-b`])
   })
 })
 

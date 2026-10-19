@@ -13,7 +13,7 @@ import { Table } from "./support/table"
 // opens: focus goes in, Escape and Cancel take it away and put focus back
 // on what opened it, and Tab leaves what is inline; axe finds nothing wrong
 // either way. One question at a time: a new one gives up the one that is
-// open. The grid of `div`s: the arrow keys, editing, a nested table.
+// open. The grid of `div`s: Tab from stop to stop, editing, a nested table.
 
 /** The key of the record called `name`, as its row group's id says it. */
 async function key(page: Page, name: string): Promise<string> {
@@ -407,13 +407,13 @@ test.describe("what opens over the page, with the same kit", () => {
 })
 
 test.describe("the grid of divs", () => {
-  test("the arrow keys move in it, Enter edits a cell and saves it", async ({ page }) => {
+  test("Tab goes from an editable cell to the next, Enter edits a cell and saves it", async ({ page }) => {
     const anchor = await opened(page)
     const name = cell(page, anchor, "name")
     await name.focus()
-    await page.keyboard.press("ArrowRight")
+    await page.keyboard.press("Tab")
     await expect(cell(page, anchor, "note")).toBeFocused()
-    await page.keyboard.press("ArrowLeft")
+    await page.keyboard.press("Shift+Tab")
     await expect(name).toBeFocused()
     await page.keyboard.press("Enter")
     const editor = name.locator("textarea")
@@ -424,23 +424,31 @@ test.describe("the grid of divs", () => {
     await expect(name).toBeFocused()
   })
 
-  test("a row opens its nested table, which Enter goes into and Escape out of", async ({ page }) => {
+  test("a row opens its nested table from the keyboard: Enter on the expander, its line after the row's stops, Enter; Tab goes on into the table", async ({
+    page,
+  }) => {
     const anchor = await opened(page)
-    const expander = page.locator(`[id="kit-row-${anchor}-e"]`)
+    const kit = new Table(page, "kit", "/e2e/kit")
+    const expander = kit.expander(anchor)
     await expander.focus()
     await page.keyboard.press("Enter")
-    const line = page.locator(`[id="kit-row-${anchor}-l-parts-c"]`)
-    await expect(line).toBeVisible()
-    await page.keyboard.press("ArrowDown")
+    await expect(expander).toHaveAttribute("aria-expanded", "true")
+    await expect(expander).toBeFocused()
+    // the line stands under the row: after the row's own stops, its actions last
+    const line = kit.line(anchor, "parts")
+    await kit.actions(anchor).last().focus()
+    await page.keyboard.press("Tab")
     await expect(line).toBeFocused()
     await page.keyboard.press("Enter")
-    const holder = page.locator(`[id="kit-row-${anchor}-n-parts-c"]`)
-    await expect(holder.locator('[role=grid][data-kit="div"]')).toBeAttached()
-    await page.keyboard.press("ArrowDown")
-    await expect(holder).toBeFocused()
-    await page.keyboard.press("Enter")
-    await expect.poll(() => holder.evaluate((cell) => cell.querySelector("[role=grid]")?.contains(document.activeElement))).toBe(true)
-    await page.keyboard.press("Escape")
-    await expect(holder).toBeFocused()
+    const parts = kit.nested(anchor, "parts")
+    await expect(parts.grid).toHaveAttribute("data-kit", "div")
+    await parts.loaded()
+    await expect(line).toHaveAttribute("aria-expanded", "true")
+    await expect(line).toBeFocused()
+    // the nested table stands after the line: its heading line on the line,
+    // then its "Skip table", inside the cell it is moved into
+    const stops = await kit.walk(6)
+    expect(stops).toContain(`${parts.id}-skip`)
+    expect(await parts.hasFocus()).toBe(true)
   })
 })
