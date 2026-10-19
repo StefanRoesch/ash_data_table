@@ -75,7 +75,11 @@ the router.
    const liveSocket = new LiveSocket("/live", Socket, {
      longPollFallbackMs: 2500,
      // ...
-     hooks: {...colocatedHooks, ...ashDataTableHooks},
+     hooks: {
+       ...colocatedHooks,
+       ...ashDataTableHooks,
+       // ...
+     },
    })
    ```
 

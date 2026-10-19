@@ -21,7 +21,9 @@ they are registered, which is one import. In the demo
 ```js
 import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 // ...
-  hooks: {...colocatedHooks, ...ashDataTableHooks},
+  hooks: {
+    ...colocatedHooks,
+    ...ashDataTableHooks,
 ```
 
 (The line `// ...` stands for the lines between the import and the

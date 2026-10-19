@@ -81,7 +81,11 @@ import {hooks as ashDataTableHooks} from "phoenix-colocated/ash_data_table"
 const liveSocket = new LiveSocket("/live", Socket, {
   longPollFallbackMs: 2500,
   // ...
-  hooks: {...colocatedHooks, ...ashDataTableHooks},
+  hooks: {
+    ...colocatedHooks,
+    ...ashDataTableHooks,
+    // ...
+  },
 })
 ```
 

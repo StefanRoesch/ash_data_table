@@ -282,7 +282,7 @@ A part draws the parts inside it through the kit, with `Kit.part/1`, never by
 calling another part's function, so that a kit that replaces one part keeps
 the others. It passes each part the assigns the `Kit` moduledoc lists, and
 its texts made with `Kit.Words`. The `DivKit`'s grid draws a header cell per
-column:
+column, with the id `AshDataTable.Ids` makes for it:
 
 <!-- source: demo/lib/demo_web/div_kit.ex -->
 ```elixir
@@ -290,7 +290,7 @@ column:
   :for={{column, index} <- Enum.with_index(@model.columns)}
   part={:header_cell}
   kit={@kit}
-  id={"#{@id}-head-#{column.name}"}
+  id={Ids.header_cell(@id, column.name)}
   column={column}
   colindex={@lead + index + 1}
   attrs={
@@ -368,22 +368,22 @@ write through the server's checks. What such a kit relies on is public:
 
 The demo checks the JS entries in the browser
 ([`demo/e2e/contract.spec.ts`](https://github.com/StefanRoesch/ash_data_table/blob/main/demo/e2e/contract.spec.ts)):
-the grid's hook mounted by hand on a grid of `div`s, and `ids.js` against
-the server's ids. Its hook mounts the grid so:
+the grid's hook mounted by hand on a grid of `div`s and a pagination's beside it,
+and `ids.js` against the server's ids. Its hook mounts the grid so:
 
 <!-- source: demo/assets/js/mounted_grid.js -->
 ```javascript
-mountGrid(
-  grid,
+const transport = el =>
   liveViewTransport({
-    el: grid,
+    el,
     pushEventTo: (target, event, payload) => this.pushEventTo(target, event, payload),
     handleEvent: (event, handler) => this.handleEvent(event, handler),
     removeHandleEvent: ref => this.removeHandleEvent(ref),
     liveSocket: this.liveSocket
-  }),
-  {onEdit: cellId => edits.push(cellId)}
-)
+  })
+const grid = document.getElementById(this.el.dataset.grid)
+const edits = []
+const mount = () => mountGrid(grid, transport(grid), {onEdit: cellId => edits.push(cellId)})
 ```
 
 ## The development check

@@ -36,8 +36,12 @@ const liveSocket = new LiveSocket("/live", Socket, {
     // in (`DemoWeb.Zone`): a convenience of the demo's, which the server checks.
     time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone,
   },
-  // and the demo's own hook of its browser tests (mounted_grid.js)
-  hooks: {...colocatedHooks, ...ashDataTableHooks, MountedGrid},
+  hooks: {
+    ...colocatedHooks,
+    ...ashDataTableHooks,
+    // the demo's own hook of its browser tests (mounted_grid.js)
+    MountedGrid,
+  },
 })
 
 // Show progress bar on live navigation and form submits
