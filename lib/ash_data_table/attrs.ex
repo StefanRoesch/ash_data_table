@@ -387,7 +387,7 @@ defmodule AshDataTable.Attrs do
   #   * the `<table role="table">` is the stream container; the header is a
   #     child with its own id and every row is one `<tbody>`. A table, not
   #     an ARIA grid (ADR 0003): its controls and its editable cells are
-  #     the Tab stops, in the order they stand in, nested tables' too; a
+  #     its Tab stops, in the order they stand in, nested tables' too; a
   #     read-only cell, a header that does not sort, a cell that holds
   #     controls and the summaries are none. The cells are `role="cell"`,
   #     the label column's `role="rowheader"`;
@@ -1057,7 +1057,7 @@ defmodule AshDataTable.Attrs do
   part writes, as it does for every element drawn once per column (an
   opened nested table sends them once per column). `aria-sort` and
   `data-sort` where it sorts: it then holds the column's sort button
-  (`sort/3`), the header's one Tab stop; a header that does not sort is
+  (`sort/3`), the header's only Tab stop; a header that does not sort is
   none. `data-label` where it stays in view as the grid scrolls sideways
   (`sticky_label?`). `data-number` where the column shows a number as
   text, as its cells (`cell/2`).
@@ -1244,7 +1244,7 @@ defmodule AshDataTable.Attrs do
   @doc """
   A line under an expanded row: `data-line` names its relationship, on
   the line's cell (the part writes its id, role and place). Its button is
-  the Tab stop, not the cell.
+  a Tab stop, not the cell.
   """
   def line(relationship), do: %{"data-line" => relationship.name}
 

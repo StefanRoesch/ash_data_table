@@ -327,7 +327,7 @@ defmodule AshDataTable.Parts.Grid do
   # (`AshDataTable.Attrs.column_header/3`); its id, place, role and name are
   # written here, as of every element drawn once per column. A column that
   # sorts has its label and mark in a button (`button`,
-  # `AshDataTable.Attrs.sort/3`), the header's one Tab stop; the header says
+  # `AshDataTable.Attrs.sort/3`), the header's only Tab stop; the header says
   # the direction (`aria-sort`). A header that does not sort is no stop.
   attr :id, :string, required: true
   attr :column, :map, required: true

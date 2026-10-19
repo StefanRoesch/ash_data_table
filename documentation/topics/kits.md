@@ -239,7 +239,7 @@ a summary cell, as above, has none. Nor does a header: a column that sorts
 has a button in its header, which is the stop. The `grid` part draws a link
 "Skip table …" before the header row (`Attrs.skip/1`), and the `root` part
 the place it jumps to after the table's pages (`Attrs.skip_target/1`). The
-`Kit` moduledoc, "The Tab stops", has the rule; `KitCase` checks it.
+`Kit` moduledoc, "Tab stops", has the rule; `KitCase` checks it.
 
 **Ids.** Where the table names an element a part draws (focus goes to it, a
 nested table is moved into it), the part makes its id with

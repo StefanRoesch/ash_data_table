@@ -4,8 +4,8 @@ defmodule AshDataTable.KitCase do
   table of `AshDataTable.Test.Resource` through the kit in every state, with
   what opens over the page and in it, and asserts that every page on the
   way carries the markers, ids and `data-*` values the table's hooks find
-  their elements by and read, the element kinds they need, the Tab stops of
-  a table (`AshDataTable.Kit`, "The Tab stops": its controls and its
+  their elements by and read, the element kinds they need, a table's Tab
+  stops (`AshDataTable.Kit`, "Tab stops": its controls and its
   editable cells, no read-only cell, no header that does not sort, no cell
   that holds controls; the skip link and its target; no `aria-readonly`,
   `aria-selected`, `aria-multiselectable` and no `aria-invalid` on a cell),
@@ -690,7 +690,7 @@ defmodule AshDataTable.KitCase do
   end
 
   # What every cell, header, row and record is, whatever the kit draws it
-  # with, and the Tab stops: controls, and an editable cell; nothing else.
+  # with, and its Tab stops: controls, and an editable cell; nothing else.
   defp constants(page) do
     none(
       page,

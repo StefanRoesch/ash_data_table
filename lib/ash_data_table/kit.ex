@@ -151,10 +151,10 @@ defmodule AshDataTable.Kit do
   `Ids.skip_target/1`) and the question (`Ids.dialog/1`). The other ids
   below are the table's id and a suffix.
 
-  ## The Tab stops
+  ## Tab stops
 
   A table is a table (`role="table"`), not an ARIA grid: its controls
-  are the Tab stops, in the order they stand in, and the browser moves
+  are its Tab stops, in the order they stand in, and the browser moves
   the focus (ADR 0003). What a kit draws follows one rule, which
   `AshDataTable.KitCase` checks:
 
@@ -721,7 +721,7 @@ defmodule AshDataTable.Kit do
   of `Attrs.rowgroup/2`.
 
   Contract 3 (from contract 2): a table, not an ARIA grid (ADR 0003, see
-  "The Tab stops"). `role="table"`, `role="cell"` and `role="rowheader"`
+  "Tab stops"). `role="table"`, `role="cell"` and `role="rowheader"`
   (the label column, `row`'s new `label`) in place of `role="grid"` and
   `role="gridcell"`; no `tabindex="-1"` on cells, headers and controls;
   an editable cell's `tabindex="0"` and `aria-describedby` in its item's

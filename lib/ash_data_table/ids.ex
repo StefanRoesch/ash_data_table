@@ -96,7 +96,7 @@ defmodule AshDataTable.Ids do
 
   @doc """
   The button in the header of column `name` that sorts by it, the header's
-  one Tab stop: `ID-sort-NAME`.
+  only Tab stop: `ID-sort-NAME`.
   """
   @spec sort(String.t(), atom | String.t()) :: String.t()
   def sort(id, name), do: "#{id}-sort-#{name}"
