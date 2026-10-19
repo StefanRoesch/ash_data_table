@@ -24,7 +24,7 @@ async function across(locator: Locator): Promise<{ x: number; width: number }> {
 /** The summaries are there: none is on its way. */
 async function summed(table: Table): Promise<void> {
   await expect(table.summaries).toBeVisible()
-  await expect(table.summaries.locator("[role=gridcell][aria-busy]")).toHaveCount(0)
+  await expect(table.summaries.locator("[role=cell][aria-busy]")).toHaveCount(0)
 }
 
 test.describe("the footer row", () => {
@@ -45,7 +45,7 @@ test.describe("the footer row", () => {
     await expect(tasks.summary("completed_at")).toHaveText(/^Count \d+$/)
 
     for (const column of SUMMARISED) {
-      await expect(tasks.summary(column)).toHaveRole("gridcell")
+      await expect(tasks.summary(column)).toHaveRole("cell")
       expect(await across(tasks.summary(column)), `under ${column}`).toEqual(
         await across(tasks.header(column)),
       )
@@ -69,48 +69,16 @@ test.describe("the footer row", () => {
     await expect(tasks.summary("completed_at")).toHaveText(`Count ${completed === "" ? 0 : 1}`)
   })
 
-  test("is reached with Arrow Down from the last record, and is where Down ends", async ({
-    page,
-    tasks,
-    pushed,
-  }) => {
+  test("has no Tab stop: Tab goes from the last record's stops to the pagination", async ({ page, tasks }) => {
     await tasks.open()
     await summed(tasks)
-    const last = (await tasks.rowKeys()).at(-1)!
-    await pushed.clear()
 
-    await tasks.cell(last, "progress").focus()
-    await tasks.press("ArrowDown")
-    await expect(tasks.summary("progress")).toBeFocused()
-    expect(await tasks.tabStops(), "the one tab stop of the grid").toEqual(["task-summary-progress"])
-    await tasks.press("ArrowDown")
-    await expect(tasks.summary("progress"), "the footer row is where Down ends").toBeFocused()
-
-    await tasks.press("ArrowRight")
-    await expect(tasks.summary("estimate_hours")).toBeFocused()
-
-    // nothing to edit, to select or to open in it
-    await tasks.press("Enter", "F2", "Space", "x")
-    await expect(tasks.openEditors).toHaveCount(0)
-    await expect(tasks.summary("estimate_hours")).toBeFocused()
-
-    await tasks.press("ArrowUp")
-    await expect(tasks.cell(last, "estimate_hours")).toBeFocused()
-
-    // Page Down and Ctrl+End end at the last record; the footer row is an
-    // Arrow Down further
-    await tasks.press("PageDown", "PageDown", "PageDown", "PageDown")
-    await expect(tasks.cell(last, "estimate_hours")).toBeFocused()
-    await tasks.press("Control+End")
-    await expect(tasks.actionsCell(last)).toBeFocused()
-    await tasks.press("ArrowDown")
-    await expect(page.locator("#task-summaries-actions")).toBeFocused()
-    await tasks.press("Home")
-    await expect(page.locator("#task-summaries-select")).toBeFocused()
-    await tasks.press("PageDown")
-    await expect(page.locator("#task-summaries-select"), "Page Down stays").toBeFocused()
-
-    expect(await pushed.all(), "moving about asks the server nothing").toEqual([])
+    await expect(tasks.summaries.locator("[tabindex], button, input, select, a")).toHaveCount(0)
+    const last = (await tasks.tabStops()).at(-1)!
+    expect(last.startsWith(`task-row-${(await tasks.rowKeys()).at(-1)}`), "the last stop of the grid is the last record's").toBe(true)
+    await page.locator(`[id="${last}"]`).focus()
+    await tasks.press("Tab")
+    await expect(tasks.pageButton(1)).toBeFocused()
   })
 
   test("a summary is hidden with its column, and comes back with it", async ({ tasks }) => {
@@ -126,12 +94,6 @@ test.describe("the footer row", () => {
         await across(tasks.header(column)),
       )
     }
-
-    // the arrow keys pass over the cell of a hidden column
-    await tasks.press("Escape")
-    await tasks.summary("estimate_hours").focus()
-    await tasks.press("ArrowLeft")
-    await expect(tasks.summary("priority")).toBeFocused()
 
     await tasks.unhide("progress")
     await expect(tasks.summary("progress")).toBeVisible()
@@ -218,7 +180,6 @@ test.describe("accessibility", () => {
         await expect(page.locator("html")).toHaveAttribute("data-theme", theme)
         const nested = await projects.openLine(SEED.project.mobileApp, "tasks")
         await summed(nested)
-        await nested.summary("progress").focus()
 
         await expectNoAxeViolations(page)
       })

@@ -59,11 +59,12 @@ test.describe("offset pages: /tasks", () => {
     expect(await tasks.rowKeys()).toEqual(first)
   })
 
-  test("the pagination is outside the grid: ordinary tab stops, used by keyboard", async ({
+  test("the pagination comes after the table's last stop: ordinary tab stops, used by keyboard", async ({
     page,
     tasks,
   }) => {
-    await tasks.tabStop.focus()
+    const last = (await tasks.tabStops()).at(-1)!
+    await page.locator(`[id="${last}"]`).focus()
     await tasks.press("Tab")
     await expect(tasks.pageButton(1)).toBeFocused()
     await tasks.press("Tab")
@@ -200,8 +201,8 @@ test.describe("offset pages: /tasks", () => {
     })
 
     test("a sort or a filter does not bring focus to the pagination", async ({ tasks }) => {
-      await tasks.reads(() => tasks.header("title").click())
-      await expect(tasks.header("title")).toBeFocused()
+      await tasks.sortBy("title")
+      await expect(tasks.sortButton("title")).toBeFocused()
 
       await tasks.filterValue("title").fill("sess")
       await tasks.reads(() => tasks.filterValue("title").press("Enter"))
@@ -244,7 +245,7 @@ test.describe("offset pages: /tasks", () => {
   })
 
   test("sort and page are kept together", async ({ page, tasks }) => {
-    await tasks.reads(() => tasks.header("progress").click())
+    await tasks.sortBy("progress")
     await tasks.reads(() => tasks.next.click())
     expect(params(page)).toEqual({ "task[sort]": "progress", "task[page]": "2" })
     await expect(tasks.header("progress")).toHaveAttribute("aria-sort", "ascending")
@@ -387,15 +388,16 @@ test.describe("keyset pages: /comments", () => {
   })
 
   test.describe("a read that fails after Next was used", () => {
-    test("the pagination goes away: focus goes to the grid", async ({ request }) => {
+    test("the pagination goes away: focus goes to the table's first stop", async ({ request }) => {
       await comments.next.focus()
 
       await withCommentsBroken(request, async () => {
         await comments.press("Enter")
         await expect(comments.error).toHaveText("The records could not be loaded.")
         await expect(comments.pagination).toHaveCount(0)
-        await expect(comments.tabStop).toBeFocused()
-        expect(await comments.tabStops()).toHaveLength(1)
+        // the table's first stop: the box of its page, in its header
+        expect((await comments.tabStops())[0]).toBe(`${comments.id}-select-head>input`)
+        await expect(comments.pageBox).toBeFocused()
       })
     })
   })

@@ -71,6 +71,7 @@ test.describe("/tasks, by offset", () => {
     tasks,
   }) => {
     await tasks.pageSize.focus()
+    // the arrow keys are the menu's own (a <select>), not the table's
     await tasks.reads(() => page.keyboard.press("ArrowDown"))
 
     await expect(tasks.pageSize).toHaveValue("50")
@@ -93,7 +94,7 @@ test.describe("/tasks, by offset", () => {
     page,
     tasks,
   }) => {
-    await tasks.reads(() => tasks.header("title").click())
+    await tasks.sortBy("title")
     await tasks.reads(async () => {
       await tasks.filterValue("title").fill("a")
       await tasks.filterValue("title").press("Enter")
@@ -214,7 +215,7 @@ test.describe("/comments, by keyset", () => {
 })
 
 test.describe("tables that keep their state themselves", () => {
-  test("a nested table: the menu is reached from its last row, and the choice is not in the URL", async ({
+  test("a nested table: the menu is a Tab stop after its Next, and the choice is not in the URL", async ({
     page,
   }) => {
     const projects = new Table(page, "project", "/projects")
@@ -227,16 +228,12 @@ test.describe("tables that keep their state themselves", () => {
     await expect(nested.pageSize).toHaveAccessibleName("Rows per page")
     await expect(nested.pageSize).toHaveValue("25")
 
-    // no tab stop of its own: into the cell with Enter, then to the right
-    expect(await projects.tabStops()).toHaveLength(1)
-    await nested.pagerCell.focus()
-    await projects.press("Enter")
-    await expect(nested.pageButton(1)).toBeFocused()
-    await projects.press("ArrowRight", "ArrowRight", "ArrowRight", "ArrowRight")
+    // a stop of its own, after the nested table's Next
+    await nested.next.focus()
+    await projects.press("Tab")
     await expect(nested.pageSize).toBeFocused()
-    await projects.press("ArrowRight")
-    await expect(nested.pageSize, "the menu is the last control").toBeFocused()
 
+    // the arrow keys are the menu's own (a <select>), not the table's
     await nested.reads(() => projects.press("ArrowDown"))
 
     await expect(nested.pageSize).toHaveValue("50")
@@ -244,11 +241,6 @@ test.describe("tables that keep their state themselves", () => {
     await expect(nested.range).toHaveText("1–50 of 57")
     await expect(nested.pageSize).toBeFocused()
     expect(params(page)).toEqual({})
-    expect(await projects.tabStops()).toHaveLength(1)
-
-    // Escape goes back to the cell, as from a button
-    await projects.press("Escape")
-    await expect(nested.pagerCell).toBeFocused()
 
     // and with the mouse
     await nested.reads(() => nested.pageSize.selectOption("10"))
