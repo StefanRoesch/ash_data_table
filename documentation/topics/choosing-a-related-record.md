@@ -222,9 +222,9 @@ table, which changes nothing, and "Choose" takes the selected row.
 | With | Effect |
 | --- | --- |
 | A click anywhere on a row | Selects the row. |
-| Space on a cell of a row | Selects the row. |
+| Space on a row's radio button | Selects the row. |
 | "Choose" | Takes the row the picker's table holds as selected. It is not to be used while no row is selected (`aria-disabled`). |
-| Enter on a cell of a row | Chooses that row at once: selects it, and takes it once the server holds it as selected. |
+| Enter on a row's radio button | Chooses that row at once: selects it, and takes it once the server holds it as selected. |
 | A double click on a row | The same. |
 | "None" | Chooses no record: the key is emptied. Only where the key can be empty (`allow_nil?`). |
 | "Cancel", Escape | Closes the picker. Nothing is saved. |
@@ -405,7 +405,7 @@ picker has nothing to choose.
 
 | Key | Where | Effect |
 | --- | --- | --- |
-| Enter | On a reference cell that is edited | Opens the picker. Focus goes to the radio button of the row chosen now, else of the first row. |
+| Enter, Space | On a reference cell that is edited | Opens the picker. Focus goes to the radio button of the row chosen now, else of the first row. |
 | Tab, Shift+Tab | In the picker | Through the table's stops, as in any table: "Skip table", the sort buttons, the filters, the radio buttons (one stop for the group), the pages; then the picker's buttons. Over the page it stays in the picker; in the page it goes on to the page after the last button. |
 | Up and Down Arrow | On a row's radio button | The radio group's own keys: the next or the previous row is selected. They send nothing but what is selected. |
 | Space | On a row's radio button | Selects the row. |

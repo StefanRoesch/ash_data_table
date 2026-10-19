@@ -46,10 +46,10 @@ Tab goes through a table in this order:
 1. **The heading line**: "Columns", the inputs of the
    [argument line](arguments.md), the create button, the buttons of the
    [table actions](table-actions.md).
-2. **The line above the rows**, while it shows: "Clear selection", "Select
-   all … that match" and the bulk actions while rows are selected; "Clear
-   filters" while a filter is set; "Read again" while the table says that
-   records changed.
+2. **The line above the rows**, while it shows, in this order: "Select
+   all … that match" (while it is offered) and "Clear selection", then the
+   bulk actions and "More", while rows are selected; "Read again" while the
+   table says that records changed; "Clear filters" while a filter is set.
 3. **"Skip table Tasks"**: a link, seen only while it has focus. Enter
    jumps past the table (see below).
 4. **The header row**: the box that selects the page's rows, then the sort
@@ -114,7 +114,7 @@ link to a place in the page, and needs no JavaScript.
 
 | Stop | Enter | Space | Escape |
 | --- | --- | --- | --- |
-| A cell that can be edited | Starts editing (see [Editing a cell](#editing-a-cell)). | Starts editing with a space typed, as any character does; nothing on a boolean. | Gives up a failed save: the cell shows the saved value again. Cuts off a whole text that shows. Hides a shown sensitive value. |
+| A cell that can be edited | Starts editing (see [Editing a cell](#editing-a-cell)). | The same as Enter: the value stays, a boolean toggles, the picker or the side panel opens. The page does not scroll. | Gives up a failed save: the cell shows the saved value again. Cuts off a whole text that shows. Hides a shown sensitive value. |
 | The editor in a cell | Saves; focus goes back to the cell. | Types. | Gives the edit up; focus goes back to the cell. |
 | A row's box | — | Selects the row, or takes it out. | — |
 | The box in the header | — | Selects every row of the page, or none. | — |
@@ -133,7 +133,8 @@ link to a place in the page, and needs no JavaScript.
 Other keys on a cell that can be edited:
 
 - **A character** starts editing with that character typed (see the next
-  section for what each type does with it).
+  section for what each type does with it). Space is no character here: it
+  acts as Enter, so it never replaces a value.
 - **Shift+Enter** shows a cut-off text whole, and cuts it off again; on a
   sensitive cell it shows the value, and hides it again.
 - **A double click** starts editing too.
@@ -145,9 +146,9 @@ with Alt are left to the browser.
 
 ### Editing a cell
 
-Enter on an editable cell starts editing. What happens depends on the type:
+Enter or Space on an editable cell starts editing. What happens depends on the type:
 
-| Cell type | Enter | A character |
+| Cell type | Enter or Space | A character |
 | --- | --- | --- |
 | text | Opens the editor with the text selected. | Opens the editor and replaces the text with the character. |
 | number | Opens the editor with the number selected. | Replaces the number, if the input takes the character. A letter opens the editor and leaves the number as it was. |
@@ -216,7 +217,7 @@ several are chosen, each row has a box. See
 **Selecting.** A table with a bulk action has a box at the start of every
 row, and one in the header for the rows of the page. The boxes are stops:
 Space ticks one. While rows are selected, the line above the rows holds
-"Clear selection", "Select all … that match" and the bulk actions; they
+"Select all … that match", "Clear selection" and the bulk actions; they
 come before "Skip table" in the Tab order. There is no key that selects a
 range; a pointer can, with Shift and a click. See
 [Selecting rows and bulk actions](selecting-rows-and-bulk-actions.md).
@@ -376,7 +377,7 @@ the edit as Enter does, so the edit starts either way.
 | A filter's controls | A name each: "Filter Title", "How to filter Title", "Clear the Title filter". A rejected value: `aria-invalid`, described by "Not a valid value". |
 | The result of a filter | The live region: "12 results", or "Results updated" without a total. |
 | An argument's input | A `<label>`; a group for an argument of several controls; `aria-required` where it cannot be empty; `aria-invalid` and the message where Ash refused the value. "Fill in Due by to see records." in place of the rows while a required one is empty. |
-| A read in progress | `aria-busy` on the grid. The previous rows stay. |
+| A read in progress | `aria-busy` on the table. The previous rows stay. |
 | The boxes | Checkboxes named "Select row" and "Select all rows of this page", the second mixed when some rows are selected. A row is selected when its box is ticked; nothing else says so. In a picker that chooses one record, radio buttons of one group. |
 | What is selected | A group "Selected rows" with a live region: "3 selected", "All 320 that match are selected". |
 | The expander, a line's button | `aria-expanded`. The expanders are named "Related records"; a line by its relationship. |
@@ -528,8 +529,9 @@ report is welcome in the
   sees it as Tab moves along the row.
 - **Too many stops.** Use "Skip table", hide columns you do not need, or
   make columns read-only that nobody edits.
-- **Expecting Space to toggle a boolean.** Enter does. Space on a cell
-  starts editing like any character, and does nothing on a boolean.
+- **Expecting Space to type a space into a cell.** On an editable cell
+  Space acts as Enter: the editor opens with the value as it is (a boolean
+  toggles). Inside the open editor, Space types a space.
 - **Expecting Escape to leave a nested table.** Nothing leaves a nested
   table: Tab goes on through it, and its "Skip table" jumps past it.
 - **Pressing Enter on "Add value" to save.** Enter on a button uses it.

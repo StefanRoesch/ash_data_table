@@ -100,8 +100,8 @@ focus ring, then Space: "1 selected". Tab on to the next row's box and
 press Space: "2 selected".
 
 Space selects only on a box. On a button it uses the button, in an input
-it types, and on an editable cell it starts editing, as any typed
-character does. A boolean is toggled with Enter.
+it types, and on an editable cell it acts as Enter: it starts editing with
+the value as it is, and toggles a boolean.
 
 ## What is selected, and for how long
 
@@ -554,8 +554,8 @@ no other mark, and no colour of their own.
 - **Expecting a filter change to keep the selection.** It gives it up. A
   sort and a change of page keep it.
 - **Expecting Space on a cell to select the row.** Space selects on the
-  box only; on an editable cell it starts editing. A boolean is toggled
-  with Enter.
+  box only; on an editable cell it acts as Enter: it starts editing, and
+  toggles a boolean.
 - **Expecting the question of `confirm false` to be skipped.** A bulk
   action always asks.
 - **Expecting rows to be highlighted.** A selected row has a ticked box.

@@ -410,7 +410,14 @@ declared in the resource and mounted with one line in the router.
   daisyUI's default: 2px in the text colour. Colocated hooks, no npm
   package.
 - Enter or a character on an editable cell starts editing; Enter saves,
-  Tab saves and goes on to the next stop, Escape gives up. Results of
+  Tab saves and goes on to the next stop, Escape gives up. Space on an
+  editable cell acts as Enter: the editor opens with the value as it is, a
+  boolean toggles, the picker or the side panel opens, and the page does
+  not scroll; inside an open editor Space is a character. A click without
+  a pointer on an editable cell, as a screen reader in browse mode makes
+  one for Enter or Space, edits it as Enter does. Escape in a filter's
+  input gives up what was typed and not applied; focus stays in the
+  filter. Results of
   filters and failed saves are announced, the former with their count
   whenever the read action counts.
 - The pagination is ordinary buttons after the table. Focus stays on the
@@ -1275,8 +1282,6 @@ declared in the resource and mounted with one line in the router.
 
 ### Changed since arrays were added
 
-- **Space on a cell selects its row**, in a table that has the boxes. It
-  did nothing, and was held back for this.
 - **The columns of a table with a row action stand one further.** The boxes
   are its first column, so `aria-colindex` of every other cell, and
   `aria-colcount`, are one more; the expander is the second cell of a row.

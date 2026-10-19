@@ -199,12 +199,12 @@ Every other type is read-only text; see
 [Columns and defaults](columns-and-defaults.md#types-shown-as-read-only-text).
 A NewType is edited as the type it is made of.
 
-A reference cell has no editor in the cell: Enter opens the picker,
+A reference cell has no editor in the cell: Enter or Space opens the picker,
 a dialog with the related resource's own table, in which the person chooses
 the related record. See
 [Choosing a related record](choosing-a-related-record.md).
 
-Nor has a cell whose value is made of fields: Enter opens the side
+Nor has a cell whose value is made of fields: Enter or Space opens the side
 panel, where the value is edited field by field and saved with "Save". See
 [Maps and embedded resources](maps-and-embedded-resources.md). An array
 opens the same side panel: see [Arrays](#arrays).

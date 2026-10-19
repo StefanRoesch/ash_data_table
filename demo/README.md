@@ -355,7 +355,7 @@ Some filters to try, as the admin:
 
 ### Editing on `/tasks`
 
-Enter on a cell starts editing, as does typing or a double click; Enter,
+Enter or Space on a cell starts editing, as does typing or a double click; Enter,
 Tab or leaving the cell saves, Escape gives up.
 
 | Column | Edited as | Through |
