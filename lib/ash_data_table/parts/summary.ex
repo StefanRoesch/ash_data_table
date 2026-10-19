@@ -190,7 +190,7 @@ defmodule AshDataTable.Parts.Summary do
     "Footer summaries" at the top. --%>
     <tr
       :if={@summarised? and @page}
-      {Attrs.summaries(@id, @page)}
+      {Attrs.summaries(@id, @model, @page)}
     >
       <td
         :if={@selecting}

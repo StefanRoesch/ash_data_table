@@ -98,8 +98,11 @@ test.describe("an array cell", () => {
     await pushed.clear()
     await tasks.header("tags").focus()
     await tasks.press("Enter")
+    await expect(tasks.header("tags")).toBeFocused()
+    // its filter cell holds nothing, and Down passes it by
     await tasks.press("ArrowDown")
-    await expect(tasks.filterCell("tags")).toBeFocused()
+    await expect(tasks.cell(await tasks.rowKey(1), "tags")).toBeFocused()
+    await tasks.filterCell("tags").focus()
     await tasks.press("Enter")
     await expect(tasks.filterCell("tags")).toBeFocused()
     await tasks.header("checks").click()

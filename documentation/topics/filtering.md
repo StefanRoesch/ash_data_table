@@ -10,9 +10,11 @@ are in [Keyboard and accessibility](keyboard-and-accessibility.md).
 
 ## The smallest example
 
-There is nothing to declare. Under the column headings every table has a
+There is nothing to declare. Under the column headings a table has a
 filter row: one filter per column that the resource allows to be filtered,
-always visible. The filter's kind follows from the column's type.
+always visible. The filter's kind follows from the column's type. A table
+none of whose columns can be filtered has no filter row (the people under
+a task on `/tasks`).
 
 **Try it:** `/tasks` in the demo, as Ada Admin. Type `session` into the
 filter under "Title" and press Enter. The table shows the tasks whose title
@@ -231,7 +233,10 @@ text whatever its case, make the attribute a `:ci_string`.
 
 ## A column without a filter
 
-A column has no filter, and an empty cell in the filter row, when
+A column has no filter, and an empty cell in the filter row, which the
+arrow keys pass over (see
+[Keyboard and accessibility](keyboard-and-accessibility.md#keys-on-a-cell)),
+when
 
 - its cell type is "other": UUIDs, times and the rest of the types shown
   as read-only text;

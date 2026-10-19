@@ -368,6 +368,35 @@ defmodule DemoWeb.Tables.NestedTableTest do
       assert column(html, nested(task.id, "reporter"), "name") == [world.admin.name]
     end
 
+    test "with no column that filters has no filter row: its header is one row, and its rows count from 2",
+         %{conn: conn, world: world, task: task} do
+      {:ok, view, _html} = live(conn, "/tasks")
+      expand(view, task.id)
+
+      html = toggle(view, task.id, "reporter")
+      id = nested(task.id, "reporter")
+
+      assert attribute(html, "[id='#{id}-head'] > [role=row]", "id") == ["#{id}-head-row"]
+      assert attribute(html, "[id='#{id}-filter-row']", "id") == []
+      assert attribute(html, "[id='#{id}-filters']", "id") == []
+
+      assert attribute(
+               html,
+               "[id='#{id}-table'] > [role=rowgroup]:not([id$='-head']) > [role=row]",
+               "aria-rowindex"
+             ) ==
+               ["2"]
+
+      assert attribute(html, "[id='#{id}-table']", "aria-rowcount") == ["2"]
+      assert column(html, id, "name") == [world.admin.name]
+
+      # a table where some columns filter keeps it, and counts both rows
+      html = toggle(view, task.id, "comments")
+      comments = nested(task.id, "comments")
+      assert attribute(html, "[id='#{comments}-filter-row']", "id") == ["#{comments}-filter-row"]
+      assert attribute(html, "[id='#{comments}-table']", "data-first-row") == ["3"]
+    end
+
     test "of a belongs-to that points at nothing says \"No records\"", %{conn: conn, other: other} do
       {:ok, view, _html} = live(conn, "/tasks")
       expand(view, other.id)

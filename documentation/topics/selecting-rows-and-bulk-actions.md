@@ -69,7 +69,7 @@ grid, and is not announced as a grid whose rows can be selected.
 The boxes are the first column of the grid. Where rows expand, the expander
 is the second cell of a row, and the first column of the table the third.
 The box in the header stands for the rows of the page. The cell under it in
-the filter row is empty.
+the filter row is empty, and the arrow keys pass over it.
 
 A nested table is the table of its resource and has its own boxes, its own
 line and its own selection. See [Nested tables](#nested-tables).

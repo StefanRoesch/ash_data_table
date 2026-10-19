@@ -209,13 +209,12 @@ test.describe("with the keyboard", () => {
     // in it, the arrow keys are its own
     await tasks.press("ArrowRight")
     await expect(project.cell(key, "name")).toBeFocused()
-    await tasks.press("ArrowUp")
-    await expect(project.filterCell("name")).toBeFocused()
+    // the table of one project filters nothing: it has no filter row
     await tasks.press("ArrowUp")
     await expect(project.header("name")).toBeFocused()
     await tasks.press("ArrowUp")
     await expect(project.header("name"), "Up ends at its header, not in the table around it").toBeFocused()
-    await tasks.press("ArrowDown", "ArrowDown")
+    await tasks.press("ArrowDown")
     await expect(project.cell(key, "name")).toBeFocused()
     // its last row holds its link to the full view (full_view.spec.ts)
     await tasks.press("ArrowDown", "ArrowDown")
@@ -232,6 +231,43 @@ test.describe("with the keyboard", () => {
     await expect(project.cell(key, "name")).toBeFocused()
     await tasks.press("Escape", "ArrowUp")
     await expect(tasks.lineCell(FIRST, "project")).toBeFocused()
+  })
+
+  test("Up Arrow goes past a filter cell without a filter to the column's header; a table with no filter has no filter row", async ({
+    page,
+    tasks,
+  }) => {
+    // "Reported by": no column filters, so there is no filter row to stop at
+    const reporter = await tasks.openLine(FIRST, "reporter")
+    const [person] = await reporter.rowKeys()
+    await expect(page.locator(`[id='${reporter.id}-filter-row']`)).toHaveCount(0)
+    await tasks.nestedCell(FIRST, "reporter").focus()
+    await tasks.press("Enter")
+    await expect(reporter.cell(person, "name")).toBeFocused()
+    await tasks.press("ArrowUp")
+    await expect(reporter.header("name")).toBeFocused()
+    await tasks.press("ArrowDown")
+    await expect(reporter.cell(person, "name")).toBeFocused()
+
+    // "Comments": its ID does not filter, its Body does
+    const comments = await tasks.openLine(FIRST, "comments")
+    const [comment] = await comments.rowKeys()
+    await comments.cell(comment, "id").focus()
+    await tasks.press("ArrowUp")
+    await expect(comments.header("id"), "straight to the header, never sideways").toBeFocused()
+    await tasks.press("ArrowDown")
+    await expect(comments.cell(comment, "id")).toBeFocused()
+    await tasks.press("ArrowRight", "ArrowUp")
+    await expect(comments.filterCell("body")).toBeFocused()
+    // along the filter row only to the cells that hold a filter
+    await tasks.press("ArrowLeft")
+    await expect(comments.filterCell("body")).toBeFocused()
+    await tasks.press("ArrowRight")
+    await expect(comments.filterCell("inserted_at")).toBeFocused()
+    await tasks.press("ArrowRight")
+    await expect(comments.filterCell("inserted_at")).toBeFocused()
+    await tasks.press("ArrowUp")
+    await expect(comments.header("inserted_at")).toBeFocused()
   })
 
   test("Tab leaves the whole tree from inside a nested table, and comes back to where it was", async ({

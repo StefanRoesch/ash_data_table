@@ -62,7 +62,7 @@ order, not 425.
 | Key | Effect |
 | --- | --- |
 | Arrow keys | Move one cell. They do not wrap at the end of a row or of the grid. |
-| Up Arrow, from the first row of records | Moves to the filter row, then to the header row, and stops there. |
+| Up Arrow, from the first row of records | Moves to the column's filter, where the column has one, then to its heading, and stops there. A column without a filter is passed over in the filter row: Up Arrow goes straight to its heading, never to another column. |
 | Home, End | First and last cell of the row. |
 | Ctrl+Home | First cell of the first row of records. |
 | Ctrl+End | Last cell of the last row. In a table with [footer summaries](footer-summaries.md): of the last record. |
@@ -85,11 +85,20 @@ order, not 425.
 On macOS, Cmd works where the table says Ctrl. Key combinations with Alt are
 left to the browser.
 
-The header row and the filter row are rows of the grid. Both have a cell for
-every column, including the columns that cannot be sorted or filtered, so
-the arrow keys never skip a position. That includes the column of the
-boxes that select a row, the column of the expanders and the "Actions"
-column, where a table has them: their filter cells are empty.
+The header row is a row of the grid with a cell for every column, including
+the columns that cannot be sorted, so Left and Right Arrow never skip a
+position in it. That includes the column of the boxes that select a row,
+the column of the expanders and the "Actions" column, where a table has
+them.
+
+The filter row is there only where at least one column of the table has a
+filter; a table none of whose columns filters (the people under a task on
+`/tasks`) has its header row alone. Where it is there, it has a cell for
+every column too, but the arrow keys stop only at the cells that hold a
+filter. A cell that holds none (of a column that cannot be filtered, and of
+the boxes, the expanders and "Actions") is passed over: Up and Down Arrow go
+on to the heading or the first row of records of the same column, and Left
+and Right Arrow in the filter row go from one filter to the next.
 
 With the pointer: a click moves focus to a cell, a click on a sortable
 heading sorts, and a double click on an editable cell starts editing.
@@ -526,7 +535,7 @@ page and keeps the focus.
 | What | How |
 | --- | --- |
 | The grid and its name | `role="grid"` with `aria-label`: the table's name, such as "Tasks". |
-| Size and position | `aria-rowcount` (the total when the table knows it, counting the two header rows and the footer row of the summaries where the table has one; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
+| Size and position | `aria-rowcount` (the total when the table knows it, counting the header rows (the header row, and the filter row where the table has one) and the footer row of the summaries where the table has one; else `-1`), `aria-colcount`, `aria-rowindex` on every row, `aria-colindex` on every cell. Under offset pagination the row numbers run through all pages; under keyset pagination they do not (see below). |
 | Sort | `aria-sort` on every sortable heading: `ascending`, `descending` or `none`. |
 | The handle of a column's width | `role="separator"` with `aria-orientation="vertical"`, named "Resize Title". `aria-valuenow` is the column's width in pixels, between `aria-valuemin` (48) and `aria-valuemax` (1000). The heading has its column's label as `aria-label`, so the handle's name is not read as part of it. |
 | A read in progress | `aria-busy` on the grid. The previous rows stay. |
@@ -597,7 +606,8 @@ number from 1 up that grows from row to row and does not exceed the row
 count, and where it is left out, the browser counts the rows that are in the
 page, which comes to the same. So on a keyset table the rows of every page
 are numbered from the top of that page: 3 for the first row of records,
-after the two header rows. On the first page that is the row's true place.
+after the two header rows (2 in a table without a filter row). On the first
+page that is the row's true place.
 On a later page it is not: what a screen reader may announce there as the
 third row of the table is the third row of the page. The total is true on
 every page.
@@ -781,9 +791,10 @@ technology, a report of what you find is welcome in the
 
 ## Edge cases
 
-- **A table without records** still has its two header rows. The tab stop is
-  then the filter cell of the first column. So it is while an argument the
-  read action requires is empty.
+- **A table without records** still has its header rows. The tab stop is
+  then the filter of the first column, or the first filter after it; in a
+  table without a filter row, the heading of the first column. So it is
+  while an argument the read action requires is empty.
 - **A closed choice menu.** In an enum editor whose menu is closed, the arrow
   keys change the value step by step without saving. Enter, or leaving the
   cell, saves the value reached.

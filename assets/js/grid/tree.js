@@ -3,8 +3,8 @@
 // These methods are part of the one hook object that grid/index.js
 // puts together, and share its state through `this`.
 
-import {filters as filtersId, head as headId} from "../ids.js"
-import {ACTION, ACTIONS, EXPANDER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE, WHOLE} from "../markers.js"
+import {filterRow as filterRowId, filters as filtersId, head as headId} from "../ids.js"
+import {ACTION, ACTIONS, EXPANDER, FILTER, GRID, HANDLE, LINE, NESTED, OPEN, PAGER, REVEAL, ROW, ROWGROUP, SELECTOR, SELECT_PAGE, SUMMARIES, TABLE, WHOLE} from "../markers.js"
 import {AROUND, CELL, SPANNING, cellsOf, firstRow, is, page, place, rowsOf} from "./shared.js"
 
 export default {
@@ -75,7 +75,8 @@ export default {
   // Where a row stands among them.
   rowAt(row) { return this.rows().indexOf(row) },
 
-  // The rows above the data rows: the header and the filter row.
+  // The rows above the data rows: the header, and the filter row where
+  // a column filters.
   headRows() {
     const head = document.getElementById(headId(this.id))
     return head ? head.querySelectorAll(ROW).length : 1
@@ -189,6 +190,30 @@ export default {
     if (!cell) return
     cell.focus()
     this.intoView(cell)
+  },
+
+  // Whether the arrow keys stop at a cell: at every cell but a cell of
+  // the filter row that holds no filter (`data-filter`), which they pass
+  // over: Up Arrow from a row goes on to the column's header.
+  stops(cell) {
+    const row = cell.closest(ROW)
+    return !(row && row.id === filterRowId(this.id) && !is(cell, FILTER))
+  },
+
+  // Up Arrow and Down Arrow: to the row above or below, in the column,
+  // past a row whose cell there is no stop (never sideways to another).
+  vertical(r, by) {
+    const rows = this.rows()
+    let to = r + by
+    while (to >= 0 && to < rows.length && !this.stops(this.inColumn(rows[to], this.col))) to += by
+    if (to >= 0 && to < rows.length) this.move(to, this.col)
+  },
+
+  // The cell of a row in a column, or its last: a cell that spans the
+  // grid stands in every column.
+  inColumn(row, c) {
+    const cells = cellsOf(row)
+    return cells[Math.max(0, Math.min(c, cells.length - 1))]
   },
 
   // The rows say where they stand among all rows (`aria-rowindex`).

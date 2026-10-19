@@ -105,9 +105,10 @@ export default {
         if (expands && this.isOpen(cell)) this.open(cell)
         else if (!this.spans(cell)) { this.col = this.step(cell, -1); this.move(r, this.col) }
         break
-      case "ArrowDown": this.move(r + 1, this.col); break
-      // from the first data row this reaches the filter row, then the header
-      case "ArrowUp": this.move(r - 1, this.col); break
+      case "ArrowDown": this.vertical(r, 1); break
+      // from the first data row this reaches the filter cell, where the
+      // column filters, then the header
+      case "ArrowUp": this.vertical(r, -1); break
       case "PageDown": this.move(Math.max(r, Math.min(r + this.pageRows(cell), lastR)), this.col); break
       // stays in the data rows; the header rows are an Arrow Up further
       case "PageUp": this.move(r < head ? r : Math.max(r - this.pageRows(cell), head), this.col); break

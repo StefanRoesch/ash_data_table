@@ -387,8 +387,10 @@ defmodule AshDataTable.Attrs do
   #   * the `<table role="grid">` is the stream container; the header is a
   #     child with its own id and every row is one `<tbody>`;
   #   * the header has two rows, the column headers and the filter row, which
-  #     are not part of the stream. The controls of the filter row belong to
-  #     the form `ID-filters`, which sits outside the table;
+  #     are not part of the stream; a table none of whose columns has a
+  #     filter has no filter row and no form (`filter_row?/1`). The controls
+  #     of the filter row belong to the form `ID-filters`, which sits outside
+  #     the table;
   #   * ids are stable and built from names, never from positions:
   #     `ID-head-FIELD` for a header cell, `ID-filter-FIELD` for a filter cell
   #     (its controls end in `-operator`, `-value` and `-clear`; a range has
@@ -970,29 +972,30 @@ defmodule AshDataTable.Attrs do
   end
 
   @doc """
-  The grid itself, whose rows are a stream.
+  The grid itself, whose rows are a stream. `model` says how many header
+  rows it has (one, and the filter row where a column has a filter).
   """
-  def table(id, label, labelledby, page, summarised?, colcount, selecting, busy?) do
+  def table(id, label, labelledby, model, page, summarised?, colcount, selecting, busy?) do
     %{
       "id" => "#{id}-table",
       "role" => "grid",
       "aria-label" => is_nil(labelledby) && label,
       "aria-labelledby" => labelledby,
-      "aria-rowcount" => rowcount(page, summarised?),
+      "aria-rowcount" => rowcount(model, page, summarised?),
       "aria-colcount" => colcount,
       "aria-multiselectable" => selecting && to_string(selecting == :multi),
       "aria-busy" => busy? && "true",
-      "data-first-row" => Present.first_row(page),
+      "data-first-row" => Present.first_row(model, page),
       "phx-update" => "stream"
     }
   end
 
   # The rows of the grid in all pages: the header rows, the records, and the
   # footer row of the summaries where there is one. -1 says "unknown".
-  defp rowcount(%{total: total}, summarised?) when is_integer(total),
-    do: total + Present.header_rows() + if(summarised?, do: 1, else: 0)
+  defp rowcount(model, %{total: total}, summarised?) when is_integer(total),
+    do: total + Present.header_rows(model) + if(summarised?, do: 1, else: 0)
 
-  defp rowcount(_page, _summarised?), do: -1
+  defp rowcount(_model, _page, _summarised?), do: -1
 
   # How many columns the grid has: those before the data columns, the data
   # columns and the actions.
@@ -1172,8 +1175,8 @@ defmodule AshDataTable.Attrs do
   The footer row of the summaries, the last of all rows, and the summary
   of a column in it.
   """
-  def summaries(id, page) do
-    Map.put(row("#{id}-summaries", Common.summary_rowindex(page)), "data-summaries", true)
+  def summaries(id, model, page) do
+    Map.put(row("#{id}-summaries", Common.summary_rowindex(model, page)), "data-summaries", true)
   end
 
   @doc """
@@ -1364,6 +1367,13 @@ defmodule AshDataTable.Attrs do
       "phx-target" => target
     }
   end
+
+  @doc """
+  Whether the grid has a filter row and its form: where a column of the
+  model has a filter. A table without one draws neither; its header is the
+  row of the column headers alone, and the row indexes count one header row.
+  """
+  def filter_row?(model), do: Present.filter_row?(model)
 
   @doc """
   The form of the filter row, which its controls name (`form`).

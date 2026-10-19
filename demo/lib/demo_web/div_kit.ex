@@ -22,14 +22,14 @@ defmodule DemoWeb.DivKit do
 
   def grid(assigns) do
     ~H"""
-    <form {Attrs.filters(@id, @myself)}></form>
+    <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
     <div {Attrs.sender(@id)}></div>
     <div
       {Attrs.grid(@id, @myself, @lead, @selecting, @choose, @texts)}
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <div
-        {Attrs.table(@id, @label, @labelledby, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
+        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
         class="table w-full border-collapse text-sm"
         data-kit="div"
       >
@@ -83,7 +83,7 @@ defmodule DemoWeb.DivKit do
               {@texts.actions}
             </div>
           </div>
-          <div {Attrs.row(Ids.filter_row(@id), "2")} class="table-row">
+          <div :if={Attrs.filter_row?(@model)} {Attrs.row(Ids.filter_row(@id), "2")} class="table-row">
             <div :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")} class="table-cell">
             </div>
             <div
@@ -385,7 +385,7 @@ defmodule DemoWeb.DivKit do
           not (@nested? and (@pages? or (not is_nil(@page) and not is_nil(@full_view))))
       }
     >
-      <div :if={@summarised? and @page} {Attrs.summaries(@id, @page)} class="table-row">
+      <div :if={@summarised? and @page} {Attrs.summaries(@id, @model, @page)} class="table-row">
         <div
           :if={@selecting}
           id={"#{@id}-summaries-select"}

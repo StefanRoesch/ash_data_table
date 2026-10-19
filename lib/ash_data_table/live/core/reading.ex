@@ -306,7 +306,7 @@ defmodule AshDataTable.Live.Core.Reading do
           # 1-based, the header rows counted. Under offset pagination it
           # runs through all pages; a keyset page does not know how many
           # records lie before it, and counts from its own top.
-          rowindex: (page.offset || 0) + index + Present.header_rows() + 1
+          rowindex: (page.offset || 0) + index + Present.header_rows(model) + 1
         }
       end)
 

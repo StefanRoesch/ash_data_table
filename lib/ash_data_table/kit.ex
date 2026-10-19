@@ -212,7 +212,8 @@ defmodule AshDataTable.Kit do
       `data-lead`, `data-select`, `data-choose`, `data-chosen-rows`), its
       sender (`data-sender`) before it, the `role=grid` element `ID-table`
       (`data-first-row`) with `ID-head` and its two rows, the filter row's
-      form `ID-filters`, a `role=rowgroup` element per item of the stream
+      form `ID-filters` (the filter row and its form only where
+      `Attrs.filter_row?/1` says so: else `ID-head` has one row), a `role=rowgroup` element per item of the stream
       `rows` (with the item's `attrs`), the `footer`, a
       `<template>` per editable column (`Attrs.editor_template/3`:
       `ID-editor-FIELD`, `data-editor`, `data-commit`, and `data-confirm`

@@ -165,23 +165,30 @@ defmodule AshDataTable.Present do
     @type t :: %__MODULE__{}
   end
 
-  # The rows above the data rows: the header and the filter row.
-  @header_rows 2
+  @doc """
+  Whether the grid has a filter row: where a column of the model has a
+  filter (`operators`). A table without one has its header row alone.
+  """
+  @spec filter_row?(Model.t()) :: boolean
+  def filter_row?(%Model{columns: columns}), do: Enum.any?(columns, &(&1.operators != []))
 
   @doc """
-  How many rows of the grid are above its data rows: the header and the
-  filter row. A row's index (`aria-rowindex`) counts them.
+  How many rows of the grid are above its data rows: the header, and the
+  filter row where there is one (`filter_row?/1`). A row's index
+  (`aria-rowindex`) counts them.
   """
-  @spec header_rows() :: pos_integer
-  def header_rows, do: @header_rows
+  @spec header_rows(Model.t()) :: pos_integer
+  def header_rows(model), do: if(filter_row?(model), do: 2, else: 1)
 
   @doc """
   The row index of the first row of the page: the hook numbers the rows
   from it, in the order they stand in, after a row was added or taken out.
   """
-  @spec first_row(map | nil) :: pos_integer
-  def first_row(%{offset: offset}) when is_integer(offset), do: offset + @header_rows + 1
-  def first_row(_page), do: @header_rows + 1
+  @spec first_row(Model.t(), map | nil) :: pos_integer
+  def first_row(model, %{offset: offset}) when is_integer(offset),
+    do: offset + header_rows(model) + 1
+
+  def first_row(model, _page), do: header_rows(model) + 1
 
   @doc """
   What is drawn in place of a sensitive value that is there: the same for

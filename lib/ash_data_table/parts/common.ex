@@ -59,10 +59,10 @@ defmodule AshDataTable.Parts.Common do
 
   # The footer row of the summaries is the last row of all: after the
   # records of every page. Where their number is not known it says nothing.
-  def summary_rowindex(%{total: total}) when is_integer(total),
-    do: total + Present.header_rows() + 1
+  def summary_rowindex(model, %{total: total}) when is_integer(total),
+    do: total + Present.header_rows(model) + 1
 
-  def summary_rowindex(_page), do: nil
+  def summary_rowindex(_model, _page), do: nil
 
   # The message of a cell whose save failed, or of a row whose action
   # failed: in the cell, under what it shows, and the row as high as it

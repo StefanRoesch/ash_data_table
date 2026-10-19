@@ -147,7 +147,7 @@ test.describe("the actions column", () => {
 })
 
 test.describe("with the keyboard", () => {
-  test("the actions cell is a cell the arrow keys stop at, under a header and a filter cell of its own", async ({
+  test("the actions cell is a cell the arrow keys stop at, under a header of its own and past an empty filter cell", async ({
     tasks,
     pushed,
   }) => {
@@ -163,15 +163,12 @@ test.describe("with the keyboard", () => {
     await tasks.press("ArrowDown")
     await expect(tasks.actionsCell(SECOND)).toBeFocused()
     await tasks.press("ArrowUp", "ArrowUp")
-    await expect(tasks.actionsFilter).toBeFocused()
-    await tasks.press("ArrowUp")
+    // its filter cell holds no filter, and is no stop of the arrow keys
     await expect(tasks.actionsHeader).toBeFocused()
 
-    // nothing to sort by and nothing to filter: Enter, F2 and a character do nothing there
-    await tasks.press("Enter", "F2", "x", "ArrowDown")
-    await expect(tasks.actionsFilter).toBeFocused()
+    // nothing to sort by: Enter, F2 and a character do nothing there
     await tasks.press("Enter", "F2", "x")
-    await expect(tasks.actionsFilter).toBeFocused()
+    await expect(tasks.actionsHeader).toBeFocused()
     await expect(tasks.grid.locator('[aria-sort]:not([aria-sort="none"])')).toHaveCount(0)
 
     await tasks.press("ArrowDown", "ArrowLeft")

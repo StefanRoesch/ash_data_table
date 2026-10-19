@@ -728,7 +728,7 @@ defmodule AshDataTable.Live.Core.Panel do
     if is_map_key(rows, key) do
       Reading.put_row(socket, key, record)
     else
-      first = Present.first_row(page)
+      first = Present.first_row(model, page)
       rows = Map.new(rows, fn {key, row} -> {key, %{row | rowindex: row.rowindex + 1}} end)
       rows = Map.put(rows, key, %{rowindex: first, pk: Reading.primary_key(model, record)})
 

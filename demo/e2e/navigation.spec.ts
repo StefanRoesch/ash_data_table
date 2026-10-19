@@ -143,14 +143,17 @@ test("Up from the first data row reaches the filter row, then the header", async
   await tasks.press("ArrowDown")
   await expect(tasks.cell(first, FIRST)).toBeFocused()
 
-  // the header rows have every column, the ones without a sort or a filter too
+  // the header row has every column, the ones without a sort too; of the
+  // filter row only the cells that hold a filter are stops
   await tasks.press("End", "ArrowUp")
-  await expect(tasks.actionsFilter, "the column of the actions").toBeFocused()
+  await expect(tasks.actionsHeader, "past the empty filter cell of the actions").toBeFocused()
   await tasks.press("ArrowLeft")
-  await expect(tasks.filterCell(LAST)).toBeFocused()
-  await tasks.press("ArrowLeft")
-  await expect(tasks.filterCell("assignee"), "a column without a filter").toBeFocused()
-  expect(await tasks.tabStops()).toEqual(["task-filter-assignee"])
+  await expect(tasks.header(LAST)).toBeFocused()
+  await tasks.press("ArrowDown")
+  await expect(tasks.cell(first, LAST), "past the empty filter cell of a column without a filter").toBeFocused()
+  await tasks.press("ArrowUp", "ArrowLeft", "ArrowDown")
+  await expect(tasks.cell(first, "assignee")).toBeFocused()
+  expect(await tasks.tabStops()).toEqual([`task-row-${first}-c-assignee`])
 })
 
 test("moving about sends nothing to the server", async ({ tasks, pushed }) => {

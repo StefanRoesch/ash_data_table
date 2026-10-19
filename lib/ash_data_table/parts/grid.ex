@@ -705,9 +705,9 @@ defmodule AshDataTable.Parts.Grid do
 
   def grid(assigns) do
     ~H"""
-    <%!-- The form of the filter row. A form cannot sit inside a table around
-    its cells, so the controls name it instead. --%>
-    <form {Attrs.filters(@id, @myself)}></form>
+    <%!-- The form of the filter row, where there is one. A form cannot sit
+    inside a table around its cells, so the controls name it instead. --%>
+    <form :if={Attrs.filter_row?(@model)} {Attrs.filters(@id, @myself)}></form>
     <%!-- The grid is the table's own scroll area: every table scrolls
     sideways in its own, a nested table as the table on the page (see
     "scrolling sideways" in the hook). A nested table that is scrolled to
@@ -720,7 +720,7 @@ defmodule AshDataTable.Parts.Grid do
       class={@kit.class(:grid, %{nested?: @nested?})}
     >
       <table
-        {Attrs.table(@id, @label, @labelledby, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
+        {Attrs.table(@id, @label, @labelledby, @model, @page, @summarised?, Attrs.colcount(@model, @lead, @acting?), @selecting, @busy? or not is_nil(@running))}
         class={["table", @nested? && "w-auto"]}
       >
         <thead id={Ids.head(@id)}>
@@ -778,7 +778,8 @@ defmodule AshDataTable.Parts.Grid do
               {@texts.actions}
             </th>
           </tr>
-          <tr {Attrs.row(Ids.filter_row(@id), "2")}>
+          <%!-- The filter row, where a column has a filter. --%>
+          <tr :if={Attrs.filter_row?(@model)} {Attrs.row(Ids.filter_row(@id), "2")}>
             <td :if={@selecting} {Attrs.gridcell("#{@id}-select-filter", "1")}></td>
             <td :if={@expandable?} {Attrs.gridcell("#{@id}-expander-filter", @lead)}></td>
             <Kit.part

@@ -38,32 +38,35 @@ export default {
   },
 
   // A cell itself, or for one of a hidden column the nearest cell
-  // of its row that is shown: after it, else before it.
+  // of its row that is shown: after it, else before it. The same for a
+  // cell the arrow keys do not stop at (`stops`, a filter cell without a
+  // filter).
   seenNear(cell) {
-    if (!this.gone(cell)) return cell
+    const near = cell => !this.gone(cell) && this.stops(cell)
+    if (near(cell)) return cell
     const cells = cellsOf(cell.closest(ROW))
     const at = place(cell)
-    for (let i = at + 1; i < cells.length; i++) if (!this.gone(cells[i])) return cells[i]
-    for (let i = at - 1; i >= 0; i--) if (!this.gone(cells[i])) return cells[i]
+    for (let i = at + 1; i < cells.length; i++) if (near(cells[i])) return cells[i]
+    for (let i = at - 1; i >= 0; i--) if (near(cells[i])) return cells[i]
     return cell
   },
 
   // Where the next cell that is shown stands in a cell's row, to
-  // one side of it (`by` is 1 or -1); where the cell stands itself
-  // when there is none.
+  // one side of it (`by` is 1 or -1), passing over a cell that is no
+  // stop; where the cell stands itself when there is none.
   step(cell, by) {
     const cells = cellsOf(cell.closest(ROW))
     const at = place(cell)
-    for (let i = at + by; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
+    for (let i = at + by; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i]) && this.stops(cells[i])) return i
     return at
   },
 
-  // Where the first cell of a row that is shown stands (`by` is
-  // 1), or the last (-1).
+  // Where the first cell of a row that is shown, and a stop, stands
+  // (`by` is 1), or the last (-1).
   edge(row, by) {
     const cells = cellsOf(row)
     const from = by > 0 ? 0 : cells.length - 1
-    for (let i = from; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i])) return i
+    for (let i = from; i >= 0 && i < cells.length; i += by) if (!this.gone(cells[i]) && this.stops(cells[i])) return i
     return from
   },
 
