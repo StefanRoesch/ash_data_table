@@ -106,7 +106,7 @@ defmodule AshDataTable.ModelTest do
       model = Model.build(AshDataTable.Test.Private.Minute)
 
       assert column_names(model) == [:title, :shouted, :folder]
-      assert Enum.map(AshDataTable.Parts.Grid.hideable(model), & &1.name) == [:shouted, :folder]
+      assert Model.label_column(model).name == :title
       refute Model.keeps_one?(model)
     end
 
@@ -114,14 +114,14 @@ defmodule AshDataTable.ModelTest do
       model = Model.build(AshDataTable.Test.Referring.Member)
 
       assert column_names(model) == [:id, :name, :away?]
-      assert Enum.map(AshDataTable.Parts.Grid.hideable(model), & &1.name) == [:id, :away?]
+      assert Model.label_column(model).name == :name
       refute Model.keeps_one?(model)
     end
 
     test "are all of them in a table without a label, of which one has to stay" do
       model = Model.build(AshDataTable.Test.Task)
 
-      assert AshDataTable.Parts.Grid.hideable(model) == model.columns
+      assert Model.label_column(model) == nil
       assert Model.keeps_one?(model)
     end
 
@@ -130,7 +130,7 @@ defmodule AshDataTable.ModelTest do
       # as for a person who does not see the label's field
       model = %{model | columns: Enum.reject(model.columns, &(&1.name == :title))}
 
-      assert Enum.map(AshDataTable.Parts.Grid.hideable(model), & &1.name) == [:shouted, :folder]
+      assert Model.label_column(model) == nil
       assert Model.keeps_one?(model)
     end
   end

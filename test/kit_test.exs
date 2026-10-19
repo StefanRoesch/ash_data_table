@@ -352,4 +352,27 @@ defmodule AshDataTable.KitTest do
     assert Kit.check!(Kit.Default, "a test") == Kit.Default
     for part <- Kit.parts(), do: assert(function_exported?(Kit.Default, part, 1), "#{part}/1")
   end
+
+  test "the grid is given what a masked or forbidden cell says, by column, and alike for all" do
+    model = AshDataTable.Model.build(AshDataTable.Test.Resource)
+    texts = Kit.Words.texts(:grid, %{label: "Things", columns: model.columns})
+    messages = Kit.Words.messages(:grid, %{label: "Things", columns: model.columns})
+
+    for {column, show, hide, message} <-
+          Enum.zip([model.columns, texts.show_value, texts.hide_value, messages.show_value]) do
+      if column.sensitive? do
+        assert show == "Show #{column.label}"
+        assert hide == "Hide #{column.label}"
+        assert message == %{key: :show_value, values: %{column: column.label}}
+      else
+        assert {show, hide, message} == {nil, nil, nil}
+      end
+    end
+
+    assert Enum.any?(model.columns, & &1.sensitive?)
+    assert texts.show == "Show"
+    assert texts.not_available == "Not available"
+    assert {texts.yes, texts.no} == {"Yes", "No"}
+    assert Map.keys(texts) == Map.keys(messages)
+  end
 end

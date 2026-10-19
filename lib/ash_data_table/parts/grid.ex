@@ -14,7 +14,6 @@ defmodule AshDataTable.Parts.Grid do
   alias AshDataTable.Kit.Words
   alias AshDataTable.Edit
   alias AshDataTable.Ids
-  alias AshDataTable.Model
   alias AshDataTable.Model.Limits
   alias AshDataTable.Parts
   alias AshDataTable.Parts.Common
@@ -74,8 +73,9 @@ defmodule AshDataTable.Parts.Grid do
   # popover itself, `rounded-box bg-base-100 shadow-sm`); `flex-nowrap`
   # keeps a long list in one column that scrolls, where `menu` would wrap.
   #
-  # `columns` are the columns that can be hidden (`hideable/1`), and
-  # `label_column` the label column (nil for none), which cannot: its entry
+  # `columns` are the columns that can be hidden (every one but the label
+  # column), and `label_column` the label column (nil for none), which
+  # cannot: its entry
   # comes first, its name and its width field, with no box.
   # A column that is filtered or sorted by says so at its box, in text, for
   # as long as it is hidden (`data-flag`, shown while the box is not
@@ -1114,18 +1114,6 @@ defmodule AshDataTable.Parts.Grid do
         )
 
   def root, do: @root
-
-  # The columns a person can hide, in the table's order: every column but the
-  # one a record is called by, the attribute of the resource's `label_field`,
-  # without which a row cannot be told from another. A table that has no
-  # such column lets every column be hidden; one of them stays, whichever,
-  # and that is the browser's to see to (`AshDataTable.Model.keeps_one?/1`).
-  def hideable(%Model{columns: columns} = model) do
-    case Model.label_column(model) do
-      nil -> columns
-      label -> List.delete(columns, label)
-    end
-  end
 
   # The name the "Columns" button is anchored by (`anchor-name`), the
   # table's own: a page has a list per table.

@@ -233,7 +233,19 @@ defmodule AshDataTable.Kit.Words do
     ]
   end
 
-  defp words(:grid, %{label: label}) do
+  # Besides its own, the texts the cells of its rows show that are the same
+  # on every row (a stream item holds only what varies, ADR 0002): what a
+  # masked cell says, by column (`show_value`, `hide_value`, one per column
+  # of the model, nil where the column is not sensitive) and alike for all
+  # (`hidden_value`, `show`, `hide`); what a cell the person may not see
+  # says (`not_available`); and what a failed boolean cell shows of what was
+  # typed (`yes`, `no`). A kit drawn in HEEx gets them per cell instead
+  # (`:cell`).
+  defp words(:grid, %{label: label, columns: columns}) do
+    masked = fn key ->
+      Enum.map(columns, fn column -> if column.sensitive?, do: t(key, column: column.label) end)
+    end
+
     [
       skip_table: t(:skip_table, name: label),
       select_page: t(:select_page),
@@ -243,7 +255,15 @@ defmodule AshDataTable.Kit.Words do
       show_whole: t(:show_whole),
       show_less: t(:show_less),
       show_whole_of: t(:show_whole_of, column: "{column}"),
-      show_less_of: t(:show_less_of, column: "{column}")
+      show_less_of: t(:show_less_of, column: "{column}"),
+      hidden_value: t(:hidden_value),
+      show: t(:show),
+      hide: t(:hide),
+      show_value: masked.(:show_value),
+      hide_value: masked.(:hide_value),
+      not_available: t(:not_available),
+      yes: t(:yes),
+      no: t(:no)
     ]
   end
 

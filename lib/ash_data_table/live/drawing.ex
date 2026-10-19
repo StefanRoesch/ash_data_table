@@ -130,6 +130,7 @@ defmodule AshDataTable.Live.Drawing do
       heading={@heading}
       id={@entry.id}
       label={@entry.label}
+      label_column={@entry.label_column}
       lines={@entry.lines}
       model={@entry.model}
       myself={@myself}
@@ -334,8 +335,8 @@ defmodule AshDataTable.Live.Drawing do
         summary={@entry.summary}
         summing?={@entry.summing?}
         time_zone={@time_zone}
-        texts={Words.texts(:grid, %{label: @entry.label})}
-        messages={Words.messages(:grid, %{label: @entry.label})}
+        texts={Words.texts(:grid, %{label: @entry.label, columns: @entry.model.columns})}
+        messages={Words.messages(:grid, %{label: @entry.label, columns: @entry.model.columns})}
       />
       <Kit.part
         :for={

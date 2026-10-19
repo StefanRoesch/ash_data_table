@@ -9,8 +9,6 @@ defmodule AshDataTable.Parts.Heading do
   alias AshDataTable.Attrs
   alias AshDataTable.Kit
   alias AshDataTable.Kit.Words
-  alias AshDataTable.Model
-  alias AshDataTable.Parts
 
   # The create button of a table: it opens the action panel with the inputs
   # of the table's create action.
@@ -50,6 +48,8 @@ defmodule AshDataTable.Parts.Heading do
   attr :id, :any, required: true
   attr :kit, :atom, required: true
   attr :label, :any, required: true
+  # the column a record is called by, nil for none: the one "Columns" cannot hide
+  attr :label_column, :any, required: true
   attr :lines, :any, required: true
   attr :model, :any, required: true
   attr :myself, :any, required: true
@@ -70,7 +70,7 @@ defmodule AshDataTable.Parts.Heading do
     Tab stops there, after the line's button. --%>
     <div
       :if={
-        @nested? or !!@heading or columns?(@model) or @model.arguments != [] or
+        @nested? or !!@heading or columns?(@model, @label_column) or @model.arguments != [] or
           acts?(@page, @model, @offered, @related)
       }
       id={"#{@id}-header"}
@@ -85,20 +85,20 @@ defmodule AshDataTable.Parts.Heading do
         {@label}
       </.dynamic_tag>
       <Kit.part
-        :if={columns?(@model)}
+        :if={columns?(@model, @label_column)}
         part={:columns}
         kit={@kit}
         id={@id}
-        columns={Parts.Grid.hideable(@model)}
-        label_column={Model.label_column(@model)}
-        keeps_one?={Model.keeps_one?(@model)}
+        columns={hideable(@model, @label_column)}
+        label_column={@label_column}
+        keeps_one?={is_nil(@label_column)}
         state={@state}
         nested?={@nested?}
         class={nil}
         texts={
           Words.texts(:columns, %{
-            columns: Parts.Grid.hideable(@model),
-            label_column: Model.label_column(@model),
+            columns: hideable(@model, @label_column),
+            label_column: @label_column,
             state: @state,
             label: @label,
             nested?: @nested?
@@ -106,8 +106,8 @@ defmodule AshDataTable.Parts.Heading do
         }
         messages={
           Words.messages(:columns, %{
-            columns: Parts.Grid.hideable(@model),
-            label_column: Model.label_column(@model),
+            columns: hideable(@model, @label_column),
+            label_column: @label_column,
             state: @state,
             label: @label,
             nested?: @nested?
@@ -144,7 +144,12 @@ defmodule AshDataTable.Parts.Heading do
   # Whether the table has columns a person can hide: more than one, and one
   # that is no label. Worked out where it is used, from `model`, so that
   # LiveView sends what depends on it again only when the model changed.
-  defp columns?(model), do: length(model.columns) > 1 and Parts.Grid.hideable(model) != []
+  defp columns?(model, label_column),
+    do: length(model.columns) > 1 and hideable(model, label_column) != []
+
+  # The columns a person can hide: every column but the label column.
+  defp hideable(model, nil), do: model.columns
+  defp hideable(model, label_column), do: List.delete(model.columns, label_column)
 
   # Whether the line offers create or table actions: not beside an error (a
   # table that could not read offers nothing), and not for a table limited

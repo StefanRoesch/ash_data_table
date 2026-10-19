@@ -199,8 +199,10 @@ defmodule AshDataTable.Kit do
     * `heading` - the heading line (`ID-header`): the table's name, the
       `columns` part, the `argument_line` part, and its create
       (`ID-create`) and table actions (`data-table-action`): `id`,
-      `heading`, `label`, `model`, `offered` (the table actions), `page`,
-      `related`, `state`, `lines`, `refused`, `nested?`, `myself`. A nested
+      `heading`, `label`, `label_column` (the `Model.Column` a record is
+      called by, nil for none: the one column `columns` cannot hide),
+      `model`, `offered` (the table actions), `page`, `related`, `state`,
+      `lines`, `refused`, `nested?`, `myself`. A nested
       table's is drawn in a portal of its own onto its line
       (`Ids.line_heading/2`, which the `line` part draws), where the line
       gives the name; its controls are Tab stops there, after the line's
@@ -457,7 +459,13 @@ defmodule AshDataTable.Kit do
       `select_page`, `select_row`, `related_records`, `actions`,
       `show_whole`, `show_less`, `show_whole_of`, `show_less_of` (for
       `Attrs.grid/6`; the last two with `{column}` where the hook puts the
-      column's label);
+      column's label); and what the cells of its rows say alike on every
+      row, for a kit that draws the rows itself from the items (an item
+      holds only what varies): `hidden_value`, `show`, `hide`,
+      `show_value` and `hide_value` (lists, one per column of the model,
+      nil where the column is not sensitive) of a masked cell,
+      `not_available` of a forbidden one, and `yes` and `no`, what a failed
+      boolean cell shows of what was typed;
     * `row` - `select_row`, `related_records`;
     * `cell` - `locale`; masked: `hidden_value`, `show`, `hide`,
       `show_value`, `hide_value`; forbidden, and of a union:
